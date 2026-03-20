@@ -384,19 +384,19 @@ The error must be retryable. Two categories qualify:
 ### Retry Algorithm
 
 ```
-FUNCTION executeWithRetry(request, retryConfig) → Response
+FUNCTION executeWithRetry(request, retry_config) → Response
   1. Determine retry eligibility:
      a. method = request.method
      b. If method is POST:
         - Look up operation in behavior-model.json by operation name (the generated service passes the operationId; the transport maps it to behavior-model.json's key)
-        - If operation.idempotent ≠ true → retryConfig = NO_RETRY_CONFIG (max_attempts=1)
-     c. If method is GET, HEAD, PUT, DELETE → use retryConfig from metadata or DEFAULT_RETRY_CONFIG
+        - If operation.idempotent ≠ true → retry_config = NO_RETRY_CONFIG (max_attempts=1)
+     c. If method is GET, HEAD, PUT, DELETE → use retry_config from metadata or DEFAULT_RETRY_CONFIG
 
-  2. For attempt = 0 to retryConfig.max_attempts - 1:
+  2. For attempt = 0 to retry_config.max_attempts - 1:
      a. Execute request.
-     b. If network error (no response): error is retryable. If attempt == retryConfig.max_attempts - 1 → raise last error (exhausted). Else → continue to step e (skip status check).
-     c. If response.status NOT IN retryConfig.retry_on → return response.
-     d. If attempt == retryConfig.max_attempts - 1 → return response (exhausted).
+     b. If network error (no response): error is retryable. If attempt == retry_config.max_attempts - 1 → raise last error (exhausted). Else → continue to step e (skip status check).
+     c. If response.status NOT IN retry_config.retry_on → return response.
+     d. If attempt == retry_config.max_attempts - 1 → return response (exhausted).
      e. Calculate delay:
         - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
@@ -415,7 +415,7 @@ END
 delay = base_delay * 2^(retry_index) + random(0, max_jitter)
 ```
 
-Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt - 1` since `attempt=0` is the initial request. Default constants:
+Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step e, it computes the delay for the first retry using `2^0 = 1×base_delay`. Default constants:
 - `base_delay` = 1000ms
 - `max_jitter` = 100ms
 
@@ -485,28 +485,28 @@ END
 ### Auto-Pagination Algorithm `[conformance]`
 
 ```
-FUNCTION paginate(initialResponse, maxPages, maxItems?) → ListResult<T>
-  1. Parse first page items from initialResponse body.
+FUNCTION paginate(initial_response, max_pages, max_items?) → ListResult<T>
+  1. Parse first_page_items from initial_response body.
   2. total_count = parse X-Total-Count header (0 if absent).
-  3. allItems = firstPageItems.
-  4. If maxItems set and allItems.length ≥ maxItems:
-     a. hasMore = parseNextLink(initialResponse.headers["Link"]) ≠ null OR allItems.length > maxItems.
-     → ListResult(allItems[0:maxItems], meta: {total_count, truncated: hasMore}).
+  3. all_items = first_page_items.
+  4. If max_items set and all_items.length ≥ max_items:
+     a. has_more = parseNextLink(initial_response.headers["Link"]) ≠ null OR all_items.length > max_items.
+     → ListResult(all_items[0:max_items], meta: {total_count, truncated: has_more}).
 
-  5. response = initialResponse.
-  6. For page = 1 to maxPages - 1:
-     a. rawNextUrl = parseNextLink(response.headers["Link"]).
-     b. If rawNextUrl is null → break.
-     c. nextUrl = resolveURL(response.url, rawNextUrl).
+  5. response = initial_response.
+  6. For page = 1 to max_pages - 1:
+     a. raw_next_url = parseNextLink(response.headers["Link"]).
+     b. If raw_next_url is null → break.
+     c. next_url = resolveURL(response.url, raw_next_url).
      d. Validate same-origin (see below). If fails → ⊥ BasecampError.
-     e. response = authenticatedFetch(nextUrl).
-     f. Parse page items, append to allItems.
-     g. If maxItems set and allItems.length ≥ maxItems:
-        a. hasMore = parseNextLink(response.headers["Link"]) ≠ null OR allItems.length > maxItems.
-        → ListResult(allItems[0:maxItems], meta: {total_count, truncated: hasMore}).
+     e. response = authenticatedFetch(next_url).
+     f. Parse page items, append to all_items.
+     g. If max_items set and all_items.length ≥ max_items:
+        a. has_more = parseNextLink(response.headers["Link"]) ≠ null OR all_items.length > max_items.
+        → ListResult(all_items[0:max_items], meta: {total_count, truncated: has_more}).
 
   7. truncated = parseNextLink(response.headers["Link"]) ≠ null.
-  8. → ListResult(allItems, meta: {total_count, truncated}).
+  8. → ListResult(all_items, meta: {total_count, truncated}).
 END
 ```
 
