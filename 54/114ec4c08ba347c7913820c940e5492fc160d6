@@ -1,0 +1,37 @@
+go/pkg/basecamp/oauth/exchange.go
+  729b375aeda8877d 114
+go/pkg/basecamp/download.go
+  729b375aeda8877d 30,114
+go/pkg/basecamp/authorization.go
+  729b375aeda8877d 136
+go/pkg/basecamp/oauth/discovery.go
+  729b375aeda8877d 39
+go/pkg/basecamp/auth.go
+  729b375aeda8877d 162,167,171,174-175,327
+.github/workflows/security.yml
+  729b375aeda8877d 295-296,298-303
+go/pkg/basecamp/client.go
+  729b375aeda8877d 696
+go/pkg/basecamp/cache.go
+  729b375aeda8877d 43,62,76,83,86-87,96,109,112-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "54114ec4c08ba347c7913820c940e5492fc160d6",
+  "prompts": {
+    "729b375aeda8877d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02792006-b334-4625-b825-c79118f8a2af",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 31,
+      "total_deletions": 33,
+      "accepted_lines": 30,
+      "overriden_lines": 0
+    }
+  }
+}
