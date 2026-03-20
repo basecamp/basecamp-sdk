@@ -103,6 +103,7 @@ type AccountClient struct {
 	clientReplies         *ClientRepliesService
 	timeline              *TimelineService
 	reports               *ReportsService
+	myAssignments         *MyAssignmentsService
 }
 
 // Response wraps an API response.
@@ -1277,4 +1278,14 @@ func (ac *AccountClient) Reports() *ReportsService {
 		ac.reports = NewReportsService(ac)
 	}
 	return ac.reports
+}
+
+// MyAssignments returns the MyAssignmentsService for current user assignment operations.
+func (ac *AccountClient) MyAssignments() *MyAssignmentsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.myAssignments == nil {
+		ac.myAssignments = NewMyAssignmentsService(ac)
+	}
+	return ac.myAssignments
 }

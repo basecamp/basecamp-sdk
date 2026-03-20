@@ -259,7 +259,12 @@ service Basecamp {
     GetBoost,
     CreateRecordingBoost,
     CreateEventBoost,
-    DeleteBoost
+    DeleteBoost,
+
+    // Batch 13 - My Assignments
+    GetMyAssignments,
+    GetMyAssignmentsCompleted,
+    GetMyAssignmentsDue
   ]
 }
 
@@ -7439,5 +7444,124 @@ structure Boost {
   created_at: ISO8601Timestamp
   booster: Person
   recording: RecordingParent
+}
+
+// ===== My Assignments Operations =====
+
+/// Get the current user's assignments grouped into priorities and non-priorities
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/assignments.json")
+operation GetMyAssignments {
+  input: GetMyAssignmentsInput
+  output: GetMyAssignmentsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetMyAssignmentsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetMyAssignmentsOutput {
+  priorities: MyAssignmentList
+  non_priorities: MyAssignmentList
+}
+
+/// Get the current user's completed assignments
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/assignments/completed.json")
+operation GetMyAssignmentsCompleted {
+  input: GetMyAssignmentsCompletedInput
+  output: GetMyAssignmentsCompletedOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetMyAssignmentsCompletedInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetMyAssignmentsCompletedOutput {
+  assignments: MyAssignmentList
+}
+
+/// Get the current user's due assignments filtered by scope
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/assignments/due.json")
+operation GetMyAssignmentsDue {
+  input: GetMyAssignmentsDueInput
+  output: GetMyAssignmentsDueOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetMyAssignmentsDueInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Filter by due scope: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later
+  @httpQuery("scope")
+  scope: String
+}
+
+structure GetMyAssignmentsDueOutput {
+  assignments: MyAssignmentList
+}
+
+// ===== My Assignment Shapes =====
+
+list MyAssignmentList {
+  member: MyAssignment
+}
+
+structure MyAssignment {
+  @required
+  id: Long
+  app_url: String
+  content: String
+  starts_on: ISO8601Date
+  due_on: ISO8601Date
+  completed: Boolean
+  type: String
+  comments_count: Integer
+  has_description: Boolean
+  priority_recording_id: Long
+  bucket: MyAssignmentBucket
+  parent: MyAssignmentParent
+  assignees: MyAssignmentPersonList
+  children: MyAssignmentList
+}
+
+structure MyAssignmentBucket {
+  @required
+  id: ProjectId
+  @required
+  name: String
+  app_url: String
+}
+
+structure MyAssignmentParent {
+  @required
+  id: Long
+  @required
+  title: String
+  app_url: String
+}
+
+list MyAssignmentPersonList {
+  member: MyAssignmentPerson
+}
+
+structure MyAssignmentPerson {
+  @required
+  id: Long
+  @required
+  name: String
+  avatar_url: String
 }
 
