@@ -234,7 +234,7 @@ END
    a. Call `refresh()`.
    b. If refresh succeeded, retry the request once with updated token.
    c. → response from retry.
-3. → `⊥ BasecampError(code: "auth_required", httpStatus: 401)`.
+3. → `⊥ BasecampError(code: "auth_required", http_status: 401)`.
 
 ---
 
@@ -299,18 +299,18 @@ END
 
 Given an HTTP response with status code `status` and body `body`:
 
-1. If `status == 401` → `BasecampError(code: "auth_required", httpStatus: 401, retryable: false)`.
-2. If `status == 403` → `BasecampError(code: "forbidden", httpStatus: 403, retryable: false)`.
-3. If `status == 404` → `BasecampError(code: "not_found", httpStatus: 404, retryable: false)`.
-4. If `status == 429` → `BasecampError(code: "rate_limit", httpStatus: 429, retryable: true, retryAfter: parseRetryAfter(headers))`.
-5. If `status == 400` → `BasecampError(code: "validation", httpStatus: 400, retryable: false)`. `[CONFLICT: Go currently maps 400 to "api_error" (falls through to default case). The spec prescribes "validation" to match the conformance tests and other SDKs.]`
-6. If `status == 422` → `BasecampError(code: "validation", httpStatus: 422, retryable: false)`.
-7. If `status == 500` → `BasecampError(code: "api_error", httpStatus: 500, retryable: true)`.
-8. If `status == 502` → `BasecampError(code: "api_error", httpStatus: 502, retryable: true)`.
-9. If `status == 503` → `BasecampError(code: "api_error", httpStatus: 503, retryable: true)`.
-10. If `status == 504` → `BasecampError(code: "api_error", httpStatus: 504, retryable: true)`.
-11. If `status >= 500` → `BasecampError(code: "api_error", httpStatus: status, retryable: true)`.
-12. Otherwise → `BasecampError(code: "api_error", httpStatus: status, retryable: false)`.
+1. If `status == 401` → `BasecampError(code: "auth_required", http_status: 401, retryable: false)`.
+2. If `status == 403` → `BasecampError(code: "forbidden", http_status: 403, retryable: false)`.
+3. If `status == 404` → `BasecampError(code: "not_found", http_status: 404, retryable: false)`.
+4. If `status == 429` → `BasecampError(code: "rate_limit", http_status: 429, retryable: true, retry_after: parseRetryAfter(headers))`.
+5. If `status == 400` → `BasecampError(code: "validation", http_status: 400, retryable: false)`. `[CONFLICT: Go currently maps 400 to "api_error" (falls through to default case). The spec prescribes "validation" to match the conformance tests and other SDKs.]`
+6. If `status == 422` → `BasecampError(code: "validation", http_status: 422, retryable: false)`.
+7. If `status == 500` → `BasecampError(code: "api_error", http_status: 500, retryable: true)`.
+8. If `status == 502` → `BasecampError(code: "api_error", http_status: 502, retryable: true)`.
+9. If `status == 503` → `BasecampError(code: "api_error", http_status: 503, retryable: true)`.
+10. If `status == 504` → `BasecampError(code: "api_error", http_status: 504, retryable: true)`.
+11. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`.
+12. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`.
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
 
@@ -366,7 +366,7 @@ The error's HTTP status must be in the transport's retryable set. The `behavior-
 - **TypeScript, Kotlin** implement the three-gate algorithm (POST retries only when `idempotent: true`).
 - **Go** is stricter: only GET retries with exponential backoff; all non-GET methods make a single attempt (plus one re-attempt after successful 401 token refresh). No idempotency gate.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Go and Ruby are acceptably conservative.
-- **Swift** currently over-retries: generated create methods pass retry config directly, and the transport retries any request whose status matches `retryOn` — no idempotency gate. Non-idempotent POSTs like `CreateProject` are retried. This is a known bug.
+- **Swift** currently over-retries: generated create methods pass retry config directly, and the transport retries any request whose status matches `retry_on` — no idempotency gate. Non-idempotent POSTs like `CreateProject` are retried. This is a known bug.
 - The spec prescribes the three-gate algorithm.
 
 ### Retry Algorithm
@@ -377,13 +377,13 @@ FUNCTION executeWithRetry(request, retryConfig) → Response
      a. method = request.method
      b. If method is POST:
         - Look up operation in behavior-model.json by operation name (the generated service passes the operationId; the transport maps it to behavior-model.json's key)
-        - If operation.idempotent ≠ true → retryConfig = NO_RETRY_CONFIG (maxAttempts=1)
+        - If operation.idempotent ≠ true → retryConfig = NO_RETRY_CONFIG (max_attempts=1)
      c. If method is GET, HEAD, PUT, DELETE → use retryConfig from metadata or DEFAULT_RETRY_CONFIG
 
-  2. For attempt = 0 to retryConfig.maxAttempts - 1:
+  2. For attempt = 0 to retryConfig.max_attempts - 1:
      a. Execute request.
-     b. If response.status NOT IN retryConfig.retryOn → return response.
-     c. If attempt == retryConfig.maxAttempts - 1 → return response (exhausted).
+     b. If response.status NOT IN retryConfig.retry_on → return response.
+     c. If attempt == retryConfig.max_attempts - 1 → return response (exhausted).
      d. Calculate delay:
         - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
@@ -412,17 +412,17 @@ Retry-After header value takes precedence when present and valid.
 
 ```
 RECORD DEFAULT_RETRY_CONFIG
-  maxAttempts : 3
-  baseDelayMs : 1000
+  max_attempts : 3
+  base_delay_ms : 1000
   backoff     : "exponential"
-  retryOn     : [429, 503]
+  retry_on     : [429, 503]
 END
 
 RECORD NO_RETRY_CONFIG
-  maxAttempts : 1
-  baseDelayMs : 0
+  max_attempts : 1
+  base_delay_ms : 0
   backoff     : "constant"
-  retryOn     : []
+  retry_on     : []
 END
 ```
 
@@ -474,10 +474,10 @@ END
 ```
 FUNCTION paginate(initialResponse, maxPages, maxItems?) → ListResult<T>
   1. Parse first page items from initialResponse body.
-  2. totalCount = parse X-Total-Count header (0 if absent).
+  2. total_count = parse X-Total-Count header (0 if absent).
   3. allItems = firstPageItems.
   4. If maxItems set and allItems.length ≥ maxItems:
-     → ListResult(allItems[0:maxItems], meta: {totalCount, truncated: true}).
+     → ListResult(allItems[0:maxItems], meta: {total_count, truncated: true}).
 
   5. response = initialResponse.
   6. For page = 1 to maxPages - 1:
@@ -488,10 +488,10 @@ FUNCTION paginate(initialResponse, maxPages, maxItems?) → ListResult<T>
      e. response = authenticatedFetch(nextUrl).
      f. Parse page items, append to allItems.
      g. If maxItems set and allItems.length ≥ maxItems:
-        → ListResult(allItems[0:maxItems], meta: {totalCount, truncated: true}).
+        → ListResult(allItems[0:maxItems], meta: {total_count, truncated: true}).
 
   7. truncated = parseNextLink(response.headers["Link"]) ≠ null.
-  8. → ListResult(allItems, meta: {totalCount, truncated}).
+  8. → ListResult(allItems, meta: {total_count, truncated}).
 END
 ```
 
@@ -968,7 +968,7 @@ Enumerated from `conformance/schema.json`:
 | `headerInjected` | Header was injected with specific value |
 | `requestScheme` | URL scheme (http/https) of request |
 | `urlOrigin` | Origin validation result (accepted/rejected) |
-| `responseMeta` | Metadata on paginated response (totalCount, truncated) |
+| `responseMeta` | Metadata on paginated response (total_count, truncated) |
 
 ### Test Categories and Owning Sections
 
@@ -1010,7 +1010,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 |---|-----------|------------|--------------|-------------|
 | 1 | 1A.1 | Smithy model validates | §18 | `[static]` |
 | 2 | 1A.2 | OpenAPI derived from Smithy | §18 | `[static]` |
-| 3 | 2A.1 | Structured error type with code, message, hint, httpStatus, retryable | §6 | `[static]` |
+| 3 | 2A.1 | Structured error type with code, message, hint, http_status, retryable | §6 | `[static]` |
 | 4 | 2A.3 | HTTP status → error code mapping | §6 | `[conformance]` |
 | 5 | 2B.4 | POST not retried unless idempotent | §7 | `[conformance]` |
 | 6 | 2C.5 | Cross-origin pagination Link header rejected | §8 | `[conformance]` |
@@ -1250,7 +1250,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 | SDK | Retry behavior |
 |-----|---------------|
-| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retryOn` set from metadata. |
+| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. |
 | Kotlin | Three-gate: same as TypeScript. |
 | Go | Simplified: only GET retries with exponential backoff. All non-GET methods do not retry (single attempt, plus one re-attempt after successful 401 token refresh). |
 | Ruby | Simplified: only GET retries. All non-GET methods never retry. Ruby retries on any error with `retryable? == true`. |
@@ -1268,7 +1268,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Pagination Metadata (§8)
 
-| SDK | ListResult | totalCount | truncated |
+| SDK | ListResult | total_count | truncated |
 |-----|-----------|------------|-----------|
 | TypeScript | `ListResult<T>` extends Array | yes | yes |
 | Kotlin | `ListResult<T>` | yes | yes |
