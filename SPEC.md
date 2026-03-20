@@ -310,7 +310,9 @@ Status-mapped codes are verified per the Verification column. Most are `[conform
 | `validation` | 9 | 422 | false | Request validation failed | `[conformance]` |
 | `validation` | 9 | 400 | false | Request validation failed | `[static]` |
 
-### HTTP Status Mapping Algorithm `[conformance]`
+### HTTP Status Mapping Algorithm
+
+Each mapping below is `[conformance]`-verified except step 5 (400 → `validation`) which is `[static]`.
 
 Given an HTTP response with status code `status` and body `body`:
 
@@ -391,31 +393,54 @@ The error must be retryable. Two categories qualify:
 
 ```
 FUNCTION executeWithRetry(request, retry_config) → Response
+  -- retry_config has fields: max_attempts, base_delay_ms, retry_on, backoff.
+  -- These map to behavior-model.json fields: retry.max → max_attempts,
+  -- retry.base_delay_ms → base_delay_ms, retry.retry_on → retry_on.
+
   1. Determine retry eligibility:
      a. method = request.method
      b. If method is POST:
-        - Look up operation in behavior-model.json by operationId (the generated service passes the operationId directly as the behavior-model.json key)
+        - Look up operation in behavior-model.json by operationId
+          (the generated service passes the operationId directly as
+          the behavior-model.json key)
         - If operation.idempotent ≠ true → retry_config = NO_RETRY_CONFIG (max_attempts=1)
-     c. If method is GET, HEAD, PUT, DELETE → use retry_config from metadata or DEFAULT_RETRY_CONFIG
+     c. If method is GET, HEAD, PUT, DELETE → use retry_config as passed
+        by the caller (the generated service provides per-operation
+        retry_config from behavior-model metadata; DEFAULT_RETRY_CONFIG
+        is the fallback when no per-operation config exists)
 
-  2. For attempt = 0 to retry_config.max_attempts - 1:
-     a. Execute request.
-     b. If network error (no response): error is retryable. If attempt == retry_config.max_attempts - 1 → raise last error (exhausted). Else → continue to step e (skip status check).
-     c. If response.status NOT IN retry_config.retry_on → return response.
-     d. If attempt == retry_config.max_attempts - 1 → return response (exhausted).
-     e. Calculate delay:
-        - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
+  2. last_error = null
+     last_response = null
+
+  3. For attempt = 0 to retry_config.max_attempts - 1:
+     a. Invoke hooks.on_request_start(RequestInfo{method, url, attempt+1}).
+     b. Execute request → (response, error).
+        - On success: last_response = response, last_error = null.
+        - On network error: last_response = null, last_error = error.
+     c. Invoke hooks.on_request_end(RequestInfo{method, url, attempt+1}, result).
+
+     d. If last_error (network error):
+        - If attempt == retry_config.max_attempts - 1 → raise last_error.
+        - Else → go to step g (skip status check, no Retry-After header).
+     e. If last_response.status NOT IN retry_config.retry_on → return last_response.
+     f. If attempt == retry_config.max_attempts - 1 → return last_response.
+
+     g. Calculate delay:
+        - If last_response exists and has valid Retry-After header →
+          delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
-     f. Construct error from response (synthesize BasecampError from HTTP status) or use the caught network error.
-     g. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, error, delay).
-     h. Sleep delay ms.
-     i. Refresh auth headers (token may have been refreshed during sleep).
-     j. Continue loop.
-
-  3. If last attempt produced a response → return response.
-     If last attempt was a network error → raise last error.
+     h. Synthesize error: if last_response, construct BasecampError from HTTP status;
+        if network error, use last_error.
+     i. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, error, delay).
+        -- Note: attempt+1 appears both in RequestInfo.attempt (1-based attempt number)
+        -- and as the standalone attempt parameter. This redundancy matches the hook
+        -- INTERFACE signature; RequestInfo.attempt provides context for hook chains.
+     j. Sleep delay ms.
+     k. Refresh auth headers (token may have been refreshed during sleep).
 END
 ```
+
+The loop always terminates via step 3d (raise on network error), 3e (return non-retryable response), or 3f (return on exhaustion). `on_request_start`/`on_request_end` are invoked per attempt within the loop; `on_operation_start`/`on_operation_end` are invoked by the calling layer (generated service method), not by the retry transport.
 
 ### Backoff Formula
 
@@ -563,10 +588,10 @@ Protocol downgrade (HTTPS → HTTP) in Link headers is also rejected. `[conforma
 
 ### HTTPS Enforcement `[conformance]`
 
-All API requests must use HTTPS. Exception: localhost addresses are permitted for development and testing.
+All API requests must use HTTPS. Exception: localhost addresses are permitted for development and testing. Conformance tests verify the general rule (non-localhost HTTP rejected) and basic localhost exemption.
 
-**Localhost carve-out** — the following are recognized as localhost:
-- `localhost` (exact)
+**Localhost carve-out** `[static]` — the following are recognized as localhost (only `localhost` is conformance-tested; the remaining forms are `[static]` contract):
+- `localhost` (exact) `[conformance]`
 - `127.0.0.1`
 - `::1`
 - `[::1]` (bracket-wrapped IPv6)
@@ -624,9 +649,9 @@ Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format
 
 Fields not listed in the `required` array of the OpenAPI schema must be nullable or optional in the language's type system. Sentinel values (empty string, 0, etc.) are not acceptable substitutes for absence.
 
-### 204 No Content `[conformance]`
+### 204 No Content
 
-Responses with status 204 have no body. The SDK must handle this without attempting JSON parse. Return `void`/`nil`/`undefined`/`Unit` as appropriate.
+Responses with status 204 have no body. The SDK must handle this without attempting JSON parse (`[static]`). Return `void`/`nil`/`undefined`/`Unit` as appropriate. Conformance tests verify the 204 path completes without error (`[conformance]`).
 
 ---
 
@@ -646,9 +671,9 @@ Common patterns by HTTP verb:
 
 The authoritative success status for each operation is defined in `openapi.json`. The table above covers common patterns; generated code should use the per-operation status from the OpenAPI spec.
 
-### Error Surfacing `[conformance]`
+### Error Surfacing
 
-All 4xx and 5xx responses must produce typed `BasecampError` errors (not silently swallowed). The error must include the HTTP status code, error code, message, and request ID.
+All 4xx and 5xx responses must produce typed `BasecampError` errors (not silently swallowed). The error must include the HTTP status code, error code, retryable flag, and request ID (`[conformance]`-verified). Message parsing from the response body is `[static]` (see §6 Error Body Parsing Algorithm).
 
 ### Non-Retryable Errors
 
@@ -779,9 +804,9 @@ For cross-origin redirects, strip the `Authorization` header to prevent credenti
 Downloads use a two-hop pattern: an authenticated API request that returns a redirect to a signed storage URL.
 
 ```
-FUNCTION downloadURL(rawURL: String) → DownloadResult
-  1. Validate rawURL is an absolute URL with http(s) scheme.
-  2. Rewrite URL: replace origin with baseUrl origin, preserve path+query+fragment.
+FUNCTION downloadURL(raw_url: String) → DownloadResult
+  1. Validate raw_url is an absolute URL with http(s) scheme.
+  2. Rewrite URL: replace origin with base_url origin, preserve path+query+fragment.
   3. Hop 1 — Authenticated API GET:
      a. Set Authorization and User-Agent headers only (no Accept or Content-Type — this is a binary download, not a JSON API call).
      b. Fetch with redirect: manual (do not follow redirects automatically).
