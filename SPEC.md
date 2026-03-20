@@ -89,10 +89,14 @@ Generated code depends only on `BaseService` + schema types. `BaseService` may w
 RECORD Config
   base_url        : String    = "https://3.basecampapi.com"
   timeout         : Duration  = 30s
-  max_retries     : Integer   = 3
-  base_delay      : Duration  = 1000ms
-  max_jitter      : Duration  = 100ms
   max_pages       : Integer   = 10000
+  -- Retry/backoff fields below are exposed by Ruby and Go but not by
+  -- TypeScript, Kotlin, or Swift (which use per-operation metadata from
+  -- behavior-model.json). New implementations may omit these from the
+  -- public config and use the behavior-model defaults directly.
+  max_retries     : Integer   = 3       -- optional config field
+  base_delay      : Duration  = 1000ms  -- optional config field
+  max_jitter      : Duration  = 100ms   -- optional config field
 END
 ```
 
@@ -1209,10 +1213,10 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
         "backoff": "exponential",  // always "exponential" in practice
         "retry_on": [429, 503]     // HTTP statuses that trigger retry
       }
-    },
-    "redaction": { ... },       // PII field paths per request/response type
-    "sensitiveTypes": [ ... ]   // Smithy-defined sensitive type names
-  }
+    }
+  },
+  "redaction": { ... },       // PII field paths per request/response type (root-level)
+  "sensitiveTypes": [ ... ]   // Smithy-defined sensitive type names (root-level)
 }
 ```
 
