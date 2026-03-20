@@ -122,10 +122,13 @@ jobs:
           cache-dependency-path: 'go/go.sum'
 
       - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.22.4
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.23.0
 
       - name: Run gosec
-        run: gosec -severity high -exclude-dir=pkg/generated -fmt sarif -out gosec-results.sarif ./...
+        # Exclude G703 (path traversal) and G704 (SSRF) taint analysis rules:
+        # an HTTP client SDK constructs URLs and file paths from caller-provided
+        # parameters by design — these are architectural false positives.
+        run: gosec -exclude=G703,G704 -severity high -exclude-dir=pkg/generated -fmt sarif -out gosec-results.sarif ./...
 
       - name: Upload gosec results
         uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
