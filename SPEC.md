@@ -172,7 +172,9 @@ FUNCTION buildURL(base_url, account_id, path) → String
   -- relative paths; only the transport passes absolute URLs (e.g., pagination
   -- follow-up URLs). This is not a public API surface.
   1. If path starts with "https://" → return path unchanged.
-  2. If path starts with "http://" and is not a localhost URL (see §9) → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
+  2. If path starts with "http://":
+     a. If it is a localhost URL (see §9) → return path unchanged. (Absolute localhost URLs from pagination follow-ups are preserved as-is.)
+     b. Else → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
 END
@@ -700,8 +702,8 @@ END
 
 ```
 RECORD RequestResult
-  status_code : Integer?   -- HTTP status code (null for network errors)
-  duration_ms : Integer    -- request duration in milliseconds
+  status_code : Integer?   -- HTTP status code; language adaptation: Ruby uses null for network errors, TS/Swift/Kotlin/Go use 0
+  duration    : Duration   -- request duration; language adaptation: ms Integer in TS/Swift, Float seconds in Ruby, native Duration in Go/Kotlin
   from_cache  : Boolean    -- whether response was served from ETag cache
   error       : Error?     -- error if the request failed
   retry_after : Integer?   -- Retry-After value in seconds if present (Ruby and Go; other SDKs omit this field)
@@ -715,7 +717,7 @@ END
 ```
 RECORD OperationResult
   error       : Error?     -- error if the operation failed (after all retries exhausted)
-  duration_ms : Integer    -- total operation duration in milliseconds (including retries)
+  duration    : Duration   -- total operation duration including retries; same language adaptation as RequestResult.duration
 END
 ```
 
