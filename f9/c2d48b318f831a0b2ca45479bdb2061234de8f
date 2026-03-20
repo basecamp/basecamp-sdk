@@ -1,0 +1,23 @@
+.github/workflows/security.yml
+  729b375aeda8877d 125,128-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "f9c2d48b318f831a0b2ca45479bdb2061234de8f",
+  "prompts": {
+    "729b375aeda8877d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02792006-b334-4625-b825-c79118f8a2af",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 2,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}
