@@ -448,7 +448,7 @@ The loop always terminates via step 3d (raise on network error), 3e (return non-
 delay = base_delay * 2^(retry_index) + random(0, max_jitter)
 ```
 
-Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step e, it computes the delay for the first retry using `2^0 = 1×base_delay`. Default constants:
+Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step 3g, it computes the delay for the first retry using `2^0 = 1×base_delay`. Default constants:
 - `base_delay` = 1000ms
 - `max_jitter` = 100ms
 
@@ -554,6 +554,8 @@ Three response shapes exist across the API:
 | **Wrapped response** | `{"wrapper_field": ..., "events": [item, ...]}` | Return wrapper fields + paginated items from named key |
 
 The variant is determined at code-generation time from the OpenAPI response schema and encoded in the generated service method (via `x-basecamp-pagination` extension or response schema analysis).
+
+**Wrapped response pagination:** For endpoints that return a wrapper object with a paginated array inside (e.g., `personProgress` returns `{person, events: [...]}`), the generated service method paginates the embedded array while preserving the wrapper fields from the first page. The `paginate` algorithm above handles item extraction; the wrapping/unwrapping is a code-generation concern, not a transport concern. See TS `reports.ts` and Go `timeline.go` for reference implementations.
 
 ### Same-Origin Validation Algorithm `[conformance]`
 
@@ -775,7 +777,7 @@ END
 
 ### Required Headers
 
-Every API request (excluding download Hop 1, see §14) must include:
+Every API request (excluding download Hop 2 — the unauthenticated signed URL fetch, see §14) must include:
 
 | Header | Value | Verification |
 |--------|-------|-------------|
