@@ -394,7 +394,7 @@ FUNCTION executeWithRetry(request, retry_config) → Response
   1. Determine retry eligibility:
      a. method = request.method
      b. If method is POST:
-        - Look up operation in behavior-model.json by operation name (the generated service passes the operationId; the transport maps it to behavior-model.json's key)
+        - Look up operation in behavior-model.json by operationId (the generated service passes the operationId directly as the behavior-model.json key)
         - If operation.idempotent ≠ true → retry_config = NO_RETRY_CONFIG (max_attempts=1)
      c. If method is GET, HEAD, PUT, DELETE → use retry_config from metadata or DEFAULT_RETRY_CONFIG
 
@@ -406,12 +406,14 @@ FUNCTION executeWithRetry(request, retry_config) → Response
      e. Calculate delay:
         - If response has valid Retry-After header → delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
-     f. Invoke hooks.on_retry(requestInfo, attempt+1, error, delay).
-     g. Sleep delay ms.
-     h. Refresh auth headers (token may have been refreshed during sleep).
-     i. Continue loop.
+     f. Construct error from response (synthesize BasecampError from HTTP status) or use the caught network error.
+     g. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, error, delay).
+     h. Sleep delay ms.
+     i. Refresh auth headers (token may have been refreshed during sleep).
+     j. Continue loop.
 
-  3. Return last response.
+  3. If last attempt produced a response → return response.
+     If last attempt was a network error → raise last error.
 END
 ```
 
@@ -468,7 +470,7 @@ END
 
 RECORD ListMeta
   total_count : Integer   -- from X-Total-Count header; 0 if absent
-  truncated   : Boolean   -- true if results were capped by maxPages or maxItems
+  truncated   : Boolean   -- true if results were capped by max_pages or max_items
   next_url    : String?   -- URL of the next page when truncated; not populated by all SDKs (optional field)
 END
 ```
@@ -478,7 +480,7 @@ END
 ```
 FUNCTION parseNextLink(linkHeader: String?) → String?
   1. If linkHeader is null or empty → return null.
-  2. Split linkHeader by ",".
+  2. Split linkHeader by ",". (Basecamp's API does not produce URLs with bare commas in Link headers, so naive comma splitting is safe. A general-purpose implementation could use RFC 8288-aware parsing.)
   3. For each part:
      a. Trim whitespace.
      b. If part contains 'rel="next"':
@@ -875,7 +877,7 @@ END
 
 ```
 FUNCTION discoverOAuthEndpoints(issuer: String) → OAuthEndpoints
-  1. Fetch issuer + "/.well-known/oauth-authorization-server".
+  1. Fetch issuer + "/.well-known/oauth-authorization-server". (Basecamp's Launchpad issuer is at the origin root; RFC 8414 path-segment rules do not apply.)
   2. Parse JSON response.
   3. Extract authorization_endpoint, token_endpoint.
   4. → OAuthEndpoints
