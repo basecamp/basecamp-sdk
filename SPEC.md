@@ -417,21 +417,22 @@ FUNCTION executeWithRetry(request, retry_config) → Response
      b. Execute request → (response, error).
         - On success: last_response = response, last_error = null.
         - On network error: last_response = null, last_error = error.
-     c. Invoke hooks.on_request_end(RequestInfo{method, url, attempt+1}, result).
+     c. Construct request_result: RequestResult from last_response (or from last_error for network errors).
+     d. Invoke hooks.on_request_end(RequestInfo{method, url, attempt+1}, request_result).
 
-     d. If last_error (network error):
+     e. If last_error (network error):
         - If attempt == retry_config.max_attempts - 1 → raise last_error.
-        - Else → go to step g (skip status check, no Retry-After header).
-     e. If last_response.status NOT IN retry_config.retry_on → return last_response.
-     f. If attempt == retry_config.max_attempts - 1 → return last_response.
+        - Else → go to step h (skip status check, no Retry-After header).
+     f. If last_response.status NOT IN retry_config.retry_on → return last_response.
+     g. If attempt == retry_config.max_attempts - 1 → return last_response.
 
-     g. Calculate delay:
+     h. Calculate delay:
         - If last_response exists and has valid Retry-After header →
           delay = parsed value × 1000 (Retry-After is in seconds; delay is in ms).
         - Else → delay = backoff formula (see below).
-     h. Synthesize error: if last_response, construct BasecampError from HTTP status;
+     i. retry_error = if last_response, construct BasecampError from HTTP status;
         if network error, use last_error.
-     i. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, error, delay).
+     j. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, retry_error, delay).
         -- Note: attempt+1 appears both in RequestInfo.attempt (1-based attempt number)
         -- and as the standalone attempt parameter. This redundancy matches the hook
         -- INTERFACE signature; RequestInfo.attempt provides context for hook chains.
@@ -440,17 +441,17 @@ FUNCTION executeWithRetry(request, retry_config) → Response
 END
 ```
 
-The loop always terminates via step 3d (raise on network error), 3e (return non-retryable response), or 3f (return on exhaustion). `on_request_start`/`on_request_end` are invoked per attempt within the loop; `on_operation_start`/`on_operation_end` are invoked by the calling layer (generated service method), not by the retry transport.
+The loop always terminates via step 3e (raise on network error), 3f (return non-retryable response), or 3g (return on exhaustion). `on_request_start`/`on_request_end` are invoked per attempt within the loop; `on_operation_start`/`on_operation_end` are invoked by the calling layer (generated service method), not by the retry transport.
 
 ### Backoff Formula
 
 ```
-delay = base_delay * 2^(retry_index) + random(0, max_jitter)
+delay = base_delay_ms * 2^(retry_index) + random(0, max_jitter)
 ```
 
-Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step 3g, it computes the delay for the first retry using `2^0 = 1×base_delay`. Default constants:
-- `base_delay` = 1000ms
-- `max_jitter` = 100ms
+Where `retry_index` is the 0-indexed retry count (first retry = 0, second retry = 1, etc.). In the `executeWithRetry` loop, `retry_index = attempt` — when the initial request (attempt=0) fails and reaches step 3h, it computes the delay for the first retry using `2^0 = 1×base_delay_ms`. Default constants (from `retry_config` or Config):
+- `base_delay_ms` = 1000 (from `retry_config.base_delay_ms`)
+- `max_jitter` = 100ms (from Config; not part of `retry_config` — sourced from the client's Config RECORD)
 
 Retry-After header value takes precedence when present and valid.
 
@@ -1315,7 +1316,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 | SDK | Retry behavior |
 |-----|---------------|
 | TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. Chains at most 1 retry via `fetch(retryRequest)` which bypasses middleware (waiver 2B.1). Kotlin is the full three-gate exemplar. |
-| Kotlin | Three-gate: same as TypeScript. |
+| Kotlin | Three-gate: full exemplar. POST retries only when `idempotent: true`, full exponential backoff with all retry_config.max_attempts used. |
 | Go | Simplified: only GET retries with exponential backoff. All non-GET methods do not retry (single attempt, plus one re-attempt after successful 401 token refresh). |
 | Ruby | Simplified: only GET retries. All non-GET methods never retry. Ruby retries on any error with `retryable? == true`. |
 | Swift | Over-retries: generated create methods pass retry config directly. No idempotency gate. Known bug. |
