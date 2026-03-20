@@ -100,6 +100,8 @@ RECORD Config
 END
 ```
 
+**Go Config divergence:** Go splits this across two structs — `Config` (base URL, timeouts, retry params) and `HTTPOptions` (redirect policy, TLS config). The spec's single `Config` RECORD is the canonical shape; Go's split is a language adaptation.
+
 **Naming note:** `max_retries` means total attempts (including the initial request), not the number of retries after the first attempt. With `max_retries = 3`, the transport makes at most 3 attempts total (1 initial + 2 retries). This name is inherited from the shipping Ruby SDK; the behavior-model.json uses `retry.max` with identical semantics.
 
 **Recommended default:** A connect timeout of 10 seconds is recommended but not a required config field. Only Ruby exposes this (Faraday `open_timeout = 10`); other SDKs use their HTTP library's default.
@@ -131,11 +133,11 @@ All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy
 
 ### Client Construction Algorithm
 
-1. Accept auth options: exactly one of `access_token` (string or provider) or `auth` (AuthStrategy).
+1. Accept auth options: exactly one of `access_token` (string or provider) or `auth` (AuthStrategy). **Go divergence:** Go takes a single `TokenProvider` interface directly rather than offering dual `access_token`/`auth` options; the exactly-one-of guard is a TS/Ruby/Kotlin/Swift pattern.
 2. If both provided → `⊥ BasecampError(code: "usage", message: "Provide either auth or access_token, not both")`. `[static]`
 3. If neither provided → `⊥ BasecampError(code: "usage", message: "Either auth or access_token is required")`. `[static]`
 4. If `access_token` provided, wrap in `BearerAuth` strategy.
-5. Validate config (§2 validation algorithm).
+5. Validate config (§2 validation algorithm). **Go divergence:** Go's `NewClient` panics on validation failure rather than returning a `BasecampError`; all other SDKs return/throw a structured error.
 6. Initialize HTTP transport with auth strategy, config, and optional hooks.
 7. Expose `forAccount(accountId)` method that returns an `AccountClient`.
 
@@ -281,19 +283,23 @@ RECORD BasecampError extends Error
 END
 ```
 
-### Error Code Table `[conformance]`
+**Go divergence:** Go's `Error` struct omits `retry_after`; retry delay is tracked on `RequestResult` instead. Go also exposes a `Cause` field (the underlying error) not present in this canonical RECORD — a language-specific extension.
 
-| Code | Exit Code | HTTP Status | Retryable | Description |
-|------|-----------|-------------|-----------|-------------|
-| `usage` | 1 | — | false | Client misconfiguration (invalid args, bad URL) |
-| `not_found` | 2 | 404 | false | Resource not found |
-| `auth_required` | 3 | 401 | false | Authentication required or token expired |
-| `forbidden` | 4 | 403 | false | Insufficient permissions |
-| `rate_limit` | 5 | 429 | true | Rate limit exceeded |
-| `network` | 6 | — | true | Connection failure, timeout, DNS |
-| `api_error` | 7 | 500, 502, 503, 504 | true | Server-side error |
-| `ambiguous` | 8 | — | false | Multiple matches found (CLI disambiguation) |
-| `validation` | 9 | 400, 422 | false | Request validation failed |
+### Error Code Table
+
+Status-mapped codes (`not_found` through `validation`) are `[conformance]`-verified. Client-side codes (`usage`, `network`, `ambiguous`) and exit codes are `[static]`.
+
+| Code | Exit Code | HTTP Status | Retryable | Description | Verification |
+|------|-----------|-------------|-----------|-------------|-------------|
+| `usage` | 1 | — | false | Client misconfiguration (invalid args, bad URL) | `[static]` |
+| `not_found` | 2 | 404 | false | Resource not found | `[conformance]` |
+| `auth_required` | 3 | 401 | false | Authentication required or token expired | `[conformance]` |
+| `forbidden` | 4 | 403 | false | Insufficient permissions | `[conformance]` |
+| `rate_limit` | 5 | 429 | true | Rate limit exceeded | `[conformance]` |
+| `network` | 6 | — | true | Connection failure, timeout, DNS | `[static]` |
+| `api_error` | 7 | 500, 502, 503, 504 | true | Server-side error | `[conformance]` |
+| `ambiguous` | 8 | — | false | Multiple matches found (CLI disambiguation) | `[static]` |
+| `validation` | 9 | 400, 422 | false | Request validation failed | `[conformance]` |
 
 ### HTTP Status Mapping Algorithm `[conformance]`
 
@@ -303,7 +309,7 @@ Given an HTTP response with status code `status` and body `body`:
 2. If `status == 403` → `BasecampError(code: "forbidden", http_status: 403, retryable: false)`.
 3. If `status == 404` → `BasecampError(code: "not_found", http_status: 404, retryable: false)`.
 4. If `status == 429` → `BasecampError(code: "rate_limit", http_status: 429, retryable: true, retry_after: parseRetryAfter(headers))`.
-5. If `status == 400` → `BasecampError(code: "validation", http_status: 400, retryable: false)`. `[CONFLICT: Go currently maps 400 to "api_error" (falls through to default case). The spec prescribes "validation" to match the conformance tests and other SDKs.]`
+5. If `status == 400` → `BasecampError(code: "validation", http_status: 400, retryable: false)`. `[CONFLICT: Go currently maps 400 to "api_error" (falls through to default case). The spec prescribes "validation" to match other SDKs. No conformance test exists for 400 specifically.]` `[static]`
 6. If `status == 422` → `BasecampError(code: "validation", http_status: 422, retryable: false)`.
 7. If `status == 500` → `BasecampError(code: "api_error", http_status: 500, retryable: true)`.
 8. If `status == 502` → `BasecampError(code: "api_error", http_status: 502, retryable: true)`.
@@ -363,11 +369,11 @@ The error's HTTP status must be in the transport's retryable set. The `behavior-
 
 ### Cross-SDK Divergence `[CONFLICT]`
 
-- **TypeScript, Kotlin** implement the three-gate algorithm (POST retries only when `idempotent: true`).
+- **TypeScript** implements the three-gate algorithm but chains at most 1 retry — on a retryable status, TS returns `fetch(retryRequest)` which bypasses middleware after the first retry (waiver 2B.1 in `rubric-audit.json`). **Kotlin** is the full three-gate exemplar (POST retries only when `idempotent: true`, full exponential backoff).
 - **Go** is stricter: only GET retries with exponential backoff; all non-GET methods make a single attempt (plus one re-attempt after successful 401 token refresh). No idempotency gate.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Go and Ruby are acceptably conservative.
 - **Swift** currently over-retries: generated create methods pass retry config directly, and the transport retries any request whose status matches `retry_on` — no idempotency gate. Non-idempotent POSTs like `CreateProject` are retried. This is a known bug.
-- The spec prescribes the three-gate algorithm.
+- The spec prescribes the three-gate algorithm. **TS note:** TS retry returns `fetch(retryRequest)` which bypasses middleware after the first retry, so TS effectively caps at 1 retry per request regardless of `max_attempts`. This is a known limitation (waiver 2B.1).
 
 ### Retry Algorithm
 
@@ -414,14 +420,14 @@ Retry-After header value takes precedence when present and valid.
 RECORD DEFAULT_RETRY_CONFIG
   max_attempts : 3
   base_delay_ms : 1000
-  backoff     : "exponential"
+  backoff      : "exponential"
   retry_on     : [429, 503]
 END
 
 RECORD NO_RETRY_CONFIG
   max_attempts : 1
   base_delay_ms : 0
-  backoff     : "constant"
+  backoff      : "constant"
   retry_on     : []
 END
 ```
@@ -549,7 +555,7 @@ All API requests must use HTTPS. Exception: localhost addresses are permitted fo
 - `[::1]` (bracket-wrapped IPv6)
 - `*.localhost` (any subdomain, per RFC 6761)
 
-Client construction with a non-HTTPS, non-localhost base URL must fail with `UsageError`. `[conformance]`
+Client construction with a non-HTTPS, non-localhost base URL must fail with `BasecampError(code: "usage")`. `[conformance]`
 
 ### Response Body Size Cap
 
@@ -609,17 +615,17 @@ Responses with status 204 have no body. The SDK must handle this without attempt
 
 ## §11. Response Semantics
 
-### Success Status Codes `[conformance]`
+### Success Status Codes
 
 Common patterns by HTTP verb:
 
-| Method | Typical Status | Behavior |
-|--------|---------------|----------|
-| GET | 200 | Parse body as JSON, return typed result |
-| PUT | 200 | Parse body as JSON, return typed result |
-| POST (create) | 201 | Parse body as JSON, return typed result |
-| POST (action) | 200 or 204 | Some POST operations (e.g., `Subscribe`, `MoveCard`, `PinMessage`) are state mutations, not creates, and may return 200 or 204 |
-| DELETE | 204 | No body; return void |
+| Method | Typical Status | Behavior | Verification |
+|--------|---------------|----------|-------------|
+| GET | 200 | Parse body as JSON, return typed result | `[conformance]` |
+| PUT | 200 | Parse body as JSON, return typed result | `[conformance]` |
+| POST (create) | 201 | Parse body as JSON, return typed result | `[conformance]` |
+| POST (action) | 200 or 204 | Some POST operations (e.g., `Subscribe`, `MoveCard`, `PinMessage`) are state mutations, not creates, and may return 200 or 204 | `[static]` |
+| DELETE | 204 | No body; return void | `[conformance]` |
 
 The authoritative success status for each operation is defined in `openapi.json`. The table above covers common patterns; generated code should use the per-operation status from the OpenAPI spec.
 
@@ -644,11 +650,12 @@ When all retry attempts fail, surface the **last** error to the caller. Do not s
 ```
 INTERFACE BasecampHooks
   on_operation_start(info: OperationInfo) → void
-  on_operation_end(info: OperationInfo, result: OperationResult) → void
+  on_operation_end(info: OperationInfo, result: OperationResult) → void   -- see OperationResult RECORD below
   on_request_start(info: RequestInfo) → void
   on_request_end(info: RequestInfo, result: RequestResult) → void
-  on_retry(info: RequestInfo, attempt: Integer, error: Error, delay_ms?: Integer) → void
-    -- delay_ms is optional; Ruby and TS pass it, Go's OnRetry omits it
+  on_retry(info: RequestInfo, attempt: Integer, error: Error, delay?: Number) → void
+    -- delay is optional; Go's OnRetry omits it entirely
+    -- delay unit is a language adaptation: ms in TS/Kotlin (delayMs), seconds in Ruby/Swift (delay/delaySeconds)
   on_paginate(url: String, page: Integer) → void       -- Ruby only; not in Go/TS/Kotlin/Swift
 END
 ```
@@ -663,7 +670,7 @@ RECORD OperationInfo
   operation     : String     -- e.g., "List", "Get", "Create"
   resource_type : String     -- e.g., "todo", "project"
   is_mutation   : Boolean    -- true for POST, PUT, DELETE
-  project_id    : Integer?   -- if operation is project-scoped
+  project_id    : Integer?   -- if operation is project-scoped (Go omits this field)
   resource_id   : Integer?   -- if operation targets a specific resource
 END
 ```
@@ -690,6 +697,17 @@ RECORD RequestResult
 END
 ```
 
+**Go-specific extension:** Go's `RequestResult` also includes a `retryable` field (Boolean) indicating whether the error was eligible for retry. This is not part of the canonical RECORD.
+
+### OperationResult RECORD
+
+```
+RECORD OperationResult
+  error       : Error?     -- error if the operation failed (after all retries exhausted)
+  duration_ms : Integer    -- total operation duration in milliseconds (including retries)
+END
+```
+
 ### Hook Safety Invariant `[static]`
 
 Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript, Ruby, Kotlin, and Swift wrap hook calls in try/catch (or equivalent). Go does not currently use `recover` for hooks (a known gap).
@@ -711,16 +729,16 @@ END
 
 ## §13. HTTP Transport
 
-### Required Headers `[conformance]`
+### Required Headers
 
 Every API request (excluding download Hop 1, see §14) must include:
 
-| Header | Value |
-|--------|-------|
-| `Authorization` | `Bearer {token}` (from AuthStrategy) |
-| `User-Agent` | `basecamp-sdk-{lang}/{VERSION} (api:{API_VERSION})` |
-| `Accept` | `application/json` |
-| `Content-Type` | `application/json` (for requests with a body; preserve if already set for binary uploads). TypeScript and Go set it unconditionally; Swift and Kotlin set it only when a body is present. Either approach is acceptable. |
+| Header | Value | Verification |
+|--------|-------|-------------|
+| `Authorization` | `Bearer {token}` (from AuthStrategy) | `[conformance]` |
+| `User-Agent` | `basecamp-sdk-{lang}/{VERSION} (api:{API_VERSION})` | `[conformance]` |
+| `Accept` | `application/json` | `[static]` |
+| `Content-Type` | `application/json` (for requests with a body; preserve if already set for binary uploads). TypeScript and Go set it unconditionally; Swift and Kotlin set it only when a body is present. Either approach is acceptable. | `[conformance]` |
 
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
@@ -861,7 +879,7 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 
 ### Configuration
 
-- **Default:** disabled (opt-in via `enableCache` / `cache_enabled`)
+- **Default:** disabled (opt-in via `cache_enabled`; SDK-specific names: TS `enableCache`, Go `CacheEnabled`)
 - **Scope:** GET requests only
 - **Implementation status:** TypeScript, Go, and Swift implement ETag caching. Ruby and Kotlin do not. New implementations may omit this or defer it.
 
@@ -869,8 +887,8 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 
 The cache key must include the URL. Credential-scoped isolation is recommended but the exact format is a language adaptation:
 
-- **TypeScript:** `SHA256(authorization_header)[0:16] + ":" + url` (credential-scoped)
-- **Go:** `SHA256(url + ":" + accountId + ":" + SHA256(authorization)[0:8])` (credential-scoped)
+- **TypeScript:** `SHA256(authorization_header)` first 8 bytes → 16 hex characters, then `+ ":" + url` (credential-scoped)
+- **Go:** `SHA256(url + ":" + accountId + ":" +` SHA256(authorization) first 4 bytes → 8 hex characters `)` (credential-scoped)
 - **Swift:** URL-only key (per-client isolation — each client has its own cache instance)
 
 ### Cache Algorithm
@@ -968,7 +986,7 @@ Enumerated from `conformance/schema.json`:
 | `headerInjected` | Header was injected with specific value |
 | `requestScheme` | URL scheme (http/https) of request |
 | `urlOrigin` | Origin validation result (accepted/rejected) |
-| `responseMeta` | Metadata on paginated response (total_count, truncated) |
+| `responseMeta` | Metadata on paginated response (totalCount, truncated) |
 
 ### Test Categories and Owning Sections
 
@@ -998,7 +1016,7 @@ Enumerated from `conformance/schema.json`:
 
 ### Zero-Skip Target `[manual]`
 
-All conformance tests should pass. Known skips require waivers documented in `rubric-audit.json` with language-specific rationale.
+All conformance tests should pass. Runners currently pass with documented waivers covering: retry depth (TS single-chained retry, waiver 2B.1), integer precision (TS Number, waiver 1B.6), retry scope (Ruby only-GET retry), and pagination metadata (Ruby Enumerator lacks totalCount/truncated/maxItems, waivers 2C.2/2C.4/2C.6). Waivers are documented in each runner's skip list and in `rubric-audit.json` with language-specific rationale.
 
 ---
 
@@ -1038,7 +1056,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `rb-check` | Ruby: test + rubocop |
 | `kt-check` | Kotlin: build + test |
 | `swift-check` | Swift: build + test |
-| `conformance` | All conformance test categories pass (go, kotlin, typescript, ruby runners) |
+| `conformance` | All conformance test categories pass with documented waivers (go, kotlin, typescript, ruby runners) |
 
 Full dependency chain: `check: smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance`
 
@@ -1140,8 +1158,8 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 | 3C.4 | §9 | Authorization header redacted |
 | 3C.6 | §8 | Same-origin pagination validation |
 | 4A.1 | §21 | Smithy → OpenAPI freshness check |
-| 4B.5 | §19 | Tests for every operation |
-| 4C.4 | §21 | Release workflows idempotent |
+| 4B.5 | External governance (AGENTS.md) | Tests for every operation |
+| 4C.4 | External governance (AGENTS.md) | Release workflows idempotent |
 
 ---
 
@@ -1250,7 +1268,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 | SDK | Retry behavior |
 |-----|---------------|
-| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. |
+| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. Chains at most 1 retry via `fetch(retryRequest)` which bypasses middleware (waiver 2B.1). Kotlin is the full three-gate exemplar. |
 | Kotlin | Three-gate: same as TypeScript. |
 | Go | Simplified: only GET retries with exponential backoff. All non-GET methods do not retry (single attempt, plus one re-attempt after successful 401 token refresh). |
 | Ruby | Simplified: only GET retries. All non-GET methods never retry. Ruby retries on any error with `retryable? == true`. |
@@ -1306,4 +1324,4 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 | TypeScript | 40 (full canonical set) |
 | Kotlin | 40 (full canonical set) |
 | Ruby | 40 (full canonical set) |
-| Go | 37 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService`). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
+| Go | 38 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
