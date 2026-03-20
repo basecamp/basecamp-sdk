@@ -90,13 +90,17 @@ RECORD Config
   base_url        : String    = "https://3.basecampapi.com"
   timeout         : Duration  = 30s
   max_pages       : Integer   = 10000
-  -- Retry/backoff fields below are exposed by Ruby, Go, and Kotlin but
-  -- not by TypeScript or Swift (which use per-operation metadata from
-  -- behavior-model.json). New implementations may omit these from the
-  -- public config and use the behavior-model defaults directly.
+  -- Retry/backoff fields below are optional. Exposure varies:
+  -- Ruby and Go expose all three. Kotlin exposes max_retries and
+  -- base_delay but hard-codes jitter (MAX_JITTER_MS = 100).
+  -- TypeScript uses per-operation metadata from a generated
+  -- metadata.json (derived from OpenAPI x-basecamp-* extensions).
+  -- Swift uses per-operation metadata from behavior-model.json.
+  -- New implementations may omit these from the public config
+  -- and use the per-operation metadata defaults directly.
   max_retries     : Integer   = 3       -- optional config field
   base_delay      : Duration  = 1000ms  -- optional config field
-  max_jitter      : Duration  = 100ms   -- optional config field
+  max_jitter      : Duration  = 100ms   -- optional config field (Kotlin hard-codes this)
 END
 ```
 
