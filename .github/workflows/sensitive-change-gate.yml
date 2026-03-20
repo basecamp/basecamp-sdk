@@ -9,6 +9,10 @@ permissions: {}
 jobs:
   gate:
     uses: basecamp/.github/.github/workflows/sensitive-change-gate.yml@a667bfaac8b33b9c8a6c61019664463a98055995
+    with:
+      extra-patterns: |
+        scripts/bump-version.sh
+        scripts/sync-api-version.sh
     permissions:
       contents: read
       pull-requests: write
