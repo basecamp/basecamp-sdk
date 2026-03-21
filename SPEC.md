@@ -254,7 +254,7 @@ Refresh is attempted at most once per request. Implementations track this with a
 
 ### Client-Level Services (account-independent)
 
-- **authorization** — identity lookup and account listing via Launchpad (OAuth utility functions like PKCE, state generation, and discovery are standalone helpers in §16, not service methods)
+- **authorization** — identity lookup and account listing via Launchpad. Exposes `getInfo()` which GETs `https://launchpad.37signals.com/authorization.json` and returns `{expires_at, identity, accounts}`. OAuth utility functions (PKCE, state generation, discovery, code exchange) are standalone helpers in §16, not service methods.
 
 ### AccountClient-Level Services (account-scoped) — 40 services
 
@@ -435,10 +435,13 @@ FUNCTION executeWithRetry(request, retry_config) → Response
      i. retry_error = if last_response, construct BasecampError from HTTP status;
         if network error, use last_error.
      j. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, retry_error, delay).
-        -- The standalone `attempt` parameter is always attempt+1 (1-based: 1 = first
-        -- retry, 2 = second retry). RequestInfo.attempt varies by SDK: Go/Ruby/Kotlin
-        -- set it to the failed attempt (attempt+1 minus 1); TS sets it to attempt+1.
-        -- Consumers should use the standalone parameter for retry counting.
+        -- attempt+1 converts 0-based loop index to 1-based attempt number.
+        -- In this pseudocode: initial request = attempt 0 (reported as 1),
+        -- first retry = attempt 1 (reported as 2), etc.
+        -- Shipped SDKs use 1-based throughout: Go/Ruby/Kotlin pass the current
+        -- 1-based attempt in RequestInfo and the next attempt as standalone.
+        -- The semantics are equivalent; the standalone parameter indicates
+        -- "which retry is about to happen" (2 = second attempt = first retry).
      k. Sleep delay ms.
      l. Refresh auth headers (token may have been refreshed during sleep).
 END
@@ -928,6 +931,22 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 - Authorization URL: standard `response_type=code`
 - Token exchange: `type=web_server` parameter (in addition to or instead of `grant_type=authorization_code`)
 - Token refresh: `type=refresh` parameter (in addition to or instead of `grant_type=refresh_token`)
+
+### Authorization Code Exchange
+
+```
+FUNCTION exchangeCode(token_endpoint, code, redirect_uri, client_id, client_secret?, code_verifier?) → TokenResponse
+  1. POST to token_endpoint with Content-Type: application/x-www-form-urlencoded.
+  2. Body parameters:
+     - type=web_server (Launchpad legacy; also send grant_type=authorization_code)
+     - code={code}
+     - redirect_uri={redirect_uri}
+     - client_id={client_id}
+     - client_secret={client_secret} (if provided; confidential clients)
+     - code_verifier={code_verifier} (if PKCE was used)
+  3. Parse JSON response → {access_token, refresh_token, expires_in}.
+END
+```
 
 ---
 
