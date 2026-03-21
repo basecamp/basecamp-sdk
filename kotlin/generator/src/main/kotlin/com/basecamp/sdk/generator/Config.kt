@@ -100,7 +100,6 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
     ),
     "Untagged" to mapOf(
         "Timeline" to listOf("GetProjectTimeline"),
-        "Reports" to listOf("GetProgressReport", "GetUpcomingSchedule", "GetAssignedTodos", "GetOverdueTodos", "GetPersonProgress"),
         "Checkins" to listOf(
             "GetQuestionReminders", "ListQuestionAnswerers", "GetAnswersByPerson",
             "UpdateQuestionNotificationSettings", "PauseQuestion", "ResumeQuestion",

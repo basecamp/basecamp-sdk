@@ -528,6 +528,18 @@
         ]
       }
     },
+    "GetAssignments": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetBoost": {
       "readonly": true,
       "retry": {
@@ -672,7 +684,31 @@
         ]
       }
     },
+    "GetCompletedAssignments": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetDocument": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetDueAssignments": {
       "readonly": true,
       "retry": {
         "max": 3,
@@ -2314,6 +2350,9 @@
       "$.email_address",
       "$.title",
       "$.company_name"
+    ],
+    "MyAssignmentPerson": [
+      "$.name"
     ],
     "Person": [
       "$.name",

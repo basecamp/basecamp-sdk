@@ -1,7 +1,11 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -217,4 +221,223 @@ func TestAssignedTodosOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReportsService_Assignments(t *testing.T) {
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("expected GET, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/my/assignments.json" {
+			t.Fatalf("expected /99999/my/assignments.json, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"priorities": [{
+				"id": 9007199254741623,
+				"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+				"content": "Program the flux capacitor",
+				"due_on": "2026-03-15",
+				"bucket": {
+					"id": 2085958504,
+					"name": "The Leto Laptop",
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504"
+				},
+				"completed": false,
+				"type": "todo",
+				"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+				"comments_count": 0,
+				"has_description": false,
+				"priority_recording_id": 9007199254741700,
+				"parent": {
+					"id": 9007199254741601,
+					"title": "Development tasks",
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601"
+				},
+				"children": [{
+					"id": 9007199254741800,
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/cards/9007199254741800",
+					"content": "Wire up cache fix",
+					"bucket": {
+						"id": 2085958504,
+						"name": "The Leto Laptop",
+						"app_url": "https://3.basecamp.com/195539477/buckets/2085958504"
+					},
+					"completed": false,
+					"type": "card_step",
+					"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+					"comments_count": 1,
+					"has_description": true,
+					"parent": {
+						"id": 9007199254741701,
+						"title": "Assignments API",
+						"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/card_tables/cards/9007199254741701"
+					},
+					"children": []
+				}]
+			}],
+			"non_priorities": []
+		}`))
+	})
+
+	result, err := svc.Assignments(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if len(result.Priorities) != 1 {
+		t.Fatalf("expected 1 priority assignment, got %d", len(result.Priorities))
+	}
+
+	item := result.Priorities[0]
+	if item.Content != "Program the flux capacitor" {
+		t.Errorf("expected content to round-trip, got %q", item.Content)
+	}
+	if item.PriorityRecordingID == nil || *item.PriorityRecordingID != 9007199254741700 {
+		t.Fatalf("expected priority_recording_id to be set, got %v", item.PriorityRecordingID)
+	}
+	if item.Bucket == nil || item.Bucket.AppURL == "" {
+		t.Fatalf("expected bucket app_url to be present, got %+v", item.Bucket)
+	}
+	if len(item.Children) != 1 {
+		t.Fatalf("expected 1 child assignment, got %d", len(item.Children))
+	}
+	if item.Children[0].Content != "Wire up cache fix" {
+		t.Errorf("expected child content to round-trip, got %q", item.Children[0].Content)
+	}
+}
+
+func TestReportsService_CompletedAssignments(t *testing.T) {
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/my/assignments/completed.json" {
+			t.Fatalf("expected /99999/my/assignments/completed.json, got %s", r.URL.Path)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{
+				"id": 9007199254741623,
+				"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+				"content": "Program the flux capacitor",
+				"due_on": "2026-03-15",
+				"bucket": {
+					"id": 2085958504,
+					"name": "The Leto Laptop",
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504"
+				},
+				"completed": true,
+				"type": "todo",
+				"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+				"comments_count": 0,
+				"has_description": false,
+				"parent": {
+					"id": 9007199254741601,
+					"title": "Development tasks",
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601"
+				},
+				"children": []
+			}
+		]`))
+	})
+
+	result, err := svc.CompletedAssignments(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 completed assignment, got %d", len(result))
+	}
+	if !result[0].Completed {
+		t.Error("expected completed assignment to be marked completed")
+	}
+}
+
+func TestReportsService_DueAssignments(t *testing.T) {
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/my/assignments/due.json" {
+			t.Fatalf("expected /99999/my/assignments/due.json, got %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("scope"); got != "due_tomorrow" {
+			t.Fatalf("expected scope=due_tomorrow, got %q", got)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{
+				"id": 9007199254741623,
+				"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+				"content": "Program the flux capacitor",
+				"due_on": "2026-03-22",
+				"bucket": {
+					"id": 2085958504,
+					"name": "The Leto Laptop",
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504"
+				},
+				"completed": false,
+				"type": "todo",
+				"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+				"comments_count": 0,
+				"has_description": false,
+				"parent": {
+					"id": 9007199254741601,
+					"title": "Development tasks",
+					"app_url": "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601"
+				},
+				"children": []
+			}
+		]`))
+	})
+
+	result, err := svc.DueAssignments(context.Background(), &DueAssignmentsOptions{Scope: "due_tomorrow"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 due assignment, got %d", len(result))
+	}
+	if result[0].DueOn != "2026-03-22" {
+		t.Errorf("expected due_on to round-trip, got %q", result[0].DueOn)
+	}
+}
+
+func TestReportsService_DueAssignmentsInvalidScope(t *testing.T) {
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{
+			"error": "Invalid scope 'invalid'. Valid options: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later"
+		}`))
+	})
+
+	_, err := svc.DueAssignments(context.Background(), &DueAssignmentsOptions{Scope: "invalid"})
+	if err == nil {
+		t.Fatal("expected error for invalid scope")
+	}
+
+	apiErr := AsError(err)
+	if apiErr.HTTPStatus != http.StatusBadRequest {
+		t.Fatalf("expected HTTP status 400, got %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Code != CodeAPI {
+		t.Fatalf("expected CodeAPI for 400 response, got %q", apiErr.Code)
+	}
+	if !strings.Contains(apiErr.Message, "Invalid scope 'invalid'") {
+		t.Fatalf("expected server error message to be preserved, got %q", apiErr.Message)
+	}
+}
+
+func testReportsServer(t *testing.T, handler http.HandlerFunc) *ReportsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Reports()
 }

@@ -21,6 +21,67 @@ data class PersonProgressResult(
 class ReportsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Get the current user's active assignments grouped by priority
+     */
+    suspend fun assignments(): JsonElement {
+        val info = OperationInfo(
+            service = "Reports",
+            operation = "GetAssignments",
+            resourceType = "assignment",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/my/assignments.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get the current user's completed assignments
+     */
+    suspend fun completedAssignments(): JsonElement {
+        val info = OperationInfo(
+            service = "Reports",
+            operation = "GetCompletedAssignments",
+            resourceType = "completed_assignment",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        return request(info, {
+            httpGet("/my/assignments/completed.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get the current user's assignments filtered by due-date scope
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun dueAssignments(options: GetDueAssignmentsOptions? = null): JsonElement {
+        val info = OperationInfo(
+            service = "Reports",
+            operation = "GetDueAssignments",
+            resourceType = "due_assignment",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "scope" to options?.scope,
+        )
+        return request(info, {
+            httpGet("/my/assignments/due.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
      * Get account-wide activity feed (progress report)
      * @param options Optional query parameters and pagination control
      */

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-16T16:40:07Z
+# Generated: 2026-03-21T14:54:08Z
 
 require "json"
 require "time"
@@ -1285,7 +1285,7 @@ module Basecamp
     # HillChart
     class HillChart
       include TypeHelpers
-      attr_accessor :enabled, :stale, :app_update_url, :dots, :updated_at
+      attr_accessor :enabled, :stale, :app_update_url, :app_versions_url, :dots, :updated_at
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -1296,6 +1296,7 @@ module Basecamp
         @enabled = parse_boolean(data["enabled"])
         @stale = parse_boolean(data["stale"])
         @app_update_url = data["app_update_url"]
+        @app_versions_url = data["app_versions_url"]
         @dots = parse_array(data["dots"], "HillChartDot")
         @updated_at = parse_datetime(data["updated_at"])
       end
@@ -1305,6 +1306,7 @@ module Basecamp
           "enabled" => @enabled,
           "stale" => @stale,
           "app_update_url" => @app_update_url,
+          "app_versions_url" => @app_versions_url,
           "dots" => @dots,
           "updated_at" => @updated_at,
         }.compact
@@ -1587,6 +1589,142 @@ module Basecamp
           "id" => @id,
           "name" => @name,
           "updated_at" => @updated_at,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # MyAssignment
+    class MyAssignment
+      include TypeHelpers
+      attr_accessor :app_url, :assignees, :bucket, :children, :comments_count, :completed, :content, :has_description, :id, :parent, :type, :due_on, :priority_recording_id, :starts_on
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url assignees bucket children comments_count completed content has_description id parent type].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @assignees = parse_array(data["assignees"], "MyAssignmentPerson")
+        @bucket = parse_type(data["bucket"], "MyAssignmentBucket")
+        @children = parse_array(data["children"], "MyAssignment")
+        @comments_count = parse_integer(data["comments_count"])
+        @completed = parse_boolean(data["completed"])
+        @content = data["content"]
+        @has_description = parse_boolean(data["has_description"])
+        @id = parse_integer(data["id"])
+        @parent = parse_type(data["parent"], "MyAssignmentParent")
+        @type = data["type"]
+        @due_on = data["due_on"]
+        @priority_recording_id = parse_integer(data["priority_recording_id"])
+        @starts_on = data["starts_on"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "assignees" => @assignees,
+          "bucket" => @bucket,
+          "children" => @children,
+          "comments_count" => @comments_count,
+          "completed" => @completed,
+          "content" => @content,
+          "has_description" => @has_description,
+          "id" => @id,
+          "parent" => @parent,
+          "type" => @type,
+          "due_on" => @due_on,
+          "priority_recording_id" => @priority_recording_id,
+          "starts_on" => @starts_on,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # MyAssignmentBucket
+    class MyAssignmentBucket
+      include TypeHelpers
+      attr_accessor :app_url, :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id name].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "id" => @id,
+          "name" => @name,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # MyAssignmentParent
+    class MyAssignmentParent
+      include TypeHelpers
+      attr_accessor :app_url, :id, :title
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id title].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @id = parse_integer(data["id"])
+        @title = data["title"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "id" => @id,
+          "title" => @title,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # MyAssignmentPerson
+    class MyAssignmentPerson
+      include TypeHelpers
+      attr_accessor :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "name" => @name,
         }.compact
       end
 

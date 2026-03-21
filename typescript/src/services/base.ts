@@ -421,6 +421,6 @@ export abstract class BaseService {
     const requestId = response.headers.get("X-Request-Id") ?? undefined;
 
     // Use the errorFromResponse helper to create the appropriate error
-    return errorFromResponse(response, requestId);
+    return errorFromResponse(response, requestId, error);
   }
 }

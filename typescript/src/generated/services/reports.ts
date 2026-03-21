@@ -19,6 +19,14 @@ export type TimelineEvent = components["schemas"]["TimelineEvent"];
 export type Person = components["schemas"]["Person"];
 
 /**
+ * Options for dueAssignments.
+ */
+export interface DueAssignmentsReportOptions {
+  /** Valid values: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later */
+  scope?: string;
+}
+
+/**
  * Options for progress.
  */
 export interface ProgressReportOptions extends PaginationOptions {
@@ -57,6 +65,82 @@ export interface PersonProgressReportOptions extends PaginationOptions {
  * Service for Reports operations.
  */
 export class ReportsService extends BaseService {
+
+  /**
+   * Get the current user's active assignments grouped by priority
+   * @returns The assignment
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.assignments();
+   * ```
+   */
+  async assignments(): Promise<components["schemas"]["GetAssignmentsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Reports",
+        operation: "GetAssignments",
+        resourceType: "assignment",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/assignments.json", {
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Get the current user's completed assignments
+   * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.completedAssignments();
+   * ```
+   */
+  async completedAssignments(): Promise<components["schemas"]["GetCompletedAssignmentsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Reports",
+        operation: "GetCompletedAssignments",
+        resourceType: "completed_assignment",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/assignments/completed.json", {
+        })
+    );
+    return response ?? [];
+  }
+
+  /**
+   * Get the current user's assignments filtered by due-date scope
+   * @param options - Optional query parameters
+   * @returns Array of results
+   *
+   * @example
+   * ```ts
+   * const result = await client.reports.dueAssignments();
+   * ```
+   */
+  async dueAssignments(options?: DueAssignmentsReportOptions): Promise<components["schemas"]["GetDueAssignmentsResponseContent"]> {
+    const response = await this.request(
+      {
+        service: "Reports",
+        operation: "GetDueAssignments",
+        resourceType: "due_assignment",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/my/assignments/due.json", {
+          params: {
+            query: { scope: options?.scope },
+          },
+        })
+    );
+    return response ?? [];
+  }
 
   /**
    * Get account-wide activity feed (progress report)

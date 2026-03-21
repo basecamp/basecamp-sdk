@@ -241,7 +241,6 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
   },
   Untagged: {
     Timeline: ["GetProjectTimeline"],
-    Reports: ["GetProgressReport", "GetUpcomingSchedule", "GetAssignedTodos", "GetOverdueTodos", "GetPersonProgress"],
     Checkins: [
       "GetQuestionReminders", "ListQuestionAnswerers", "GetAnswersByPerson",
       "UpdateQuestionNotificationSettings", "PauseQuestion", "ResumeQuestion",

@@ -16,6 +16,136 @@ class ReportsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
+  def test_assignments
+    response = {
+      "priorities" => [
+        {
+          "id" => 9007199254741623,
+          "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+          "content" => "Program the flux capacitor",
+          "due_on" => "2026-03-15",
+          "bucket" => {
+            "id" => 2085958504,
+            "name" => "The Leto Laptop",
+            "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504"
+          },
+          "completed" => false,
+          "type" => "todo",
+          "assignees" => [
+            { "id" => 1049715913, "name" => "Victor Cooper" }
+          ],
+          "comments_count" => 0,
+          "has_description" => false,
+          "priority_recording_id" => 9007199254741700,
+          "parent" => {
+            "id" => 9007199254741601,
+            "title" => "Development tasks",
+            "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601"
+          },
+          "children" => []
+        }
+      ],
+      "non_priorities" => []
+    }
+    stub_get("/12345/my/assignments.json", response_body: response)
+
+    result = @account.reports.assignments
+
+    assert_kind_of Hash, result
+    assert_equal 1, result["priorities"].length
+    assert_equal 9007199254741700, result["priorities"][0]["priority_recording_id"]
+    assert_equal [], result["non_priorities"]
+  end
+
+  def test_completed_assignments
+    response = [
+      {
+        "id" => 9007199254741623,
+        "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+        "content" => "Program the flux capacitor",
+        "due_on" => "2026-03-15",
+        "bucket" => {
+          "id" => 2085958504,
+          "name" => "The Leto Laptop",
+          "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504"
+        },
+        "completed" => true,
+        "type" => "todo",
+        "assignees" => [
+          { "id" => 1049715913, "name" => "Victor Cooper" }
+        ],
+        "comments_count" => 0,
+        "has_description" => false,
+        "parent" => {
+          "id" => 9007199254741601,
+          "title" => "Development tasks",
+          "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601"
+        },
+        "children" => []
+      }
+    ]
+    stub_get("/12345/my/assignments/completed.json", response_body: response)
+
+    result = @account.reports.completed_assignments
+
+    assert_kind_of Array, result
+    assert_equal true, result[0]["completed"]
+  end
+
+  def test_due_assignments
+    response = [
+      {
+        "id" => 9007199254741623,
+        "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+        "content" => "Program the flux capacitor",
+        "due_on" => "2026-03-22",
+        "bucket" => {
+          "id" => 2085958504,
+          "name" => "The Leto Laptop",
+          "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504"
+        },
+        "completed" => false,
+        "type" => "todo",
+        "assignees" => [
+          { "id" => 1049715913, "name" => "Victor Cooper" }
+        ],
+        "comments_count" => 0,
+        "has_description" => false,
+        "parent" => {
+          "id" => 9007199254741601,
+          "title" => "Development tasks",
+          "app_url" => "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601"
+        },
+        "children" => []
+      }
+    ]
+
+    stub_request(:get, "https://3.basecampapi.com/12345/my/assignments/due.json")
+      .with(query: { scope: "due_tomorrow" })
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.reports.due_assignments(scope: "due_tomorrow")
+
+    assert_kind_of Array, result
+    assert_equal "2026-03-22", result[0]["due_on"]
+  end
+
+  def test_due_assignments_invalid_scope
+    error_body = {
+      "error" => "Invalid scope 'invalid'. Valid options: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later"
+    }
+
+    stub_request(:get, "https://3.basecampapi.com/12345/my/assignments/due.json")
+      .with(query: { scope: "invalid" })
+      .to_return(status: 400, body: error_body.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::ValidationError) do
+      @account.reports.due_assignments(scope: "invalid")
+    end
+
+    assert_includes error.message, "Invalid scope 'invalid'"
+  end
+
   def test_progress
     events = [
       { "id" => 1, "action" => "created", "recording_type" => "Todo" },

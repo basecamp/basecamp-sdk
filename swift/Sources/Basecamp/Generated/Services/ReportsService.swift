@@ -9,6 +9,14 @@ public struct AssignedReportOptions: Sendable {
     }
 }
 
+public struct DueAssignmentsReportOptions: Sendable {
+    public var scope: String?
+
+    public init(scope: String? = nil) {
+        self.scope = scope
+    }
+}
+
 public struct PersonProgressReportOptions: Sendable {
     public var maxItems: Int?
 
@@ -53,6 +61,37 @@ public final class ReportsService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/reports/todos/assigned/\(personId)" + queryString(queryItems),
             retryConfig: Metadata.retryConfig(for: "GetAssignedTodos")
+        )
+    }
+
+    public func assignments() async throws -> GetAssignmentsResponseContent {
+        return try await request(
+            OperationInfo(service: "Reports", operation: "GetAssignments", resourceType: "assignment", isMutation: false),
+            method: "GET",
+            path: "/my/assignments.json",
+            retryConfig: Metadata.retryConfig(for: "GetAssignments")
+        )
+    }
+
+    public func completedAssignments() async throws -> [MyAssignment] {
+        return try await request(
+            OperationInfo(service: "Reports", operation: "GetCompletedAssignments", resourceType: "completed_assignment", isMutation: false),
+            method: "GET",
+            path: "/my/assignments/completed.json",
+            retryConfig: Metadata.retryConfig(for: "GetCompletedAssignments")
+        )
+    }
+
+    public func dueAssignments(options: DueAssignmentsReportOptions? = nil) async throws -> [MyAssignment] {
+        var queryItems: [URLQueryItem] = []
+        if let scope = options?.scope {
+            queryItems.append(URLQueryItem(name: "scope", value: scope))
+        }
+        return try await request(
+            OperationInfo(service: "Reports", operation: "GetDueAssignments", resourceType: "due_assignment", isMutation: false),
+            method: "GET",
+            path: "/my/assignments/due.json" + queryString(queryItems),
+            retryConfig: Metadata.retryConfig(for: "GetDueAssignments")
         )
     }
 

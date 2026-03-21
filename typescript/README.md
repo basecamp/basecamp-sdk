@@ -240,7 +240,7 @@ The SDK provides typed services for the complete Basecamp API:
 | Service | Methods |
 |---------|---------|
 | `search` | search |
-| `reports` | progress, upcoming, assigned, overdue, personProgress |
+| `reports` | progress, upcoming, assignments, completedAssignments, dueAssignments, assigned, overdue, personProgress |
 | `timesheets` | forRecording, forProject, report |
 | `timeline` | get |
 

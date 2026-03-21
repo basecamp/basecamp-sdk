@@ -422,6 +422,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			},
 		}
 
+	case "GetAssignments":
+		_, err := account.Reports().Assignments(ctx)
+		return operationResult{err: err}
+
+	case "GetCompletedAssignments":
+		_, err := account.Reports().CompletedAssignments(ctx)
+		return operationResult{err: err}
+
+	case "GetDueAssignments":
+		var opts *basecamp.DueAssignmentsOptions
+		if scope := getStringParam(tc.QueryParams, "scope"); scope != "" {
+			opts = &basecamp.DueAssignmentsOptions{Scope: scope}
+		}
+		_, err := account.Reports().DueAssignments(ctx, opts)
+		return operationResult{err: err}
+
 	case "GetPersonProgress":
 		personID := getInt64Param(tc.PathParams, "personId")
 		var timelineOpts *basecamp.TimelineListOptions

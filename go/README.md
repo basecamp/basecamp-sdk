@@ -206,7 +206,7 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 | Service | Methods |
 |---------|---------|
 | `Timeline()` | Progress, ProjectTimeline, PersonProgress |
-| `Reports()` | AssignablePeople, AssignedTodos, OverdueTodos, UpcomingSchedule |
+| `Reports()` | AssignablePeople, Assignments, CompletedAssignments, DueAssignments, AssignedTodos, OverdueTodos, UpcomingSchedule |
 | `Timesheet()` | MyEntries, ProjectEntries |
 | `Search()` | Search |
 | `Events()` | List, ListForRecording |

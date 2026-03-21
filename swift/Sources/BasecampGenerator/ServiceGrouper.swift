@@ -99,7 +99,6 @@ let serviceSplits: [String: [String: [String]]] = [
     ],
     "Untagged": [
         "Timeline": ["GetProjectTimeline"],
-        "Reports": ["GetProgressReport", "GetUpcomingSchedule", "GetAssignedTodos", "GetOverdueTodos", "GetPersonProgress"],
         "Checkins": [
             "GetQuestionReminders", "ListQuestionAnswerers", "GetAnswersByPerson",
             "UpdateQuestionNotificationSettings", "PauseQuestion", "ResumeQuestion",

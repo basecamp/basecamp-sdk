@@ -127,6 +127,14 @@ class OperationMapper
       )
     when "GetProgressReport"
       @account.reports.progress.to_a
+    when "GetAssignments"
+      @account.reports.assignments
+    when "GetCompletedAssignments"
+      @account.reports.completed_assignments
+    when "GetDueAssignments"
+      @account.reports.due_assignments(
+        scope: query_params["scope"]
+      )
     when "GetPersonProgress"
       @account.reports.person_progress(
         person_id: path_params["personId"]

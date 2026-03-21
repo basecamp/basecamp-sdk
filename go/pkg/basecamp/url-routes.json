@@ -813,6 +813,45 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/assignments",
+      "resource": "Reports",
+      "operations": {
+        "GET": "GetAssignments"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/my/assignments/completed",
+      "resource": "Reports",
+      "operations": {
+        "GET": "GetCompletedAssignments"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/my/assignments/due",
+      "resource": "Reports",
+      "operations": {
+        "GET": "GetDueAssignments"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/profile",
       "resource": "People",
       "operations": {
@@ -1397,7 +1436,7 @@
     },
     {
       "pattern": "/{accountId}/reports/progress",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetProgressReport"
       },
@@ -1410,7 +1449,7 @@
     },
     {
       "pattern": "/{accountId}/reports/schedules/upcoming",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetUpcomingSchedule"
       },
@@ -1449,7 +1488,7 @@
     },
     {
       "pattern": "/{accountId}/reports/todos/assigned/{personId}",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetAssignedTodos"
       },
@@ -1466,7 +1505,7 @@
     },
     {
       "pattern": "/{accountId}/reports/todos/overdue",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetOverdueTodos"
       },
@@ -1479,7 +1518,7 @@
     },
     {
       "pattern": "/{accountId}/reports/users/progress/{personId}",
-      "resource": null,
+      "resource": "Reports",
       "operations": {
         "GET": "GetPersonProgress"
       },

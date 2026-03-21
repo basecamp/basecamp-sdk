@@ -617,6 +617,24 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "GetAssignments" -> {
+            account.reports.assignments()
+            DispatchResult()
+        }
+
+        "GetCompletedAssignments" -> {
+            account.reports.completedAssignments()
+            DispatchResult()
+        }
+
+        "GetDueAssignments" -> {
+            val scope = tc.queryParams?.get("scope")?.jsonPrimitive?.contentOrNull
+            account.reports.dueAssignments(
+                GetDueAssignmentsOptions(scope = scope)
+            )
+            DispatchResult()
+        }
+
         "GetPersonProgress" -> {
             val personId = tc.pathParams.longParam("personId")
             account.reports.personProgress(personId)
