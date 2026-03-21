@@ -383,7 +383,7 @@ The error must be retryable. Two categories qualify:
 
 ### Cross-SDK Divergence `[CONFLICT]`
 
-- **TypeScript** implements the three-gate algorithm but chains at most 1 retry — on a retryable status, TS returns `fetch(retryRequest)` which bypasses middleware after the first retry (waiver 2B.1 in `rubric-audit.json`). **Kotlin** is the full three-gate exemplar (POST retries only when `idempotent: true`, full exponential backoff).
+- **TypeScript** implements the three-gate algorithm but chains at most 1 retry — on a retryable status, TS returns `fetch(retryRequest)` which bypasses middleware after the first retry (waiver 2B.1 in `rubric-audit.json`). **Kotlin** implements the three-gate algorithm for HTTP status retries (POST retries only when `idempotent: true`, full exponential backoff) but does not retry on network errors — transport exceptions are returned immediately as `BasecampException.Network`.
 - **Go** is stricter: only GET retries with exponential backoff; all non-GET methods make a single attempt (plus one re-attempt after successful 401 token refresh). No idempotency gate.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Go and Ruby are acceptably conservative.
 - **Swift** currently over-retries: generated create methods pass retry config directly, and the transport retries any request whose status matches `retry_on` — no idempotency gate. Non-idempotent POSTs like `CreateProject` are retried. This is a known bug.
@@ -596,8 +596,8 @@ All API requests must use HTTPS. Exception: localhost addresses are permitted fo
 **Localhost carve-out** `[static]` — the following are recognized as localhost (only `localhost` is conformance-tested; the remaining forms are `[static]` contract):
 - `localhost` (exact) `[conformance]` — all SDKs
 - `127.0.0.1` — all SDKs
-- `::1` — Go, Ruby, TypeScript (Swift and Kotlin accept unbracketed `::1` but not bracketed)
-- `[::1]` (bracket-wrapped IPv6) — Go, Ruby, TypeScript only
+- `::1` — Go, Ruby, TypeScript (Swift requires bracket-wrapped URL form `[::1]`; Kotlin does not recognize either IPv6 form)
+- `[::1]` (bracket-wrapped IPv6) — Go, Ruby, TypeScript, Swift
 - `*.localhost` (any subdomain, per RFC 6761) — Go, Ruby, TypeScript only (Swift and Kotlin do not recognize subdomain patterns)
 
 Client construction with a non-HTTPS, non-localhost base URL must fail with `BasecampError(code: "usage")`. `[conformance]`
@@ -863,9 +863,8 @@ Constant-time comparison prevents timing attacks. Never short-circuit on first m
 ```
 RECORD WebhookReceiver
   handlers : Map<GlobPattern, Handler>
-  dedup    : LRU<String, Boolean>   -- window of 1000 entries, keyed by delivery_id
-    -- Note: dedup is keyed on event ID (from the payload's `id` field), not
-    -- delivery ID. This matches shipped Go, Ruby, and TS implementations.
+  dedup    : LRU<String, Boolean>   -- window of 1000 entries, keyed by event ID (payload `id` field)
+    -- Matches shipped Go, Ruby, and TS implementations.
   secret   : String
 
   receive(payload, signature) →
@@ -936,7 +935,7 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 The cache key must include the URL. For shared caches (caches that may serve multiple client instances or tokens), credential-scoped isolation is required to prevent one token from receiving another token's cached response. For per-client caches (each client instance has its own cache), URL-only keys are sufficient. The exact key format is a language adaptation:
 
 - **TypeScript:** `SHA256(authorization_header)` first 8 bytes → 16 hex characters, then `+ ":" + url` (credential-scoped)
-- **Go:** `SHA256(url + ":" + accountId + ":" +` SHA256(authorization) first 4 bytes → 8 hex characters `)` (credential-scoped)
+- **Go:** let `tokenHash = hex(SHA256(authorization_header))[0:16]` (first 8 bytes → 16 hex characters); cache key = `SHA256(url + ":" + accountId + ":" + tokenHash)` (credential-scoped)
 - **Swift:** URL-only key (per-client isolation — each client has its own cache instance)
 
 ### Cache Algorithm
@@ -1316,8 +1315,8 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 | SDK | Retry behavior |
 |-----|---------------|
-| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. Chains at most 1 retry via `fetch(retryRequest)` which bypasses middleware (waiver 2B.1). Kotlin is the full three-gate exemplar. |
-| Kotlin | Three-gate: full exemplar. POST retries only when `idempotent: true`, full exponential backoff with all retry_config.max_attempts used. |
+| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. Chains at most 1 retry via `fetch(retryRequest)` which bypasses middleware (waiver 2B.1). |
+| Kotlin | Three-gate for HTTP status retries: POST retries only when `idempotent: true`, full exponential backoff. Does not retry network errors (transport exceptions returned immediately). |
 | Go | Simplified: only GET retries with exponential backoff. All non-GET methods do not retry (single attempt, plus one re-attempt after successful 401 token refresh). |
 | Ruby | Simplified: only GET retries. All non-GET methods never retry. Ruby retries on any error with `retryable? == true`. |
 | Swift | Over-retries: generated create methods pass retry config directly. No idempotency gate. Known bug. |
