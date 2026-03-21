@@ -436,8 +436,8 @@ FUNCTION executeWithRetry(request, retry_config) → Response
         -- Note: attempt+1 appears both in RequestInfo.attempt (1-based attempt number)
         -- and as the standalone attempt parameter. This redundancy matches the hook
         -- INTERFACE signature; RequestInfo.attempt provides context for hook chains.
-     j. Sleep delay ms.
-     k. Refresh auth headers (token may have been refreshed during sleep).
+     k. Sleep delay ms.
+     l. Refresh auth headers (token may have been refreshed during sleep).
 END
 ```
 
@@ -594,11 +594,11 @@ Protocol downgrade (HTTPS → HTTP) in Link headers is also rejected. `[conforma
 All API requests must use HTTPS. Exception: localhost addresses are permitted for development and testing. Conformance tests verify the general rule (non-localhost HTTP rejected) and basic localhost exemption.
 
 **Localhost carve-out** `[static]` — the following are recognized as localhost (only `localhost` is conformance-tested; the remaining forms are `[static]` contract):
-- `localhost` (exact) `[conformance]`
-- `127.0.0.1`
-- `::1`
-- `[::1]` (bracket-wrapped IPv6)
-- `*.localhost` (any subdomain, per RFC 6761)
+- `localhost` (exact) `[conformance]` — all SDKs
+- `127.0.0.1` — all SDKs
+- `::1` — Go, Ruby, TypeScript (Swift and Kotlin accept unbracketed `::1` but not bracketed)
+- `[::1]` (bracket-wrapped IPv6) — Go, Ruby, TypeScript only
+- `*.localhost` (any subdomain, per RFC 6761) — Go, Ruby, TypeScript only (Swift and Kotlin do not recognize subdomain patterns)
 
 Client construction with a non-HTTPS, non-localhost base URL must fail with `BasecampError(code: "usage")`. `[conformance]`
 
@@ -864,15 +864,16 @@ Constant-time comparison prevents timing attacks. Never short-circuit on first m
 RECORD WebhookReceiver
   handlers : Map<GlobPattern, Handler>
   dedup    : LRU<String, Boolean>   -- window of 1000 entries, keyed by delivery_id
-    -- Note: redeliveries get new delivery IDs, so this deduplicates network
-    -- retries but not manual redeliveries. Payload-level dedup is caller responsibility.
+    -- Note: dedup is keyed on event ID (from the payload's `id` field), not
+    -- delivery ID. This matches shipped Go, Ruby, and TS implementations.
   secret   : String
 
-  receive(payload, signature, delivery_id) →
+  receive(payload, signature) →
     1. Verify signature. If invalid → reject.
-    2. If delivery_id in dedup → skip (already processed).
-    3. Parse payload, dispatch to matching handler(s) by event type glob.
-    4. Add delivery_id to dedup only after successful handler execution.
+    2. Parse payload, extract event_id from the event's `id` field.
+    3. If event_id in dedup → skip (already processed).
+    4. Dispatch to matching handler(s) by event type glob.
+    5. Add event_id to dedup only after successful handler execution.
        (If a handler throws, the event can be reprocessed on redelivery.)
 END
 ```
@@ -932,7 +933,7 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 
 ### Cache Key
 
-The cache key must include the URL. Credential-scoped isolation is recommended but the exact format is a language adaptation:
+The cache key must include the URL. For shared caches (caches that may serve multiple client instances or tokens), credential-scoped isolation is required to prevent one token from receiving another token's cached response. For per-client caches (each client instance has its own cache), URL-only keys are sufficient. The exact key format is a language adaptation:
 
 - **TypeScript:** `SHA256(authorization_header)` first 8 bytes → 16 hex characters, then `+ ":" + url` (credential-scoped)
 - **Go:** `SHA256(url + ":" + accountId + ":" +` SHA256(authorization) first 4 bytes → 8 hex characters `)` (credential-scoped)
