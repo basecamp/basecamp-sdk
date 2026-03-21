@@ -434,14 +434,13 @@ FUNCTION executeWithRetry(request, retry_config) → Response
         - Else → delay = backoff formula (see below).
      i. retry_error = if last_response, construct BasecampError from HTTP status;
         if network error, use last_error.
-     j. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, retry_error, delay).
-        -- attempt+1 converts 0-based loop index to 1-based attempt number.
-        -- In this pseudocode: initial request = attempt 0 (reported as 1),
-        -- first retry = attempt 1 (reported as 2), etc.
-        -- Shipped SDKs use 1-based throughout: Go/Ruby/Kotlin pass the current
-        -- 1-based attempt in RequestInfo and the next attempt as standalone.
-        -- The semantics are equivalent; the standalone parameter indicates
-        -- "which retry is about to happen" (2 = second attempt = first retry).
+     j. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+2, retry_error, delay).
+        -- RequestInfo.attempt = attempt+1: the 1-based attempt that just failed
+        --   (1 = initial request failed, 2 = first retry failed, etc.)
+        -- Standalone attempt = attempt+2: the 1-based attempt about to happen
+        --   (2 = about to do first retry, 3 = about to do second retry, etc.)
+        -- This matches shipped SDKs: Go/Ruby/Kotlin pass the failed attempt in
+        -- RequestInfo and the next attempt number as the standalone parameter.
      k. Sleep delay ms.
      l. Refresh auth headers (token may have been refreshed during sleep).
 END
