@@ -176,6 +176,10 @@ FUNCTION buildURL(base_url, account_id, path) → String
   -- relative paths; only the transport passes absolute URLs (e.g., pagination
   -- follow-up URLs). This is not a public API surface.
   1. If path starts with "https://" → return path unchanged.
+     -- Security note: absolute URLs reaching buildURL must already be
+     -- same-origin validated (§8 pagination) or originate from trusted
+     -- generated code. buildURL does not re-validate origin; callers
+     -- must not pass untrusted absolute URLs.
   2. If path starts with "http://":
      a. If it is a localhost URL (see §9) → return path unchanged. (Absolute localhost URLs from pagination follow-ups are preserved as-is.)
      b. Else → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
@@ -871,7 +875,10 @@ RECORD WebhookReceiver
 
   receive(payload, signature) →
     1. Verify signature. If invalid → reject.
-    2. Parse payload, extract event_id from the event's `id` field.
+    2. Extract event_id from the payload's `id` field as a string.
+       -- In languages with limited integer precision (e.g., JavaScript/TypeScript),
+       -- extract the ID via string matching BEFORE JSON.parse to avoid 64-bit
+       -- precision loss. See typescript/src/webhooks/handler.ts extractIdString().
     3. If event_id in dedup → skip (already processed).
     4. Dispatch to matching handler(s) by event type glob.
     5. Add event_id to dedup only after successful handler execution.
