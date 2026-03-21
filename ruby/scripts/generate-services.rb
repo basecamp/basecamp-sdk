@@ -122,7 +122,6 @@ class ServiceGenerator
     },
     'Untagged' => {
       'Timeline' => %w[GetProjectTimeline],
-      'Reports' => %w[GetProgressReport GetUpcomingSchedule GetAssignedTodos GetOverdueTodos GetPersonProgress],
       'Checkins' => %w[
         GetQuestionReminders ListQuestionAnswerers GetAnswersByPerson
         UpdateQuestionNotificationSettings PauseQuestion ResumeQuestion
@@ -171,6 +170,9 @@ class ServiceGenerator
     'CreateTimesheetEntry' => 'create',
     'UpdateTimesheetEntry' => 'update',
     'GetProgressReport' => 'progress',
+    'GetAssignments' => 'assignments',
+    'GetCompletedAssignments' => 'completed_assignments',
+    'GetDueAssignments' => 'due_assignments',
     'GetUpcomingSchedule' => 'upcoming',
     'GetAssignedTodos' => 'assigned',
     'GetOverdueTodos' => 'overdue',

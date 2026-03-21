@@ -170,6 +170,9 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/people/{personId}": "GetPerson",
 
   // My Profile
+  "GET:/{accountId}/my/assignments.json": "GetAssignments",
+  "GET:/{accountId}/my/assignments/completed.json": "GetCompletedAssignments",
+  "GET:/{accountId}/my/assignments/due.json": "GetDueAssignments",
   "GET:/{accountId}/my/profile.json": "GetMyProfile",
   "GET:/{accountId}/my/question_reminders.json": "GetQuestionReminders",
 

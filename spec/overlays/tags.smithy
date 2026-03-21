@@ -193,3 +193,13 @@ apply ListAnswers @tags(["Automation"])
 apply GetAnswer @tags(["Automation"])
 apply CreateAnswer @tags(["Automation"])
 apply UpdateAnswer @tags(["Automation"])
+
+// Reports
+apply GetProgressReport @tags(["Reports"])
+apply GetPersonProgress @tags(["Reports"])
+apply GetAssignedTodos @tags(["Reports"])
+apply GetOverdueTodos @tags(["Reports"])
+apply GetUpcomingSchedule @tags(["Reports"])
+apply GetAssignments @tags(["Reports"])
+apply GetCompletedAssignments @tags(["Reports"])
+apply GetDueAssignments @tags(["Reports"])

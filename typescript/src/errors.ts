@@ -266,7 +266,8 @@ export const Errors = {
  */
 export async function errorFromResponse(
   response: Response,
-  requestId?: string
+  requestId?: string,
+  parsedBody?: unknown,
 ): Promise<BasecampError> {
   const httpStatus = response.status;
   const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
@@ -275,8 +276,7 @@ export async function errorFromResponse(
   let message = response.statusText || "Request failed";
   let hint: string | undefined;
 
-  try {
-    const body = await response.json();
+  const applyBody = (body: unknown) => {
     if (typeof body === "object" && body !== null) {
       if ("error" in body && typeof body.error === "string") {
         // Truncate error messages to prevent information leakage and unbounded memory growth
@@ -286,8 +286,17 @@ export async function errorFromResponse(
         hint = truncateErrorMessage(body.error_description);
       }
     }
-  } catch {
-    // Body is not JSON or empty, use status text
+  };
+
+  if (parsedBody !== undefined) {
+    applyBody(parsedBody);
+  } else {
+    try {
+      const body = await response.json();
+      applyBody(body);
+    } catch {
+      // Body is not JSON or empty, use status text
+    }
   }
 
   switch (httpStatus) {

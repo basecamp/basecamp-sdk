@@ -172,6 +172,170 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 	return result, nil
 }
 
+// MyAssignmentPerson represents a minimal assignee in the assignments response.
+type MyAssignmentPerson struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// MyAssignmentBucket represents the project bucket for an assignment.
+type MyAssignmentBucket struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	AppURL string `json:"app_url"`
+}
+
+// MyAssignmentParent represents the parent container for an assignment.
+type MyAssignmentParent struct {
+	ID     int64  `json:"id"`
+	Title  string `json:"title"`
+	AppURL string `json:"app_url"`
+}
+
+// MyAssignment represents an assignment returned from /my/assignments endpoints.
+type MyAssignment struct {
+	ID                  int64                `json:"id"`
+	AppURL              string               `json:"app_url"`
+	Content             string               `json:"content"`
+	StartsOn            string               `json:"starts_on,omitempty"`
+	DueOn               string               `json:"due_on,omitempty"`
+	Bucket              *MyAssignmentBucket  `json:"bucket,omitempty"`
+	Completed           bool                 `json:"completed"`
+	Type                string               `json:"type"`
+	Assignees           []MyAssignmentPerson `json:"assignees,omitempty"`
+	CommentsCount       int                  `json:"comments_count"`
+	HasDescription      bool                 `json:"has_description"`
+	PriorityRecordingID *int64               `json:"priority_recording_id,omitempty"`
+	Parent              *MyAssignmentParent  `json:"parent,omitempty"`
+	Children            []MyAssignment       `json:"children,omitempty"`
+}
+
+// AssignmentsResponse contains active assignments split by priority.
+type AssignmentsResponse struct {
+	Priorities    []MyAssignment `json:"priorities"`
+	NonPriorities []MyAssignment `json:"non_priorities"`
+}
+
+// DueAssignmentsOptions specifies query parameters for due assignments.
+type DueAssignmentsOptions struct {
+	// Scope filters by due date range.
+	Scope string
+}
+
+// Assignments returns the current user's active assignments grouped by priority.
+func (s *ReportsService) Assignments(ctx context.Context) (result *AssignmentsResponse, err error) {
+	op := OperationInfo{
+		Service: "Reports", Operation: "Assignments",
+		ResourceType: "assignment", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetAssignmentsWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
+
+	result = &AssignmentsResponse{
+		Priorities:    make([]MyAssignment, 0, len(resp.JSON200.Priorities)),
+		NonPriorities: make([]MyAssignment, 0, len(resp.JSON200.NonPriorities)),
+	}
+
+	for _, gm := range resp.JSON200.Priorities {
+		result.Priorities = append(result.Priorities, myAssignmentFromGenerated(gm))
+	}
+	for _, gm := range resp.JSON200.NonPriorities {
+		result.NonPriorities = append(result.NonPriorities, myAssignmentFromGenerated(gm))
+	}
+
+	return result, nil
+}
+
+// CompletedAssignments returns the current user's completed assignments.
+func (s *ReportsService) CompletedAssignments(ctx context.Context) (result []MyAssignment, err error) {
+	op := OperationInfo{
+		Service: "Reports", Operation: "CompletedAssignments",
+		ResourceType: "completed_assignment", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetCompletedAssignmentsWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
+
+	result = make([]MyAssignment, 0, len(*resp.JSON200))
+	for _, gm := range *resp.JSON200 {
+		result = append(result, myAssignmentFromGenerated(gm))
+	}
+
+	return result, nil
+}
+
+// DueAssignments returns the current user's assignments filtered by due-date scope.
+func (s *ReportsService) DueAssignments(ctx context.Context, opts *DueAssignmentsOptions) (result []MyAssignment, err error) {
+	op := OperationInfo{
+		Service: "Reports", Operation: "DueAssignments",
+		ResourceType: "due_assignment", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	var params *generated.GetDueAssignmentsParams
+	if opts != nil && opts.Scope != "" {
+		params = &generated.GetDueAssignmentsParams{Scope: opts.Scope}
+	}
+
+	resp, err := s.client.parent.gen.GetDueAssignmentsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, nil
+	}
+
+	result = make([]MyAssignment, 0, len(*resp.JSON200))
+	for _, gm := range *resp.JSON200 {
+		result = append(result, myAssignmentFromGenerated(gm))
+	}
+
+	return result, nil
+}
+
 // Assignable represents an assignable item (todo or schedule entry).
 type Assignable struct {
 	ID        int64    `json:"id"`
@@ -254,6 +418,65 @@ func (s *ReportsService) UpcomingSchedule(ctx context.Context, startDate, endDat
 	}
 
 	return result, nil
+}
+
+// myAssignmentFromGenerated converts a generated MyAssignment to our clean type.
+func myAssignmentFromGenerated(gm generated.MyAssignment) MyAssignment {
+	m := MyAssignment{
+		ID:             gm.Id,
+		AppURL:         gm.AppUrl,
+		Content:        gm.Content,
+		Completed:      gm.Completed,
+		Type:           gm.Type,
+		CommentsCount:  int(gm.CommentsCount),
+		HasDescription: gm.HasDescription,
+	}
+
+	if !gm.StartsOn.IsZero() {
+		m.StartsOn = gm.StartsOn.String()
+	}
+	if !gm.DueOn.IsZero() {
+		m.DueOn = gm.DueOn.String()
+	}
+	if gm.PriorityRecordingId != nil {
+		id := *gm.PriorityRecordingId
+		m.PriorityRecordingID = &id
+	}
+
+	if gm.Bucket.Id != 0 || gm.Bucket.Name != "" || gm.Bucket.AppUrl != "" {
+		m.Bucket = &MyAssignmentBucket{
+			ID:     gm.Bucket.Id,
+			Name:   gm.Bucket.Name,
+			AppURL: gm.Bucket.AppUrl,
+		}
+	}
+
+	if gm.Parent.Id != 0 || gm.Parent.Title != "" || gm.Parent.AppUrl != "" {
+		m.Parent = &MyAssignmentParent{
+			ID:     gm.Parent.Id,
+			Title:  gm.Parent.Title,
+			AppURL: gm.Parent.AppUrl,
+		}
+	}
+
+	if len(gm.Assignees) > 0 {
+		m.Assignees = make([]MyAssignmentPerson, 0, len(gm.Assignees))
+		for _, gp := range gm.Assignees {
+			m.Assignees = append(m.Assignees, MyAssignmentPerson{
+				ID:   gp.Id,
+				Name: gp.Name,
+			})
+		}
+	}
+
+	if len(gm.Children) > 0 {
+		m.Children = make([]MyAssignment, 0, len(gm.Children))
+		for _, gc := range gm.Children {
+			m.Children = append(m.Children, myAssignmentFromGenerated(gc))
+		}
+	}
+
+	return m
 }
 
 // assignableFromGenerated converts a generated Assignable to our clean type.

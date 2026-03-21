@@ -31,6 +31,52 @@
     "tags": ["path", "reports"]
   },
   {
+    "name": "Assignments uses /my/assignments.json path",
+    "description": "Verifies that GetAssignments constructs the URL path using /my/assignments.json",
+    "operation": "GetAssignments",
+    "method": "GET",
+    "path": "/my/assignments.json",
+    "mockResponses": [
+      {"status": 200, "body": {"priorities": [], "non_priorities": []}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/my/assignments.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "reports"]
+  },
+  {
+    "name": "Completed assignments uses /my/assignments/completed.json path",
+    "description": "Verifies that GetCompletedAssignments constructs the URL path using /my/assignments/completed.json",
+    "operation": "GetCompletedAssignments",
+    "method": "GET",
+    "path": "/my/assignments/completed.json",
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/my/assignments/completed.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "reports"]
+  },
+  {
+    "name": "Due assignments uses /my/assignments/due.json path",
+    "description": "Verifies that GetDueAssignments constructs the URL path using /my/assignments/due.json",
+    "operation": "GetDueAssignments",
+    "method": "GET",
+    "path": "/my/assignments/due.json",
+    "queryParams": {"scope": "due_tomorrow"},
+    "mockResponses": [
+      {"status": 200, "body": []}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/my/assignments/due.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "reports"]
+  },
+  {
     "name": "Person progress uses /reports/users/ path with .json",
     "description": "Verifies that GetPersonProgress constructs the URL path using /reports/users/progress/{personId}.json",
     "operation": "GetPersonProgress",

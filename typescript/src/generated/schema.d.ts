@@ -899,6 +899,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/assignments.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the current user's active assignments grouped by priority */
+        get: operations["GetAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/my/assignments/completed.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the current user's completed assignments */
+        get: operations["GetCompletedAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/my/assignments/due.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Get the current user's assignments filtered by due-date scope */
+        get: operations["GetDueAssignments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my/profile.json": {
         parameters: {
             query?: never;
@@ -2859,6 +2910,10 @@ export interface components {
             grouped_by?: string;
             todos?: components["schemas"]["Todo"][];
         };
+        GetAssignmentsResponseContent: {
+            priorities?: components["schemas"]["MyAssignment"][];
+            non_priorities?: components["schemas"]["MyAssignment"][];
+        };
         GetBoostResponseContent: components["schemas"]["Boost"];
         GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         GetCampfireResponseContent: components["schemas"]["Campfire"];
@@ -2871,7 +2926,9 @@ export interface components {
         GetClientCorrespondenceResponseContent: components["schemas"]["ClientCorrespondence"];
         GetClientReplyResponseContent: components["schemas"]["ClientReply"];
         GetCommentResponseContent: components["schemas"]["Comment"];
+        GetCompletedAssignmentsResponseContent: components["schemas"]["MyAssignment"][];
         GetDocumentResponseContent: components["schemas"]["Document"];
+        GetDueAssignmentsResponseContent: components["schemas"]["MyAssignment"][];
         GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         GetForwardResponseContent: components["schemas"]["Forward"];
         GetHillChartResponseContent: components["schemas"]["HillChart"];
@@ -3076,6 +3133,43 @@ export interface components {
         MoveCardRequestContent: {
             /** Format: int64 */
             column_id: number;
+        };
+        MyAssignment: {
+            /** Format: int64 */
+            id: number;
+            app_url: string;
+            content: string;
+            starts_on?: string;
+            due_on?: string;
+            bucket: components["schemas"]["MyAssignmentBucket"];
+            completed: boolean;
+            type: string;
+            assignees: components["schemas"]["MyAssignmentPerson"][];
+            /** Format: int32 */
+            comments_count: number;
+            has_description: boolean;
+            /** Format: int64 */
+            priority_recording_id?: number;
+            parent: components["schemas"]["MyAssignmentParent"];
+            children: components["schemas"]["MyAssignment"][];
+        };
+        MyAssignmentBucket: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            app_url: string;
+        };
+        MyAssignmentParent: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            app_url: string;
+        };
+        MyAssignmentPerson: {
+            /** Format: int64 */
+            id: number;
+            /** Format: password */
+            name: string;
         };
         NotFoundErrorResponseContent: {
             error: string;
@@ -8515,6 +8609,186 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetAssignments 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetAssignmentsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetCompletedAssignments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetCompletedAssignments 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetCompletedAssignmentsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetDueAssignments: {
+        parameters: {
+            query?: {
+                /** @description Valid values: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later */
+                scope?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetDueAssignments 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetDueAssignmentsResponseContent"];
+                };
+            };
+            /** @description BadRequestError 400 response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BadRequestErrorResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

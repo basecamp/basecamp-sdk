@@ -99,6 +99,7 @@ async function executeOperation(
   tc: TestCase,
 ): Promise<{ error?: BasecampError | Error; httpStatus?: number; meta?: Record<string, unknown>; result?: unknown }> {
   const params = tc.pathParams ?? {};
+  const query = tc.queryParams ?? {};
   const body = tc.requestBody ?? {};
 
   try {
@@ -192,6 +193,20 @@ async function executeOperation(
 
       case "GetProgressReport":
         await client.reports.progress();
+        break;
+
+      case "GetAssignments":
+        await client.reports.assignments();
+        break;
+
+      case "GetCompletedAssignments":
+        await client.reports.completedAssignments();
+        break;
+
+      case "GetDueAssignments":
+        await client.reports.dueAssignments({
+          scope: query.scope ? String(query.scope) : undefined,
+        });
         break;
 
       case "GetPersonProgress":

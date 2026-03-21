@@ -12,8 +12,130 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
+import { BasecampError } from "../../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
+
+const sampleAssignment = {
+  id: 9007199254741623,
+  app_url: "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+  content: "Program the flux capacitor",
+  starts_on: null,
+  due_on: "2026-03-15",
+  bucket: {
+    id: 2085958504,
+    name: "The Leto Laptop",
+    app_url: "https://3.basecamp.com/195539477/buckets/2085958504",
+  },
+  completed: false,
+  type: "todo",
+  assignees: [
+    {
+      id: 1049715913,
+      name: "Victor Cooper",
+    },
+  ],
+  comments_count: 0,
+  has_description: false,
+  priority_recording_id: 9007199254741700,
+  parent: {
+    id: 9007199254741601,
+    title: "Development tasks",
+    app_url: "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601",
+  },
+  children: [],
+};
+
+describe("ReportsService", () => {
+  let client: BasecampClient;
+
+  beforeEach(() => {
+    client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      enableRetry: false,
+    });
+  });
+
+  it("should return assignments grouped into priorities and non_priorities", async () => {
+    server.use(
+      http.get(`${BASE_URL}/my/assignments.json`, () => {
+        return HttpResponse.json({
+          priorities: [sampleAssignment],
+          non_priorities: [],
+        });
+      })
+    );
+
+    const result = await client.reports.assignments();
+
+    expect(result.priorities).toHaveLength(1);
+    expect(result.priorities[0]!.priority_recording_id).toBe(9007199254741700);
+    expect(result.non_priorities).toEqual([]);
+  });
+
+  it("should return completed assignments", async () => {
+    server.use(
+      http.get(`${BASE_URL}/my/assignments/completed.json`, () => {
+        return HttpResponse.json([
+          {
+            ...sampleAssignment,
+            completed: true,
+            priority_recording_id: undefined,
+          },
+        ]);
+      })
+    );
+
+    const result = await client.reports.completedAssignments();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.completed).toBe(true);
+  });
+
+  it("should send scope when fetching due assignments", async () => {
+    server.use(
+      http.get(`${BASE_URL}/my/assignments/due.json`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get("scope")).toBe("due_tomorrow");
+        return HttpResponse.json([
+          {
+            ...sampleAssignment,
+            due_on: "2026-03-22",
+          },
+        ]);
+      })
+    );
+
+    const result = await client.reports.dueAssignments({ scope: "due_tomorrow" });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.due_on).toBe("2026-03-22");
+  });
+
+  it("should surface invalid due-assignment scope errors as validation errors", async () => {
+    server.use(
+      http.get(`${BASE_URL}/my/assignments/due.json`, () => {
+        return HttpResponse.json(
+          {
+            error: "Invalid scope 'invalid'. Valid options: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later",
+          },
+          { status: 400 }
+        );
+      })
+    );
+
+    try {
+      await client.reports.dueAssignments({ scope: "invalid" });
+      expect.unreachable("expected dueAssignments to throw");
+    } catch (err) {
+      expect(err).toBeInstanceOf(BasecampError);
+      expect((err as BasecampError).code).toBe("validation");
+      expect((err as BasecampError).httpStatus).toBe(400);
+      expect((err as BasecampError).message).toContain("Invalid scope 'invalid'");
+    }
+  });
+});
 
 describe("TimesheetsService", () => {
   let client: BasecampClient;

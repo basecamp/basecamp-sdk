@@ -6494,6 +6494,239 @@
         }
       }
     },
+    "/my/assignments.json": {
+      "get": {
+        "description": "Get the current user's active assignments grouped by priority",
+        "operationId": "GetAssignments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "GetAssignments 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetAssignmentsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/my/assignments/completed.json": {
+      "get": {
+        "description": "Get the current user's completed assignments",
+        "operationId": "GetCompletedAssignments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "GetCompletedAssignments 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCompletedAssignmentsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/my/assignments/due.json": {
+      "get": {
+        "description": "Get the current user's assignments filtered by due-date scope",
+        "operationId": "GetDueAssignments",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "Valid values: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later",
+            "schema": {
+              "type": "string",
+              "description": "Valid values: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetDueAssignments 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetDueAssignmentsResponseContent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequestError 400 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestErrorResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/my/profile.json": {
       "get": {
         "description": "Get the current authenticated user's profile",
@@ -11303,6 +11536,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
@@ -11391,6 +11627,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -11650,6 +11889,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -11718,6 +11960,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -11806,6 +12051,9 @@
             }
           }
         },
+        "tags": [
+          "Reports"
+        ],
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
@@ -18801,6 +19049,23 @@
           }
         }
       },
+      "GetAssignmentsResponseContent": {
+        "type": "object",
+        "properties": {
+          "priorities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAssignment"
+            }
+          },
+          "non_priorities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAssignment"
+            }
+          }
+        }
+      },
       "GetBoostResponseContent": {
         "$ref": "#/components/schemas/Boost"
       },
@@ -18837,8 +19102,20 @@
       "GetCommentResponseContent": {
         "$ref": "#/components/schemas/Comment"
       },
+      "GetCompletedAssignmentsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/MyAssignment"
+        }
+      },
       "GetDocumentResponseContent": {
         "$ref": "#/components/schemas/Document"
+      },
+      "GetDueAssignmentsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/MyAssignment"
+        }
       },
       "GetForwardReplyResponseContent": {
         "$ref": "#/components/schemas/ForwardReply"
@@ -19702,6 +19979,151 @@
         },
         "required": [
           "column_id"
+        ]
+      },
+      "MyAssignment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "starts_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "due_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/MyAssignmentBucket"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "assignees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAssignmentPerson"
+            }
+          },
+          "comments_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "has_description": {
+            "type": "boolean"
+          },
+          "priority_recording_id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "parent": {
+            "$ref": "#/components/schemas/MyAssignmentParent"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyAssignment"
+            }
+          }
+        },
+        "required": [
+          "app_url",
+          "assignees",
+          "bucket",
+          "children",
+          "comments_count",
+          "completed",
+          "content",
+          "has_description",
+          "id",
+          "parent",
+          "type"
+        ]
+      },
+      "MyAssignmentBucket": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "name": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "name"
+        ]
+      },
+      "MyAssignmentParent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "title": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "title"
+        ]
+      },
+      "MyAssignmentPerson": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "name": {
+            "type": "string",
+            "format": "password",
+            "x-basecamp-sensitive": {
+              "category": "pii",
+              "redact": true
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "NotFoundErrorResponseContent": {

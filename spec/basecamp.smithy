@@ -252,6 +252,9 @@ service Basecamp {
     GetAssignedTodos,
     GetOverdueTodos,
     GetUpcomingSchedule,
+    GetAssignments,
+    GetCompletedAssignments,
+    GetDueAssignments,
 
     // Batch 12 - Boosts
     ListRecordingBoosts,
@@ -7093,6 +7096,71 @@ structure GetUpcomingScheduleOutput {
   assignables: AssignableList
 }
 
+/// Get the current user's active assignments grouped by priority
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/assignments.json")
+operation GetAssignments {
+  input: GetAssignmentsInput
+  output: GetAssignmentsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetAssignmentsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetAssignmentsOutput {
+  priorities: MyAssignmentList
+  non_priorities: MyAssignmentList
+}
+
+/// Get the current user's completed assignments
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/assignments/completed.json")
+operation GetCompletedAssignments {
+  input: GetCompletedAssignmentsInput
+  output: GetCompletedAssignmentsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetCompletedAssignmentsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetCompletedAssignmentsOutput {
+  assignments: MyAssignmentList
+}
+
+/// Get the current user's assignments filtered by due-date scope
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/assignments/due.json")
+operation GetDueAssignments {
+  input: GetDueAssignmentsInput
+  output: GetDueAssignmentsOutput
+  errors: [BadRequestError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetDueAssignmentsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Valid values: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later
+  @httpQuery("scope")
+  scope: DueAssignmentsScope
+}
+
+structure GetDueAssignmentsOutput {
+  assignments: MyAssignmentList
+}
+
 // ===== Timeline Shapes =====
 
 list TimelineEventList {
@@ -7131,6 +7199,71 @@ structure Assignable {
   due_on: ISO8601Date
   starts_on: ISO8601Date
   assignees: PersonList
+}
+
+@documentation("overdue|due_today|due_tomorrow|due_later_this_week|due_next_week|due_later")
+string DueAssignmentsScope
+
+list MyAssignmentList {
+  member: MyAssignment
+}
+
+list MyAssignmentPersonList {
+  member: MyAssignmentPerson
+}
+
+structure MyAssignment {
+  @required
+  id: Long
+  @required
+  app_url: String
+  @required
+  content: String
+  starts_on: ISO8601Date
+  due_on: ISO8601Date
+  @required
+  bucket: MyAssignmentBucket
+  @required
+  completed: Boolean
+  @required
+  type: String
+  @required
+  assignees: MyAssignmentPersonList
+  @required
+  comments_count: Integer
+  @required
+  has_description: Boolean
+  priority_recording_id: Long
+  @required
+  parent: MyAssignmentParent
+  @required
+  children: MyAssignmentList
+}
+
+structure MyAssignmentBucket {
+  @required
+  id: ProjectId
+  @required
+  name: String
+  @required
+  app_url: String
+}
+
+structure MyAssignmentParent {
+  @required
+  id: Long
+  @required
+  title: String
+  @required
+  app_url: String
+}
+
+structure MyAssignmentPerson {
+  @required
+  id: PersonId
+  @required
+  @basecampSensitive(category: "pii", redact: true)
+  name: PersonName
 }
 
 // ===== Search Shapes =====
@@ -7440,4 +7573,3 @@ structure Boost {
   booster: Person
   recording: RecordingParent
 }
-

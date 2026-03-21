@@ -7,6 +7,31 @@ module Basecamp
     # @generated from OpenAPI spec
     class ReportsService < BaseService
 
+      # Get the current user's active assignments grouped by priority
+      # @return [Hash] response data
+      def assignments()
+        with_operation(service: "reports", operation: "assignments", is_mutation: false) do
+          http_get("/my/assignments.json").json
+        end
+      end
+
+      # Get the current user's completed assignments
+      # @return [Hash] response data
+      def completed_assignments()
+        with_operation(service: "reports", operation: "completed_assignments", is_mutation: false) do
+          http_get("/my/assignments/completed.json").json
+        end
+      end
+
+      # Get the current user's assignments filtered by due-date scope
+      # @param scope [String, nil] Valid values: overdue, due_today, due_tomorrow, due_later_this_week, due_next_week, due_later
+      # @return [Hash] response data
+      def due_assignments(scope: nil)
+        with_operation(service: "reports", operation: "due_assignments", is_mutation: false) do
+          http_get("/my/assignments/due.json", params: compact_params(scope: scope)).json
+        end
+      end
+
       # Get account-wide activity feed (progress report)
       # @return [Enumerator<Hash>] paginated results
       def progress()
