@@ -422,7 +422,7 @@ FUNCTION executeWithRetry(request, retry_config) → Response
 
      e. If last_error (network error):
         - If attempt == retry_config.max_attempts - 1 → raise last_error.
-        - Else → go to step h (skip status check, no Retry-After header).
+        - Else → go to step 3h (skip status check, no Retry-After header).
      f. If last_response.status NOT IN retry_config.retry_on → return last_response.
      g. If attempt == retry_config.max_attempts - 1 → return last_response.
 
