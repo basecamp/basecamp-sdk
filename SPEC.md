@@ -433,9 +433,10 @@ FUNCTION executeWithRetry(request, retry_config) → Response
      i. retry_error = if last_response, construct BasecampError from HTTP status;
         if network error, use last_error.
      j. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, retry_error, delay).
-        -- Note: attempt+1 appears both in RequestInfo.attempt (1-based attempt number)
-        -- and as the standalone attempt parameter. This redundancy matches the hook
-        -- INTERFACE signature; RequestInfo.attempt provides context for hook chains.
+        -- Shipped SDK convention: Go/Ruby/Kotlin pass the failed attempt number in
+        -- RequestInfo.attempt and the next attempt number as the standalone parameter.
+        -- TS passes attempt+1 in both. The standalone parameter is the one consumers
+        -- should rely on for "which retry is about to happen" semantics.
      k. Sleep delay ms.
      l. Refresh auth headers (token may have been refreshed during sleep).
 END
@@ -739,7 +740,7 @@ RECORD RequestResult
   status_code : Integer?   -- HTTP status code; language adaptation: Ruby uses null for network errors, TS/Swift/Kotlin/Go use 0
   duration    : Duration   -- request duration; language adaptation: ms Integer in TS/Swift, Float seconds in Ruby, native Duration in Go/Kotlin
   from_cache  : Boolean    -- whether response was served from ETag cache
-  error       : Error?     -- error if the request failed
+  error       : Error?     -- error if the request failed (Swift omits this field; network failures reported via status_code: 0)
   retry_after : Integer?   -- Retry-After value in seconds if present (Ruby and Go; other SDKs omit this field)
 END
 ```
@@ -757,7 +758,7 @@ END
 
 ### Hook Safety Invariant `[static]`
 
-Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript, Ruby, Kotlin, and Swift wrap hook calls in try/catch (or equivalent). Go does not currently use `recover` for hooks (a known gap).
+Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript, Ruby, and Kotlin wrap hook calls in try/catch (or equivalent). Go does not currently use `recover` for hooks (a known gap). Swift's `safeInvokeHooks` helpers do not wrap in `do/catch` — a throwing hook will abort the request (also a known gap).
 
 ### ChainHooks Combinator
 
