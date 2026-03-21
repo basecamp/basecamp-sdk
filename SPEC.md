@@ -433,10 +433,10 @@ FUNCTION executeWithRetry(request, retry_config) → Response
      i. retry_error = if last_response, construct BasecampError from HTTP status;
         if network error, use last_error.
      j. Invoke hooks.on_retry(RequestInfo{method, url, attempt+1}, attempt+1, retry_error, delay).
-        -- Shipped SDK convention: Go/Ruby/Kotlin pass the failed attempt number in
-        -- RequestInfo.attempt and the next attempt number as the standalone parameter.
-        -- TS passes attempt+1 in both. The standalone parameter is the one consumers
-        -- should rely on for "which retry is about to happen" semantics.
+        -- The standalone `attempt` parameter is always attempt+1 (1-based: 1 = first
+        -- retry, 2 = second retry). RequestInfo.attempt varies by SDK: Go/Ruby/Kotlin
+        -- set it to the failed attempt (attempt+1 minus 1); TS sets it to attempt+1.
+        -- Consumers should use the standalone parameter for retry counting.
      k. Sleep delay ms.
      l. Refresh auth headers (token may have been refreshed during sleep).
 END
@@ -557,7 +557,7 @@ Three response shapes exist across the API:
 
 The variant is determined at code-generation time from the OpenAPI response schema and encoded in the generated service method (via `x-basecamp-pagination` extension or response schema analysis).
 
-**Wrapped response pagination:** For endpoints that return a wrapper object with a paginated array inside (e.g., `personProgress` returns `{person, events: [...]}`), the generated service method paginates the embedded array while preserving the wrapper fields from the first page. The `paginate` algorithm above handles item extraction; the wrapping/unwrapping is a code-generation concern, not a transport concern. See TS `reports.ts` and Go `timeline.go` for reference implementations.
+**Wrapped response pagination:** For endpoints that return a wrapper object with a paginated array inside (e.g., `personProgress` returns `{person, events: [...]}`), the generated service method paginates the embedded array while preserving the wrapper fields from the first page. The `paginate` algorithm above handles item extraction; the wrapping/unwrapping is a code-generation concern, not a transport concern. See `typescript/src/generated/services/reports.ts` and `go/pkg/basecamp/timeline.go` for reference implementations.
 
 ### Same-Origin Validation Algorithm `[conformance]`
 
@@ -758,7 +758,7 @@ END
 
 ### Hook Safety Invariant `[static]`
 
-Hook exceptions must be caught and never propagated to the caller. A failing hook must not break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript, Ruby, and Kotlin wrap hook calls in try/catch (or equivalent). Go does not currently use `recover` for hooks (a known gap). Swift's `safeInvokeHooks` helpers do not wrap in `do/catch` — a throwing hook will abort the request (also a known gap).
+Hook failures must not propagate to the caller or break API operations. Implementations should log caught exceptions to stderr, but the logging mechanism is a language adaptation. Cross-SDK status: TypeScript, Ruby, and Kotlin wrap hook calls in try/catch (or equivalent). Go does not currently use `recover` for hooks (a known gap). Swift hook methods are non-throwing, so `do/catch` does not apply — however, Swift's `safeInvokeHooks` also does not guard against traps/fatalErrors from hook implementations.
 
 ### ChainHooks Combinator
 
@@ -768,8 +768,9 @@ FUNCTION chainHooks(hooks: BasecampHooks[]) → BasecampHooks
   End events (on_operation_end, on_request_end): reverse order (LIFO) is
   recommended (mirrors middleware stacking), but forward order is acceptable.
   Ruby, Go, Swift, and Kotlin use LIFO; TypeScript uses forward order.
-  Each invocation is wrapped in try/catch — a failing hook
-  does not prevent subsequent hooks from running.
+  In languages with exceptions, each invocation is wrapped in try/catch
+  so a failing hook does not prevent subsequent hooks from running.
+  Swift hooks are non-throwing; trap/fatalError protection is not provided.
 END
 ```
 
