@@ -719,7 +719,7 @@ All methods are optional. A no-op default is valid. `on_paginate` is Ruby-only â
 ```
 RECORD OperationInfo
   service       : String     -- e.g., "Todos", "Projects"
-  operation     : String     -- e.g., "List", "Get", "Create"
+  operation     : String     -- full operationId, e.g., "ListProjects", "GetTodo", "CreateProject"
   resource_type : String     -- e.g., "todo", "project"
   is_mutation   : Boolean    -- true for POST, PUT, DELETE
   project_id    : Integer?   -- if operation is project-scoped (Go omits this field)
@@ -868,7 +868,7 @@ Constant-time comparison prevents timing attacks. Never short-circuit on first m
 
 ```
 RECORD WebhookReceiver
-  handlers : Map<GlobPattern, Handler>
+  handlers : Map<GlobPattern, List<Handler>>  -- multiple handlers per pattern; on() appends
   dedup    : Set<String>            -- bounded window (~1000 entries), FIFO eviction, keyed by event ID
     -- Implementations may add a pending set for concurrent-safe dedup (e.g., Go
     -- tracks dedupSeen + dedupPending + dedupOrder). The key type is String
