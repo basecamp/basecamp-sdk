@@ -599,8 +599,8 @@ All API requests must use HTTPS. Exception: localhost addresses are permitted fo
 **Localhost carve-out** `[static]` — the following are recognized as localhost (only `localhost` is conformance-tested; the remaining forms are `[static]` contract):
 - `localhost` (exact) `[conformance]` — all SDKs
 - `127.0.0.1` — all SDKs
-- `::1` — Go, Ruby, TypeScript (Swift requires bracket-wrapped URL form `[::1]`; Kotlin does not recognize either IPv6 form)
-- `[::1]` (bracket-wrapped IPv6) — Go, Ruby, TypeScript, Swift
+- `::1` — Go, Ruby, TypeScript (Swift and Kotlin require bracket-wrapped URL form `http://[::1]:...`; bare `http://::1` does not parse as a valid URL in either language)
+- `[::1]` (bracket-wrapped IPv6) — Go, Ruby, TypeScript, Swift, Kotlin
 - `*.localhost` (any subdomain, per RFC 6761) — Go, Ruby, TypeScript only (Swift and Kotlin do not recognize subdomain patterns)
 
 Client construction with a non-HTTPS, non-localhost base URL must fail with `BasecampError(code: "usage")`. `[conformance]`
@@ -867,8 +867,10 @@ Constant-time comparison prevents timing attacks. Never short-circuit on first m
 ```
 RECORD WebhookReceiver
   handlers : Map<GlobPattern, Handler>
-  dedup    : LRU<String, Boolean>   -- window of 1000 entries, keyed by event ID (payload `id` field)
-    -- Matches shipped Go, Ruby, and TS implementations.
+  dedup    : Set<String>            -- bounded window (~1000 entries), FIFO eviction, keyed by event ID
+    -- Implementations may add a pending set for concurrent-safe dedup (e.g., Go
+    -- tracks dedupSeen + dedupPending + dedupOrder). The key type is String
+    -- (event IDs extracted as strings to avoid precision loss).
   secret   : String
 
   receive(payload, signature) →
