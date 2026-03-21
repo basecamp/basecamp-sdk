@@ -175,14 +175,12 @@ FUNCTION buildURL(base_url, account_id, path) → String
   -- Internal to the HTTP transport layer. Callers (service methods) pass
   -- relative paths; only the transport passes absolute URLs (e.g., pagination
   -- follow-up URLs). This is not a public API surface.
-  1. If path starts with "https://" → return path unchanged.
-     -- Security note: absolute URLs reaching buildURL must already be
-     -- same-origin validated (§8 pagination) or originate from trusted
-     -- generated code. buildURL does not re-validate origin; callers
-     -- must not pass untrusted absolute URLs.
+  1. If path starts with "https://":
+     a. If NOT isSameOrigin(path, base_url) → ⊥ BasecampError(code: "usage", message: "absolute URL must be same-origin as base_url").
+     b. → return path unchanged.
   2. If path starts with "http://":
-     a. If it is a localhost URL (see §9) → return path unchanged. (Absolute localhost URLs from pagination follow-ups are preserved as-is.)
-     b. Else → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS").
+     a. If it is a localhost URL (see §9) AND isSameOrigin(path, base_url) → return path unchanged.
+     b. Else → ⊥ BasecampError(code: "usage", message: "URL must use HTTPS or be same-origin localhost").
   3. If path does not start with "/" → prepend "/".
   4. → base_url + "/" + account_id + path
 END
