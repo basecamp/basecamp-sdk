@@ -17,8 +17,8 @@ import { BasecampError } from "../../src/errors.js";
 const BASE_URL = "https://3.basecampapi.com/12345";
 
 const sampleAssignment = {
-  id: 9007199254741623,
-  app_url: "https://3.basecamp.com/195539477/buckets/2085958504/todos/9007199254741623",
+  id: 1049715914,
+  app_url: "https://3.basecamp.com/195539477/buckets/2085958504/todos/1049715914",
   content: "Program the flux capacitor",
   starts_on: null,
   due_on: "2026-03-15",
@@ -38,11 +38,11 @@ const sampleAssignment = {
   ],
   comments_count: 0,
   has_description: false,
-  priority_recording_id: 9007199254741700,
+  priority_recording_id: 1049715915,
   parent: {
-    id: 9007199254741601,
+    id: 1049715916,
     title: "Development tasks",
-    app_url: "https://3.basecamp.com/195539477/buckets/2085958504/todolists/9007199254741601",
+    app_url: "https://3.basecamp.com/195539477/buckets/2085958504/todolists/1049715916",
   },
   children: [],
 };
@@ -71,7 +71,7 @@ describe("ReportsService", () => {
     const result = await client.reports.assignments();
 
     expect(result.priorities).toHaveLength(1);
-    expect(result.priorities[0]!.priority_recording_id).toBe(9007199254741700);
+    expect(result.priorities[0]!.priority_recording_id).toBe(1049715915);
     expect(result.priorities[0]!.assignees[0]!.avatar_url).toBe(sampleAssignment.assignees[0]!.avatar_url);
     expect(result.non_priorities).toEqual([]);
   });
