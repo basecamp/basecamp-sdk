@@ -5,7 +5,7 @@ description: >
   Compares bc3-api docs and bc3 app code against tracked revisions
   in spec/api-provenance.json, identifies what changed, and optionally
   updates the Smithy spec and regenerates SDKs.
-user-invocable: true
+disable-model-invocation: true
 argument-hint: "[check|sync|update-rev]"
 ---
 
