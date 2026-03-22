@@ -3170,6 +3170,8 @@ export interface components {
             id: number;
             /** Format: password */
             name: string;
+            /** Format: password */
+            avatar_url?: string;
         };
         NotFoundErrorResponseContent: {
             error: string;
@@ -8658,6 +8660,15 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
             /** @description RateLimitError 429 response */
             429: {
                 headers: {
@@ -8712,6 +8723,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -8780,6 +8800,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

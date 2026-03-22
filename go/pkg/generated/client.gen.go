@@ -1200,8 +1200,9 @@ type MyAssignmentParent struct {
 
 // MyAssignmentPerson defines model for MyAssignmentPerson.
 type MyAssignmentPerson struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
+	AvatarUrl string `json:"avatar_url,omitempty"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name"`
 }
 
 // NotFoundErrorResponseContent defines model for NotFoundErrorResponseContent.
@@ -18762,6 +18763,7 @@ type GetAssignmentsResponse struct {
 	JSON200      *GetAssignmentsResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -18788,6 +18790,7 @@ type GetCompletedAssignmentsResponse struct {
 	JSON200      *GetCompletedAssignmentsResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -18815,6 +18818,7 @@ type GetDueAssignmentsResponse struct {
 	JSON400      *BadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -27931,6 +27935,13 @@ func ParseGetAssignmentsResponse(rsp *http.Response) (*GetAssignmentsResponse, e
 		}
 		response.JSON403 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -27984,6 +27995,13 @@ func ParseGetCompletedAssignmentsResponse(rsp *http.Response) (*GetCompletedAssi
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -28045,6 +28063,13 @@ func ParseGetDueAssignmentsResponse(rsp *http.Response) (*GetDueAssignmentsRespo
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent

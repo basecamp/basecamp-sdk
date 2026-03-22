@@ -174,8 +174,9 @@ func (s *ReportsService) OverdueTodos(ctx context.Context) (result *OverdueTodos
 
 // MyAssignmentPerson represents a minimal assignee in the assignments response.
 type MyAssignmentPerson struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 // MyAssignmentBucket represents the project bucket for an assignment.
@@ -463,8 +464,9 @@ func myAssignmentFromGenerated(gm generated.MyAssignment) MyAssignment {
 		m.Assignees = make([]MyAssignmentPerson, 0, len(gm.Assignees))
 		for _, gp := range gm.Assignees {
 			m.Assignees = append(m.Assignees, MyAssignmentPerson{
-				ID:   gp.Id,
-				Name: gp.Name,
+				ID:        gp.Id,
+				Name:      gp.Name,
+				AvatarURL: gp.AvatarUrl,
 			})
 		}
 	}

@@ -33,6 +33,7 @@ const sampleAssignment = {
     {
       id: 1049715913,
       name: "Victor Cooper",
+      avatar_url: "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg",
     },
   ],
   comments_count: 0,
@@ -71,7 +72,22 @@ describe("ReportsService", () => {
 
     expect(result.priorities).toHaveLength(1);
     expect(result.priorities[0]!.priority_recording_id).toBe(9007199254741700);
+    expect(result.priorities[0]!.assignees[0]!.avatar_url).toBe(sampleAssignment.assignees[0]!.avatar_url);
     expect(result.non_priorities).toEqual([]);
+  });
+
+  it("should surface missing-auth assignments responses as not found errors", async () => {
+    server.use(
+      http.get(`${BASE_URL}/my/assignments.json`, () => {
+        return HttpResponse.json({ error: "Not found" }, { status: 404 });
+      })
+    );
+
+    await expect(client.reports.assignments()).rejects.toMatchObject({
+      code: "not_found",
+      httpStatus: 404,
+      message: "Not found",
+    });
   });
 
   it("should return completed assignments", async () => {
@@ -91,6 +107,21 @@ describe("ReportsService", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.completed).toBe(true);
+    expect(result[0]!.assignees[0]!.avatar_url).toBe(sampleAssignment.assignees[0]!.avatar_url);
+  });
+
+  it("should surface missing-auth completed-assignment responses as not found errors", async () => {
+    server.use(
+      http.get(`${BASE_URL}/my/assignments/completed.json`, () => {
+        return HttpResponse.json({ error: "Not found" }, { status: 404 });
+      })
+    );
+
+    await expect(client.reports.completedAssignments()).rejects.toMatchObject({
+      code: "not_found",
+      httpStatus: 404,
+      message: "Not found",
+    });
   });
 
   it("should send scope when fetching due assignments", async () => {
@@ -111,6 +142,7 @@ describe("ReportsService", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]!.due_on).toBe("2026-03-22");
+    expect(result[0]!.assignees[0]!.avatar_url).toBe(sampleAssignment.assignees[0]!.avatar_url);
   });
 
   it("should surface invalid due-assignment scope errors as validation errors", async () => {

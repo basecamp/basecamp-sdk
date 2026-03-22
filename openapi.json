@@ -7354,6 +7354,16 @@
               }
             }
           },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
           "429": {
             "description": "RateLimitError 429 response",
             "content": {
@@ -7433,6 +7443,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
                 }
               }
             }
@@ -7535,6 +7555,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
                 }
               }
             }
@@ -22222,6 +22252,14 @@
             "x-go-type-skip-optional-pointer": false
           },
           "name": {
+            "type": "string",
+            "format": "password",
+            "x-basecamp-sensitive": {
+              "category": "pii",
+              "redact": true
+            }
+          },
+          "avatar_url": {
             "type": "string",
             "format": "password",
             "x-basecamp-sensitive": {

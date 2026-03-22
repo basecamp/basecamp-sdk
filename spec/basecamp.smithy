@@ -7103,7 +7103,7 @@ structure GetUpcomingScheduleOutput {
 operation GetAssignments {
   input: GetAssignmentsInput
   output: GetAssignmentsOutput
-  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure GetAssignmentsInput {
@@ -7124,7 +7124,7 @@ structure GetAssignmentsOutput {
 operation GetCompletedAssignments {
   input: GetCompletedAssignmentsInput
   output: GetCompletedAssignmentsOutput
-  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure GetCompletedAssignmentsInput {
@@ -7144,7 +7144,7 @@ structure GetCompletedAssignmentsOutput {
 operation GetDueAssignments {
   input: GetDueAssignmentsInput
   output: GetDueAssignmentsOutput
-  errors: [BadRequestError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure GetDueAssignmentsInput {
@@ -7264,6 +7264,8 @@ structure MyAssignmentPerson {
   @required
   @basecampSensitive(category: "pii", redact: true)
   name: PersonName
+  @basecampSensitive(category: "pii", redact: true)
+  avatar_url: AvatarUrl
 }
 
 // ===== Search Shapes =====

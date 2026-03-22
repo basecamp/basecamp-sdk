@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-21T14:54:08Z
+# Generated: 2026-03-22T16:57:31Z
 
 require "json"
 require "time"
@@ -1709,7 +1709,7 @@ module Basecamp
     # MyAssignmentPerson
     class MyAssignmentPerson
       include TypeHelpers
-      attr_accessor :id, :name
+      attr_accessor :id, :name, :avatar_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -1719,12 +1719,14 @@ module Basecamp
       def initialize(data = {})
         @id = parse_integer(data["id"])
         @name = data["name"]
+        @avatar_url = data["avatar_url"]
       end
 
       def to_h
         {
           "id" => @id,
           "name" => @name,
+          "avatar_url" => @avatar_url,
         }.compact
       end
 

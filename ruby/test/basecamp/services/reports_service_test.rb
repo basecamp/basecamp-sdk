@@ -32,7 +32,7 @@ class ReportsServiceTest < Minitest::Test
           "completed" => false,
           "type" => "todo",
           "assignees" => [
-            { "id" => 1049715913, "name" => "Victor Cooper" }
+            { "id" => 1049715913, "name" => "Victor Cooper", "avatar_url" => "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }
           ],
           "comments_count" => 0,
           "has_description" => false,
@@ -54,7 +54,18 @@ class ReportsServiceTest < Minitest::Test
     assert_kind_of Hash, result
     assert_equal 1, result["priorities"].length
     assert_equal 9007199254741700, result["priorities"][0]["priority_recording_id"]
+    assert_equal "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg", result["priorities"][0]["assignees"][0]["avatar_url"]
     assert_equal [], result["non_priorities"]
+  end
+
+  def test_assignments_missing_auth_surfaces_not_found
+    stub_get("/12345/my/assignments.json", status: 404, response_body: { "error" => "Not found" })
+
+    error = assert_raises(Basecamp::NotFoundError) do
+      @account.reports.assignments
+    end
+
+    assert_includes error.message, "Not found"
   end
 
   def test_completed_assignments
@@ -72,7 +83,7 @@ class ReportsServiceTest < Minitest::Test
         "completed" => true,
         "type" => "todo",
         "assignees" => [
-          { "id" => 1049715913, "name" => "Victor Cooper" }
+          { "id" => 1049715913, "name" => "Victor Cooper", "avatar_url" => "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }
         ],
         "comments_count" => 0,
         "has_description" => false,
@@ -90,6 +101,17 @@ class ReportsServiceTest < Minitest::Test
 
     assert_kind_of Array, result
     assert_equal true, result[0]["completed"]
+    assert_equal "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg", result[0]["assignees"][0]["avatar_url"]
+  end
+
+  def test_completed_assignments_missing_auth_surfaces_not_found
+    stub_get("/12345/my/assignments/completed.json", status: 404, response_body: { "error" => "Not found" })
+
+    error = assert_raises(Basecamp::NotFoundError) do
+      @account.reports.completed_assignments
+    end
+
+    assert_includes error.message, "Not found"
   end
 
   def test_due_assignments
@@ -107,7 +129,7 @@ class ReportsServiceTest < Minitest::Test
         "completed" => false,
         "type" => "todo",
         "assignees" => [
-          { "id" => 1049715913, "name" => "Victor Cooper" }
+          { "id" => 1049715913, "name" => "Victor Cooper", "avatar_url" => "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }
         ],
         "comments_count" => 0,
         "has_description" => false,
@@ -128,6 +150,7 @@ class ReportsServiceTest < Minitest::Test
 
     assert_kind_of Array, result
     assert_equal "2026-03-22", result[0]["due_on"]
+    assert_equal "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg", result[0]["assignees"][0]["avatar_url"]
   end
 
   def test_due_assignments_invalid_scope

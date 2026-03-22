@@ -246,7 +246,7 @@ func TestReportsService_Assignments(t *testing.T) {
 				},
 				"completed": false,
 				"type": "todo",
-				"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+				"assignees": [{ "id": 1049715913, "name": "Victor Cooper", "avatar_url": "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }],
 				"comments_count": 0,
 				"has_description": false,
 				"priority_recording_id": 9007199254741700,
@@ -266,7 +266,7 @@ func TestReportsService_Assignments(t *testing.T) {
 					},
 					"completed": false,
 					"type": "card_step",
-					"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+					"assignees": [{ "id": 1049715913, "name": "Victor Cooper", "avatar_url": "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }],
 					"comments_count": 1,
 					"has_description": true,
 					"parent": {
@@ -302,11 +302,35 @@ func TestReportsService_Assignments(t *testing.T) {
 	if item.Bucket == nil || item.Bucket.AppURL == "" {
 		t.Fatalf("expected bucket app_url to be present, got %+v", item.Bucket)
 	}
+	if len(item.Assignees) != 1 || item.Assignees[0].AvatarURL == "" {
+		t.Fatalf("expected assignee avatar_url to round-trip, got %+v", item.Assignees)
+	}
 	if len(item.Children) != 1 {
 		t.Fatalf("expected 1 child assignment, got %d", len(item.Children))
 	}
 	if item.Children[0].Content != "Wire up cache fix" {
 		t.Errorf("expected child content to round-trip, got %q", item.Children[0].Content)
+	}
+}
+
+func TestReportsService_AssignmentsNotFound(t *testing.T) {
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Not found"}`))
+	})
+
+	_, err := svc.Assignments(context.Background())
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+
+	apiErr := AsError(err)
+	if apiErr.HTTPStatus != http.StatusNotFound {
+		t.Fatalf("expected HTTP status 404, got %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Code != CodeNotFound {
+		t.Fatalf("expected CodeNotFound for 404 response, got %q", apiErr.Code)
 	}
 }
 
@@ -330,7 +354,7 @@ func TestReportsService_CompletedAssignments(t *testing.T) {
 				},
 				"completed": true,
 				"type": "todo",
-				"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+				"assignees": [{ "id": 1049715913, "name": "Victor Cooper", "avatar_url": "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }],
 				"comments_count": 0,
 				"has_description": false,
 				"parent": {
@@ -352,6 +376,30 @@ func TestReportsService_CompletedAssignments(t *testing.T) {
 	}
 	if !result[0].Completed {
 		t.Error("expected completed assignment to be marked completed")
+	}
+	if len(result[0].Assignees) != 1 || result[0].Assignees[0].AvatarURL == "" {
+		t.Fatalf("expected assignee avatar_url to round-trip, got %+v", result[0].Assignees)
+	}
+}
+
+func TestReportsService_CompletedAssignmentsNotFound(t *testing.T) {
+	svc := testReportsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Not found"}`))
+	})
+
+	_, err := svc.CompletedAssignments(context.Background())
+	if err == nil {
+		t.Fatal("expected error for 404 response")
+	}
+
+	apiErr := AsError(err)
+	if apiErr.HTTPStatus != http.StatusNotFound {
+		t.Fatalf("expected HTTP status 404, got %d", apiErr.HTTPStatus)
+	}
+	if apiErr.Code != CodeNotFound {
+		t.Fatalf("expected CodeNotFound for 404 response, got %q", apiErr.Code)
 	}
 }
 
@@ -378,7 +426,7 @@ func TestReportsService_DueAssignments(t *testing.T) {
 				},
 				"completed": false,
 				"type": "todo",
-				"assignees": [{ "id": 1049715913, "name": "Victor Cooper" }],
+				"assignees": [{ "id": 1049715913, "name": "Victor Cooper", "avatar_url": "https://bc3-production-assets-cdn.basecamp-static.com/people/1049715913/avatar.jpg" }],
 				"comments_count": 0,
 				"has_description": false,
 				"parent": {
@@ -400,6 +448,9 @@ func TestReportsService_DueAssignments(t *testing.T) {
 	}
 	if result[0].DueOn != "2026-03-22" {
 		t.Errorf("expected due_on to round-trip, got %q", result[0].DueOn)
+	}
+	if len(result[0].Assignees) != 1 || result[0].Assignees[0].AvatarURL == "" {
+		t.Fatalf("expected assignee avatar_url to round-trip, got %+v", result[0].Assignees)
 	}
 }
 
