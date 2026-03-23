@@ -1,0 +1,27 @@
+ruby/scripts/generate-services.rb
+  4cf1fc6b713f1b59 16,300-311
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  4cf1fc6b713f1b59 75-80,140-156
+typescript/scripts/generate-services.ts
+  4cf1fc6b713f1b59 1566,1569-1576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "5311c58d7053efe840cef174bbf01468c77183f8",
+  "prompts": {
+    "4cf1fc6b713f1b59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8596334f-ec42-48dc-a429-90e4773ac685",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 202,
+      "total_deletions": 133,
+      "accepted_lines": 157,
+      "overriden_lines": 0
+    }
+  }
+}
