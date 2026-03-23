@@ -425,7 +425,7 @@ swift-clean:
 ifdef HAS_SWIFT
 	@$(MAKE) -C swift clean
 else
-	@echo "SKIP: swift-clean (swift not found)"
+	rm -rf swift/.build
 endif
 
 #------------------------------------------------------------------------------
