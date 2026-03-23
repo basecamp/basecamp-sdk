@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-23T20:10:34Z",
+  "generated": "2026-03-23T20:54:54Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -23,6 +23,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "RemoveAccountLogo": {
@@ -34,6 +37,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "UpdateAccountName": {
@@ -45,6 +51,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "CreateAttachment": {
@@ -814,6 +823,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "DestroyGaugeNeedle": {
@@ -825,6 +837,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetForward": {
@@ -1069,6 +1084,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetMyProfile": {
@@ -1091,6 +1109,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "GetQuestionReminders": {
@@ -1128,6 +1149,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "ListPeople": {
@@ -1188,6 +1212,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "ListProjects": {
@@ -1281,6 +1308,9 @@
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "ListGaugeNeedles": {

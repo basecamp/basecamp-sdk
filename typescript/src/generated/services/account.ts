@@ -14,15 +14,6 @@ import { Errors } from "../../errors.js";
 
 
 /**
- * Request parameters for updateAccountLogo.
- */
-export interface UpdateAccountLogoAccountRequest {
-  /** The logo image file sent as multipart/form-data.
-SDK implementations should send this as a multipart upload with field name "logo". */
-  logo: string;
-}
-
-/**
  * Request parameters for updateAccountName.
  */
 export interface UpdateAccountNameAccountRequest {
@@ -66,19 +57,17 @@ export class AccountService extends BaseService {
 
   /**
    * Upload or replace the account logo via multipart form upload.
-   * @param req - Account_logo update parameters
+   * @param data - Binary file data to upload
+   * @param contentType - MIME type of the file (e.g., "image/png", "application/pdf")
    * @returns void
    * @throws {BasecampError} If the resource is not found or fields are invalid
    *
    * @example
    * ```ts
-   * await client.account.updateAccountLogo({ logo: "example" });
+   * await client.account.updateAccountLogo(fileData, "image/png");
    * ```
    */
-  async updateAccountLogo(req: UpdateAccountLogoAccountRequest): Promise<void> {
-    if (!req.logo) {
-      throw Errors.validation("Logo is required");
-    }
+  async updateAccountLogo(data: ArrayBuffer | Uint8Array | string, contentType: string): Promise<void> {
     await this.request(
       {
         service: "Account",
@@ -88,9 +77,13 @@ export class AccountService extends BaseService {
       },
       () =>
         this.client.PUT("/account/logo.json", {
-          body: {
-            logo: req.logo,
+          params: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            header: { "Content-Type": contentType } as any,
           },
+          body: data as unknown as string,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          bodySerializer: (body: unknown) => body as any,
         })
     );
   }

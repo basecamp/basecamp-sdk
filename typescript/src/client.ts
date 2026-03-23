@@ -64,6 +64,10 @@ import { TimesheetsService } from "./generated/services/timesheets.js";
 import { TimelineService } from "./generated/services/timeline.js";
 import { ClientVisibilityService } from "./generated/services/client-visibility.js";
 import { BoostsService } from "./generated/services/boosts.js";
+import { AccountService } from "./generated/services/account.js";
+import { GaugesService } from "./generated/services/gauges.js";
+import { MyAssignmentsService } from "./generated/services/my-assignments.js";
+import { MyNotificationsService } from "./generated/services/my-notifications.js";
 
 // ============================================================================
 // Services - Hand-written (not spec-driven, e.g., OAuth flows)
@@ -175,6 +179,14 @@ export interface BasecampClient extends RawClient {
   readonly clientVisibility: ClientVisibilityService;
   /** Boosts service - manage recording boosts */
   readonly boosts: BoostsService;
+  /** Account service - get and update account settings */
+  readonly account: AccountService;
+  /** Gauges service - manage project progress gauges */
+  readonly gauges: GaugesService;
+  /** My assignments service - get current user's assignments */
+  readonly myAssignments: MyAssignmentsService;
+  /** My notifications service - get and manage notifications */
+  readonly myNotifications: MyNotificationsService;
   /** Download file content from any API-routable download URL */
   downloadURL(rawURL: string): Promise<DownloadResult>;
 }
@@ -368,6 +380,10 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("timeline", () => new TimelineService(client, hooks, fetchPage, maxPages));
   defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage, maxPages));
   defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
+  defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages));
+  defineService("gauges", () => new GaugesService(client, hooks, fetchPage, maxPages));
+  defineService("myAssignments", () => new MyAssignmentsService(client, hooks, fetchPage, maxPages));
+  defineService("myNotifications", () => new MyNotificationsService(client, hooks, fetchPage, maxPages));
 
   // Wire downloadURL — raw fetch, not openapi-fetch (like fetchPage)
   const downloadURLFn = createDownloadURL({

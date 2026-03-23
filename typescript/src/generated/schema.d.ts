@@ -4183,13 +4183,13 @@ export interface components {
             error: string;
             message?: string;
         };
-        UpdateAccountLogoRequestContent: {
-            /**
-             * @description The logo image file sent as multipart/form-data.
-             *     SDK implementations should send this as a multipart upload with field name "logo".
-             */
-            logo: string;
-        };
+        /**
+         * @description The logo image file as binary data.
+         *     SDK implementations must send this as a multipart/form-data upload
+         *     with field name "logo" (not as a JSON body).
+         *     Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Max 5 MB.
+         */
+        UpdateAccountLogoInputPayload: string;
         UpdateAccountNameRequestContent: {
             name: string;
         };
@@ -4567,7 +4567,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateAccountLogoRequestContent"];
+                "application/octet-stream": components["schemas"]["UpdateAccountLogoInputPayload"];
             };
         };
         responses: {

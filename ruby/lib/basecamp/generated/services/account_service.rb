@@ -16,12 +16,12 @@ module Basecamp
       end
 
       # Upload or replace the account logo via multipart form upload.
-      # @param logo [String] The logo image file sent as multipart/form-data.
-      #   SDK implementations should send this as a multipart upload with field name "logo".
+      # @param data [String] Binary file data to upload
+      # @param content_type [String] MIME type of the file (e.g., "application/pdf", "image/png")
       # @return [void]
-      def update_account_logo(logo:)
+      def update_account_logo(data:, content_type:)
         with_operation(service: "account", operation: "update_account_logo", is_mutation: true) do
-          http_put("/account/logo.json", body: compact_params(logo: logo))
+          http_put("/account/logo.json")
           nil
         end
       end

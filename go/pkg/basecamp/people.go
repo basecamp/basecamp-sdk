@@ -517,6 +517,268 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 	return accessResult, nil
 }
 
+// UpdateMyProfileRequest specifies the parameters for updating the current user's profile.
+type UpdateMyProfileRequest struct {
+	Name         string `json:"name,omitempty"`
+	EmailAddress string `json:"email_address,omitempty"`
+	Title        string `json:"title,omitempty"`
+	Bio          string `json:"bio,omitempty"`
+	Location     string `json:"location,omitempty"`
+	TimeZoneName string `json:"time_zone_name,omitempty"`
+	TimeFormat   string `json:"time_format,omitempty"`
+	FirstWeekDay int32  `json:"first_week_day,omitempty"`
+}
+
+// Preferences represents user preferences.
+type Preferences struct {
+	FirstWeekDay string `json:"first_week_day,omitempty"`
+	TimeFormat   string `json:"time_format,omitempty"`
+	TimeZoneName string `json:"time_zone_name,omitempty"`
+	AppURL       string `json:"app_url,omitempty"`
+	URL          string `json:"url,omitempty"`
+}
+
+// UpdateMyPreferencesRequest specifies the parameters for updating user preferences.
+type UpdateMyPreferencesRequest struct {
+	FirstWeekDay string `json:"first_week_day,omitempty"`
+	TimeFormat   string `json:"time_format,omitempty"`
+	TimeZoneName string `json:"time_zone_name,omitempty"`
+}
+
+// OutOfOffice represents out-of-office status for a person.
+type OutOfOffice struct {
+	Enabled   bool              `json:"enabled,omitempty"`
+	StartDate string            `json:"start_date,omitempty"`
+	EndDate   string            `json:"end_date,omitempty"`
+	Ongoing   bool              `json:"ongoing,omitempty"`
+	Person    OutOfOfficePerson `json:"person,omitempty"`
+}
+
+// OutOfOfficePerson represents the person associated with an out-of-office status.
+type OutOfOfficePerson struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name,omitempty"`
+}
+
+// EnableOutOfOfficeRequest specifies the parameters for enabling out-of-office.
+type EnableOutOfOfficeRequest struct {
+	// StartDate is the start date in ISO 8601 format (YYYY-MM-DD), required.
+	StartDate string `json:"start_date"`
+	// EndDate is the end date in ISO 8601 format (YYYY-MM-DD), required.
+	EndDate string `json:"end_date"`
+}
+
+// UpdateMyProfile updates the current user's profile.
+func (s *PeopleService) UpdateMyProfile(ctx context.Context, req *UpdateMyProfileRequest) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateMyProfile",
+		ResourceType: "person", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("update profile request is required")
+		return err
+	}
+
+	body := generated.UpdateMyProfileJSONRequestBody{
+		Name:         req.Name,
+		EmailAddress: req.EmailAddress,
+		Title:        req.Title,
+		Bio:          req.Bio,
+		Location:     req.Location,
+		TimeZoneName: req.TimeZoneName,
+		TimeFormat:   req.TimeFormat,
+		FirstWeekDay: req.FirstWeekDay,
+	}
+
+	resp, err := s.client.parent.gen.UpdateMyProfileWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// GetMyPreferences returns the current user's preferences.
+func (s *PeopleService) GetMyPreferences(ctx context.Context) (result *Preferences, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "GetMyPreferences",
+		ResourceType: "preferences", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetMyPreferencesWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	var prefs Preferences
+	if err = json.Unmarshal(resp.Body, &prefs); err != nil {
+		return nil, fmt.Errorf("failed to parse preferences: %w", err)
+	}
+
+	return &prefs, nil
+}
+
+// UpdateMyPreferences updates the current user's preferences.
+func (s *PeopleService) UpdateMyPreferences(ctx context.Context, req *UpdateMyPreferencesRequest) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateMyPreferences",
+		ResourceType: "preferences", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("update preferences request is required")
+		return err
+	}
+
+	body := generated.UpdateMyPreferencesJSONRequestBody{
+		Person: generated.PreferencesPayload{
+			FirstWeekDay: req.FirstWeekDay,
+			TimeFormat:   req.TimeFormat,
+			TimeZoneName: req.TimeZoneName,
+		},
+	}
+
+	resp, err := s.client.parent.gen.UpdateMyPreferencesWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// GetOutOfOffice returns the out-of-office status for a person.
+func (s *PeopleService) GetOutOfOffice(ctx context.Context, personID int64) (result *OutOfOffice, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "GetOutOfOffice",
+		ResourceType: "out_of_office", IsMutation: false,
+		ResourceID: personID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetOutOfOfficeWithResponse(ctx, s.client.accountID, personID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	var ooo OutOfOffice
+	if err = json.Unmarshal(resp.Body, &ooo); err != nil {
+		return nil, fmt.Errorf("failed to parse out of office: %w", err)
+	}
+
+	return &ooo, nil
+}
+
+// EnableOutOfOffice enables out-of-office for a person.
+func (s *PeopleService) EnableOutOfOffice(ctx context.Context, personID int64, req *EnableOutOfOfficeRequest) (result *OutOfOffice, err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "EnableOutOfOffice",
+		ResourceType: "out_of_office", IsMutation: true,
+		ResourceID: personID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("enable out of office request is required")
+		return nil, err
+	}
+	if req.StartDate == "" {
+		err = ErrUsage("start_date is required")
+		return nil, err
+	}
+	if req.EndDate == "" {
+		err = ErrUsage("end_date is required")
+		return nil, err
+	}
+
+	body := generated.EnableOutOfOfficeJSONRequestBody{
+		OutOfOffice: generated.OutOfOfficePayload{
+			StartDate: req.StartDate,
+			EndDate:   req.EndDate,
+		},
+	}
+
+	resp, err := s.client.parent.gen.EnableOutOfOfficeWithResponse(ctx, s.client.accountID, personID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	var ooo OutOfOffice
+	if err = json.Unmarshal(resp.Body, &ooo); err != nil {
+		return nil, fmt.Errorf("failed to parse out of office: %w", err)
+	}
+
+	return &ooo, nil
+}
+
+// DisableOutOfOffice disables out-of-office for a person.
+func (s *PeopleService) DisableOutOfOffice(ctx context.Context, personID int64) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "DisableOutOfOffice",
+		ResourceType: "out_of_office", IsMutation: true,
+		ResourceID: personID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.DisableOutOfOfficeWithResponse(ctx, s.client.accountID, personID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // personFromGenerated converts a generated Person to our clean Person type.
 func personFromGenerated(gp generated.Person) Person {
 	p := Person{

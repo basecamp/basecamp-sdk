@@ -103,6 +103,10 @@ type AccountClient struct {
 	clientReplies         *ClientRepliesService
 	timeline              *TimelineService
 	reports               *ReportsService
+	account               *AccountService
+	gauges                *GaugesService
+	myAssignments         *MyAssignmentsService
+	myNotifications       *MyNotificationsService
 }
 
 // Response wraps an API response.
@@ -1277,4 +1281,44 @@ func (ac *AccountClient) Reports() *ReportsService {
 		ac.reports = NewReportsService(ac)
 	}
 	return ac.reports
+}
+
+// Account returns the AccountService for account operations.
+func (ac *AccountClient) Account() *AccountService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.account == nil {
+		ac.account = NewAccountService(ac)
+	}
+	return ac.account
+}
+
+// Gauges returns the GaugesService for gauge operations.
+func (ac *AccountClient) Gauges() *GaugesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.gauges == nil {
+		ac.gauges = NewGaugesService(ac)
+	}
+	return ac.gauges
+}
+
+// MyAssignments returns the MyAssignmentsService for assignment operations.
+func (ac *AccountClient) MyAssignments() *MyAssignmentsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.myAssignments == nil {
+		ac.myAssignments = NewMyAssignmentsService(ac)
+	}
+	return ac.myAssignments
+}
+
+// MyNotifications returns the MyNotificationsService for notification operations.
+func (ac *AccountClient) MyNotifications() *MyNotificationsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.myNotifications == nil {
+		ac.myNotifications = NewMyNotificationsService(ac)
+	}
+	return ac.myNotifications
 }

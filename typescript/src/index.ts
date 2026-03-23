@@ -397,6 +397,26 @@ export {
   type CreateForEventBoostRequest,
 } from "./generated/services/boosts.js";
 
+// Account service - generated
+export {
+  AccountService,
+} from "./generated/services/account.js";
+
+// Gauges service - generated
+export {
+  GaugesService,
+} from "./generated/services/gauges.js";
+
+// My Assignments service - generated
+export {
+  MyAssignmentsService,
+} from "./generated/services/my-assignments.js";
+
+// My Notifications service - generated
+export {
+  MyNotificationsService,
+} from "./generated/services/my-notifications.js";
+
 // OpenTelemetry hooks
 export {
   otelHooks,

@@ -505,6 +505,26 @@ module Basecamp
       service(:boosts) { Services::BoostsService.new(self) }
     end
 
+    # @return [Services::AccountService]
+    def account
+      service(:account) { Services::AccountService.new(self) }
+    end
+
+    # @return [Services::GaugesService]
+    def gauges
+      service(:gauges) { Services::GaugesService.new(self) }
+    end
+
+    # @return [Services::MyAssignmentsService]
+    def my_assignments
+      service(:my_assignments) { Services::MyAssignmentsService.new(self) }
+    end
+
+    # @return [Services::MyNotificationsService]
+    def my_notifications
+      service(:my_notifications) { Services::MyNotificationsService.new(self) }
+    end
+
     # @!endgroup
 
     private

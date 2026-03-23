@@ -128,6 +128,9 @@
         "tags": [
           "Account"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -143,9 +146,9 @@
         "operationId": "UpdateAccountLogo",
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/octet-stream": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateAccountLogoRequestContent"
+                "$ref": "#/components/schemas/UpdateAccountLogoInputPayload"
               }
             }
           },
@@ -210,6 +213,9 @@
         "tags": [
           "Account"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -301,6 +307,9 @@
         "tags": [
           "Account"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -5590,6 +5599,9 @@
         "tags": [
           "Gauges"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -5777,6 +5789,9 @@
         "tags": [
           "Gauges"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -7461,6 +7476,9 @@
         "tags": [
           "People"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -7613,6 +7631,9 @@
         "tags": [
           "People"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -7831,6 +7852,9 @@
         "tags": [
           "MyNotifications"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -8062,6 +8086,9 @@
         "tags": [
           "People"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -8912,6 +8939,9 @@
         "tags": [
           "Gauges"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -24437,18 +24467,10 @@
           "error"
         ]
       },
-      "UpdateAccountLogoRequestContent": {
-        "type": "object",
-        "properties": {
-          "logo": {
-            "type": "string",
-            "description": "The logo image file sent as multipart/form-data.\nSDK implementations should send this as a multipart upload with field name \"logo\".",
-            "contentEncoding": "byte"
-          }
-        },
-        "required": [
-          "logo"
-        ]
+      "UpdateAccountLogoInputPayload": {
+        "type": "string",
+        "description": "The logo image file as binary data.\nSDK implementations must send this as a multipart/form-data upload\nwith field name \"logo\" (not as a JSON body).\nAccepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Max 5 MB.",
+        "contentEncoding": "byte"
       },
       "UpdateAccountNameRequestContent": {
         "type": "object",

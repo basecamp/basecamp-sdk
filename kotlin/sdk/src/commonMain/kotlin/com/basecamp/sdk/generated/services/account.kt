@@ -33,9 +33,10 @@ class AccountService(client: AccountClient) : BaseService(client) {
 
     /**
      * Upload or replace the account logo via multipart form upload.
-     * @param body Request body
+     * @param data Binary file data to upload
+     * @param contentType MIME type of the file
      */
-    suspend fun updateAccountLogo(body: UpdateAccountLogoBody): Unit {
+    suspend fun updateAccountLogo(data: ByteArray, contentType: String): Unit {
         val info = OperationInfo(
             service = "Account",
             operation = "UpdateAccountLogo",
@@ -45,9 +46,7 @@ class AccountService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         request(info, {
-            httpPut("/account/logo.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("logo", kotlinx.serialization.json.JsonPrimitive(body.logo))
-            }), operationName = info.operation)
+            httpPut("/account/logo.json", operationName = info.operation)
         }) { Unit }
     }
 

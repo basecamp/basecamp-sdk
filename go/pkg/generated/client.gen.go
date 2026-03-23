@@ -2074,12 +2074,11 @@ type UnauthorizedErrorResponseContent struct {
 	Message string `json:"message,omitempty"`
 }
 
-// UpdateAccountLogoRequestContent defines model for UpdateAccountLogoRequestContent.
-type UpdateAccountLogoRequestContent struct {
-	// Logo The logo image file sent as multipart/form-data.
-	// SDK implementations should send this as a multipart upload with field name "logo".
-	Logo string `json:"logo"`
-}
+// UpdateAccountLogoInputPayload The logo image file as binary data.
+// SDK implementations must send this as a multipart/form-data upload
+// with field name "logo" (not as a JSON body).
+// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Max 5 MB.
+type UpdateAccountLogoInputPayload = string
 
 // UpdateAccountNameRequestContent defines model for UpdateAccountNameRequestContent.
 type UpdateAccountNameRequestContent struct {
@@ -2681,9 +2680,6 @@ type ListTodolistsParams struct {
 	Status string `form:"status,omitempty" json:"status,omitempty"`
 }
 
-// UpdateAccountLogoJSONRequestBody defines body for UpdateAccountLogo for application/json ContentType.
-type UpdateAccountLogoJSONRequestBody = UpdateAccountLogoRequestContent
-
 // UpdateAccountNameJSONRequestBody defines body for UpdateAccountName for application/json ContentType.
 type UpdateAccountNameJSONRequestBody = UpdateAccountNameRequestContent
 
@@ -3192,8 +3188,6 @@ type ClientInterface interface {
 
 	// UpdateAccountLogoWithBody request with any body
 	UpdateAccountLogoWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateAccountLogo(ctx context.Context, accountId string, body UpdateAccountLogoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateAccountNameWithBody request with any body
 	UpdateAccountNameWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3946,79 +3940,41 @@ func (c *Client) GetAccount(ctx context.Context, accountId string, reqEditors ..
 
 }
 
-// RemoveAccountLogo executes the RemoveAccountLogo operation.
+// RemoveAccountLogo is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) RemoveAccountLogo(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewRemoveAccountLogoRequest(c.Server, accountId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRemoveAccountLogoRequest(c.Server, accountId)
+	}, true, "RemoveAccountLogo", reqEditors...)
 
 }
 
-// UpdateAccountLogoWithBody executes the UpdateAccountLogo operation.
+// UpdateAccountLogoWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) UpdateAccountLogoWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateAccountLogoRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateAccountLogoRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateAccountLogo", reqEditors...)
 
 }
 
-func (c *Client) UpdateAccountLogo(ctx context.Context, accountId string, body UpdateAccountLogoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewUpdateAccountLogoRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// UpdateAccountNameWithBody executes the UpdateAccountName operation.
+// UpdateAccountNameWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) UpdateAccountNameWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateAccountNameRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateAccountNameRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateAccountName", reqEditors...)
 
 }
 
 func (c *Client) UpdateAccountName(ctx context.Context, accountId string, body UpdateAccountNameJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateAccountNameRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateAccountNameRequest(c.Server, accountId, body)
+	}, true, "UpdateAccountName", reqEditors...)
 
 }
 
@@ -4920,19 +4876,13 @@ func (c *Client) UpdateDocument(ctx context.Context, accountId string, documentI
 
 }
 
-// DestroyGaugeNeedle executes the DestroyGaugeNeedle operation.
+// DestroyGaugeNeedle is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) DestroyGaugeNeedle(ctx context.Context, accountId string, needleId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewDestroyGaugeNeedleRequest(c.Server, accountId, needleId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDestroyGaugeNeedleRequest(c.Server, accountId, needleId)
+	}, true, "DestroyGaugeNeedle", reqEditors...)
 
 }
 
@@ -4946,33 +4896,21 @@ func (c *Client) GetGaugeNeedle(ctx context.Context, accountId string, needleId 
 
 }
 
-// UpdateGaugeNeedleWithBody executes the UpdateGaugeNeedle operation.
+// UpdateGaugeNeedleWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) UpdateGaugeNeedleWithBody(ctx context.Context, accountId string, needleId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateGaugeNeedleRequestWithBody(c.Server, accountId, needleId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateGaugeNeedleRequestWithBody(c.Server, accountId, needleId, contentType, body)
+	}, true, "UpdateGaugeNeedle", reqEditors...)
 
 }
 
 func (c *Client) UpdateGaugeNeedle(ctx context.Context, accountId string, needleId int64, body UpdateGaugeNeedleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateGaugeNeedleRequest(c.Server, accountId, needleId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateGaugeNeedleRequest(c.Server, accountId, needleId, body)
+	}, true, "UpdateGaugeNeedle", reqEditors...)
 
 }
 
@@ -5242,33 +5180,21 @@ func (c *Client) GetMyPreferences(ctx context.Context, accountId string, reqEdit
 
 }
 
-// UpdateMyPreferencesWithBody executes the UpdateMyPreferences operation.
+// UpdateMyPreferencesWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) UpdateMyPreferencesWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateMyPreferencesRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyPreferencesRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateMyPreferences", reqEditors...)
 
 }
 
 func (c *Client) UpdateMyPreferences(ctx context.Context, accountId string, body UpdateMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateMyPreferencesRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyPreferencesRequest(c.Server, accountId, body)
+	}, true, "UpdateMyPreferences", reqEditors...)
 
 }
 
@@ -5282,33 +5208,21 @@ func (c *Client) GetMyProfile(ctx context.Context, accountId string, reqEditors 
 
 }
 
-// UpdateMyProfileWithBody executes the UpdateMyProfile operation.
+// UpdateMyProfileWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) UpdateMyProfileWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateMyProfileRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyProfileRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateMyProfile", reqEditors...)
 
 }
 
 func (c *Client) UpdateMyProfile(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewUpdateMyProfileRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyProfileRequest(c.Server, accountId, body)
+	}, true, "UpdateMyProfile", reqEditors...)
 
 }
 
@@ -5332,33 +5246,21 @@ func (c *Client) GetMyNotifications(ctx context.Context, accountId string, param
 
 }
 
-// MarkAsReadWithBody executes the MarkAsRead operation.
+// MarkAsReadWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) MarkAsReadWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewMarkAsReadRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewMarkAsReadRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "MarkAsRead", reqEditors...)
 
 }
 
 func (c *Client) MarkAsRead(ctx context.Context, accountId string, body MarkAsReadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewMarkAsReadRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewMarkAsReadRequest(c.Server, accountId, body)
+	}, true, "MarkAsRead", reqEditors...)
 
 }
 
@@ -5382,19 +5284,13 @@ func (c *Client) GetPerson(ctx context.Context, accountId string, personId int64
 
 }
 
-// DisableOutOfOffice executes the DisableOutOfOffice operation.
+// DisableOutOfOffice is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) DisableOutOfOffice(ctx context.Context, accountId string, personId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewDisableOutOfOfficeRequest(c.Server, accountId, personId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDisableOutOfOfficeRequest(c.Server, accountId, personId)
+	}, true, "DisableOutOfOffice", reqEditors...)
 
 }
 
@@ -5526,33 +5422,21 @@ func (c *Client) UpdateProject(ctx context.Context, accountId string, projectId 
 
 }
 
-// ToggleGaugeWithBody executes the ToggleGauge operation.
+// ToggleGaugeWithBody is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ToggleGaugeWithBody(ctx context.Context, accountId string, projectId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewToggleGaugeRequestWithBody(c.Server, accountId, projectId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewToggleGaugeRequestWithBody(c.Server, accountId, projectId, contentType, body)
+	}, true, "ToggleGauge", reqEditors...)
 
 }
 
 func (c *Client) ToggleGauge(ctx context.Context, accountId string, projectId int64, body ToggleGaugeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewToggleGaugeRequest(c.Server, accountId, projectId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewToggleGaugeRequest(c.Server, accountId, projectId, body)
+	}, true, "ToggleGauge", reqEditors...)
 
 }
 
@@ -7122,17 +7006,6 @@ func NewRemoveAccountLogoRequest(server string, accountId string) (*http.Request
 	}
 
 	return req, nil
-}
-
-// NewUpdateAccountLogoRequest calls the generic UpdateAccountLogo builder with application/json body
-func NewUpdateAccountLogoRequest(server string, accountId string, body UpdateAccountLogoJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateAccountLogoRequestWithBody(server, accountId, "application/json", bodyReader)
 }
 
 // NewUpdateAccountLogoRequestWithBody generates requests for UpdateAccountLogo with any type of body
@@ -16869,9 +16742,9 @@ type OperationMetadata struct {
 // GET/HEAD operations are always considered idempotent for retry purposes.
 var operationMetadata = map[string]OperationMetadata{
 	"GetAccount":                         {Idempotent: true, HasSensitiveParams: false},
-	"RemoveAccountLogo":                  {Idempotent: false, HasSensitiveParams: false},
-	"UpdateAccountLogo":                  {Idempotent: false, HasSensitiveParams: false},
-	"UpdateAccountName":                  {Idempotent: false, HasSensitiveParams: false},
+	"RemoveAccountLogo":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateAccountLogo":                  {Idempotent: true, HasSensitiveParams: false},
+	"UpdateAccountName":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
 	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
@@ -16930,9 +16803,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
-	"DestroyGaugeNeedle":                 {Idempotent: false, HasSensitiveParams: false},
+	"DestroyGaugeNeedle":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetGaugeNeedle":                     {Idempotent: true, HasSensitiveParams: false},
-	"UpdateGaugeNeedle":                  {Idempotent: false, HasSensitiveParams: false},
+	"UpdateGaugeNeedle":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetForward":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListForwardReplies":                 {Idempotent: true, HasSensitiveParams: false},
 	"CreateForwardReply":                 {Idempotent: false, HasSensitiveParams: false},
@@ -16952,15 +16825,15 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMyCompletedAssignments":          {Idempotent: true, HasSensitiveParams: false},
 	"GetMyDueAssignments":                {Idempotent: true, HasSensitiveParams: false},
 	"GetMyPreferences":                   {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMyPreferences":                {Idempotent: false, HasSensitiveParams: false},
+	"UpdateMyPreferences":                {Idempotent: true, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMyProfile":                    {Idempotent: false, HasSensitiveParams: false},
+	"UpdateMyProfile":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
 	"GetMyNotifications":                 {Idempotent: true, HasSensitiveParams: false},
-	"MarkAsRead":                         {Idempotent: false, HasSensitiveParams: false},
+	"MarkAsRead":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetPerson":                          {Idempotent: true, HasSensitiveParams: false},
-	"DisableOutOfOffice":                 {Idempotent: false, HasSensitiveParams: false},
+	"DisableOutOfOffice":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetOutOfOffice":                     {Idempotent: true, HasSensitiveParams: false},
 	"EnableOutOfOffice":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListProjects":                       {Idempotent: true, HasSensitiveParams: false},
@@ -16969,7 +16842,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"TrashProject":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetProject":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateProject":                      {Idempotent: true, HasSensitiveParams: false},
-	"ToggleGauge":                        {Idempotent: false, HasSensitiveParams: false},
+	"ToggleGauge":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListGaugeNeedles":                   {Idempotent: true, HasSensitiveParams: false},
 	"CreateGaugeNeedle":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListProjectPeople":                  {Idempotent: true, HasSensitiveParams: false},
@@ -18014,8 +17887,6 @@ type ClientWithResponsesInterface interface {
 
 	// UpdateAccountLogoWithBodyWithResponse request with any body
 	UpdateAccountLogoWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAccountLogoResponse, error)
-
-	UpdateAccountLogoWithResponse(ctx context.Context, accountId string, body UpdateAccountLogoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAccountLogoResponse, error)
 
 	// UpdateAccountNameWithBodyWithResponse request with any body
 	UpdateAccountNameWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAccountNameResponse, error)
@@ -24106,14 +23977,6 @@ func (c *ClientWithResponses) RemoveAccountLogoWithResponse(ctx context.Context,
 // UpdateAccountLogoWithBodyWithResponse request with arbitrary body returning *UpdateAccountLogoResponse
 func (c *ClientWithResponses) UpdateAccountLogoWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateAccountLogoResponse, error) {
 	rsp, err := c.UpdateAccountLogoWithBody(ctx, accountId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateAccountLogoResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateAccountLogoWithResponse(ctx context.Context, accountId string, body UpdateAccountLogoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateAccountLogoResponse, error) {
-	rsp, err := c.UpdateAccountLogo(ctx, accountId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

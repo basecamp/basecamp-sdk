@@ -10,11 +10,6 @@ import kotlinx.serialization.json.JsonObject
  * @generated from OpenAPI spec — do not edit directly
  */
 
-/** Request body for UpdateAccountLogo. */
-data class UpdateAccountLogoBody(
-    val logo: String
-)
-
 /** Request body for UpdateAccountName. */
 data class UpdateAccountNameBody(
     val name: String

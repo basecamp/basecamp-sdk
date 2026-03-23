@@ -7563,6 +7563,7 @@ structure GetAccountOutput {
 /// Rename the current account. Only account owners can use this endpoint.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/account/name.json")
 operation UpdateAccountName {
   input: UpdateAccountNameInput
@@ -7592,6 +7593,7 @@ structure UpdateAccountNameOutput {
 /// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Maximum file size: 5 MB.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/account/logo.json", code: 204)
 operation UpdateAccountLogo {
   input: UpdateAccountLogoInput
@@ -7604,9 +7606,12 @@ structure UpdateAccountLogoInput {
   @httpLabel
   accountId: AccountId
 
-  /// The logo image file sent as multipart/form-data.
-  /// SDK implementations should send this as a multipart upload with field name "logo".
+  /// The logo image file as binary data.
+  /// SDK implementations must send this as a multipart/form-data upload
+  /// with field name "logo" (not as a JSON body).
+  /// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Max 5 MB.
   @required
+  @httpPayload
   logo: Blob
 }
 
@@ -7615,6 +7620,7 @@ structure UpdateAccountLogoOutput {}
 /// Remove the account logo. Only administrators and account owners can use this endpoint.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/{accountId}/account/logo.json", code: 204)
 operation RemoveAccountLogo {
   input: RemoveAccountLogoInput
@@ -7804,6 +7810,7 @@ structure CreateGaugeNeedleOutput {
 /// Update a gauge needle's description. Position and color are immutable.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/gauge_needles/{needleId}")
 operation UpdateGaugeNeedle {
   input: UpdateGaugeNeedleInput
@@ -7836,6 +7843,7 @@ structure UpdateGaugeNeedleOutput {
 /// Destroy a gauge needle
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/{accountId}/gauge_needles/{needleId}", code: 204)
 operation DestroyGaugeNeedle {
   input: DestroyGaugeNeedleInput
@@ -7858,6 +7866,7 @@ structure DestroyGaugeNeedleOutput {}
 /// Enable or disable the gauge for a project. Only project admins can toggle gauges.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/projects/{projectId}/gauge.json")
 operation ToggleGauge {
   input: ToggleGaugeInput
@@ -8115,6 +8124,7 @@ structure GetMyNotificationsOutput {
 /// Mark specified items as read
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/my/unreads.json")
 operation MarkAsRead {
   input: MarkAsReadInput
@@ -8265,6 +8275,7 @@ structure EnableOutOfOfficeOutput {
 /// Admins on Pro Pack accounts can manage others; otherwise self only.
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "DELETE", uri: "/{accountId}/people/{personId}/out_of_office.json", code: 204)
 operation DisableOutOfOffice {
   input: DisableOutOfOfficeInput
@@ -8309,6 +8320,7 @@ structure OutOfOfficePerson {
 /// Update the current user's personal info
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/my/profile.json", code: 204)
 operation UpdateMyProfile {
   input: UpdateMyProfileInput
@@ -8357,6 +8369,7 @@ structure GetMyPreferencesOutput {
 /// Update the current user's preferences
 @idempotent
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "PUT", uri: "/{accountId}/my/preferences.json")
 operation UpdateMyPreferences {
   input: UpdateMyPreferencesInput
