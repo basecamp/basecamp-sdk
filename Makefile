@@ -461,6 +461,7 @@ setup:
 	mise exec -- $(MAKE) tools
 
 # Pinned tool versions — update these when bumping tools
+SMITHY_CLI_VERSION    := 1.68.0
 GOLANGCI_LINT_VERSION := v2.11.4
 ACTIONLINT_VERSION    := v1.7.11
 
@@ -477,13 +478,14 @@ tools:
 			TMPDIR=$$(mktemp -d) && \
 			trap 'rm -rf "$$TMPDIR"' EXIT && \
 			echo "Downloading smithy-cli-$$SUFFIX..." && \
-			curl -fsSL "https://github.com/smithy-lang/smithy/releases/latest/download/smithy-cli-$$SUFFIX.zip" -o "$$TMPDIR/smithy.zip" && \
+			curl -fsSL "https://github.com/smithy-lang/smithy/releases/download/$(SMITHY_CLI_VERSION)/smithy-cli-$$SUFFIX.zip" -o "$$TMPDIR/smithy.zip" && \
 			unzip -qo "$$TMPDIR/smithy.zip" -d "$$TMPDIR" && \
 			sudo "$$TMPDIR/smithy-cli-$$SUFFIX/install"; \
 		else echo "Install Smithy CLI: https://smithy.io/2.0/guides/smithy-cli/cli_installation.html" && exit 1; \
 		fi; \
 	}
 	@echo "==> Installing Go tools..."
+	@command -v go >/dev/null 2>&1 || { echo "ERROR: go not found. Run 'make setup' or install Go first."; exit 1; }
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	go install github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
 	@echo "==> Installing zizmor..."
