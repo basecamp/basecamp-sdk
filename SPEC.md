@@ -222,7 +222,7 @@ END
 
 ### Token Refresh (Go/Ruby extension)
 
-Go and Ruby support automatic token refresh via a richer provider interface. TypeScript, Kotlin, and Swift delegate refresh to the caller (the async function can internally handle refresh logic).
+Go and Ruby support automatic token refresh via a richer provider interface. TypeScript ships a `TokenManager` (`typescript/src/oauth/token-manager.ts`) that handles automatic refresh with deduplication, but it is an opt-in helper rather than built into the transport. Kotlin and Swift delegate refresh to the caller (the async function can internally handle refresh logic).
 
 ```
 INTERFACE RefreshableTokenProvider
@@ -254,7 +254,7 @@ Refresh is attempted at most once per request. Implementations track this with a
 
 ### Client-Level Services (account-independent)
 
-- **authorization** — identity lookup and account listing via Launchpad. Exposes `getInfo()` which GETs `https://launchpad.37signals.com/authorization.json` and returns `{expires_at, identity, accounts}`. OAuth utility functions (PKCE, state generation, discovery, code exchange) are standalone helpers in §16, not service methods.
+- **authorization** — identity lookup and account listing via Launchpad. Exposes `getInfo()` which GETs `https://launchpad.37signals.com/authorization.json` and returns `{expires_at, identity, accounts}`. Implemented in Go, Ruby, and TypeScript. Swift and Kotlin do not currently expose this service — a known gap. OAuth utility functions (PKCE, state generation, discovery, code exchange) are standalone helpers in §16, not service methods.
 
 ### AccountClient-Level Services (account-scoped) — 40 services
 
@@ -928,8 +928,8 @@ END
 The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy parameters:
 
 - Authorization URL: standard `response_type=code`
-- Token exchange: `type=web_server` parameter (in addition to or instead of `grant_type=authorization_code`)
-- Token refresh: `type=refresh` parameter (in addition to or instead of `grant_type=refresh_token`)
+- Token exchange: `type=web_server` (legacy) or `grant_type=authorization_code` (standard) — SDKs use one or the other based on a legacy-format flag
+- Token refresh: `type=refresh` (legacy) or `grant_type=refresh_token` (standard) — same flag controls which is sent
 
 ### Authorization Code Exchange
 
@@ -937,7 +937,8 @@ The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy paramete
 FUNCTION exchangeCode(token_endpoint, code, redirect_uri, client_id, client_secret?, code_verifier?) → TokenResponse
   1. POST to token_endpoint with Content-Type: application/x-www-form-urlencoded.
   2. Body parameters:
-     - type=web_server (Launchpad legacy; also send grant_type=authorization_code)
+     - type=web_server OR grant_type=authorization_code (Launchpad accepts either;
+       shipped SDKs choose one based on a legacy-format flag, not both simultaneously)
      - code={code}
      - redirect_uri={redirect_uri}
      - client_id={client_id}
@@ -1312,7 +1313,7 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 }
 ```
 
-The `redaction` and `sensitiveTypes` sections are used for PII handling and are not part of the retry/idempotency contract. They are omitted from the detailed schema above for brevity.
+The `redaction` and `sensitiveTypes` sections are used for PII handling and are not part of the retry/idempotency contract. They appear in the schema snippet above for completeness but are out of scope for retry/idempotency semantics.
 
 ### Field Semantics
 
