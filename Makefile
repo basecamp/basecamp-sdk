@@ -281,9 +281,10 @@ rb-generate-services:
 # Build Ruby SDK (install deps)
 RB_STAMP := ruby/.bundle/.install-stamp
 
-$(RB_STAMP): ruby/Gemfile ruby/Gemfile.lock
+$(RB_STAMP): ruby/Gemfile ruby/Gemfile.lock ruby/basecamp-sdk.gemspec
 	@echo "==> Installing Ruby dependencies..."
 	cd ruby && bundle install
+	@mkdir -p $(dir $(RB_STAMP))
 	@touch $(RB_STAMP)
 
 rb-build: $(RB_STAMP)
