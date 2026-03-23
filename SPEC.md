@@ -379,7 +379,7 @@ If `behavior-model.json` marks an operation with `idempotent: true`, the POST be
 The error must be retryable. Two categories qualify:
 
 - **HTTP status retry:** Response status is in the transport's retryable set. The `behavior-model.json` specifies `retry_on: [429, 503]` for all operations. Implementations may expand this set to include other 5xx statuses (500, 502, 504).
-- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6.
+- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** Only Go and Ruby retry on network errors today. TypeScript retries only after receiving an HTTP response; Kotlin and Swift surface network errors immediately without retry. The spec prescribes network error retry as the target behavior.
 
 **Non-retryable statuses (never retry regardless of method):** 401, 403, 404, 400, 422.
 
@@ -626,7 +626,7 @@ MAX_ERROR_MESSAGE_LENGTH = 500
 
 Error messages extracted from response bodies are truncated to 500 units. If the string exceeds the limit, the last 3 units are replaced with `"..."`, so the result is at most 500 units long.
 
-**Unit semantics:** The spec prescribes 500 **bytes**. Go (`len()`) and Ruby (`bytesize`) use bytes. TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length, which coincides with bytes for ASCII. Conformance test fixtures use ASCII error bodies today; Unicode truncation semantics are a per-language divergence documented in Appendix F.
+**Unit semantics:** The unit is language-defined: Go (`len()`) and Ruby (`bytesize`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior.
 
 ### Sensitive Header Redaction `[static]`
 
