@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check release
+.PHONY: all check clean help tools provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check release
 
 # Default: run all checks
 all: check
@@ -420,6 +420,45 @@ lint-actions:
 	zizmor .
 
 #------------------------------------------------------------------------------
+# Tool installation
+#------------------------------------------------------------------------------
+
+.PHONY: tools
+
+# Install development tools and prerequisites
+tools:
+	@echo "==> Installing Smithy CLI..."
+	@command -v smithy >/dev/null 2>&1 || { \
+		if command -v brew >/dev/null 2>&1; then brew tap smithy-lang/tap && brew install smithy-cli; \
+		elif [ "$$(uname -s)" = "Linux" ]; then \
+			ARCH=$$(uname -m); \
+			case "$$ARCH" in x86_64) SUFFIX=linux-x86_64;; aarch64) SUFFIX=linux-aarch64;; *) echo "Unsupported arch: $$ARCH" && exit 1;; esac; \
+			TMPDIR=$$(mktemp -d) && \
+			echo "Downloading smithy-cli-$$SUFFIX..." && \
+			curl -fsSL "https://github.com/smithy-lang/smithy/releases/latest/download/smithy-cli-$$SUFFIX.zip" -o "$$TMPDIR/smithy.zip" && \
+			unzip -qo "$$TMPDIR/smithy.zip" -d "$$TMPDIR" && \
+			sudo "$$TMPDIR/smithy-cli-$$SUFFIX/install" && \
+			rm -rf "$$TMPDIR"; \
+		else echo "Install Smithy CLI: https://smithy.io/2.0/guides/smithy-cli/cli_installation.html" && exit 1; \
+		fi; \
+	}
+	@echo "==> Installing Go tools..."
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	go install github.com/rhysd/actionlint/cmd/actionlint@latest
+	@echo "==> Installing zizmor..."
+	@command -v zizmor >/dev/null 2>&1 || { \
+		if command -v brew >/dev/null 2>&1; then brew install zizmor; \
+		elif command -v pacman >/dev/null 2>&1; then sudo pacman -S --noconfirm zizmor; \
+		else echo "Install zizmor: https://docs.zizmor.sh/installation/" && exit 1; \
+		fi; \
+	}
+	@command -v jq >/dev/null 2>&1 || echo "NOTE: jq is also required (install via your package manager)"
+	@command -v node >/dev/null 2>&1 || echo "NOTE: node/npm is required for the TypeScript SDK"
+	@command -v ruby >/dev/null 2>&1 || echo "NOTE: ruby/bundler is required for the Ruby SDK"
+	@command -v swift >/dev/null 2>&1 || echo "NOTE: swift is required for the Swift SDK"
+	@echo "==> Done"
+
+#------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
@@ -511,6 +550,9 @@ help:
 	@echo ""
 	@echo "GitHub Actions:"
 	@echo "  lint-actions     Lint GitHub Actions workflows (actionlint + zizmor)"
+	@echo ""
+	@echo "Tools:"
+	@echo "  tools            Install development tools (smithy, golangci-lint, actionlint, zizmor)"
 	@echo ""
 	@echo "Combined:"
 	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Conformance + Provenance + API version sync + Actions lint)"
