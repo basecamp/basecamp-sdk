@@ -391,34 +391,35 @@ gradle-stop:
 #------------------------------------------------------------------------------
 
 HAS_SWIFT := $(shell command -v swift 2>/dev/null)
+IS_MACOS  := $(filter Darwin,$(shell uname -s))
 
 .PHONY: swift-build swift-test swift-check swift-clean swift-generate
 
-# Build Swift SDK
+# Build Swift SDK (macOS only — SDK requires Apple platforms)
 swift-build:
-ifdef HAS_SWIFT
+ifdef IS_MACOS
 	@$(MAKE) -C swift build
 else
-	@echo "SKIP: swift-build (swift not found)"
+	@echo "SKIP: swift-build (macOS only)"
 endif
 
-# Run Swift tests
+# Run Swift tests (macOS only)
 swift-test:
-ifdef HAS_SWIFT
+ifdef IS_MACOS
 	@$(MAKE) -C swift test
 else
-	@echo "SKIP: swift-test (swift not found)"
+	@echo "SKIP: swift-test (macOS only)"
 endif
 
-# Run all Swift checks
+# Run all Swift checks (macOS only)
 swift-check:
-ifdef HAS_SWIFT
+ifdef IS_MACOS
 	@$(MAKE) -C swift check
 else
-	@echo "SKIP: swift-check (swift not found)"
+	@echo "SKIP: swift-check (macOS only)"
 endif
 
-# Regenerate Swift SDK services from OpenAPI spec
+# Regenerate Swift SDK services from OpenAPI spec (needs swift on any platform)
 swift-generate:
 ifdef HAS_SWIFT
 	@$(MAKE) -C swift generate
