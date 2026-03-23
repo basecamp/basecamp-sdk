@@ -1,0 +1,23 @@
+SPEC.md
+  351376ec49eb1452 382,629
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "1a272d7cb4ff026b6b73337fd3eccabf89d92f9a",
+  "prompts": {
+    "351376ec49eb1452": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b67c7f8d-bf61-467d-bdbc-b6a0bbce4518",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
