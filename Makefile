@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help tools provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check release
+.PHONY: all check clean help setup tools provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check release
 
 # Default: run all checks
 all: check
@@ -447,10 +447,16 @@ lint-actions:
 	zizmor .
 
 #------------------------------------------------------------------------------
-# Tool installation
+# Setup & tool installation
 #------------------------------------------------------------------------------
 
-.PHONY: tools
+.PHONY: setup tools
+
+# One-command setup for a fresh clone: install runtimes + dev tools
+setup:
+	@command -v mise >/dev/null 2>&1 || { echo "ERROR: mise not found. Install: https://mise.jdx.dev"; exit 1; }
+	mise install
+	@$(MAKE) tools
 
 # Install development tools and prerequisites
 tools:
@@ -578,7 +584,8 @@ help:
 	@echo "GitHub Actions:"
 	@echo "  lint-actions     Lint GitHub Actions workflows (actionlint + zizmor)"
 	@echo ""
-	@echo "Tools:"
+	@echo "Setup:"
+	@echo "  setup            One-command setup (mise install + tools)"
 	@echo "  tools            Install development tools (smithy, golangci-lint, actionlint, zizmor)"
 	@echo ""
 	@echo "Combined:"
