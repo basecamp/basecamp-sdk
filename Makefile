@@ -14,7 +14,7 @@ all: check
 .PHONY: smithy-validate smithy-build smithy-check smithy-clean smithy-mapper behavior-model behavior-model-check
 
 # Validate Smithy spec
-smithy-validate:
+smithy-validate: smithy-mapper
 	@echo "==> Validating Smithy spec..."
 	cd spec && smithy validate
 
