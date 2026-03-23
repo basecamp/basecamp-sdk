@@ -423,7 +423,7 @@ swift-generate:
 ifdef HAS_SWIFT
 	@$(MAKE) -C swift generate
 else
-	@echo "SKIP: swift-generate (swift not found)"
+	$(error swift is required for swift-generate but was not found)
 endif
 
 # Clean Swift build artifacts
@@ -457,7 +457,11 @@ lint-actions:
 setup:
 	@command -v mise >/dev/null 2>&1 || { echo "ERROR: mise not found. Install: https://mise.jdx.dev"; exit 1; }
 	mise install
-	@$(MAKE) tools
+	mise exec -- $(MAKE) tools
+
+# Pinned tool versions — update these when bumping tools
+GOLANGCI_LINT_VERSION := v2.11.4
+ACTIONLINT_VERSION    := v1.7.11
 
 # Install development tools and prerequisites
 tools:
@@ -465,20 +469,22 @@ tools:
 	@command -v smithy >/dev/null 2>&1 || { \
 		if command -v brew >/dev/null 2>&1; then brew tap smithy-lang/tap && brew install smithy-cli; \
 		elif [ "$$(uname -s)" = "Linux" ]; then \
+			command -v curl >/dev/null 2>&1 || { echo "ERROR: curl is required"; exit 1; }; \
+			command -v unzip >/dev/null 2>&1 || { echo "ERROR: unzip is required"; exit 1; }; \
 			ARCH=$$(uname -m); \
 			case "$$ARCH" in x86_64) SUFFIX=linux-x86_64;; aarch64) SUFFIX=linux-aarch64;; *) echo "Unsupported arch: $$ARCH" && exit 1;; esac; \
 			TMPDIR=$$(mktemp -d) && \
+			trap 'rm -rf "$$TMPDIR"' EXIT && \
 			echo "Downloading smithy-cli-$$SUFFIX..." && \
 			curl -fsSL "https://github.com/smithy-lang/smithy/releases/latest/download/smithy-cli-$$SUFFIX.zip" -o "$$TMPDIR/smithy.zip" && \
 			unzip -qo "$$TMPDIR/smithy.zip" -d "$$TMPDIR" && \
-			sudo "$$TMPDIR/smithy-cli-$$SUFFIX/install" && \
-			rm -rf "$$TMPDIR"; \
+			sudo "$$TMPDIR/smithy-cli-$$SUFFIX/install"; \
 		else echo "Install Smithy CLI: https://smithy.io/2.0/guides/smithy-cli/cli_installation.html" && exit 1; \
 		fi; \
 	}
 	@echo "==> Installing Go tools..."
-	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	go install github.com/rhysd/actionlint/cmd/actionlint@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	go install github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
 	@echo "==> Installing zizmor..."
 	@command -v zizmor >/dev/null 2>&1 || { \
 		if command -v brew >/dev/null 2>&1; then brew install zizmor; \
