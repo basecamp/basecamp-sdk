@@ -23,6 +23,23 @@ module Basecamp
         end
       end
 
+      # Update the current authenticated user's profile (returns 204 No Content)
+      # @param name [String, nil] name
+      # @param email_address [String, nil] email address
+      # @param title [String, nil] title
+      # @param bio [String, nil] bio
+      # @param location [String, nil] location
+      # @param time_zone_name [String, nil] time zone name
+      # @param first_week_day [String, nil] first week day
+      # @param time_format [String, nil] time format
+      # @return [void]
+      def update_my_profile(name: nil, email_address: nil, title: nil, bio: nil, location: nil, time_zone_name: nil, first_week_day: nil, time_format: nil)
+        with_operation(service: "people", operation: "update_my_profile", is_mutation: true) do
+          http_put("/my/profile.json", body: compact_params(name: name, email_address: email_address, title: title, bio: bio, location: location, time_zone_name: time_zone_name, first_week_day: first_week_day, time_format: time_format))
+          nil
+        end
+      end
+
       # List all people visible to the current user
       # @return [Enumerator<Hash>] paginated results
       def list()

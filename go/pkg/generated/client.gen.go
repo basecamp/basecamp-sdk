@@ -24,6 +24,17 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for FirstWeekDay.
+const (
+	Friday    FirstWeekDay = "Friday"
+	Monday    FirstWeekDay = "Monday"
+	Saturday  FirstWeekDay = "Saturday"
+	Sunday    FirstWeekDay = "Sunday"
+	Thursday  FirstWeekDay = "Thursday"
+	Tuesday   FirstWeekDay = "Tuesday"
+	Wednesday FirstWeekDay = "Wednesday"
+)
+
 // Assignable defines model for Assignable.
 type Assignable struct {
 	AppUrl    string     `json:"app_url,omitempty"`
@@ -696,6 +707,9 @@ type EventDetails struct {
 	NotifiedRecipientIds []int64 `json:"notified_recipient_ids,omitempty"`
 	RemovedPersonIds     []int64 `json:"removed_person_ids,omitempty"`
 }
+
+// FirstWeekDay defines model for FirstWeekDay.
+type FirstWeekDay string
 
 // ForbiddenErrorResponseContent defines model for ForbiddenErrorResponseContent.
 type ForbiddenErrorResponseContent struct {
@@ -1851,6 +1865,18 @@ type UpdateMessageTypeRequestContent struct {
 // UpdateMessageTypeResponseContent defines model for UpdateMessageTypeResponseContent.
 type UpdateMessageTypeResponseContent = MessageType
 
+// UpdateMyProfileRequestContent defines model for UpdateMyProfileRequestContent.
+type UpdateMyProfileRequestContent struct {
+	Bio          string       `json:"bio,omitempty"`
+	EmailAddress string       `json:"email_address,omitempty"`
+	FirstWeekDay FirstWeekDay `json:"first_week_day,omitempty"`
+	Location     string       `json:"location,omitempty"`
+	Name         string       `json:"name,omitempty"`
+	TimeFormat   string       `json:"time_format,omitempty"`
+	TimeZoneName string       `json:"time_zone_name,omitempty"`
+	Title        string       `json:"title,omitempty"`
+}
+
 // UpdateProjectAccessRequestContent defines model for UpdateProjectAccessRequestContent.
 type UpdateProjectAccessRequestContent struct {
 	Create []CreatePersonRequest `json:"create,omitempty"`
@@ -2352,6 +2378,9 @@ type CreateMessageJSONRequestBody = CreateMessageRequestContent
 
 // UpdateMessageJSONRequestBody defines body for UpdateMessage for application/json ContentType.
 type UpdateMessageJSONRequestBody = UpdateMessageRequestContent
+
+// UpdateMyProfileJSONRequestBody defines body for UpdateMyProfile for application/json ContentType.
+type UpdateMyProfileJSONRequestBody = UpdateMyProfileRequestContent
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = CreateProjectRequestContent
@@ -3024,6 +3053,11 @@ type ClientInterface interface {
 
 	// GetMyProfile request
 	GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMyProfileWithBody request with any body
+	UpdateMyProfileWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateMyProfile(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetQuestionReminders request
 	GetQuestionReminders(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4550,6 +4584,24 @@ func (c *Client) GetMyProfile(ctx context.Context, accountId string, reqEditors 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMyProfileRequest(c.Server, accountId)
 	}, true, "GetMyProfile", reqEditors...)
+
+}
+
+// UpdateMyProfileWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateMyProfileWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyProfileRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateMyProfile", reqEditors...)
+
+}
+
+func (c *Client) UpdateMyProfile(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyProfileRequest(c.Server, accountId, body)
+	}, true, "UpdateMyProfile", reqEditors...)
 
 }
 
@@ -9539,6 +9591,53 @@ func NewGetMyProfileRequest(server string, accountId string) (*http.Request, err
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdateMyProfileRequest calls the generic UpdateMyProfile builder with application/json body
+func NewUpdateMyProfileRequest(server string, accountId string, body UpdateMyProfileJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateMyProfileRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewUpdateMyProfileRequestWithBody generates requests for UpdateMyProfile with any type of body
+func NewUpdateMyProfileRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/profile.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -14899,6 +14998,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMessage":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessage":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMyProfile":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
 	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetPerson":                          {Idempotent: true, HasSensitiveParams: false},
@@ -16214,6 +16314,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetMyProfileWithResponse request
 	GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
+
+	// UpdateMyProfileWithBodyWithResponse request with any body
+	UpdateMyProfileWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyProfileResponse, error)
+
+	UpdateMyProfileWithResponse(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMyProfileResponse, error)
 
 	// GetQuestionRemindersWithResponse request
 	GetQuestionRemindersWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetQuestionRemindersResponse, error)
@@ -18545,6 +18650,31 @@ func (r GetMyProfileResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetMyProfileResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type UpdateMyProfileResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMyProfileResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMyProfileResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -22238,6 +22368,23 @@ func (c *ClientWithResponses) GetMyProfileWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseGetMyProfileResponse(rsp)
+}
+
+// UpdateMyProfileWithBodyWithResponse request with arbitrary body returning *UpdateMyProfileResponse
+func (c *ClientWithResponses) UpdateMyProfileWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyProfileResponse, error) {
+	rsp, err := c.UpdateMyProfileWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMyProfileResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateMyProfileWithResponse(ctx context.Context, accountId string, body UpdateMyProfileJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMyProfileResponse, error) {
+	rsp, err := c.UpdateMyProfile(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMyProfileResponse(rsp)
 }
 
 // GetQuestionRemindersWithResponse request returning *GetQuestionRemindersResponse
@@ -27600,6 +27747,53 @@ func ParseGetMyProfileResponse(rsp *http.Response) (*GetMyProfileResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMyProfileResponse parses an HTTP response from a UpdateMyProfileWithResponse call
+func ParseUpdateMyProfileResponse(rsp *http.Response) (*UpdateMyProfileResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMyProfileResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

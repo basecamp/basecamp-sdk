@@ -39,6 +39,42 @@ type UpdateProjectAccessResponse struct {
 	Revoked []Person `json:"revoked"`
 }
 
+// FirstWeekDay represents the first day of the week.
+// Use the exported constants (FirstWeekDaySunday, FirstWeekDayMonday, etc.).
+type FirstWeekDay = generated.FirstWeekDay
+
+// FirstWeekDay constants for all seven days.
+const (
+	FirstWeekDaySunday    FirstWeekDay = generated.Sunday
+	FirstWeekDayMonday    FirstWeekDay = generated.Monday
+	FirstWeekDayTuesday   FirstWeekDay = generated.Tuesday
+	FirstWeekDayWednesday FirstWeekDay = generated.Wednesday
+	FirstWeekDayThursday  FirstWeekDay = generated.Thursday
+	FirstWeekDayFriday    FirstWeekDay = generated.Friday
+	FirstWeekDaySaturday  FirstWeekDay = generated.Saturday
+)
+
+// UpdateMyProfileRequest specifies the parameters for updating the current user's profile.
+// Use pointer fields (*string) to distinguish "not provided" (nil) from "clear field" ("").
+type UpdateMyProfileRequest struct {
+	// Name is the person's display name.
+	Name *string `json:"name,omitempty"`
+	// EmailAddress is the person's email address.
+	EmailAddress *string `json:"email_address,omitempty"`
+	// Title is the person's job title.
+	Title *string `json:"title,omitempty"`
+	// Bio is a short biographical text.
+	Bio *string `json:"bio,omitempty"`
+	// Location is the person's location.
+	Location *string `json:"location,omitempty"`
+	// TimeZoneName is a Rails time zone name (e.g. "America/Chicago").
+	TimeZoneName *string `json:"time_zone_name,omitempty"`
+	// FirstWeekDay is the first day of the week (e.g. FirstWeekDaySunday).
+	FirstWeekDay *FirstWeekDay `json:"first_week_day,omitempty"`
+	// TimeFormat is the time display format (e.g. "twelve_hour", "twenty_four_hour").
+	TimeFormat *string `json:"time_format,omitempty"`
+}
+
 // PeopleListOptions specifies options for listing people.
 type PeopleListOptions struct {
 	// Limit is the maximum number of people to return.
@@ -206,6 +242,63 @@ func (s *PeopleService) Me(ctx context.Context) (result *Person, err error) {
 
 	person := personFromGenerated(*resp.JSON200)
 	return &person, nil
+}
+
+// UpdateMyProfile updates the current authenticated user's profile.
+func (s *PeopleService) UpdateMyProfile(ctx context.Context, req *UpdateMyProfileRequest) (err error) {
+	op := OperationInfo{
+		Service: "People", Operation: "UpdateMyProfile",
+		ResourceType: "person", IsMutation: true,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("update request is required")
+		return err
+	}
+
+	body := map[string]any{}
+	if req.Name != nil {
+		body["name"] = *req.Name
+	}
+	if req.EmailAddress != nil {
+		body["email_address"] = *req.EmailAddress
+	}
+	if req.Title != nil {
+		body["title"] = *req.Title
+	}
+	if req.Bio != nil {
+		body["bio"] = *req.Bio
+	}
+	if req.Location != nil {
+		body["location"] = *req.Location
+	}
+	if req.TimeZoneName != nil {
+		body["time_zone_name"] = *req.TimeZoneName
+	}
+	if req.FirstWeekDay != nil {
+		body["first_week_day"] = string(*req.FirstWeekDay)
+	}
+	if req.TimeFormat != nil {
+		body["time_format"] = *req.TimeFormat
+	}
+
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return err
+	}
+	resp, err := s.client.parent.gen.UpdateMyProfileWithBodyWithResponse(ctx, s.client.accountID, "application/json", bodyReader)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
 // ListProjectPeople returns all active people on a project.

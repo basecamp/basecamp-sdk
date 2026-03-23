@@ -23,6 +23,28 @@ export interface ListPingablePeopleOptions extends PaginationOptions {
 }
 
 /**
+ * Request parameters for updateMyProfile.
+ */
+export interface UpdateMyProfilePeopleRequest {
+  /** Display name */
+  name?: string;
+  /** Email address */
+  emailAddress?: string;
+  /** Title */
+  title?: string;
+  /** Bio */
+  bio?: string;
+  /** Location */
+  location?: string;
+  /** Time zone name */
+  timeZoneName?: string;
+  /** First week day */
+  firstWeekDay?: components["schemas"]["FirstWeekDay"];
+  /** Time format */
+  timeFormat?: string;
+}
+
+/**
  * Options for list.
  */
 export interface ListPeopleOptions extends PaginationOptions {
@@ -103,6 +125,41 @@ export class PeopleService extends BaseService {
         })
     );
     return response;
+  }
+
+  /**
+   * Update the current authenticated user's profile
+   * @param req - My_profile update parameters
+   * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.people.updateMyProfile({ });
+   * ```
+   */
+  async updateMyProfile(req: UpdateMyProfilePeopleRequest): Promise<void> {
+    await this.request(
+      {
+        service: "People",
+        operation: "UpdateMyProfile",
+        resourceType: "my_profile",
+        isMutation: true,
+      },
+      () =>
+        this.client.PUT("/my/profile.json", {
+          body: {
+            name: req.name,
+            email_address: req.emailAddress,
+            title: req.title,
+            bio: req.bio,
+            location: req.location,
+            time_zone_name: req.timeZoneName,
+            first_week_day: req.firstWeekDay,
+            time_format: req.timeFormat,
+          },
+        })
+    );
   }
 
   /**

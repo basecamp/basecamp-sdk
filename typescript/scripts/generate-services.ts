@@ -1563,7 +1563,17 @@ function main() {
     indexLines.push(`export { ${service.className} } from "./${fileName}.js";`);
   }
   fs.writeFileSync(path.join(resolvedOutputDir, "index.ts"), indexLines.join("\n") + "\n");
+  generatedFiles.push("index.ts");
   console.log(`Generated index.ts`);
+
+  // Remove stale generated files that are no longer produced by the current spec
+  const generatedSet = new Set(generatedFiles);
+  for (const existing of fs.readdirSync(resolvedOutputDir)) {
+    if (existing.endsWith(".ts") && !generatedSet.has(existing)) {
+      fs.unlinkSync(path.join(resolvedOutputDir, existing));
+      console.log(`Removed stale ${existing}`);
+    }
+  }
 
   console.log(`\nGenerated ${services.size} services with ${
     Array.from(services.values()).reduce((sum, s) => sum + s.operations.length, 0)

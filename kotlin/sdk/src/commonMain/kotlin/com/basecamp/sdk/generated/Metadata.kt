@@ -186,6 +186,7 @@ object Metadata {
         "UpdateLineupMarker" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateMessage" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateMessageType" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "UpdateMyProfile" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateProject" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateProjectAccess" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateQuestion" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

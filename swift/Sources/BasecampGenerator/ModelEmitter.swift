@@ -72,6 +72,12 @@ private func collectEntitySchemas(from schemaRef: String, schemas: [String: Any]
         return
     }
 
+    // String enum schema — collect it for enum generation
+    if (schema["type"] as? String) == "string", schema["enum"] != nil {
+        collected.insert(schemaRef)
+        return
+    }
+
     // It's an object schema — add it and walk its properties
     guard (schema["type"] as? String) == "object" || schema["properties"] != nil else { return }
 
@@ -130,6 +136,23 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
     guard let schema = schemas[schemaName] as? [String: Any] else { return "" }
 
     let typeName = typeAliases[schemaName]?.name ?? schemaName
+
+    // Handle string enum schemas
+    if (schema["type"] as? String) == "string",
+       let enumValues = schema["enum"] as? [String] {
+        var lines: [String] = []
+        lines.append("// @generated from OpenAPI spec \u{2014} do not edit directly")
+        lines.append("import Foundation")
+        lines.append("")
+        lines.append("public enum \(typeName): String, Codable, Sendable {")
+        for value in enumValues {
+            let caseName = value.prefix(1).lowercased() + value.dropFirst()
+            lines.append("    case \(caseName) = \"\(value)\"")
+        }
+        lines.append("}")
+        lines.append("")
+        return lines.joined(separator: "\n")
+    }
 
     // Handle additionalProperties-only schemas as typealiases
     if schema["additionalProperties"] != nil && schema["properties"] == nil {

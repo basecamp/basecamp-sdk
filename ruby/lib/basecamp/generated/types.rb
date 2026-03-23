@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-16T16:40:07Z
+# Generated: 2026-03-21T06:14:16Z
 
 require "json"
 require "time"
@@ -1285,7 +1285,7 @@ module Basecamp
     # HillChart
     class HillChart
       include TypeHelpers
-      attr_accessor :enabled, :stale, :app_update_url, :dots, :updated_at
+      attr_accessor :enabled, :stale, :app_update_url, :app_versions_url, :dots, :updated_at
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -1296,6 +1296,7 @@ module Basecamp
         @enabled = parse_boolean(data["enabled"])
         @stale = parse_boolean(data["stale"])
         @app_update_url = data["app_update_url"]
+        @app_versions_url = data["app_versions_url"]
         @dots = parse_array(data["dots"], "HillChartDot")
         @updated_at = parse_datetime(data["updated_at"])
       end
@@ -1305,6 +1306,7 @@ module Basecamp
           "enabled" => @enabled,
           "stale" => @stale,
           "app_update_url" => @app_update_url,
+          "app_versions_url" => @app_versions_url,
           "dots" => @dots,
           "updated_at" => @updated_at,
         }.compact

@@ -908,7 +908,8 @@ export interface paths {
         };
         /** @description Get the current authenticated user's profile */
         get: operations["GetMyProfile"];
-        put?: never;
+        /** @description Update the current authenticated user's profile (returns 204 No Content) */
+        put: operations["UpdateMyProfile"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2803,6 +2804,8 @@ export interface components {
             removed_person_ids?: number[];
             notified_recipient_ids?: number[];
         };
+        /** @enum {string} */
+        FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         ForbiddenErrorResponseContent: {
             error: string;
             message?: string;
@@ -3694,6 +3697,21 @@ export interface components {
             icon?: string;
         };
         UpdateMessageTypeResponseContent: components["schemas"]["MessageType"];
+        UpdateMyProfileRequestContent: {
+            /** Format: password */
+            name?: string;
+            /** Format: password */
+            email_address?: string;
+            /** Format: password */
+            title?: string;
+            /** Format: password */
+            bio?: string;
+            /** Format: password */
+            location?: string;
+            time_zone_name?: string;
+            first_week_day?: components["schemas"]["FirstWeekDay"];
+            time_format?: string;
+        };
         UpdateProjectAccessRequestContent: {
             grant?: number[];
             revoke?: number[];
@@ -8571,6 +8589,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateMyProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyProfileRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateMyProfile 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

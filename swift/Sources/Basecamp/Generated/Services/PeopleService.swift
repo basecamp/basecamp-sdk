@@ -81,6 +81,16 @@ public final class PeopleService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func updateMyProfile(req: UpdateMyProfileRequest) async throws {
+        try await requestVoid(
+            OperationInfo(service: "People", operation: "UpdateMyProfile", resourceType: "my_profile", isMutation: true),
+            method: "PUT",
+            path: "/my/profile.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "UpdateMyProfile")
+        )
+    }
+
     public func updateProjectAccess(projectId: Int, req: UpdateProjectAccessRequest) async throws -> ProjectAccessResult {
         return try await request(
             OperationInfo(service: "People", operation: "UpdateProjectAccess", resourceType: "project_access", isMutation: true, projectId: projectId),

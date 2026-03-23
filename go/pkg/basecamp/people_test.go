@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -217,6 +220,69 @@ func TestUpdateProjectAccessResponse_Unmarshal(t *testing.T) {
 	}
 }
 
+func TestUpdateMyProfileRequest_Marshal(t *testing.T) {
+	weekDay := FirstWeekDayMonday
+	name := "Victor Cooper"
+	title := "Chief Strategist"
+	bio := "Don't let your dreams be dreams"
+	location := "Chicago, IL"
+	tz := "America/Chicago"
+	req := UpdateMyProfileRequest{
+		Name:         &name,
+		Title:        &title,
+		Bio:          &bio,
+		Location:     &location,
+		TimeZoneName: &tz,
+		FirstWeekDay: &weekDay,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateMyProfileRequest: %v", err)
+	}
+
+	var roundtrip UpdateMyProfileRequest
+	if err := json.Unmarshal(out, &roundtrip); err != nil {
+		t.Fatalf("failed to unmarshal round-trip: %v", err)
+	}
+
+	if roundtrip.Name == nil || *roundtrip.Name != *req.Name {
+		t.Errorf("expected name %q, got %v", *req.Name, roundtrip.Name)
+	}
+	if roundtrip.Title == nil || *roundtrip.Title != *req.Title {
+		t.Errorf("expected title %q, got %v", *req.Title, roundtrip.Title)
+	}
+	if roundtrip.FirstWeekDay == nil || *roundtrip.FirstWeekDay != *req.FirstWeekDay {
+		t.Errorf("expected first_week_day %q, got %v", *req.FirstWeekDay, roundtrip.FirstWeekDay)
+	}
+}
+
+func TestUpdateMyProfileRequest_MarshalOmitsNil(t *testing.T) {
+	title := "New Title"
+	req := UpdateMyProfileRequest{
+		Title: &title,
+	}
+
+	out, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("failed to marshal UpdateMyProfileRequest: %v", err)
+	}
+
+	var data map[string]any
+	if err := json.Unmarshal(out, &data); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+
+	if _, ok := data["title"]; !ok {
+		t.Error("expected title to be present")
+	}
+	for _, field := range []string{"name", "email_address", "bio", "location", "time_zone_name", "first_week_day", "time_format"} {
+		if _, ok := data[field]; ok {
+			t.Errorf("expected %s to be omitted when nil", field)
+		}
+	}
+}
+
 func TestCreatePersonRequest_Marshal(t *testing.T) {
 	req := CreatePersonRequest{
 		Name:         "Test User",
@@ -271,5 +337,106 @@ func TestCreatePersonRequest_MarshalOmitsEmpty(t *testing.T) {
 	}
 	if _, ok := data["company_name"]; ok {
 		t.Error("expected company_name to be omitted when empty")
+	}
+}
+
+func testPeopleServer(t *testing.T, handler http.HandlerFunc) *PeopleService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.People()
+}
+
+func TestPeopleService_UpdateMyProfile(t *testing.T) {
+	var receivedBody map[string]any
+	var receivedMethod string
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedBody = decodeRequestBody(t, r)
+		w.WriteHeader(204)
+	})
+
+	title := "Chief Strategist"
+	bio := "Don't let your dreams be dreams"
+	location := "Chicago, IL"
+	weekDay := FirstWeekDaySunday
+	err := svc.UpdateMyProfile(context.Background(), &UpdateMyProfileRequest{
+		Title:        &title,
+		Bio:          &bio,
+		Location:     &location,
+		FirstWeekDay: &weekDay,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != "PUT" {
+		t.Errorf("expected PUT, got %s", receivedMethod)
+	}
+	if receivedBody["title"] != "Chief Strategist" {
+		t.Errorf("expected title 'Chief Strategist', got %v", receivedBody["title"])
+	}
+	if receivedBody["bio"] != "Don't let your dreams be dreams" {
+		t.Errorf("expected bio in body, got %v", receivedBody["bio"])
+	}
+	if receivedBody["location"] != "Chicago, IL" {
+		t.Errorf("expected location in body, got %v", receivedBody["location"])
+	}
+	if receivedBody["first_week_day"] != "Sunday" {
+		t.Errorf("expected first_week_day 'Sunday', got %v", receivedBody["first_week_day"])
+	}
+}
+
+func TestPeopleService_UpdateMyProfilePartial(t *testing.T) {
+	var receivedBody map[string]any
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.WriteHeader(204)
+	})
+
+	title := "New Title"
+	err := svc.UpdateMyProfile(context.Background(), &UpdateMyProfileRequest{
+		Title: &title,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedBody["title"] != "New Title" {
+		t.Errorf("expected title 'New Title', got %v", receivedBody["title"])
+	}
+	for _, field := range []string{"name", "email_address", "bio", "location", "time_zone_name", "first_week_day", "time_format"} {
+		if _, ok := receivedBody[field]; ok {
+			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+		}
+	}
+}
+
+func TestPeopleService_UpdateMyProfileClearsField(t *testing.T) {
+	var receivedBody map[string]any
+	svc := testPeopleServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.WriteHeader(204)
+	})
+
+	emptyBio := ""
+	err := svc.UpdateMyProfile(context.Background(), &UpdateMyProfileRequest{
+		Bio: &emptyBio,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	bio, ok := receivedBody["bio"]
+	if !ok {
+		t.Fatal("expected bio to be present in request body (empty string must not be omitted)")
+	}
+	if bio != "" {
+		t.Errorf("expected bio to be empty string, got %v", bio)
 	}
 }

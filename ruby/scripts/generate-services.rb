@@ -13,6 +13,7 @@
 
 require 'json'
 require 'fileutils'
+require 'set'
 
 # Service generator for Ruby SDK
 class ServiceGenerator
@@ -294,6 +295,18 @@ class ServiceGenerator
       File.write(filepath, code)
       generated_files << filename
       puts "Generated #{filename} (#{service[:operations].length} operations)"
+    end
+
+    # Remove stale generated files that are no longer produced by the current spec.
+    # Only deletes files with the @generated marker to avoid removing hand-written files.
+    generated_set = generated_files.to_set
+    Dir.glob(File.join(output_dir, '*_service.rb')).each do |existing|
+      basename = File.basename(existing)
+      next if generated_set.include?(basename)
+      next unless File.read(existing, 256).include?('@generated')
+
+      File.delete(existing)
+      puts "Removed stale #{basename}"
     end
 
     puts "\nGenerated #{services.length} services with #{services.values.sum { |s| s[:operations].length }} operations total."

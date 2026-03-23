@@ -816,7 +816,8 @@
       "pattern": "/{accountId}/my/profile",
       "resource": "People",
       "operations": {
-        "GET": "GetMyProfile"
+        "GET": "GetMyProfile",
+        "PUT": "UpdateMyProfile"
       },
       "params": {
         "accountId": {
