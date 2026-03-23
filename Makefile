@@ -279,12 +279,17 @@ rb-generate-services:
 	cd ruby && ruby scripts/generate-services.rb
 
 # Build Ruby SDK (install deps)
-rb-build:
-	@echo "==> Building Ruby SDK..."
+RB_STAMP := ruby/.bundle/.install-stamp
+
+$(RB_STAMP): ruby/Gemfile ruby/Gemfile.lock
+	@echo "==> Installing Ruby dependencies..."
 	cd ruby && bundle install
+	@touch $(RB_STAMP)
+
+rb-build: $(RB_STAMP)
 
 # Run Ruby tests
-rb-test:
+rb-test: rb-build
 	@echo "==> Running Ruby tests..."
 	cd ruby && bundle exec rake test
 
@@ -295,7 +300,7 @@ rb-check: rb-test
 	@echo "==> Ruby SDK checks passed"
 
 # Generate Ruby documentation
-rb-doc:
+rb-doc: rb-build
 	@echo "==> Generating Ruby documentation..."
 	cd ruby && bundle exec rake doc
 	@echo "Documentation generated in ruby/doc/"
