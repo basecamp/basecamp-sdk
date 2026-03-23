@@ -384,27 +384,49 @@ gradle-stop:
 # Swift SDK targets (delegates to swift/Makefile)
 #------------------------------------------------------------------------------
 
+HAS_SWIFT := $(shell command -v swift 2>/dev/null)
+
 .PHONY: swift-build swift-test swift-check swift-clean swift-generate
 
 # Build Swift SDK
 swift-build:
+ifdef HAS_SWIFT
 	@$(MAKE) -C swift build
+else
+	@echo "SKIP: swift-build (swift not found)"
+endif
 
 # Run Swift tests
 swift-test:
+ifdef HAS_SWIFT
 	@$(MAKE) -C swift test
+else
+	@echo "SKIP: swift-test (swift not found)"
+endif
 
 # Run all Swift checks
 swift-check:
+ifdef HAS_SWIFT
 	@$(MAKE) -C swift check
+else
+	@echo "SKIP: swift-check (swift not found)"
+endif
 
 # Regenerate Swift SDK services from OpenAPI spec
 swift-generate:
+ifdef HAS_SWIFT
 	@$(MAKE) -C swift generate
+else
+	@echo "SKIP: swift-generate (swift not found)"
+endif
 
 # Clean Swift build artifacts
 swift-clean:
+ifdef HAS_SWIFT
 	@$(MAKE) -C swift clean
+else
+	@echo "SKIP: swift-clean (swift not found)"
+endif
 
 #------------------------------------------------------------------------------
 # GitHub Actions lint targets
@@ -455,7 +477,7 @@ tools:
 	@command -v jq >/dev/null 2>&1 || echo "NOTE: jq is also required (install via your package manager)"
 	@command -v node >/dev/null 2>&1 || echo "NOTE: node/npm is required for the TypeScript SDK"
 	@command -v ruby >/dev/null 2>&1 || echo "NOTE: ruby/bundler is required for the Ruby SDK"
-	@command -v swift >/dev/null 2>&1 || echo "NOTE: swift is required for the Swift SDK"
+	@command -v swift >/dev/null 2>&1 || echo "NOTE: swift is optional (macOS: xcode-select --install, Arch: yay -S swift-bin)"
 	@echo "==> Done"
 
 #------------------------------------------------------------------------------
