@@ -488,15 +488,16 @@ tools:
 	@command -v go >/dev/null 2>&1 || { echo "ERROR: go not found. Run 'make setup' or install Go first."; exit 1; }
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	go install github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
-	@echo "==> Installing zizmor..."
 	@command -v zizmor >/dev/null 2>&1 || { \
+		echo "==> Installing zizmor..."; \
 		if command -v brew >/dev/null 2>&1; then brew install zizmor; \
 		elif command -v pacman >/dev/null 2>&1; then sudo pacman -S --noconfirm zizmor; \
+		elif command -v pip3 >/dev/null 2>&1; then pip3 install zizmor; \
 		else echo "Install zizmor: https://docs.zizmor.sh/installation/" && exit 1; \
 		fi; \
 	}
-	@echo "==> Installing jq..."
 	@command -v jq >/dev/null 2>&1 || { \
+		echo "==> Installing jq..."; \
 		if command -v brew >/dev/null 2>&1; then brew install jq; \
 		elif command -v pacman >/dev/null 2>&1; then sudo pacman -S --noconfirm jq; \
 		elif command -v apt-get >/dev/null 2>&1; then sudo apt-get install -y jq; \
