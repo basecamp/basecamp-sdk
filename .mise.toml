@@ -1,0 +1,5 @@
+[tools]
+go = "1.26"
+ruby = "4"
+node = "22"
+java = "temurin-21"
