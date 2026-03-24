@@ -148,7 +148,7 @@ All SDKs provide:
 - **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin, Python), and static token options
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
-- **ETag caching** - Built-in HTTP caching for efficient API usage
+- **ETag caching** - Built-in HTTP caching for efficient API usage (Go, TypeScript, Ruby†, Swift, Kotlin)
 - **Structured errors** - Typed errors with helpful hints and CLI-friendly exit codes
 - **Observability hooks** - Integration points for logging, metrics, and tracing
 

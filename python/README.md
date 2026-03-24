@@ -8,7 +8,7 @@ Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
-- **Full API coverage** — 40+ generated services covering projects, todos, messages, schedules, campfires, card tables, and more
+- **Full API coverage** — 40 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
 - **OAuth 2.0 authentication** — PKCE support, token refresh, Launchpad discovery
 - **Static token authentication** — Simple setup for personal integrations
 - **Automatic retry with backoff** — Exponential backoff with jitter, respects `Retry-After` headers
@@ -350,7 +350,7 @@ All exceptions inherit from `BasecampError`:
 | `ForbiddenError` | `forbidden` | 403 | No |
 | `RateLimitError` | `rate_limit` | 429 | Yes |
 | `NetworkError` | `network` | - | Yes |
-| `ApiError` | `api_error` | 500, 502, 503, 504 | Yes for 500/502/503/504 |
+| `ApiError` | `api_error` | 5xx, other | Yes for 500/502/503/504; No otherwise |
 | `AmbiguousError` | `ambiguous` | - | No |
 | `ValidationError` | `validation` | 400, 422 | No |
 
@@ -539,8 +539,8 @@ Downloads resolve signed URLs with an authenticated request, then fetch file con
 ## Development
 
 ```bash
-# Install dependencies
-cd python && uv sync
+# Install dependencies (from repo root)
+cd python && uv sync && cd ..
 
 # Run all checks (tests, types, lint, format, drift)
 make py-check
