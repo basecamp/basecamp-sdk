@@ -1,0 +1,29 @@
+CONTRIBUTING.md
+  9c966b92707f776c 67
+python/README.md
+  9c966b92707f776c 287,374,376,454-455,470-471,475-476,478,537
+AGENTS.md
+  9c966b92707f776c 235,244
+SECURITY.md
+  9c966b92707f776c 140,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "353e249db8086f6ec8d6d22939b1a1fecdde3a7a",
+  "prompts": {
+    "9c966b92707f776c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0192868f-ffa5-4b86-8d56-3fbce15de767",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 17,
+      "total_deletions": 16,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    }
+  }
+}
