@@ -1,0 +1,43 @@
+go/pkg/basecamp/people.go
+  31ce562ca8910a53 753
+go/pkg/basecamp/client_approvals.go
+  31ce562ca8910a53 271
+go/pkg/basecamp/subscriptions.go
+  31ce562ca8910a53 191
+go/pkg/basecamp/timesheet.go
+  31ce562ca8910a53 482
+go/pkg/basecamp/webhooks_test.go
+  31ce562ca8910a53 11,226
+go/pkg/types/flexible_int64_test.go
+  31ce562ca8910a53 1-74,78-135
+go/pkg/basecamp/todos_test.go
+  31ce562ca8910a53 658,667,863-865,903
+go/pkg/basecamp/webhooks.go
+  31ce562ca8910a53 483
+go/pkg/basecamp/schedules.go
+  31ce562ca8910a53 663
+scripts/enhance-openapi-go-types.sh
+  31ce562ca8910a53 138-147,162,174
+go/pkg/types/flexible_int64.go
+  31ce562ca8910a53 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "e126933d3d8ffad5c6064b21852c959460c64e16",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 223,
+      "overriden_lines": 0
+    }
+  }
+}
