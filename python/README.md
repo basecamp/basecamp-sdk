@@ -76,7 +76,7 @@ asyncio.run(main())
 |----------|-------------|---------|
 | `BASECAMP_BASE_URL` | API base URL | `https://3.basecampapi.com` |
 | `BASECAMP_TIMEOUT` | Request timeout (seconds) | `30` |
-| `BASECAMP_MAX_RETRIES` | Maximum retry attempts | `3` |
+| `BASECAMP_MAX_RETRIES` | Maximum retries (up to N+1 total attempts) | `3` |
 
 ### Programmatic Configuration
 
