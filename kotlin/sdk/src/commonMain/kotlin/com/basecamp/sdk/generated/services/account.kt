@@ -32,6 +32,26 @@ class AccountService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Upload or replace the account logo.
+     * @param data Raw bytes of the file to upload
+     * @param filename Display name for the uploaded file
+     * @param contentType MIME type of the file (e.g., "image/png")
+     */
+    suspend fun updateAccountLogo(data: ByteArray, filename: String, contentType: String): Unit {
+        val info = OperationInfo(
+            service = "Account",
+            operation = "UpdateAccountLogo",
+            resourceType = "account_logo",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        request(info, {
+            httpPutMultipart("/account/logo.json", "logo", data, filename, contentType)
+        }) { Unit }
+    }
+
+    /**
      * Remove the account logo. Only administrators and account owners can use this endpoint.
      */
     suspend fun removeAccountLogo(): Unit {

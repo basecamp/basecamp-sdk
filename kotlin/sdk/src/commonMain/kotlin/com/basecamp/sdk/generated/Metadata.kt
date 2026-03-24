@@ -192,6 +192,7 @@ object Metadata {
         "UnpinMessage" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "Unsubscribe" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UnsubscribeFromCardColumn" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "UpdateAccountLogo" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "UpdateAccountName" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "UpdateAnswer" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateCard" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

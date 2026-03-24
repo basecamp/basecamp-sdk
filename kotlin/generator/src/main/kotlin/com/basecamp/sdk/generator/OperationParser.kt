@@ -24,6 +24,7 @@ data class ParsedOperation(
     val resourceType: String,
     val hasPagination: Boolean,
     val paginationKey: String?,
+    val multipartFieldName: String?,
 )
 
 data class PathParam(val name: String, val type: String, val description: String?)
@@ -121,6 +122,7 @@ class OperationParser(private val api: OpenApiParser) {
         val requestBody = operation["requestBody"]?.jsonObject
         val jsonContent = requestBody?.get("content")?.jsonObject?.get("application/json")?.jsonObject
         val octetContent = requestBody?.get("content")?.jsonObject?.get("application/octet-stream")?.jsonObject
+        val multipartContent = requestBody?.get("content")?.jsonObject?.get("multipart/form-data")?.jsonObject
 
         if (jsonContent != null) {
             val schema = jsonContent["schema"]!!.jsonObject
@@ -134,6 +136,9 @@ class OperationParser(private val api: OpenApiParser) {
         } else if (octetContent != null) {
             bodyRequired = requestBody?.get("required")?.jsonPrimitive?.boolean ?: false
             bodyContentType = "octet-stream"
+        } else if (multipartContent != null) {
+            bodyRequired = requestBody?.get("required")?.jsonPrimitive?.boolean ?: false
+            bodyContentType = "multipart"
         }
 
         // Response
@@ -172,6 +177,7 @@ class OperationParser(private val api: OpenApiParser) {
         // by isWrappedPaginated in the emitter.
 
         val convertedPath = path.replace(Regex("^/\\{accountId}"), "")
+        val multipartFieldName = operation["x-basecamp-multipart"]?.jsonObject?.get("field")?.jsonPrimitive?.content
 
         return ParsedOperation(
             operationId = operationId,
@@ -192,6 +198,7 @@ class OperationParser(private val api: OpenApiParser) {
             resourceType = resourceType,
             hasPagination = hasPagination,
             paginationKey = paginationKey,
+            multipartFieldName = multipartFieldName,
         )
     }
 

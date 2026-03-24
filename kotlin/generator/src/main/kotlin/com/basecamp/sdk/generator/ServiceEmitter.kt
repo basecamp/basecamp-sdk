@@ -78,6 +78,11 @@ class ServiceEmitter(private val api: OpenApiParser) {
             sb.appendLine("     * @param data Binary file data to upload")
             sb.appendLine("     * @param contentType MIME type of the file")
         }
+        if (op.bodyContentType == "multipart") {
+            sb.appendLine("     * @param data Raw bytes of the file to upload")
+            sb.appendLine("     * @param filename Display name for the uploaded file")
+            sb.appendLine("     * @param contentType MIME type of the file (e.g., \"image/png\")")
+        }
         for (q in op.queryParams.filter { it.required }) {
             sb.appendLine("     * @param ${q.name.snakeToCamelCase()} ${q.description ?: q.name.toHumanReadable()}")
         }
@@ -225,12 +230,17 @@ class ServiceEmitter(private val api: OpenApiParser) {
                 }
             }
             "PUT" -> {
-                val bodyArg = if (op.bodyContentType == "json" && op.bodyProperties.isNotEmpty()) {
-                    ", json.encodeToString(${buildBodySerializer(op)})"
+                if (op.bodyContentType == "multipart") {
+                    val field = op.multipartFieldName ?: "file"
+                    sb.appendLine("            httpPutMultipart($pathWithQuery, \"$field\", data, filename, contentType)")
                 } else {
-                    ""
+                    val bodyArg = if (op.bodyContentType == "json" && op.bodyProperties.isNotEmpty()) {
+                        ", json.encodeToString(${buildBodySerializer(op)})"
+                    } else {
+                        ""
+                    }
+                    sb.appendLine("            httpPut($pathWithQuery$bodyArg, operationName = info.operation)")
                 }
-                sb.appendLine("            httpPut($pathWithQuery$bodyArg, operationName = info.operation)")
             }
             "DELETE" -> sb.appendLine("            httpDelete($pathWithQuery, operationName = info.operation)")
             "PATCH" -> {
@@ -332,6 +342,13 @@ class ServiceEmitter(private val api: OpenApiParser) {
         // Binary upload
         if (op.bodyContentType == "octet-stream") {
             parts += "data: ByteArray"
+            parts += "contentType: String"
+        }
+
+        // Multipart file upload
+        if (op.bodyContentType == "multipart") {
+            parts += "data: ByteArray"
+            parts += "filename: String"
             parts += "contentType: String"
         }
 

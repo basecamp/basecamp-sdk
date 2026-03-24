@@ -92,6 +92,43 @@ abstract class BaseService(
         http.requestBinaryWithRetry(HttpMethod.Post, accountUrl(path), data, contentType)
 
     /**
+     * Executes a PUT request with multipart/form-data body.
+     * Builds the MIME multipart envelope with proper header sanitization.
+     */
+    protected suspend fun httpPutMultipart(
+        path: String,
+        fieldName: String,
+        data: ByteArray,
+        filename: String,
+        contentType: String,
+    ): HttpResponse {
+        val safeFilename = filename.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
+        val safeContentType = contentType.replace("\r", "").replace("\n", "")
+        val boundary = "----BasecampSDK${com.basecamp.sdk.http.currentTimeMillis()}"
+        val preamble = buildString {
+            append("--$boundary\r\n")
+            append("Content-Disposition: form-data; name=\"$fieldName\"; filename=\"$safeFilename\"\r\n")
+            append("Content-Type: $safeContentType\r\n")
+            append("\r\n")
+        }
+        val epilogue = "\r\n--$boundary--\r\n"
+
+        val preambleBytes = preamble.encodeToByteArray()
+        val epilogueBytes = epilogue.encodeToByteArray()
+        val body = ByteArray(preambleBytes.size + data.size + epilogueBytes.size)
+        preambleBytes.copyInto(body, 0)
+        data.copyInto(body, preambleBytes.size)
+        epilogueBytes.copyInto(body, preambleBytes.size + data.size)
+
+        return http.requestBinaryWithRetry(
+            HttpMethod.Put,
+            accountUrl(path),
+            body,
+            "multipart/form-data; boundary=$boundary",
+        )
+    }
+
+    /**
      * Executes an API request with error handling and hooks integration.
      *
      * @param info Operation metadata for hooks.
