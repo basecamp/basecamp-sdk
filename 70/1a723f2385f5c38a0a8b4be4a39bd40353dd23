@@ -1,0 +1,63 @@
+python/src/basecamp/_security.py
+  fa4fb8c3a9b58188 32-33,79-82
+python/tests/webhooks/test_events.py
+  fa4fb8c3a9b58188 1-23
+.github/workflows/release-python.yml
+  fa4fb8c3a9b58188 9,22-23,28-30,33,67-70,76,79,88,98-103,105-106,137
+python/scripts/generate_types.py
+  fa4fb8c3a9b58188 27-32
+python/src/basecamp/webhooks/errors.py
+  fa4fb8c3a9b58188 3,8
+python/src/basecamp/auth.py
+  fa4fb8c3a9b58188 114-115
+python/src/basecamp/_async_http.py
+  fa4fb8c3a9b58188 56-57,99,211-214,217-219,245-247
+conformance/runner/python/runner.py
+  fa4fb8c3a9b58188 229,268-270
+python/src/basecamp/webhooks/receiver.py
+  fa4fb8c3a9b58188 30-31,74-76,114,125,136
+python/src/basecamp/services/authorization.py
+  fa4fb8c3a9b58188 15,26
+python/src/basecamp/oauth/exchange.py
+  fa4fb8c3a9b58188 6,115-118
+python/src/basecamp/oauth/discovery.py
+  fa4fb8c3a9b58188 42,52-54
+python/src/basecamp/async_auth.py
+  fa4fb8c3a9b58188 115-116
+scripts/check-python-service-drift.sh
+  fa4fb8c3a9b58188 37-39
+python/tests/oauth/test_authorize.py
+  fa4fb8c3a9b58188 1-64
+Makefile
+  fa4fb8c3a9b58188 342,349
+.github/workflows/test.yml
+  fa4fb8c3a9b58188 162-163,173-175,178,341
+python/src/basecamp/download.py
+  fa4fb8c3a9b58188 28,31-33,115-116
+python/tests/oauth/test_exchange.py
+  fa4fb8c3a9b58188 14,16,36,38
+python/src/basecamp/hooks.py
+  fa4fb8c3a9b58188 70,78
+python/src/basecamp/_http.py
+  fa4fb8c3a9b58188 55-56,98,210-213,216-218,244-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "701a723f2385f5c38a0a8b4be4a39bd40353dd23",
+  "prompts": {
+    "fa4fb8c3a9b58188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49303a22-8ce3-4c45-83b6-5aef402ff38a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 208,
+      "total_deletions": 86,
+      "accepted_lines": 201,
+      "overriden_lines": 0
+    }
+  }
+}
