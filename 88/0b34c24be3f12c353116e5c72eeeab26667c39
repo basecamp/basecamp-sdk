@@ -1,0 +1,25 @@
+ruby/test/basecamp/services/campfires_service_test.rb
+  2bf2d8427811e954 86-94,226-234
+typescript/tests/services/campfires.test.ts
+  2bf2d8427811e954 99-119,240-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "880b34c24be3f12c353116e5c72eeeab26667c39",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 60,
+      "total_deletions": 0,
+      "accepted_lines": 60,
+      "overriden_lines": 0
+    }
+  }
+}
