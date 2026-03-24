@@ -1,0 +1,29 @@
+go/pkg/basecamp/url-routes.json
+  2bf2d8427811e954 23
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  2bf2d8427811e954 105,111
+go/pkg/basecamp/account_service.go
+  2bf2d8427811e954 232-235,237-239,243-246,248
+typescript/src/services/base.ts
+  2bf2d8427811e954 151-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "c99f41b11d3dc0b3d960c4934556241864fee3d9",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 8,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}
