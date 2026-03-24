@@ -82,7 +82,7 @@ func NewGaugesService(client *AccountClient) *GaugesService {
 	return &GaugesService{client: client}
 }
 
-// List returns all gauges for the account.
+// List returns all gauges for the account, following pagination automatically.
 func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 	op := OperationInfo{
 		Service: "Gauges", Operation: "List",
@@ -110,10 +110,23 @@ func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 		return nil, fmt.Errorf("failed to parse gauges: %w", err)
 	}
 
+	// Follow pagination via Link headers
+	rawMore, _, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(gauges), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var g Gauge
+		if err = json.Unmarshal(raw, &g); err != nil {
+			return nil, fmt.Errorf("failed to parse gauge: %w", err)
+		}
+		gauges = append(gauges, g)
+	}
+
 	return gauges, nil
 }
 
-// ListNeedles returns all needles for a project's gauge.
+// ListNeedles returns all needles for a project's gauge, following pagination automatically.
 func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (result []GaugeNeedle, err error) {
 	op := OperationInfo{
 		Service: "Gauges", Operation: "ListNeedles",
@@ -139,6 +152,19 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 	var needles []GaugeNeedle
 	if err = json.Unmarshal(resp.Body, &needles); err != nil {
 		return nil, fmt.Errorf("failed to parse gauge needles: %w", err)
+	}
+
+	// Follow pagination via Link headers
+	rawMore, _, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(needles), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var n GaugeNeedle
+		if err = json.Unmarshal(raw, &n); err != nil {
+			return nil, fmt.Errorf("failed to parse gauge needle: %w", err)
+		}
+		needles = append(needles, n)
 	}
 
 	return needles, nil

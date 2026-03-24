@@ -17,10 +17,23 @@ SDK_DIR="$(dirname "$SCRIPT_DIR")/go"
 GENERATED_FILE="$SDK_DIR/pkg/generated/client.gen.go"
 SERVICE_DIR="$SDK_DIR/pkg/basecamp"
 
+# Operations intentionally not yet wrapped (tracked for Go service generator work)
+EXCLUDED_OPS=(
+  GetAnswersByPerson
+  GetQuestionReminders
+  ListQuestionAnswerers
+  PauseQuestion
+  ResumeQuestion
+  SubscribeToCardColumn
+  UnsubscribeFromCardColumn
+  UpdateQuestionNotificationSettings
+)
+
 # Temporary files
 GEN_OPS=$(mktemp)
 SVC_OPS=$(mktemp)
-trap "rm -f $GEN_OPS $SVC_OPS" EXIT
+EXCLUDED=$(mktemp)
+trap "rm -f $GEN_OPS $SVC_OPS $EXCLUDED" EXIT
 
 # Extract generated operations, normalizing WithBodyWithResponse to base operation name
 # e.g., CreateAttachmentWithBodyWithResponse -> CreateAttachment
@@ -49,8 +62,11 @@ echo "Generated client operations: $GEN_COUNT"
 echo "Service layer wrapped operations: $SVC_COUNT"
 echo ""
 
-# Find operations in generated but not wrapped by services
-UNWRAPPED=$(comm -23 "$GEN_OPS" "$SVC_OPS")
+# Build exclusion file
+printf '%s\n' "${EXCLUDED_OPS[@]}" | sort -u > "$EXCLUDED"
+
+# Find operations in generated but not wrapped by services (excluding known gaps)
+UNWRAPPED=$(comm -23 "$GEN_OPS" "$SVC_OPS" | comm -23 - "$EXCLUDED")
 UNWRAPPED_COUNT=$(echo "$UNWRAPPED" | grep -c . || true)
 
 # Find service calls to non-existent operations
@@ -60,10 +76,12 @@ MISSING_COUNT=$(echo "$MISSING" | grep -c . || true)
 HAS_DRIFT=0
 
 if [ "$UNWRAPPED_COUNT" -gt 0 ]; then
-  echo "=== Generated operations NOT YET wrapped by service layer ($UNWRAPPED_COUNT) ==="
+  echo "=== ERROR: Generated operations NOT wrapped by service layer ($UNWRAPPED_COUNT) ==="
   echo "$UNWRAPPED"
   echo ""
-  # Note: This is informational, not a failure - new ops may be intentionally unwrapped
+  echo "Every generated operation must have a service wrapper in go/pkg/basecamp/."
+  echo "Add wrappers for these operations or update this check if they are intentionally excluded."
+  HAS_DRIFT=1
 fi
 
 if [ "$MISSING_COUNT" -gt 0 ]; then
