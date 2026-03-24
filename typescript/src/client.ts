@@ -189,8 +189,6 @@ export interface BasecampClient extends RawClient {
   readonly myNotifications: MyNotificationsService;
   /** Download file content from any API-routable download URL */
   downloadURL(rawURL: string): Promise<DownloadResult>;
-  /** Upload or replace the account logo (multipart/form-data) */
-  updateAccountLogo(logo: Blob | File, filename?: string): Promise<void>;
 }
 
 /**

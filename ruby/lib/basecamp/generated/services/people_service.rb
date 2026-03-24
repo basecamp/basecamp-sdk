@@ -40,14 +40,14 @@ module Basecamp
         end
       end
 
-      # Update the current user's personal info
+      # Update the current authenticated user's profile (returns 204 No Content)
       # @param name [String, nil] name
       # @param email_address [String, nil] email address
       # @param title [String, nil] title
       # @param bio [String, nil] bio
       # @param location [String, nil] location
       # @param time_zone_name [String, nil] time zone name
-      # @param first_week_day [Integer, nil] first week day
+      # @param first_week_day [String, nil] first week day
       # @param time_format [String, nil] time format
       # @return [void]
       def update_my_profile(name: nil, email_address: nil, title: nil, bio: nil, location: nil, time_zone_name: nil, first_week_day: nil, time_format: nil)

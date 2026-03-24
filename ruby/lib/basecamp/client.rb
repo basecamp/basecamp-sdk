@@ -596,6 +596,5 @@ module Basecamp
       parsed = value.to_i
       parsed >= 0 ? parsed : -1
     end
-
   end
 end

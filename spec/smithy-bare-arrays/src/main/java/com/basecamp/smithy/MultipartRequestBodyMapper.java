@@ -128,11 +128,15 @@ public final class MultipartRequestBodyMapper implements OpenApiMapper {
                         .build())
                 .build();
 
-        // Preserve required flag from original requestBody
-        ObjectNode.Builder newRequestBody = ObjectNode.builder()
-                .withMember("content", newContent);
-        requestBody.getBooleanMember("required").ifPresent(r ->
-                newRequestBody.withMember("required", r));
+        // Preserve all original requestBody members (description, extensions, etc.)
+        // except content, which we're replacing
+        ObjectNode.Builder newRequestBody = ObjectNode.builder();
+        for (Map.Entry<String, Node> entry : requestBody.getStringMap().entrySet()) {
+            if (!"content".equals(entry.getKey())) {
+                newRequestBody.withMember(entry.getKey(), entry.getValue());
+            }
+        }
+        newRequestBody.withMember("content", newContent);
 
         return operation.toBuilder()
                 .withMember("requestBody", newRequestBody.build())

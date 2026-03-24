@@ -2205,6 +2205,18 @@
         ]
       }
     },
+    "UpdateAccountLogo": {
+      "idempotent": true,
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "UpdateAccountName": {
       "idempotent": true,
       "retry": {

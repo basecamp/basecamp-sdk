@@ -169,6 +169,7 @@
         "description": "Upload or replace the account logo.\nAccepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Maximum 5 MB.\nOwners and admins only.",
         "operationId": "UpdateAccountLogo",
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -184,8 +185,7 @@
                 ]
               }
             }
-          },
-          "required": true
+          }
         },
         "parameters": [
           {
