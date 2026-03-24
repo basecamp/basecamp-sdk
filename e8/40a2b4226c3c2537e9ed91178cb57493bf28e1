@@ -1,0 +1,25 @@
+scripts/check-service-drift.sh
+  2bf2d8427811e954 20-31,35-36,65-69,79,82-84
+go/pkg/basecamp/gauges.go
+  2bf2d8427811e954 85,113-123,129,157-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "e840a2b4226c3c2537e9ed91178cb57493bf28e1",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 51,
+      "total_deletions": 7,
+      "accepted_lines": 51,
+      "overriden_lines": 0
+    }
+  }
+}

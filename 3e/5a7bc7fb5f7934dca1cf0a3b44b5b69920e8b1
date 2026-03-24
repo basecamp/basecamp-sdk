@@ -1,0 +1,31 @@
+spec/smithy-bare-arrays/src/main/java/com/basecamp/smithy/MultipartRequestBodyMapper.java
+  2bf2d8427811e954 1-141
+spec/basecamp-traits.smithy
+  2bf2d8427811e954 73-84
+spec/basecamp.smithy
+  2bf2d8427811e954 46,268,7607-7632
+spec/smithy-bare-arrays/src/main/java/com/basecamp/smithy/BareArrayExtension.java
+  2bf2d8427811e954 22
+spec/overlays/tags.smithy
+  2bf2d8427811e954 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "3e5a7bc7fb5f7934dca1cf0a3b44b5b69920e8b1",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 183,
+      "total_deletions": 1,
+      "accepted_lines": 183,
+      "overriden_lines": 0
+    }
+  }
+}
