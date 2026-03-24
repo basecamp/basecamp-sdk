@@ -24,6 +24,7 @@
 
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
 import { BasecampError, errorFromResponse } from "../errors.js";
+import metadata from "../generated/metadata.json" with { type: "json" };
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "../pagination-utils.js";
 import type { paths } from "../generated/schema.js";
@@ -128,22 +129,44 @@ export abstract class BaseService {
       const formData = new FormData();
       formData.append(fieldName, file, filename ?? (file instanceof File ? file.name : fieldName));
 
-      const response = await this.authenticatedFetch(url, {
-        method,
-        body: formData,
-      });
+      // Look up retry config from operation metadata
+      const opMeta = (metadata as any).operations?.[info.operation];
+      const retryConfig = opMeta?.retry ?? { maxAttempts: 1, baseDelayMs: 1000, backoff: "exponential", retryOn: [] };
+      const maxAttempts: number = retryConfig.maxAttempts ?? 1;
+      const retryOn: number[] = retryConfig.retryOn ?? [];
+
+      let response: Response | undefined;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        response = await this.authenticatedFetch(url, {
+          method,
+          body: formData,
+        });
+
+        if (!retryOn.includes(response.status) || attempt >= maxAttempts - 1) {
+          break;
+        }
+
+        // Backoff before retry
+        const retryAfter = response.status === 429
+          ? parseInt(response.headers.get("Retry-After") ?? "", 10) * 1000
+          : NaN;
+        const delay = !isNaN(retryAfter) && retryAfter > 0
+          ? retryAfter
+          : (retryConfig.baseDelayMs ?? 1000) * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+      }
 
       result.durationMs = Math.round(performance.now() - start);
 
-      if (!response.ok) {
-        const basecampError = await errorFromResponse(response);
+      if (!response!.ok) {
+        const basecampError = await errorFromResponse(response!);
         result.error = basecampError;
         throw basecampError;
       }
 
       // Drain body for 204 No Content
-      if (response.status === 204) {
-        response.body?.cancel();
+      if (response!.status === 204) {
+        response!.body?.cancel();
       }
     } catch (err) {
       result.durationMs = Math.round(performance.now() - start);
