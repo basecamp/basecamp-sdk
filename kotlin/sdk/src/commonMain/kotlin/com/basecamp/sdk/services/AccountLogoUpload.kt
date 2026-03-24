@@ -41,11 +41,14 @@ suspend fun AccountClient.updateAccountLogo(
     var operationError: Throwable? = null
     return try {
         // Build the multipart/form-data body manually for KMP compatibility.
+        // Sanitize inputs to prevent CRLF injection in multipart headers.
+        val safeFilename = filename.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
+        val safeContentType = contentType.replace("\r", "").replace("\n", "")
         val boundary = "----BasecampSDK${currentTimeMillis()}"
         val preamble = buildString {
             append("--$boundary\r\n")
-            append("Content-Disposition: form-data; name=\"logo\"; filename=\"$filename\"\r\n")
-            append("Content-Type: $contentType\r\n")
+            append("Content-Disposition: form-data; name=\"logo\"; filename=\"$safeFilename\"\r\n")
+            append("Content-Type: $safeContentType\r\n")
             append("\r\n")
         }
         val epilogue = "\r\n--$boundary--\r\n"
@@ -117,8 +120,8 @@ private suspend fun AccountClient.errorFromResponse(response: HttpResponse): Bas
                 }
             }
         }
-    } catch (_: CancellationException) {
-        throw CancellationException()
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: Exception) {
         // Body is not JSON or empty — use status text
     }

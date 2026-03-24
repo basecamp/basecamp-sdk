@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -179,6 +180,10 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	if logo == nil {
+		err = ErrUsage("logo reader is required")
+		return err
+	}
 	if filename == "" {
 		err = ErrUsage("filename is required")
 		return err
@@ -191,7 +196,10 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	// Build multipart/form-data body
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
-	part, err := writer.CreateFormFile("logo", filename)
+	partHeader := make(textproto.MIMEHeader)
+	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="logo"; filename="%s"`, filename))
+	partHeader.Set("Content-Type", contentType)
+	part, err := writer.CreatePart(partHeader)
 	if err != nil {
 		return fmt.Errorf("failed to create form file: %w", err)
 	}
@@ -225,12 +233,39 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	if err != nil {
 		return ErrNetwork(err)
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return checkResponse(resp, body)
+	// Retry once on 401 after token refresh (matches SDK mutation retry flow)
+	if resp.StatusCode == http.StatusUnauthorized {
+		if authMgr, ok := s.client.parent.tokenProvider.(*AuthManager); ok {
+			if refreshErr := authMgr.Refresh(ctx); refreshErr == nil {
+				retryReq, reqErr := http.NewRequestWithContext(ctx, http.MethodPut, fullURL, bytes.NewReader(buf.Bytes()))
+				if reqErr != nil {
+					return reqErr
+				}
+				if authErr := s.client.parent.authStrategy.Authenticate(ctx, retryReq); authErr != nil {
+					return authErr
+				}
+				retryReq.Header.Set("User-Agent", s.client.parent.userAgent)
+				retryReq.Header.Set("Content-Type", writer.FormDataContentType())
+				retryReq.Header.Set("Accept", "application/json")
+
+				resp, err = s.client.parent.httpClient.Do(retryReq)
+				if err != nil {
+					return ErrNetwork(err)
+				}
+				respBody, err = io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				if err != nil {
+					return fmt.Errorf("failed to read response body: %w", err)
+				}
+			}
+		}
+	}
+
+	return checkResponse(resp, respBody)
 }

@@ -19,6 +19,12 @@ type ForwardListOptions struct {
 	// NOTE: The page number itself is not yet honored due to OpenAPI client
 	// limitations. Use 0 to paginate through all results up to Limit.
 	Page int
+
+	// Sort field: "created_at" or "updated_at".
+	Sort string
+
+	// Direction: "asc" or "desc".
+	Direction string
 }
 
 // ForwardReplyListOptions specifies options for listing forward replies.
@@ -169,7 +175,14 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, inboxID, nil)
+	var params *generated.ListForwardsParams
+	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+		params = &generated.ListForwardsParams{
+			Sort:      opts.Sort,
+			Direction: opts.Direction,
+		}
+	}
+	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, inboxID, params)
 	if err != nil {
 		return nil, err
 	}

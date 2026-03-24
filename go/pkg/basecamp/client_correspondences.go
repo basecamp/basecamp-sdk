@@ -17,6 +17,12 @@ type ClientCorrespondenceListOptions struct {
 
 	// Page, if positive, disables pagination and returns only the first page.
 	Page int
+
+	// Sort field: "created_at" or "updated_at".
+	Sort string
+
+	// Direction: "asc" or "desc".
+	Direction string
 }
 
 // ClientCorrespondence represents a Basecamp client correspondence (message to clients).
@@ -82,7 +88,14 @@ func (s *ClientCorrespondencesService) List(ctx context.Context, opts *ClientCor
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, nil)
+	var params *generated.ListClientCorrespondencesParams
+	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+		params = &generated.ListClientCorrespondencesParams{
+			Sort:      opts.Sort,
+			Direction: opts.Direction,
+		}
+	}
+	resp, err := s.client.parent.gen.ListClientCorrespondencesWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}

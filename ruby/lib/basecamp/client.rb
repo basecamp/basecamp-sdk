@@ -641,10 +641,12 @@ module Basecamp
 
     def build_multipart_body(boundary:, field:, io:, filename:, content_type:)
       data = io.respond_to?(:read) ? io.read : io.to_s
+      safe_filename = filename.tr("\r\n", "").gsub('"', '\\"')
+      safe_content_type = content_type.tr("\r\n", "")
       body = +""
       body << "--#{boundary}\r\n"
-      body << "Content-Disposition: form-data; name=\"#{field}\"; filename=\"#{filename}\"\r\n"
-      body << "Content-Type: #{content_type}\r\n"
+      body << "Content-Disposition: form-data; name=\"#{field}\"; filename=\"#{safe_filename}\"\r\n"
+      body << "Content-Type: #{safe_content_type}\r\n"
       body << "\r\n"
       body << data
       body << "\r\n"

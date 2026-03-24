@@ -17,6 +17,12 @@ type ClientApprovalListOptions struct {
 
 	// Page, if positive, disables pagination and returns only the first page.
 	Page int
+
+	// Sort field: "created_at" or "updated_at".
+	Sort string
+
+	// Direction: "asc" or "desc".
+	Direction string
 }
 
 // ClientApproval represents a Basecamp client approval request.
@@ -105,7 +111,14 @@ func (s *ClientApprovalsService) List(ctx context.Context, opts *ClientApprovalL
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, nil)
+	var params *generated.ListClientApprovalsParams
+	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+		params = &generated.ListClientApprovalsParams{
+			Sort:      opts.Sort,
+			Direction: opts.Direction,
+		}
+	}
+	resp, err := s.client.parent.gen.ListClientApprovalsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}

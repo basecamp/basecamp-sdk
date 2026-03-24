@@ -39,7 +39,6 @@ type GaugeNeedle struct {
 	Status           string    `json:"status,omitempty"`
 	InheritsStatus   bool      `json:"inherits_status,omitempty"`
 	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
-	CommentCount     int32     `json:"comment_count,omitempty"`
 	CommentsCount    int32     `json:"comments_count,omitempty"`
 	BoostsCount      int32     `json:"boosts_count,omitempty"`
 	Type             string    `json:"type,omitempty"`
@@ -61,6 +60,10 @@ type CreateGaugeNeedleRequest struct {
 	Color string `json:"color,omitempty"`
 	// Description is rich text (HTML) description of the progress update.
 	Description string `json:"description,omitempty"`
+	// Notify specifies who to notify: "everyone", "working_on", "custom", or omit for nobody.
+	Notify string `json:"notify,omitempty"`
+	// Subscriptions is an array of people IDs to notify (only used when Notify is "custom").
+	Subscriptions []int64 `json:"subscriptions,omitempty"`
 }
 
 // UpdateGaugeNeedleRequest specifies parameters for updating a gauge needle.
@@ -199,6 +202,10 @@ func (s *GaugesService) CreateNeedle(ctx context.Context, projectID int64, req *
 			Color:       req.Color,
 			Description: req.Description,
 		},
+		Notify: req.Notify,
+	}
+	if len(req.Subscriptions) > 0 {
+		body.Subscriptions = &req.Subscriptions
 	}
 
 	resp, err := s.client.parent.gen.CreateGaugeNeedleWithResponse(ctx, s.client.accountID, projectID, body)

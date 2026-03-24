@@ -7929,7 +7929,6 @@ structure GaugeNeedle {
   description: String
   color: String
   position: Integer
-  comment_count: Integer
 }
 
 // =============================================================================
@@ -8312,7 +8311,7 @@ structure UpdateMyProfileInput {
   bio: PersonBio
   location: PersonLocation
   time_zone_name: String
-  first_week_day: Integer
+  first_week_day: String
   time_format: String
 }
 
