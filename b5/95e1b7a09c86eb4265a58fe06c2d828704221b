@@ -1,0 +1,27 @@
+go/README.md
+  2bf2d8427811e954 249-253
+go/pkg/basecamp/campfires_test.go
+  2bf2d8427811e954 840-891
+go/pkg/basecamp/todos_test.go
+  2bf2d8427811e954 6,1083-1124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "b595e1b7a09c86eb4265a58fe06c2d828704221b",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 103,
+      "total_deletions": 4,
+      "accepted_lines": 100,
+      "overriden_lines": 0
+    }
+  }
+}
