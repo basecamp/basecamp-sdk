@@ -29,6 +29,12 @@ type CampfireListOptions struct {
 
 // CampfireLineListOptions specifies options for listing campfire lines.
 type CampfireLineListOptions struct {
+	// Sort field: "created_at" or "updated_at".
+	Sort string
+
+	// Direction: "asc" (oldest first, default) or "desc" (newest first).
+	Direction string
+
 	// Limit is the maximum number of lines to return.
 	// If 0, uses DefaultCampfireLineLimit (100). Use -1 for unlimited.
 	Limit int
@@ -39,6 +45,12 @@ type CampfireLineListOptions struct {
 
 // CampfireUploadListOptions specifies options for listing campfire uploads.
 type CampfireUploadListOptions struct {
+	// Sort field: "created_at" or "updated_at".
+	Sort string
+
+	// Direction: "asc" (oldest first, default) or "desc" (newest first).
+	Direction string
+
 	// Limit is the maximum number of uploads to return.
 	// If 0, uses DefaultCampfireUploadLimit (100). Use -1 for unlimited.
 	Limit int
@@ -310,7 +322,15 @@ func (s *CampfiresService) ListLines(ctx context.Context, campfireID int64, opts
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, campfireID)
+	var params *generated.ListCampfireLinesParams
+	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+		params = &generated.ListCampfireLinesParams{
+			Sort:      opts.Sort,
+			Direction: opts.Direction,
+		}
+	}
+
+	resp, err := s.client.parent.gen.ListCampfireLinesWithResponse(ctx, s.client.accountID, campfireID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +524,15 @@ func (s *CampfiresService) ListUploads(ctx context.Context, campfireID int64, op
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListCampfireUploadsWithResponse(ctx, s.client.accountID, campfireID)
+	var uploadParams *generated.ListCampfireUploadsParams
+	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+		uploadParams = &generated.ListCampfireUploadsParams{
+			Sort:      opts.Sort,
+			Direction: opts.Direction,
+		}
+	}
+
+	resp, err := s.client.parent.gen.ListCampfireUploadsWithResponse(ctx, s.client.accountID, campfireID, uploadParams)
 	if err != nil {
 		return nil, err
 	}

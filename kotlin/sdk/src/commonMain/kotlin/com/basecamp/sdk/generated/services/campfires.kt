@@ -167,7 +167,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
      * @param campfireId The campfire ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listLines(campfireId: Long, options: PaginationOptions? = null): ListResult<CampfireLine> {
+    suspend fun listLines(campfireId: Long, options: ListCampfireLinesOptions? = null): ListResult<CampfireLine> {
         val info = OperationInfo(
             service = "Campfires",
             operation = "ListCampfireLines",
@@ -176,8 +176,12 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = campfireId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/chats/${campfireId}/lines.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "sort" to options?.sort,
+            "direction" to options?.direction,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/chats/${campfireId}/lines.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<CampfireLine>>(body)
         }
@@ -252,7 +256,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
      * @param campfireId The campfire ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listUploads(campfireId: Long, options: PaginationOptions? = null): ListResult<CampfireLine> {
+    suspend fun listUploads(campfireId: Long, options: ListCampfireUploadsOptions? = null): ListResult<CampfireLine> {
         val info = OperationInfo(
             service = "Campfires",
             operation = "ListCampfireUploads",
@@ -261,8 +265,12 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = campfireId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/chats/${campfireId}/uploads.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "sort" to options?.sort,
+            "direction" to options?.direction,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/chats/${campfireId}/uploads.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<CampfireLine>>(body)
         }

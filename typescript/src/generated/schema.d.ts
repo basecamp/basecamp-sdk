@@ -7122,7 +7122,12 @@ export interface operations {
     };
     ListCampfireLines: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description created_at|updated_at */
+                sort?: string;
+                /** @description asc|desc */
+                direction?: string;
+            };
             header?: never;
             path: {
                 campfireId: number;
@@ -7367,7 +7372,12 @@ export interface operations {
     };
     ListCampfireUploads: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description created_at|updated_at */
+                sort?: string;
+                /** @description asc|desc */
+                direction?: string;
+            };
             header?: never;
             path: {
                 campfireId: number;

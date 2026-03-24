@@ -145,6 +145,7 @@
         "description": "Upload or replace the account logo.\nAccepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Maximum 5 MB.\nOwners and admins only.",
         "operationId": "UpdateAccountLogo",
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -160,8 +161,7 @@
                 ]
               }
             }
-          },
-          "required": true
+          }
         },
         "parameters": [],
         "responses": {
@@ -3679,6 +3679,24 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "created_at|updated_at",
+            "schema": {
+              "type": "string",
+              "description": "created_at|updated_at"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "asc|desc",
+            "schema": {
+              "type": "string",
+              "description": "asc|desc"
+            }
           }
         ],
         "responses": {
@@ -4038,6 +4056,24 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "created_at|updated_at",
+            "schema": {
+              "type": "string",
+              "description": "created_at|updated_at"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "asc|desc",
+            "schema": {
+              "type": "string",
+              "description": "asc|desc"
+            }
           }
         ],
         "responses": {

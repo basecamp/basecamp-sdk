@@ -2549,6 +2549,24 @@ type CreateAttachmentParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// ListCampfireLinesParams defines parameters for ListCampfireLines.
+type ListCampfireLinesParams struct {
+	// Sort created_at|updated_at
+	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// Direction asc|desc
+	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+}
+
+// ListCampfireUploadsParams defines parameters for ListCampfireUploads.
+type ListCampfireUploadsParams struct {
+	// Sort created_at|updated_at
+	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// Direction asc|desc
+	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+}
+
 // CreateCampfireUploadParams defines parameters for CreateCampfireUpload.
 type CreateCampfireUploadParams struct {
 	// Name Filename for the uploaded file (e.g. "report.pdf").
@@ -3360,7 +3378,7 @@ type ClientInterface interface {
 	UpdateChatbot(ctx context.Context, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfireLines request
-	ListCampfireLines(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCampfireLines(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCampfireLineWithBody request with any body
 	CreateCampfireLineWithBody(ctx context.Context, accountId string, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -3374,7 +3392,7 @@ type ClientInterface interface {
 	GetCampfireLine(ctx context.Context, accountId string, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfireUploads request
-	ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateCampfireUploadWithBody request with any body
 	CreateCampfireUploadWithBody(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4620,10 +4638,10 @@ func (c *Client) UpdateChatbot(ctx context.Context, accountId string, campfireId
 
 // ListCampfireLines is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCampfireLines(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCampfireLines(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCampfireLinesRequest(c.Server, accountId, campfireId)
+		return NewListCampfireLinesRequest(c.Server, accountId, campfireId, params)
 	}, true, "ListCampfireLines", reqEditors...)
 
 }
@@ -4680,10 +4698,10 @@ func (c *Client) GetCampfireLine(ctx context.Context, accountId string, campfire
 
 // ListCampfireUploads is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListCampfireUploadsRequest(c.Server, accountId, campfireId)
+		return NewListCampfireUploadsRequest(c.Server, accountId, campfireId, params)
 	}, true, "ListCampfireUploads", reqEditors...)
 
 }
@@ -8852,7 +8870,7 @@ func NewUpdateChatbotRequestWithBody(server string, accountId string, campfireId
 }
 
 // NewListCampfireLinesRequest generates requests for ListCampfireLines
-func NewListCampfireLinesRequest(server string, accountId string, campfireId int64) (*http.Request, error) {
+func NewListCampfireLinesRequest(server string, accountId string, campfireId int64, params *ListCampfireLinesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -8882,6 +8900,44 @@ func NewListCampfireLinesRequest(server string, accountId string, campfireId int
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Sort != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -9043,7 +9099,7 @@ func NewGetCampfireLineRequest(server string, accountId string, campfireId int64
 }
 
 // NewListCampfireUploadsRequest generates requests for ListCampfireUploads
-func NewListCampfireUploadsRequest(server string, accountId string, campfireId int64) (*http.Request, error) {
+func NewListCampfireUploadsRequest(server string, accountId string, campfireId int64, params *ListCampfireUploadsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -9073,6 +9129,44 @@ func NewListCampfireUploadsRequest(server string, accountId string, campfireId i
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Sort != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Direction != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "direction", runtime.ParamLocationQuery, params.Direction); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -18059,7 +18153,7 @@ type ClientWithResponsesInterface interface {
 	UpdateChatbotWithResponse(ctx context.Context, accountId string, campfireId int64, chatbotId int64, body UpdateChatbotJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateChatbotResponse, error)
 
 	// ListCampfireLinesWithResponse request
-	ListCampfireLinesWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
+	ListCampfireLinesWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error)
 
 	// CreateCampfireLineWithBodyWithResponse request with any body
 	CreateCampfireLineWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireLineResponse, error)
@@ -18073,7 +18167,7 @@ type ClientWithResponsesInterface interface {
 	GetCampfireLineWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
 
 	// ListCampfireUploadsWithResponse request
-	ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error)
+	ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error)
 
 	// CreateCampfireUploadWithBodyWithResponse request with any body
 	CreateCampfireUploadWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireUploadResponse, error)
@@ -24483,8 +24577,8 @@ func (c *ClientWithResponses) UpdateChatbotWithResponse(ctx context.Context, acc
 }
 
 // ListCampfireLinesWithResponse request returning *ListCampfireLinesResponse
-func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
-	rsp, err := c.ListCampfireLines(ctx, accountId, campfireId, reqEditors...)
+func (c *ClientWithResponses) ListCampfireLinesWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireLinesParams, reqEditors ...RequestEditorFn) (*ListCampfireLinesResponse, error) {
+	rsp, err := c.ListCampfireLines(ctx, accountId, campfireId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -24527,8 +24621,8 @@ func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, a
 }
 
 // ListCampfireUploadsWithResponse request returning *ListCampfireUploadsResponse
-func (c *ClientWithResponses) ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error) {
-	rsp, err := c.ListCampfireUploads(ctx, accountId, campfireId, reqEditors...)
+func (c *ClientWithResponses) ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error) {
+	rsp, err := c.ListCampfireUploads(ctx, accountId, campfireId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

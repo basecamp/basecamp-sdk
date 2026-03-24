@@ -57,6 +57,10 @@ export interface UpdateChatbotCampfireRequest {
  * Options for listLines.
  */
 export interface ListLinesCampfireOptions extends PaginationOptions {
+  /** Filter by sort */
+  sort?: "created_at" | "updated_at";
+  /** Filter by direction */
+  direction?: "asc" | "desc";
 }
 
 /**
@@ -73,6 +77,10 @@ export interface CreateLineCampfireRequest {
  * Options for listUploads.
  */
 export interface ListUploadsCampfireOptions extends PaginationOptions {
+  /** Filter by sort */
+  sort?: "created_at" | "updated_at";
+  /** Filter by direction */
+  direction?: "asc" | "desc";
 }
 
 
@@ -317,6 +325,9 @@ export class CampfiresService extends BaseService {
    * @example
    * ```ts
    * const result = await client.campfires.listLines(123);
+   *
+   * // With options
+   * const filtered = await client.campfires.listLines(123, { sort: "created_at" });
    * ```
    */
   async listLines(campfireId: number, options?: ListLinesCampfireOptions): Promise<ListResult<CampfireLine>> {
@@ -332,6 +343,7 @@ export class CampfiresService extends BaseService {
         this.client.GET("/chats/{campfireId}/lines.json", {
           params: {
             path: { campfireId },
+            query: { sort: options?.sort, direction: options?.direction },
           },
         })
       , options
@@ -446,6 +458,9 @@ export class CampfiresService extends BaseService {
    * @example
    * ```ts
    * const result = await client.campfires.listUploads(123);
+   *
+   * // With options
+   * const filtered = await client.campfires.listUploads(123, { sort: "created_at" });
    * ```
    */
   async listUploads(campfireId: number, options?: ListUploadsCampfireOptions): Promise<ListResult<CampfireLine>> {
@@ -461,6 +476,7 @@ export class CampfiresService extends BaseService {
         this.client.GET("/chats/{campfireId}/uploads.json", {
           params: {
             path: { campfireId },
+            query: { sort: options?.sort, direction: options?.direction },
           },
         })
       , options

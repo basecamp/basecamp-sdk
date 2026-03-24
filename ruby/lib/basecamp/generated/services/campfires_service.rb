@@ -81,10 +81,13 @@ module Basecamp
 
       # List all lines (messages) in a campfire
       # @param campfire_id [Integer] campfire id ID
+      # @param sort [String, nil] created_at|updated_at
+      # @param direction [String, nil] asc|desc
       # @return [Enumerator<Hash>] paginated results
-      def list_lines(campfire_id:)
+      def list_lines(campfire_id:, sort: nil, direction: nil)
         wrap_paginated(service: "campfires", operation: "list_lines", is_mutation: false, resource_id: campfire_id) do
-          paginate("/chats/#{campfire_id}/lines.json")
+          params = compact_params(sort: sort, direction: direction)
+          paginate("/chats/#{campfire_id}/lines.json", params: params)
         end
       end
 
@@ -122,10 +125,13 @@ module Basecamp
 
       # List uploaded files in a campfire
       # @param campfire_id [Integer] campfire id ID
+      # @param sort [String, nil] created_at|updated_at
+      # @param direction [String, nil] asc|desc
       # @return [Enumerator<Hash>] paginated results
-      def list_uploads(campfire_id:)
+      def list_uploads(campfire_id:, sort: nil, direction: nil)
         wrap_paginated(service: "campfires", operation: "list_uploads", is_mutation: false, resource_id: campfire_id) do
-          paginate("/chats/#{campfire_id}/uploads.json")
+          params = compact_params(sort: sort, direction: direction)
+          paginate("/chats/#{campfire_id}/uploads.json", params: params)
         end
       end
 

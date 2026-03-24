@@ -486,7 +486,8 @@ func (s *TodosService) Uncomplete(ctx context.Context, todoID int64) (err error)
 
 // Reposition changes the position of a todo within its todolist.
 // position is 1-based (1 = first position).
-func (s *TodosService) Reposition(ctx context.Context, todoID int64, position int) (err error) {
+// parentID, if non-nil, moves the todo to a different todolist within the same project.
+func (s *TodosService) Reposition(ctx context.Context, todoID int64, position int, parentID *int64) (err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "Reposition",
 		ResourceType: "todo", IsMutation: true,
@@ -508,6 +509,7 @@ func (s *TodosService) Reposition(ctx context.Context, todoID int64, position in
 
 	body := generated.RepositionTodoJSONRequestBody{
 		Position: int32(position), // #nosec G115 -- position is validated and bounded by API
+		ParentId: parentID,
 	}
 	resp, err := s.client.parent.gen.RepositionTodoWithResponse(ctx, s.client.accountID, todoID, body)
 	if err != nil {

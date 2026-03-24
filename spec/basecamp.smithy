@@ -3254,6 +3254,12 @@ structure ListCampfireLinesInput {
   @required
   @httpLabel
   campfireId: CampfireId
+
+  @httpQuery("sort")
+  sort: RecordingSortField
+
+  @httpQuery("direction")
+  direction: SortDirection
 }
 
 structure ListCampfireLinesOutput {
@@ -3370,6 +3376,12 @@ structure ListCampfireUploadsInput {
   @required
   @httpLabel
   campfireId: CampfireId
+
+  @httpQuery("sort")
+  sort: RecordingSortField
+
+  @httpQuery("direction")
+  direction: SortDirection
 }
 
 structure ListCampfireUploadsOutput {

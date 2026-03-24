@@ -4148,6 +4148,24 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "created_at|updated_at",
+            "schema": {
+              "type": "string",
+              "description": "created_at|updated_at"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "asc|desc",
+            "schema": {
+              "type": "string",
+              "description": "asc|desc"
+            }
           }
         ],
         "responses": {
@@ -4551,6 +4569,24 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "created_at|updated_at",
+            "schema": {
+              "type": "string",
+              "description": "created_at|updated_at"
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "description": "asc|desc",
+            "schema": {
+              "type": "string",
+              "description": "asc|desc"
+            }
           }
         ],
         "responses": {

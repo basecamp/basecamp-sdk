@@ -37,11 +37,29 @@ data class UpdateChatbotBody(
     val commandUrl: String? = null
 )
 
+/** Options for ListCampfireLines. */
+data class ListCampfireLinesOptions(
+    val sort: String? = null,
+    val direction: String? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateCampfireLine. */
 data class CreateCampfireLineBody(
     val content: String,
     val contentType: String? = null
 )
+
+/** Options for ListCampfireUploads. */
+data class ListCampfireUploadsOptions(
+    val sort: String? = null,
+    val direction: String? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for UpdateCardColumn. */
 data class UpdateCardColumnBody(
