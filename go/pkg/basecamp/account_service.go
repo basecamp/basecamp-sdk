@@ -231,7 +231,7 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := s.client.parent.httpClient.Do(req)
+	resp, err := s.client.parent.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 	if err != nil {
 		return ErrNetwork(err)
 	}
@@ -256,7 +256,7 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 				retryReq.Header.Set("Content-Type", writer.FormDataContentType())
 				retryReq.Header.Set("Accept", "application/json")
 
-				resp, err = s.client.parent.httpClient.Do(retryReq)
+				resp, err = s.client.parent.httpClient.Do(retryReq) // #nosec G704 -- SDK HTTP client: URL is caller-configured
 				if err != nil {
 					return ErrNetwork(err)
 				}
