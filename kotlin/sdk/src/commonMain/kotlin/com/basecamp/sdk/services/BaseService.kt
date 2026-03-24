@@ -102,12 +102,13 @@ abstract class BaseService(
         filename: String,
         contentType: String,
     ): HttpResponse {
+        val safeFieldName = fieldName.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
         val safeFilename = filename.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
         val safeContentType = contentType.replace("\r", "").replace("\n", "")
         val boundary = "----BasecampSDK${com.basecamp.sdk.http.currentTimeMillis()}"
         val preamble = buildString {
             append("--$boundary\r\n")
-            append("Content-Disposition: form-data; name=\"$fieldName\"; filename=\"$safeFilename\"\r\n")
+            append("Content-Disposition: form-data; name=\"$safeFieldName\"; filename=\"$safeFilename\"\r\n")
             append("Content-Type: $safeContentType\r\n")
             append("\r\n")
         }

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "securerandom"
 
 module Basecamp
   # Main client for the Basecamp API.

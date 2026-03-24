@@ -20,6 +20,7 @@
       "pattern": "/{accountId}/account/logo",
       "resource": "Account",
       "operations": {
+        "PUT": "UpdateAccountLogo",
         "DELETE": "RemoveAccountLogo"
       },
       "params": {

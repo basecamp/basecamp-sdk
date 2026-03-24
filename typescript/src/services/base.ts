@@ -148,6 +148,9 @@ export abstract class BaseService {
           break;
         }
 
+        // Drain response body before retry to free resources and enable connection reuse
+        response.body?.cancel();
+
         // Backoff before retry
         const retryAfter = response.status === 429
           ? parseInt(response.headers.get("Retry-After") ?? "", 10) * 1000

@@ -229,17 +229,23 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
-// rewindableReader wraps a byte slice as an io.Reader that resets to the
-// beginning each time it's fully consumed. This allows the generated client's
-// doWithRetry to replay the body on transient failures without modification.
+// rewindableReader wraps a byte slice as an io.Reader that auto-rewinds
+// after returning EOF, so the generated client's doWithRetry can replay
+// the body on each retry attempt. Safe against partial reads: once EOF
+// is returned, the next Read starts from position 0.
 type rewindableReader struct {
-	data []byte
-	pos  int
+	data    []byte
+	pos     int
+	atEOF   bool
 }
 
 func (r *rewindableReader) Read(p []byte) (int, error) {
+	if r.atEOF {
+		r.pos = 0
+		r.atEOF = false
+	}
 	if r.pos >= len(r.data) {
-		r.pos = 0 // rewind for next attempt
+		r.atEOF = true
 		return 0, io.EOF
 	}
 	n := copy(p, r.data[r.pos:])
