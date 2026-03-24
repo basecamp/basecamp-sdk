@@ -1,0 +1,71 @@
+go/pkg/basecamp/my_notifications.go
+  31ce562ca8910a53 85-89,91
+swift/Tests/BasecampTests/FlexibleIntTests.swift
+  31ce562ca8910a53 1-44
+python/tests/services/test_notifications.py
+  31ce562ca8910a53 1-86
+swift/Sources/Basecamp/Services/BaseService.swift
+  31ce562ca8910a53 68-69,428-487
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  31ce562ca8910a53 218-222
+python/tests/services/test_account.py
+  31ce562ca8910a53 1,6,9,73-92
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  31ce562ca8910a53 11
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/NormalizePersonIds.kt
+  31ce562ca8910a53 1-57
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FlexibleLongSerializerTest.kt
+  31ce562ca8910a53 1-50
+python/scripts/generate_types.py
+  31ce562ca8910a53 97-100
+typescript/tests/services/my-notifications.test.ts
+  31ce562ca8910a53 1-89
+typescript/package.json
+  31ce562ca8910a53 23
+go/pkg/basecamp/todos.go
+  31ce562ca8910a53 44-46,49
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleLongSerializer.kt
+  31ce562ca8910a53 1-53
+ruby/lib/basecamp/http.rb
+  31ce562ca8910a53 15-36,267,540,545-547
+python/src/basecamp/generated/services/_async_base.py
+  31ce562ca8910a53 12-32
+ruby/scripts/generate-types.rb
+  31ce562ca8910a53 131-133,171-174
+swift/Sources/BasecampGenerator/TypeMapping.swift
+  31ce562ca8910a53 89-92
+swift/Sources/Basecamp/FlexibleInt.swift
+  31ce562ca8910a53 1-52
+python/src/basecamp/generated/services/_base.py
+  31ce562ca8910a53 15-39,76,321
+python/scripts/generate_services.py
+  31ce562ca8910a53 506,508
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  31ce562ca8910a53 36-43,64,71,73,76-78,90-93,120-125
+typescript/scripts/patch-flexible-ids.ts
+  31ce562ca8910a53 1-26
+go/pkg/basecamp/normalize.go
+  31ce562ca8910a53 1-49
+typescript/src/services/base.ts
+  31ce562ca8910a53 59-90,282,343,420,503,552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "a3ee9f1e53f6a7c73d6aae6009a98e9506c34199",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 797,
+      "total_deletions": 46,
+      "accepted_lines": 762,
+      "overriden_lines": 0
+    }
+  }
+}
