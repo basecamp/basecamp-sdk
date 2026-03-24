@@ -12,6 +12,31 @@ if TYPE_CHECKING:
     pass
 
 
+def _normalize_person_ids(obj: Any) -> None:
+    """Normalize Person-shaped objects in API responses.
+
+    The BC3 API conflates real Person records (numeric id) with system actors
+    like LocalPerson (symbolic id: "basecamp", "campfire"). For any object
+    with a personable_type field whose id is a string, coerce id to int
+    (0 for non-numeric sentinels) and preserve the original label as
+    system_label.
+    """
+    if isinstance(obj, list):
+        for item in obj:
+            _normalize_person_ids(item)
+    elif isinstance(obj, dict):
+        if "personable_type" in obj and isinstance(obj.get("id"), str):
+            raw_id = obj["id"]
+            try:
+                obj["id"] = int(raw_id)
+            except ValueError:
+                obj["system_label"] = raw_id
+                obj["id"] = 0
+        for val in obj.values():
+            if isinstance(val, (dict, list)):
+                _normalize_person_ids(val)
+
+
 class BaseService:
     """Base class for sync service classes."""
 
@@ -48,6 +73,7 @@ class BaseService:
             else:
                 raise ValueError(f"Unsupported method: {method}")
             result = response.json()
+            _normalize_person_ids(result)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -83,6 +109,37 @@ class BaseService:
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms, error=e))
             raise
 
+    def _request_multipart_void(
+        self,
+        info: OperationInfo,
+        method: str,
+        path: str,
+        *,
+        field: str,
+        content: bytes,
+        filename: str,
+        content_type: str,
+        operation: str | None = None,
+    ) -> None:
+        start = time.monotonic()
+        safe_hook(self._hooks.on_operation_start, info)
+        try:
+            self._client.http.request_multipart(
+                method,
+                self._client.account_path(path),
+                field=field,
+                content=content,
+                filename=filename,
+                content_type=content_type,
+                operation=operation,
+            )
+            duration_ms = int((time.monotonic() - start) * 1000)
+            safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
+        except Exception as e:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms, error=e))
+            raise
+
     def _request_raw(
         self,
         info: OperationInfo,
@@ -104,6 +161,7 @@ class BaseService:
                 operation=operation,
             )
             result = response.json()
+            _normalize_person_ids(result)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -189,6 +247,7 @@ class BaseService:
 
             try:
                 items = response.json()
+                _normalize_person_ids(items)
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
@@ -229,6 +288,7 @@ class BaseService:
 
             try:
                 data = response.json()
+                _normalize_person_ids(data)
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 
@@ -258,6 +318,7 @@ class BaseService:
 
         try:
             first_data = first_response.json()
+            _normalize_person_ids(first_data)
         except Exception as e:
             raise ApiError(f"Failed to parse paginated response (page 1): {_security.truncate(str(e))}") from e
 
@@ -280,6 +341,7 @@ class BaseService:
 
             try:
                 data = response.json()
+                _normalize_person_ids(data)
             except Exception as e:
                 raise ApiError(f"Failed to parse paginated response (page {page}): {_security.truncate(str(e))}") from e
 

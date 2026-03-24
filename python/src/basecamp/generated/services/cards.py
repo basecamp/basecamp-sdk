@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class CardsService(BaseService):
-    def get(self, *, card_id: int | str) -> dict[str, Any]:
+    def get(self, *, card_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cards", operation="get", is_mutation=False, resource_id=card_id),
             "GET",
@@ -21,7 +21,7 @@ class CardsService(BaseService):
     def update(
         self,
         *,
-        card_id: int | str,
+        card_id: int,
         title: str | None = None,
         content: str | None = None,
         due_on: str | None = None,
@@ -35,7 +35,7 @@ class CardsService(BaseService):
             operation="UpdateCard",
         )
 
-    def move(self, *, card_id: int | str, column_id: int, position: int | None = None) -> None:
+    def move(self, *, card_id: int, column_id: int, position: int | None = None) -> None:
         self._request_void(
             OperationInfo(service="cards", operation="move", is_mutation=True, resource_id=card_id),
             "POST",
@@ -44,7 +44,7 @@ class CardsService(BaseService):
             operation="MoveCard",
         )
 
-    def list(self, *, column_id: int | str) -> ListResult:
+    def list(self, *, column_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="cards", operation="list", is_mutation=False, resource_id=column_id),
             f"/card_tables/lists/{column_id}/cards.json",
@@ -53,7 +53,7 @@ class CardsService(BaseService):
     def create(
         self,
         *,
-        column_id: int | str,
+        column_id: int,
         title: str,
         content: str | None = None,
         due_on: str | None = None,
@@ -69,7 +69,7 @@ class CardsService(BaseService):
 
 
 class AsyncCardsService(AsyncBaseService):
-    async def get(self, *, card_id: int | str) -> dict[str, Any]:
+    async def get(self, *, card_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cards", operation="get", is_mutation=False, resource_id=card_id),
             "GET",
@@ -79,7 +79,7 @@ class AsyncCardsService(AsyncBaseService):
     async def update(
         self,
         *,
-        card_id: int | str,
+        card_id: int,
         title: str | None = None,
         content: str | None = None,
         due_on: str | None = None,
@@ -93,7 +93,7 @@ class AsyncCardsService(AsyncBaseService):
             operation="UpdateCard",
         )
 
-    async def move(self, *, card_id: int | str, column_id: int, position: int | None = None) -> None:
+    async def move(self, *, card_id: int, column_id: int, position: int | None = None) -> None:
         await self._request_void(
             OperationInfo(service="cards", operation="move", is_mutation=True, resource_id=card_id),
             "POST",
@@ -102,7 +102,7 @@ class AsyncCardsService(AsyncBaseService):
             operation="MoveCard",
         )
 
-    async def list(self, *, column_id: int | str) -> ListResult:
+    async def list(self, *, column_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="cards", operation="list", is_mutation=False, resource_id=column_id),
             f"/card_tables/lists/{column_id}/cards.json",
@@ -111,7 +111,7 @@ class AsyncCardsService(AsyncBaseService):
     async def create(
         self,
         *,
-        column_id: int | str,
+        column_id: int,
         title: str,
         content: str | None = None,
         due_on: str | None = None,

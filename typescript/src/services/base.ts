@@ -56,6 +56,47 @@ const DEFAULT_MAX_PAGES = 10_000;
  * for making API requests, handling errors, and integrating
  * with the hooks system.
  */
+/**
+ * Normalizes Person-shaped objects in API responses.
+ *
+ * The BC3 API conflates real Person records (numeric id) with system actors
+ * like LocalPerson (symbolic id: "basecamp", "campfire"). This function
+ * walks a response tree and, for any object with a `personable_type` field
+ * whose `id` is a string:
+ * - Numeric strings in safe integer range: coerced to number, no system_label
+ * - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, original preserved as system_label
+ * - Numeric overflow (beyond Number.MAX_SAFE_INTEGER): id becomes 0, original preserved as system_label
+ */
+function normalizePersonIds(obj: unknown): void {
+  if (!obj || typeof obj !== "object") return;
+  if (Array.isArray(obj)) {
+    for (const item of obj) normalizePersonIds(item);
+    return;
+  }
+  const rec = obj as Record<string, unknown>;
+  if ("personable_type" in rec && typeof rec.id === "string") {
+    const idStr = rec.id as string;
+    // Strict integer check: only bare digits (with optional leading minus).
+    // Rejects "1e3", "123.0", "0x1F", "123abc" which Number() would accept.
+    if (/^-?\d+$/.test(idStr) && Number.isSafeInteger(Number(idStr))) {
+      // Numeric string in safe integer range (e.g. "12345") — coerce to number
+      rec.id = Number(idStr);
+    } else if (/^-?\d+$/.test(idStr)) {
+      // Pure digits but overflows JS safe integer range — preserve as
+      // system_label since we can't represent it losslessly as a number
+      rec.system_label = idStr;
+      rec.id = 0;
+    } else {
+      // Non-numeric sentinel (e.g. "basecamp" for LocalPerson)
+      rec.system_label = idStr;
+      rec.id = 0;
+    }
+  }
+  for (const val of Object.values(rec)) {
+    if (typeof val === "object" && val !== null) normalizePersonIds(val);
+  }
+}
+
 export abstract class BaseService {
   /** The underlying openapi-fetch client */
   protected readonly client: RawClient;
@@ -247,6 +288,7 @@ export abstract class BaseService {
         return undefined as T;
       }
 
+      normalizePersonIds(data);
       return data;
     } catch (err) {
       result.durationMs = Math.round(performance.now() - start);
@@ -307,6 +349,7 @@ export abstract class BaseService {
       }
 
       const firstPageItems: T[] = data ?? [];
+      normalizePersonIds(firstPageItems);
       const totalCount = parseTotalCount(response);
       const maxItems = paginationOpts?.maxItems;
 
@@ -383,6 +426,7 @@ export abstract class BaseService {
       }
 
       const firstPageData = (data ?? {}) as Record<string, unknown>;
+      normalizePersonIds(firstPageData);
       const totalCount = parseTotalCount(response);
 
       // Extract wrapper fields (everything except the paginated key)
@@ -465,6 +509,7 @@ export abstract class BaseService {
       }
 
       const pageItems: T[] = (await response.json()) as T[];
+      normalizePersonIds(pageItems);
       allItems.push(...pageItems);
 
       // Check maxItems cap
@@ -513,6 +558,7 @@ export abstract class BaseService {
       }
 
       const pageData = (await response.json()) as Record<string, unknown>;
+      normalizePersonIds(pageData);
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);
 

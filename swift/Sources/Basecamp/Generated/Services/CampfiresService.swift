@@ -2,17 +2,25 @@
 import Foundation
 
 public struct ListLinesCampfireOptions: Sendable {
+    public var sort: String?
+    public var direction: String?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(sort: String? = nil, direction: String? = nil, maxItems: Int? = nil) {
+        self.sort = sort
+        self.direction = direction
         self.maxItems = maxItems
     }
 }
 
 public struct ListUploadsCampfireOptions: Sendable {
+    public var sort: String?
+    public var direction: String?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(sort: String? = nil, direction: String? = nil, maxItems: Int? = nil) {
+        self.sort = sort
+        self.direction = direction
         self.maxItems = maxItems
     }
 }
@@ -114,18 +122,34 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
     }
 
     public func listLines(campfireId: Int, options: ListLinesCampfireOptions? = nil) async throws -> ListResult<CampfireLine> {
+        var queryItems: [URLQueryItem] = []
+        if let sort = options?.sort {
+            queryItems.append(URLQueryItem(name: "sort", value: sort))
+        }
+        if let direction = options?.direction {
+            queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Campfires", operation: "ListCampfireLines", resourceType: "campfire_line", isMutation: false, resourceId: campfireId),
             path: "/chats/\(campfireId)/lines.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListCampfireLines")
         )
     }
 
     public func listUploads(campfireId: Int, options: ListUploadsCampfireOptions? = nil) async throws -> ListResult<CampfireLine> {
+        var queryItems: [URLQueryItem] = []
+        if let sort = options?.sort {
+            queryItems.append(URLQueryItem(name: "sort", value: sort))
+        }
+        if let direction = options?.direction {
+            queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Campfires", operation: "ListCampfireUploads", resourceType: "campfire_upload", isMutation: false, resourceId: campfireId),
             path: "/chats/\(campfireId)/uploads.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListCampfireUploads")
         )

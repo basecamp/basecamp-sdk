@@ -71,21 +71,21 @@ class PeopleService(BaseService):
             OperationInfo(service="people", operation="list", is_mutation=False), "/people.json"
         )
 
-    def get(self, *, person_id: int | str) -> dict[str, Any]:
+    def get(self, *, person_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}",
         )
 
-    def get_out_of_office(self, *, person_id: int | str) -> dict[str, Any]:
+    def get_out_of_office(self, *, person_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}/out_of_office.json",
         )
 
-    def enable_out_of_office(self, *, person_id: int | str, out_of_office: dict) -> dict[str, Any]:
+    def enable_out_of_office(self, *, person_id: int, out_of_office: dict) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="people", operation="enable_out_of_office", is_mutation=True, resource_id=person_id),
             "POST",
@@ -94,7 +94,7 @@ class PeopleService(BaseService):
             operation="EnableOutOfOffice",
         )
 
-    def disable_out_of_office(self, *, person_id: int | str) -> None:
+    def disable_out_of_office(self, *, person_id: int) -> None:
         self._request_void(
             OperationInfo(service="people", operation="disable_out_of_office", is_mutation=True, resource_id=person_id),
             "DELETE",
@@ -102,19 +102,14 @@ class PeopleService(BaseService):
             operation="DisableOutOfOffice",
         )
 
-    def list_for_project(self, *, project_id: int | str) -> ListResult:
+    def list_for_project(self, *, project_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
         )
 
     def update_project_access(
-        self,
-        *,
-        project_id: int | str,
-        grant: list | None = None,
-        revoke: list | None = None,
-        create: list | None = None,
+        self, *, project_id: int, grant: list | None = None, revoke: list | None = None, create: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="people", operation="update_project_access", is_mutation=True, project_id=project_id),
@@ -193,21 +188,21 @@ class AsyncPeopleService(AsyncBaseService):
             OperationInfo(service="people", operation="list", is_mutation=False), "/people.json"
         )
 
-    async def get(self, *, person_id: int | str) -> dict[str, Any]:
+    async def get(self, *, person_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}",
         )
 
-    async def get_out_of_office(self, *, person_id: int | str) -> dict[str, Any]:
+    async def get_out_of_office(self, *, person_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}/out_of_office.json",
         )
 
-    async def enable_out_of_office(self, *, person_id: int | str, out_of_office: dict) -> dict[str, Any]:
+    async def enable_out_of_office(self, *, person_id: int, out_of_office: dict) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="people", operation="enable_out_of_office", is_mutation=True, resource_id=person_id),
             "POST",
@@ -216,7 +211,7 @@ class AsyncPeopleService(AsyncBaseService):
             operation="EnableOutOfOffice",
         )
 
-    async def disable_out_of_office(self, *, person_id: int | str) -> None:
+    async def disable_out_of_office(self, *, person_id: int) -> None:
         await self._request_void(
             OperationInfo(service="people", operation="disable_out_of_office", is_mutation=True, resource_id=person_id),
             "DELETE",
@@ -224,19 +219,14 @@ class AsyncPeopleService(AsyncBaseService):
             operation="DisableOutOfOffice",
         )
 
-    async def list_for_project(self, *, project_id: int | str) -> ListResult:
+    async def list_for_project(self, *, project_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
         )
 
     async def update_project_access(
-        self,
-        *,
-        project_id: int | str,
-        grant: list | None = None,
-        revoke: list | None = None,
-        create: list | None = None,
+        self, *, project_id: int, grant: list | None = None, revoke: list | None = None, create: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="people", operation="update_project_access", is_mutation=True, project_id=project_id),

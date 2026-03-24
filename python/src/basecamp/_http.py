@@ -94,6 +94,26 @@ class HttpClient:
             content_type=content_type,
         )
 
+    def request_multipart(
+        self,
+        method: str,
+        url: str,
+        *,
+        field: str,
+        content: bytes,
+        filename: str,
+        content_type: str,
+        operation: str | None = None,
+    ) -> httpx.Response:
+        url = self._build_url(url)
+        # Sanitize user-provided values to prevent CRLF header injection
+        safe_filename = filename.replace("\r", "").replace("\n", "")
+        safe_content_type = content_type.replace("\r", "").replace("\n", "")
+        files = {field: (safe_filename, content, safe_content_type)}
+        if operation and self._is_retryable_operation(operation):
+            return self._request_with_retry(method, url, files=files)
+        return self._single_request(method, url, files=files)
+
     def get_no_retry(self, url: str) -> httpx.Response:
         url = self._build_url(url)
         return self._single_request("GET", url)
@@ -119,6 +139,7 @@ class HttpClient:
         json_body: dict | None = None,
         content: bytes | None = None,
         content_type: str | None = None,
+        files: dict | None = None,
     ) -> httpx.Response:
         attempt = 0
         last_error: BasecampError | None = None
@@ -136,6 +157,7 @@ class HttpClient:
                     json_body=json_body,
                     content=content,
                     content_type=content_type,
+                    files=files,
                     attempt=attempt,
                 )
             except (RateLimitError, NetworkError, ApiError) as e:
@@ -167,6 +189,7 @@ class HttpClient:
         json_body: dict | None = None,
         content: bytes | None = None,
         content_type: str | None = None,
+        files: dict | None = None,
         attempt: int = 1,
         _retry_count: int = 0,
     ) -> httpx.Response:
@@ -187,6 +210,7 @@ class HttpClient:
                 params=params,
                 json=json_body,
                 content=content,
+                files=files,
             )
 
             if response.status_code >= 400:
@@ -202,6 +226,7 @@ class HttpClient:
                             json_body=json_body,
                             content=content,
                             content_type=content_type,
+                            files=files,
                             attempt=attempt,
                             _retry_count=_retry_count + 1,
                         )

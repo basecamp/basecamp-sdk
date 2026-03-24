@@ -128,6 +128,9 @@ if __FILE__ == $PROGRAM_NAME
     puts '      include TypeHelpers'
 
     attr_names = ordered_props.map { |k| k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '') }
+    # Add system_label for schemas with flexible integer fields
+    has_flexible = ordered_props.any? { |k| properties[k]['x-go-type']&.include?('FlexibleInt64') }
+    attr_names << 'system_label' if has_flexible
     puts "      attr_accessor #{attr_names.map { |n| ":#{n}" }.join(", ")}"
 
     unless required_props.empty?
@@ -165,6 +168,10 @@ if __FILE__ == $PROGRAM_NAME
       end
 
       puts "        @#{attr_name} = #{converter}"
+      # Add system_label after flexible integer id fields
+      if prop_schema['x-go-type']&.include?('FlexibleInt64')
+        puts '        @system_label = data["system_label"]'
+      end
     end
     puts '      end'
     puts ''

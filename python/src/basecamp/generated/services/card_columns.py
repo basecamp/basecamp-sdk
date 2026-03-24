@@ -11,16 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class CardColumnsService(BaseService):
-    def get(self, *, column_id: int | str) -> dict[str, Any]:
+    def get(self, *, column_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
             "GET",
             f"/card_tables/columns/{column_id}",
         )
 
-    def update(
-        self, *, column_id: int | str, title: str | None = None, description: str | None = None
-    ) -> dict[str, Any]:
+    def update(self, *, column_id: int, title: str | None = None, description: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="update", is_mutation=True, resource_id=column_id),
             "PUT",
@@ -29,7 +27,7 @@ class CardColumnsService(BaseService):
             operation="UpdateCardColumn",
         )
 
-    def set_color(self, *, column_id: int | str, color: str) -> dict[str, Any]:
+    def set_color(self, *, column_id: int, color: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="set_color", is_mutation=True, resource_id=column_id),
             "PUT",
@@ -38,7 +36,7 @@ class CardColumnsService(BaseService):
             operation="SetCardColumnColor",
         )
 
-    def enable_on_hold(self, *, column_id: int | str) -> dict[str, Any]:
+    def enable_on_hold(self, *, column_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="enable_on_hold", is_mutation=True, resource_id=column_id),
             "POST",
@@ -46,7 +44,7 @@ class CardColumnsService(BaseService):
             operation="EnableCardColumnOnHold",
         )
 
-    def disable_on_hold(self, *, column_id: int | str) -> dict[str, Any]:
+    def disable_on_hold(self, *, column_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="disable_on_hold", is_mutation=True, resource_id=column_id),
             "DELETE",
@@ -54,7 +52,7 @@ class CardColumnsService(BaseService):
             operation="DisableCardColumnOnHold",
         )
 
-    def subscribe_to_column(self, *, column_id: int | str) -> None:
+    def subscribe_to_column(self, *, column_id: int) -> None:
         self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="subscribe_to_column", is_mutation=True, resource_id=column_id
@@ -64,7 +62,7 @@ class CardColumnsService(BaseService):
             operation="SubscribeToCardColumn",
         )
 
-    def unsubscribe_from_column(self, *, column_id: int | str) -> None:
+    def unsubscribe_from_column(self, *, column_id: int) -> None:
         self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="unsubscribe_from_column", is_mutation=True, resource_id=column_id
@@ -74,7 +72,7 @@ class CardColumnsService(BaseService):
             operation="UnsubscribeFromCardColumn",
         )
 
-    def create(self, *, card_table_id: int | str, title: str, description: str | None = None) -> dict[str, Any]:
+    def create(self, *, card_table_id: int, title: str, description: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="create", is_mutation=True, resource_id=card_table_id),
             "POST",
@@ -83,7 +81,7 @@ class CardColumnsService(BaseService):
             operation="CreateCardColumn",
         )
 
-    def move(self, *, card_table_id: int | str, source_id: int, target_id: int, position: int | None = None) -> None:
+    def move(self, *, card_table_id: int, source_id: int, target_id: int, position: int | None = None) -> None:
         self._request_void(
             OperationInfo(service="cardcolumns", operation="move", is_mutation=True, resource_id=card_table_id),
             "POST",
@@ -94,7 +92,7 @@ class CardColumnsService(BaseService):
 
 
 class AsyncCardColumnsService(AsyncBaseService):
-    async def get(self, *, column_id: int | str) -> dict[str, Any]:
+    async def get(self, *, column_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
             "GET",
@@ -102,7 +100,7 @@ class AsyncCardColumnsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, column_id: int | str, title: str | None = None, description: str | None = None
+        self, *, column_id: int, title: str | None = None, description: str | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="update", is_mutation=True, resource_id=column_id),
@@ -112,7 +110,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="UpdateCardColumn",
         )
 
-    async def set_color(self, *, column_id: int | str, color: str) -> dict[str, Any]:
+    async def set_color(self, *, column_id: int, color: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="set_color", is_mutation=True, resource_id=column_id),
             "PUT",
@@ -121,7 +119,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="SetCardColumnColor",
         )
 
-    async def enable_on_hold(self, *, column_id: int | str) -> dict[str, Any]:
+    async def enable_on_hold(self, *, column_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="enable_on_hold", is_mutation=True, resource_id=column_id),
             "POST",
@@ -129,7 +127,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="EnableCardColumnOnHold",
         )
 
-    async def disable_on_hold(self, *, column_id: int | str) -> dict[str, Any]:
+    async def disable_on_hold(self, *, column_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="disable_on_hold", is_mutation=True, resource_id=column_id),
             "DELETE",
@@ -137,7 +135,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="DisableCardColumnOnHold",
         )
 
-    async def subscribe_to_column(self, *, column_id: int | str) -> None:
+    async def subscribe_to_column(self, *, column_id: int) -> None:
         await self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="subscribe_to_column", is_mutation=True, resource_id=column_id
@@ -147,7 +145,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="SubscribeToCardColumn",
         )
 
-    async def unsubscribe_from_column(self, *, column_id: int | str) -> None:
+    async def unsubscribe_from_column(self, *, column_id: int) -> None:
         await self._request_void(
             OperationInfo(
                 service="cardcolumns", operation="unsubscribe_from_column", is_mutation=True, resource_id=column_id
@@ -157,7 +155,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="UnsubscribeFromCardColumn",
         )
 
-    async def create(self, *, card_table_id: int | str, title: str, description: str | None = None) -> dict[str, Any]:
+    async def create(self, *, card_table_id: int, title: str, description: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="create", is_mutation=True, resource_id=card_table_id),
             "POST",
@@ -166,9 +164,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             operation="CreateCardColumn",
         )
 
-    async def move(
-        self, *, card_table_id: int | str, source_id: int, target_id: int, position: int | None = None
-    ) -> None:
+    async def move(self, *, card_table_id: int, source_id: int, target_id: int, position: int | None = None) -> None:
         await self._request_void(
             OperationInfo(service="cardcolumns", operation="move", is_mutation=True, resource_id=card_table_id),
             "POST",

@@ -2,7 +2,9 @@
 import Foundation
 
 public struct Person: Codable, Sendable {
-    public let id: Int
+    public let id: FlexibleInt
+    /// Label for system actors (e.g. "basecamp"). Present when personable_type is "LocalPerson".
+    public var systemLabel: String?
     public let name: String
     public var admin: Bool?
     public var attachableSgid: String?
@@ -26,7 +28,7 @@ public struct Person: Codable, Sendable {
     public var updatedAt: String?
 
     public init(
-        id: Int,
+        id: FlexibleInt,
         name: String,
         admin: Bool? = nil,
         attachableSgid: String? = nil,

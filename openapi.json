@@ -20719,7 +20719,7 @@
             "$ref": "#/components/schemas/AccountSettings"
           },
           "logo": {
-            "type": "string"
+            "$ref": "#/components/schemas/AccountLogo"
           }
         },
         "required": [
@@ -20743,6 +20743,14 @@
           },
           "can_upload_files": {
             "type": "boolean"
+          }
+        }
+      },
+      "AccountLogo": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
           }
         }
       },

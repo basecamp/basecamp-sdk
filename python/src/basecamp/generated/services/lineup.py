@@ -20,7 +20,7 @@ class LineupService(BaseService):
             operation="CreateLineupMarker",
         )
 
-    def update(self, *, marker_id: int | str, name: str | None = None, date: str | None = None) -> None:
+    def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> None:
         self._request_void(
             OperationInfo(service="lineup", operation="update", is_mutation=True, resource_id=marker_id),
             "PUT",
@@ -29,7 +29,7 @@ class LineupService(BaseService):
             operation="UpdateLineupMarker",
         )
 
-    def delete(self, *, marker_id: int | str) -> None:
+    def delete(self, *, marker_id: int) -> None:
         self._request_void(
             OperationInfo(service="lineup", operation="delete", is_mutation=True, resource_id=marker_id),
             "DELETE",
@@ -48,7 +48,7 @@ class AsyncLineupService(AsyncBaseService):
             operation="CreateLineupMarker",
         )
 
-    async def update(self, *, marker_id: int | str, name: str | None = None, date: str | None = None) -> None:
+    async def update(self, *, marker_id: int, name: str | None = None, date: str | None = None) -> None:
         await self._request_void(
             OperationInfo(service="lineup", operation="update", is_mutation=True, resource_id=marker_id),
             "PUT",
@@ -57,7 +57,7 @@ class AsyncLineupService(AsyncBaseService):
             operation="UpdateLineupMarker",
         )
 
-    async def delete(self, *, marker_id: int | str) -> None:
+    async def delete(self, *, marker_id: int) -> None:
         await self._request_void(
             OperationInfo(service="lineup", operation="delete", is_mutation=True, resource_id=marker_id),
             "DELETE",

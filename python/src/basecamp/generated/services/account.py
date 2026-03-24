@@ -16,11 +16,15 @@ class AccountService(BaseService):
             OperationInfo(service="account", operation="get_account", is_mutation=False), "GET", "/account.json"
         )
 
-    def update_account_logo(self) -> None:
-        self._request_void(
+    def update_account_logo(self, *, content: bytes, filename: str, content_type: str) -> None:
+        self._request_multipart_void(
             OperationInfo(service="account", operation="update_account_logo", is_mutation=True),
             "PUT",
             "/account/logo.json",
+            field="logo",
+            content=content,
+            filename=filename,
+            content_type=content_type,
             operation="UpdateAccountLogo",
         )
 
@@ -48,11 +52,15 @@ class AsyncAccountService(AsyncBaseService):
             OperationInfo(service="account", operation="get_account", is_mutation=False), "GET", "/account.json"
         )
 
-    async def update_account_logo(self) -> None:
-        await self._request_void(
+    async def update_account_logo(self, *, content: bytes, filename: str, content_type: str) -> None:
+        await self._request_multipart_void(
             OperationInfo(service="account", operation="update_account_logo", is_mutation=True),
             "PUT",
             "/account/logo.json",
+            field="logo",
+            content=content,
+            filename=filename,
+            content_type=content_type,
             operation="UpdateAccountLogo",
         )
 

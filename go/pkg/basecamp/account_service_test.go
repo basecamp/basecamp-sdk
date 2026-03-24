@@ -25,6 +25,51 @@ func testAccountServer(t *testing.T, handler http.HandlerFunc) *AccountService {
 	return account.Account()
 }
 
+func TestAccountService_GetAccount_LogoObject(t *testing.T) {
+	svc := testAccountServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Matches the actual API wire format: logo is an object, not a string.
+		w.Write([]byte(`{
+			"id": 3,
+			"name": "37signals",
+			"created_at": "2012-04-20T20:25:27.000Z",
+			"updated_at": "2025-01-15T12:00:00.000Z",
+			"logo": {"url": "https://3.basecampapi.com/2914079/account/logo?v=1650492527"}
+		}`))
+	})
+
+	acct, err := svc.GetAccount(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if acct.Logo == nil {
+		t.Fatal("expected logo to be non-nil")
+	}
+	if acct.Logo.URL != "https://3.basecampapi.com/2914079/account/logo?v=1650492527" {
+		t.Errorf("unexpected logo URL: %s", acct.Logo.URL)
+	}
+}
+
+func TestAccountService_GetAccount_LogoAbsent(t *testing.T) {
+	svc := testAccountServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"id": 3,
+			"name": "37signals",
+			"created_at": "2012-04-20T20:25:27.000Z",
+			"updated_at": "2025-01-15T12:00:00.000Z"
+		}`))
+	})
+
+	acct, err := svc.GetAccount(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if acct.Logo != nil {
+		t.Errorf("expected logo to be nil when absent, got %+v", acct.Logo)
+	}
+}
+
 func TestAccountService_UpdateLogo(t *testing.T) {
 	svc := testAccountServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "PUT" {

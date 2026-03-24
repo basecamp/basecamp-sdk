@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class TodosetsService(BaseService):
-    def get(self, *, todoset_id: int | str) -> dict[str, Any]:
+    def get(self, *, todoset_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todosets", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
@@ -20,7 +20,7 @@ class TodosetsService(BaseService):
 
 
 class AsyncTodosetsService(AsyncBaseService):
-    async def get(self, *, todoset_id: int | str) -> dict[str, Any]:
+    async def get(self, *, todoset_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todosets", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",

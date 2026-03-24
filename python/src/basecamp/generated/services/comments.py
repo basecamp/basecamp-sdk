@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class CommentsService(BaseService):
-    def get(self, *, comment_id: int | str) -> dict[str, Any]:
+    def get(self, *, comment_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="comments", operation="get", is_mutation=False, resource_id=comment_id),
             "GET",
             f"/comments/{comment_id}",
         )
 
-    def update(self, *, comment_id: int | str, content: str) -> dict[str, Any]:
+    def update(self, *, comment_id: int, content: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="comments", operation="update", is_mutation=True, resource_id=comment_id),
             "PUT",
@@ -27,13 +27,13 @@ class CommentsService(BaseService):
             operation="UpdateComment",
         )
 
-    def list(self, *, recording_id: int | str) -> ListResult:
+    def list(self, *, recording_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
         )
 
-    def create(self, *, recording_id: int | str, content: str) -> dict[str, Any]:
+    def create(self, *, recording_id: int, content: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="comments", operation="create", is_mutation=True, resource_id=recording_id),
             "POST",
@@ -44,14 +44,14 @@ class CommentsService(BaseService):
 
 
 class AsyncCommentsService(AsyncBaseService):
-    async def get(self, *, comment_id: int | str) -> dict[str, Any]:
+    async def get(self, *, comment_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="comments", operation="get", is_mutation=False, resource_id=comment_id),
             "GET",
             f"/comments/{comment_id}",
         )
 
-    async def update(self, *, comment_id: int | str, content: str) -> dict[str, Any]:
+    async def update(self, *, comment_id: int, content: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="comments", operation="update", is_mutation=True, resource_id=comment_id),
             "PUT",
@@ -60,13 +60,13 @@ class AsyncCommentsService(AsyncBaseService):
             operation="UpdateComment",
         )
 
-    async def list(self, *, recording_id: int | str) -> ListResult:
+    async def list(self, *, recording_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
         )
 
-    async def create(self, *, recording_id: int | str, content: str) -> dict[str, Any]:
+    async def create(self, *, recording_id: int, content: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="comments", operation="create", is_mutation=True, resource_id=recording_id),
             "POST",

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-23T21:15:35Z
+# Generated: 2026-03-24T23:08:55Z
 
 require "json"
 require "time"
@@ -80,7 +80,7 @@ module Basecamp
         @active = parse_boolean(data["active"])
         @frozen = parse_boolean(data["frozen"])
         @limits = parse_type(data["limits"], "AccountLimits")
-        @logo = data["logo"]
+        @logo = parse_type(data["logo"], "AccountLogo")
         @owner_name = data["owner_name"]
         @paused = parse_boolean(data["paused"])
         @settings = parse_type(data["settings"], "AccountSettings")
@@ -131,6 +131,26 @@ module Basecamp
           "can_create_users" => @can_create_users,
           "can_pin_projects" => @can_pin_projects,
           "can_upload_files" => @can_upload_files,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # AccountLogo
+    class AccountLogo
+      include TypeHelpers
+      attr_accessor :url
+
+      def initialize(data = {})
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "url" => @url,
         }.compact
       end
 
@@ -1479,7 +1499,7 @@ module Basecamp
     # GaugeNeedle
     class GaugeNeedle
       include TypeHelpers
-      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :boosts_count, :boosts_url, :bucket, :color, :comment_count, :comments_count, :comments_url, :creator, :description, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :url, :visible_to_clients
+      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :boosts_count, :boosts_url, :bucket, :color, :comments_count, :comments_url, :creator, :description, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :url, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -1496,7 +1516,6 @@ module Basecamp
         @boosts_url = data["boosts_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @color = data["color"]
-        @comment_count = parse_integer(data["comment_count"])
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @creator = parse_type(data["creator"], "Person")
@@ -1523,7 +1542,6 @@ module Basecamp
           "boosts_url" => @boosts_url,
           "bucket" => @bucket,
           "color" => @color,
-          "comment_count" => @comment_count,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "creator" => @creator,
@@ -2228,7 +2246,7 @@ module Basecamp
     # Person
     class Person
       include TypeHelpers
-      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :time_zone, :title, :updated_at
+      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :time_zone, :title, :updated_at, :system_label
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2237,6 +2255,7 @@ module Basecamp
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
+        @system_label = data["system_label"]
         @name = data["name"]
         @admin = parse_boolean(data["admin"])
         @attachable_sgid = data["attachable_sgid"]

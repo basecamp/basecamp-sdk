@@ -152,6 +152,12 @@ class AsyncAccountClient:
     # --- Async service properties (lazy-initialized) ---
 
     @property
+    def account(self):
+        from basecamp.generated.services.account import AsyncAccountService
+
+        return self._service("account", lambda: AsyncAccountService(self))
+
+    @property
     def projects(self):
         from basecamp.generated.services.projects import AsyncProjectsService
 

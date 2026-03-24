@@ -43,7 +43,7 @@ type Account struct {
 	Frozen       bool                `json:"frozen,omitempty"`
 	Id           int64               `json:"id"`
 	Limits       AccountLimits       `json:"limits,omitempty"`
-	Logo         string              `json:"logo,omitempty"`
+	Logo         AccountLogo         `json:"logo,omitempty"`
 	Name         string              `json:"name"`
 	OwnerName    string              `json:"owner_name,omitempty"`
 	Paused       bool                `json:"paused,omitempty"`
@@ -60,6 +60,11 @@ type AccountLimits struct {
 	CanCreateUsers    bool `json:"can_create_users,omitempty"`
 	CanPinProjects    bool `json:"can_pin_projects,omitempty"`
 	CanUploadFiles    bool `json:"can_upload_files,omitempty"`
+}
+
+// AccountLogo defines model for AccountLogo.
+type AccountLogo struct {
+	Url string `json:"url,omitempty"`
 }
 
 // AccountSettings defines model for AccountSettings.

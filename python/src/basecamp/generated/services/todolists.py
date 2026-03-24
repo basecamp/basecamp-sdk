@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class TodolistsService(BaseService):
-    def get(self, *, id: int | str) -> dict[str, Any]:
+    def get(self, *, id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todolists", operation="get", is_mutation=False, resource_id=id),
             "GET",
             f"/todolists/{id}",
         )
 
-    def update(self, *, id: int | str, name: str | None = None, description: str | None = None) -> dict[str, Any]:
+    def update(self, *, id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todolists", operation="update", is_mutation=True, resource_id=id),
             "PUT",
@@ -27,14 +27,14 @@ class TodolistsService(BaseService):
             operation="UpdateTodolistOrGroup",
         )
 
-    def list(self, *, todoset_id: int | str, status: str | None = None) -> ListResult:
+    def list(self, *, todoset_id: int, status: str | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
             f"/todosets/{todoset_id}/todolists.json",
             params=self._compact(status=status),
         )
 
-    def create(self, *, todoset_id: int | str, name: str, description: str | None = None) -> dict[str, Any]:
+    def create(self, *, todoset_id: int, name: str, description: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todolists", operation="create", is_mutation=True, resource_id=todoset_id),
             "POST",
@@ -45,14 +45,14 @@ class TodolistsService(BaseService):
 
 
 class AsyncTodolistsService(AsyncBaseService):
-    async def get(self, *, id: int | str) -> dict[str, Any]:
+    async def get(self, *, id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todolists", operation="get", is_mutation=False, resource_id=id),
             "GET",
             f"/todolists/{id}",
         )
 
-    async def update(self, *, id: int | str, name: str | None = None, description: str | None = None) -> dict[str, Any]:
+    async def update(self, *, id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todolists", operation="update", is_mutation=True, resource_id=id),
             "PUT",
@@ -61,14 +61,14 @@ class AsyncTodolistsService(AsyncBaseService):
             operation="UpdateTodolistOrGroup",
         )
 
-    async def list(self, *, todoset_id: int | str, status: str | None = None) -> ListResult:
+    async def list(self, *, todoset_id: int, status: str | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
             f"/todosets/{todoset_id}/todolists.json",
             params=self._compact(status=status),
         )
 
-    async def create(self, *, todoset_id: int | str, name: str, description: str | None = None) -> dict[str, Any]:
+    async def create(self, *, todoset_id: int, name: str, description: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todolists", operation="create", is_mutation=True, resource_id=todoset_id),
             "POST",

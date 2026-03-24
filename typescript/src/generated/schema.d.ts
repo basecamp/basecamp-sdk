@@ -2531,13 +2531,16 @@ export interface components {
             limits?: components["schemas"]["AccountLimits"];
             subscription?: components["schemas"]["AccountSubscription"];
             settings?: components["schemas"]["AccountSettings"];
-            logo?: string;
+            logo?: components["schemas"]["AccountLogo"];
         };
         AccountLimits: {
             can_create_projects?: boolean;
             can_pin_projects?: boolean;
             can_create_users?: boolean;
             can_upload_files?: boolean;
+        };
+        AccountLogo: {
+            url?: string;
         };
         AccountSettings: {
             company_hq_enabled?: boolean;
@@ -3600,6 +3603,8 @@ export interface components {
         Person: {
             /** Format: int64 */
             id: number;
+            /** Label for system actors (e.g. "basecamp"). Present when personable_type is "LocalPerson". */
+            system_label?: string;
             attachable_sgid?: string;
             /** Format: password */
             name: string;

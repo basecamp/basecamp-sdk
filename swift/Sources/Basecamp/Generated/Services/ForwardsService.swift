@@ -10,9 +10,13 @@ public struct ListRepliesForwardOptions: Sendable {
 }
 
 public struct ListForwardOptions: Sendable {
+    public var sort: String?
+    public var direction: String?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(sort: String? = nil, direction: String? = nil, maxItems: Int? = nil) {
+        self.sort = sort
+        self.direction = direction
         self.maxItems = maxItems
     }
 }
@@ -66,9 +70,17 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
     }
 
     public func list(inboxId: Int, options: ListForwardOptions? = nil) async throws -> ListResult<Forward> {
+        var queryItems: [URLQueryItem] = []
+        if let sort = options?.sort {
+            queryItems.append(URLQueryItem(name: "sort", value: sort))
+        }
+        if let direction = options?.direction {
+            queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Forwards", operation: "ListForwards", resourceType: "forward", isMutation: false, resourceId: inboxId),
             path: "/inboxes/\(inboxId)/forwards.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListForwards")
         )

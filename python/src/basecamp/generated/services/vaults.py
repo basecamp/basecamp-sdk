@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class VaultsService(BaseService):
-    def get(self, *, vault_id: int | str) -> dict[str, Any]:
+    def get(self, *, vault_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="vaults", operation="get", is_mutation=False, resource_id=vault_id),
             "GET",
             f"/vaults/{vault_id}",
         )
 
-    def update(self, *, vault_id: int | str, title: str | None = None) -> dict[str, Any]:
+    def update(self, *, vault_id: int, title: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="vaults", operation="update", is_mutation=True, resource_id=vault_id),
             "PUT",
@@ -27,13 +27,13 @@ class VaultsService(BaseService):
             operation="UpdateVault",
         )
 
-    def list(self, *, vault_id: int | str) -> ListResult:
+    def list(self, *, vault_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="vaults", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/vaults.json",
         )
 
-    def create(self, *, vault_id: int | str, title: str) -> dict[str, Any]:
+    def create(self, *, vault_id: int, title: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="vaults", operation="create", is_mutation=True, resource_id=vault_id),
             "POST",
@@ -44,14 +44,14 @@ class VaultsService(BaseService):
 
 
 class AsyncVaultsService(AsyncBaseService):
-    async def get(self, *, vault_id: int | str) -> dict[str, Any]:
+    async def get(self, *, vault_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="vaults", operation="get", is_mutation=False, resource_id=vault_id),
             "GET",
             f"/vaults/{vault_id}",
         )
 
-    async def update(self, *, vault_id: int | str, title: str | None = None) -> dict[str, Any]:
+    async def update(self, *, vault_id: int, title: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="vaults", operation="update", is_mutation=True, resource_id=vault_id),
             "PUT",
@@ -60,13 +60,13 @@ class AsyncVaultsService(AsyncBaseService):
             operation="UpdateVault",
         )
 
-    async def list(self, *, vault_id: int | str) -> ListResult:
+    async def list(self, *, vault_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="vaults", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/vaults.json",
         )
 
-    async def create(self, *, vault_id: int | str, title: str) -> dict[str, Any]:
+    async def create(self, *, vault_id: int, title: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="vaults", operation="create", is_mutation=True, resource_id=vault_id),
             "POST",

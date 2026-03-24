@@ -2,6 +2,7 @@
 import Foundation
 
 extension AccountClient {
+    public var account: AccountService { service("account") { AccountService(accountClient: self) } }
     public var attachments: AttachmentsService { service("attachments") { AttachmentsService(accountClient: self) } }
     public var automation: AutomationService { service("automation") { AutomationService(accountClient: self) } }
     public var boosts: BoostsService { service("boosts") { BoostsService(accountClient: self) } }
@@ -19,11 +20,14 @@ extension AccountClient {
     public var documents: DocumentsService { service("documents") { DocumentsService(accountClient: self) } }
     public var events: EventsService { service("events") { EventsService(accountClient: self) } }
     public var forwards: ForwardsService { service("forwards") { ForwardsService(accountClient: self) } }
+    public var gauges: GaugesService { service("gauges") { GaugesService(accountClient: self) } }
     public var hillCharts: HillChartsService { service("hillCharts") { HillChartsService(accountClient: self) } }
     public var lineup: LineupService { service("lineup") { LineupService(accountClient: self) } }
     public var messageBoards: MessageBoardsService { service("messageBoards") { MessageBoardsService(accountClient: self) } }
     public var messageTypes: MessageTypesService { service("messageTypes") { MessageTypesService(accountClient: self) } }
     public var messages: MessagesService { service("messages") { MessagesService(accountClient: self) } }
+    public var myAssignments: MyAssignmentsService { service("myAssignments") { MyAssignmentsService(accountClient: self) } }
+    public var myNotifications: MyNotificationsService { service("myNotifications") { MyNotificationsService(accountClient: self) } }
     public var people: PeopleService { service("people") { PeopleService(accountClient: self) } }
     public var projects: ProjectsService { service("projects") { ProjectsService(accountClient: self) } }
     public var recordings: RecordingsService { service("recordings") { RecordingsService(accountClient: self) } }

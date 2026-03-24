@@ -20,7 +20,7 @@
     "src/generated"
   ],
   "scripts": {
-    "generate": "tsx scripts/strip-account-id.ts ../openapi.json src/generated/openapi-stripped.json && openapi-typescript src/generated/openapi-stripped.json -o src/generated/schema.d.ts && tsx scripts/extract-metadata.ts src/generated/openapi-stripped.json > src/generated/metadata.json && tsx scripts/generate-path-mapping.ts",
+    "generate": "tsx scripts/strip-account-id.ts ../openapi.json src/generated/openapi-stripped.json && openapi-typescript src/generated/openapi-stripped.json -o src/generated/schema.d.ts && tsx scripts/patch-flexible-ids.ts && tsx scripts/extract-metadata.ts src/generated/openapi-stripped.json > src/generated/metadata.json && tsx scripts/generate-path-mapping.ts",
     "build": "tsc",
     "postbuild": "node -e \"fs=require('fs');fs.cpSync('src/generated','dist/generated',{recursive:true});\"",
     "prepublishOnly": "npm run build",

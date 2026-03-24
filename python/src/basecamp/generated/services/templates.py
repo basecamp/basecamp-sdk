@@ -27,16 +27,14 @@ class TemplatesService(BaseService):
             operation="CreateTemplate",
         )
 
-    def get(self, *, template_id: int | str) -> dict[str, Any]:
+    def get(self, *, template_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="templates", operation="get", is_mutation=False, resource_id=template_id),
             "GET",
             f"/templates/{template_id}",
         )
 
-    def update(
-        self, *, template_id: int | str, name: str | None = None, description: str | None = None
-    ) -> dict[str, Any]:
+    def update(self, *, template_id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="templates", operation="update", is_mutation=True, resource_id=template_id),
             "PUT",
@@ -45,7 +43,7 @@ class TemplatesService(BaseService):
             operation="UpdateTemplate",
         )
 
-    def delete(self, *, template_id: int | str) -> None:
+    def delete(self, *, template_id: int) -> None:
         self._request_void(
             OperationInfo(service="templates", operation="delete", is_mutation=True, resource_id=template_id),
             "DELETE",
@@ -53,7 +51,7 @@ class TemplatesService(BaseService):
             operation="DeleteTemplate",
         )
 
-    def create_project(self, *, template_id: int | str, name: str, description: str | None = None) -> dict[str, Any]:
+    def create_project(self, *, template_id: int, name: str, description: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="templates", operation="create_project", is_mutation=True, resource_id=template_id),
             "POST",
@@ -62,7 +60,7 @@ class TemplatesService(BaseService):
             operation="CreateProjectFromTemplate",
         )
 
-    def get_construction(self, *, template_id: int | str, construction_id: int | str) -> dict[str, Any]:
+    def get_construction(self, *, template_id: int, construction_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="templates", operation="get_construction", is_mutation=False, resource_id=construction_id
@@ -89,7 +87,7 @@ class AsyncTemplatesService(AsyncBaseService):
             operation="CreateTemplate",
         )
 
-    async def get(self, *, template_id: int | str) -> dict[str, Any]:
+    async def get(self, *, template_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="templates", operation="get", is_mutation=False, resource_id=template_id),
             "GET",
@@ -97,7 +95,7 @@ class AsyncTemplatesService(AsyncBaseService):
         )
 
     async def update(
-        self, *, template_id: int | str, name: str | None = None, description: str | None = None
+        self, *, template_id: int, name: str | None = None, description: str | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="templates", operation="update", is_mutation=True, resource_id=template_id),
@@ -107,7 +105,7 @@ class AsyncTemplatesService(AsyncBaseService):
             operation="UpdateTemplate",
         )
 
-    async def delete(self, *, template_id: int | str) -> None:
+    async def delete(self, *, template_id: int) -> None:
         await self._request_void(
             OperationInfo(service="templates", operation="delete", is_mutation=True, resource_id=template_id),
             "DELETE",
@@ -115,9 +113,7 @@ class AsyncTemplatesService(AsyncBaseService):
             operation="DeleteTemplate",
         )
 
-    async def create_project(
-        self, *, template_id: int | str, name: str, description: str | None = None
-    ) -> dict[str, Any]:
+    async def create_project(self, *, template_id: int, name: str, description: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="templates", operation="create_project", is_mutation=True, resource_id=template_id),
             "POST",
@@ -126,7 +122,7 @@ class AsyncTemplatesService(AsyncBaseService):
             operation="CreateProjectFromTemplate",
         )
 
-    async def get_construction(self, *, template_id: int | str, construction_id: int | str) -> dict[str, Any]:
+    async def get_construction(self, *, template_id: int, construction_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="templates", operation="get_construction", is_mutation=False, resource_id=construction_id

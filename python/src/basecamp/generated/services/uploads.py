@@ -11,16 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class UploadsService(BaseService):
-    def get(self, *, upload_id: int | str) -> dict[str, Any]:
+    def get(self, *, upload_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="uploads", operation="get", is_mutation=False, resource_id=upload_id),
             "GET",
             f"/uploads/{upload_id}",
         )
 
-    def update(
-        self, *, upload_id: int | str, description: str | None = None, base_name: str | None = None
-    ) -> dict[str, Any]:
+    def update(self, *, upload_id: int, description: str | None = None, base_name: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="uploads", operation="update", is_mutation=True, resource_id=upload_id),
             "PUT",
@@ -29,13 +27,13 @@ class UploadsService(BaseService):
             operation="UpdateUpload",
         )
 
-    def list_versions(self, *, upload_id: int | str) -> ListResult:
+    def list_versions(self, *, upload_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
         )
 
-    def list(self, *, vault_id: int | str) -> ListResult:
+    def list(self, *, vault_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
@@ -44,7 +42,7 @@ class UploadsService(BaseService):
     def create(
         self,
         *,
-        vault_id: int | str,
+        vault_id: int,
         attachable_sgid: str,
         description: str | None = None,
         base_name: str | None = None,
@@ -65,7 +63,7 @@ class UploadsService(BaseService):
 
 
 class AsyncUploadsService(AsyncBaseService):
-    async def get(self, *, upload_id: int | str) -> dict[str, Any]:
+    async def get(self, *, upload_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="uploads", operation="get", is_mutation=False, resource_id=upload_id),
             "GET",
@@ -73,7 +71,7 @@ class AsyncUploadsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, upload_id: int | str, description: str | None = None, base_name: str | None = None
+        self, *, upload_id: int, description: str | None = None, base_name: str | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="uploads", operation="update", is_mutation=True, resource_id=upload_id),
@@ -83,13 +81,13 @@ class AsyncUploadsService(AsyncBaseService):
             operation="UpdateUpload",
         )
 
-    async def list_versions(self, *, upload_id: int | str) -> ListResult:
+    async def list_versions(self, *, upload_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
         )
 
-    async def list(self, *, vault_id: int | str) -> ListResult:
+    async def list(self, *, vault_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
@@ -98,7 +96,7 @@ class AsyncUploadsService(AsyncBaseService):
     async def create(
         self,
         *,
-        vault_id: int | str,
+        vault_id: int,
         attachable_sgid: str,
         description: str | None = None,
         base_name: str | None = None,

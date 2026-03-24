@@ -41,7 +41,7 @@ func (fi *FlexibleInt64) UnmarshalJSON(data []byte) error {
 		// "basecamp" is a non-numeric sentinel for system-generated entities.
 		var numErr *strconv.NumError
 		if errors.As(parseErr, &numErr) && numErr.Err == strconv.ErrRange {
-			return fmt.Errorf("flexibleint64: %q overflows int64", s)
+			return fmt.Errorf("flexibleint64: %q overflows int64: %w", s, parseErr)
 		}
 		*fi = 0
 		return nil
@@ -54,7 +54,7 @@ func (fi *FlexibleInt64) UnmarshalJSON(data []byte) error {
 
 	var num json.Number
 	if err := dec.Decode(&num); err != nil {
-		return fmt.Errorf("flexibleint64: cannot parse %s: expected number or string", string(data))
+		return fmt.Errorf("flexibleint64: cannot parse %s: %w", string(data), err)
 	}
 	n, err := num.Int64()
 	if err != nil {

@@ -215,6 +215,11 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         } else {
             lines.append("    public var \(camelName): \(swiftType)?")
         }
+        // Add system_label field after FlexibleInt id fields
+        if swiftType == "FlexibleInt" {
+            lines.append("    /// Label for system actors (e.g. \"basecamp\"). Present when personable_type is \"LocalPerson\".")
+            lines.append("    public var systemLabel: String?")
+        }
     }
 
     if !requiredFields.isEmpty {

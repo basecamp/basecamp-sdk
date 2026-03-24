@@ -424,6 +424,13 @@ def parse_operation(
     has_binary_body = bool(
         (operation.get("requestBody") or {}).get("content", {}).get("application/octet-stream"),
     )
+    multipart_content = (operation.get("requestBody") or {}).get("content", {}).get("multipart/form-data")
+    has_multipart_body = bool(multipart_content)
+    multipart_field = (
+        (operation.get("x-basecamp-multipart") or {}).get("field", "file")
+        if has_multipart_body
+        else None
+    )
     body_params = extract_body_params(body_schema_ref, schemas)
 
     # Response type
@@ -445,8 +452,10 @@ def parse_operation(
         "path_params": path_params,
         "query_params": query_params,
         "body_params": body_params,
-        "has_body": len(body_params) > 0,
+        "has_body": len(body_params) > 0 or has_multipart_body,
         "has_binary_body": has_binary_body,
+        "has_multipart_body": has_multipart_body,
+        "multipart_field": multipart_field,
         "returns_void": returns_void,
         "returns_array": returns_array,
         "is_mutation": http_method != "GET",
@@ -494,13 +503,17 @@ def build_params(op: dict) -> list[str]:
     """Build keyword-only parameter list for a method."""
     params: list[str] = []
 
-    # Path params
+    # Path params — use the schema type, not a blanket int | str
     for p in op["path_params"]:
-        params.append(f"{p['python_name']}: int | str")
+        params.append(f"{p['python_name']}: {p['type']}")
 
     # Binary upload params
     if op["has_binary_body"]:
         params.append("content: bytes")
+        params.append("content_type: str")
+    elif op.get("has_multipart_body"):
+        params.append("content: bytes")
+        params.append("filename: str")
         params.append("content_type: str")
     elif op["has_body"]:
         required = [b for b in op["body_params"] if b["required"]]
@@ -641,6 +654,10 @@ def generate_method_body(op: dict, service_name: str, *, is_async: bool) -> list
             lines.append(f"        return {_await(is_async)}self._request_raw(OperationInfo({info_kwargs}), {path_expr}, content=content, content_type=content_type, params={build_query_params_expr(op)}{operation_kwarg(op)})")
         else:
             lines.append(f"        return {_await(is_async)}self._request_raw(OperationInfo({info_kwargs}), {path_expr}, content=content, content_type=content_type{operation_kwarg(op)})")
+    elif op.get("has_multipart_body"):
+        # Multipart form-data upload
+        field = op["multipart_field"]
+        lines.append(f'        {_await(is_async)}self._request_multipart_void(OperationInfo({info_kwargs}), "{op["http_method"]}", {path_expr}, field="{field}", content=content, filename=filename, content_type=content_type{operation_kwarg(op)})')
     elif op["returns_void"]:
         if op["has_body"]:
             lines.append(f"        {_await(is_async)}self._request_void(OperationInfo({info_kwargs}), \"{op['http_method']}\", {path_expr}, json_body={build_body_expr(op)}{operation_kwarg(op)})")
