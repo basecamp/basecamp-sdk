@@ -8289,34 +8289,6 @@ structure OutOfOfficePerson {
 
 // ===== Profile & Preferences Operations =====
 
-/// Update the current user's personal info
-@idempotent
-@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/my/profile.json", code: 204)
-operation UpdateMyProfile {
-  input: UpdateMyProfileInput
-  output: UpdateMyProfileOutput
-  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
-}
-
-structure UpdateMyProfileInput {
-  @required
-  @httpLabel
-  accountId: AccountId
-
-  name: PersonName
-  email_address: EmailAddress
-  title: PersonTitle
-  bio: PersonBio
-  location: PersonLocation
-  time_zone_name: String
-  first_week_day: String
-  time_format: String
-}
-
-structure UpdateMyProfileOutput {}
-
 /// Get the current user's preferences
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
