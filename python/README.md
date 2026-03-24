@@ -118,10 +118,10 @@ from basecamp import Client, OAuthTokenProvider
 
 provider = OAuthTokenProvider(
     access_token="...",
-    refresh_token="...",
-    expires_at=1234567890.0,
     client_id="your-client-id",
     client_secret="your-client-secret",
+    refresh_token="...",
+    expires_at=1234567890.0,
     on_refresh=lambda access, refresh, expires_at: save_tokens(access, refresh, expires_at),
 )
 
