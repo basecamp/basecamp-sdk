@@ -76,16 +76,84 @@ export abstract class BaseService {
   /** Maximum pages to follow before stopping (safety cap). */
   protected readonly maxPages: number;
 
+  /** Base URL for building multipart upload URLs. */
+  protected readonly baseUrl: string;
+
+  /**
+   * Authenticated fetch for multipart uploads and other raw requests.
+   * Provided by the client factory with Bearer token and User-Agent.
+   */
+  protected readonly authenticatedFetch: (url: string, init: RequestInit) => Promise<Response>;
+
   constructor(
     client: RawClient,
     hooks?: BasecampHooks,
     fetchPage?: (url: string) => Promise<Response>,
     maxPages?: number,
+    authenticatedFetch?: (url: string, init: RequestInit) => Promise<Response>,
+    baseUrl?: string,
   ) {
     this.client = client;
     this.hooks = hooks;
     this.fetchPage = fetchPage ?? ((url) => fetch(url, { headers: { Accept: "application/json" } }));
     this.maxPages = maxPages ?? DEFAULT_MAX_PAGES;
+    this.authenticatedFetch = authenticatedFetch ?? ((url, init) => fetch(url, init));
+    this.baseUrl = baseUrl ?? "";
+  }
+
+  /**
+   * Uploads a file as multipart/form-data with hooks integration.
+   *
+   * @param info - Operation metadata for hooks
+   * @param url - The full API URL
+   * @param method - HTTP method (PUT, POST)
+   * @param file - File or Blob to upload
+   * @param fieldName - The form field name
+   * @param filename - Display name for the uploaded file
+   */
+  protected async requestMultipartUpload(
+    info: OperationInfo,
+    url: string,
+    method: string,
+    file: Blob | File,
+    fieldName: string,
+    filename?: string,
+  ): Promise<void> {
+    const start = performance.now();
+    let result: OperationResult = { durationMs: 0 };
+
+    try { this.hooks?.onOperationStart?.(info); } catch { /* hooks should not interrupt */ }
+
+    try {
+      const formData = new FormData();
+      formData.append(fieldName, file, filename ?? (file instanceof File ? file.name : fieldName));
+
+      const response = await this.authenticatedFetch(url, {
+        method,
+        body: formData,
+      });
+
+      result.durationMs = Math.round(performance.now() - start);
+
+      if (!response.ok) {
+        const basecampError = await errorFromResponse(response);
+        result.error = basecampError;
+        throw basecampError;
+      }
+
+      // Drain body for 204 No Content
+      if (response.status === 204) {
+        response.body?.cancel();
+      }
+    } catch (err) {
+      result.durationMs = Math.round(performance.now() - start);
+      if (err instanceof BasecampError || err instanceof Error) {
+        result.error = err;
+      }
+      throw err;
+    } finally {
+      try { this.hooks?.onOperationEnd?.(info, result); } catch { /* hooks should not interrupt */ }
+    }
   }
 
   /**

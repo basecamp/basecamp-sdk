@@ -45,6 +45,9 @@ interface Operation {
     totalCountHeader?: string;
     key?: string;
   };
+  "x-basecamp-multipart"?: {
+    field: string;
+  };
 }
 
 interface Parameter {
@@ -59,6 +62,7 @@ interface RequestBody {
   content?: {
     "application/json"?: { schema: Schema };
     "application/octet-stream"?: { schema: Schema };
+    "multipart/form-data"?: { schema: Schema };
   };
   required?: boolean;
 }
@@ -92,7 +96,7 @@ interface ParsedOperation {
   bodySchemaRef?: string;
   bodyProperties: BodyProperty[];
   bodyRequired: boolean;
-  bodyContentType?: "json" | "octet-stream";
+  bodyContentType?: "json" | "octet-stream" | "multipart";
   responseSchemaRef?: string;
   returnsArray: boolean;
   returnsVoid: boolean;
@@ -100,6 +104,8 @@ interface ParsedOperation {
   resourceType: string;
   hasPagination: boolean;
   paginationKey?: string;
+  multipartField?: string;
+  serviceName: string;
 }
 
 interface PathParam {
@@ -668,7 +674,7 @@ function parseOperation(
   let bodySchemaRef: string | undefined;
   let bodyProperties: BodyProperty[] = [];
   let bodyRequired = false;
-  let bodyContentType: "json" | "octet-stream" | undefined;
+  let bodyContentType: "json" | "octet-stream" | "multipart" | undefined;
 
   if (operation.requestBody?.content?.["application/json"]?.schema) {
     const schema = operation.requestBody.content["application/json"].schema;
@@ -688,6 +694,9 @@ function parseOperation(
         };
       });
     }
+  } else if (operation.requestBody?.content?.["multipart/form-data"]?.schema) {
+    bodyRequired = operation.requestBody.required || false;
+    bodyContentType = "multipart";
   } else if (operation.requestBody?.content?.["application/octet-stream"]?.schema) {
     bodyRequired = operation.requestBody.required || false;
     bodyContentType = "octet-stream";
@@ -717,6 +726,7 @@ function parseOperation(
   const resourceType = extractResourceType(operationId);
   const hasPagination = !!operation["x-basecamp-pagination"];
   const paginationKey = operation["x-basecamp-pagination"]?.key;
+  const multipartField = operation["x-basecamp-multipart"]?.field;
 
   return {
     operationId,
@@ -737,6 +747,8 @@ function parseOperation(
     resourceType,
     hasPagination,
     paginationKey,
+    multipartField,
+    serviceName: "", // filled in by groupOperations
   };
 }
 
@@ -780,6 +792,7 @@ function groupOperations(spec: OpenAPISpec): Map<string, ServiceDefinition> {
       }
 
       const service = services.get(serviceName)!;
+      parsed.serviceName = serviceName;
       service.operations.push(parsed);
 
       // Collect types used by this service
@@ -1083,6 +1096,10 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     lines.push(`   * @param data - Binary file data to upload`);
     lines.push(`   * @param contentType - MIME type of the file (e.g., "image/png", "application/pdf")`);
   }
+  if (op.bodyContentType === "multipart") {
+    lines.push(`   * @param file - File or Blob to upload`);
+    lines.push(`   * @param filename - Display name for the uploaded file`);
+  }
   // Required query params
   const requiredQueryParams = op.queryParams.filter((q) => q.required);
   for (const q of requiredQueryParams) {
@@ -1198,6 +1215,30 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   // Method body — use requestPaginated for paginated array responses
   const isPaginated = op.hasPagination && op.returnsArray;
   const isWrappedPaginated = op.hasPagination && !op.returnsArray && !!op.paginationKey;
+  // Multipart uploads use requestMultipartUpload — completely different call path
+  if (op.bodyContentType === "multipart") {
+    const fieldName = op.multipartField || "file";
+    const urlPath = op.path.replace(/\{(\w+)\}/g, (_, name: string) => `\${${toCamelCase(name)}}`);
+    lines.push(`    const url = \`\${this.baseUrl}\` +`);
+    lines.push(`      \`${urlPath}\`;`);
+    lines.push(`    return this.requestMultipartUpload(`);
+    lines.push(`      {`);
+    lines.push(`        service: "${serviceName}",`);
+    lines.push(`        operation: "${op.operationId}",`);
+    lines.push(`        resourceType: "${op.resourceType}",`);
+    lines.push(`        isMutation: true,`);
+    lines.push(`      },`);
+    lines.push(`      url,`);
+    lines.push(`      "${op.httpMethod.toUpperCase()}",`);
+    lines.push(`      file,`);
+    lines.push(`      "${fieldName}",`);
+    lines.push(`      filename,`);
+    lines.push(`    );`);
+    lines.push(`  }`);
+    lines.push(``);
+    return lines;
+  }
+
   const wrappedReturnType = isWrappedPaginated ? buildReturnType(op, serviceName) : null;
   if (op.returnsVoid) {
     lines.push(`    await this.request(`);
@@ -1236,7 +1277,6 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   const hasPathParams = pathParamNames.length > 0;
   const hasQueryParams = op.queryParams.length > 0;
   const isOctetStream = op.bodyContentType === "octet-stream";
-
   if (hasPathParams || hasQueryParams || isOctetStream) {
     lines.push(`          params: {`);
 
@@ -1331,6 +1371,12 @@ function buildMethodSignature(op: ParsedOperation, resourceName: string): {
   if (op.bodyContentType === "octet-stream") {
     params.push(`data: ArrayBuffer | Uint8Array | string`);
     params.push(`contentType: string`);
+  }
+
+  // Multipart file upload
+  if (op.bodyContentType === "multipart") {
+    params.push(`file: Blob | File`);
+    params.push(`filename?: string`);
   }
 
   // Query params (required first, then options)

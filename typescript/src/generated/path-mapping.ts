@@ -9,6 +9,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   // Other
   "GET:/{accountId}/account.json": "GetAccount",
   "DELETE:/{accountId}/account/logo.json": "RemoveAccountLogo",
+  "PUT:/{accountId}/account/logo.json": "UpdateAccountLogo",
   "PUT:/{accountId}/account/name.json": "UpdateAccountName",
   "DELETE:/{accountId}/boosts/{boostId}": "DeleteBoost",
   "GET:/{accountId}/boosts/{boostId}": "GetBoost",

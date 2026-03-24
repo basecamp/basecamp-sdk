@@ -56,6 +56,37 @@ export class AccountService extends BaseService {
   }
 
   /**
+   * Upload or replace the account logo.
+   * @param file - File or Blob to upload
+   * @param filename - Display name for the uploaded file
+   * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.account.updateAccountLogo();
+   * ```
+   */
+  async updateAccountLogo(file: Blob | File, filename?: string): Promise<void> {
+    const url = `${this.baseUrl}` +
+      `/account/logo.json`;
+    return this.requestMultipartUpload(
+      {
+        service: "Account",
+        operation: "UpdateAccountLogo",
+        resourceType: "account_logo",
+        isMutation: true,
+      },
+      url,
+      "PUT",
+      file,
+      "logo",
+      filename,
+    );
+  }
+
+
+  /**
    * Remove the account logo. Only administrators and account owners can use this endpoint.
    * @returns void
    * @throws {BasecampError} If the request fails

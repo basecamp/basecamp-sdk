@@ -29,7 +29,7 @@ describe("updateAccountLogo", () => {
     });
 
     const blob = new Blob(["fake-png-data"], { type: "image/png" });
-    await client.updateAccountLogo(blob, "logo.png");
+    await client.account.updateAccountLogo(blob, "logo.png");
 
     expect(capturedRequest).not.toBeNull();
     expect(capturedRequest!.method).toBe("PUT");
@@ -58,7 +58,7 @@ describe("updateAccountLogo", () => {
     });
 
     const blob = new Blob(["data"], { type: "image/png" });
-    await expect(client.updateAccountLogo(blob)).rejects.toThrow();
+    await expect(client.account.updateAccountLogo(blob)).rejects.toThrow();
   });
 
   it("should fire operation hooks", async () => {
@@ -78,7 +78,7 @@ describe("updateAccountLogo", () => {
     });
 
     const blob = new Blob(["data"], { type: "image/png" });
-    await client.updateAccountLogo(blob, "logo.png");
+    await client.account.updateAccountLogo(blob, "logo.png");
 
     expect(onOperationStart).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -89,7 +89,7 @@ describe("updateAccountLogo", () => {
     );
     expect(onOperationEnd).toHaveBeenCalledWith(
       expect.objectContaining({ operation: "UpdateAccountLogo" }),
-      expect.objectContaining({ error: undefined }),
+      expect.objectContaining({ durationMs: expect.any(Number) }),
     );
   });
 });

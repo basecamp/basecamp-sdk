@@ -11,8 +11,7 @@ import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
 import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
 import type { BasecampHooks, OperationInfo, RequestInfo, RequestResult } from "./hooks.js";
-import { safeInvoke } from "./hooks.js";
-import { BasecampError, Errors, errorFromResponse } from "./errors.js";
+import { BasecampError } from "./errors.js";
 import { isLocalhost } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
@@ -325,6 +324,20 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     return fetch(url, { headers });
   };
 
+  // Authenticated fetch for multipart uploads — adds auth + User-Agent, caller controls body/method
+  const authenticatedFetch = async (url: string, init: RequestInit): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    headers.set("User-Agent", userAgent);
+    await authStrategy.authenticate(headers);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
+    try {
+      return await fetch(url, { ...init, headers, signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   // Add lazy-initialized service accessors
   // Services are created on first access and cached
   // Uses nullish coalescing assignment for atomic check-and-set in single-threaded JS
@@ -383,7 +396,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("timeline", () => new TimelineService(client, hooks, fetchPage, maxPages));
   defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage, maxPages));
   defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
-  defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages));
+  defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
   defineService("gauges", () => new GaugesService(client, hooks, fetchPage, maxPages));
   defineService("myAssignments", () => new MyAssignmentsService(client, hooks, fetchPage, maxPages));
   defineService("myNotifications", () => new MyNotificationsService(client, hooks, fetchPage, maxPages));
@@ -398,125 +411,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     enumerable: false,
   });
 
-  // Wire updateAccountLogo — raw fetch with multipart/form-data
-  const updateAccountLogoFn = createUpdateAccountLogo({
-    authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs,
-  });
-  Object.defineProperty(enhancedClient, "updateAccountLogo", {
-    value: updateAccountLogoFn,
-    writable: false,
-    enumerable: false,
-  });
-
   return enhancedClient;
-}
-
-// =============================================================================
-// Update Account Logo (hand-written — multipart upload not in OpenAPI spec)
-// =============================================================================
-
-/** Dependencies for createUpdateAccountLogo factory */
-interface UpdateAccountLogoDeps {
-  authStrategy: AuthStrategy;
-  userAgent: string;
-  baseUrl: string;
-  hooks?: BasecampHooks;
-  requestTimeoutMs: number;
-}
-
-/**
- * Creates an updateAccountLogo function bound to the client's auth and configuration.
- *
- * Uploads or replaces the account logo via a multipart/form-data PUT request.
- * The Basecamp API expects a 204 No Content response on success.
- */
-function createUpdateAccountLogo(
-  deps: UpdateAccountLogoDeps,
-): (logo: Blob | File, filename?: string) => Promise<void> {
-  const { authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs } = deps;
-
-  return async (logo: Blob | File, filename?: string): Promise<void> => {
-    const op: OperationInfo = {
-      service: "Account",
-      operation: "UpdateAccountLogo",
-      resourceType: "account",
-      isMutation: true,
-    };
-
-    const start = performance.now();
-    safeInvoke(hooks, "onOperationStart", op);
-
-    let operationError: Error | undefined;
-    try {
-      const url = `${baseUrl}/account/logo.json`;
-
-      const formData = new FormData();
-      formData.append("logo", logo, filename ?? (logo instanceof File ? logo.name : "logo"));
-
-      const headers = new Headers({
-        "User-Agent": userAgent,
-      });
-      await authStrategy.authenticate(headers);
-
-      const requestInfo: RequestInfo = {
-        method: "PUT",
-        url,
-        attempt: 1,
-      };
-      safeInvoke(hooks, "onRequestStart", requestInfo);
-
-      const reqStart = performance.now();
-      let response: Response;
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
-        try {
-          response = await fetch(url, {
-            method: "PUT",
-            headers,
-            body: formData,
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      } catch (err) {
-        const durationMs = Math.round(performance.now() - reqStart);
-        const error = err instanceof Error ? err : new Error(String(err));
-        safeInvoke(hooks, "onRequestEnd", requestInfo, {
-          statusCode: 0,
-          durationMs,
-          fromCache: false,
-          error,
-        });
-        throw Errors.network(error.message, error);
-      }
-
-      const durationMs = Math.round(performance.now() - reqStart);
-      safeInvoke(hooks, "onRequestEnd", requestInfo, {
-        statusCode: response.status,
-        durationMs,
-        fromCache: false,
-      });
-
-      if (response.status === 204) {
-        // Success — no content expected
-        response.body?.cancel();
-        return;
-      }
-
-      // Any other status is an error
-      throw await errorFromResponse(response);
-    } catch (err) {
-      if (err instanceof Error) operationError = err;
-      throw err;
-    } finally {
-      safeInvoke(hooks, "onOperationEnd", op, {
-        durationMs: Math.round(performance.now() - start),
-        error: operationError,
-      });
-    }
-  };
 }
 
 // =============================================================================
