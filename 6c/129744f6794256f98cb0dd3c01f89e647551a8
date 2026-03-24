@@ -1,0 +1,27 @@
+spec/basecamp.smithy
+  2bf2d8427811e954 3257-3262,3379-3384
+go/pkg/basecamp/campfires.go
+  2bf2d8427811e954 32-37,48-53,325-333,527-535
+go/pkg/basecamp/todos.go
+  2bf2d8427811e954 489-490,512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "6c129744f6794256f98cb0dd3c01f89e647551a8",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 3,
+      "accepted_lines": 45,
+      "overriden_lines": 0
+    }
+  }
+}
