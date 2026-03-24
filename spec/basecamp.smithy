@@ -43,6 +43,7 @@ use aws.protocols#restJson1
 use basecamp.traits#basecampRetry
 use basecamp.traits#basecampPagination
 use basecamp.traits#basecampIdempotent
+use basecamp.traits#basecampMultipart
 use basecamp.traits#basecampSensitive
 
 /// Basecamp API
@@ -264,6 +265,7 @@ service Basecamp {
     // Batch 13 - Account
     GetAccount,
     UpdateAccountName,
+    UpdateAccountLogo,
     RemoveAccountLogo,
 
     // Batch 14 - Gauges
@@ -7601,6 +7603,32 @@ structure RemoveAccountLogoInput {
 }
 
 structure RemoveAccountLogoOutput {}
+
+/// Upload or replace the account logo.
+/// Accepted formats: PNG, JPEG, GIF, WebP, AVIF, HEIC. Maximum 5 MB.
+/// Owners and admins only.
+@idempotent
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@basecampMultipart(field: "logo")
+@http(method: "PUT", uri: "/{accountId}/account/logo.json", code: 204)
+operation UpdateAccountLogo {
+  input: UpdateAccountLogoInput
+  output: UpdateAccountLogoOutput
+  errors: [ValidationError, ForbiddenError, UnauthorizedError, RateLimitError, InternalServerError]
+}
+
+structure UpdateAccountLogoInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpPayload
+  data: Blob
+}
+
+structure UpdateAccountLogoOutput {}
 
 // ===== Account Shapes =====
 

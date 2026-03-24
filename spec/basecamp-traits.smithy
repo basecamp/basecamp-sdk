@@ -70,6 +70,18 @@ structure basecampIdempotent {
     natural: Boolean
 }
 
+/// Multipart file upload semantics for Basecamp API operations.
+/// Emits x-basecamp-multipart extension to OpenAPI for SDK code generators.
+/// The Smithy→OpenAPI mapper rewrites the request body from octet-stream
+/// to multipart/form-data with the specified field name.
+@trait(selector: "operation")
+@specificationExtension(as: "x-basecamp-multipart")
+structure basecampMultipart {
+    /// The form field name for the file (e.g., "logo")
+    @required
+    field: String
+}
+
 /// Marks members containing sensitive data that should not be logged.
 /// Emits x-basecamp-sensitive extension to OpenAPI for SDK code generators.
 @trait(selector: "structure > member")
