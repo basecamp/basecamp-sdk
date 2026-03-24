@@ -1,0 +1,39 @@
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  31ce562ca8910a53 261-264,281-283,288-291,308-310,320-334,364-370
+go/pkg/types/flexible_int64.go
+  31ce562ca8910a53 16-21,35-39
+swift/Sources/BasecampGenerator/OpenAPIParser.swift
+  31ce562ca8910a53 48,51,72,74-78,86-88,91,150-159
+ruby/test/basecamp/services/account_service_test.rb
+  31ce562ca8910a53 1-39
+go/pkg/types/flexible_int64_test.go
+  31ce562ca8910a53 86-88,90-94
+python/tests/services/test_account.py
+  31ce562ca8910a53 1-47
+typescript/tests/services/account.test.ts
+  31ce562ca8910a53 1-59
+go/pkg/basecamp/account_service_test.go
+  31ce562ca8910a53 28-72
+python/src/basecamp/client.py
+  31ce562ca8910a53 156-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "7b1872e25216a151bd811a5cfc6861ebee2ea78c",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 282,
+      "total_deletions": 19,
+      "accepted_lines": 450,
+      "overriden_lines": 0
+    }
+  }
+}
