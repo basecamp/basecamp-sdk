@@ -1,0 +1,41 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FlexibleLongSerializerTest.kt
+  31ce562ca8910a53 1-50
+swift/Sources/BasecampGenerator/TypeMapping.swift
+  31ce562ca8910a53 89-92
+swift/Tests/BasecampTests/FlexibleIntTests.swift
+  31ce562ca8910a53 1-44
+python/scripts/generate_types.py
+  31ce562ca8910a53 31-35
+typescript/scripts/patch-flexible-ids.ts
+  31ce562ca8910a53 1-28
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleLongSerializer.kt
+  31ce562ca8910a53 1-53
+swift/Sources/Basecamp/FlexibleInt.swift
+  31ce562ca8910a53 1-52
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  31ce562ca8910a53 36-43,64,71,73,76-78,116-121
+typescript/package.json
+  31ce562ca8910a53 23
+python/tests/services/test_account.py
+  31ce562ca8910a53 6,9,73-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "16ad80ef5320c49535988780ac1dae37a7b4665b",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 286,
+      "total_deletions": 9,
+      "accepted_lines": 279,
+      "overriden_lines": 0
+    }
+  }
+}
