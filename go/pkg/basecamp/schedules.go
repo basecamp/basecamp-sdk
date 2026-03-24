@@ -580,7 +580,7 @@ func scheduleFromGenerated(gs generated.Schedule) Schedule {
 
 	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           gs.Creator.Id,
+			ID:           int64(gs.Creator.Id),
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -639,7 +639,7 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           ge.Creator.Id,
+			ID:           int64(ge.Creator.Id),
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,
@@ -660,7 +660,7 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 				Owner:        gp.Owner,
 			}
 			if gp.Id != 0 {
-				p.ID = gp.Id
+				p.ID = int64(gp.Id)
 			}
 			e.Participants = append(e.Participants, p)
 		}

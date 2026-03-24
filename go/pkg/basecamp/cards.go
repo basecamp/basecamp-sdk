@@ -1208,7 +1208,7 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		ct.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           int64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1279,7 +1279,7 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		cc.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           int64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1369,7 +1369,7 @@ func cardFromGenerated(gc generated.Card) Card {
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           int64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -1380,7 +1380,7 @@ func cardFromGenerated(gc generated.Card) Card {
 
 	if gc.Completer.Id != 0 || gc.Completer.Name != "" {
 		c.Completer = &Person{
-			ID:           gc.Completer.Id,
+			ID:           int64(gc.Completer.Id),
 			Name:         gc.Completer.Name,
 			EmailAddress: gc.Completer.EmailAddress,
 			AvatarURL:    gc.Completer.AvatarUrl,
@@ -1464,7 +1464,7 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 
 	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
 		s.Creator = &Person{
-			ID:           gs.Creator.Id,
+			ID:           int64(gs.Creator.Id),
 			Name:         gs.Creator.Name,
 			EmailAddress: gs.Creator.EmailAddress,
 			AvatarURL:    gs.Creator.AvatarUrl,
@@ -1475,7 +1475,7 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 
 	if gs.Completer.Id != 0 || gs.Completer.Name != "" {
 		s.Completer = &Person{
-			ID:           gs.Completer.Id,
+			ID:           int64(gs.Completer.Id),
 			Name:         gs.Completer.Name,
 			EmailAddress: gs.Completer.EmailAddress,
 			AvatarURL:    gs.Completer.AvatarUrl,

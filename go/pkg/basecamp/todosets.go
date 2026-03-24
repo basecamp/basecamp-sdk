@@ -116,7 +116,7 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 
 	if gts.Creator.Id != 0 || gts.Creator.Name != "" {
 		ts.Creator = &Person{
-			ID:           gts.Creator.Id,
+			ID:           int64(gts.Creator.Id),
 			Name:         gts.Creator.Name,
 			EmailAddress: gts.Creator.EmailAddress,
 			AvatarURL:    gts.Creator.AvatarUrl,

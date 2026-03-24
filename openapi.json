@@ -24735,7 +24735,11 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "x-go-type-skip-optional-pointer": true,
+            "x-go-type": "types.FlexibleInt64",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
           },
           "attachable_sgid": {
             "type": "string"

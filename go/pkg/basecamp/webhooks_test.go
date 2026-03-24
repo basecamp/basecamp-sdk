@@ -8,6 +8,7 @@ import (
 	"time"
 
 	generated "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 func webhooksFixturesDir() string {
@@ -222,7 +223,7 @@ func TestWebhookPersonFromGenerated_AllFields(t *testing.T) {
 	updatedAt, _ := time.Parse(time.RFC3339, "2022-11-22T08:23:21Z")
 
 	gp := generated.Person{
-		Id:                  personID,
+		Id:                  types.FlexibleInt64(personID),
 		AttachableSgid:      "BAh7CEkiCGdpZAY6BkVU--abc123",
 		Name:                "Annie Bryan",
 		EmailAddress:        "annie@honcho.com",

@@ -750,7 +750,7 @@ func personFromGenerated(gp generated.Person) Person {
 	}
 
 	if gp.Id != 0 {
-		p.ID = gp.Id
+		p.ID = int64(gp.Id)
 	}
 
 	// Convert timestamps to strings (the SDK Person type uses strings for these)

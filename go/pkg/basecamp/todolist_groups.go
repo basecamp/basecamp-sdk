@@ -390,7 +390,7 @@ func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
 
 	if gg.Creator.Id != 0 || gg.Creator.Name != "" {
 		g.Creator = &Person{
-			ID:           gg.Creator.Id,
+			ID:           int64(gg.Creator.Id),
 			Name:         gg.Creator.Name,
 			EmailAddress: gg.Creator.EmailAddress,
 			AvatarURL:    gg.Creator.AvatarUrl,

@@ -257,7 +257,7 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	var person *Person
 	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
 		person = &Person{
-			ID:           resp.JSON200.Person.Id,
+			ID:           int64(resp.JSON200.Person.Id),
 			Name:         resp.JSON200.Person.Name,
 			EmailAddress: resp.JSON200.Person.EmailAddress,
 			AvatarURL:    resp.JSON200.Person.AvatarUrl,
@@ -394,7 +394,7 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           ge.Creator.Id,
+			ID:           int64(ge.Creator.Id),
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,

@@ -480,7 +480,7 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 		CanAccessHillCharts: gp.CanAccessHillCharts,
 	}
 	if gp.Id != 0 {
-		p.ID = gp.Id
+		p.ID = int64(gp.Id)
 	}
 	if gp.Bio != "" {
 		p.Bio = &gp.Bio

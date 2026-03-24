@@ -446,7 +446,7 @@ func inboxFromGenerated(gi generated.Inbox) Inbox {
 
 	if gi.Creator.Id != 0 || gi.Creator.Name != "" {
 		i.Creator = &Person{
-			ID:           gi.Creator.Id,
+			ID:           int64(gi.Creator.Id),
 			Name:         gi.Creator.Name,
 			EmailAddress: gi.Creator.EmailAddress,
 			AvatarURL:    gi.Creator.AvatarUrl,
@@ -496,7 +496,7 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 
 	if gf.Creator.Id != 0 || gf.Creator.Name != "" {
 		f.Creator = &Person{
-			ID:           gf.Creator.Id,
+			ID:           int64(gf.Creator.Id),
 			Name:         gf.Creator.Name,
 			EmailAddress: gf.Creator.EmailAddress,
 			AvatarURL:    gf.Creator.AvatarUrl,
@@ -544,7 +544,7 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 
 	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 		r.Creator = &Person{
-			ID:           gr.Creator.Id,
+			ID:           int64(gr.Creator.Id),
 			Name:         gr.Creator.Name,
 			EmailAddress: gr.Creator.EmailAddress,
 			AvatarURL:    gr.Creator.AvatarUrl,
