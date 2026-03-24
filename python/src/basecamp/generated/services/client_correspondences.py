@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class ClientCorrespondencesService(BaseService):
-    def list(self) -> ListResult:
+    def list(self, *, sort: str | None = None, direction: str | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False),
             "/client/correspondences.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     def get(self, *, correspondence_id: int | str) -> dict[str, Any]:
@@ -28,10 +29,11 @@ class ClientCorrespondencesService(BaseService):
 
 
 class AsyncClientCorrespondencesService(AsyncBaseService):
-    async def list(self) -> ListResult:
+    async def list(self, *, sort: str | None = None, direction: str | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False),
             "/client/correspondences.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     async def get(self, *, correspondence_id: int | str) -> dict[str, Any]:

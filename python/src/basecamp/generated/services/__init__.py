@@ -1,5 +1,6 @@
 # @generated from OpenAPI spec — do not edit manually
 
+from basecamp.generated.services.account import AccountService, AsyncAccountService
 from basecamp.generated.services.attachments import AttachmentsService, AsyncAttachmentsService
 from basecamp.generated.services.automation import AutomationService, AsyncAutomationService
 from basecamp.generated.services.boosts import BoostsService, AsyncBoostsService
@@ -20,11 +21,14 @@ from basecamp.generated.services.comments import CommentsService, AsyncCommentsS
 from basecamp.generated.services.documents import DocumentsService, AsyncDocumentsService
 from basecamp.generated.services.events import EventsService, AsyncEventsService
 from basecamp.generated.services.forwards import ForwardsService, AsyncForwardsService
+from basecamp.generated.services.gauges import GaugesService, AsyncGaugesService
 from basecamp.generated.services.hill_charts import HillChartsService, AsyncHillChartsService
 from basecamp.generated.services.lineup import LineupService, AsyncLineupService
 from basecamp.generated.services.message_boards import MessageBoardsService, AsyncMessageBoardsService
 from basecamp.generated.services.message_types import MessageTypesService, AsyncMessageTypesService
 from basecamp.generated.services.messages import MessagesService, AsyncMessagesService
+from basecamp.generated.services.my_assignments import MyAssignmentsService, AsyncMyAssignmentsService
+from basecamp.generated.services.my_notifications import MyNotificationsService, AsyncMyNotificationsService
 from basecamp.generated.services.people import PeopleService, AsyncPeopleService
 from basecamp.generated.services.projects import ProjectsService, AsyncProjectsService
 from basecamp.generated.services.recordings import RecordingsService, AsyncRecordingsService
@@ -45,6 +49,8 @@ from basecamp.generated.services.vaults import VaultsService, AsyncVaultsService
 from basecamp.generated.services.webhooks_service import WebhooksService, AsyncWebhooksService
 
 __all__ = [
+    "AccountService",
+    "AsyncAccountService",
     "AttachmentsService",
     "AsyncAttachmentsService",
     "AutomationService",
@@ -79,6 +85,8 @@ __all__ = [
     "AsyncEventsService",
     "ForwardsService",
     "AsyncForwardsService",
+    "GaugesService",
+    "AsyncGaugesService",
     "HillChartsService",
     "AsyncHillChartsService",
     "LineupService",
@@ -89,6 +97,10 @@ __all__ = [
     "AsyncMessageTypesService",
     "MessagesService",
     "AsyncMessagesService",
+    "MyAssignmentsService",
+    "AsyncMyAssignmentsService",
+    "MyNotificationsService",
+    "AsyncMyNotificationsService",
     "PeopleService",
     "AsyncPeopleService",
     "ProjectsService",

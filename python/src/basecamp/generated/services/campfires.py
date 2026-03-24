@@ -66,10 +66,13 @@ class CampfiresService(BaseService):
             operation="DeleteChatbot",
         )
 
-    def list_lines(self, *, campfire_id: int | str) -> ListResult:
+    def list_lines(
+        self, *, campfire_id: int | str, sort: str | None = None, direction: str | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list_lines", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/lines.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     def create_line(self, *, campfire_id: int | str, content: str, content_type: str | None = None) -> dict[str, Any]:
@@ -96,10 +99,13 @@ class CampfiresService(BaseService):
             operation="DeleteCampfireLine",
         )
 
-    def list_uploads(self, *, campfire_id: int | str) -> ListResult:
+    def list_uploads(
+        self, *, campfire_id: int | str, sort: str | None = None, direction: str | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list_uploads", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/uploads.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     def create_upload(self, *, campfire_id: int | str, content: bytes, content_type: str, name: str) -> dict[str, Any]:
@@ -169,10 +175,13 @@ class AsyncCampfiresService(AsyncBaseService):
             operation="DeleteChatbot",
         )
 
-    async def list_lines(self, *, campfire_id: int | str) -> ListResult:
+    async def list_lines(
+        self, *, campfire_id: int | str, sort: str | None = None, direction: str | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list_lines", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/lines.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     async def create_line(
@@ -201,10 +210,13 @@ class AsyncCampfiresService(AsyncBaseService):
             operation="DeleteCampfireLine",
         )
 
-    async def list_uploads(self, *, campfire_id: int | str) -> ListResult:
+    async def list_uploads(
+        self, *, campfire_id: int | str, sort: str | None = None, direction: str | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list_uploads", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/uploads.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     async def create_upload(

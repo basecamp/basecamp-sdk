@@ -47,10 +47,11 @@ class ForwardsService(BaseService):
             f"/inboxes/{inbox_id}",
         )
 
-    def list(self, *, inbox_id: int | str) -> ListResult:
+    def list(self, *, inbox_id: int | str, sort: str | None = None, direction: str | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="forwards", operation="list", is_mutation=False, resource_id=inbox_id),
             f"/inboxes/{inbox_id}/forwards.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
 
@@ -91,8 +92,9 @@ class AsyncForwardsService(AsyncBaseService):
             f"/inboxes/{inbox_id}",
         )
 
-    async def list(self, *, inbox_id: int | str) -> ListResult:
+    async def list(self, *, inbox_id: int | str, sort: str | None = None, direction: str | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="forwards", operation="list", is_mutation=False, resource_id=inbox_id),
             f"/inboxes/{inbox_id}/forwards.json",
+            params=self._compact(sort=sort, direction=direction),
         )

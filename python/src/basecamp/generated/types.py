@@ -7,6 +7,47 @@ from typing import Any, NotRequired, TypedDict
 WebhookHeadersMap = dict[str, str]
 
 
+class Account(TypedDict):
+    active: NotRequired[bool]
+    created_at: str
+    frozen: NotRequired[bool]
+    id: int
+    limits: NotRequired[AccountLimits]
+    logo: NotRequired[str]
+    name: str
+    owner_name: NotRequired[str]
+    paused: NotRequired[bool]
+    settings: NotRequired[AccountSettings]
+    subscription: NotRequired[AccountSubscription]
+    trial: NotRequired[bool]
+    trial_ends_on: NotRequired[str]
+    updated_at: str
+
+
+class AccountLimits(TypedDict):
+    can_create_projects: NotRequired[bool]
+    can_create_users: NotRequired[bool]
+    can_pin_projects: NotRequired[bool]
+    can_upload_files: NotRequired[bool]
+
+
+class AccountSettings(TypedDict):
+    company_hq_enabled: NotRequired[bool]
+    projects_enabled: NotRequired[bool]
+    teams_enabled: NotRequired[bool]
+
+
+class AccountSubscription(TypedDict):
+    clients: NotRequired[bool]
+    logo: NotRequired[bool]
+    project_limit: NotRequired[int]
+    proper_name: NotRequired[str]
+    short_name: NotRequired[str]
+    teams: NotRequired[bool]
+    templates: NotRequired[bool]
+    timesheet: NotRequired[bool]
+
+
 class Assignable(TypedDict):
     app_url: NotRequired[str]
     assignees: NotRequired[list[Person]]
@@ -377,6 +418,12 @@ class CreateForwardReplyRequestContent(TypedDict):
     content: str
 
 
+class CreateGaugeNeedleRequestContent(TypedDict):
+    gauge_needle: GaugeNeedlePayload
+    notify: NotRequired[str]
+    subscriptions: NotRequired[list[int]]
+
+
 class CreateLineupMarkerRequestContent(TypedDict):
     date: str
     name: str
@@ -514,6 +561,10 @@ class Document(TypedDict):
     visible_to_clients: bool
 
 
+class EnableOutOfOfficeRequestContent(TypedDict):
+    out_of_office: OutOfOfficePayload
+
+
 class Event(TypedDict):
     action: str
     boosts_count: NotRequired[int]
@@ -579,10 +630,81 @@ class ForwardReply(TypedDict):
     visible_to_clients: bool
 
 
+class Gauge(TypedDict):
+    app_url: NotRequired[str]
+    bookmark_url: NotRequired[str]
+    bucket: NotRequired[RecordingBucket]
+    created_at: str
+    creator: NotRequired[Person]
+    description: NotRequired[str]
+    enabled: NotRequired[bool]
+    id: int
+    inherits_status: NotRequired[bool]
+    last_needle_color: NotRequired[str]
+    last_needle_position: NotRequired[int]
+    previous_needle_position: NotRequired[int]
+    status: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
+    updated_at: str
+    url: NotRequired[str]
+    visible_to_clients: NotRequired[bool]
+
+
+class GaugeNeedle(TypedDict):
+    app_url: NotRequired[str]
+    bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    bucket: NotRequired[RecordingBucket]
+    color: NotRequired[str]
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
+    created_at: str
+    creator: NotRequired[Person]
+    description: NotRequired[str]
+    id: int
+    inherits_status: NotRequired[bool]
+    parent: NotRequired[RecordingParent]
+    position: NotRequired[int]
+    status: NotRequired[str]
+    subscription_url: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
+    updated_at: str
+    url: NotRequired[str]
+    visible_to_clients: NotRequired[bool]
+
+
+class GaugeNeedlePayload(TypedDict):
+    color: NotRequired[str]
+    description: NotRequired[str]
+    position: int
+
+
+class GaugeNeedleUpdatePayload(TypedDict):
+    description: NotRequired[str]
+
+
+class GaugeTogglePayload(TypedDict):
+    enabled: bool
+
+
 class GetAssignedTodosResponseContent(TypedDict):
     grouped_by: NotRequired[str]
     person: NotRequired[Person]
     todos: NotRequired[list[Todo]]
+
+
+class GetMyAssignmentsResponseContent(TypedDict):
+    non_priorities: NotRequired[list[MyAssignment]]
+    priorities: NotRequired[list[MyAssignment]]
+
+
+class GetMyNotificationsResponseContent(TypedDict):
+    memories: NotRequired[list[Notification]]
+    reads: NotRequired[list[Notification]]
+    unreads: NotRequired[list[Notification]]
 
 
 class GetOverdueTodosResponseContent(TypedDict):
@@ -653,6 +775,10 @@ class LineupMarker(TypedDict):
     updated_at: str
 
 
+class MarkAsReadRequestContent(TypedDict):
+    readables: list[str]
+
+
 class Message(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -714,11 +840,92 @@ class MoveCardColumnRequestContent(TypedDict):
 
 class MoveCardRequestContent(TypedDict):
     column_id: int
+    position: NotRequired[int]
+
+
+class MyAssignment(TypedDict):
+    app_url: NotRequired[str]
+    assignees: NotRequired[list[MyAssignmentAssignee]]
+    bucket: NotRequired[MyAssignmentBucket]
+    children: NotRequired[list[MyAssignment]]
+    comments_count: NotRequired[int]
+    completed: NotRequired[bool]
+    content: NotRequired[str]
+    due_on: NotRequired[str]
+    has_description: NotRequired[bool]
+    id: int
+    parent: NotRequired[MyAssignmentParent]
+    priority_recording_id: NotRequired[int]
+    starts_on: NotRequired[str]
+    type: NotRequired[str]
+
+
+class MyAssignmentAssignee(TypedDict):
+    avatar_url: NotRequired[str]
+    id: int
+    name: NotRequired[str]
+
+
+class MyAssignmentBucket(TypedDict):
+    app_url: NotRequired[str]
+    id: int
+    name: NotRequired[str]
+
+
+class MyAssignmentParent(TypedDict):
+    app_url: NotRequired[str]
+    id: int
+    title: NotRequired[str]
 
 
 class NotFoundErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
+
+
+class Notification(TypedDict):
+    app_url: NotRequired[str]
+    bookmark_url: NotRequired[str]
+    bucket_name: NotRequired[str]
+    content_excerpt: NotRequired[str]
+    created_at: str
+    creator: NotRequired[Person]
+    id: int
+    image_url: NotRequired[str]
+    memory_url: NotRequired[str]
+    named: NotRequired[bool]
+    participants: NotRequired[list[Person]]
+    previewable_attachments: NotRequired[list[PreviewableAttachment]]
+    read_at: NotRequired[str]
+    readable_identifier: NotRequired[str]
+    readable_sgid: NotRequired[str]
+    section: NotRequired[str]
+    subscribed: NotRequired[bool]
+    subscription_url: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
+    unread_at: NotRequired[str]
+    unread_count: NotRequired[int]
+    unread_url: NotRequired[str]
+    updated_at: str
+
+
+class OutOfOffice(TypedDict):
+    enabled: NotRequired[bool]
+    end_date: NotRequired[str]
+    ongoing: NotRequired[bool]
+    person: NotRequired[OutOfOfficePerson]
+    start_date: NotRequired[str]
+
+
+class OutOfOfficePayload(TypedDict):
+    end_date: str
+    start_date: str
+
+
+class OutOfOfficePerson(TypedDict):
+    id: int
+    name: NotRequired[str]
 
 
 class PauseQuestionResponseContent(TypedDict):
@@ -753,6 +960,31 @@ class Person(TypedDict):
 class PersonCompany(TypedDict):
     id: int
     name: str
+
+
+class Preferences(TypedDict):
+    app_url: NotRequired[str]
+    first_week_day: NotRequired[str]
+    time_format: NotRequired[str]
+    time_zone_name: NotRequired[str]
+    url: NotRequired[str]
+
+
+class PreferencesPayload(TypedDict):
+    first_week_day: NotRequired[str]
+    time_format: NotRequired[str]
+    time_zone_name: NotRequired[str]
+
+
+class PreviewableAttachment(TypedDict):
+    app_url: NotRequired[str]
+    content_type: NotRequired[str]
+    filename: NotRequired[str]
+    filesize: NotRequired[int]
+    height: NotRequired[int]
+    id: NotRequired[int]
+    url: NotRequired[str]
+    width: NotRequired[int]
 
 
 class Project(TypedDict):
@@ -1214,6 +1446,10 @@ class Todoset(TypedDict):
     visible_to_clients: bool
 
 
+class ToggleGaugeRequestContent(TypedDict):
+    gauge: GaugeTogglePayload
+
+
 class Tool(TypedDict):
     app_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
@@ -1231,6 +1467,10 @@ class Tool(TypedDict):
 class UnauthorizedErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
+
+
+class UpdateAccountNameRequestContent(TypedDict):
+    name: str
 
 
 class UpdateCardColumnRequestContent(TypedDict):
@@ -1265,6 +1505,10 @@ class UpdateDocumentRequestContent(TypedDict):
     title: NotRequired[str]
 
 
+class UpdateGaugeNeedleRequestContent(TypedDict):
+    gauge_needle: NotRequired[GaugeNeedleUpdatePayload]
+
+
 class UpdateHillChartSettingsRequestContent(TypedDict):
     tracked: NotRequired[list[int]]
     untracked: NotRequired[list[int]]
@@ -1285,6 +1529,10 @@ class UpdateMessageRequestContent(TypedDict):
 class UpdateMessageTypeRequestContent(TypedDict):
     icon: NotRequired[str]
     name: NotRequired[str]
+
+
+class UpdateMyPreferencesRequestContent(TypedDict):
+    person: PreferencesPayload
 
 
 class UpdateMyProfileRequestContent(TypedDict):

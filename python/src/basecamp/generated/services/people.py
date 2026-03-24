@@ -16,6 +16,22 @@ class PeopleService(BaseService):
             OperationInfo(service="people", operation="list_pingable", is_mutation=False), "/circles/people.json"
         )
 
+    def get_my_preferences(self) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="people", operation="get_my_preferences", is_mutation=False),
+            "GET",
+            "/my/preferences.json",
+        )
+
+    def update_my_preferences(self, *, person: dict) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="people", operation="update_my_preferences", is_mutation=True),
+            "PUT",
+            "/my/preferences.json",
+            json_body=self._compact(person=person),
+            operation="UpdateMyPreferences",
+        )
+
     def my_profile(self) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="people", operation="my_profile", is_mutation=False), "GET", "/my/profile.json"
@@ -62,6 +78,30 @@ class PeopleService(BaseService):
             f"/people/{person_id}",
         )
 
+    def get_out_of_office(self, *, person_id: int | str) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
+            "GET",
+            f"/people/{person_id}/out_of_office.json",
+        )
+
+    def enable_out_of_office(self, *, person_id: int | str, out_of_office: dict) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="people", operation="enable_out_of_office", is_mutation=True, resource_id=person_id),
+            "POST",
+            f"/people/{person_id}/out_of_office.json",
+            json_body=self._compact(out_of_office=out_of_office),
+            operation="EnableOutOfOffice",
+        )
+
+    def disable_out_of_office(self, *, person_id: int | str) -> None:
+        self._request_void(
+            OperationInfo(service="people", operation="disable_out_of_office", is_mutation=True, resource_id=person_id),
+            "DELETE",
+            f"/people/{person_id}/out_of_office.json",
+            operation="DisableOutOfOffice",
+        )
+
     def list_for_project(self, *, project_id: int | str) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
@@ -96,6 +136,22 @@ class AsyncPeopleService(AsyncBaseService):
     async def list_pingable(self) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_pingable", is_mutation=False), "/circles/people.json"
+        )
+
+    async def get_my_preferences(self) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="people", operation="get_my_preferences", is_mutation=False),
+            "GET",
+            "/my/preferences.json",
+        )
+
+    async def update_my_preferences(self, *, person: dict) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="people", operation="update_my_preferences", is_mutation=True),
+            "PUT",
+            "/my/preferences.json",
+            json_body=self._compact(person=person),
+            operation="UpdateMyPreferences",
         )
 
     async def my_profile(self) -> dict[str, Any]:
@@ -142,6 +198,30 @@ class AsyncPeopleService(AsyncBaseService):
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}",
+        )
+
+    async def get_out_of_office(self, *, person_id: int | str) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
+            "GET",
+            f"/people/{person_id}/out_of_office.json",
+        )
+
+    async def enable_out_of_office(self, *, person_id: int | str, out_of_office: dict) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="people", operation="enable_out_of_office", is_mutation=True, resource_id=person_id),
+            "POST",
+            f"/people/{person_id}/out_of_office.json",
+            json_body=self._compact(out_of_office=out_of_office),
+            operation="EnableOutOfOffice",
+        )
+
+    async def disable_out_of_office(self, *, person_id: int | str) -> None:
+        await self._request_void(
+            OperationInfo(service="people", operation="disable_out_of_office", is_mutation=True, resource_id=person_id),
+            "DELETE",
+            f"/people/{person_id}/out_of_office.json",
+            operation="DisableOutOfOffice",
         )
 
     async def list_for_project(self, *, project_id: int | str) -> ListResult:

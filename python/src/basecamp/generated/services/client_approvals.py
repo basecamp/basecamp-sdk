@@ -11,9 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class ClientApprovalsService(BaseService):
-    def list(self) -> ListResult:
+    def list(self, *, sort: str | None = None, direction: str | None = None) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="clientapprovals", operation="list", is_mutation=False), "/client/approvals.json"
+            OperationInfo(service="clientapprovals", operation="list", is_mutation=False),
+            "/client/approvals.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     def get(self, *, approval_id: int | str) -> dict[str, Any]:
@@ -25,9 +27,11 @@ class ClientApprovalsService(BaseService):
 
 
 class AsyncClientApprovalsService(AsyncBaseService):
-    async def list(self) -> ListResult:
+    async def list(self, *, sort: str | None = None, direction: str | None = None) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="clientapprovals", operation="list", is_mutation=False), "/client/approvals.json"
+            OperationInfo(service="clientapprovals", operation="list", is_mutation=False),
+            "/client/approvals.json",
+            params=self._compact(sort=sort, direction=direction),
         )
 
     async def get(self, *, approval_id: int | str) -> dict[str, Any]:

@@ -35,12 +35,12 @@ class CardsService(BaseService):
             operation="UpdateCard",
         )
 
-    def move(self, *, card_id: int | str, column_id: int) -> None:
+    def move(self, *, card_id: int | str, column_id: int, position: int | None = None) -> None:
         self._request_void(
             OperationInfo(service="cards", operation="move", is_mutation=True, resource_id=card_id),
             "POST",
             f"/card_tables/cards/{card_id}/moves.json",
-            json_body=self._compact(column_id=column_id),
+            json_body=self._compact(column_id=column_id, position=position),
             operation="MoveCard",
         )
 
@@ -93,12 +93,12 @@ class AsyncCardsService(AsyncBaseService):
             operation="UpdateCard",
         )
 
-    async def move(self, *, card_id: int | str, column_id: int) -> None:
+    async def move(self, *, card_id: int | str, column_id: int, position: int | None = None) -> None:
         await self._request_void(
             OperationInfo(service="cards", operation="move", is_mutation=True, resource_id=card_id),
             "POST",
             f"/card_tables/cards/{card_id}/moves.json",
-            json_body=self._compact(column_id=column_id),
+            json_body=self._compact(column_id=column_id, position=position),
             operation="MoveCard",
         )
 
