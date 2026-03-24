@@ -1,0 +1,37 @@
+go/pkg/basecamp/webhooks_test.go
+  31ce562ca8910a53 11,226
+go/pkg/basecamp/client_approvals.go
+  31ce562ca8910a53 271
+go/pkg/basecamp/schedules.go
+  31ce562ca8910a53 663
+go/pkg/basecamp/people.go
+  31ce562ca8910a53 753
+go/pkg/basecamp/webhooks.go
+  31ce562ca8910a53 483
+go/pkg/basecamp/todos_test.go
+  31ce562ca8910a53 658,667,863-865,903
+go/pkg/basecamp/timesheet.go
+  31ce562ca8910a53 482
+go/pkg/basecamp/subscriptions.go
+  31ce562ca8910a53 191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "b2e277a98f9491aad7dae932a099975d5c43b889",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}
