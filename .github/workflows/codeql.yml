@@ -32,8 +32,6 @@ jobs:
               - 'typescript/**'
             ruby:
               - 'ruby/**'
-            kotlin:
-              - 'kotlin/**'
             swift:
               - 'swift/**'
             config:
@@ -47,7 +45,6 @@ jobs:
           GO: ${{ steps.filter.outputs.go }}
           TS: ${{ steps.filter.outputs.typescript }}
           RUBY: ${{ steps.filter.outputs.ruby }}
-          KOTLIN: ${{ steps.filter.outputs.kotlin }}
           SWIFT: ${{ steps.filter.outputs.swift }}
           CONFIG: ${{ steps.filter.outputs.config }}
         run: |
@@ -58,13 +55,11 @@ jobs:
             add go manual
             add javascript none
             add ruby none
-            add java-kotlin manual
             swift=true
           else
             if [ "$GO" = "true" ]; then add go manual; fi
             if [ "$TS" = "true" ]; then add javascript none; fi
             if [ "$RUBY" = "true" ]; then add ruby none; fi
-            if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
             swift=$SWIFT
           fi
 
@@ -99,17 +94,6 @@ jobs:
           go-version-file: 'go/go.mod'
           cache-dependency-path: 'go/go.sum'
 
-      - name: Set up Java
-        if: matrix.language == 'java-kotlin'
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Gradle
-        if: matrix.language == 'java-kotlin'
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
-
       # --- CodeQL init ---
 
       - name: Initialize CodeQL
@@ -127,11 +111,6 @@ jobs:
         env:
           CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'on'
         run: go build ./...
-
-      - name: Build (Kotlin)
-        if: matrix.language == 'java-kotlin'
-        working-directory: kotlin
-        run: ./gradlew --no-build-cache clean :basecamp-sdk:build :generator:build
 
       # --- Analysis (fails build on real errors) ---
 
