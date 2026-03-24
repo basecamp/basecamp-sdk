@@ -5,7 +5,6 @@ import com.basecamp.sdk.http.currentTimeMillis
 import com.basecamp.sdk.http.millisToDuration
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
@@ -19,14 +18,13 @@ import kotlin.coroutines.cancellation.CancellationException
  * @param data Raw bytes of the image file.
  * @param filename Display name for the uploaded file (e.g., "logo.png").
  * @param contentType MIME type of the image (e.g., "image/png").
- * @return Parsed JSON response from the API.
  * @throws BasecampException on API or network errors.
  */
 suspend fun AccountClient.updateAccountLogo(
     data: ByteArray,
     filename: String,
     contentType: String,
-): JsonElement {
+) {
     val op = OperationInfo(
         service = "Account",
         operation = "UpdateAccountLogo",
@@ -39,7 +37,7 @@ suspend fun AccountClient.updateAccountLogo(
     parent.hooks.safeOnOperationStart(op)
 
     var operationError: Throwable? = null
-    return try {
+    try {
         // Build the multipart/form-data body manually for KMP compatibility.
         // Sanitize inputs to prevent CRLF injection in multipart headers.
         val safeFilename = filename.replace("\r", "").replace("\n", "").replace("\"", "\\\"")
@@ -75,8 +73,8 @@ suspend fun AccountClient.updateAccountLogo(
             throw errorFromResponse(response)
         }
 
-        val bodyText = response.bodyAsText()
-        parent.json.decodeFromString<JsonElement>(bodyText)
+        // API returns 204 No Content — drain the body and discard.
+        response.bodyAsText()
     } catch (e: CancellationException) {
         throw e
     } catch (e: Throwable) {
