@@ -29,8 +29,8 @@ type Account struct {
 	Limits       AccountLimits       `json:"limits,omitempty"`
 	Settings     AccountSettings     `json:"settings,omitempty"`
 	Subscription AccountSubscription `json:"subscription,omitempty"`
-	CreatedAt    string              `json:"created_at,omitempty"`
-	UpdatedAt    string              `json:"updated_at,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
+	UpdatedAt    time.Time           `json:"updated_at"`
 }
 
 // AccountLimits represents account limits.
@@ -235,7 +235,7 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	if err != nil {
 		return ErrNetwork(err)
 	}
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := limitedReadAll(resp.Body, MaxResponseBodyBytes)
 	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
@@ -260,7 +260,7 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 				if err != nil {
 					return ErrNetwork(err)
 				}
-				respBody, err = io.ReadAll(resp.Body)
+				respBody, err = limitedReadAll(resp.Body, MaxResponseBodyBytes)
 				_ = resp.Body.Close()
 				if err != nil {
 					return fmt.Errorf("failed to read response body: %w", err)
