@@ -1,0 +1,23 @@
+.github/workflows/release-python.yml
+  4f6ff329041785ea 18-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "a3d967605ac6e08ef6e5333227ac49a346661533",
+  "prompts": {
+    "4f6ff329041785ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1307484-dbe3-452a-9a0f-1bc25775e4fa",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}
