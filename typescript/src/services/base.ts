@@ -169,7 +169,7 @@ export abstract class BaseService {
         const retryAfter = response.status === 429
           ? parseInt(response.headers.get("Retry-After") ?? "", 10) * 1000
           : NaN;
-        const delay = !isNaN(retryAfter) && retryAfter > 0
+        const delay = !isNaN(retryAfter) && retryAfter >= 0
           ? retryAfter
           : (retryConfig.baseDelayMs ?? 1000) * Math.pow(2, attempt);
 

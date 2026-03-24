@@ -38,10 +38,10 @@ func TestMyAssignmentsService_Get(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(result.Priorities) != 1 {
-		t.Errorf("expected 1 priority, got %d", len(result.Priorities))
+		t.Fatalf("expected 1 priority, got %d", len(result.Priorities))
 	}
 	if len(result.NonPriorities) != 1 {
-		t.Errorf("expected 1 non-priority, got %d", len(result.NonPriorities))
+		t.Fatalf("expected 1 non-priority, got %d", len(result.NonPriorities))
 	}
 	if result.Priorities[0].Content != "Priority task" {
 		t.Errorf("expected 'Priority task', got %q", result.Priorities[0].Content)
@@ -69,8 +69,8 @@ func TestMyAssignmentsService_Due_WithScope(t *testing.T) {
 
 func TestMyAssignmentsService_Due_NoScope(t *testing.T) {
 	svc := testMyAssignmentsServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("scope") != "" {
-			t.Errorf("expected no scope param, got %q", r.URL.Query().Get("scope"))
+		if r.URL.Query().Has("scope") {
+			t.Errorf("expected scope param to be absent, got %q", r.URL.RawQuery)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
