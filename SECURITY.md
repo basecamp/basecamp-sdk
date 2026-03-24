@@ -1,6 +1,6 @@
 # Security Guarantees
 
-This document describes the security invariants maintained by the Basecamp SDK across all five implementations (Go, TypeScript, Ruby, Swift, Kotlin).
+This document describes the security invariants maintained by the Basecamp SDK across all six implementations (Go, TypeScript, Ruby, Swift, Kotlin, Python).
 
 ## Transport Security
 
@@ -78,13 +78,19 @@ All SDK clients are safe for concurrent use after construction. Thread/goroutine
 - Ktor's `HttpClient` handles connection pooling and thread safety internally
 - Configuration is immutable (`val` properties on `BasecampConfig` data class)
 
+### Python
+- `Client` and `AccountClient` are safe for concurrent use from threads
+- `OAuthTokenProvider` uses `threading.Lock` for token refresh operations
+- Service accessors are protected by per-AccountClient `threading.Lock`
+- Configuration is immutable (frozen `dataclass`)
+
 **Important**: Do not modify configuration after creating a client. Configuration is captured at construction time.
 
 **Breaking Change (Go)**: `Client.Config()` now returns `Config` by value instead of `*Config` pointer. This prevents post-construction modification but may require code changes if callers expected pointer semantics.
 
 ## PKCE Support
 
-Go, TypeScript, Ruby, and Kotlin SDKs provide helper utilities for OAuth 2.0 PKCE (Proof Key for Code Exchange):
+Go, TypeScript, Ruby, Kotlin, and Python SDKs provide helper utilities for OAuth 2.0 PKCE (Proof Key for Code Exchange):
 
 ```go
 // Go
@@ -118,6 +124,16 @@ val pkce = Pkce.generate()
 val state = Pkce.generateState()
 ```
 
+```python
+# Python
+from basecamp.oauth import generate_pkce, generate_state
+
+pkce = generate_pkce()
+# pkce.verifier, pkce.challenge
+
+state = generate_state()
+```
+
 **Security properties**:
 - Verifiers are 43 characters (32 random bytes, base64url-encoded)
 - Challenges are SHA256 hashes of verifiers (use `code_challenge_method=S256`)
@@ -126,7 +142,7 @@ val state = Pkce.generateState()
 
 ## Header Redaction
 
-Go, TypeScript, and Ruby SDKs provide utilities to safely log HTTP requests without exposing credentials:
+Go, TypeScript, Ruby, and Python SDKs provide utilities to safely log HTTP requests without exposing credentials:
 
 ```go
 // Go
@@ -144,6 +160,14 @@ console.log("Response headers:", safeHeaders);
 # Ruby
 safe = Basecamp::Security.redact_headers(headers)
 logger.info("Headers: #{safe}")
+```
+
+```python
+# Python
+from basecamp._security import redact_headers
+
+safe = redact_headers(headers)
+print(f"Headers: {safe}")
 ```
 
 **Redacted headers**: `Authorization`, `Cookie`, `Set-Cookie`, `X-CSRF-Token`

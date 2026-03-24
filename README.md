@@ -1,6 +1,6 @@
 # <img src="assets/basecamp-badge.svg" height="28" alt="Basecamp"> Basecamp SDK
 
-Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, TypeScript, Swift, and Kotlin.
+Official [Basecamp](https://basecamp.com) [API](https://github.com/basecamp/bc3-api) clients, runtimes, and software development kits for Go, Ruby, TypeScript, Swift, Kotlin, and Python.
 
 OpenAPI 3.1 spec included.
 
@@ -13,17 +13,18 @@ OpenAPI 3.1 spec included.
 | [TypeScript](typescript/) | `typescript/` | Active | `@37signals/basecamp` |
 | [Swift](swift/) | `swift/` | Active | `Basecamp` (SPM) |
 | [Kotlin](kotlin/) | `kotlin/` | Active | `com.basecamp:basecamp-sdk` (GitHub Packages) |
+| [Python](python/) | `python/` | Active | `basecamp-sdk` (PyPI) |
 
-| Feature | Go | TypeScript | Ruby | Swift | Kotlin |
-|---------|:--:|:----------:|:----:|:-----:|:------:|
-| OAuth 2.0 Authentication | ✓ | ✓ | ✓ | ✗ | ✓ |
-| Static Token Authentication | ✓ | ✓ | ✓ | ✓ | ✓ |
-| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† | ✓ | ✓ |
-| Automatic Retry with Backoff | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Pagination Handling | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Observability Hooks | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Structured Errors | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Webhook Verification | ✓ | ✓ | ✓ | ✗ | ✓ |
+| Feature | Go | TypeScript | Ruby | Swift | Kotlin | Python |
+|---------|:--:|:----------:|:----:|:-----:|:------:|:------:|
+| OAuth 2.0 Authentication | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ |
+| Static Token Authentication | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| ETag HTTP Caching (opt-in) | ✓ | ✓ | via Faraday† | ✓ | ✓ | ✗ |
+| Automatic Retry with Backoff | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Pagination Handling | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Observability Hooks | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Structured Errors | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Webhook Verification | ✓ | ✓ | ✓ | ✗ | ✓ | ✓ |
 
 † Ruby SDK uses Faraday - add caching via [faraday-http-cache](https://github.com/sourcelevel/faraday-http-cache)
 
@@ -125,12 +126,26 @@ val projects = account.projects.list()
 projects.forEach { println("${it.id}: ${it.name}") }
 ```
 
+### Python
+
+```python
+import os
+from basecamp import Client
+
+client = Client(access_token=os.environ["BASECAMP_TOKEN"])
+account = client.for_account(os.environ["BASECAMP_ACCOUNT_ID"])
+
+projects = account.projects.list()
+for project in projects:
+    print(f"{project['id']}: {project['name']}")
+```
+
 ## Features
 
 All SDKs provide:
 
 - **Full API coverage** - 35+ services covering projects, todos, messages, schedules, campfires, card tables, and more
-- **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin), and static token options
+- **OAuth 2.0 authentication** - Token refresh, PKCE support (Go, TypeScript, Ruby, Kotlin, Python), and static token options
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
 - **ETag caching** - Built-in HTTP caching for efficient API usage
@@ -169,6 +184,7 @@ See the [spec README](spec/README.md) for details on the model structure.
 - [TypeScript SDK documentation](typescript/README.md) - npm package usage
 - [Swift SDK documentation](swift/README.md) - SPM package with async/await
 - [Kotlin SDK documentation](kotlin/README.md) - Gradle package with coroutines
+- [Python SDK documentation](python/README.md) - PyPI package with sync and async support
 - [Contributing guide](CONTRIBUTING.md) - Development setup and guidelines
 - [Security policy](SECURITY.md) - Reporting vulnerabilities
 

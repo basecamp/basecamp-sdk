@@ -13,6 +13,7 @@ Thank you for your interest in contributing to the Basecamp SDK. This document p
 | Ruby | Ruby 3.2+, Bundler |
 | Swift | Swift 6.0+, Xcode 16+ |
 | Kotlin | JDK 17+, Kotlin 2.0+ |
+| Python | Python 3.11+, [uv](https://docs.astral.sh/uv/) |
 
 A Basecamp account is optional (for integration testing only).
 
@@ -61,13 +62,28 @@ A Basecamp account is optional (for integration testing only).
    ./gradlew :sdk:jvmTest
    ```
 
+   **Python:**
+   ```bash
+   cd python && uv sync
+   make py-test
+   make py-check   # tests, types, lint, format, drift
+   ```
+
 3. Run all SDKs at once from the repo root:
    ```bash
-   make check        # all 5 SDK test suites
+   make check        # all 6 SDK test suites
    make conformance  # cross-SDK conformance tests
    ```
 
 ## Code Style
+
+### Python Code
+
+- Target Python 3.11+
+- Use [ruff](https://docs.astral.sh/ruff/) for linting and formatting (line length: 120)
+- All service method parameters are keyword-only (after `*`)
+- Use type annotations for function signatures
+- Generated code under `src/basecamp/generated/` is exempt from style rules
 
 ### Go Code
 
@@ -150,7 +166,7 @@ test(cards): add coverage for move operations
 
 1. **Run all checks locally:**
    ```bash
-   make check  # runs all 5 SDK test suites from repo root
+   make check  # runs all 6 SDK test suites from repo root
    ```
 
 2. **Ensure conformance tests pass:**
@@ -203,6 +219,7 @@ All SDKs are generated from a single Smithy specification. When adding support f
    - **Ruby:** `make rb-generate-services`
    - **Swift:** `make swift-generate`
    - **Kotlin:** `make kt-generate-services`
+   - **Python:** `make py-generate`
 
 4. **Add tests** for each SDK
 
