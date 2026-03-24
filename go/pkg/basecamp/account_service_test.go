@@ -73,7 +73,7 @@ func TestAccountService_UpdateLogo(t *testing.T) {
 	}
 }
 
-func TestAccountService_UpdateLogo_401Retry(t *testing.T) {
+func TestAccountService_UpdateLogo_401WithoutRefresh(t *testing.T) {
 	attempts := 0
 	svc := testAccountServer(t, func(w http.ResponseWriter, r *http.Request) {
 		attempts++
