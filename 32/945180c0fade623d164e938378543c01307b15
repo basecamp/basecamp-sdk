@@ -1,0 +1,29 @@
+typescript/src/client.ts
+  2bf2d8427811e954 14,327-340,399
+typescript/scripts/generate-services.ts
+  2bf2d8427811e954 48-50,65,99,107-108,677,697-699,729,750-751,795,1099-1102,1218-1241,1376-1381
+typescript/tests/account-logo.test.ts
+  2bf2d8427811e954 32,61,81,92
+typescript/src/services/base.ts
+  2bf2d8427811e954 79-87,93-94,100-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "32945180c0fade623d164e938378543c01307b15",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 165,
+      "total_deletions": 156,
+      "accepted_lines": 137,
+      "overriden_lines": 0
+    }
+  }
+}
