@@ -1,0 +1,33 @@
+python/scripts/generate_services.py
+  31ce562ca8910a53 427-433,455,457-458,514-517,657-660
+python/src/basecamp/generated/services/_base.py
+  31ce562ca8910a53 86-115
+python/src/basecamp/generated/services/_async_base.py
+  31ce562ca8910a53 83-112
+python/src/basecamp/_async_http.py
+  31ce562ca8910a53 98-113,139,157,189,210,226
+python/src/basecamp/async_client.py
+  31ce562ca8910a53 155-159
+python/src/basecamp/_http.py
+  31ce562ca8910a53 97-112,138,156,188,209,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "2e74504498c7963bdc736cf0a6730f06419e5578",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 126,
+      "total_deletions": 1,
+      "accepted_lines": 126,
+      "overriden_lines": 0
+    }
+  }
+}
