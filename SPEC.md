@@ -791,7 +791,7 @@ Every JSON API request must include all four headers below. Download requests (Â
 | `Authorization` | `Bearer {token}` (from AuthStrategy) | All API requests + download Hop 1 | `[conformance]` |
 | `User-Agent` | `basecamp-sdk-{lang}/{VERSION} (api:{API_VERSION})` | All API requests + download Hop 1 | `[conformance]` |
 | `Accept` | `application/json` | JSON API requests only (not download Hop 1) | `[static]` |
-| `Content-Type` | `application/json` (for requests with a body; preserve if already set for binary uploads). TypeScript and Go set it unconditionally; Swift and Kotlin set it only when a body is present. Either approach is acceptable. | JSON API requests only (not download Hop 1) | `[conformance]` |
+| `Content-Type` | `application/json` (for requests with a body; preserve if already set, e.g., for binary uploads). TS sets if missing; Go sets unconditionally; Swift/Kotlin set only when a body is present. All approaches are acceptable. | JSON API requests only (not download Hop 1) | `[conformance]` |
 
 Where:
 - `{lang}` is the language identifier: `go`, `ts`, `ruby`, `kotlin`, `swift`
