@@ -64,7 +64,7 @@ A Basecamp account is optional (for integration testing only).
 
    **Python:**
    ```bash
-   cd python && uv sync
+   cd python && uv sync && cd ..
    make py-test
    make py-check   # tests, types, lint, format, drift
    ```

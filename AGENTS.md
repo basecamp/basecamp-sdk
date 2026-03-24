@@ -232,7 +232,7 @@ make release VERSION=x.y.z  # pushes main, tags, pushes tag
 
 ### What `make release` does
 
-1. Verifies all 10 version constants match the requested version
+1. Verifies all version constants match the requested version
 2. Verifies the working tree is clean
 3. Verifies you're on the `main` branch
 4. Pushes `main` to origin (release workflows guard that the tag commit is reachable from `origin/main`)
@@ -241,7 +241,7 @@ make release VERSION=x.y.z  # pushes main, tags, pushes tag
 ### Guards
 
 - **Branch guard**: refuses to release from non-`main` branches
-- **Version guard**: refuses if any of the 10 constants don't match
+- **Version guard**: refuses if any version constant doesn't match
 - **Clean tree guard**: refuses if there are uncommitted changes
 - **CI guard**: each release workflow runs `git merge-base --is-ancestor "$GITHUB_SHA" origin/main` — rejects tags whose commit isn't on `main`
 

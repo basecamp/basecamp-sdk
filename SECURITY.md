@@ -137,7 +137,7 @@ state = generate_state()
 **Security properties**:
 - Verifiers are 43 characters (32 random bytes, base64url-encoded)
 - Challenges are SHA256 hashes of verifiers (use `code_challenge_method=S256`)
-- State parameters are 22 characters (16 random bytes, base64url-encoded)
+- State parameters are 22 characters (16 random bytes) in Go/TypeScript/Ruby/Kotlin, 43 characters (32 random bytes) in Python
 - All use cryptographically secure random number generators
 
 ## Header Redaction
@@ -163,7 +163,7 @@ logger.info("Headers: #{safe}")
 ```
 
 ```python
-# Python
+# Python (internal helper — not part of public API)
 from basecamp._security import redact_headers
 
 safe = redact_headers(headers)

@@ -284,7 +284,7 @@ The `authorization` service is on the top-level `Client`:
 auth = client.authorization.get()
 ```
 
-All methods use keyword-only arguments:
+All service methods use keyword-only arguments:
 
 ```python
 # All parameters after * are keyword-only
@@ -371,9 +371,9 @@ The SDK automatically retries failed requests with exponential backoff:
 - **Idempotent mutations** - Operations marked idempotent in the OpenAPI metadata also retry through the same path
 - **Non-idempotent mutations** - NOT retried to prevent duplicate operations
 - **401 responses** - Token refresh attempted, then single retry for all methods (regardless of idempotency)
-- **Backoff** - Exponential with jitter (`base_delay * 2^attempt + random * max_jitter`)
+- **Backoff** - Exponential with jitter (`base_delay * 2^(attempt-1) + random() * max_jitter`)
 - **Retry-After** - Respected for 429 responses (overrides calculated backoff)
-- **Max attempts** - Controlled by `config.max_retries` (default: 3)
+- **Max retries** - Controlled by `config.max_retries` (default: 3 retries, up to 4 total attempts including the initial request)
 
 ## Observability
 
@@ -451,8 +451,8 @@ def handle_message(event):
 def handle_all(event):
     print(f"Event: {event['kind']}")
 
-receiver.on("todo.*", handle_todos)
-receiver.on("message.created", handle_message)
+receiver.on("todo_*", handle_todos)
+receiver.on("message_created", handle_message)
 receiver.on_any(handle_all)
 
 # In your web framework handler:
@@ -467,14 +467,15 @@ result = receiver.handle_request(
 ```python
 from basecamp.webhooks import verify_signature, compute_signature
 
-# Verify a webhook signature (positional: payload, secret, signature)
-verify_signature(
+# Verify a webhook signature (returns bool)
+if not verify_signature(
     request.body,
     "your-webhook-secret",
     request.headers["X-Basecamp-Signature"],
-)
+):
+    raise ValueError("Invalid webhook signature")
 
-# Compute a signature (positional: payload, secret)
+# Compute a signature
 sig = compute_signature(request.body, "your-webhook-secret")
 ```
 
@@ -483,7 +484,7 @@ sig = compute_signature(request.body, "your-webhook-secret")
 ```python
 def log_events(event, next_fn):
     print(f"Processing: {event['kind']}")
-    return next_fn(event)
+    return next_fn()
 
 receiver.use(log_events)
 ```
@@ -533,7 +534,7 @@ with open(result.filename, "wb") as f:
 result = await account.download_url("https://...")
 ```
 
-Downloads follow redirects to signed URLs automatically, stripping authentication headers on cross-origin redirects.
+Downloads resolve signed URLs with an authenticated request, then fetch file content via a second unauthenticated request so credentials are never sent to the signed URL.
 
 ## Development
 
