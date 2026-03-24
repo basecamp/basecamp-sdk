@@ -1,0 +1,23 @@
+python/README.md
+  9c966b92707f776c 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "6bb3cfa122a6fa7488a26b1a412e5eb41941d5ab",
+  "prompts": {
+    "9c966b92707f776c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0192868f-ffa5-4b86-8d56-3fbce15de767",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
