@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"net/textproto"
 	"strings"
 	"time"
@@ -213,62 +212,15 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 		return fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
-	// Build the full request URL
-	path := s.client.accountPath("/account/logo.json")
-	fullURL, err := s.client.parent.buildURL(path)
+	// Delegate to the generated client — retry and auth are handled by the transport
+	resp, err := s.client.parent.gen.UpdateAccountLogoWithBodyWithResponse(
+		ctx,
+		s.client.accountID,
+		writer.FormDataContentType(),
+		&buf,
+	)
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, fullURL, &buf)
-	if err != nil {
-		return err
-	}
-
-	if err = s.client.parent.authStrategy.Authenticate(ctx, req); err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", s.client.parent.userAgent)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := s.client.parent.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
-	if err != nil {
-		return ErrNetwork(err)
-	}
-	respBody, err := limitedReadAll(resp.Body, MaxResponseBodyBytes)
-	_ = resp.Body.Close()
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	// Retry once on 401 after token refresh (matches SDK mutation retry flow)
-	if resp.StatusCode == http.StatusUnauthorized {
-		if authMgr, ok := s.client.parent.tokenProvider.(*AuthManager); ok {
-			if refreshErr := authMgr.Refresh(ctx); refreshErr == nil {
-				retryReq, reqErr := http.NewRequestWithContext(ctx, http.MethodPut, fullURL, bytes.NewReader(buf.Bytes()))
-				if reqErr != nil {
-					return reqErr
-				}
-				if authErr := s.client.parent.authStrategy.Authenticate(ctx, retryReq); authErr != nil {
-					return authErr
-				}
-				retryReq.Header.Set("User-Agent", s.client.parent.userAgent)
-				retryReq.Header.Set("Content-Type", writer.FormDataContentType())
-				retryReq.Header.Set("Accept", "application/json")
-
-				resp, err = s.client.parent.httpClient.Do(retryReq) // #nosec G704 -- SDK HTTP client: URL is caller-configured
-				if err != nil {
-					return ErrNetwork(err)
-				}
-				respBody, err = limitedReadAll(resp.Body, MaxResponseBodyBytes)
-				_ = resp.Body.Close()
-				if err != nil {
-					return fmt.Errorf("failed to read response body: %w", err)
-				}
-			}
-		}
-	}
-
-	return checkResponse(resp, respBody)
+	return checkResponse(resp.HTTPResponse, resp.Body)
 }
