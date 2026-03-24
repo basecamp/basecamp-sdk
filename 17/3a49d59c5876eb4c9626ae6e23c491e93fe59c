@@ -1,0 +1,31 @@
+python/scripts/generate_types.py
+  fa4fb8c3a9b58188 27-32
+.github/workflows/release-python.yml
+  fa4fb8c3a9b58188 9,22-23,28-30,33,67-70,76,79,88
+python/src/basecamp/auth.py
+  fa4fb8c3a9b58188 114-115
+python/src/basecamp/oauth/discovery.py
+  fa4fb8c3a9b58188 52-54
+.github/workflows/test.yml
+  fa4fb8c3a9b58188 162-163,173-175,178,341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "173a49d59c5876eb4c9626ae6e23c491e93fe59c",
+  "prompts": {
+    "fa4fb8c3a9b58188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "49303a22-8ce3-4c45-83b6-5aef402ff38a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 32,
+      "total_deletions": 13,
+      "accepted_lines": 32,
+      "overriden_lines": 0
+    }
+  }
+}
