@@ -1,0 +1,25 @@
+typescript/src/services/base.ts
+  2bf2d8427811e954 27-29,158-168
+go/pkg/basecamp/account_service.go
+  2bf2d8427811e954 215-219,223-224,231-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "98bfef4622553371d6a209707db183169c430b07",
+  "prompts": {
+    "2bf2d8427811e954": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75a74e-dfe9-43de-845c-e91f5afa6176",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 18,
+      "accepted_lines": 39,
+      "overriden_lines": 0
+    }
+  }
+}
