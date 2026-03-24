@@ -246,7 +246,11 @@ todo, err := account.Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest
 err = account.Todos().Complete(ctx, todoID)
 
 // Reposition a todo
-err = account.Todos().Reposition(ctx, todoID, 1) // Move to first position
+err = account.Todos().Reposition(ctx, todoID, 1, nil) // Move to first position
+
+// Move a todo to a different todolist
+targetListID := int64(12345)
+err = account.Todos().Reposition(ctx, todoID, 1, &targetListID)
 ```
 
 ## Working with Messages

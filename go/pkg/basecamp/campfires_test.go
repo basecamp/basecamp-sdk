@@ -837,6 +837,58 @@ func TestListUploads_Service(t *testing.T) {
 	}
 }
 
+func TestListLines_SortDirection(t *testing.T) {
+	fixture := loadCampfiresFixture(t, "lines_list.json")
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("sort") != "created_at" {
+			t.Errorf("expected sort=created_at, got %q", r.URL.Query().Get("sort"))
+		}
+		if r.URL.Query().Get("direction") != "desc" {
+			t.Errorf("expected direction=desc, got %q", r.URL.Query().Get("direction"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListLines(context.Background(), 100, &CampfireLineListOptions{
+		Sort:      "created_at",
+		Direction: "desc",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Lines) == 0 {
+		t.Error("expected non-empty lines")
+	}
+}
+
+func TestListUploads_SortDirection(t *testing.T) {
+	fixture := loadCampfiresFixture(t, "uploads_list.json")
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("sort") != "created_at" {
+			t.Errorf("expected sort=created_at, got %q", r.URL.Query().Get("sort"))
+		}
+		if r.URL.Query().Get("direction") != "desc" {
+			t.Errorf("expected direction=desc, got %q", r.URL.Query().Get("direction"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListUploads(context.Background(), 100, &CampfireUploadListOptions{
+		Sort:      "created_at",
+		Direction: "desc",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Lines) == 0 {
+		t.Error("expected non-empty uploads")
+	}
+}
+
 // --- httptest-based service contract tests for CreateUpload ---
 
 func TestCreateUpload_Service(t *testing.T) {

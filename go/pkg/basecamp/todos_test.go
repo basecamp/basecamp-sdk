@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1077,5 +1078,47 @@ func TestTodosService_UpdatePartial(t *testing.T) {
 		if _, ok := receivedBody[field]; ok {
 			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
 		}
+	}
+}
+
+func TestTodosService_Reposition(t *testing.T) {
+	var receivedBody map[string]any
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		receivedBody = decodeRequestBody(t, r)
+		w.WriteHeader(204)
+	})
+
+	err := svc.Reposition(context.Background(), 1069479520, 3, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if fmt.Sprint(receivedBody["position"]) != "3" {
+		t.Errorf("expected position 3, got %v", receivedBody["position"])
+	}
+	if _, exists := receivedBody["parent_id"]; exists {
+		t.Error("expected parent_id to be omitted when nil")
+	}
+}
+
+func TestTodosService_RepositionWithParentID(t *testing.T) {
+	var receivedBody map[string]any
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedBody = decodeRequestBody(t, r)
+		w.WriteHeader(204)
+	})
+
+	parentID := int64(99999)
+	err := svc.Reposition(context.Background(), 1069479520, 1, &parentID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if fmt.Sprint(receivedBody["position"]) != "1" {
+		t.Errorf("expected position 1, got %v", receivedBody["position"])
+	}
+	if fmt.Sprint(receivedBody["parent_id"]) != "99999" {
+		t.Errorf("expected parent_id 99999, got %v", receivedBody["parent_id"])
 	}
 }
