@@ -7476,7 +7476,7 @@
         }
       },
       "put": {
-        "description": "Update the current user's personal info",
+        "description": "Update the current authenticated user's profile (returns 204 No Content)",
         "operationId": "UpdateMyProfile",
         "requestBody": {
           "content": {
@@ -7522,16 +7522,6 @@
               }
             }
           },
-          "429": {
-            "description": "RateLimitError 429 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
-                }
-              }
-            }
-          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
@@ -7550,7 +7540,7 @@
           "natural": true
         },
         "x-basecamp-retry": {
-          "maxAttempts": 2,
+          "maxAttempts": 3,
           "baseDelayMs": 1000,
           "backoff": "exponential",
           "retryOn": [
@@ -20521,6 +20511,18 @@
           }
         }
       },
+      "FirstWeekDay": {
+        "type": "string",
+        "enum": [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday"
+        ]
+      },
       "ForbiddenErrorResponseContent": {
         "type": "object",
         "properties": {
@@ -20873,10 +20875,6 @@
             "type": "string"
           },
           "position": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "comment_count": {
             "type": "integer",
             "format": "int32"
           }
@@ -24645,8 +24643,7 @@
             "type": "string"
           },
           "first_week_day": {
-            "type": "integer",
-            "format": "int32"
+            "$ref": "#/components/schemas/FirstWeekDay"
           },
           "time_format": {
             "type": "string"

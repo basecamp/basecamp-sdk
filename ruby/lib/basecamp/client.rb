@@ -643,7 +643,7 @@ module Basecamp
       data = io.respond_to?(:read) ? io.read : io.to_s
       safe_filename = filename.tr("\r\n", "").gsub("\\", "\\\\").gsub('"', '\\"')
       safe_content_type = content_type.tr("\r\n", "")
-      body = +""
+      body = "".b
       body << "--#{boundary}\r\n"
       body << "Content-Disposition: form-data; name=\"#{field}\"; filename=\"#{safe_filename}\"\r\n"
       body << "Content-Type: #{safe_content_type}\r\n"

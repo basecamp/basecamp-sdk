@@ -173,7 +173,6 @@ service Basecamp {
     ListPeople,
     GetPerson,
     GetMyProfile,
-    UpdateMyProfile,
     ListProjectPeople,
     ListPingablePeople,
     UpdateProjectAccess,

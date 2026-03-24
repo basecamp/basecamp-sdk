@@ -1057,7 +1057,7 @@ export interface paths {
         };
         /** @description Get the current authenticated user's profile */
         get: operations["GetMyProfile"];
-        /** @description Update the current user's personal info */
+        /** @description Update the current authenticated user's profile (returns 204 No Content) */
         put: operations["UpdateMyProfile"];
         post?: never;
         delete?: never;
@@ -3122,6 +3122,8 @@ export interface components {
             removed_person_ids?: number[];
             notified_recipient_ids?: number[];
         };
+        /** @enum {string} */
+        FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         ForbiddenErrorResponseContent: {
             error: string;
             message?: string;
@@ -3221,8 +3223,6 @@ export interface components {
             color?: string;
             /** Format: int32 */
             position?: number;
-            /** Format: int32 */
-            comment_count?: number;
         };
         GaugeNeedlePayload: {
             /**
@@ -4258,8 +4258,7 @@ export interface components {
             /** Format: password */
             location?: string;
             time_zone_name?: string;
-            /** Format: int32 */
-            first_week_day?: number;
+            first_week_day?: components["schemas"]["FirstWeekDay"];
             time_format?: string;
         };
         UpdateProjectAccessRequestContent: {
@@ -9857,15 +9856,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

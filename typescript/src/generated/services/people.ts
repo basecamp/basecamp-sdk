@@ -48,7 +48,7 @@ export interface UpdateMyProfilePeopleRequest {
   /** Time zone name */
   timeZoneName?: string;
   /** First week day */
-  firstWeekDay?: number;
+  firstWeekDay?: components["schemas"]["FirstWeekDay"];
   /** Time format */
   timeFormat?: string;
 }
@@ -201,7 +201,7 @@ export class PeopleService extends BaseService {
   }
 
   /**
-   * Update the current user's personal info
+   * Update the current authenticated user's profile
    * @param req - My_profile update parameters
    * @returns void
    * @throws {BasecampError} If the resource is not found or fields are invalid

@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"strings"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -197,7 +198,8 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 	partHeader := make(textproto.MIMEHeader)
-	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="logo"; filename="%s"`, filename))
+	safeFilename := strings.NewReplacer("\r", "", "\n", "", `\`, `\\`, `"`, `\"`).Replace(filename)
+	partHeader.Set("Content-Disposition", fmt.Sprintf(`form-data; name="logo"; filename="%s"`, safeFilename))
 	partHeader.Set("Content-Type", contentType)
 	part, err := writer.CreatePart(partHeader)
 	if err != nil {
