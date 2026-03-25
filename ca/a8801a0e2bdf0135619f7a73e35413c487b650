@@ -1,0 +1,79 @@
+ruby/test/basecamp/normalize_person_ids_test.rb
+  31ce562ca8910a53 1-63
+python/scripts/generate_types.py
+  31ce562ca8910a53 97-100
+go/pkg/basecamp/todos.go
+  31ce562ca8910a53 44-49,52
+go/pkg/types/flexible_int64.go
+  31ce562ca8910a53 44,57
+python/src/basecamp/_http.py
+  31ce562ca8910a53 109-112
+swift/Tests/BasecampTests/FlexibleIntTests.swift
+  31ce562ca8910a53 1-39,41-73
+typescript/package.json
+  31ce562ca8910a53 23
+python/src/basecamp/generated/services/_base.py
+  31ce562ca8910a53 15-39,76,321
+typescript/scripts/patch-flexible-ids.ts
+  31ce562ca8910a53 1-30
+ruby/lib/basecamp/http.rb
+  31ce562ca8910a53 15-37,268,541,546-548
+python/tests/services/test_notifications.py
+  31ce562ca8910a53 1-86
+ruby/scripts/generate-types.rb
+  31ce562ca8910a53 131-133,171-174
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/NormalizePersonIds.kt
+  31ce562ca8910a53 1-63
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleLongSerializer.kt
+  31ce562ca8910a53 1-53
+go/pkg/basecamp/my_notifications.go
+  31ce562ca8910a53 85-89,91
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  31ce562ca8910a53 36-43,70,73-75,87-90,117-122
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  31ce562ca8910a53 218-222
+swift/Sources/Basecamp/FlexibleInt.swift
+  31ce562ca8910a53 1-52
+typescript/tests/services/my-notifications.test.ts
+  31ce562ca8910a53 1-153
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  31ce562ca8910a53 11
+go/pkg/basecamp/normalize.go
+  31ce562ca8910a53 1-64
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FlexibleLongSerializerTest.kt
+  31ce562ca8910a53 1-51,53-79
+swift/Sources/Basecamp/Services/BaseService.swift
+  31ce562ca8910a53 68-69,172,325,400,428-491
+python/scripts/generate_services.py
+  31ce562ca8910a53 506,508
+python/src/basecamp/_async_http.py
+  31ce562ca8910a53 110-112
+swift/Sources/BasecampGenerator/TypeMapping.swift
+  31ce562ca8910a53 89-92
+typescript/src/services/base.ts
+  31ce562ca8910a53 59-99,291,352,429,512,561
+python/src/basecamp/generated/services/_async_base.py
+  31ce562ca8910a53 12-32
+python/tests/services/test_account.py
+  31ce562ca8910a53 1,6,9,73-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "caa8801a0e2bdf0135619f7a73e35413c487b650",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 1105,
+      "total_deletions": 106,
+      "accepted_lines": 1082,
+      "overriden_lines": 0
+    }
+  }
+}
