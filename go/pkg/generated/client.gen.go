@@ -1622,7 +1622,8 @@ type QuestionAnswerPayload struct {
 
 // QuestionAnswerUpdatePayload defines model for QuestionAnswerUpdatePayload.
 type QuestionAnswerUpdatePayload struct {
-	Content string `json:"content"`
+	Content string     `json:"content"`
+	GroupOn types.Date `json:"group_on,omitempty"`
 }
 
 // QuestionReminder defines model for QuestionReminder.

@@ -134,7 +134,8 @@ data class CreateCardBody(
 
 /** Request body for UpdateAnswer. */
 data class UpdateAnswerBody(
-    val content: String
+    val content: String,
+    val groupOn: String? = null
 )
 
 /** Request body for CreateQuestion. */

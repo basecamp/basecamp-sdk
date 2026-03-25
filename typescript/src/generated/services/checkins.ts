@@ -35,6 +35,8 @@ export interface RemindersCheckinOptions extends PaginationOptions {
 export interface UpdateAnswerCheckinRequest {
   /** Text content */
   content: string;
+  /** Group on (YYYY-MM-DD) */
+  groupOn?: string;
 }
 
 /**
@@ -184,6 +186,9 @@ export class CheckinsService extends BaseService {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
+    if (req.groupOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.groupOn)) {
+      throw Errors.validation("Group on must be in YYYY-MM-DD format");
+    }
     await this.request(
       {
         service: "Checkins",
@@ -199,6 +204,7 @@ export class CheckinsService extends BaseService {
           },
           body: {
             content: req.content,
+            group_on: req.groupOn,
           },
         })
     );

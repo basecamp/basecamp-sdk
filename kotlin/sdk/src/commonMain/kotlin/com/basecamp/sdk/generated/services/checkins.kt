@@ -69,6 +69,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
         request(info, {
             httpPut("/question_answers/${answerId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
+                body.groupOn?.let { put("group_on", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { Unit }
     }

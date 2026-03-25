@@ -27,10 +27,11 @@ module Basecamp
       # Update an existing answer
       # @param answer_id [Integer] answer id ID
       # @param content [String] content
+      # @param group_on [String, nil] group on (YYYY-MM-DD)
       # @return [void]
-      def update_answer(answer_id:, content:)
+      def update_answer(answer_id:, content:, group_on: nil)
         with_operation(service: "checkins", operation: "update_answer", is_mutation: true, resource_id: answer_id) do
-          http_put("/question_answers/#{answer_id}", body: compact_params(content: content))
+          http_put("/question_answers/#{answer_id}", body: compact_params(content: content, group_on: group_on))
           nil
         end
       end
