@@ -1,12 +1,17 @@
-name: CodeQL
+name: "CodeQL Advanced"
 
 on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
   schedule:
     - cron: '0 7 * * 1'     # Monday 7am UTC (security.yml at 6am)
   workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions: {}
 
@@ -34,6 +39,8 @@ jobs:
               - 'ruby/**'
             swift:
               - 'swift/**'
+            actions:
+              - '.github/**'
             config:
               - '.github/codeql/**'
               - '.github/workflows/codeql.yml'
@@ -46,17 +53,20 @@ jobs:
           TS: ${{ steps.filter.outputs.typescript }}
           RUBY: ${{ steps.filter.outputs.ruby }}
           SWIFT: ${{ steps.filter.outputs.swift }}
+          ACTIONS: ${{ steps.filter.outputs.actions }}
           CONFIG: ${{ steps.filter.outputs.config }}
         run: |
           matrix='[]'
           add() { matrix=$(echo "$matrix" | jq -c --arg l "$1" --arg m "$2" '. + [{"language": $l, "build-mode": $m}]'); }
 
           if [ "$EVENT" != "pull_request" ] || [ "$CONFIG" = "true" ]; then
+            add actions none
             add go manual
             add javascript none
             add ruby none
             swift=true
           else
+            if [ "$ACTIONS" = "true" ]; then add actions none; fi
             if [ "$GO" = "true" ]; then add go manual; fi
             if [ "$TS" = "true" ]; then add javascript none; fi
             if [ "$RUBY" = "true" ]; then add ruby none; fi
@@ -67,13 +77,16 @@ jobs:
           echo "swift=$swift" >> "$GITHUB_OUTPUT"
 
   analyze:
-    name: CodeQL (${{ matrix.language }})
+    name: Analyze (${{ matrix.language }})
     needs: changes
     if: ${{ needs.changes.outputs.matrix != '[]' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
+      packages: read
+      actions: read
     strategy:
       fail-fast: false
       matrix:
@@ -117,7 +130,7 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
-          category: codeql-${{ matrix.language }}
+          category: "/language:${{ matrix.language }}"
           upload: never
           output: sarif-results
 
@@ -128,6 +141,7 @@ jobs:
       # from SARIF before upload.
 
       - name: Filter generated-code alerts from SARIF
+        if: always() && matrix.language != 'actions'
         run: |
           for sarif in sarif-results/*.sarif; do
             [ -f "$sarif" ] || continue
@@ -149,19 +163,23 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
+        if: always()
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: sarif-results
-          category: codeql-${{ matrix.language }}
+          category: "/language:${{ matrix.language }}"
 
   analyze-swift:
-    name: CodeQL (swift)
+    name: Analyze (swift)
     needs: changes
     if: needs.changes.outputs.swift == 'true'
     runs-on: macos-15
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
+      packages: read
+      actions: read
 
     steps:
       - name: Checkout code
@@ -183,11 +201,12 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
         with:
-          category: codeql-swift
+          category: "/language:swift"
           upload: never
           output: sarif-results
 
       - name: Filter generated-code alerts from SARIF
+        if: always()
         run: |
           for sarif in sarif-results/*.sarif; do
             [ -f "$sarif" ] || continue
@@ -207,7 +226,8 @@ jobs:
 
       - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@b1bff81932f5cdfc8695c7752dcee935dcd061c8 # v4.33.0
+        if: always()
         continue-on-error: true  # Requires GitHub Advanced Security
         with:
           sarif_file: sarif-results
-          category: codeql-swift
+          category: "/language:swift"
