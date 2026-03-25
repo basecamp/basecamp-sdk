@@ -6254,6 +6254,8 @@ structure UpdateAnswerInput {
 structure QuestionAnswerUpdatePayload {
   @required
   content: String
+
+  group_on: ISO8601Date
 }
 
 structure UpdateAnswerOutput {}
