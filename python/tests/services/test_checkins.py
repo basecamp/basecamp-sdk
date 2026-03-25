@@ -14,9 +14,7 @@ def make_account():
 class TestUpdateAnswer:
     @respx.mock
     def test_update_answer_with_group_on(self):
-        route = respx.put("https://3.basecampapi.com/12345/question_answers/200").mock(
-            return_value=httpx.Response(204)
-        )
+        route = respx.put("https://3.basecampapi.com/12345/question_answers/200").mock(return_value=httpx.Response(204))
 
         client, account = make_account()
         account.checkins.update_answer(
@@ -34,9 +32,7 @@ class TestUpdateAnswer:
 
     @respx.mock
     def test_update_answer_omits_group_on_when_none(self):
-        route = respx.put("https://3.basecampapi.com/12345/question_answers/200").mock(
-            return_value=httpx.Response(204)
-        )
+        route = respx.put("https://3.basecampapi.com/12345/question_answers/200").mock(return_value=httpx.Response(204))
 
         client, account = make_account()
         account.checkins.update_answer(
