@@ -208,7 +208,7 @@ func clientReplyFromGenerated(gr generated.ClientReply) ClientReply {
 
 	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 		r.Creator = &Person{
-			ID:           gr.Creator.Id,
+			ID:           int64(gr.Creator.Id),
 			Name:         gr.Creator.Name,
 			EmailAddress: gr.Creator.EmailAddress,
 			AvatarURL:    gr.Creator.AvatarUrl,

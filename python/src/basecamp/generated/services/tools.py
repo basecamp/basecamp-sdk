@@ -20,14 +20,14 @@ class ToolsService(BaseService):
             operation="CloneTool",
         )
 
-    def get(self, *, tool_id: int | str) -> dict[str, Any]:
+    def get(self, *, tool_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="tools", operation="get", is_mutation=False, resource_id=tool_id),
             "GET",
             f"/dock/tools/{tool_id}",
         )
 
-    def update(self, *, tool_id: int | str, title: str) -> dict[str, Any]:
+    def update(self, *, tool_id: int, title: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="tools", operation="update", is_mutation=True, resource_id=tool_id),
             "PUT",
@@ -36,7 +36,7 @@ class ToolsService(BaseService):
             operation="UpdateTool",
         )
 
-    def delete(self, *, tool_id: int | str) -> None:
+    def delete(self, *, tool_id: int) -> None:
         self._request_void(
             OperationInfo(service="tools", operation="delete", is_mutation=True, resource_id=tool_id),
             "DELETE",
@@ -44,7 +44,7 @@ class ToolsService(BaseService):
             operation="DeleteTool",
         )
 
-    def enable(self, *, tool_id: int | str) -> None:
+    def enable(self, *, tool_id: int) -> None:
         self._request_void(
             OperationInfo(service="tools", operation="enable", is_mutation=True, resource_id=tool_id),
             "POST",
@@ -52,7 +52,7 @@ class ToolsService(BaseService):
             operation="EnableTool",
         )
 
-    def reposition(self, *, tool_id: int | str, position: int) -> None:
+    def reposition(self, *, tool_id: int, position: int) -> None:
         self._request_void(
             OperationInfo(service="tools", operation="reposition", is_mutation=True, resource_id=tool_id),
             "PUT",
@@ -61,7 +61,7 @@ class ToolsService(BaseService):
             operation="RepositionTool",
         )
 
-    def disable(self, *, tool_id: int | str) -> None:
+    def disable(self, *, tool_id: int) -> None:
         self._request_void(
             OperationInfo(service="tools", operation="disable", is_mutation=True, resource_id=tool_id),
             "DELETE",
@@ -80,14 +80,14 @@ class AsyncToolsService(AsyncBaseService):
             operation="CloneTool",
         )
 
-    async def get(self, *, tool_id: int | str) -> dict[str, Any]:
+    async def get(self, *, tool_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="tools", operation="get", is_mutation=False, resource_id=tool_id),
             "GET",
             f"/dock/tools/{tool_id}",
         )
 
-    async def update(self, *, tool_id: int | str, title: str) -> dict[str, Any]:
+    async def update(self, *, tool_id: int, title: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="tools", operation="update", is_mutation=True, resource_id=tool_id),
             "PUT",
@@ -96,7 +96,7 @@ class AsyncToolsService(AsyncBaseService):
             operation="UpdateTool",
         )
 
-    async def delete(self, *, tool_id: int | str) -> None:
+    async def delete(self, *, tool_id: int) -> None:
         await self._request_void(
             OperationInfo(service="tools", operation="delete", is_mutation=True, resource_id=tool_id),
             "DELETE",
@@ -104,7 +104,7 @@ class AsyncToolsService(AsyncBaseService):
             operation="DeleteTool",
         )
 
-    async def enable(self, *, tool_id: int | str) -> None:
+    async def enable(self, *, tool_id: int) -> None:
         await self._request_void(
             OperationInfo(service="tools", operation="enable", is_mutation=True, resource_id=tool_id),
             "POST",
@@ -112,7 +112,7 @@ class AsyncToolsService(AsyncBaseService):
             operation="EnableTool",
         )
 
-    async def reposition(self, *, tool_id: int | str, position: int) -> None:
+    async def reposition(self, *, tool_id: int, position: int) -> None:
         await self._request_void(
             OperationInfo(service="tools", operation="reposition", is_mutation=True, resource_id=tool_id),
             "PUT",
@@ -121,7 +121,7 @@ class AsyncToolsService(AsyncBaseService):
             operation="RepositionTool",
         )
 
-    async def disable(self, *, tool_id: int | str) -> None:
+    async def disable(self, *, tool_id: int) -> None:
         await self._request_void(
             OperationInfo(service="tools", operation="disable", is_mutation=True, resource_id=tool_id),
             "DELETE",

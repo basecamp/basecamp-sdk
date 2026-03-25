@@ -62,6 +62,42 @@ func TestMyNotificationsService_Get_WithPage(t *testing.T) {
 	}
 }
 
+func TestMyNotificationsService_Get_SentinelCreatorID(t *testing.T) {
+	// The BC3 API returns system-generated notifications with creator.id: "basecamp".
+	// The generated parser must not crash on this non-numeric sentinel — FlexibleInt64
+	// maps it to zero so the hand-written NotificationsResult (which omits Creator)
+	// can parse the response without error.
+	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{
+			"unreads": [{
+				"id": 42,
+				"title": "System notification",
+				"created_at": "2024-01-01T00:00:00Z",
+				"updated_at": "2024-01-01T00:00:00Z",
+				"creator": {
+					"id": "basecamp",
+					"name": "Basecamp"
+				}
+			}],
+			"reads": [],
+			"memories": []
+		}`))
+	})
+
+	result, err := svc.Get(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error (sentinel creator.id should not crash): %v", err)
+	}
+	if len(result.Unreads) != 1 {
+		t.Errorf("expected 1 unread, got %d", len(result.Unreads))
+	}
+	if result.Unreads[0].Title != "System notification" {
+		t.Errorf("expected 'System notification', got %q", result.Unreads[0].Title)
+	}
+}
+
 func TestMyNotificationsService_MarkAsRead(t *testing.T) {
 	var receivedBody map[string]any
 	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {

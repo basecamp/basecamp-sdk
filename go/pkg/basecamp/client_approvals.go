@@ -257,7 +257,7 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 
 	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
 		a.Creator = &Person{
-			ID:           ga.Creator.Id,
+			ID:           int64(ga.Creator.Id),
 			Name:         ga.Creator.Name,
 			EmailAddress: ga.Creator.EmailAddress,
 			AvatarURL:    ga.Creator.AvatarUrl,
@@ -268,7 +268,7 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 
 	if ga.Approver.Id != 0 || ga.Approver.Name != "" {
 		a.Approver = &Person{
-			ID:           ga.Approver.Id,
+			ID:           int64(ga.Approver.Id),
 			Name:         ga.Approver.Name,
 			EmailAddress: ga.Approver.EmailAddress,
 			AvatarURL:    ga.Approver.AvatarUrl,
@@ -315,7 +315,7 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 			}
 			if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 				resp.Creator = &Person{
-					ID:           gr.Creator.Id,
+					ID:           int64(gr.Creator.Id),
 					Name:         gr.Creator.Name,
 					EmailAddress: gr.Creator.EmailAddress,
 					AvatarURL:    gr.Creator.AvatarUrl,

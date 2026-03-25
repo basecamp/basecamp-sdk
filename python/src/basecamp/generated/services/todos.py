@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class TodosService(BaseService):
-    def list(self, *, todolist_id: int | str, status: str | None = None, completed: bool | None = None) -> ListResult:
+    def list(self, *, todolist_id: int, status: str | None = None, completed: bool | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
@@ -21,7 +21,7 @@ class TodosService(BaseService):
     def create(
         self,
         *,
-        todolist_id: int | str,
+        todolist_id: int,
         content: str,
         description: str | None = None,
         assignee_ids: list | None = None,
@@ -46,7 +46,7 @@ class TodosService(BaseService):
             operation="CreateTodo",
         )
 
-    def get(self, *, todo_id: int | str) -> dict[str, Any]:
+    def get(self, *, todo_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todos", operation="get", is_mutation=False, resource_id=todo_id),
             "GET",
@@ -56,7 +56,7 @@ class TodosService(BaseService):
     def update(
         self,
         *,
-        todo_id: int | str,
+        todo_id: int,
         content: str | None = None,
         description: str | None = None,
         assignee_ids: list | None = None,
@@ -81,7 +81,7 @@ class TodosService(BaseService):
             operation="UpdateTodo",
         )
 
-    def trash(self, *, todo_id: int | str) -> None:
+    def trash(self, *, todo_id: int) -> None:
         self._request_void(
             OperationInfo(service="todos", operation="trash", is_mutation=True, resource_id=todo_id),
             "DELETE",
@@ -89,7 +89,7 @@ class TodosService(BaseService):
             operation="TrashTodo",
         )
 
-    def complete(self, *, todo_id: int | str) -> None:
+    def complete(self, *, todo_id: int) -> None:
         self._request_void(
             OperationInfo(service="todos", operation="complete", is_mutation=True, resource_id=todo_id),
             "POST",
@@ -97,7 +97,7 @@ class TodosService(BaseService):
             operation="CompleteTodo",
         )
 
-    def uncomplete(self, *, todo_id: int | str) -> None:
+    def uncomplete(self, *, todo_id: int) -> None:
         self._request_void(
             OperationInfo(service="todos", operation="uncomplete", is_mutation=True, resource_id=todo_id),
             "DELETE",
@@ -105,7 +105,7 @@ class TodosService(BaseService):
             operation="UncompleteTodo",
         )
 
-    def reposition(self, *, todo_id: int | str, position: int, parent_id: int | None = None) -> None:
+    def reposition(self, *, todo_id: int, position: int, parent_id: int | None = None) -> None:
         self._request_void(
             OperationInfo(service="todos", operation="reposition", is_mutation=True, resource_id=todo_id),
             "PUT",
@@ -116,9 +116,7 @@ class TodosService(BaseService):
 
 
 class AsyncTodosService(AsyncBaseService):
-    async def list(
-        self, *, todolist_id: int | str, status: str | None = None, completed: bool | None = None
-    ) -> ListResult:
+    async def list(self, *, todolist_id: int, status: str | None = None, completed: bool | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
@@ -128,7 +126,7 @@ class AsyncTodosService(AsyncBaseService):
     async def create(
         self,
         *,
-        todolist_id: int | str,
+        todolist_id: int,
         content: str,
         description: str | None = None,
         assignee_ids: list | None = None,
@@ -153,7 +151,7 @@ class AsyncTodosService(AsyncBaseService):
             operation="CreateTodo",
         )
 
-    async def get(self, *, todo_id: int | str) -> dict[str, Any]:
+    async def get(self, *, todo_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todos", operation="get", is_mutation=False, resource_id=todo_id),
             "GET",
@@ -163,7 +161,7 @@ class AsyncTodosService(AsyncBaseService):
     async def update(
         self,
         *,
-        todo_id: int | str,
+        todo_id: int,
         content: str | None = None,
         description: str | None = None,
         assignee_ids: list | None = None,
@@ -188,7 +186,7 @@ class AsyncTodosService(AsyncBaseService):
             operation="UpdateTodo",
         )
 
-    async def trash(self, *, todo_id: int | str) -> None:
+    async def trash(self, *, todo_id: int) -> None:
         await self._request_void(
             OperationInfo(service="todos", operation="trash", is_mutation=True, resource_id=todo_id),
             "DELETE",
@@ -196,7 +194,7 @@ class AsyncTodosService(AsyncBaseService):
             operation="TrashTodo",
         )
 
-    async def complete(self, *, todo_id: int | str) -> None:
+    async def complete(self, *, todo_id: int) -> None:
         await self._request_void(
             OperationInfo(service="todos", operation="complete", is_mutation=True, resource_id=todo_id),
             "POST",
@@ -204,7 +202,7 @@ class AsyncTodosService(AsyncBaseService):
             operation="CompleteTodo",
         )
 
-    async def uncomplete(self, *, todo_id: int | str) -> None:
+    async def uncomplete(self, *, todo_id: int) -> None:
         await self._request_void(
             OperationInfo(service="todos", operation="uncomplete", is_mutation=True, resource_id=todo_id),
             "DELETE",
@@ -212,7 +210,7 @@ class AsyncTodosService(AsyncBaseService):
             operation="UncompleteTodo",
         )
 
-    async def reposition(self, *, todo_id: int | str, position: int, parent_id: int | None = None) -> None:
+    async def reposition(self, *, todo_id: int, position: int, parent_id: int | None = None) -> None:
         await self._request_void(
             OperationInfo(service="todos", operation="reposition", is_mutation=True, resource_id=todo_id),
             "PUT",

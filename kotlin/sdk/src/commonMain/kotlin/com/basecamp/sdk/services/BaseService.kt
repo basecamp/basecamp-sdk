@@ -8,6 +8,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import com.basecamp.sdk.serialization.normalizePersonIds
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -163,7 +164,7 @@ abstract class BaseService(
                 return Unit as T
             }
 
-            val bodyText = response.bodyAsText()
+            val bodyText = normalizePersonIds(response.bodyAsText(), json)
             val result = parse(bodyText)
             hooks.safeOnOperationEnd(info, OperationResult(duration))
             return result
@@ -210,7 +211,7 @@ abstract class BaseService(
                 throw error
             }
 
-            val bodyText = response.bodyAsText()
+            val bodyText = normalizePersonIds(response.bodyAsText(), json)
             val firstPageItems = parseItems(bodyText)
             val totalCount = parseTotalCount(response.headers.toMap())
 
@@ -247,7 +248,7 @@ abstract class BaseService(
                     throw errorFromResponse(currentResponse)
                 }
 
-                val pageBody = currentResponse.bodyAsText()
+                val pageBody = normalizePersonIds(currentResponse.bodyAsText(), json)
                 val pageItems = parseItems(pageBody)
                 allItems.addAll(pageItems)
 
@@ -307,7 +308,7 @@ abstract class BaseService(
                 throw error
             }
 
-            val firstPageBody = response.bodyAsText()
+            val firstPageBody = normalizePersonIds(response.bodyAsText(), json)
             val firstPageItems = parseItems(firstPageBody)
             val totalCount = parseTotalCount(response.headers.toMap())
 
@@ -343,7 +344,7 @@ abstract class BaseService(
                     throw errorFromResponse(currentResponse)
                 }
 
-                val pageBody = currentResponse.bodyAsText()
+                val pageBody = normalizePersonIds(currentResponse.bodyAsText(), json)
                 val pageItems = parseItems(pageBody)
                 allItems.addAll(pageItems)
 
@@ -425,7 +426,7 @@ abstract class BaseService(
                     throw errorFromResponse(currentResponse)
                 }
 
-                val pageBody = currentResponse.bodyAsText()
+                val pageBody = normalizePersonIds(currentResponse.bodyAsText(), json)
                 val pageItems = parseItems(pageBody)
                 for (item in pageItems) emit(item)
             }
@@ -449,7 +450,7 @@ abstract class BaseService(
         var hint: String? = null
 
         try {
-            val bodyText = response.bodyAsText()
+            val bodyText = normalizePersonIds(response.bodyAsText(), json)
             if (bodyText.isNotBlank()) {
                 val jsonBody = json.parseToJsonElement(bodyText)
                 if (jsonBody is JsonObject) {

@@ -27,7 +27,7 @@ class ProjectsService(BaseService):
             operation="CreateProject",
         )
 
-    def get(self, *, project_id: int | str) -> dict[str, Any]:
+    def get(self, *, project_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="projects", operation="get", is_mutation=False, project_id=project_id),
             "GET",
@@ -37,7 +37,7 @@ class ProjectsService(BaseService):
     def update(
         self,
         *,
-        project_id: int | str,
+        project_id: int,
         name: str,
         description: str | None = None,
         admissions: str | None = None,
@@ -53,7 +53,7 @@ class ProjectsService(BaseService):
             operation="UpdateProject",
         )
 
-    def trash(self, *, project_id: int | str) -> None:
+    def trash(self, *, project_id: int) -> None:
         self._request_void(
             OperationInfo(service="projects", operation="trash", is_mutation=True, project_id=project_id),
             "DELETE",
@@ -79,7 +79,7 @@ class AsyncProjectsService(AsyncBaseService):
             operation="CreateProject",
         )
 
-    async def get(self, *, project_id: int | str) -> dict[str, Any]:
+    async def get(self, *, project_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="projects", operation="get", is_mutation=False, project_id=project_id),
             "GET",
@@ -89,7 +89,7 @@ class AsyncProjectsService(AsyncBaseService):
     async def update(
         self,
         *,
-        project_id: int | str,
+        project_id: int,
         name: str,
         description: str | None = None,
         admissions: str | None = None,
@@ -105,7 +105,7 @@ class AsyncProjectsService(AsyncBaseService):
             operation="UpdateProject",
         )
 
-    async def trash(self, *, project_id: int | str) -> None:
+    async def trash(self, *, project_id: int) -> None:
         await self._request_void(
             OperationInfo(service="projects", operation="trash", is_mutation=True, project_id=project_id),
             "DELETE",

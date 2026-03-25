@@ -135,7 +135,16 @@ walk(
   "x-go-type-skip-optional-pointer": true
 }
 |
-# Sixth pass: append .json to path keys where Smithy cannot express it
+# Sixth pass: Person.id → types.FlexibleInt64
+# The API sometimes returns person IDs as JSON strings (e.g. in notification
+# responses); Go rejects those into int64 fields. Scoped to Person schema only.
+.components.schemas.Person.properties.id += {
+  "x-go-type": "types.FlexibleInt64",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
+|
+# Seventh pass: append .json to path keys where Smithy cannot express it
 # (labeled terminal segments like /{personId} need .json but Smithy forbids it)
 .paths |= (to_entries | map(
   if .key == "/{accountId}/reports/users/progress/{personId}" then
@@ -150,6 +159,7 @@ mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")
 flexint_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexInt")] | length' "$OUTPUT_FILE")
+flexibleint64_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.FlexibleInt64")] | length' "$OUTPUT_FILE")
 id_count=$(jq '[.. | objects | select(.["x-go-type-skip-optional-pointer"] == false and (.type == "integer" or .type == "number"))] | length' "$OUTPUT_FILE")
 nullable_bool_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("RequestContent$")) | .value.properties // {} | to_entries[] | select(.value.type == "boolean" and .value["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
 subscription_ptr_count=$(jq '[.components.schemas | to_entries[] | select(.key | test("^Create.*RequestContent$")) | .value.properties // {} | .subscriptions // empty | select(.["x-go-type-skip-optional-pointer"] == false)] | length' "$OUTPUT_FILE")
@@ -161,6 +171,7 @@ echo "  Timestamp fields (time.Time): $timestamp_count"
 echo "  FlexibleTime fields (types.FlexibleTime): $flexible_time_count"
 echo "  Date fields (types.Date): $date_count"
 echo "  Dimension fields (types.FlexInt): $flexint_count"
+echo "  Flexible ID fields (types.FlexibleInt64): $flexibleint64_count"
 echo "  Id fields (keeping pointers): $id_count"
 echo "  Nullable booleans (*bool): $nullable_bool_count"
 echo "  Subscription pointers (*[]int64): $subscription_ptr_count"

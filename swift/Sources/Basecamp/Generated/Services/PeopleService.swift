@@ -27,12 +27,49 @@ public struct ListForProjectPeopleOptions: Sendable {
 
 
 public final class PeopleService: BaseService, @unchecked Sendable {
+    public func disableOutOfOffice(personId: Int) async throws {
+        try await requestVoid(
+            OperationInfo(service: "People", operation: "DisableOutOfOffice", resourceType: "out_of_office", isMutation: true, resourceId: personId),
+            method: "DELETE",
+            path: "/people/\(personId)/out_of_office.json",
+            retryConfig: Metadata.retryConfig(for: "DisableOutOfOffice")
+        )
+    }
+
+    public func enableOutOfOffice(personId: Int, req: EnableOutOfOfficeRequest) async throws -> OutOfOffice {
+        return try await request(
+            OperationInfo(service: "People", operation: "EnableOutOfOffice", resourceType: "out_of_office", isMutation: true, resourceId: personId),
+            method: "POST",
+            path: "/people/\(personId)/out_of_office.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "EnableOutOfOffice")
+        )
+    }
+
+    public func myPreferences() async throws -> Preferences {
+        return try await request(
+            OperationInfo(service: "People", operation: "GetMyPreferences", resourceType: "my_preference", isMutation: false),
+            method: "GET",
+            path: "/my/preferences.json",
+            retryConfig: Metadata.retryConfig(for: "GetMyPreferences")
+        )
+    }
+
     public func me() async throws -> Person {
         return try await request(
             OperationInfo(service: "People", operation: "GetMyProfile", resourceType: "my_profile", isMutation: false),
             method: "GET",
             path: "/my/profile.json",
             retryConfig: Metadata.retryConfig(for: "GetMyProfile")
+        )
+    }
+
+    public func outOfOffice(personId: Int) async throws -> OutOfOffice {
+        return try await request(
+            OperationInfo(service: "People", operation: "GetOutOfOffice", resourceType: "out_of_office", isMutation: false, resourceId: personId),
+            method: "GET",
+            path: "/people/\(personId)/out_of_office.json",
+            retryConfig: Metadata.retryConfig(for: "GetOutOfOffice")
         )
     }
 
@@ -78,6 +115,16 @@ public final class PeopleService: BaseService, @unchecked Sendable {
             path: "/projects/\(projectId)/people.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListProjectPeople")
+        )
+    }
+
+    public func updateMyPreferences(req: UpdateMyPreferencesRequest) async throws -> Preferences {
+        return try await request(
+            OperationInfo(service: "People", operation: "UpdateMyPreferences", resourceType: "my_preference", isMutation: true),
+            method: "PUT",
+            path: "/my/preferences.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "UpdateMyPreferences")
         )
     }
 

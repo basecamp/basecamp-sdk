@@ -103,7 +103,7 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 
 	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
 		result.Person = &Person{
-			ID:           resp.JSON200.Person.Id,
+			ID:           int64(resp.JSON200.Person.Id),
 			Name:         resp.JSON200.Person.Name,
 			EmailAddress: resp.JSON200.Person.EmailAddress,
 			AvatarURL:    resp.JSON200.Person.AvatarUrl,

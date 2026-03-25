@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class ClientVisibilityService(BaseService):
-    def set_visibility(self, *, recording_id: int | str, visible_to_clients: bool) -> dict[str, Any]:
+    def set_visibility(self, *, recording_id: int, visible_to_clients: bool) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="clientvisibility", operation="set_visibility", is_mutation=True, resource_id=recording_id
@@ -24,7 +24,7 @@ class ClientVisibilityService(BaseService):
 
 
 class AsyncClientVisibilityService(AsyncBaseService):
-    async def set_visibility(self, *, recording_id: int | str, visible_to_clients: bool) -> dict[str, Any]:
+    async def set_visibility(self, *, recording_id: int, visible_to_clients: bool) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="clientvisibility", operation="set_visibility", is_mutation=True, resource_id=recording_id

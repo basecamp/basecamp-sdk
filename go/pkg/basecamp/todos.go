@@ -41,9 +41,15 @@ type Todo struct {
 	Position    int        `json:"position"`
 }
 
-// Person represents a Basecamp user.
+// Person represents a Basecamp user or system actor.
+// For system actors (personable_type "LocalPerson"), ID is 0. SystemLabel
+// holds the original non-numeric identifier (e.g. "basecamp") when the
+// response is processed through normalizeJSON (currently notifications).
+// Endpoints that decode through the generated parser lose the label —
+// use PersonableType == "LocalPerson" as the authoritative discriminator.
 type Person struct {
 	ID                int64          `json:"id"`
+	SystemLabel       string         `json:"system_label,omitempty"`
 	AttachableSGID    string         `json:"attachable_sgid,omitempty"`
 	Name              string         `json:"name"`
 	EmailAddress      string         `json:"email_address,omitempty"`
@@ -570,7 +576,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 
 	if gt.Creator.Id != 0 || gt.Creator.Name != "" {
 		t.Creator = &Person{
-			ID:           gt.Creator.Id,
+			ID:           int64(gt.Creator.Id),
 			Name:         gt.Creator.Name,
 			EmailAddress: gt.Creator.EmailAddress,
 			AvatarURL:    gt.Creator.AvatarUrl,

@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class BoostsService(BaseService):
-    def get_boost(self, *, boost_id: int | str) -> dict[str, Any]:
+    def get_boost(self, *, boost_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="boosts", operation="get_boost", is_mutation=False, resource_id=boost_id),
             "GET",
             f"/boosts/{boost_id}",
         )
 
-    def delete_boost(self, *, boost_id: int | str) -> None:
+    def delete_boost(self, *, boost_id: int) -> None:
         self._request_void(
             OperationInfo(service="boosts", operation="delete_boost", is_mutation=True, resource_id=boost_id),
             "DELETE",
@@ -26,7 +26,7 @@ class BoostsService(BaseService):
             operation="DeleteBoost",
         )
 
-    def list_recording_boosts(self, *, recording_id: int | str) -> ListResult:
+    def list_recording_boosts(self, *, recording_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(
                 service="boosts", operation="list_recording_boosts", is_mutation=False, resource_id=recording_id
@@ -34,7 +34,7 @@ class BoostsService(BaseService):
             f"/recordings/{recording_id}/boosts.json",
         )
 
-    def create_recording_boost(self, *, recording_id: int | str, content: str) -> dict[str, Any]:
+    def create_recording_boost(self, *, recording_id: int, content: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="boosts", operation="create_recording_boost", is_mutation=True, resource_id=recording_id
@@ -45,13 +45,13 @@ class BoostsService(BaseService):
             operation="CreateRecordingBoost",
         )
 
-    def list_event_boosts(self, *, recording_id: int | str, event_id: int | str) -> ListResult:
+    def list_event_boosts(self, *, recording_id: int, event_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="boosts", operation="list_event_boosts", is_mutation=False, resource_id=event_id),
             f"/recordings/{recording_id}/events/{event_id}/boosts.json",
         )
 
-    def create_event_boost(self, *, recording_id: int | str, event_id: int | str, content: str) -> dict[str, Any]:
+    def create_event_boost(self, *, recording_id: int, event_id: int, content: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="boosts", operation="create_event_boost", is_mutation=True, resource_id=event_id),
             "POST",
@@ -62,14 +62,14 @@ class BoostsService(BaseService):
 
 
 class AsyncBoostsService(AsyncBaseService):
-    async def get_boost(self, *, boost_id: int | str) -> dict[str, Any]:
+    async def get_boost(self, *, boost_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="boosts", operation="get_boost", is_mutation=False, resource_id=boost_id),
             "GET",
             f"/boosts/{boost_id}",
         )
 
-    async def delete_boost(self, *, boost_id: int | str) -> None:
+    async def delete_boost(self, *, boost_id: int) -> None:
         await self._request_void(
             OperationInfo(service="boosts", operation="delete_boost", is_mutation=True, resource_id=boost_id),
             "DELETE",
@@ -77,7 +77,7 @@ class AsyncBoostsService(AsyncBaseService):
             operation="DeleteBoost",
         )
 
-    async def list_recording_boosts(self, *, recording_id: int | str) -> ListResult:
+    async def list_recording_boosts(self, *, recording_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(
                 service="boosts", operation="list_recording_boosts", is_mutation=False, resource_id=recording_id
@@ -85,7 +85,7 @@ class AsyncBoostsService(AsyncBaseService):
             f"/recordings/{recording_id}/boosts.json",
         )
 
-    async def create_recording_boost(self, *, recording_id: int | str, content: str) -> dict[str, Any]:
+    async def create_recording_boost(self, *, recording_id: int, content: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="boosts", operation="create_recording_boost", is_mutation=True, resource_id=recording_id
@@ -96,13 +96,13 @@ class AsyncBoostsService(AsyncBaseService):
             operation="CreateRecordingBoost",
         )
 
-    async def list_event_boosts(self, *, recording_id: int | str, event_id: int | str) -> ListResult:
+    async def list_event_boosts(self, *, recording_id: int, event_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="boosts", operation="list_event_boosts", is_mutation=False, resource_id=event_id),
             f"/recordings/{recording_id}/events/{event_id}/boosts.json",
         )
 
-    async def create_event_boost(self, *, recording_id: int | str, event_id: int | str, content: str) -> dict[str, Any]:
+    async def create_event_boost(self, *, recording_id: int, event_id: int, content: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="boosts", operation="create_event_boost", is_mutation=True, resource_id=event_id),
             "POST",

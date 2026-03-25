@@ -655,7 +655,7 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 			Type: "Project",
 		},
 		Creator: generated.Person{
-			Id:           creatorID,
+			Id:           types.FlexibleInt64(creatorID),
 			Name:         "Test Creator",
 			EmailAddress: "creator@example.com",
 			AvatarUrl:    "https://example.com/avatar",
@@ -664,7 +664,7 @@ func TestTodoFromGenerated_FullPopulated(t *testing.T) {
 		},
 		Assignees: []generated.Person{
 			{
-				Id:           assigneeID,
+				Id:           types.FlexibleInt64(assigneeID),
 				Name:         "Test Assignee",
 				EmailAddress: "assignee@example.com",
 			},
@@ -860,9 +860,9 @@ func TestTodoFromGenerated_MultipleAssignees(t *testing.T) {
 		Type:    "Todo",
 		Content: "Content",
 		Assignees: []generated.Person{
-			{Id: id1, Name: "Alice"},
-			{Id: id2, Name: "Bob"},
-			{Id: id3, Name: "Charlie"},
+			{Id: types.FlexibleInt64(id1), Name: "Alice"},
+			{Id: types.FlexibleInt64(id2), Name: "Bob"},
+			{Id: types.FlexibleInt64(id3), Name: "Charlie"},
 		},
 	}
 
@@ -900,7 +900,7 @@ func TestTodoFromGenerated_PartialNestedFields(t *testing.T) {
 			Name: "Project Name", // Only name, no ID
 		},
 		Creator: generated.Person{
-			Id: creatorID, // Only ID, no name
+			Id: types.FlexibleInt64(creatorID), // Only ID, no name
 		},
 	}
 

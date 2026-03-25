@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class CardStepsService(BaseService):
-    def reposition(self, *, card_id: int | str, source_id: int, position: int) -> None:
+    def reposition(self, *, card_id: int, source_id: int, position: int) -> None:
         self._request_void(
             OperationInfo(service="cardsteps", operation="reposition", is_mutation=True, resource_id=card_id),
             "POST",
@@ -21,7 +21,7 @@ class CardStepsService(BaseService):
         )
 
     def create(
-        self, *, card_id: int | str, title: str, due_on: str | None = None, assignees: list | None = None
+        self, *, card_id: int, title: str, due_on: str | None = None, assignees: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
@@ -31,7 +31,7 @@ class CardStepsService(BaseService):
             operation="CreateCardStep",
         )
 
-    def get(self, *, step_id: int | str) -> dict[str, Any]:
+    def get(self, *, step_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="get", is_mutation=False, resource_id=step_id),
             "GET",
@@ -39,7 +39,7 @@ class CardStepsService(BaseService):
         )
 
     def update(
-        self, *, step_id: int | str, title: str | None = None, due_on: str | None = None, assignees: list | None = None
+        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignees: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
@@ -49,7 +49,7 @@ class CardStepsService(BaseService):
             operation="UpdateCardStep",
         )
 
-    def set_completion(self, *, step_id: int | str, completion: str) -> dict[str, Any]:
+    def set_completion(self, *, step_id: int, completion: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="set_completion", is_mutation=True, resource_id=step_id),
             "PUT",
@@ -60,7 +60,7 @@ class CardStepsService(BaseService):
 
 
 class AsyncCardStepsService(AsyncBaseService):
-    async def reposition(self, *, card_id: int | str, source_id: int, position: int) -> None:
+    async def reposition(self, *, card_id: int, source_id: int, position: int) -> None:
         await self._request_void(
             OperationInfo(service="cardsteps", operation="reposition", is_mutation=True, resource_id=card_id),
             "POST",
@@ -70,7 +70,7 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def create(
-        self, *, card_id: int | str, title: str, due_on: str | None = None, assignees: list | None = None
+        self, *, card_id: int, title: str, due_on: str | None = None, assignees: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
@@ -80,7 +80,7 @@ class AsyncCardStepsService(AsyncBaseService):
             operation="CreateCardStep",
         )
 
-    async def get(self, *, step_id: int | str) -> dict[str, Any]:
+    async def get(self, *, step_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="get", is_mutation=False, resource_id=step_id),
             "GET",
@@ -88,7 +88,7 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, step_id: int | str, title: str | None = None, due_on: str | None = None, assignees: list | None = None
+        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignees: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
@@ -98,7 +98,7 @@ class AsyncCardStepsService(AsyncBaseService):
             operation="UpdateCardStep",
         )
 
-    async def set_completion(self, *, step_id: int | str, completion: str) -> dict[str, Any]:
+    async def set_completion(self, *, step_id: int, completion: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="set_completion", is_mutation=True, resource_id=step_id),
             "PUT",

@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class TodolistGroupsService(BaseService):
-    def reposition(self, *, group_id: int | str, position: int) -> None:
+    def reposition(self, *, group_id: int, position: int) -> None:
         self._request_void(
             OperationInfo(service="todolistgroups", operation="reposition", is_mutation=True, resource_id=group_id),
             "PUT",
@@ -20,13 +20,13 @@ class TodolistGroupsService(BaseService):
             operation="RepositionTodolistGroup",
         )
 
-    def list(self, *, todolist_id: int | str) -> ListResult:
+    def list(self, *, todolist_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todolistgroups", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/groups.json",
         )
 
-    def create(self, *, todolist_id: int | str, name: str) -> dict[str, Any]:
+    def create(self, *, todolist_id: int, name: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todolistgroups", operation="create", is_mutation=True, resource_id=todolist_id),
             "POST",
@@ -37,7 +37,7 @@ class TodolistGroupsService(BaseService):
 
 
 class AsyncTodolistGroupsService(AsyncBaseService):
-    async def reposition(self, *, group_id: int | str, position: int) -> None:
+    async def reposition(self, *, group_id: int, position: int) -> None:
         await self._request_void(
             OperationInfo(service="todolistgroups", operation="reposition", is_mutation=True, resource_id=group_id),
             "PUT",
@@ -46,13 +46,13 @@ class AsyncTodolistGroupsService(AsyncBaseService):
             operation="RepositionTodolistGroup",
         )
 
-    async def list(self, *, todolist_id: int | str) -> ListResult:
+    async def list(self, *, todolist_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todolistgroups", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/groups.json",
         )
 
-    async def create(self, *, todolist_id: int | str, name: str) -> dict[str, Any]:
+    async def create(self, *, todolist_id: int, name: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todolistgroups", operation="create", is_mutation=True, resource_id=todolist_id),
             "POST",

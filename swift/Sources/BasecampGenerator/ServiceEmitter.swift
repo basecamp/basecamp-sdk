@@ -258,6 +258,10 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
         lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
         lines.append("        )")
     } else if op.returnsVoid {
+        // Build multipart body inline if needed
+        if case .multipartFormData(let fieldName) = op.bodyContentType {
+            lines.append(contentsOf: multipartBodyLines(fieldName: fieldName))
+        }
         // requestVoid call
         lines.append("        try await requestVoid(")
         lines.append("            OperationInfo(\(opInfoStr)),")
@@ -274,9 +278,17 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
             lines.append("            body: data,")
             lines.append("            contentType: contentType,")
         }
+        if case .multipartFormData = op.bodyContentType {
+            lines.append("            body: multipartBody,")
+            lines.append("            contentType: multipartContentType,")
+        }
         lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
         lines.append("        )")
     } else {
+        // Build multipart body inline if needed
+        if case .multipartFormData(let fieldName) = op.bodyContentType {
+            lines.append(contentsOf: multipartBodyLines(fieldName: fieldName))
+        }
         // request<T> call
         lines.append("        return try await request(")
         lines.append("            OperationInfo(\(opInfoStr)),")
@@ -293,12 +305,35 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
             lines.append("            body: data,")
             lines.append("            contentType: contentType,")
         }
+        if case .multipartFormData = op.bodyContentType {
+            lines.append("            body: multipartBody,")
+            lines.append("            contentType: multipartContentType,")
+        }
         lines.append("            retryConfig: Metadata.retryConfig(for: \"\(op.operationId)\")")
         lines.append("        )")
     }
 
     lines.append("    }")
     return lines
+}
+
+/// Generates inline multipart/form-data body construction code.
+/// Sanitizes filename and contentType to prevent CRLF header injection.
+private func multipartBodyLines(fieldName: String) -> [String] {
+    return [
+        "        let boundary = UUID().uuidString",
+        "        let multipartContentType = \"multipart/form-data; boundary=\\(boundary)\"",
+        "        // Sanitize user-provided values to prevent CRLF injection / quote breakout",
+        "        let safeFilename = filename.replacingOccurrences(of: \"\\r\", with: \"\").replacingOccurrences(of: \"\\n\", with: \"\").replacingOccurrences(of: \"\\\\\", with: \"\\\\\\\\\").replacingOccurrences(of: \"\\\"\", with: \"\\\\\\\"\")",
+        "        let safeContentType = contentType.replacingOccurrences(of: \"\\r\", with: \"\").replacingOccurrences(of: \"\\n\", with: \"\")",
+        "        var body = Data()",
+        "        body.append(contentsOf: \"--\\(boundary)\\r\\n\".utf8)",
+        "        body.append(contentsOf: \"Content-Disposition: form-data; name=\\\"\(fieldName)\\\"; filename=\\\"\\(safeFilename)\\\"\\r\\n\".utf8)",
+        "        body.append(contentsOf: \"Content-Type: \\(safeContentType)\\r\\n\\r\\n\".utf8)",
+        "        body.append(data)",
+        "        body.append(contentsOf: \"\\r\\n--\\(boundary)--\\r\\n\".utf8)",
+        "        let multipartBody = body",
+    ]
 }
 
 // MARK: - Signature Building
@@ -327,6 +362,13 @@ private func buildSignature(
     // Binary upload
     if op.bodyContentType == .octetStream {
         params.append("data: Data")
+        params.append("contentType: String")
+    }
+
+    // Multipart form-data upload
+    if case .multipartFormData = op.bodyContentType {
+        params.append("data: Data")
+        params.append("filename: String")
         params.append("contentType: String")
     }
 

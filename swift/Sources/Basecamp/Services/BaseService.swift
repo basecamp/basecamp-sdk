@@ -65,7 +65,8 @@ open class BaseService: @unchecked Sendable {
                 )
             }
 
-            let decoded = try Self.decoder.decode(T.self, from: data)
+            let normalizedData = Self.normalizePersonIds(in: data)
+            let decoded = try Self.decoder.decode(T.self, from: normalizedData)
             safeInvokeHooks { $0.onOperationEnd(info, result: OperationResult(durationMs: durationMs)) }
             return decoded
         } catch {
@@ -168,7 +169,7 @@ open class BaseService: @unchecked Sendable {
                 )
             }
 
-            let firstPageItems = try Self.decoder.decode([T].self, from: data)
+            let firstPageItems = try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
             let totalCount = parseTotalCount(response)
             let maxItems = paginationOpts?.maxItems
 
@@ -321,7 +322,7 @@ open class BaseService: @unchecked Sendable {
                 )
             }
 
-            let pageItems = try Self.decoder.decode([T].self, from: data)
+            let pageItems = try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
             allItems.append(contentsOf: pageItems)
 
             // Check maxItems cap
@@ -396,7 +397,7 @@ open class BaseService: @unchecked Sendable {
             return []
         }
         let itemsData = try JSONSerialization.data(withJSONObject: itemsArray)
-        return try decoder.decode([T].self, from: itemsData)
+        return try decoder.decode([T].self, from: Self.normalizePersonIds(in: itemsData))
     }
 
     // MARK: - Shared Coders
@@ -423,5 +424,72 @@ open class BaseService: @unchecked Sendable {
 
     private func safeInvokeHooks(_ invoke: (any BasecampHooks) -> Void) {
         invoke(accountClient.hooks)
+    }
+
+    /// Normalizes Person-shaped objects in raw JSON data.
+    ///
+    /// The BC3 API conflates real Person records (numeric id) with system
+    /// actors like LocalPerson (symbolic id: "basecamp", "campfire").
+    /// For objects with `personable_type` and a string `id`:
+    /// - Numeric strings: coerced to Int, no system_label
+    /// - Numeric overflow: left as string for FlexibleInt to reject
+    /// - Non-numeric sentinels: id becomes 0, original preserved as system_label
+    static func normalizePersonIds(in data: Data) -> Data {
+        // Short-circuit: skip parsing if no Person-shaped objects
+        guard data.range(of: Data("personable_type".utf8)) != nil else { return data }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data),
+              let mutable = deepMutableCopy(json) else {
+            return data
+        }
+        normalizeWalk(mutable)
+        guard let result = try? JSONSerialization.data(withJSONObject: mutable) else {
+            return data
+        }
+        return result
+    }
+
+    private static func normalizeWalk(_ obj: Any) {
+        if let dict = obj as? NSMutableDictionary {
+            if dict["personable_type"] != nil, let idStr = dict["id"] as? String {
+                if let n = Int(idStr) {
+                    dict["id"] = n
+                } else if idStr.range(of: #"^-?\d+$"#, options: .regularExpression) != nil {
+                    // Numeric overflow — leave as string, FlexibleInt will reject
+                } else {
+                    // Non-numeric sentinel
+                    dict["system_label"] = idStr
+                    dict["id"] = 0
+                }
+            }
+            for (_, val) in dict {
+                normalizeWalk(val)
+            }
+        } else if let arr = obj as? NSMutableArray {
+            for item in arr {
+                normalizeWalk(item)
+            }
+        }
+    }
+
+    private static func deepMutableCopy(_ obj: Any) -> Any? {
+        if let dict = obj as? [String: Any] {
+            let mutable = NSMutableDictionary()
+            for (k, v) in dict {
+                if let child = deepMutableCopy(v) {
+                    mutable[k] = child
+                }
+            }
+            return mutable
+        } else if let arr = obj as? [Any] {
+            let mutable = NSMutableArray()
+            for item in arr {
+                if let child = deepMutableCopy(item) {
+                    mutable.add(child)
+                }
+            }
+            return mutable
+        }
+        return obj
     }
 }
