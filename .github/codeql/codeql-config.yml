@@ -2,6 +2,7 @@ queries:
   - uses: security-and-quality
 
 paths:
+  - .github/
   - go/
   - typescript/
   - ruby/
