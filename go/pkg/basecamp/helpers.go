@@ -1,7 +1,6 @@
 package basecamp
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,13 +31,38 @@ import (
 //   - ProjectsService.Update        (nested: schedule_attributes)
 //   - CheckinsService.UpdateQuestion (nested: schedule)
 //   - CheckinsService.CreateQuestion (nested: schedule — Hour/Minute int32 omitempty)
+//   - CheckinsService.UpdateAnswer   (ISO8601Date: group_on)
 //   - PeopleService.UpdateMyProfile   (person wrapper + *string clearable fields)
 func marshalBody(m map[string]any) (io.Reader, error) {
 	b, err := json.Marshal(m)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
-	return bytes.NewReader(b), nil
+	return &rewindableReader{data: b}, nil
+}
+
+// rewindableReader wraps a byte slice as an io.Reader that auto-rewinds
+// after returning EOF, so the generated client's doWithRetry can replay
+// the body on each retry attempt. Safe against partial reads: once EOF
+// is returned, the next Read starts from position 0.
+type rewindableReader struct {
+	data  []byte
+	pos   int
+	atEOF bool
+}
+
+func (r *rewindableReader) Read(p []byte) (int, error) {
+	if r.atEOF {
+		r.pos = 0
+		r.atEOF = false
+	}
+	if r.pos >= len(r.data) {
+		r.atEOF = true
+		return 0, io.EOF
+	}
+	n := copy(p, r.data[r.pos:])
+	r.pos += n
+	return n, nil
 }
 
 // checkResponse converts HTTP response errors to SDK errors for non-2xx responses.

@@ -3754,6 +3754,7 @@ export interface components {
         };
         QuestionAnswerUpdatePayload: {
             content: string;
+            group_on?: string;
         };
         QuestionReminder: {
             /** Format: int64 */

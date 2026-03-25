@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"io"
 	"net/http"
 	"testing"
 )
@@ -144,6 +145,24 @@ func TestParseTotalCount(t *testing.T) {
 func TestParseTotalCount_NilResponse(t *testing.T) {
 	if got := parseTotalCount(nil); got != 0 {
 		t.Errorf("parseTotalCount(nil) = %d, want 0", got)
+	}
+}
+
+func TestMarshalBody_ReturnsReplayableReader(t *testing.T) {
+	reader, err := marshalBody(map[string]any{"content": "Updated content"})
+	if err != nil {
+		t.Fatalf("marshalBody returned error: %v", err)
+	}
+
+	const want = `{"content":"Updated content"}`
+	for attempt := 1; attempt <= 2; attempt++ {
+		got, err := io.ReadAll(reader)
+		if err != nil {
+			t.Fatalf("attempt %d: failed reading body: %v", attempt, err)
+		}
+		if string(got) != want {
+			t.Fatalf("attempt %d: body = %q, want %q", attempt, got, want)
+		}
 	}
 }
 

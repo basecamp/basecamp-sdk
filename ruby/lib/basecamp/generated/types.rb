@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-24T23:08:55Z
+# Generated: 2026-03-25T06:39:18Z
 
 require "json"
 require "time"
@@ -2686,7 +2686,7 @@ module Basecamp
     # QuestionAnswerUpdatePayload
     class QuestionAnswerUpdatePayload
       include TypeHelpers
-      attr_accessor :content
+      attr_accessor :content, :group_on
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2695,11 +2695,13 @@ module Basecamp
 
       def initialize(data = {})
         @content = data["content"]
+        @group_on = data["group_on"]
       end
 
       def to_h
         {
           "content" => @content,
+          "group_on" => @group_on,
         }.compact
       end
 

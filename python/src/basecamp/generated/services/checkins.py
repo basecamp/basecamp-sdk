@@ -23,12 +23,12 @@ class CheckinsService(BaseService):
             f"/question_answers/{answer_id}",
         )
 
-    def update_answer(self, *, answer_id: int, content: str) -> None:
+    def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
         self._request_void(
             OperationInfo(service="checkins", operation="update_answer", is_mutation=True, resource_id=answer_id),
             "PUT",
             f"/question_answers/{answer_id}",
-            json_body=self._compact(content=content),
+            json_body=self._compact(content=content, group_on=group_on),
             operation="UpdateAnswer",
         )
 
@@ -150,12 +150,12 @@ class AsyncCheckinsService(AsyncBaseService):
             f"/question_answers/{answer_id}",
         )
 
-    async def update_answer(self, *, answer_id: int, content: str) -> None:
+    async def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
         await self._request_void(
             OperationInfo(service="checkins", operation="update_answer", is_mutation=True, resource_id=answer_id),
             "PUT",
             f"/question_answers/{answer_id}",
-            json_body=self._compact(content=content),
+            json_body=self._compact(content=content, group_on=group_on),
             operation="UpdateAnswer",
         )
 

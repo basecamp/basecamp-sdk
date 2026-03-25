@@ -376,6 +376,26 @@ describe("CheckinsService", () => {
       });
     });
 
+    it("should send group_on when provided", async () => {
+      let receivedBody: Record<string, unknown> | null = null;
+
+      server.use(
+        http.put(`${BASE_URL}/question_answers/50`, async ({ request }) => {
+          receivedBody = (await request.json()) as Record<string, unknown>;
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await client.checkins.updateAnswer(50, {
+        content: "<p>Updated content</p>",
+        groupOn: "2025-03-01",
+      });
+
+      expect(receivedBody).not.toBeNull();
+      expect(receivedBody!.content).toBe("<p>Updated content</p>");
+      expect(receivedBody!.group_on).toBe("2025-03-01");
+    });
+
     // Note: Client-side validation removed - generated services let API validate
   });
 });

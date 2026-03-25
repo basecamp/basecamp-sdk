@@ -25280,6 +25280,14 @@
         "properties": {
           "content": {
             "type": "string"
+          },
+          "group_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [

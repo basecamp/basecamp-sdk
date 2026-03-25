@@ -145,4 +145,18 @@ class CheckinsServiceTest < Minitest::Test
 
     assert_nil result
   end
+
+  def test_update_answer_with_group_on
+    req = stub_request(:put, "https://3.basecampapi.com/12345/question_answers/200")
+      .with(body: hash_including("content" => "<p>Updated answer</p>", "group_on" => "2025-03-01"))
+      .to_return(status: 204, body: "")
+
+    @account.checkins.update_answer(
+      answer_id: 200,
+      content: "<p>Updated answer</p>",
+      group_on: "2025-03-01"
+    )
+
+    assert_requested req
+  end
 end

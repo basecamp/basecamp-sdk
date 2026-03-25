@@ -619,6 +619,10 @@ func TestUpdateAnswerRequest_Marshal(t *testing.T) {
 	if data["content"] != "<div>Updated: Today I finished the API documentation.</div>" {
 		t.Errorf("unexpected content: %v", data["content"])
 	}
+	// group_on with omitempty should be absent when empty
+	if _, ok := data["group_on"]; ok {
+		t.Error("expected group_on to be omitted when empty")
+	}
 
 	// Round-trip test
 	var roundtrip UpdateAnswerRequest
@@ -631,18 +635,15 @@ func TestUpdateAnswerRequest_Marshal(t *testing.T) {
 	}
 }
 
-func TestCreateAnswerRequestWrapper_Marshal(t *testing.T) {
-	// Test that the wrapper correctly wraps the request for the API
-	// API expects: {"question_answer": {"content": "...", "group_on": "..."}}
-	req := &CreateAnswerRequest{
-		Content: "<div>Today I worked on the API documentation.</div>",
+func TestUpdateAnswerRequest_MarshalWithGroupOn(t *testing.T) {
+	req := UpdateAnswerRequest{
+		Content: "<div>Updated answer.</div>",
 		GroupOn: "2024-01-22",
 	}
-	wrapper := createAnswerRequestWrapper{QuestionAnswer: req}
 
-	out, err := json.Marshal(wrapper)
+	out, err := json.Marshal(req)
 	if err != nil {
-		t.Fatalf("failed to marshal wrapper: %v", err)
+		t.Fatalf("failed to marshal UpdateAnswerRequest: %v", err)
 	}
 
 	var data map[string]any
@@ -650,44 +651,11 @@ func TestCreateAnswerRequestWrapper_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	// Verify the structure is wrapped in "question_answer" key
-	questionAnswer, ok := data["question_answer"].(map[string]any)
-	if !ok {
-		t.Fatal("expected question_answer to be a map")
+	if data["content"] != "<div>Updated answer.</div>" {
+		t.Errorf("unexpected content: %v", data["content"])
 	}
-	if questionAnswer["content"] != "<div>Today I worked on the API documentation.</div>" {
-		t.Errorf("unexpected content: %v", questionAnswer["content"])
-	}
-	if questionAnswer["group_on"] != "2024-01-22" {
-		t.Errorf("unexpected group_on: %v", questionAnswer["group_on"])
-	}
-}
-
-func TestUpdateAnswerRequestWrapper_Marshal(t *testing.T) {
-	// Test that the wrapper correctly wraps the request for the API
-	// API expects: {"question_answer": {"content": "..."}}
-	req := &UpdateAnswerRequest{
-		Content: "<div>My updated answer.</div>",
-	}
-	wrapper := updateAnswerRequestWrapper{QuestionAnswer: req}
-
-	out, err := json.Marshal(wrapper)
-	if err != nil {
-		t.Fatalf("failed to marshal wrapper: %v", err)
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal(out, &data); err != nil {
-		t.Fatalf("failed to unmarshal to map: %v", err)
-	}
-
-	// Verify the structure is wrapped in "question_answer" key
-	questionAnswer, ok := data["question_answer"].(map[string]any)
-	if !ok {
-		t.Fatal("expected question_answer to be a map")
-	}
-	if questionAnswer["content"] != "<div>My updated answer.</div>" {
-		t.Errorf("unexpected content: %v", questionAnswer["content"])
+	if data["group_on"] != "2024-01-22" {
+		t.Errorf("expected group_on '2024-01-22', got %v", data["group_on"])
 	}
 }
 
@@ -797,5 +765,150 @@ func TestCheckinsService_UpdateQuestionEmptySchedule(t *testing.T) {
 
 	if _, ok := receivedBody["schedule"]; ok {
 		t.Errorf("expected schedule to be omitted for empty struct, but it was present: %v", receivedBody["schedule"])
+	}
+}
+
+func TestCheckinsService_UpdateAnswerPreservesGroupOn(t *testing.T) {
+	answerFixture := loadCheckinsFixture(t, "answer.json")
+	var receivedBody map[string]any
+	var requestCount int
+
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodGet:
+			// First request: GET to fetch existing answer for its group_on
+			w.WriteHeader(200)
+			w.Write(answerFixture)
+		case http.MethodPut:
+			// Second request: PUT with content and preserved group_on
+			receivedBody = decodeRequestBody(t, r)
+			w.WriteHeader(204)
+		default:
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+	})
+
+	err := svc.UpdateAnswer(context.Background(), 1069479450, &UpdateAnswerRequest{
+		Content: "<div>Updated content.</div>",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestCount != 2 {
+		t.Fatalf("expected 2 requests (GET + PUT), got %d", requestCount)
+	}
+
+	if receivedBody["content"] != "<div>Updated content.</div>" {
+		t.Errorf("unexpected content: %v", receivedBody["content"])
+	}
+
+	// The existing answer fixture has group_on "2022-10-28" — it must be carried forward
+	if receivedBody["group_on"] != "2022-10-28" {
+		t.Errorf("expected group_on '2022-10-28' preserved from existing answer, got %v", receivedBody["group_on"])
+	}
+}
+
+func TestCheckinsService_UpdateAnswerExplicitGroupOn(t *testing.T) {
+	var receivedBody map[string]any
+	var requestCount int
+
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodPut:
+			receivedBody = decodeRequestBody(t, r)
+			w.WriteHeader(204)
+		default:
+			t.Fatalf("unexpected method: %s (should skip GET when GroupOn is provided)", r.Method)
+		}
+	})
+
+	// When GroupOn is explicitly provided, no GET should be needed
+	err := svc.UpdateAnswer(context.Background(), 1069479450, &UpdateAnswerRequest{
+		Content: "<div>Updated content.</div>",
+		GroupOn: "2025-03-01",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestCount != 1 {
+		t.Fatalf("expected 1 request (PUT only), got %d", requestCount)
+	}
+
+	if receivedBody["content"] != "<div>Updated content.</div>" {
+		t.Errorf("unexpected content: %v", receivedBody["content"])
+	}
+	if receivedBody["group_on"] != "2025-03-01" {
+		t.Errorf("expected group_on '2025-03-01', got %v", receivedBody["group_on"])
+	}
+}
+
+func TestCheckinsService_UpdateAnswerRejectsInvalidExplicitGroupOn(t *testing.T) {
+	var requestCount int
+
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+	})
+
+	err := svc.UpdateAnswer(context.Background(), 1069479450, &UpdateAnswerRequest{
+		Content: "<div>Updated content.</div>",
+		GroupOn: "2025/03/01",
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	apiErr, ok := err.(*Error)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got %v", err)
+	}
+	if requestCount != 0 {
+		t.Fatalf("expected 0 requests, got %d", requestCount)
+	}
+	if apiErr.Message != "group_on must be in YYYY-MM-DD format" {
+		t.Fatalf("unexpected error message: %q", apiErr.Message)
+	}
+}
+
+func TestCheckinsService_UpdateAnswerRejectsMissingResolvedGroupOn(t *testing.T) {
+	var requestCount int
+
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.Method {
+		case http.MethodGet:
+			w.WriteHeader(200)
+			w.Write([]byte(`{"id":1069479450,"content":"Existing answer","group_on":null}`))
+		case http.MethodPut:
+			t.Fatal("unexpected PUT request when resolved group_on is empty")
+		default:
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+	})
+
+	err := svc.UpdateAnswer(context.Background(), 1069479450, &UpdateAnswerRequest{
+		Content: "<div>Updated content.</div>",
+	})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	apiErr, ok := err.(*Error)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got %v", err)
+	}
+	if requestCount != 1 {
+		t.Fatalf("expected 1 request (GET only), got %d", requestCount)
+	}
+	if apiErr.Message != "group_on is required" {
+		t.Fatalf("unexpected error message: %q", apiErr.Message)
 	}
 }

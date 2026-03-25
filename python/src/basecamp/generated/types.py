@@ -1075,6 +1075,7 @@ class QuestionAnswerPayload(TypedDict):
 
 class QuestionAnswerUpdatePayload(TypedDict):
     content: str
+    group_on: NotRequired[str]
 
 
 class QuestionReminder(TypedDict):

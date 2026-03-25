@@ -143,22 +143,13 @@ type CreateAnswerRequest struct {
 	GroupOn string `json:"group_on,omitempty"`
 }
 
-// createAnswerRequestWrapper wraps the create request for the API.
-// The Basecamp API expects: {"question_answer": {"content": "...", "group_on": "..."}}
-type createAnswerRequestWrapper struct {
-	QuestionAnswer *CreateAnswerRequest `json:"question_answer"`
-}
-
 // UpdateAnswerRequest specifies the parameters for updating an answer.
 type UpdateAnswerRequest struct {
 	// Content is the updated answer content in HTML (required).
 	Content string `json:"content"`
-}
-
-// updateAnswerRequestWrapper wraps the update request for the API.
-// The Basecamp API expects: {"question_answer": {"content": "..."}}
-type updateAnswerRequestWrapper struct {
-	QuestionAnswer *UpdateAnswerRequest `json:"question_answer"`
+	// GroupOn is the date the answer is grouped under (ISO 8601 format).
+	// If empty, the existing group_on is preserved automatically.
+	GroupOn string `json:"group_on,omitempty"`
 }
 
 // QuestionListResult contains the results from listing questions.
@@ -617,11 +608,34 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req 
 		return err
 	}
 
-	body := generated.UpdateAnswerJSONRequestBody{
-		Content: req.Content,
+	// The BC3 Question::Answer model validates presence of group_on.
+	// The controller rebuilds the recordable from params, so we must
+	// always include group_on even when only updating content.
+	groupOn := req.GroupOn
+	if groupOn == "" {
+		existing, fetchErr := s.GetAnswer(ctx, answerID)
+		if fetchErr != nil {
+			return fetchErr
+		}
+		groupOn = existing.GroupOn
+	}
+	if groupOn == "" {
+		return ErrUsage("group_on is required")
+	}
+	if _, parseErr := types.ParseDate(groupOn); parseErr != nil {
+		return ErrUsage("group_on must be in YYYY-MM-DD format")
 	}
 
-	resp, err := s.client.parent.gen.UpdateAnswerWithResponse(ctx, s.client.accountID, answerID, body)
+	body := map[string]any{
+		"content":  req.Content,
+		"group_on": groupOn,
+	}
+
+	bodyReader, err := marshalBody(body)
+	if err != nil {
+		return err
+	}
+	resp, err := s.client.parent.gen.UpdateAnswerWithBodyWithResponse(ctx, s.client.accountID, answerID, "application/json", bodyReader)
 	if err != nil {
 		return err
 	}
