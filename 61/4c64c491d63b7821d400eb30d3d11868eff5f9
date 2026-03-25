@@ -1,0 +1,79 @@
+swift/Sources/Basecamp/FlexibleInt.swift
+  31ce562ca8910a53 1-52
+python/src/basecamp/generated/services/_async_base.py
+  31ce562ca8910a53 12-32
+python/scripts/generate_types.py
+  31ce562ca8910a53 97-100
+python/tests/services/test_notifications.py
+  31ce562ca8910a53 1-86
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  31ce562ca8910a53 218-222
+go/pkg/basecamp/my_notifications.go
+  31ce562ca8910a53 85-89,91
+python/scripts/generate_services.py
+  31ce562ca8910a53 506,508
+go/pkg/basecamp/todos.go
+  31ce562ca8910a53 44-49,52
+swift/Sources/BasecampGenerator/TypeMapping.swift
+  31ce562ca8910a53 89-92
+ruby/test/basecamp/normalize_person_ids_test.rb
+  31ce562ca8910a53 1-63
+python/src/basecamp/_async_http.py
+  31ce562ca8910a53 110-112
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  31ce562ca8910a53 36-43,70,73-75,87-90,117-122
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  31ce562ca8910a53 11
+typescript/tests/services/my-notifications.test.ts
+  31ce562ca8910a53 1-153
+python/src/basecamp/generated/services/_base.py
+  31ce562ca8910a53 15-39,76,321
+swift/Sources/Basecamp/Services/BaseService.swift
+  31ce562ca8910a53 68-69,172,325,400,428-494
+python/tests/services/test_account.py
+  31ce562ca8910a53 1,6,9,73-110
+typescript/package.json
+  31ce562ca8910a53 23
+ruby/lib/basecamp/http.rb
+  31ce562ca8910a53 15-37,268,541,546-548
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FlexibleLongSerializerTest.kt
+  31ce562ca8910a53 1-51,53-79
+swift/Tests/BasecampTests/FlexibleIntTests.swift
+  31ce562ca8910a53 1-39,41-73
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleLongSerializer.kt
+  31ce562ca8910a53 1-53
+python/src/basecamp/_http.py
+  31ce562ca8910a53 109-112
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/NormalizePersonIds.kt
+  31ce562ca8910a53 1-63
+go/pkg/types/flexible_int64.go
+  31ce562ca8910a53 44,57
+go/pkg/basecamp/normalize.go
+  31ce562ca8910a53 1-64
+ruby/scripts/generate-types.rb
+  31ce562ca8910a53 131-133,171-174
+typescript/src/services/base.ts
+  31ce562ca8910a53 59-99,291,352,429,512,561
+typescript/scripts/patch-flexible-ids.ts
+  31ce562ca8910a53 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "614c64c491d63b7821d400eb30d3d11868eff5f9",
+  "prompts": {
+    "31ce562ca8910a53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce7c5d6e-d916-4ed5-ba28-fd204bcc516a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 1113,
+      "total_deletions": 111,
+      "accepted_lines": 1085,
+      "overriden_lines": 0
+    }
+  }
+}
