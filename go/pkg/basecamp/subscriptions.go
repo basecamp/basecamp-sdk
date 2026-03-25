@@ -188,7 +188,7 @@ func subscriptionFromGenerated(gs generated.Subscription) Subscription {
 				Owner:        gp.Owner,
 			}
 			if gp.Id != 0 {
-				p.ID = gp.Id
+				p.ID = int64(gp.Id)
 			}
 			s.Subscribers = append(s.Subscribers, p)
 		}

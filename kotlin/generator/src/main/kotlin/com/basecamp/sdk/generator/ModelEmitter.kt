@@ -33,6 +33,14 @@ class ModelEmitter(private val api: OpenApiParser) {
         lines += "import kotlinx.serialization.Serializable"
         lines += "import kotlinx.serialization.json.JsonElement"
         lines += "import kotlinx.serialization.json.JsonObject"
+
+        // Check if any property needs FlexibleLongSerializer
+        val hasFlexible = properties.any { (_, propSchema) ->
+            propSchema.jsonObject["x-go-type"]?.jsonPrimitive?.content?.contains("FlexibleInt64") == true
+        }
+        if (hasFlexible) {
+            lines += "import com.basecamp.sdk.serialization.FlexibleLongSerializer"
+        }
         lines += ""
         lines += "/**"
         lines += " * $typeName entity from the Basecamp API."
@@ -59,8 +67,12 @@ class ModelEmitter(private val api: OpenApiParser) {
             val kotlinType = resolvePropertyType(propObj, isRequired)
             val camelName = propName.snakeToCamelCase()
             val needsSerialName = camelName != propName
+            val isFlexible = propObj["x-go-type"]?.jsonPrimitive?.content?.contains("FlexibleInt64") == true
 
             val propLine = buildString {
+                if (isFlexible) {
+                    append("    @Serializable(with = FlexibleLongSerializer::class)\n")
+                }
                 if (needsSerialName) {
                     append("    @SerialName(\"$propName\") ")
                 } else {
@@ -72,6 +84,10 @@ class ModelEmitter(private val api: OpenApiParser) {
                 }
             }
             propLines += propLine
+            // Add system_label field after flexible integer id fields
+            if (isFlexible) {
+                propLines += "    @SerialName(\"system_label\") val systemLabel: String? = null"
+            }
         }
 
         lines += propLines.joinToString(",\n")
@@ -96,6 +112,12 @@ class ModelEmitter(private val api: OpenApiParser) {
                 if (hasProperties) refName else return if (isRequired) "JsonObject" else "JsonObject?"
             }
             return if (isRequired) typeName else "$typeName?"
+        }
+
+        // Flexible integer fields (string-or-number on the wire)
+        val goType = schema["x-go-type"]?.jsonPrimitive?.content
+        if (goType?.contains("FlexibleInt64") == true) {
+            return "Long"  // Uses @Serializable(with = FlexibleLongSerializer::class) annotation
         }
 
         return when (schema["type"]?.jsonPrimitive?.content) {

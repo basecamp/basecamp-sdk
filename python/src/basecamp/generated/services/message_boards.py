@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class MessageBoardsService(BaseService):
-    def get(self, *, board_id: int | str) -> dict[str, Any]:
+    def get(self, *, board_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="messageboards", operation="get", is_mutation=False, resource_id=board_id),
             "GET",
@@ -20,7 +20,7 @@ class MessageBoardsService(BaseService):
 
 
 class AsyncMessageBoardsService(AsyncBaseService):
-    async def get(self, *, board_id: int | str) -> dict[str, Any]:
+    async def get(self, *, board_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="messageboards", operation="get", is_mutation=False, resource_id=board_id),
             "GET",

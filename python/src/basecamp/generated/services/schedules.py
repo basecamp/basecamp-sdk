@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class SchedulesService(BaseService):
-    def get_entry(self, *, entry_id: int | str) -> dict[str, Any]:
+    def get_entry(self, *, entry_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="schedules", operation="get_entry", is_mutation=False, resource_id=entry_id),
             "GET",
@@ -21,7 +21,7 @@ class SchedulesService(BaseService):
     def update_entry(
         self,
         *,
-        entry_id: int | str,
+        entry_id: int,
         summary: str | None = None,
         starts_at: str | None = None,
         ends_at: str | None = None,
@@ -46,21 +46,21 @@ class SchedulesService(BaseService):
             operation="UpdateScheduleEntry",
         )
 
-    def get_entry_occurrence(self, *, entry_id: int | str, date: int | str) -> dict[str, Any]:
+    def get_entry_occurrence(self, *, entry_id: int, date: str) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=date),
             "GET",
             f"/schedule_entries/{entry_id}/occurrences/{date}",
         )
 
-    def get(self, *, schedule_id: int | str) -> dict[str, Any]:
+    def get(self, *, schedule_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="schedules", operation="get", is_mutation=False, resource_id=schedule_id),
             "GET",
             f"/schedules/{schedule_id}",
         )
 
-    def update_settings(self, *, schedule_id: int | str, include_due_assignments: bool) -> dict[str, Any]:
+    def update_settings(self, *, schedule_id: int, include_due_assignments: bool) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="schedules", operation="update_settings", is_mutation=True, resource_id=schedule_id),
             "PUT",
@@ -69,7 +69,7 @@ class SchedulesService(BaseService):
             operation="UpdateScheduleSettings",
         )
 
-    def list_entries(self, *, schedule_id: int | str, status: str | None = None) -> ListResult:
+    def list_entries(self, *, schedule_id: int, status: str | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
             f"/schedules/{schedule_id}/entries.json",
@@ -79,7 +79,7 @@ class SchedulesService(BaseService):
     def create_entry(
         self,
         *,
-        schedule_id: int | str,
+        schedule_id: int,
         summary: str,
         starts_at: str,
         ends_at: str,
@@ -108,7 +108,7 @@ class SchedulesService(BaseService):
 
 
 class AsyncSchedulesService(AsyncBaseService):
-    async def get_entry(self, *, entry_id: int | str) -> dict[str, Any]:
+    async def get_entry(self, *, entry_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="schedules", operation="get_entry", is_mutation=False, resource_id=entry_id),
             "GET",
@@ -118,7 +118,7 @@ class AsyncSchedulesService(AsyncBaseService):
     async def update_entry(
         self,
         *,
-        entry_id: int | str,
+        entry_id: int,
         summary: str | None = None,
         starts_at: str | None = None,
         ends_at: str | None = None,
@@ -143,21 +143,21 @@ class AsyncSchedulesService(AsyncBaseService):
             operation="UpdateScheduleEntry",
         )
 
-    async def get_entry_occurrence(self, *, entry_id: int | str, date: int | str) -> dict[str, Any]:
+    async def get_entry_occurrence(self, *, entry_id: int, date: str) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=date),
             "GET",
             f"/schedule_entries/{entry_id}/occurrences/{date}",
         )
 
-    async def get(self, *, schedule_id: int | str) -> dict[str, Any]:
+    async def get(self, *, schedule_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="schedules", operation="get", is_mutation=False, resource_id=schedule_id),
             "GET",
             f"/schedules/{schedule_id}",
         )
 
-    async def update_settings(self, *, schedule_id: int | str, include_due_assignments: bool) -> dict[str, Any]:
+    async def update_settings(self, *, schedule_id: int, include_due_assignments: bool) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="schedules", operation="update_settings", is_mutation=True, resource_id=schedule_id),
             "PUT",
@@ -166,7 +166,7 @@ class AsyncSchedulesService(AsyncBaseService):
             operation="UpdateScheduleSettings",
         )
 
-    async def list_entries(self, *, schedule_id: int | str, status: str | None = None) -> ListResult:
+    async def list_entries(self, *, schedule_id: int, status: str | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
             f"/schedules/{schedule_id}/entries.json",
@@ -176,7 +176,7 @@ class AsyncSchedulesService(AsyncBaseService):
     async def create_entry(
         self,
         *,
-        schedule_id: int | str,
+        schedule_id: int,
         summary: str,
         starts_at: str,
         ends_at: str,

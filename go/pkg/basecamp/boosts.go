@@ -365,7 +365,7 @@ func boostFromGenerated(gb generated.Boost) Boost {
 
 	if gb.Booster.Id != 0 || gb.Booster.Name != "" {
 		b.Booster = &Person{
-			ID:           gb.Booster.Id,
+			ID:           int64(gb.Booster.Id),
 			Name:         gb.Booster.Name,
 			EmailAddress: gb.Booster.EmailAddress,
 			AvatarURL:    gb.Booster.AvatarUrl,

@@ -45,9 +45,10 @@ struct BodyProperty {
     let isRef: Bool
 }
 
-enum BodyContentType {
+enum BodyContentType: Equatable {
     case json
     case octetStream
+    case multipartFormData(fieldName: String)
 }
 
 // MARK: - Parser
@@ -68,9 +69,13 @@ func parseAllOperations(spec: [String: Any]) -> (operations: [ParsedOperation], 
             guard let operation = pathDict[method] as? [String: Any] else { continue }
             guard operation["operationId"] is String else { continue }
 
-            let parsed = parseOperation(
+            guard let parsed = parseOperation(
                 path: path, method: method, operation: operation, schemas: schemas
-            )
+            ) else {
+                let opId = operation["operationId"] as? String ?? "\(method.uppercased()) \(path)"
+                print("  skipped: \(opId) (unhandled request body content type)")
+                continue
+            }
             operations.append(parsed)
         }
     }
@@ -78,10 +83,12 @@ func parseAllOperations(spec: [String: Any]) -> (operations: [ParsedOperation], 
     return (operations, schemas)
 }
 
-/// Parses a single operation.
+/// Parses a single operation. Returns nil if the operation has a request body
+/// with an unhandled content type, since the generator cannot produce a correct
+/// method signature for it. Handled types: JSON, octet-stream, multipart/form-data.
 func parseOperation(
     path: String, method: String, operation: [String: Any], schemas: [String: Any]
-) -> ParsedOperation {
+) -> ParsedOperation? {
     let operationId = operation["operationId"] as! String
     let httpMethod = method.uppercased()
     let methodName = extractMethodName(operationId)
@@ -140,6 +147,16 @@ func parseOperation(
             }
         } else if content["application/octet-stream"] != nil {
             bodyContentType = .octetStream
+        } else if content["multipart/form-data"] != nil {
+            // Read the field name from the x-basecamp-multipart extension
+            // on the operation (not on the requestBody).
+            let multipartExt = operation["x-basecamp-multipart"] as? [String: Any]
+            let fieldName = multipartExt?["field"] as? String ?? "file"
+            bodyContentType = .multipartFormData(fieldName: fieldName)
+        } else {
+            // Unhandled body content type — skip rather than generate
+            // a method with no body parameter.
+            return nil
         }
     }
 

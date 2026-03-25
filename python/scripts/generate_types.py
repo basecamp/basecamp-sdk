@@ -94,6 +94,10 @@ def main() -> None:
             # Escape Python keywords by appending underscore
             field_name = f"{prop_name}_" if prop_name in PYTHON_KEYWORDS else prop_name
             lines.append(f"    {field_name}: {py_type}")
+            # Add system_label field after id for flexible integer fields
+            # (system actors like LocalPerson have non-numeric labels as id)
+            if "FlexibleInt64" in str(prop.get("x-go-type", "")):
+                lines.append("    system_label: NotRequired[str]")
 
         generated_count += 1
 

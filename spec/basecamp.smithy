@@ -7664,7 +7664,7 @@ structure Account {
   limits: AccountLimits
   subscription: AccountSubscription
   settings: AccountSettings
-  logo: String
+  logo: AccountLogo
 }
 
 structure AccountLimits {
@@ -7689,6 +7689,10 @@ structure AccountSettings {
   company_hq_enabled: Boolean
   teams_enabled: Boolean
   projects_enabled: Boolean
+}
+
+structure AccountLogo {
+  url: String
 }
 
 // =============================================================================

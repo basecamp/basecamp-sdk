@@ -86,6 +86,10 @@ func schemaToSwiftType(_ schema: [String: Any]) -> String {
     let type = schema["type"] as? String ?? "String"
     switch type {
     case "integer":
+        // Flexible integer fields (string-or-number on the wire)
+        if let goType = schema["x-go-type"] as? String, goType.contains("FlexibleInt64") {
+            return "FlexibleInt"
+        }
         let format = schema["format"] as? String ?? ""
         return format == "int32" ? "Int32" : "Int"
     case "boolean":

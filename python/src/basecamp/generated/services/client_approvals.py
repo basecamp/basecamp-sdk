@@ -18,7 +18,7 @@ class ClientApprovalsService(BaseService):
             params=self._compact(sort=sort, direction=direction),
         )
 
-    def get(self, *, approval_id: int | str) -> dict[str, Any]:
+    def get(self, *, approval_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="clientapprovals", operation="get", is_mutation=False, resource_id=approval_id),
             "GET",
@@ -34,7 +34,7 @@ class AsyncClientApprovalsService(AsyncBaseService):
             params=self._compact(sort=sort, direction=direction),
         )
 
-    async def get(self, *, approval_id: int | str) -> dict[str, Any]:
+    async def get(self, *, approval_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="clientapprovals", operation="get", is_mutation=False, resource_id=approval_id),
             "GET",

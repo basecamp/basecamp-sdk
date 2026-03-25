@@ -9,7 +9,7 @@ public struct Account: Codable, Sendable {
     public var active: Bool?
     public var frozen: Bool?
     public var limits: AccountLimits?
-    public var logo: String?
+    public var logo: AccountLogo?
     public var ownerName: String?
     public var paused: Bool?
     public var settings: AccountSettings?
@@ -25,7 +25,7 @@ public struct Account: Codable, Sendable {
         active: Bool? = nil,
         frozen: Bool? = nil,
         limits: AccountLimits? = nil,
-        logo: String? = nil,
+        logo: AccountLogo? = nil,
         ownerName: String? = nil,
         paused: Bool? = nil,
         settings: AccountSettings? = nil,

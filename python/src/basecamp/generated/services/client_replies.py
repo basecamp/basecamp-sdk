@@ -11,13 +11,13 @@ from basecamp.hooks import OperationInfo
 
 
 class ClientRepliesService(BaseService):
-    def list(self, *, recording_id: int | str) -> ListResult:
+    def list(self, *, recording_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="clientreplies", operation="list", is_mutation=False, resource_id=recording_id),
             f"/client/recordings/{recording_id}/replies.json",
         )
 
-    def get(self, *, recording_id: int | str, reply_id: int | str) -> dict[str, Any]:
+    def get(self, *, recording_id: int, reply_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="clientreplies", operation="get", is_mutation=False, resource_id=reply_id),
             "GET",
@@ -26,13 +26,13 @@ class ClientRepliesService(BaseService):
 
 
 class AsyncClientRepliesService(AsyncBaseService):
-    async def list(self, *, recording_id: int | str) -> ListResult:
+    async def list(self, *, recording_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="clientreplies", operation="list", is_mutation=False, resource_id=recording_id),
             f"/client/recordings/{recording_id}/replies.json",
         )
 
-    async def get(self, *, recording_id: int | str, reply_id: int | str) -> dict[str, Any]:
+    async def get(self, *, recording_id: int, reply_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="clientreplies", operation="get", is_mutation=False, resource_id=reply_id),
             "GET",

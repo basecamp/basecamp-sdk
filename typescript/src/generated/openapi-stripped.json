@@ -18395,7 +18395,7 @@
             "$ref": "#/components/schemas/AccountSettings"
           },
           "logo": {
-            "type": "string"
+            "$ref": "#/components/schemas/AccountLogo"
           }
         },
         "required": [
@@ -18419,6 +18419,14 @@
           },
           "can_upload_files": {
             "type": "boolean"
+          }
+        }
+      },
+      "AccountLogo": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
           }
         }
       },
@@ -22411,7 +22419,11 @@
           "id": {
             "type": "integer",
             "format": "int64",
-            "x-go-type-skip-optional-pointer": false
+            "x-go-type-skip-optional-pointer": true,
+            "x-go-type": "types.FlexibleInt64",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            }
           },
           "attachable_sgid": {
             "type": "string"

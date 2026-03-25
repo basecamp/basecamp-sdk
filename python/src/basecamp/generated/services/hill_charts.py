@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class HillChartsService(BaseService):
-    def get(self, *, todoset_id: int | str) -> dict[str, Any]:
+    def get(self, *, todoset_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="hillcharts", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
@@ -19,7 +19,7 @@ class HillChartsService(BaseService):
         )
 
     def update_settings(
-        self, *, todoset_id: int | str, tracked: list | None = None, untracked: list | None = None
+        self, *, todoset_id: int, tracked: list | None = None, untracked: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="hillcharts", operation="update_settings", is_mutation=True, resource_id=todoset_id),
@@ -31,7 +31,7 @@ class HillChartsService(BaseService):
 
 
 class AsyncHillChartsService(AsyncBaseService):
-    async def get(self, *, todoset_id: int | str) -> dict[str, Any]:
+    async def get(self, *, todoset_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="hillcharts", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
@@ -39,7 +39,7 @@ class AsyncHillChartsService(AsyncBaseService):
         )
 
     async def update_settings(
-        self, *, todoset_id: int | str, tracked: list | None = None, untracked: list | None = None
+        self, *, todoset_id: int, tracked: list | None = None, untracked: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="hillcharts", operation="update_settings", is_mutation=True, resource_id=todoset_id),

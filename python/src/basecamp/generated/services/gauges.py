@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class GaugesService(BaseService):
-    def get_gauge_needle(self, *, needle_id: int | str) -> dict[str, Any]:
+    def get_gauge_needle(self, *, needle_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="gauges", operation="get_gauge_needle", is_mutation=False, resource_id=needle_id),
             "GET",
             f"/gauge_needles/{needle_id}",
         )
 
-    def update_gauge_needle(self, *, needle_id: int | str, gauge_needle: dict | None = None) -> dict[str, Any]:
+    def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="gauges", operation="update_gauge_needle", is_mutation=True, resource_id=needle_id),
             "PUT",
@@ -27,7 +27,7 @@ class GaugesService(BaseService):
             operation="UpdateGaugeNeedle",
         )
 
-    def destroy_gauge_needle(self, *, needle_id: int | str) -> None:
+    def destroy_gauge_needle(self, *, needle_id: int) -> None:
         self._request_void(
             OperationInfo(service="gauges", operation="destroy_gauge_needle", is_mutation=True, resource_id=needle_id),
             "DELETE",
@@ -35,7 +35,7 @@ class GaugesService(BaseService):
             operation="DestroyGaugeNeedle",
         )
 
-    def toggle_gauge(self, *, project_id: int | str, gauge: dict) -> None:
+    def toggle_gauge(self, *, project_id: int, gauge: dict) -> None:
         self._request_void(
             OperationInfo(service="gauges", operation="toggle_gauge", is_mutation=True, project_id=project_id),
             "PUT",
@@ -44,14 +44,14 @@ class GaugesService(BaseService):
             operation="ToggleGauge",
         )
 
-    def list_gauge_needles(self, *, project_id: int | str) -> ListResult:
+    def list_gauge_needles(self, *, project_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
         )
 
     def create_gauge_needle(
-        self, *, project_id: int | str, gauge_needle: dict, notify: str | None = None, subscriptions: list | None = None
+        self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="gauges", operation="create_gauge_needle", is_mutation=True, project_id=project_id),
@@ -70,14 +70,14 @@ class GaugesService(BaseService):
 
 
 class AsyncGaugesService(AsyncBaseService):
-    async def get_gauge_needle(self, *, needle_id: int | str) -> dict[str, Any]:
+    async def get_gauge_needle(self, *, needle_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="gauges", operation="get_gauge_needle", is_mutation=False, resource_id=needle_id),
             "GET",
             f"/gauge_needles/{needle_id}",
         )
 
-    async def update_gauge_needle(self, *, needle_id: int | str, gauge_needle: dict | None = None) -> dict[str, Any]:
+    async def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="gauges", operation="update_gauge_needle", is_mutation=True, resource_id=needle_id),
             "PUT",
@@ -86,7 +86,7 @@ class AsyncGaugesService(AsyncBaseService):
             operation="UpdateGaugeNeedle",
         )
 
-    async def destroy_gauge_needle(self, *, needle_id: int | str) -> None:
+    async def destroy_gauge_needle(self, *, needle_id: int) -> None:
         await self._request_void(
             OperationInfo(service="gauges", operation="destroy_gauge_needle", is_mutation=True, resource_id=needle_id),
             "DELETE",
@@ -94,7 +94,7 @@ class AsyncGaugesService(AsyncBaseService):
             operation="DestroyGaugeNeedle",
         )
 
-    async def toggle_gauge(self, *, project_id: int | str, gauge: dict) -> None:
+    async def toggle_gauge(self, *, project_id: int, gauge: dict) -> None:
         await self._request_void(
             OperationInfo(service="gauges", operation="toggle_gauge", is_mutation=True, project_id=project_id),
             "PUT",
@@ -103,14 +103,14 @@ class AsyncGaugesService(AsyncBaseService):
             operation="ToggleGauge",
         )
 
-    async def list_gauge_needles(self, *, project_id: int | str) -> ListResult:
+    async def list_gauge_needles(self, *, project_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
         )
 
     async def create_gauge_needle(
-        self, *, project_id: int | str, gauge_needle: dict, notify: str | None = None, subscriptions: list | None = None
+        self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="gauges", operation="create_gauge_needle", is_mutation=True, project_id=project_id),

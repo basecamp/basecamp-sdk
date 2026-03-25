@@ -43,7 +43,7 @@ type Account struct {
 	Frozen       bool                `json:"frozen,omitempty"`
 	Id           int64               `json:"id"`
 	Limits       AccountLimits       `json:"limits,omitempty"`
-	Logo         string              `json:"logo,omitempty"`
+	Logo         AccountLogo         `json:"logo,omitempty"`
 	Name         string              `json:"name"`
 	OwnerName    string              `json:"owner_name,omitempty"`
 	Paused       bool                `json:"paused,omitempty"`
@@ -60,6 +60,11 @@ type AccountLimits struct {
 	CanCreateUsers    bool `json:"can_create_users,omitempty"`
 	CanPinProjects    bool `json:"can_pin_projects,omitempty"`
 	CanUploadFiles    bool `json:"can_upload_files,omitempty"`
+}
+
+// AccountLogo defines model for AccountLogo.
+type AccountLogo struct {
+	Url string `json:"url,omitempty"`
 }
 
 // AccountSettings defines model for AccountSettings.
@@ -1465,28 +1470,28 @@ type PauseQuestionResponseContent struct {
 
 // Person defines model for Person.
 type Person struct {
-	Admin               bool          `json:"admin,omitempty"`
-	AttachableSgid      string        `json:"attachable_sgid,omitempty"`
-	AvatarUrl           string        `json:"avatar_url,omitempty"`
-	Bio                 string        `json:"bio,omitempty"`
-	CanAccessHillCharts bool          `json:"can_access_hill_charts,omitempty"`
-	CanAccessTimesheet  bool          `json:"can_access_timesheet,omitempty"`
-	CanManagePeople     bool          `json:"can_manage_people,omitempty"`
-	CanManageProjects   bool          `json:"can_manage_projects,omitempty"`
-	CanPing             bool          `json:"can_ping,omitempty"`
-	Client              bool          `json:"client,omitempty"`
-	Company             PersonCompany `json:"company,omitempty"`
-	CreatedAt           time.Time     `json:"created_at,omitempty"`
-	EmailAddress        string        `json:"email_address,omitempty"`
-	Employee            bool          `json:"employee,omitempty"`
-	Id                  int64         `json:"id"`
-	Location            string        `json:"location,omitempty"`
-	Name                string        `json:"name"`
-	Owner               bool          `json:"owner,omitempty"`
-	PersonableType      string        `json:"personable_type,omitempty"`
-	TimeZone            string        `json:"time_zone,omitempty"`
-	Title               string        `json:"title,omitempty"`
-	UpdatedAt           time.Time     `json:"updated_at,omitempty"`
+	Admin               bool                `json:"admin,omitempty"`
+	AttachableSgid      string              `json:"attachable_sgid,omitempty"`
+	AvatarUrl           string              `json:"avatar_url,omitempty"`
+	Bio                 string              `json:"bio,omitempty"`
+	CanAccessHillCharts bool                `json:"can_access_hill_charts,omitempty"`
+	CanAccessTimesheet  bool                `json:"can_access_timesheet,omitempty"`
+	CanManagePeople     bool                `json:"can_manage_people,omitempty"`
+	CanManageProjects   bool                `json:"can_manage_projects,omitempty"`
+	CanPing             bool                `json:"can_ping,omitempty"`
+	Client              bool                `json:"client,omitempty"`
+	Company             PersonCompany       `json:"company,omitempty"`
+	CreatedAt           time.Time           `json:"created_at,omitempty"`
+	EmailAddress        string              `json:"email_address,omitempty"`
+	Employee            bool                `json:"employee,omitempty"`
+	Id                  types.FlexibleInt64 `json:"id"`
+	Location            string              `json:"location,omitempty"`
+	Name                string              `json:"name"`
+	Owner               bool                `json:"owner,omitempty"`
+	PersonableType      string              `json:"personable_type,omitempty"`
+	TimeZone            string              `json:"time_zone,omitempty"`
+	Title               string              `json:"title,omitempty"`
+	UpdatedAt           time.Time           `json:"updated_at,omitempty"`
 }
 
 // PersonCompany defines model for PersonCompany.

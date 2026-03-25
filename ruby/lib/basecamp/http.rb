@@ -12,6 +12,29 @@ module Basecamp
     # Default User-Agent header
     USER_AGENT = "basecamp-sdk-ruby/#{VERSION} (api:#{API_VERSION})".freeze
 
+    # Normalizes Person-shaped objects in parsed JSON.
+    # For objects with personable_type and a string id:
+    # - Numeric strings: coerced to Integer, no system_label
+    # - Non-numeric sentinels (e.g. "basecamp"): id becomes 0, system_label preserves original
+    def self.normalize_person_ids(obj)
+      case obj
+      when Hash
+        if obj.key?("personable_type") && obj["id"].is_a?(String)
+          raw_id = obj["id"]
+          numeric = Integer(raw_id, exception: false)
+          if numeric
+            obj["id"] = numeric
+          else
+            obj["system_label"] = raw_id
+            obj["id"] = 0
+          end
+        end
+        obj.each_value { |v| normalize_person_ids(v) }
+      when Array
+        obj.each { |item| normalize_person_ids(item) }
+      end
+    end
+
     # @param config [Config] configuration settings
     # @param token_provider [TokenProvider, nil] OAuth token provider (deprecated, use auth_strategy)
     # @param auth_strategy [AuthStrategy, nil] authentication strategy
@@ -122,6 +145,7 @@ module Basecamp
 
         begin
           items = JSON.parse(response.body)
+          Http.normalize_person_ids(items)
         rescue JSON::ParserError => e
           raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
         end
@@ -167,6 +191,7 @@ module Basecamp
 
         begin
           data = JSON.parse(response.body)
+          Http.normalize_person_ids(data)
         rescue JSON::ParserError => e
           raise Basecamp::ApiError.new("Failed to parse paginated response (page #{page}): #{Security.truncate(e.message)}")
         end
@@ -206,6 +231,7 @@ module Basecamp
 
       begin
         first_data = JSON.parse(first_response.body)
+        Http.normalize_person_ids(first_data)
       rescue JSON::ParserError => e
         raise Basecamp::ApiError.new(
           "Failed to parse paginated response (page 1): #{Security.truncate(e.message)}"
@@ -239,6 +265,7 @@ module Basecamp
 
           begin
             data = JSON.parse(response.body)
+            Http.normalize_person_ids(data)
           rescue JSON::ParserError => e
             raise Basecamp::ApiError.new(
               "Failed to parse paginated response (page #{page}): " \
@@ -511,12 +538,14 @@ module Basecamp
       @headers = headers
     end
 
-    # Parses the response body as JSON.
+    # Parses the response body as JSON, normalizing Person-shaped objects.
     # @return [Hash, Array]
     def json
       @json ||= begin
         Security.check_body_size!(@body, Security::MAX_RESPONSE_BODY_BYTES)
-        JSON.parse(@body)
+        result = JSON.parse(@body)
+        Http.normalize_person_ids(result)
+        result
       end
     end
 

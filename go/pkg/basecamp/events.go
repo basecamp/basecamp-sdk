@@ -169,7 +169,7 @@ func eventFromGenerated(ge generated.Event) Event {
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
 		e.Creator = &Person{
-			ID:           ge.Creator.Id,
+			ID:           int64(ge.Creator.Id),
 			Name:         ge.Creator.Name,
 			EmailAddress: ge.Creator.EmailAddress,
 			AvatarURL:    ge.Creator.AvatarUrl,

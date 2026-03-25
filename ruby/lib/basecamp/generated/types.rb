@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-03-25T06:07:30Z
+# Generated: 2026-03-25T06:39:18Z
 
 require "json"
 require "time"
@@ -80,7 +80,7 @@ module Basecamp
         @active = parse_boolean(data["active"])
         @frozen = parse_boolean(data["frozen"])
         @limits = parse_type(data["limits"], "AccountLimits")
-        @logo = data["logo"]
+        @logo = parse_type(data["logo"], "AccountLogo")
         @owner_name = data["owner_name"]
         @paused = parse_boolean(data["paused"])
         @settings = parse_type(data["settings"], "AccountSettings")
@@ -131,6 +131,26 @@ module Basecamp
           "can_create_users" => @can_create_users,
           "can_pin_projects" => @can_pin_projects,
           "can_upload_files" => @can_upload_files,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # AccountLogo
+    class AccountLogo
+      include TypeHelpers
+      attr_accessor :url
+
+      def initialize(data = {})
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "url" => @url,
         }.compact
       end
 
@@ -2226,7 +2246,7 @@ module Basecamp
     # Person
     class Person
       include TypeHelpers
-      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :time_zone, :title, :updated_at
+      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :time_zone, :title, :updated_at, :system_label
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2235,6 +2255,7 @@ module Basecamp
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
+        @system_label = data["system_label"]
         @name = data["name"]
         @admin = parse_boolean(data["admin"])
         @attachable_sgid = data["attachable_sgid"]

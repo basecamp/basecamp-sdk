@@ -4,6 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import com.basecamp.sdk.serialization.FlexibleLongSerializer
 
 /**
  * Person entity from the Basecamp API.
@@ -12,7 +13,9 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class Person(
+    @Serializable(with = FlexibleLongSerializer::class)
     val id: Long,
+    @SerialName("system_label") val systemLabel: String? = null,
     val name: String,
     @SerialName("attachable_sgid") val attachableSgid: String? = null,
     @SerialName("email_address") val emailAddress: String? = null,

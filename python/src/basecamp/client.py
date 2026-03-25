@@ -153,6 +153,12 @@ class AccountClient:
     # These will be populated after generated services are available
 
     @property
+    def account(self):
+        from basecamp.generated.services.account import AccountService
+
+        return self._service("account", lambda: AccountService(self))
+
+    @property
     def projects(self):
         from basecamp.generated.services.projects import ProjectsService
 

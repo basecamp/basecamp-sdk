@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class DocumentsService(BaseService):
-    def get(self, *, document_id: int | str) -> dict[str, Any]:
+    def get(self, *, document_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="documents", operation="get", is_mutation=False, resource_id=document_id),
             "GET",
             f"/documents/{document_id}",
         )
 
-    def update(self, *, document_id: int | str, title: str | None = None, content: str | None = None) -> dict[str, Any]:
+    def update(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="documents", operation="update", is_mutation=True, resource_id=document_id),
             "PUT",
@@ -27,7 +27,7 @@ class DocumentsService(BaseService):
             operation="UpdateDocument",
         )
 
-    def list(self, *, vault_id: int | str) -> ListResult:
+    def list(self, *, vault_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/documents.json",
@@ -36,7 +36,7 @@ class DocumentsService(BaseService):
     def create(
         self,
         *,
-        vault_id: int | str,
+        vault_id: int,
         title: str,
         content: str | None = None,
         status: str | None = None,
@@ -52,16 +52,14 @@ class DocumentsService(BaseService):
 
 
 class AsyncDocumentsService(AsyncBaseService):
-    async def get(self, *, document_id: int | str) -> dict[str, Any]:
+    async def get(self, *, document_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="documents", operation="get", is_mutation=False, resource_id=document_id),
             "GET",
             f"/documents/{document_id}",
         )
 
-    async def update(
-        self, *, document_id: int | str, title: str | None = None, content: str | None = None
-    ) -> dict[str, Any]:
+    async def update(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="documents", operation="update", is_mutation=True, resource_id=document_id),
             "PUT",
@@ -70,7 +68,7 @@ class AsyncDocumentsService(AsyncBaseService):
             operation="UpdateDocument",
         )
 
-    async def list(self, *, vault_id: int | str) -> ListResult:
+    async def list(self, *, vault_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/documents.json",
@@ -79,7 +77,7 @@ class AsyncDocumentsService(AsyncBaseService):
     async def create(
         self,
         *,
-        vault_id: int | str,
+        vault_id: int,
         title: str,
         content: str | None = None,
         status: str | None = None,

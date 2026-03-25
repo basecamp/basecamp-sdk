@@ -94,7 +94,7 @@ func messageBoardFromGenerated(gb generated.MessageBoard) MessageBoard {
 
 	if gb.Creator.Id != 0 || gb.Creator.Name != "" {
 		mb.Creator = &Person{
-			ID:           gb.Creator.Id,
+			ID:           int64(gb.Creator.Id),
 			Name:         gb.Creator.Name,
 			EmailAddress: gb.Creator.EmailAddress,
 			AvatarURL:    gb.Creator.AvatarUrl,

@@ -674,7 +674,7 @@ func questionnaireFromGenerated(gq generated.Questionnaire) Questionnaire {
 
 	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
 		q.Creator = &Person{
-			ID:           gq.Creator.Id,
+			ID:           int64(gq.Creator.Id),
 			Name:         gq.Creator.Name,
 			EmailAddress: gq.Creator.EmailAddress,
 			AvatarURL:    gq.Creator.AvatarUrl,
@@ -758,7 +758,7 @@ func questionFromGenerated(gq generated.Question) Question {
 
 	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
 		q.Creator = &Person{
-			ID:           gq.Creator.Id,
+			ID:           int64(gq.Creator.Id),
 			Name:         gq.Creator.Name,
 			EmailAddress: gq.Creator.EmailAddress,
 			AvatarURL:    gq.Creator.AvatarUrl,
@@ -818,7 +818,7 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 
 	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
 		a.Creator = &Person{
-			ID:           ga.Creator.Id,
+			ID:           int64(ga.Creator.Id),
 			Name:         ga.Creator.Name,
 			EmailAddress: ga.Creator.EmailAddress,
 			AvatarURL:    ga.Creator.AvatarUrl,

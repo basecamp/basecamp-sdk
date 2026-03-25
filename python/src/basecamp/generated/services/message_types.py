@@ -25,14 +25,14 @@ class MessageTypesService(BaseService):
             operation="CreateMessageType",
         )
 
-    def get(self, *, type_id: int | str) -> dict[str, Any]:
+    def get(self, *, type_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="messagetypes", operation="get", is_mutation=False, resource_id=type_id),
             "GET",
             f"/categories/{type_id}",
         )
 
-    def update(self, *, type_id: int | str, name: str | None = None, icon: str | None = None) -> dict[str, Any]:
+    def update(self, *, type_id: int, name: str | None = None, icon: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="messagetypes", operation="update", is_mutation=True, resource_id=type_id),
             "PUT",
@@ -41,7 +41,7 @@ class MessageTypesService(BaseService):
             operation="UpdateMessageType",
         )
 
-    def delete(self, *, type_id: int | str) -> None:
+    def delete(self, *, type_id: int) -> None:
         self._request_void(
             OperationInfo(service="messagetypes", operation="delete", is_mutation=True, resource_id=type_id),
             "DELETE",
@@ -65,14 +65,14 @@ class AsyncMessageTypesService(AsyncBaseService):
             operation="CreateMessageType",
         )
 
-    async def get(self, *, type_id: int | str) -> dict[str, Any]:
+    async def get(self, *, type_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="messagetypes", operation="get", is_mutation=False, resource_id=type_id),
             "GET",
             f"/categories/{type_id}",
         )
 
-    async def update(self, *, type_id: int | str, name: str | None = None, icon: str | None = None) -> dict[str, Any]:
+    async def update(self, *, type_id: int, name: str | None = None, icon: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="messagetypes", operation="update", is_mutation=True, resource_id=type_id),
             "PUT",
@@ -81,7 +81,7 @@ class AsyncMessageTypesService(AsyncBaseService):
             operation="UpdateMessageType",
         )
 
-    async def delete(self, *, type_id: int | str) -> None:
+    async def delete(self, *, type_id: int) -> None:
         await self._request_void(
             OperationInfo(service="messagetypes", operation="delete", is_mutation=True, resource_id=type_id),
             "DELETE",

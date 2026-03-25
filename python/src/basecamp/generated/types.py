@@ -13,7 +13,7 @@ class Account(TypedDict):
     frozen: NotRequired[bool]
     id: int
     limits: NotRequired[AccountLimits]
-    logo: NotRequired[str]
+    logo: NotRequired[AccountLogo]
     name: str
     owner_name: NotRequired[str]
     paused: NotRequired[bool]
@@ -29,6 +29,10 @@ class AccountLimits(TypedDict):
     can_create_users: NotRequired[bool]
     can_pin_projects: NotRequired[bool]
     can_upload_files: NotRequired[bool]
+
+
+class AccountLogo(TypedDict):
+    url: NotRequired[str]
 
 
 class AccountSettings(TypedDict):
@@ -948,6 +952,7 @@ class Person(TypedDict):
     email_address: NotRequired[str]
     employee: NotRequired[bool]
     id: int
+    system_label: NotRequired[str]
     location: NotRequired[str]
     name: str
     owner: NotRequired[bool]

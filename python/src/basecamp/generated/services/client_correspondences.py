@@ -18,7 +18,7 @@ class ClientCorrespondencesService(BaseService):
             params=self._compact(sort=sort, direction=direction),
         )
 
-    def get(self, *, correspondence_id: int | str) -> dict[str, Any]:
+    def get(self, *, correspondence_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="clientcorrespondences", operation="get", is_mutation=False, resource_id=correspondence_id
@@ -36,7 +36,7 @@ class AsyncClientCorrespondencesService(AsyncBaseService):
             params=self._compact(sort=sort, direction=direction),
         )
 
-    async def get(self, *, correspondence_id: int | str) -> dict[str, Any]:
+    async def get(self, *, correspondence_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="clientcorrespondences", operation="get", is_mutation=False, resource_id=correspondence_id

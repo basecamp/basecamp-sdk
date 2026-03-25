@@ -16,14 +16,14 @@ class CheckinsService(BaseService):
             OperationInfo(service="checkins", operation="reminders", is_mutation=False), "/my/question_reminders.json"
         )
 
-    def get_answer(self, *, answer_id: int | str) -> dict[str, Any]:
+    def get_answer(self, *, answer_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="checkins", operation="get_answer", is_mutation=False, resource_id=answer_id),
             "GET",
             f"/question_answers/{answer_id}",
         )
 
-    def update_answer(self, *, answer_id: int | str, content: str, group_on: str | None = None) -> None:
+    def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
         self._request_void(
             OperationInfo(service="checkins", operation="update_answer", is_mutation=True, resource_id=answer_id),
             "PUT",
@@ -32,7 +32,7 @@ class CheckinsService(BaseService):
             operation="UpdateAnswer",
         )
 
-    def get_questionnaire(self, *, questionnaire_id: int | str) -> dict[str, Any]:
+    def get_questionnaire(self, *, questionnaire_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="checkins", operation="get_questionnaire", is_mutation=False, resource_id=questionnaire_id
@@ -41,7 +41,7 @@ class CheckinsService(BaseService):
             f"/questionnaires/{questionnaire_id}",
         )
 
-    def list_questions(self, *, questionnaire_id: int | str) -> ListResult:
+    def list_questions(self, *, questionnaire_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
@@ -49,7 +49,7 @@ class CheckinsService(BaseService):
             f"/questionnaires/{questionnaire_id}/questions.json",
         )
 
-    def create_question(self, *, questionnaire_id: int | str, title: str, schedule: dict) -> dict[str, Any]:
+    def create_question(self, *, questionnaire_id: int, title: str, schedule: dict) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="checkins", operation="create_question", is_mutation=True, resource_id=questionnaire_id
@@ -60,7 +60,7 @@ class CheckinsService(BaseService):
             operation="CreateQuestion",
         )
 
-    def get_question(self, *, question_id: int | str) -> dict[str, Any]:
+    def get_question(self, *, question_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="checkins", operation="get_question", is_mutation=False, resource_id=question_id),
             "GET",
@@ -68,12 +68,7 @@ class CheckinsService(BaseService):
         )
 
     def update_question(
-        self,
-        *,
-        question_id: int | str,
-        title: str | None = None,
-        schedule: dict | None = None,
-        paused: bool | None = None,
+        self, *, question_id: int, title: str | None = None, schedule: dict | None = None, paused: bool | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="checkins", operation="update_question", is_mutation=True, resource_id=question_id),
@@ -83,13 +78,13 @@ class CheckinsService(BaseService):
             operation="UpdateQuestion",
         )
 
-    def list_answers(self, *, question_id: int | str) -> ListResult:
+    def list_answers(self, *, question_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
         )
 
-    def create_answer(self, *, question_id: int | str, content: str, group_on: str | None = None) -> dict[str, Any]:
+    def create_answer(self, *, question_id: int, content: str, group_on: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="checkins", operation="create_answer", is_mutation=True, resource_id=question_id),
             "POST",
@@ -98,24 +93,20 @@ class CheckinsService(BaseService):
             operation="CreateAnswer",
         )
 
-    def answerers(self, *, question_id: int | str) -> ListResult:
+    def answerers(self, *, question_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
         )
 
-    def by_person(self, *, question_id: int | str, person_id: int | str) -> ListResult:
+    def by_person(self, *, question_id: int, person_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
         )
 
     def update_notification_settings(
-        self,
-        *,
-        question_id: int | str,
-        notify_on_answer: bool | None = None,
-        digest_include_unanswered: bool | None = None,
+        self, *, question_id: int, notify_on_answer: bool | None = None, digest_include_unanswered: bool | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(
@@ -129,7 +120,7 @@ class CheckinsService(BaseService):
             operation="UpdateQuestionNotificationSettings",
         )
 
-    def pause(self, *, question_id: int | str) -> dict[str, Any]:
+    def pause(self, *, question_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="checkins", operation="pause", is_mutation=True, resource_id=question_id),
             "POST",
@@ -137,7 +128,7 @@ class CheckinsService(BaseService):
             operation="PauseQuestion",
         )
 
-    def resume(self, *, question_id: int | str) -> dict[str, Any]:
+    def resume(self, *, question_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="checkins", operation="resume", is_mutation=True, resource_id=question_id),
             "DELETE",
@@ -152,14 +143,14 @@ class AsyncCheckinsService(AsyncBaseService):
             OperationInfo(service="checkins", operation="reminders", is_mutation=False), "/my/question_reminders.json"
         )
 
-    async def get_answer(self, *, answer_id: int | str) -> dict[str, Any]:
+    async def get_answer(self, *, answer_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="checkins", operation="get_answer", is_mutation=False, resource_id=answer_id),
             "GET",
             f"/question_answers/{answer_id}",
         )
 
-    async def update_answer(self, *, answer_id: int | str, content: str, group_on: str | None = None) -> None:
+    async def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
         await self._request_void(
             OperationInfo(service="checkins", operation="update_answer", is_mutation=True, resource_id=answer_id),
             "PUT",
@@ -168,7 +159,7 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="UpdateAnswer",
         )
 
-    async def get_questionnaire(self, *, questionnaire_id: int | str) -> dict[str, Any]:
+    async def get_questionnaire(self, *, questionnaire_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="checkins", operation="get_questionnaire", is_mutation=False, resource_id=questionnaire_id
@@ -177,7 +168,7 @@ class AsyncCheckinsService(AsyncBaseService):
             f"/questionnaires/{questionnaire_id}",
         )
 
-    async def list_questions(self, *, questionnaire_id: int | str) -> ListResult:
+    async def list_questions(self, *, questionnaire_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
@@ -185,7 +176,7 @@ class AsyncCheckinsService(AsyncBaseService):
             f"/questionnaires/{questionnaire_id}/questions.json",
         )
 
-    async def create_question(self, *, questionnaire_id: int | str, title: str, schedule: dict) -> dict[str, Any]:
+    async def create_question(self, *, questionnaire_id: int, title: str, schedule: dict) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="checkins", operation="create_question", is_mutation=True, resource_id=questionnaire_id
@@ -196,7 +187,7 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="CreateQuestion",
         )
 
-    async def get_question(self, *, question_id: int | str) -> dict[str, Any]:
+    async def get_question(self, *, question_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="checkins", operation="get_question", is_mutation=False, resource_id=question_id),
             "GET",
@@ -204,12 +195,7 @@ class AsyncCheckinsService(AsyncBaseService):
         )
 
     async def update_question(
-        self,
-        *,
-        question_id: int | str,
-        title: str | None = None,
-        schedule: dict | None = None,
-        paused: bool | None = None,
+        self, *, question_id: int, title: str | None = None, schedule: dict | None = None, paused: bool | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="checkins", operation="update_question", is_mutation=True, resource_id=question_id),
@@ -219,15 +205,13 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="UpdateQuestion",
         )
 
-    async def list_answers(self, *, question_id: int | str) -> ListResult:
+    async def list_answers(self, *, question_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
         )
 
-    async def create_answer(
-        self, *, question_id: int | str, content: str, group_on: str | None = None
-    ) -> dict[str, Any]:
+    async def create_answer(self, *, question_id: int, content: str, group_on: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="checkins", operation="create_answer", is_mutation=True, resource_id=question_id),
             "POST",
@@ -236,24 +220,20 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="CreateAnswer",
         )
 
-    async def answerers(self, *, question_id: int | str) -> ListResult:
+    async def answerers(self, *, question_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
         )
 
-    async def by_person(self, *, question_id: int | str, person_id: int | str) -> ListResult:
+    async def by_person(self, *, question_id: int, person_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
         )
 
     async def update_notification_settings(
-        self,
-        *,
-        question_id: int | str,
-        notify_on_answer: bool | None = None,
-        digest_include_unanswered: bool | None = None,
+        self, *, question_id: int, notify_on_answer: bool | None = None, digest_include_unanswered: bool | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
@@ -267,7 +247,7 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="UpdateQuestionNotificationSettings",
         )
 
-    async def pause(self, *, question_id: int | str) -> dict[str, Any]:
+    async def pause(self, *, question_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="checkins", operation="pause", is_mutation=True, resource_id=question_id),
             "POST",
@@ -275,7 +255,7 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="PauseQuestion",
         )
 
-    async def resume(self, *, question_id: int | str) -> dict[str, Any]:
+    async def resume(self, *, question_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="checkins", operation="resume", is_mutation=True, resource_id=question_id),
             "DELETE",

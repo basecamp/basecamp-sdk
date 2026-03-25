@@ -927,7 +927,7 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
 		c.Creator = &Person{
-			ID:           gc.Creator.Id,
+			ID:           int64(gc.Creator.Id),
 			Name:         gc.Creator.Name,
 			EmailAddress: gc.Creator.EmailAddress,
 			AvatarURL:    gc.Creator.AvatarUrl,
@@ -991,7 +991,7 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 
 	if gl.Creator.Id != 0 || gl.Creator.Name != "" {
 		l.Creator = &Person{
-			ID:           gl.Creator.Id,
+			ID:           int64(gl.Creator.Id),
 			Name:         gl.Creator.Name,
 			EmailAddress: gl.Creator.EmailAddress,
 			AvatarURL:    gl.Creator.AvatarUrl,

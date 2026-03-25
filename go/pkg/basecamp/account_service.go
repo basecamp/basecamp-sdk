@@ -23,13 +23,18 @@ type Account struct {
 	Paused       bool                `json:"paused,omitempty"`
 	Trial        bool                `json:"trial,omitempty"`
 	TrialEndsOn  string              `json:"trial_ends_on,omitempty"`
-	Logo         string              `json:"logo,omitempty"`
+	Logo         *AccountLogo        `json:"logo,omitempty"`
 	OwnerName    string              `json:"owner_name,omitempty"`
 	Limits       AccountLimits       `json:"limits,omitempty"`
 	Settings     AccountSettings     `json:"settings,omitempty"`
 	Subscription AccountSubscription `json:"subscription,omitempty"`
 	CreatedAt    time.Time           `json:"created_at"`
 	UpdatedAt    time.Time           `json:"updated_at"`
+}
+
+// AccountLogo represents the account logo (a nested object with a URL).
+type AccountLogo struct {
+	URL string `json:"url,omitempty"`
 }
 
 // AccountLimits represents account limits.

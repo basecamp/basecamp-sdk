@@ -12,7 +12,7 @@ from basecamp.hooks import OperationInfo
 
 class TimesheetsService(BaseService):
     def for_project(
-        self, *, project_id: int | str, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self, *, project_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
@@ -21,7 +21,7 @@ class TimesheetsService(BaseService):
         )
 
     def for_recording(
-        self, *, recording_id: int | str, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self, *, recording_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
@@ -30,13 +30,7 @@ class TimesheetsService(BaseService):
         )
 
     def create(
-        self,
-        *,
-        recording_id: int | str,
-        date: str,
-        hours: str,
-        description: str | None = None,
-        person_id: int | None = None,
+        self, *, recording_id: int, date: str, hours: str, description: str | None = None, person_id: int | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="timesheets", operation="create", is_mutation=True, resource_id=recording_id),
@@ -56,7 +50,7 @@ class TimesheetsService(BaseService):
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
         )
 
-    def get(self, *, entry_id: int | str) -> dict[str, Any]:
+    def get(self, *, entry_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="timesheets", operation="get", is_mutation=False, resource_id=entry_id),
             "GET",
@@ -66,7 +60,7 @@ class TimesheetsService(BaseService):
     def update(
         self,
         *,
-        entry_id: int | str,
+        entry_id: int,
         date: str | None = None,
         hours: str | None = None,
         description: str | None = None,
@@ -83,7 +77,7 @@ class TimesheetsService(BaseService):
 
 class AsyncTimesheetsService(AsyncBaseService):
     async def for_project(
-        self, *, project_id: int | str, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self, *, project_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
@@ -92,7 +86,7 @@ class AsyncTimesheetsService(AsyncBaseService):
         )
 
     async def for_recording(
-        self, *, recording_id: int | str, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self, *, recording_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
@@ -101,13 +95,7 @@ class AsyncTimesheetsService(AsyncBaseService):
         )
 
     async def create(
-        self,
-        *,
-        recording_id: int | str,
-        date: str,
-        hours: str,
-        description: str | None = None,
-        person_id: int | None = None,
+        self, *, recording_id: int, date: str, hours: str, description: str | None = None, person_id: int | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="timesheets", operation="create", is_mutation=True, resource_id=recording_id),
@@ -127,7 +115,7 @@ class AsyncTimesheetsService(AsyncBaseService):
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
         )
 
-    async def get(self, *, entry_id: int | str) -> dict[str, Any]:
+    async def get(self, *, entry_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="timesheets", operation="get", is_mutation=False, resource_id=entry_id),
             "GET",
@@ -137,7 +125,7 @@ class AsyncTimesheetsService(AsyncBaseService):
     async def update(
         self,
         *,
-        entry_id: int | str,
+        entry_id: int,
         date: str | None = None,
         hours: str | None = None,
         description: str | None = None,

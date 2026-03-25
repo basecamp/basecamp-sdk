@@ -82,8 +82,13 @@ func (s *MyNotificationsService) Get(ctx context.Context, page int32) (result *N
 		return nil, err
 	}
 
+	normalized, normalizeErr := normalizeJSON(resp.Body)
+	if normalizeErr != nil {
+		normalized = resp.Body // fallback to raw
+	}
+
 	var notifications NotificationsResult
-	if err = json.Unmarshal(resp.Body, &notifications); err != nil {
+	if err = json.Unmarshal(normalized, &notifications); err != nil {
 		return nil, fmt.Errorf("failed to parse notifications: %w", err)
 	}
 

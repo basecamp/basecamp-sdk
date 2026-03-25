@@ -24,7 +24,7 @@ class ReportsService(BaseService):
             params=self._compact(window_starts_on=window_starts_on, window_ends_on=window_ends_on),
         )
 
-    def assigned(self, *, person_id: int | str, group_by: str | None = None) -> dict[str, Any]:
+    def assigned(self, *, person_id: int, group_by: str | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="reports", operation="assigned", is_mutation=False, resource_id=person_id),
             "GET",
@@ -39,7 +39,7 @@ class ReportsService(BaseService):
             "/reports/todos/overdue.json",
         )
 
-    def person_progress(self, *, person_id: int | str) -> dict[str, Any]:
+    def person_progress(self, *, person_id: int) -> dict[str, Any]:
         return self._request_paginated_wrapped(
             OperationInfo(service="reports", operation="person_progress", is_mutation=False, resource_id=person_id),
             f"/reports/users/progress/{person_id}.json",
@@ -63,7 +63,7 @@ class AsyncReportsService(AsyncBaseService):
             params=self._compact(window_starts_on=window_starts_on, window_ends_on=window_ends_on),
         )
 
-    async def assigned(self, *, person_id: int | str, group_by: str | None = None) -> dict[str, Any]:
+    async def assigned(self, *, person_id: int, group_by: str | None = None) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="reports", operation="assigned", is_mutation=False, resource_id=person_id),
             "GET",
@@ -78,7 +78,7 @@ class AsyncReportsService(AsyncBaseService):
             "/reports/todos/overdue.json",
         )
 
-    async def person_progress(self, *, person_id: int | str) -> dict[str, Any]:
+    async def person_progress(self, *, person_id: int) -> dict[str, Any]:
         return await self._request_paginated_wrapped(
             OperationInfo(service="reports", operation="person_progress", is_mutation=False, resource_id=person_id),
             f"/reports/users/progress/{person_id}.json",

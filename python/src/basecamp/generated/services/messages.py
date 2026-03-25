@@ -11,7 +11,7 @@ from basecamp.hooks import OperationInfo
 
 
 class MessagesService(BaseService):
-    def list(self, *, board_id: int | str, sort: str | None = None, direction: str | None = None) -> ListResult:
+    def list(self, *, board_id: int, sort: str | None = None, direction: str | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
@@ -21,7 +21,7 @@ class MessagesService(BaseService):
     def create(
         self,
         *,
-        board_id: int | str,
+        board_id: int,
         subject: str,
         content: str | None = None,
         status: str | None = None,
@@ -38,7 +38,7 @@ class MessagesService(BaseService):
             operation="CreateMessage",
         )
 
-    def get(self, *, message_id: int | str) -> dict[str, Any]:
+    def get(self, *, message_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="messages", operation="get", is_mutation=False, resource_id=message_id),
             "GET",
@@ -48,7 +48,7 @@ class MessagesService(BaseService):
     def update(
         self,
         *,
-        message_id: int | str,
+        message_id: int,
         subject: str | None = None,
         content: str | None = None,
         status: str | None = None,
@@ -62,7 +62,7 @@ class MessagesService(BaseService):
             operation="UpdateMessage",
         )
 
-    def pin(self, *, message_id: int | str) -> None:
+    def pin(self, *, message_id: int) -> None:
         self._request_void(
             OperationInfo(service="messages", operation="pin", is_mutation=True, resource_id=message_id),
             "POST",
@@ -70,7 +70,7 @@ class MessagesService(BaseService):
             operation="PinMessage",
         )
 
-    def unpin(self, *, message_id: int | str) -> None:
+    def unpin(self, *, message_id: int) -> None:
         self._request_void(
             OperationInfo(service="messages", operation="unpin", is_mutation=True, resource_id=message_id),
             "DELETE",
@@ -80,7 +80,7 @@ class MessagesService(BaseService):
 
 
 class AsyncMessagesService(AsyncBaseService):
-    async def list(self, *, board_id: int | str, sort: str | None = None, direction: str | None = None) -> ListResult:
+    async def list(self, *, board_id: int, sort: str | None = None, direction: str | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
@@ -90,7 +90,7 @@ class AsyncMessagesService(AsyncBaseService):
     async def create(
         self,
         *,
-        board_id: int | str,
+        board_id: int,
         subject: str,
         content: str | None = None,
         status: str | None = None,
@@ -107,7 +107,7 @@ class AsyncMessagesService(AsyncBaseService):
             operation="CreateMessage",
         )
 
-    async def get(self, *, message_id: int | str) -> dict[str, Any]:
+    async def get(self, *, message_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="messages", operation="get", is_mutation=False, resource_id=message_id),
             "GET",
@@ -117,7 +117,7 @@ class AsyncMessagesService(AsyncBaseService):
     async def update(
         self,
         *,
-        message_id: int | str,
+        message_id: int,
         subject: str | None = None,
         content: str | None = None,
         status: str | None = None,
@@ -131,7 +131,7 @@ class AsyncMessagesService(AsyncBaseService):
             operation="UpdateMessage",
         )
 
-    async def pin(self, *, message_id: int | str) -> None:
+    async def pin(self, *, message_id: int) -> None:
         await self._request_void(
             OperationInfo(service="messages", operation="pin", is_mutation=True, resource_id=message_id),
             "POST",
@@ -139,7 +139,7 @@ class AsyncMessagesService(AsyncBaseService):
             operation="PinMessage",
         )
 
-    async def unpin(self, *, message_id: int | str) -> None:
+    async def unpin(self, *, message_id: int) -> None:
         await self._request_void(
             OperationInfo(service="messages", operation="unpin", is_mutation=True, resource_id=message_id),
             "DELETE",

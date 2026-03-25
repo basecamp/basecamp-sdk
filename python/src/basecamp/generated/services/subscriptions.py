@@ -11,14 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class SubscriptionsService(BaseService):
-    def get(self, *, recording_id: int | str) -> dict[str, Any]:
+    def get(self, *, recording_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="subscriptions", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
             f"/recordings/{recording_id}/subscription.json",
         )
 
-    def subscribe(self, *, recording_id: int | str) -> dict[str, Any]:
+    def subscribe(self, *, recording_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="subscriptions", operation="subscribe", is_mutation=True, resource_id=recording_id),
             "POST",
@@ -27,7 +27,7 @@ class SubscriptionsService(BaseService):
         )
 
     def update(
-        self, *, recording_id: int | str, subscriptions: list | None = None, unsubscriptions: list | None = None
+        self, *, recording_id: int, subscriptions: list | None = None, unsubscriptions: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="subscriptions", operation="update", is_mutation=True, resource_id=recording_id),
@@ -37,7 +37,7 @@ class SubscriptionsService(BaseService):
             operation="UpdateSubscription",
         )
 
-    def unsubscribe(self, *, recording_id: int | str) -> None:
+    def unsubscribe(self, *, recording_id: int) -> None:
         self._request_void(
             OperationInfo(service="subscriptions", operation="unsubscribe", is_mutation=True, resource_id=recording_id),
             "DELETE",
@@ -47,14 +47,14 @@ class SubscriptionsService(BaseService):
 
 
 class AsyncSubscriptionsService(AsyncBaseService):
-    async def get(self, *, recording_id: int | str) -> dict[str, Any]:
+    async def get(self, *, recording_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="subscriptions", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
             f"/recordings/{recording_id}/subscription.json",
         )
 
-    async def subscribe(self, *, recording_id: int | str) -> dict[str, Any]:
+    async def subscribe(self, *, recording_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="subscriptions", operation="subscribe", is_mutation=True, resource_id=recording_id),
             "POST",
@@ -63,7 +63,7 @@ class AsyncSubscriptionsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, recording_id: int | str, subscriptions: list | None = None, unsubscriptions: list | None = None
+        self, *, recording_id: int, subscriptions: list | None = None, unsubscriptions: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="subscriptions", operation="update", is_mutation=True, resource_id=recording_id),
@@ -73,7 +73,7 @@ class AsyncSubscriptionsService(AsyncBaseService):
             operation="UpdateSubscription",
         )
 
-    async def unsubscribe(self, *, recording_id: int | str) -> None:
+    async def unsubscribe(self, *, recording_id: int) -> None:
         await self._request_void(
             OperationInfo(service="subscriptions", operation="unsubscribe", is_mutation=True, resource_id=recording_id),
             "DELETE",
