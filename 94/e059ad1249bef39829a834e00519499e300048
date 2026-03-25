@@ -1,0 +1,27 @@
+ruby/test/basecamp/services/checkins_service_test.rb
+  d1f01151aec221b4 148-161
+python/tests/services/test_checkins.py
+  d1f01151aec221b4 1-51
+typescript/tests/services/checkins.test.ts
+  d1f01151aec221b4 379-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "94e059ad1249bef39829a834e00519499e300048",
+  "prompts": {
+    "d1f01151aec221b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b772e2a-2dcc-42bc-801d-8ce2b17f38fe",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 86,
+      "overriden_lines": 0
+    }
+  }
+}
