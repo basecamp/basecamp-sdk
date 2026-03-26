@@ -50,7 +50,7 @@ class CardStepsServiceTest < Minitest::Test
       card_id: 200,
       title: "New step",
       due_on: "2024-12-15",
-      assignees: [ 1, 2 ]
+      assignee_ids: [ 1, 2 ]
     )
 
     assert_equal 999, step["id"]
