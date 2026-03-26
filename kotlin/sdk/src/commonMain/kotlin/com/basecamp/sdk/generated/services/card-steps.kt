@@ -52,7 +52,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
             httpPost("/card_tables/cards/${cardId}/steps.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("title", kotlinx.serialization.json.JsonPrimitive(body.title))
                 body.dueOn?.let { put("due_on", kotlinx.serialization.json.JsonPrimitive(it)) }
-                body.assignees?.let { put("assignees", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<CardStep>(body)
@@ -97,7 +97,7 @@ class CardStepsService(client: AccountClient) : BaseService(client) {
             httpPut("/card_tables/steps/${stepId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.title?.let { put("title", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.dueOn?.let { put("due_on", kotlinx.serialization.json.JsonPrimitive(it)) }
-                body.assignees?.let { put("assignees", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<CardStep>(body)

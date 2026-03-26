@@ -19885,7 +19885,7 @@
             },
             "x-go-type-skip-optional-pointer": true
           },
-          "assignees": {
+          "assignee_ids": {
             "type": "array",
             "items": {
               "type": "integer",
@@ -24621,7 +24621,7 @@
             },
             "x-go-type-skip-optional-pointer": true
           },
-          "assignees": {
+          "assignee_ids": {
             "type": "array",
             "items": {
               "type": "integer",

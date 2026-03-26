@@ -95,14 +95,14 @@ data class RepositionCardStepBody(
 data class CreateCardStepBody(
     val title: String,
     val dueOn: String? = null,
-    val assignees: List<Long>? = null
+    val assigneeIds: List<Long>? = null
 )
 
 /** Request body for UpdateCardStep. */
 data class UpdateCardStepBody(
     val title: String? = null,
     val dueOn: String? = null,
-    val assignees: List<Long>? = null
+    val assigneeIds: List<Long>? = null
 )
 
 /** Request body for SetCardStepCompletion. */

@@ -393,7 +393,7 @@ class CreateCardRequestContent(TypedDict):
 
 
 class CreateCardStepRequestContent(TypedDict):
-    assignees: NotRequired[list[int]]
+    assignee_ids: NotRequired[list[int]]
     due_on: NotRequired[str]
     title: str
 
@@ -1492,7 +1492,7 @@ class UpdateCardRequestContent(TypedDict):
 
 
 class UpdateCardStepRequestContent(TypedDict):
-    assignees: NotRequired[list[int]]
+    assignee_ids: NotRequired[list[int]]
     due_on: NotRequired[str]
     title: NotRequired[str]
 

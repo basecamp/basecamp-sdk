@@ -23,11 +23,11 @@ module Basecamp
       # @param card_id [Integer] card id ID
       # @param title [String] title
       # @param due_on [String, nil] due on (YYYY-MM-DD)
-      # @param assignees [Array, nil] assignees
+      # @param assignee_ids [Array, nil] assignee ids
       # @return [Hash] response data
-      def create(card_id:, title:, due_on: nil, assignees: nil)
+      def create(card_id:, title:, due_on: nil, assignee_ids: nil)
         with_operation(service: "cardsteps", operation: "create", is_mutation: true, resource_id: card_id) do
-          http_post("/card_tables/cards/#{card_id}/steps.json", body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
+          http_post("/card_tables/cards/#{card_id}/steps.json", body: compact_params(title: title, due_on: due_on, assignee_ids: assignee_ids)).json
         end
       end
 
@@ -44,11 +44,11 @@ module Basecamp
       # @param step_id [Integer] step id ID
       # @param title [String, nil] title
       # @param due_on [String, nil] due on (YYYY-MM-DD)
-      # @param assignees [Array, nil] assignees
+      # @param assignee_ids [Array, nil] assignee ids
       # @return [Hash] response data
-      def update(step_id:, title: nil, due_on: nil, assignees: nil)
+      def update(step_id:, title: nil, due_on: nil, assignee_ids: nil)
         with_operation(service: "cardsteps", operation: "update", is_mutation: true, resource_id: step_id) do
-          http_put("/card_tables/steps/#{step_id}", body: compact_params(title: title, due_on: due_on, assignees: assignees)).json
+          http_put("/card_tables/steps/#{step_id}", body: compact_params(title: title, due_on: due_on, assignee_ids: assignee_ids)).json
         end
       end
 

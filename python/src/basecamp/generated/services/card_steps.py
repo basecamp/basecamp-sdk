@@ -21,13 +21,13 @@ class CardStepsService(BaseService):
         )
 
     def create(
-        self, *, card_id: int, title: str, due_on: str | None = None, assignees: list | None = None
+        self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
             "POST",
             f"/card_tables/cards/{card_id}/steps.json",
-            json_body=self._compact(title=title, due_on=due_on, assignees=assignees),
+            json_body=self._compact(title=title, due_on=due_on, assignee_ids=assignee_ids),
             operation="CreateCardStep",
         )
 
@@ -39,13 +39,13 @@ class CardStepsService(BaseService):
         )
 
     def update(
-        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignees: list | None = None
+        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignee_ids: list | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
             "PUT",
             f"/card_tables/steps/{step_id}",
-            json_body=self._compact(title=title, due_on=due_on, assignees=assignees),
+            json_body=self._compact(title=title, due_on=due_on, assignee_ids=assignee_ids),
             operation="UpdateCardStep",
         )
 
@@ -70,13 +70,13 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def create(
-        self, *, card_id: int, title: str, due_on: str | None = None, assignees: list | None = None
+        self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
             "POST",
             f"/card_tables/cards/{card_id}/steps.json",
-            json_body=self._compact(title=title, due_on=due_on, assignees=assignees),
+            json_body=self._compact(title=title, due_on=due_on, assignee_ids=assignee_ids),
             operation="CreateCardStep",
         )
 
@@ -88,13 +88,13 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignees: list | None = None
+        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignee_ids: list | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
             "PUT",
             f"/card_tables/steps/{step_id}",
-            json_body=self._compact(title=title, due_on=due_on, assignees=assignees),
+            json_body=self._compact(title=title, due_on=due_on, assignee_ids=assignee_ids),
             operation="UpdateCardStep",
         )
 

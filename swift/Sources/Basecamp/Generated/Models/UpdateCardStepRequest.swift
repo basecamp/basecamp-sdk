@@ -2,12 +2,12 @@
 import Foundation
 
 public struct UpdateCardStepRequest: Codable, Sendable {
-    public var assignees: [Int]?
+    public var assigneeIds: [Int]?
     public var dueOn: String?
     public var title: String?
 
-    public init(assignees: [Int]? = nil, dueOn: String? = nil, title: String? = nil) {
-        self.assignees = assignees
+    public init(assigneeIds: [Int]? = nil, dueOn: String? = nil, title: String? = nil) {
+        self.assigneeIds = assigneeIds
         self.dueOn = dueOn
         self.title = title
     }

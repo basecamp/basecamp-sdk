@@ -33,8 +33,8 @@ export interface CreateCardStepRequest {
   title: string;
   /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** Assignees */
-  assignees?: number[];
+  /** Person IDs to assign to */
+  assigneeIds?: number[];
 }
 
 /**
@@ -45,8 +45,8 @@ export interface UpdateCardStepRequest {
   title?: string;
   /** Due date (YYYY-MM-DD) */
   dueOn?: string;
-  /** Assignees */
-  assignees?: number[];
+  /** Person IDs to assign to */
+  assigneeIds?: number[];
 }
 
 /**
@@ -136,7 +136,7 @@ export class CardStepsService extends BaseService {
           body: {
             title: req.title,
             due_on: req.dueOn,
-            assignees: req.assignees,
+            assignee_ids: req.assigneeIds,
           },
         })
     );
@@ -205,7 +205,7 @@ export class CardStepsService extends BaseService {
           body: {
             title: req.title,
             due_on: req.dueOn,
-            assignees: req.assignees,
+            assignee_ids: req.assigneeIds,
           },
         })
     );

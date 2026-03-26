@@ -2924,7 +2924,7 @@ export interface components {
         CreateCardStepRequestContent: {
             title: string;
             due_on?: string;
-            assignees?: number[];
+            assignee_ids?: number[];
         };
         CreateCardStepResponseContent: components["schemas"]["CardStep"];
         CreateChatbotRequestContent: {
@@ -4210,7 +4210,7 @@ export interface components {
         UpdateCardStepRequestContent: {
             title?: string;
             due_on?: string;
-            assignees?: number[];
+            assignee_ids?: number[];
         };
         UpdateCardStepResponseContent: components["schemas"]["CardStep"];
         UpdateChatbotRequestContent: {
