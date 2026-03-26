@@ -215,8 +215,8 @@ type CreateStepRequest struct {
 	Title string `json:"title"`
 	// DueOn is the due date in ISO 8601 format (optional).
 	DueOn string `json:"due_on,omitempty"`
-	// Assignees is a list of person IDs to assign this step to (optional).
-	Assignees []int64 `json:"assignees,omitempty"`
+	// AssigneeIDs is a list of person IDs to assign this step to (optional).
+	AssigneeIDs []int64 `json:"assignee_ids,omitempty"`
 }
 
 // UpdateStepRequest specifies the parameters for updating a step.
@@ -225,8 +225,8 @@ type UpdateStepRequest struct {
 	Title string `json:"title,omitempty"`
 	// DueOn is the due date in ISO 8601 format (optional).
 	DueOn string `json:"due_on,omitempty"`
-	// Assignees is a list of person IDs to assign this step to (optional).
-	Assignees []int64 `json:"assignees,omitempty"`
+	// AssigneeIDs is a list of person IDs to assign this step to (optional).
+	AssigneeIDs []int64 `json:"assignee_ids,omitempty"`
 }
 
 // CardTablesService handles card table operations.
@@ -967,8 +967,8 @@ func (s *CardStepsService) Create(ctx context.Context, cardID int64, req *Create
 	}
 
 	body := generated.CreateCardStepJSONRequestBody{
-		Title:     req.Title,
-		Assignees: req.Assignees,
+		Title:       req.Title,
+		AssigneeIds: req.AssigneeIDs,
 	}
 	if req.DueOn != "" {
 		d, parseErr := types.ParseDate(req.DueOn)
@@ -1022,8 +1022,8 @@ func (s *CardStepsService) Update(ctx context.Context, stepID int64, req *Update
 	if req.Title != "" {
 		body["title"] = req.Title
 	}
-	if req.Assignees != nil {
-		body["assignees"] = req.Assignees
+	if req.AssigneeIDs != nil {
+		body["assignee_ids"] = req.AssigneeIDs
 	}
 	if req.DueOn != "" {
 		if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {

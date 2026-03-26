@@ -643,9 +643,9 @@ func TestMoveColumnRequest_Marshal(t *testing.T) {
 
 func TestCreateStepRequest_Marshal(t *testing.T) {
 	req := CreateStepRequest{
-		Title:     "Write tests",
-		DueOn:     "2024-02-15",
-		Assignees: []int64{1049715914, 1049715915},
+		Title:       "Write tests",
+		DueOn:       "2024-02-15",
+		AssigneeIDs: []int64{1049715914, 1049715915},
 	}
 
 	out, err := json.Marshal(req)
@@ -664,9 +664,9 @@ func TestCreateStepRequest_Marshal(t *testing.T) {
 	if data["due_on"] != "2024-02-15" {
 		t.Errorf("unexpected due_on: %v", data["due_on"])
 	}
-	assignees, ok := data["assignees"].([]any)
-	if !ok || len(assignees) != 2 {
-		t.Errorf("unexpected assignees: %v", data["assignees"])
+	assigneeIDs, ok := data["assignee_ids"].([]any)
+	if !ok || len(assigneeIDs) != 2 {
+		t.Errorf("unexpected assignee_ids: %v", data["assignee_ids"])
 	}
 }
 
@@ -692,8 +692,8 @@ func TestUpdateStepRequest_Marshal(t *testing.T) {
 	if data["due_on"] != "2024-02-20" {
 		t.Errorf("unexpected due_on: %v", data["due_on"])
 	}
-	if _, ok := data["assignees"]; ok {
-		t.Error("expected assignees to be omitted")
+	if _, ok := data["assignee_ids"]; ok {
+		t.Error("expected assignee_ids to be omitted")
 	}
 }
 
@@ -852,24 +852,24 @@ func TestCardStepsService_UpdateClearsAssignees(t *testing.T) {
 	})
 
 	// An empty non-nil slice means "clear all assignees" — this must be sent
-	// to the API as assignees:[], not omitted.
+	// to the API as assignee_ids:[], not omitted.
 	_, err := svc.Update(context.Background(), 12345, &UpdateStepRequest{
-		Assignees: []int64{},
+		AssigneeIDs: []int64{},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	ids, ok := receivedBody["assignees"]
+	ids, ok := receivedBody["assignee_ids"]
 	if !ok {
-		t.Fatal("expected assignees to be present in request body, but it was omitted")
+		t.Fatal("expected assignee_ids to be present in request body, but it was omitted")
 	}
 	arr, ok := ids.([]any)
 	if !ok {
-		t.Fatalf("expected assignees to be an array, got %T", ids)
+		t.Fatalf("expected assignee_ids to be an array, got %T", ids)
 	}
 	if len(arr) != 0 {
-		t.Errorf("expected empty assignees array, got %v", arr)
+		t.Errorf("expected empty assignee_ids array, got %v", arr)
 	}
 }
 
@@ -895,7 +895,7 @@ func TestCardStepsService_UpdatePartial(t *testing.T) {
 		t.Errorf("expected title 'new step', got %v", receivedBody["title"])
 	}
 
-	for _, field := range []string{"due_on", "assignees"} {
+	for _, field := range []string{"due_on", "assignee_ids"} {
 		if _, ok := receivedBody[field]; ok {
 			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
 		}

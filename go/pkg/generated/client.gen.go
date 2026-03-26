@@ -477,9 +477,9 @@ type CreateCardResponseContent = Card
 
 // CreateCardStepRequestContent defines model for CreateCardStepRequestContent.
 type CreateCardStepRequestContent struct {
-	Assignees []int64    `json:"assignees,omitempty"`
-	DueOn     types.Date `json:"due_on,omitempty"`
-	Title     string     `json:"title"`
+	AssigneeIds []int64    `json:"assignee_ids,omitempty"`
+	DueOn       types.Date `json:"due_on,omitempty"`
+	Title       string     `json:"title"`
 }
 
 // CreateCardStepResponseContent defines model for CreateCardStepResponseContent.
@@ -2130,9 +2130,9 @@ type UpdateCardResponseContent = Card
 
 // UpdateCardStepRequestContent defines model for UpdateCardStepRequestContent.
 type UpdateCardStepRequestContent struct {
-	Assignees []int64    `json:"assignees,omitempty"`
-	DueOn     types.Date `json:"due_on,omitempty"`
-	Title     string     `json:"title,omitempty"`
+	AssigneeIds []int64    `json:"assignee_ids,omitempty"`
+	DueOn       types.Date `json:"due_on,omitempty"`
+	Title       string     `json:"title,omitempty"`
 }
 
 // UpdateCardStepResponseContent defines model for UpdateCardStepResponseContent.

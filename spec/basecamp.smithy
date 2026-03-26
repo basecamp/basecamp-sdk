@@ -4443,7 +4443,7 @@ structure CreateCardStepInput {
   title: String
 
   due_on: ISO8601Date
-  assignees: PersonIdList
+  assignee_ids: PersonIdList
 }
 
 structure CreateCardStepOutput {
@@ -4473,7 +4473,7 @@ structure UpdateCardStepInput {
 
   title: String
   due_on: ISO8601Date
-  assignees: PersonIdList
+  assignee_ids: PersonIdList
 }
 
 structure UpdateCardStepOutput {
