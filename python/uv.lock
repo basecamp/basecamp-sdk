@@ -17,7 +17,7 @@ wheels = [
 
 [[package]]
 name = "basecamp-sdk"
-version = "0.7.1"
+version = "0.7.3"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
