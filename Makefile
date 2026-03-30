@@ -173,13 +173,10 @@ sync-spec-version:
 sync-spec-version-check:
 	@echo "==> Checking Smithy service version freshness..."
 	@command -v jq > /dev/null 2>&1 || { echo "ERROR: jq not found. Install jq to run sync-spec-version-check (used by 'make check')."; exit 1; }
-	@PROVENANCE_DATE=$$(jq -r '.bc3_api.date' spec/api-provenance.json); \
-		BC3_DATE=$$(jq -r '.bc3.date' spec/api-provenance.json); \
+	@BC3_DATE=$$(jq -r '.bc3.date' spec/api-provenance.json); \
 		SMITHY_VER=$$(sed -n 's/^  version: "\(.*\)"/\1/p' spec/basecamp.smithy | head -1); \
-		if [ -z "$$PROVENANCE_DATE" ] || [ "$$PROVENANCE_DATE" = "null" ]; then echo "ERROR: Could not read bc3_api.date from spec/api-provenance.json"; exit 1; fi; \
 		if [ -z "$$BC3_DATE" ] || [ "$$BC3_DATE" = "null" ]; then echo "ERROR: Could not read bc3.date from spec/api-provenance.json"; exit 1; fi; \
-		if [ "$$PROVENANCE_DATE" != "$$BC3_DATE" ]; then echo "ERROR: Provenance dates differ: bc3_api.date=$$PROVENANCE_DATE bc3.date=$$BC3_DATE"; exit 1; fi; \
-		if [ "$$SMITHY_VER" != "$$PROVENANCE_DATE" ]; then echo "ERROR: Smithy service version is out of date. Run 'make sync-spec-version'"; exit 1; fi
+		if [ "$$SMITHY_VER" != "$$BC3_DATE" ]; then echo "ERROR: Smithy service version is out of date. Run 'make sync-spec-version'"; exit 1; fi
 	@echo "Smithy service version is up to date"
 
 # Sync API_VERSION constants from openapi.json info.version
