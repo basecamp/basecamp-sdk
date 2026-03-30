@@ -284,6 +284,7 @@ do {
     }
 
     // Common properties available on all cases
+    print("Code: \(error.code)")
     print("Hint: \(error.hint ?? "none")")
     print("Retryable: \(error.isRetryable)")
 
@@ -305,6 +306,8 @@ do {
 | `.ambiguous` | - | 8 | Multiple matches found |
 | `.validation` | 400, 422 | 9 | Invalid request data |
 | `.usage` | - | 1 | Configuration or argument error |
+
+`Reason: API Disabled` responses are surfaced as `.notFound`, with `error.code == "api_disabled"` and exit code `10`, so existing exhaustive `switch` statements remain source-compatible.
 
 ## Observability
 

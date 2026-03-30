@@ -7,6 +7,7 @@ final class ErrorTests: XCTestCase {
 
     func testAuthErrorProperties() {
         let error = BasecampError.auth(message: "Unauthorized", hint: "Check token", requestId: "req-1")
+        XCTAssertEqual(error.code, "auth_required")
         XCTAssertEqual(error.httpStatusCode, 401)
         XCTAssertEqual(error.exitCode, 3)
         XCTAssertFalse(error.isRetryable)
@@ -17,6 +18,7 @@ final class ErrorTests: XCTestCase {
 
     func testForbiddenErrorProperties() {
         let error = BasecampError.forbidden(message: "Denied", hint: nil, requestId: nil)
+        XCTAssertEqual(error.code, "forbidden")
         XCTAssertEqual(error.httpStatusCode, 403)
         XCTAssertEqual(error.exitCode, 4)
         XCTAssertFalse(error.isRetryable)
@@ -24,6 +26,8 @@ final class ErrorTests: XCTestCase {
 
     func testNotFoundErrorProperties() {
         let error = BasecampError.notFound(message: "Not found", hint: nil, requestId: nil)
+        XCTAssertEqual(error.code, "not_found")
+        XCTAssertFalse(error.isAPIDisabled)
         XCTAssertEqual(error.httpStatusCode, 404)
         XCTAssertEqual(error.exitCode, 2)
         XCTAssertFalse(error.isRetryable)
@@ -34,6 +38,7 @@ final class ErrorTests: XCTestCase {
             message: "Rate limited", retryAfterSeconds: 30,
             hint: "Retry after 30 seconds", requestId: nil
         )
+        XCTAssertEqual(error.code, "rate_limit")
         XCTAssertEqual(error.httpStatusCode, 429)
         XCTAssertEqual(error.exitCode, 5)
         XCTAssertTrue(error.isRetryable)
@@ -41,6 +46,7 @@ final class ErrorTests: XCTestCase {
 
     func testNetworkErrorProperties() {
         let error = BasecampError.network(message: "Connection failed", cause: nil)
+        XCTAssertEqual(error.code, "network")
         XCTAssertNil(error.httpStatusCode)
         XCTAssertEqual(error.exitCode, 6)
         XCTAssertTrue(error.isRetryable)
@@ -49,6 +55,7 @@ final class ErrorTests: XCTestCase {
 
     func testApiErrorProperties() {
         let error = BasecampError.api(message: "Server error", httpStatus: 500, hint: nil, requestId: nil)
+        XCTAssertEqual(error.code, "api_error")
         XCTAssertEqual(error.httpStatusCode, 500)
         XCTAssertEqual(error.exitCode, 7)
         XCTAssertTrue(error.isRetryable)
@@ -61,6 +68,7 @@ final class ErrorTests: XCTestCase {
 
     func testValidationErrorProperties() {
         let error = BasecampError.validation(message: "Invalid", httpStatus: 422, hint: nil, requestId: nil)
+        XCTAssertEqual(error.code, "validation")
         XCTAssertEqual(error.httpStatusCode, 422)
         XCTAssertEqual(error.exitCode, 9)
         XCTAssertFalse(error.isRetryable)
@@ -68,6 +76,7 @@ final class ErrorTests: XCTestCase {
 
     func testAmbiguousErrorProperties() {
         let error = BasecampError.ambiguous(resource: "project", matches: ["Project A", "Project B"], hint: "Did you mean: Project A, Project B")
+        XCTAssertEqual(error.code, "ambiguous")
         XCTAssertNil(error.httpStatusCode)
         XCTAssertEqual(error.exitCode, 8)
         XCTAssertFalse(error.isRetryable)
@@ -76,21 +85,26 @@ final class ErrorTests: XCTestCase {
     }
 
     func testApiDisabledErrorProperties() {
-        let error = BasecampError.apiDisabled(
-            message: "API access is disabled",
-            hint: "Contact admin",
-            requestId: "req-1"
+        let error = BasecampError.fromHTTPResponse(
+            status: 404, data: nil, headers: ["Reason": "API Disabled"], requestId: "req-1"
         )
+        if case .notFound(let message, let hint, let requestId) = error {
+            XCTAssertEqual(message, "API access is disabled for this account")
+            XCTAssertEqual(hint, "An administrator can re-enable it in Adminland under Manage API access")
+            XCTAssertEqual(requestId, "req-1")
+        } else {
+            XCTFail("Expected .notFound, got \(error)")
+        }
+        XCTAssertEqual(error.code, "api_disabled")
+        XCTAssertTrue(error.isAPIDisabled)
         XCTAssertEqual(error.httpStatusCode, 404)
         XCTAssertEqual(error.exitCode, 10)
         XCTAssertFalse(error.isRetryable)
-        XCTAssertEqual(error.message, "API access is disabled")
-        XCTAssertEqual(error.hint, "Contact admin")
-        XCTAssertEqual(error.requestId, "req-1")
     }
 
     func testUsageErrorProperties() {
         let error = BasecampError.usage(message: "Bad argument", hint: "Use --flag")
+        XCTAssertEqual(error.code, "usage")
         XCTAssertNil(error.httpStatusCode)
         XCTAssertEqual(error.exitCode, 1)
         XCTAssertFalse(error.isRetryable)
@@ -115,20 +129,31 @@ final class ErrorTests: XCTestCase {
     func testFromHTTPResponse404() {
         let error = BasecampError.fromHTTPResponse(status: 404, data: nil, headers: [:], requestId: nil)
         if case .notFound = error { } else { XCTFail("Expected .notFound") }
+        XCTAssertEqual(error.code, "not_found")
     }
 
     func testFromHTTPResponse404APIDisabled() {
         let error = BasecampError.fromHTTPResponse(
             status: 404, data: nil, headers: ["Reason": "API Disabled"], requestId: "req-1"
         )
-        if case .apiDisabled(let message, let hint, let requestId) = error {
+        if case .notFound(let message, let hint, let requestId) = error {
             XCTAssertTrue(message.contains("disabled"))
             XCTAssertNotNil(hint)
             XCTAssertTrue(hint!.contains("Adminland"))
             XCTAssertEqual(requestId, "req-1")
         } else {
-            XCTFail("Expected .apiDisabled, got \(error)")
+            XCTFail("Expected .notFound, got \(error)")
         }
+        XCTAssertEqual(error.code, "api_disabled")
+        XCTAssertEqual(error.exitCode, 10)
+    }
+
+    func testFromHTTPResponse404APIDisabledLowercaseHeaderName() {
+        let error = BasecampError.fromHTTPResponse(
+            status: 404, data: nil, headers: ["reason": "API Disabled"], requestId: nil
+        )
+        XCTAssertEqual(error.code, "api_disabled")
+        XCTAssertTrue(error.isAPIDisabled)
     }
 
     func testFromHTTPResponse404AccountInactive() {
@@ -142,11 +167,23 @@ final class ErrorTests: XCTestCase {
         } else {
             XCTFail("Expected .notFound with account inactive, got \(error)")
         }
+        XCTAssertEqual(error.code, "not_found")
     }
 
     func testFromHTTPResponse429() {
         let error = BasecampError.fromHTTPResponse(
             status: 429, data: nil, headers: ["Retry-After": "30"], requestId: nil
+        )
+        if case .rateLimit(_, let retryAfter, _, _) = error {
+            XCTAssertEqual(retryAfter, 30)
+        } else {
+            XCTFail("Expected .rateLimit")
+        }
+    }
+
+    func testFromHTTPResponse429LowercaseRetryAfterHeaderName() {
+        let error = BasecampError.fromHTTPResponse(
+            status: 429, data: nil, headers: ["retry-after": "30"], requestId: nil
         )
         if case .rateLimit(_, let retryAfter, _, _) = error {
             XCTAssertEqual(retryAfter, 30)

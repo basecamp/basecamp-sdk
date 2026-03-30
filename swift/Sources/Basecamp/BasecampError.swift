@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Structured error type for Basecamp API errors.
 ///
@@ -46,11 +49,13 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// Multiple matches found for a name or identifier.
     case ambiguous(resource: String, matches: [String], hint: String?)
 
-    /// API access disabled by account administrator (HTTP 404 with Reason: API Disabled header).
-    case apiDisabled(message: String, hint: String?, requestId: String?)
-
     /// Client usage error (invalid arguments, bad configuration).
     case usage(message: String, hint: String?)
+
+    private static let apiDisabledMessage = "API access is disabled for this account"
+    private static let apiDisabledHint = "An administrator can re-enable it in Adminland under Manage API access"
+    private static let accountInactiveMessage = "Account is inactive"
+    private static let accountInactiveHint = "The account may have an expired trial or be suspended"
 
     // MARK: - Computed Properties
 
@@ -61,9 +66,29 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .network: true
         case .api(_, let status, _, _): status.map { $0 >= 500 } ?? false
         case .ambiguous: false
-        case .apiDisabled: false
         default: false
         }
+    }
+
+    /// Stable SDK error code, matching the other Basecamp SDKs.
+    public var code: String {
+        switch self {
+        case .auth: "auth_required"
+        case .forbidden: "forbidden"
+        case .notFound(let message, _, _):
+            message == Self.apiDisabledMessage ? "api_disabled" : "not_found"
+        case .rateLimit: "rate_limit"
+        case .network: "network"
+        case .api: "api_error"
+        case .validation: "validation"
+        case .ambiguous: "ambiguous"
+        case .usage: "usage"
+        }
+    }
+
+    /// Whether this error represents account-level public API access being disabled.
+    public var isAPIDisabled: Bool {
+        code == "api_disabled"
     }
 
     /// The HTTP status code, if applicable.
@@ -72,7 +97,6 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .auth: 401
         case .forbidden: 403
         case .notFound: 404
-        case .apiDisabled: 404
         case .rateLimit: 429
         case .validation(_, let status, _, _): status
         case .api(_, let status, _, _): status
@@ -82,19 +106,20 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         }
     }
 
-    /// Exit code for CLI applications, matching Go/TS conventions.
+    /// Exit code for CLI applications, matching Go/TS/Ruby conventions.
     public var exitCode: Int {
-        switch self {
-        case .usage: 1
-        case .notFound: 2
-        case .auth: 3
-        case .forbidden: 4
-        case .rateLimit: 5
-        case .network: 6
-        case .api: 7
-        case .ambiguous: 8
-        case .validation: 9
-        case .apiDisabled: 10
+        switch code {
+        case "usage": 1
+        case "not_found": 2
+        case "auth_required": 3
+        case "forbidden": 4
+        case "rate_limit": 5
+        case "network": 6
+        case "api_error": 7
+        case "ambiguous": 8
+        case "validation": 9
+        case "api_disabled": 10
+        default: 7
         }
     }
 
@@ -104,7 +129,6 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .auth(_, let hint, _): hint
         case .forbidden(_, let hint, _): hint
         case .notFound(_, let hint, _): hint
-        case .apiDisabled(_, let hint, _): hint
         case .rateLimit(_, _, let hint, _): hint
         case .network: "Check your network connection"
         case .api(_, _, let hint, _): hint
@@ -120,7 +144,6 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .auth(let msg, _, _): msg
         case .forbidden(let msg, _, _): msg
         case .notFound(let msg, _, _): msg
-        case .apiDisabled(let msg, _, _): msg
         case .rateLimit(let msg, _, _, _): msg
         case .network(let msg, _): msg
         case .api(let msg, _, _, _): msg
@@ -136,7 +159,6 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .auth(_, _, let id): id
         case .forbidden(_, _, let id): id
         case .notFound(_, _, let id): id
-        case .apiDisabled(_, _, let id): id
         case .rateLimit(_, _, _, let id): id
         case .api(_, _, _, let id): id
         case .ambiguous: nil
@@ -176,24 +198,24 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case 403:
             return .forbidden(message: message, hint: hint, requestId: requestId)
         case 404:
-            let reason = headers["Reason"]
+            let reason = headerValue(named: "Reason", in: headers)
             if reason == "API Disabled" {
-                return .apiDisabled(
-                    message: "API access is disabled for this account",
-                    hint: "An administrator can re-enable it in Adminland under Manage API access",
+                return .notFound(
+                    message: apiDisabledMessage,
+                    hint: apiDisabledHint,
                     requestId: requestId
                 )
             }
             if reason == "Account Inactive" {
                 return .notFound(
-                    message: "Account is inactive",
-                    hint: "The account may have an expired trial or be suspended",
+                    message: accountInactiveMessage,
+                    hint: accountInactiveHint,
                     requestId: requestId
                 )
             }
             return .notFound(message: message, hint: hint, requestId: requestId)
         case 429:
-            let retryAfter = parseRetryAfter(headers["Retry-After"])
+            let retryAfter = parseRetryAfter(headerValue(named: "Retry-After", in: headers))
             let retryHint = retryAfter.map { "Retry after \($0) seconds" } ?? hint
             return .rateLimit(
                 message: message, retryAfterSeconds: retryAfter,
@@ -225,6 +247,14 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     private static func truncate(_ s: String) -> String {
         if s.count <= maxMessageLength { return s }
         return String(s.prefix(maxMessageLength - 3)) + "..."
+    }
+
+    private static func headerValue(named name: String, in headers: [String: String]) -> String? {
+        if let value = headers[name] {
+            return value
+        }
+        let lowercasedName = name.lowercased()
+        return headers.first { $0.key.lowercased() == lowercasedName }?.value
     }
 
     /// Parses a Retry-After header value (seconds or HTTP-date).

@@ -32,6 +32,7 @@ class ErrorTest {
         assertEquals(2, e.exitCode)
         assertEquals("not_found", e.code)
         assertEquals(404, e.httpStatus)
+        assertFalse(e.isApiDisabled)
     }
 
     @Test
@@ -110,11 +111,13 @@ class ErrorTest {
     @Test
     fun fromHttpStatusMaps404ApiDisabled() {
         val e = BasecampException.fromHttpStatus(404, "Not found", reason = "API Disabled")
-        assertIs<BasecampException.ApiDisabled>(e)
+        assertIs<BasecampException.NotFound>(e)
         assertEquals("api_disabled", e.code)
         assertEquals(404, e.httpStatus)
         assertEquals(10, e.exitCode)
         assertFalse(e.retryable)
+        assertTrue(e.isApiDisabled)
+        assertEquals("API access is disabled for this account", e.message)
         assertTrue(e.hint?.contains("Adminland") == true)
     }
 
@@ -124,6 +127,7 @@ class ErrorTest {
         assertIs<BasecampException.NotFound>(e)
         assertEquals("Account is inactive", e.message)
         assertTrue(e.hint?.contains("expired trial") == true)
+        assertEquals("not_found", e.code)
     }
 
     @Test
@@ -136,19 +140,23 @@ class ErrorTest {
     @Test
     fun fromHttpStatusMaps404ApiDisabledPreservesRequestId() {
         val e = BasecampException.fromHttpStatus(404, "Not found", requestId = "req-123", reason = "API Disabled")
-        assertIs<BasecampException.ApiDisabled>(e)
+        assertIs<BasecampException.NotFound>(e)
         assertEquals("req-123", e.requestId)
+        assertTrue(e.isApiDisabled)
     }
 
     @Test
-    fun apiDisabledErrorProperties() {
-        val e = BasecampException.ApiDisabled()
+    fun apiDisabledNotFoundCanBeConstructedWithoutNewSubtype() {
+        val e = BasecampException.NotFound(
+            message = "API access is disabled for this account",
+            hint = "An administrator can re-enable it in Adminland under Manage API access",
+            code = BasecampException.CODE_API_DISABLED,
+        )
         assertEquals("api_disabled", e.code)
         assertEquals(404, e.httpStatus)
         assertEquals(10, e.exitCode)
         assertFalse(e.retryable)
-        assertTrue(e.message!!.contains("disabled"))
-        assertTrue(e.hint?.contains("Adminland") == true)
+        assertTrue(e.isApiDisabled)
     }
 
     @Test
@@ -196,7 +204,6 @@ class ErrorTest {
             BasecampException.Api("error", 500),
             BasecampException.Ambiguous("project"),
             BasecampException.Validation("invalid"),
-            BasecampException.ApiDisabled(),
             BasecampException.Usage("bad arg"),
         )
 
@@ -211,7 +218,6 @@ class ErrorTest {
                 is BasecampException.Api -> "api"
                 is BasecampException.Ambiguous -> "ambiguous"
                 is BasecampException.Validation -> "validation"
-                is BasecampException.ApiDisabled -> "api_disabled"
                 is BasecampException.Usage -> "usage"
             }
             assertTrue(code.isNotEmpty())

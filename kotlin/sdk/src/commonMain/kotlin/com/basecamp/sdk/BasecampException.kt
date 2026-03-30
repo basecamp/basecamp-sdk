@@ -39,6 +39,9 @@ sealed class BasecampException(
     /** Exit code for CLI applications (matches Go/TS/Ruby SDKs). */
     val exitCode: Int get() = exitCodeFor(code)
 
+    /** Whether this error represents account-level public API access being disabled. */
+    val isApiDisabled: Boolean get() = code == CODE_API_DISABLED
+
     /** Authentication error (401). */
     class Auth(
         message: String = "Authentication required",
@@ -61,7 +64,8 @@ sealed class BasecampException(
         hint: String? = null,
         requestId: String? = null,
         cause: Throwable? = null,
-    ) : BasecampException(message, CODE_NOT_FOUND, hint, 404, false, requestId, cause)
+        code: String = CODE_NOT_FOUND,
+    ) : BasecampException(message, code, hint, 404, false, requestId, cause)
 
     /** Rate limit error (429). Retryable with optional Retry-After. */
     class RateLimit(
@@ -108,13 +112,6 @@ sealed class BasecampException(
             "Did you mean: ${matches.joinToString(", ")}" else "Be more specific",
     ) : BasecampException("Ambiguous $resource", CODE_AMBIGUOUS, hint)
 
-    /** API access disabled by account administrator (404 with Reason: API Disabled header). */
-    class ApiDisabled(
-        message: String = "API access is disabled for this account",
-        hint: String? = "An administrator can re-enable it in Adminland under Manage API access",
-        requestId: String? = null,
-    ) : BasecampException(message, CODE_API_DISABLED, hint, 404, false, requestId)
-
     /** Usage error (bad arguments, configuration errors). */
     class Usage(
         message: String,
@@ -144,6 +141,11 @@ sealed class BasecampException(
         private const val EXIT_AMBIGUOUS = 8
         private const val EXIT_VALIDATION = 9
         private const val EXIT_API_DISABLED = 10
+
+        private const val API_DISABLED_MESSAGE = "API access is disabled for this account"
+        private const val API_DISABLED_HINT = "An administrator can re-enable it in Adminland under Manage API access"
+        private const val ACCOUNT_INACTIVE_MESSAGE = "Account is inactive"
+        private const val ACCOUNT_INACTIVE_HINT = "The account may have an expired trial or be suspended"
 
         /** Maps an error code to a CLI exit code. */
         fun exitCodeFor(code: String): Int = when (code) {
@@ -182,10 +184,15 @@ sealed class BasecampException(
                 401 -> Auth(msg, hint, requestId)
                 403 -> Forbidden(msg, hint, requestId)
                 404 -> when (reason) {
-                    "API Disabled" -> ApiDisabled(requestId = requestId)
+                    "API Disabled" -> NotFound(
+                        API_DISABLED_MESSAGE,
+                        API_DISABLED_HINT,
+                        requestId,
+                        code = CODE_API_DISABLED,
+                    )
                     "Account Inactive" -> NotFound(
-                        "Account is inactive",
-                        "The account may have an expired trial or be suspended",
+                        ACCOUNT_INACTIVE_MESSAGE,
+                        ACCOUNT_INACTIVE_HINT,
                         requestId,
                     )
                     else -> NotFound(msg, hint, requestId)
