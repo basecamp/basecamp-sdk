@@ -2,7 +2,7 @@
 #
 # Orchestrates both Smithy spec and Go SDK
 
-.PHONY: all check clean help setup tools provenance-sync provenance-check sync-status bump sync-api-version sync-api-version-check release
+.PHONY: all check clean help setup tools provenance-sync provenance-check sync-status bump sync-spec-version sync-spec-version-check sync-api-version sync-api-version-check release
 
 # Default: run all checks
 all: check
@@ -25,6 +25,7 @@ smithy-mapper:
 
 # Build OpenAPI from Smithy (also regenerates behavior model + syncs API version)
 smithy-build: behavior-model smithy-mapper
+	@$(MAKE) sync-spec-version
 	@echo "==> Building OpenAPI from Smithy..."
 	cd spec && smithy build
 	cp spec/build/smithy/openapi/openapi/Basecamp.openapi.json openapi.json
@@ -35,6 +36,7 @@ smithy-build: behavior-model smithy-mapper
 
 # Check that openapi.json is up to date
 smithy-check: smithy-validate smithy-mapper
+	@$(MAKE) sync-spec-version-check
 	@echo "==> Checking OpenAPI freshness..."
 	@cd spec && smithy build
 	@TMPFILE=$$(mktemp) && \
@@ -165,6 +167,23 @@ endif
 	git tag "v$(VERSION)"
 	git push origin "v$(VERSION)"
 	@echo "Pushed v$(VERSION) — all SDK release workflows will trigger."
+
+# Sync Smithy service version from spec/api-provenance.json
+sync-spec-version:
+	@./scripts/sync-spec-version.sh
+
+# Check that the Smithy service version matches spec/api-provenance.json
+sync-spec-version-check:
+	@echo "==> Checking Smithy service version freshness..."
+	@command -v jq > /dev/null 2>&1 || { echo "ERROR: jq not found. Install jq to run sync-spec-version-check (used by 'make check')."; exit 1; }
+	@PROVENANCE_DATE=$$(jq -r '.bc3_api.date' spec/api-provenance.json); \
+		BC3_DATE=$$(jq -r '.bc3.date' spec/api-provenance.json); \
+		SMITHY_VER=$$(sed -n 's/^  version: "\(.*\)"/\1/p' spec/basecamp.smithy | head -1); \
+		if [ -z "$$PROVENANCE_DATE" ] || [ "$$PROVENANCE_DATE" = "null" ]; then echo "ERROR: Could not read bc3_api.date from spec/api-provenance.json"; exit 1; fi; \
+		if [ -z "$$BC3_DATE" ] || [ "$$BC3_DATE" = "null" ]; then echo "ERROR: Could not read bc3.date from spec/api-provenance.json"; exit 1; fi; \
+		if [ "$$PROVENANCE_DATE" != "$$BC3_DATE" ]; then echo "ERROR: Provenance dates differ: bc3_api.date=$$PROVENANCE_DATE bc3.date=$$BC3_DATE"; exit 1; fi; \
+		if [ "$$SMITHY_VER" != "$$PROVENANCE_DATE" ]; then echo "ERROR: Smithy service version is out of date. Run 'make sync-spec-version'"; exit 1; fi
+	@echo "Smithy service version is up to date"
 
 # Sync API_VERSION constants from openapi.json info.version
 sync-api-version:
@@ -556,7 +575,7 @@ tools:
 #------------------------------------------------------------------------------
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -571,6 +590,8 @@ help:
 	@echo "  smithy-mapper    Build custom OpenAPI mapper JAR"
 	@echo "  smithy-build     Build OpenAPI from Smithy (updates openapi.json)"
 	@echo "  smithy-check     Verify openapi.json is up to date"
+	@echo "  sync-spec-version        Sync Smithy service version from provenance"
+	@echo "  sync-spec-version-check  Verify Smithy service version matches provenance"
 	@echo "  smithy-clean     Remove Smithy build artifacts"
 	@echo ""
 	@echo "Behavior Model:"

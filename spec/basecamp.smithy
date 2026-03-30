@@ -49,7 +49,7 @@ use basecamp.traits#basecampSensitive
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-01-26"
+  version: "2026-03-23"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }

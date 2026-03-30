@@ -269,6 +269,8 @@ gh api repos/basecamp/bc3/commits/HEAD --jq '.sha'
 
 Update both `revision` and `date` fields, then `make provenance-sync`. This is not optional — provenance tracks what the SDK is conformant to.
 
+The Smithy service version is derived from the shared provenance date. Run `make sync-spec-version` (or `make smithy-build`, which does this automatically) after updating provenance.
+
 ### Pre-sync
 
 Use `make sync-status` to see upstream diffs since last sync.
@@ -283,7 +285,8 @@ Use `make sync-status` to see upstream diffs since last sync.
 6. Write tests for ALL new operations (see Completeness Bar below)
 7. Update tests for any changed paths/signatures
 8. Update provenance, run `make provenance-sync`
-9. `make` must pass clean
+9. Run `make sync-spec-version` (or `make smithy-build`)
+10. `make` must pass clean
 
 ---
 
