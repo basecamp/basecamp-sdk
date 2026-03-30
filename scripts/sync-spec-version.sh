@@ -46,4 +46,9 @@ echo "Syncing Smithy service version: $BC3_API_DATE"
 
 sedi "s/^  version: \".*\"/  version: \"$BC3_API_DATE\"/" "$SMITHY_FILE"
 
+if ! grep -q "  version: \"$BC3_API_DATE\"" "$SMITHY_FILE"; then
+  echo "ERROR: Failed to update version line in $SMITHY_FILE" >&2
+  exit 1
+fi
+
 echo "Done."
