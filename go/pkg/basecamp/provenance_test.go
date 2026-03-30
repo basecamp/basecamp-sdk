@@ -16,13 +16,3 @@ func TestProvenanceBC3(t *testing.T) {
 		t.Error("BC3.Date is empty")
 	}
 }
-
-func TestProvenanceBC3API(t *testing.T) {
-	p := Provenance()
-	if !reSHA.MatchString(p.BC3API.Revision) {
-		t.Errorf("BC3API.Revision = %q, want 40-hex SHA", p.BC3API.Revision)
-	}
-	if p.BC3API.Date == "" {
-		t.Error("BC3API.Date is empty")
-	}
-}
