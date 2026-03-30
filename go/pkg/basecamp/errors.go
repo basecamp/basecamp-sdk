@@ -18,29 +18,31 @@ var (
 
 // Error codes for API responses.
 const (
-	CodeUsage      = "usage"
-	CodeNotFound   = "not_found"
-	CodeAuth       = "auth_required"
-	CodeForbidden  = "forbidden"
-	CodeRateLimit  = "rate_limit"
-	CodeNetwork    = "network"
-	CodeAPI        = "api_error"
-	CodeValidation = "validation"
-	CodeAmbiguous  = "ambiguous"
+	CodeUsage       = "usage"
+	CodeNotFound    = "not_found"
+	CodeAuth        = "auth_required"
+	CodeForbidden   = "forbidden"
+	CodeRateLimit   = "rate_limit"
+	CodeNetwork     = "network"
+	CodeAPI         = "api_error"
+	CodeValidation  = "validation"
+	CodeAmbiguous   = "ambiguous"
+	CodeAPIDisabled = "api_disabled"
 )
 
 // Exit codes for CLI tools.
 const (
-	ExitOK         = 0 // Success
-	ExitUsage      = 1 // Invalid arguments or flags
-	ExitNotFound   = 2 // Resource not found
-	ExitAuth       = 3 // Not authenticated
-	ExitForbidden  = 4 // Access denied (scope issue)
-	ExitRateLimit  = 5 // Rate limited (429)
-	ExitNetwork    = 6 // Connection/DNS/timeout error
-	ExitAPI        = 7 // Server returned error
-	ExitAmbiguous  = 8 // Multiple matches for name
-	ExitValidation = 9 // Validation error (422)
+	ExitOK          = 0  // Success
+	ExitUsage       = 1  // Invalid arguments or flags
+	ExitNotFound    = 2  // Resource not found
+	ExitAuth        = 3  // Not authenticated
+	ExitForbidden   = 4  // Access denied (scope issue)
+	ExitRateLimit   = 5  // Rate limited (429)
+	ExitNetwork     = 6  // Connection/DNS/timeout error
+	ExitAPI         = 7  // Server returned error
+	ExitAmbiguous   = 8  // Multiple matches for name
+	ExitValidation  = 9  // Validation error (422)
+	ExitAPIDisabled = 10 // API access disabled for account
 )
 
 // Error is a structured error with code, message, and optional hint.
@@ -93,6 +95,8 @@ func ExitCodeFor(code string) int {
 		return ExitValidation
 	case CodeAmbiguous:
 		return ExitAmbiguous
+	case CodeAPIDisabled:
+		return ExitAPIDisabled
 	default:
 		return ExitAPI
 	}
@@ -122,6 +126,30 @@ func ErrNotFoundHint(resource, identifier, hint string) *Error {
 		Code:    CodeNotFound,
 		Message: fmt.Sprintf("%s not found: %s", resource, identifier),
 		Hint:    hint,
+	}
+}
+
+// ErrAPIDisabled creates an error for when API access has been disabled by an
+// account administrator. The Basecamp API returns 404 with a "Reason: API
+// Disabled" header in this case.
+func ErrAPIDisabled() *Error {
+	return &Error{
+		Code:       CodeAPIDisabled,
+		Message:    "API access is disabled for this account",
+		Hint:       "An administrator can re-enable it in Adminland under Manage API access",
+		HTTPStatus: 404,
+	}
+}
+
+// ErrAccountInactive creates an error for when the account is inactive (expired
+// trial or suspended). The Basecamp API returns 404 with a "Reason: Account
+// Inactive" header in this case.
+func ErrAccountInactive() *Error {
+	return &Error{
+		Code:       CodeNotFound,
+		Message:    "Account is inactive",
+		Hint:       "The account may have an expired trial or be suspended",
+		HTTPStatus: 404,
 	}
 }
 

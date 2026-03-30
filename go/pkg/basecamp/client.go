@@ -781,6 +781,9 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, ErrForbidden("Access denied")
 
 	case http.StatusNotFound: // 404
+		if reasonErr := checkReasonHeader(resp); reasonErr != nil {
+			return nil, reasonErr
+		}
 		return nil, ErrNotFound("Resource", url)
 
 	case http.StatusInternalServerError: // 500
