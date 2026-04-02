@@ -959,10 +959,15 @@ func TestTodosService_ListCompletedFilter(t *testing.T) {
 	fixture := loadTodosFixture(t, "list.json")
 	var gotStatus string
 	var gotCompleted string
+	var hasStatus bool
+	var hasCompleted bool
 
 	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		gotStatus = r.URL.Query().Get("status")
-		gotCompleted = r.URL.Query().Get("completed")
+		query := r.URL.Query()
+		hasStatus = query.Has("status")
+		hasCompleted = query.Has("completed")
+		gotStatus = query.Get("status")
+		gotCompleted = query.Get("completed")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
@@ -975,11 +980,11 @@ func TestTodosService_ListCompletedFilter(t *testing.T) {
 	if len(result.Todos) != 2 {
 		t.Fatalf("expected 2 todos, got %d", len(result.Todos))
 	}
-	if gotStatus != "" {
+	if hasStatus {
 		t.Errorf("expected status query to be omitted, got %q", gotStatus)
 	}
-	if gotCompleted != "true" {
-		t.Errorf("expected completed=true, got %q", gotCompleted)
+	if !hasCompleted || gotCompleted != "true" {
+		t.Errorf("expected completed=true, got present=%t value=%q", hasCompleted, gotCompleted)
 	}
 }
 
@@ -987,10 +992,15 @@ func TestTodosService_ListPendingFilterOmitsQueryParams(t *testing.T) {
 	fixture := loadTodosFixture(t, "list.json")
 	var gotStatus string
 	var gotCompleted string
+	var hasStatus bool
+	var hasCompleted bool
 
 	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		gotStatus = r.URL.Query().Get("status")
-		gotCompleted = r.URL.Query().Get("completed")
+		query := r.URL.Query()
+		hasStatus = query.Has("status")
+		hasCompleted = query.Has("completed")
+		gotStatus = query.Get("status")
+		gotCompleted = query.Get("completed")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
@@ -1000,10 +1010,10 @@ func TestTodosService_ListPendingFilterOmitsQueryParams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotStatus != "" {
+	if hasStatus {
 		t.Errorf("expected status query to be omitted, got %q", gotStatus)
 	}
-	if gotCompleted != "" {
+	if hasCompleted {
 		t.Errorf("expected completed query to be omitted, got %q", gotCompleted)
 	}
 }
@@ -1012,10 +1022,15 @@ func TestTodosService_ListIncompleteFilterOmitsQueryParams(t *testing.T) {
 	fixture := loadTodosFixture(t, "list.json")
 	var gotStatus string
 	var gotCompleted string
+	var hasStatus bool
+	var hasCompleted bool
 
 	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		gotStatus = r.URL.Query().Get("status")
-		gotCompleted = r.URL.Query().Get("completed")
+		query := r.URL.Query()
+		hasStatus = query.Has("status")
+		hasCompleted = query.Has("completed")
+		gotStatus = query.Get("status")
+		gotCompleted = query.Get("completed")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
@@ -1025,10 +1040,10 @@ func TestTodosService_ListIncompleteFilterOmitsQueryParams(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotStatus != "" {
+	if hasStatus {
 		t.Errorf("expected status query to be omitted, got %q", gotStatus)
 	}
-	if gotCompleted != "" {
+	if hasCompleted {
 		t.Errorf("expected completed query to be omitted, got %q", gotCompleted)
 	}
 }
@@ -1037,10 +1052,13 @@ func TestTodosService_ListLifecycleStatusFilter(t *testing.T) {
 	fixture := loadTodosFixture(t, "list.json")
 	var gotStatus string
 	var gotCompleted string
+	var hasCompleted bool
 
 	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		gotStatus = r.URL.Query().Get("status")
-		gotCompleted = r.URL.Query().Get("completed")
+		query := r.URL.Query()
+		gotStatus = query.Get("status")
+		hasCompleted = query.Has("completed")
+		gotCompleted = query.Get("completed")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
@@ -1053,7 +1071,7 @@ func TestTodosService_ListLifecycleStatusFilter(t *testing.T) {
 	if gotStatus != "archived" {
 		t.Errorf("expected status=archived, got %q", gotStatus)
 	}
-	if gotCompleted != "" {
+	if hasCompleted {
 		t.Errorf("expected completed query to be omitted, got %q", gotCompleted)
 	}
 }
