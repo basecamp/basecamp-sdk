@@ -84,6 +84,7 @@ func TestExitCodeFor(t *testing.T) {
 		{CodeAPI, ExitAPI},
 		{CodeValidation, ExitValidation},
 		{CodeAmbiguous, ExitAmbiguous},
+		{CodeAPIDisabled, ExitAPIDisabled},
 		{"unknown_code", ExitAPI},
 	}
 
@@ -205,6 +206,48 @@ func TestErrAPI(t *testing.T) {
 	}
 	if e.HTTPStatus != 500 {
 		t.Errorf("HTTPStatus = %d, want 500", e.HTTPStatus)
+	}
+}
+
+func TestErrAPIDisabled(t *testing.T) {
+	e := ErrAPIDisabled()
+	if e.Code != CodeAPIDisabled {
+		t.Errorf("Code = %q, want %q", e.Code, CodeAPIDisabled)
+	}
+	if e.HTTPStatus != 404 {
+		t.Errorf("HTTPStatus = %d, want 404", e.HTTPStatus)
+	}
+	if e.Hint == "" {
+		t.Error("expected non-empty hint")
+	}
+	if e.Message == "" {
+		t.Error("expected non-empty message")
+	}
+}
+
+func TestErrAPIDisabled_ExitCode(t *testing.T) {
+	e := ErrAPIDisabled()
+	if got := e.ExitCode(); got != ExitAPIDisabled {
+		t.Errorf("ExitCode() = %d, want %d", got, ExitAPIDisabled)
+	}
+}
+
+func TestErrAccountInactive(t *testing.T) {
+	e := ErrAccountInactive()
+	if e.Code != CodeNotFound {
+		t.Errorf("Code = %q, want %q", e.Code, CodeNotFound)
+	}
+	if e.HTTPStatus != 404 {
+		t.Errorf("HTTPStatus = %d, want 404", e.HTTPStatus)
+	}
+	if e.Hint == "" {
+		t.Error("expected non-empty hint")
+	}
+}
+
+func TestExitCodeFor_APIDisabled(t *testing.T) {
+	if got := ExitCodeFor(CodeAPIDisabled); got != ExitAPIDisabled {
+		t.Errorf("ExitCodeFor(%q) = %d, want %d", CodeAPIDisabled, got, ExitAPIDisabled)
 	}
 }
 

@@ -445,6 +445,7 @@ abstract class BaseService(
         val status = response.status.value
         val requestId = response.headers["X-Request-Id"]
         val retryAfter = parseRetryAfter(response.headers["Retry-After"])
+        val reason = response.headers["Reason"]
 
         var message: String = response.status.description.ifEmpty { "Request failed" }
         var hint: String? = null
@@ -466,7 +467,7 @@ abstract class BaseService(
             // Body is not JSON or empty — use status text
         }
 
-        return BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter)
+        return BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter, reason)
     }
 
     companion object {

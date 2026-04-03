@@ -353,6 +353,7 @@ try {
 | `api_error` | 5xx | 7 | Server error |
 | `ambiguous` | - | 8 | Multiple matches found |
 | `validation` | 400, 422 | 9 | Invalid request data |
+| `api_disabled` | 404 | 10 | Public API access disabled for the account |
 | `usage` | - | 1 | Configuration or argument error |
 
 ## Retry Behavior

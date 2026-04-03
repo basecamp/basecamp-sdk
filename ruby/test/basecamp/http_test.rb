@@ -213,6 +213,28 @@ class HTTPTest < Minitest::Test
     end
   end
 
+  def test_404_with_api_disabled_reason_raises_api_disabled_error
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 404, body: "", headers: { "Reason" => "API Disabled" })
+
+    error = assert_raises(Basecamp::ApiDisabledError) do
+      @http.get("/test.json")
+    end
+    assert_equal 404, error.http_status
+    assert_includes error.hint, "Adminland"
+  end
+
+  def test_404_with_account_inactive_reason_raises_not_found_error
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 404, body: "", headers: { "Reason" => "Account Inactive" })
+
+    error = assert_raises(Basecamp::NotFoundError) do
+      @http.get("/test.json")
+    end
+    assert_equal "Account is inactive", error.message
+    assert_includes error.hint, "expired trial"
+  end
+
   def test_429_raises_rate_limit_error
     stub_request(:get, "https://3.basecampapi.com/test.json")
       .to_return(status: 429, body: "{}", headers: { "Retry-After" => "30" })

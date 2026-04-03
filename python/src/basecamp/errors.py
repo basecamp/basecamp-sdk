@@ -16,6 +16,7 @@ class ErrorCode(StrEnum):
     API = "api_error"
     AMBIGUOUS = "ambiguous"
     VALIDATION = "validation"
+    API_DISABLED = "api_disabled"
 
 
 class ExitCode(IntEnum):
@@ -28,6 +29,7 @@ class ExitCode(IntEnum):
     API = 7
     AMBIGUOUS = 8
     VALIDATION = 9
+    API_DISABLED = 10
 
 
 _EXIT_CODE_MAP = {
@@ -40,6 +42,7 @@ _EXIT_CODE_MAP = {
     ErrorCode.API: ExitCode.API,
     ErrorCode.AMBIGUOUS: ExitCode.AMBIGUOUS,
     ErrorCode.VALIDATION: ExitCode.VALIDATION,
+    ErrorCode.API_DISABLED: ExitCode.API_DISABLED,
 }
 
 
@@ -119,6 +122,15 @@ class ValidationError(BasecampError):
         super().__init__(message, code=ErrorCode.VALIDATION, **kwargs)
 
 
+class ApiDisabledError(BasecampError):
+    """Raised when API access has been disabled by an account administrator."""
+
+    def __init__(self, message: str = "API access is disabled for this account", **kwargs: Any):
+        kwargs.setdefault("hint", "An administrator can re-enable it in Adminland under Manage API access")
+        kwargs.setdefault("http_status", 404)
+        super().__init__(message, code=ErrorCode.API_DISABLED, **kwargs)
+
+
 def parse_error_message(body: str | bytes | None) -> str | None:
     """Extract error message from response body."""
     if not body:
@@ -145,7 +157,17 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
     elif status == 403:
         err = ForbiddenError(message or "Access denied", http_status=403)
     elif status == 404:
-        err = NotFoundError(message=_truncate(message or "Not found"), http_status=404)
+        reason = headers.get("Reason") or headers.get("reason")
+        if reason == "API Disabled":
+            err = ApiDisabledError(http_status=404)
+        elif reason == "Account Inactive":
+            err = NotFoundError(
+                message="Account is inactive",
+                hint="The account may have an expired trial or be suspended",
+                http_status=404,
+            )
+        else:
+            err = NotFoundError(message=_truncate(message or "Not found"), http_status=404)
     elif status == 429:
         err = RateLimitError(_truncate(message or "Rate limited"), retry_after=retry_after, http_status=429)
     elif status in (400, 422):

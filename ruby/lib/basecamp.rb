@@ -89,10 +89,11 @@ module Basecamp
   # @param body [String, nil] response body (will attempt JSON parse)
   # @param retry_after [Integer, nil] Retry-After header value
   # @return [Error]
-  def self.error_from_response(status, body = nil, retry_after: nil)
+  def self.error_from_response(status, body = nil, retry_after: nil, headers: {})
     message = parse_error_message(body) || "Request failed"
+    request_id = headers["X-Request-Id"] || headers["x-request-id"]
 
-    case status
+    err = case status
     when 400, 422
       ValidationError.new(message, http_status: status)
     when 401
@@ -100,7 +101,14 @@ module Basecamp
     when 403
       ForbiddenError.new(message)
     when 404
-      NotFoundError.new(message: message)
+      reason = headers["Reason"] || headers["reason"]
+      if reason == "API Disabled"
+        ApiDisabledError.new
+      elsif reason == "Account Inactive"
+        NotFoundError.new(message: "Account is inactive", hint: "The account may have an expired trial or be suspended")
+      else
+        NotFoundError.new(message: message)
+      end
     when 429
       RateLimitError.new(retry_after: retry_after)
     when 500
@@ -110,6 +118,9 @@ module Basecamp
     else
       ApiError.from_status(status, message)
     end
+
+    err.instance_variable_set(:@request_id, request_id) if request_id
+    err
   end
 
   # Extracts a filename from the last path segment of a URL.

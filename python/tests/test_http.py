@@ -8,6 +8,7 @@ from basecamp._http import HttpClient
 from basecamp.auth import BearerAuth, StaticTokenProvider
 from basecamp.config import Config
 from basecamp.errors import (
+    ApiDisabledError,
     ApiError,
     AuthError,
     NetworkError,
@@ -76,6 +77,28 @@ class TestErrorMapping:
         client = make_client()
         with pytest.raises(NotFoundError):
             client.get("/test")
+
+    @respx.mock
+    def test_404_with_api_disabled_reason_maps_to_api_disabled(self):
+        respx.get("https://3.basecampapi.com/test").mock(
+            return_value=httpx.Response(404, headers={"Reason": "API Disabled"})
+        )
+        client = make_client()
+        with pytest.raises(ApiDisabledError) as exc_info:
+            client.get("/test")
+        assert exc_info.value.http_status == 404
+        assert "Adminland" in exc_info.value.hint
+
+    @respx.mock
+    def test_404_with_account_inactive_reason_maps_to_not_found(self):
+        respx.get("https://3.basecampapi.com/test").mock(
+            return_value=httpx.Response(404, headers={"Reason": "Account Inactive"})
+        )
+        client = make_client()
+        with pytest.raises(NotFoundError) as exc_info:
+            client.get("/test")
+        assert "inactive" in str(exc_info.value)
+        assert "expired trial" in exc_info.value.hint
 
     @respx.mock
     def test_429_maps_to_rate_limit(self):

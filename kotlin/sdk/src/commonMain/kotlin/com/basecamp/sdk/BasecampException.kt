@@ -39,6 +39,9 @@ sealed class BasecampException(
     /** Exit code for CLI applications (matches Go/TS/Ruby SDKs). */
     val exitCode: Int get() = exitCodeFor(code)
 
+    /** Whether this error represents account-level public API access being disabled. */
+    val isApiDisabled: Boolean get() = code == CODE_API_DISABLED
+
     /** Authentication error (401). */
     class Auth(
         message: String = "Authentication required",
@@ -56,12 +59,22 @@ sealed class BasecampException(
     ) : BasecampException(message, CODE_FORBIDDEN, hint, 403, false, requestId, cause)
 
     /** Not found error (404). */
-    class NotFound(
-        message: String = "Resource not found",
-        hint: String? = null,
-        requestId: String? = null,
-        cause: Throwable? = null,
-    ) : BasecampException(message, CODE_NOT_FOUND, hint, 404, false, requestId, cause)
+    class NotFound internal constructor(
+        message: String,
+        hint: String?,
+        requestId: String?,
+        cause: Throwable?,
+        code: String,
+    ) : BasecampException(message, code, hint, 404, false, requestId, cause) {
+        constructor() : this("Resource not found", null, null, null, CODE_NOT_FOUND)
+
+        constructor(
+            message: String = "Resource not found",
+            hint: String? = null,
+            requestId: String? = null,
+            cause: Throwable? = null,
+        ) : this(message, hint, requestId, cause, CODE_NOT_FOUND)
+    }
 
     /** Rate limit error (429). Retryable with optional Retry-After. */
     class RateLimit(
@@ -123,6 +136,7 @@ sealed class BasecampException(
         const val CODE_API = "api_error"
         const val CODE_VALIDATION = "validation"
         const val CODE_AMBIGUOUS = "ambiguous"
+        const val CODE_API_DISABLED = "api_disabled"
         const val CODE_USAGE = "usage"
 
         private const val EXIT_OK = 0
@@ -135,6 +149,12 @@ sealed class BasecampException(
         private const val EXIT_API = 7
         private const val EXIT_AMBIGUOUS = 8
         private const val EXIT_VALIDATION = 9
+        private const val EXIT_API_DISABLED = 10
+
+        private const val API_DISABLED_MESSAGE = "API access is disabled for this account"
+        private const val API_DISABLED_HINT = "An administrator can re-enable it in Adminland under Manage API access"
+        private const val ACCOUNT_INACTIVE_MESSAGE = "Account is inactive"
+        private const val ACCOUNT_INACTIVE_HINT = "The account may have an expired trial or be suspended"
 
         /** Maps an error code to a CLI exit code. */
         fun exitCodeFor(code: String): Int = when (code) {
@@ -147,8 +167,20 @@ sealed class BasecampException(
             CODE_API -> EXIT_API
             CODE_AMBIGUOUS -> EXIT_AMBIGUOUS
             CODE_VALIDATION -> EXIT_VALIDATION
+            CODE_API_DISABLED -> EXIT_API_DISABLED
             else -> EXIT_API
         }
+
+        internal fun apiDisabledNotFound(
+            requestId: String? = null,
+            cause: Throwable? = null,
+        ): NotFound = NotFound(
+            API_DISABLED_MESSAGE,
+            API_DISABLED_HINT,
+            requestId,
+            cause,
+            CODE_API_DISABLED,
+        )
 
         /** Maximum length for error messages to prevent unbounded memory growth. */
         private const val MAX_ERROR_MESSAGE_LENGTH = 500
@@ -165,12 +197,21 @@ sealed class BasecampException(
             hint: String? = null,
             requestId: String? = null,
             retryAfterSeconds: Int? = null,
+            reason: String? = null,
         ): BasecampException {
             val msg = truncateMessage(message ?: "Request failed (HTTP $httpStatus)")
             return when (httpStatus) {
                 401 -> Auth(msg, hint, requestId)
                 403 -> Forbidden(msg, hint, requestId)
-                404 -> NotFound(msg, hint, requestId)
+                404 -> when (reason) {
+                    "API Disabled" -> apiDisabledNotFound(requestId)
+                    "Account Inactive" -> NotFound(
+                        ACCOUNT_INACTIVE_MESSAGE,
+                        ACCOUNT_INACTIVE_HINT,
+                        requestId,
+                    )
+                    else -> NotFound(msg, hint, requestId)
+                }
                 429 -> RateLimit(retryAfterSeconds, msg, hint, requestId)
                 400, 422 -> Validation(msg, hint, httpStatus, requestId)
                 else -> Api(msg, httpStatus, hint, httpStatus in 500..599, requestId)

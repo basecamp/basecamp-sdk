@@ -166,6 +166,147 @@ func TestMarshalBody_ReturnsReplayableReader(t *testing.T) {
 	}
 }
 
+func TestCheckReasonHeader_APIDisabled(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{"Reason": []string{"API Disabled"}},
+	}
+	err := checkReasonHeader(resp)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Code != CodeAPIDisabled {
+		t.Errorf("Code = %q, want %q", err.Code, CodeAPIDisabled)
+	}
+	if err.HTTPStatus != 404 {
+		t.Errorf("HTTPStatus = %d, want 404", err.HTTPStatus)
+	}
+}
+
+func TestCheckReasonHeader_AccountInactive(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{"Reason": []string{"Account Inactive"}},
+	}
+	err := checkReasonHeader(resp)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if err.Code != CodeNotFound {
+		t.Errorf("Code = %q, want %q", err.Code, CodeNotFound)
+	}
+	if err.Message != "Account is inactive" {
+		t.Errorf("Message = %q, want %q", err.Message, "Account is inactive")
+	}
+}
+
+func TestCheckReasonHeader_NoReason(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{},
+	}
+	if err := checkReasonHeader(resp); err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+}
+
+func TestCheckReasonHeader_NilResponse(t *testing.T) {
+	if err := checkReasonHeader(nil); err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+}
+
+func TestCheckReasonHeader_UnknownReason(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{"Reason": []string{"Something Else"}},
+	}
+	if err := checkReasonHeader(resp); err != nil {
+		t.Errorf("expected nil for unknown reason, got %v", err)
+	}
+}
+
+func TestCheckResponse_404_APIDisabled(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{"Reason": []string{"API Disabled"}},
+	}
+	err := checkResponse(resp, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Code != CodeAPIDisabled {
+		t.Errorf("Code = %q, want %q", e.Code, CodeAPIDisabled)
+	}
+	if e.HTTPStatus != 404 {
+		t.Errorf("HTTPStatus = %d, want 404", e.HTTPStatus)
+	}
+}
+
+func TestCheckResponse_404_AccountInactive(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{"Reason": []string{"Account Inactive"}},
+	}
+	err := checkResponse(resp, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Code != CodeNotFound {
+		t.Errorf("Code = %q, want %q", e.Code, CodeNotFound)
+	}
+	if e.Message != "Account is inactive" {
+		t.Errorf("Message = %q, want %q", e.Message, "Account is inactive")
+	}
+}
+
+func TestCheckResponse_404_NoReason(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header:     http.Header{},
+	}
+	err := checkResponse(resp, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Code != CodeNotFound {
+		t.Errorf("Code = %q, want %q", e.Code, CodeNotFound)
+	}
+	if e.Message != "resource not found" {
+		t.Errorf("Message = %q, want generic not-found message", e.Message)
+	}
+}
+
+func TestCheckResponse_404_APIDisabled_PreservesRequestID(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: 404,
+		Header: http.Header{
+			"Reason":       []string{"API Disabled"},
+			"X-Request-Id": []string{"abc-123"},
+		},
+	}
+	err := checkResponse(resp, nil)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.RequestID != "abc-123" {
+		t.Errorf("RequestID = %q, want %q", e.RequestID, "abc-123")
+	}
+}
+
 func TestDerefInt64(t *testing.T) {
 	var v int64 = 42
 	if got := derefInt64(&v); got != 42 {

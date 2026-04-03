@@ -6,6 +6,7 @@ import pytest
 
 from basecamp.errors import (
     AmbiguousError,
+    ApiDisabledError,
     ApiError,
     AuthError,
     BasecampError,
@@ -36,6 +37,7 @@ class TestErrorHierarchy:
             (ApiError, ErrorCode.API, ExitCode.API),
             (AmbiguousError, ErrorCode.AMBIGUOUS, ExitCode.AMBIGUOUS),
             (ValidationError, ErrorCode.VALIDATION, ExitCode.VALIDATION),
+            (ApiDisabledError, ErrorCode.API_DISABLED, ExitCode.API_DISABLED),
         ],
     )
     def test_code_and_exit_code(self, cls, code, exit_code):
@@ -117,6 +119,31 @@ class TestErrorFromResponse:
     def test_json_error_message_extracted(self):
         err = error_from_response(422, b'{"error": "Name is required"}')
         assert "Name is required" in str(err)
+
+    def test_404_api_disabled(self):
+        err = error_from_response(404, None, {"Reason": "API Disabled"})
+        assert isinstance(err, ApiDisabledError)
+        assert err.code == ErrorCode.API_DISABLED
+        assert err.http_status == 404
+        assert err.exit_code == 10
+        assert "Adminland" in err.hint
+
+    def test_404_account_inactive(self):
+        err = error_from_response(404, None, {"Reason": "Account Inactive"})
+        assert isinstance(err, NotFoundError)
+        assert err.code == ErrorCode.NOT_FOUND
+        assert "inactive" in str(err)
+        assert "expired trial" in err.hint
+
+    def test_404_no_reason_header(self):
+        err = error_from_response(404, None, {})
+        assert isinstance(err, NotFoundError)
+        assert err.code == ErrorCode.NOT_FOUND
+
+    def test_404_api_disabled_preserves_request_id(self):
+        err = error_from_response(404, None, {"Reason": "API Disabled", "X-Request-Id": "abc-123"})
+        assert isinstance(err, ApiDisabledError)
+        assert err.request_id == "abc-123"
 
 
 class TestParseErrorMessage:

@@ -268,3 +268,31 @@ func TestSingleRequest_201EmptyBodyNotNormalized(t *testing.T) {
 		t.Error("expected UnmarshalData error for empty 201 body, got nil")
 	}
 }
+
+func TestSingleRequest_404APIDisabledPreservesRequestID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Reason", "API Disabled")
+		w.Header().Set("X-Request-Id", "req-123")
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	_, err := client.Get(context.Background(), "/test.json")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Code != CodeAPIDisabled {
+		t.Fatalf("Code = %q, want %q", e.Code, CodeAPIDisabled)
+	}
+	if e.RequestID != "req-123" {
+		t.Fatalf("RequestID = %q, want %q", e.RequestID, "req-123")
+	}
+}

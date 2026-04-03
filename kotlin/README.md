@@ -340,6 +340,7 @@ try {
     }
 
     // Common properties available on all subclasses
+    println("Code: ${e.code}")
     println("Hint: ${e.hint}")
     println("Retryable: ${e.retryable}")
 
@@ -361,6 +362,8 @@ try {
 | `Ambiguous` | - | 8 | Multiple matches found |
 | `Validation` | 400, 422 | 9 | Invalid request data |
 | `Usage` | - | 1 | Configuration or argument error |
+
+`Reason: API Disabled` responses are surfaced as `NotFound`, with `e.code == BasecampException.CODE_API_DISABLED` and exit code `10`, so existing exhaustive `when` expressions remain source-compatible.
 
 ## Observability
 

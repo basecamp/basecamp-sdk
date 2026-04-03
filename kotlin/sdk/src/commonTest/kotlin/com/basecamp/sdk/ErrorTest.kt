@@ -32,6 +32,7 @@ class ErrorTest {
         assertEquals(2, e.exitCode)
         assertEquals("not_found", e.code)
         assertEquals(404, e.httpStatus)
+        assertFalse(e.isApiDisabled)
     }
 
     @Test
@@ -105,6 +106,54 @@ class ErrorTest {
     fun fromHttpStatusMaps404ToNotFound() {
         val e = BasecampException.fromHttpStatus(404, "Not found")
         assertIs<BasecampException.NotFound>(e)
+    }
+
+    @Test
+    fun fromHttpStatusMaps404ApiDisabled() {
+        val e = BasecampException.fromHttpStatus(404, "Not found", reason = "API Disabled")
+        assertIs<BasecampException.NotFound>(e)
+        assertEquals("api_disabled", e.code)
+        assertEquals(404, e.httpStatus)
+        assertEquals(10, e.exitCode)
+        assertFalse(e.retryable)
+        assertTrue(e.isApiDisabled)
+        assertEquals("API access is disabled for this account", e.message)
+        assertTrue(e.hint?.contains("Adminland") == true)
+    }
+
+    @Test
+    fun fromHttpStatusMaps404AccountInactive() {
+        val e = BasecampException.fromHttpStatus(404, "Not found", reason = "Account Inactive")
+        assertIs<BasecampException.NotFound>(e)
+        assertEquals("Account is inactive", e.message)
+        assertTrue(e.hint?.contains("expired trial") == true)
+        assertEquals("not_found", e.code)
+    }
+
+    @Test
+    fun fromHttpStatusMaps404NoReason() {
+        val e = BasecampException.fromHttpStatus(404, "Not found", reason = null)
+        assertIs<BasecampException.NotFound>(e)
+        assertEquals("Not found", e.message)
+    }
+
+    @Test
+    fun fromHttpStatusMaps404ApiDisabledPreservesRequestId() {
+        val e = BasecampException.fromHttpStatus(404, "Not found", requestId = "req-123", reason = "API Disabled")
+        assertIs<BasecampException.NotFound>(e)
+        assertEquals("req-123", e.requestId)
+        assertTrue(e.isApiDisabled)
+    }
+
+    @Test
+    fun apiDisabledNotFoundUsesNotFoundSubtypeWithoutNewPublicConstructor() {
+        val e = BasecampException.apiDisabledNotFound()
+        assertIs<BasecampException.NotFound>(e)
+        assertEquals("api_disabled", e.code)
+        assertEquals(404, e.httpStatus)
+        assertEquals(10, e.exitCode)
+        assertFalse(e.retryable)
+        assertTrue(e.isApiDisabled)
     }
 
     @Test

@@ -349,6 +349,7 @@ if err != nil {
 | `api_error` | Server error | 7 |
 | `ambiguous` | Multiple matches found | 8 |
 | `validation` | Validation error (400, 422) | 9 |
+| `api_disabled` | Public API access disabled for the account | 10 |
 
 ## Caching
 

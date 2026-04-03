@@ -353,6 +353,7 @@ All exceptions inherit from `BasecampError`:
 | `ApiError` | `api_error` | 5xx, other | Yes for 500/502/503/504; No otherwise |
 | `AmbiguousError` | `ambiguous` | - | No |
 | `ValidationError` | `validation` | 400, 422 | No |
+| `ApiDisabledError` | `api_disabled` | 404 | No |
 
 Every `BasecampError` provides:
 - `code` - `ErrorCode` enum value

@@ -447,8 +447,15 @@ module Basecamp
       when 403
         Basecamp::ForbiddenError.new("Access denied")
       when 404
-        message = Security.truncate(Basecamp.parse_error_message(body) || "Not found")
-        Basecamp::NotFoundError.new(message: message)
+        reason = headers["Reason"] || headers["reason"]
+        if reason == "API Disabled"
+          Basecamp::ApiDisabledError.new
+        elsif reason == "Account Inactive"
+          Basecamp::NotFoundError.new(message: "Account is inactive", hint: "The account may have an expired trial or be suspended")
+        else
+          message = Security.truncate(Basecamp.parse_error_message(body) || "Not found")
+          Basecamp::NotFoundError.new(message: message)
+        end
       when 429
         Basecamp::RateLimitError.new(retry_after: retry_after)
       when 400, 422
