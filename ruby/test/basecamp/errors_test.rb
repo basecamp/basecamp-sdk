@@ -157,4 +157,59 @@ class ErrorsTest < Minitest::Test
 
     assert_nil message
   end
+
+  def test_api_disabled_error
+    error = Basecamp::ApiDisabledError.new
+
+    assert_equal Basecamp::ErrorCode::API_DISABLED, error.code
+    assert_equal 404, error.http_status
+    assert_includes error.hint, "Adminland"
+    assert_includes error.message, "disabled"
+  end
+
+  def test_api_disabled_exit_code
+    error = Basecamp::ApiDisabledError.new
+
+    assert_equal Basecamp::ExitCode::API_DISABLED, error.exit_code
+    assert_equal 10, error.exit_code
+  end
+
+  def test_error_from_response_404_api_disabled
+    error = Basecamp.error_from_response(
+      404,
+      nil,
+      headers: { "Reason" => "API Disabled", "X-Request-Id" => "req-123" }
+    )
+
+    assert_instance_of Basecamp::ApiDisabledError, error
+    assert_equal 404, error.http_status
+    assert_includes error.hint, "Adminland"
+    assert_equal "req-123", error.request_id
+  end
+
+  def test_error_from_response_404_account_inactive
+    error = Basecamp.error_from_response(
+      404,
+      nil,
+      headers: { "Reason" => "Account Inactive", "x-request-id" => "req-456" }
+    )
+
+    assert_instance_of Basecamp::NotFoundError, error
+    assert_equal "Account is inactive", error.message
+    assert_includes error.hint, "expired trial"
+    assert_equal "req-456", error.request_id
+  end
+
+  def test_error_from_response_404_no_reason_header
+    error = Basecamp.error_from_response(404, nil, headers: {})
+
+    assert_instance_of Basecamp::NotFoundError, error
+  end
+
+  def test_error_from_response_sets_request_id_for_other_errors
+    error = Basecamp.error_from_response(401, nil, headers: { "X-Request-Id" => "req-789" })
+
+    assert_instance_of Basecamp::AuthError, error
+    assert_equal "req-789", error.request_id
+  end
 end

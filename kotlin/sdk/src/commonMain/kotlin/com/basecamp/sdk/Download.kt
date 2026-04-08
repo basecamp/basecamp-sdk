@@ -216,6 +216,7 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                     // matching BaseService.errorFromResponse
                     val requestId = response.headers["X-Request-Id"]
                     val retryAfter = parseRetryAfter(response.headers["Retry-After"])
+                    val reason = response.headers["Reason"]
 
                     var message: String = response.status.description.ifEmpty { "Request failed" }
                     var hint: String? = null
@@ -239,7 +240,7 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
                         // Body is not JSON or empty — use status text
                     }
 
-                    throw BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter)
+                    throw BasecampException.fromHttpStatus(status, message, hint, requestId, retryAfter, reason)
                 }
             }
         }

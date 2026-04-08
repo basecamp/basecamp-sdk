@@ -54,6 +54,7 @@ describe("BasecampError", () => {
         api_error: 7,
         ambiguous: 8,
         validation: 9,
+        api_disabled: 10,
       };
 
       for (const [code, expected] of Object.entries(codes)) {
@@ -214,6 +215,37 @@ describe("Errors factory", () => {
       expect(error.requestId).toBe("req-789");
     });
   });
+
+  describe("apiDisabled", () => {
+    it("should create an API disabled error", () => {
+      const error = Errors.apiDisabled();
+      expect(error.code).toBe("api_disabled");
+      expect(error.httpStatus).toBe(404);
+      expect(error.exitCode).toBe(10);
+      expect(error.message).toContain("disabled");
+      expect(error.hint).toContain("Adminland");
+    });
+
+    it("should include requestId", () => {
+      const error = Errors.apiDisabled("req-123");
+      expect(error.requestId).toBe("req-123");
+    });
+  });
+
+  describe("accountInactive", () => {
+    it("should create an account inactive error", () => {
+      const error = Errors.accountInactive();
+      expect(error.code).toBe("not_found");
+      expect(error.httpStatus).toBe(404);
+      expect(error.message).toContain("inactive");
+      expect(error.hint).toContain("expired trial");
+    });
+
+    it("should include requestId", () => {
+      const error = Errors.accountInactive("req-456");
+      expect(error.requestId).toBe("req-456");
+    });
+  });
 });
 
 describe("errorFromResponse", () => {
@@ -250,6 +282,46 @@ describe("errorFromResponse", () => {
 
     expect(error.code).toBe("not_found");
     expect(error.httpStatus).toBe(404);
+  });
+
+  it("should create api_disabled error from 404 with Reason: API Disabled header", async () => {
+    const response = new Response(null, {
+      status: 404,
+      headers: { "Reason": "API Disabled" },
+    });
+
+    const error = await errorFromResponse(response);
+
+    expect(error.code).toBe("api_disabled");
+    expect(error.httpStatus).toBe(404);
+    expect(error.exitCode).toBe(10);
+    expect(error.hint).toContain("Adminland");
+  });
+
+  it("should create account inactive error from 404 with Reason: Account Inactive header", async () => {
+    const response = new Response(null, {
+      status: 404,
+      headers: { "Reason": "Account Inactive" },
+    });
+
+    const error = await errorFromResponse(response);
+
+    expect(error.code).toBe("not_found");
+    expect(error.httpStatus).toBe(404);
+    expect(error.message).toContain("inactive");
+    expect(error.hint).toContain("expired trial");
+  });
+
+  it("should preserve requestId on API Disabled error", async () => {
+    const response = new Response(null, {
+      status: 404,
+      headers: { "Reason": "API Disabled" },
+    });
+
+    const error = await errorFromResponse(response, "req-xyz");
+
+    expect(error.code).toBe("api_disabled");
+    expect(error.requestId).toBe("req-xyz");
   });
 
   it("should create rate limit error from 429 response", async () => {

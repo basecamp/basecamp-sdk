@@ -12,5 +12,6 @@ module Basecamp
     API = "api_error"
     AMBIGUOUS = "ambiguous"
     VALIDATION = "validation"
+    API_DISABLED = "api_disabled"
   end
 end

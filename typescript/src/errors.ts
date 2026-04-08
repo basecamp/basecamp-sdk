@@ -49,6 +49,7 @@ export type ErrorCode =
   | "ambiguous"
   | "network"
   | "api_error"
+  | "api_disabled"
   | "usage";
 
 /**
@@ -83,6 +84,7 @@ const EXIT_CODES: Record<ErrorCode, number> = {
   api_error: 7, // API error
   ambiguous: 8, // Multiple matches found
   validation: 9, // Validation error (HTTP 400/422)
+  api_disabled: 10, // API access disabled for account
 };
 
 /**
@@ -258,6 +260,28 @@ export const Errors = {
       httpStatus,
       ...options,
     }),
+
+  /**
+   * Creates an API disabled error (404 with Reason: API Disabled header).
+   * Thrown when an account administrator has disabled public API access.
+   */
+  apiDisabled: (requestId?: string): BasecampError =>
+    new BasecampError("api_disabled", "API access is disabled for this account", {
+      hint: "An administrator can re-enable it in Adminland under Manage API access",
+      httpStatus: 404,
+      requestId,
+    }),
+
+  /**
+   * Creates an account inactive error (404 with Reason: Account Inactive header).
+   * Thrown when the account has an expired trial or is suspended.
+   */
+  accountInactive: (requestId?: string): BasecampError =>
+    new BasecampError("not_found", "Account is inactive", {
+      hint: "The account may have an expired trial or be suspended",
+      httpStatus: 404,
+      requestId,
+    }),
 };
 
 /**
@@ -295,8 +319,16 @@ export async function errorFromResponse(
       return new BasecampError("auth_required", message, { httpStatus, hint, requestId });
     case 403:
       return new BasecampError("forbidden", message, { httpStatus, hint, requestId });
-    case 404:
+    case 404: {
+      const reason = response.headers.get("Reason");
+      if (reason === "API Disabled") {
+        return Errors.apiDisabled(requestId);
+      }
+      if (reason === "Account Inactive") {
+        return Errors.accountInactive(requestId);
+      }
       return new BasecampError("not_found", message, { httpStatus, hint, requestId });
+    }
     case 429:
       return new BasecampError("rate_limit", message, {
         httpStatus,

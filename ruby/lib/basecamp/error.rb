@@ -79,6 +79,7 @@ module Basecamp
       when ErrorCode::API then ExitCode::API
       when ErrorCode::AMBIGUOUS then ExitCode::AMBIGUOUS
       when ErrorCode::VALIDATION then ExitCode::VALIDATION
+      when ErrorCode::API_DISABLED then ExitCode::API_DISABLED
       else ExitCode::API
       end
     end

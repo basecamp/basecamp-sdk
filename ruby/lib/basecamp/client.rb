@@ -301,7 +301,8 @@ module Basecamp
         else
           # This shouldn't happen because Faraday's raise_error middleware
           # handles 4xx/5xx, but handle it defensively
-          raise Basecamp.error_from_response(response.status, response.body)
+          headers = response.headers.respond_to?(:to_h) ? response.headers.to_h : {}
+          raise Basecamp.error_from_response(response.status, response.body, headers: headers)
         end
       rescue => e
         duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round

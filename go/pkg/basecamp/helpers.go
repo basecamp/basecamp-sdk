@@ -87,6 +87,10 @@ func checkResponse(resp *http.Response, body []byte) error {
 	case http.StatusForbidden:
 		return &Error{Code: CodeForbidden, Message: msgOrDefault(serverMsg, "access denied"), Hint: serverHint, HTTPStatus: 403, RequestID: requestID}
 	case http.StatusNotFound:
+		if reasonErr := checkReasonHeader(resp); reasonErr != nil {
+			reasonErr.RequestID = requestID
+			return reasonErr
+		}
 		return &Error{Code: CodeNotFound, Message: msgOrDefault(serverMsg, "resource not found"), Hint: serverHint, HTTPStatus: 404, RequestID: requestID}
 	case http.StatusUnprocessableEntity:
 		return &Error{Code: CodeValidation, Message: msgOrDefault(serverMsg, "validation error"), Hint: serverHint, HTTPStatus: 422, RequestID: requestID}
@@ -95,6 +99,24 @@ func checkResponse(resp *http.Response, body []byte) error {
 	default:
 		retryable := resp.StatusCode >= 500 && resp.StatusCode < 600
 		return &Error{Code: CodeAPI, Message: msgOrDefault(serverMsg, fmt.Sprintf("API error: %s", resp.Status)), Hint: serverHint, HTTPStatus: resp.StatusCode, Retryable: retryable, RequestID: requestID}
+	}
+}
+
+// checkReasonHeader inspects the Reason response header on 404s to detect
+// specific account-level conditions like disabled API access or inactive
+// accounts. Returns nil when no special Reason header is present.
+func checkReasonHeader(resp *http.Response) *Error {
+	if resp == nil {
+		return nil
+	}
+	reason := resp.Header.Get("Reason")
+	switch reason {
+	case "API Disabled":
+		return ErrAPIDisabled()
+	case "Account Inactive":
+		return ErrAccountInactive()
+	default:
+		return nil
 	}
 }
 

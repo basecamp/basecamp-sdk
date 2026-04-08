@@ -13,5 +13,6 @@ module Basecamp
     API = 7
     AMBIGUOUS = 8
     VALIDATION = 9
+    API_DISABLED = 10
   end
 end
