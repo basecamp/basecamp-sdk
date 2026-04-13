@@ -495,8 +495,12 @@ func TestTodoListOptions_StatusFilter(t *testing.T) {
 		name   string
 		status string
 	}{
+		{"active", "active"},
+		{"archived", "archived"},
+		{"trashed", "trashed"},
 		{"completed", "completed"},
 		{"pending", "pending"},
+		{"incomplete", "incomplete"},
 		{"empty", ""},
 	}
 
@@ -949,6 +953,127 @@ func testTodosServer(t *testing.T, handler http.HandlerFunc) *TodosService {
 	client := NewClient(cfg, token)
 	account := client.ForAccount("99999")
 	return account.Todos()
+}
+
+func TestTodosService_ListCompletedFilter(t *testing.T) {
+	fixture := loadTodosFixture(t, "list.json")
+	var gotStatus string
+	var gotCompleted string
+	var hasStatus bool
+	var hasCompleted bool
+
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		hasStatus = query.Has("status")
+		hasCompleted = query.Has("completed")
+		gotStatus = query.Get("status")
+		gotCompleted = query.Get("completed")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.List(context.Background(), 1069479519, &TodoListOptions{Status: "completed"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Todos) != 2 {
+		t.Fatalf("expected 2 todos, got %d", len(result.Todos))
+	}
+	if hasStatus {
+		t.Errorf("expected status query to be omitted, got %q", gotStatus)
+	}
+	if !hasCompleted || gotCompleted != "true" {
+		t.Errorf("expected completed=true, got present=%t value=%q", hasCompleted, gotCompleted)
+	}
+}
+
+func TestTodosService_ListPendingFilterOmitsQueryParams(t *testing.T) {
+	fixture := loadTodosFixture(t, "list.json")
+	var gotStatus string
+	var gotCompleted string
+	var hasStatus bool
+	var hasCompleted bool
+
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		hasStatus = query.Has("status")
+		hasCompleted = query.Has("completed")
+		gotStatus = query.Get("status")
+		gotCompleted = query.Get("completed")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.List(context.Background(), 1069479519, &TodoListOptions{Status: "pending"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if hasStatus {
+		t.Errorf("expected status query to be omitted, got %q", gotStatus)
+	}
+	if hasCompleted {
+		t.Errorf("expected completed query to be omitted, got %q", gotCompleted)
+	}
+}
+
+func TestTodosService_ListIncompleteFilterOmitsQueryParams(t *testing.T) {
+	fixture := loadTodosFixture(t, "list.json")
+	var gotStatus string
+	var gotCompleted string
+	var hasStatus bool
+	var hasCompleted bool
+
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		hasStatus = query.Has("status")
+		hasCompleted = query.Has("completed")
+		gotStatus = query.Get("status")
+		gotCompleted = query.Get("completed")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.List(context.Background(), 1069479519, &TodoListOptions{Status: "incomplete"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if hasStatus {
+		t.Errorf("expected status query to be omitted, got %q", gotStatus)
+	}
+	if hasCompleted {
+		t.Errorf("expected completed query to be omitted, got %q", gotCompleted)
+	}
+}
+
+func TestTodosService_ListLifecycleStatusFilter(t *testing.T) {
+	fixture := loadTodosFixture(t, "list.json")
+	var gotStatus string
+	var gotCompleted string
+	var hasCompleted bool
+
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		gotStatus = query.Get("status")
+		hasCompleted = query.Has("completed")
+		gotCompleted = query.Get("completed")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.List(context.Background(), 1069479519, &TodoListOptions{Status: "archived"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotStatus != "archived" {
+		t.Errorf("expected status=archived, got %q", gotStatus)
+	}
+	if hasCompleted {
+		t.Errorf("expected completed query to be omitted, got %q", gotCompleted)
+	}
 }
 
 func TestTodosService_Update(t *testing.T) {
