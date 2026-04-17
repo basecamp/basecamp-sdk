@@ -187,7 +187,7 @@ Reuse these common shapes: `ProjectId`, `PersonId`, `ISO8601Timestamp`, `ISO8601
 
 ### Reference Sources
 
-- **BC3 API docs** (`~/Work/basecamp/bc3-api/sections/*.md`) — authoritative HTTP endpoint documentation
+- **BC3 API docs** (`~/Work/basecamp/bc3/doc/api/sections/*.md`) — authoritative HTTP endpoint documentation. The public `bc3-api` repo is a synced mirror, not the source of truth.
 - **Go SDK** (`go/pkg/basecamp/*.go`) — existing operation signatures
 - **Existing Smithy** (`spec/basecamp.smithy`) — established patterns and reusable types
 
@@ -257,17 +257,16 @@ gh run list --repo basecamp/basecamp-sdk --limit 7 --json name,status,conclusion
 
 ## Upstream API Sync Workflow
 
-When syncing the SDK spec to match upstream API changes (bc3-api docs + bc3 Rails app):
+When syncing the SDK spec to match upstream API changes in `basecamp/bc3` (`doc/api/` docs + Rails app):
 
 ### Provenance is Mandatory
 
-Every sync MUST update `spec/api-provenance.json` with the upstream HEADs:
+Every sync MUST update `spec/api-provenance.json` with the upstream `bc3` HEAD:
 ```bash
-gh api repos/basecamp/bc3-api/commits/HEAD --jq '.sha'
 gh api repos/basecamp/bc3/commits/HEAD --jq '.sha'
 ```
 
-Update both `revision` and `date` fields, then `make provenance-sync`. This is not optional — provenance tracks what the SDK is conformant to.
+Update the `revision` and `date` fields, then `make provenance-sync`. This is not optional — provenance tracks what the SDK is conformant to.
 
 The Smithy service version is derived from the shared provenance date. Run `make sync-spec-version` (or `make smithy-build`, which does this automatically) after updating provenance.
 
