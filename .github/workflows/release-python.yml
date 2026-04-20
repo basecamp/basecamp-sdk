@@ -32,7 +32,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0 # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v6.0.0 # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
 
       - name: Set up Python
         run: uv python install 3.13
@@ -87,7 +87,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v6.0.0 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
 
       - name: Set up Python
         run: uv python install 3.13
@@ -136,7 +136,7 @@ jobs:
 
       - name: Publish to PyPI
         if: github.event_name == 'push' && steps.check-published.outputs.already_published != 'true'
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: python/dist/
           attestations: true
