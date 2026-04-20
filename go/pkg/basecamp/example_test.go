@@ -134,7 +134,7 @@ func ExampleTodosService_List() {
 
 	todolistID := int64(789012)
 
-	// List all todos in a todolist
+	// List todos in a todolist
 	todosResult, err := client.ForAccount("12345").Todos().List(ctx, todolistID, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -146,6 +146,26 @@ func ExampleTodosService_List() {
 			status = "[x]"
 		}
 		fmt.Printf("%s %s\n", status, t.Content)
+	}
+}
+
+func ExampleTodosService_List_completed() {
+	cfg := basecamp.DefaultConfig()
+	token := &basecamp.StaticTokenProvider{Token: os.Getenv("BASECAMP_TOKEN")}
+	client := basecamp.NewClient(cfg, token)
+
+	ctx := context.Background()
+
+	todolistID := int64(789012)
+
+	// List completed todos in a todolist
+	todosResult, err := client.ForAccount("12345").Todos().List(ctx, todolistID, &basecamp.TodoListOptions{Status: "completed"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, t := range todosResult.Todos {
+		fmt.Printf("[x] %s\n", t.Content)
 	}
 }
 

@@ -95,9 +95,10 @@ type Bucket struct {
 
 // TodoListOptions specifies options for listing todos.
 type TodoListOptions struct {
-	// Status filters by completion status.
-	// "completed" returns completed todos, "pending" returns pending todos.
-	// Empty returns all todos.
+	// Status filters todos by lifecycle or completion status.
+	// Lifecycle statuses: "active", "archived", "trashed".
+	// Backwards-compatible completion shorthands: "completed", "pending", "incomplete".
+	// Empty returns the API default (pending/incomplete todos).
 	Status string
 
 	// Limit is the maximum number of todos to return.
@@ -188,10 +189,26 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Build params for generated client
+	// Build params for generated client.
+	// The BC3 todos endpoint uses two different query shapes:
+	//   - status=active|archived|trashed for lifecycle state
+	//   - completed=true for completed todos
+	// Historically this wrapper exposed completion filtering via Status, so we
+	// keep mapping "completed"/"pending"/"incomplete" here for compatibility.
 	var params *generated.ListTodosParams
 	if opts != nil && opts.Status != "" {
-		params = &generated.ListTodosParams{Status: opts.Status}
+		built := &generated.ListTodosParams{}
+		switch opts.Status {
+		case "completed":
+			built.Completed = true
+		case "pending", "incomplete":
+			// Omit both params: the API returns pending/incomplete todos by default.
+		default:
+			built.Status = opts.Status
+		}
+		if built.Status != "" || built.Completed {
+			params = built
+		}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
