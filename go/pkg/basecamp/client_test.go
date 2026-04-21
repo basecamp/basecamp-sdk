@@ -268,3 +268,106 @@ func TestSingleRequest_201EmptyBodyNotNormalized(t *testing.T) {
 		t.Error("expected UnmarshalData error for empty 201 body, got nil")
 	}
 }
+
+func TestSingleRequest_ErrorIncludesRequestID(t *testing.T) {
+	tests := []struct {
+		name          string
+		method        string
+		status        int
+		body          string
+		wantCode      string
+		wantMessage   string
+		wantHint      string
+		wantRetryable bool
+	}{
+		{
+			name:        "not found get",
+			method:      http.MethodGet,
+			status:      http.StatusNotFound,
+			wantCode:    CodeNotFound,
+			wantMessage: "Resource not found: ",
+		},
+		{
+			name:          "rate limit post",
+			method:        http.MethodPost,
+			status:        http.StatusTooManyRequests,
+			wantCode:      CodeRateLimit,
+			wantMessage:   "Rate limited",
+			wantHint:      "Try again later",
+			wantRetryable: true,
+		},
+		{
+			name:        "forbidden scope put",
+			method:      http.MethodPut,
+			status:      http.StatusForbidden,
+			wantCode:    CodeForbidden,
+			wantMessage: "Access denied: insufficient scope",
+			wantHint:    "Re-authenticate with full scope",
+		},
+		{
+			name:        "generic api message",
+			method:      http.MethodDelete,
+			status:      http.StatusTeapot,
+			body:        `{"error":"brew stopped"}`,
+			wantCode:    CodeAPI,
+			wantMessage: "brew stopped",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("X-Request-Id", "req-raw-123")
+				if tt.body != "" {
+					w.Header().Set("Content-Type", "application/json")
+				}
+				w.WriteHeader(tt.status)
+				if tt.body != "" {
+					_, _ = w.Write([]byte(tt.body))
+				}
+			}))
+			defer server.Close()
+
+			cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+			client.httpOpts.MaxRetries = 1
+
+			var err error
+			switch tt.method {
+			case http.MethodGet:
+				_, err = client.Get(context.Background(), "/test.json")
+			case http.MethodPost:
+				_, err = client.Post(context.Background(), "/test.json", map[string]any{"ok": true})
+			case http.MethodPut:
+				_, err = client.Put(context.Background(), "/test.json", map[string]any{"ok": true})
+			case http.MethodDelete:
+				_, err = client.Delete(context.Background(), "/test.json")
+			default:
+				t.Fatalf("unsupported method %s", tt.method)
+			}
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			apiErr, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if apiErr.RequestID != "req-raw-123" {
+				t.Fatalf("RequestID = %q, want %q", apiErr.RequestID, "req-raw-123")
+			}
+			if apiErr.Code != tt.wantCode {
+				t.Fatalf("Code = %q, want %q", apiErr.Code, tt.wantCode)
+			}
+			if apiErr.Message != tt.wantMessage && !(tt.wantCode == CodeNotFound && len(apiErr.Message) >= len(tt.wantMessage) && apiErr.Message[:len(tt.wantMessage)] == tt.wantMessage) {
+				t.Fatalf("Message = %q, want %q", apiErr.Message, tt.wantMessage)
+			}
+			if apiErr.Hint != tt.wantHint {
+				t.Fatalf("Hint = %q, want %q", apiErr.Hint, tt.wantHint)
+			}
+			if apiErr.Retryable != tt.wantRetryable {
+				t.Fatalf("Retryable = %v, want %v", apiErr.Retryable, tt.wantRetryable)
+			}
+		})
+	}
+}
