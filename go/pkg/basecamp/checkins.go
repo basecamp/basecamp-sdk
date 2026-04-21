@@ -507,6 +507,74 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
+// ListAnswersByUser returns all answers for a question posted by a specific person.
+//
+// Pagination options:
+//   - Limit: maximum number of answers to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only.
+//     NOTE: The page number itself is not yet honored due to OpenAPI client
+//     limitations. Use 0 to paginate through all results up to Limit.
+func (s *CheckinsService) ListAnswersByUser(ctx context.Context, questionID, personID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "ListAnswersByUser",
+		ResourceType: "answer", IsMutation: false,
+		ResourceID: questionID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetAnswersByPersonWithResponse(ctx, s.client.accountID, questionID, personID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	var answers []QuestionAnswer
+	if resp.JSON200 != nil {
+		for _, ga := range *resp.JSON200 {
+			answers = append(answers, questionAnswerFromGenerated(ga))
+		}
+	}
+
+	if opts != nil && opts.Page > 0 {
+		return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	limit := 0
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	if limit > 0 && len(answers) >= limit {
+		return &AnswerListResult{Answers: answers[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(answers), limit)}}, nil
+	}
+
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(answers), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, raw := range rawMore {
+		var ga generated.QuestionAnswer
+		if err := json.Unmarshal(raw, &ga); err != nil {
+			return nil, fmt.Errorf("failed to parse answer: %w", err)
+		}
+		answers = append(answers, questionAnswerFromGenerated(ga))
+	}
+
+	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
 // GetAnswer returns a question answer by ID.
 func (s *CheckinsService) GetAnswer(ctx context.Context, answerID int64) (result *QuestionAnswer, err error) {
 	op := OperationInfo{

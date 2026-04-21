@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -910,5 +911,41 @@ func TestCheckinsService_UpdateAnswerRejectsMissingResolvedGroupOn(t *testing.T)
 	}
 	if apiErr.Message != "group_on is required" {
 		t.Fatalf("unexpected error message: %q", apiErr.Message)
+	}
+}
+
+func TestCheckinsService_ListAnswersByUser(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "answers_by_person.json")
+
+	var requestedPath string
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListAnswersByUser(context.Background(), 1069479410, 1049715914, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(requestedPath, "/questions/1069479410/answers/by/1049715914") {
+		t.Errorf("expected path to contain /questions/1069479410/answers/by/1049715914, got %q", requestedPath)
+	}
+
+	if len(result.Answers) != 1 {
+		t.Fatalf("expected 1 answer, got %d", len(result.Answers))
+	}
+
+	a := result.Answers[0]
+	if a.ID != 1069479450 {
+		t.Errorf("expected ID 1069479450, got %d", a.ID)
+	}
+	if a.Creator == nil || a.Creator.ID != 1049715914 {
+		t.Errorf("expected Creator.ID 1049715914, got %v", a.Creator)
+	}
+	if a.Creator.Name != "Victor Cooper" {
+		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", a.Creator.Name)
 	}
 }
