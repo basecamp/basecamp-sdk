@@ -1007,9 +1007,11 @@ type DownloadResult struct {
 // Download fetches the file content from an upload's download URL.
 // The caller is responsible for closing the returned Body.
 //
-// This method first fetches the upload metadata to get the download URL,
-// then fetches the file content from that URL. The download URL is a
-// signed S3 URL that doesn't require authentication headers.
+// This method first fetches the upload metadata to retrieve the download URL,
+// then fetches the file content. The API returns download_url as an
+// API-host URL that requires Bearer auth and 302-redirects to a signed
+// S3 URL, so the first hop is authenticated and the second hop fetches
+// the signed URL without auth.
 func (s *UploadsService) Download(ctx context.Context, uploadID int64) (result *DownloadResult, err error) {
 	op := OperationInfo{
 		Service: "Uploads", Operation: "Download",
@@ -1025,7 +1027,6 @@ func (s *UploadsService) Download(ctx context.Context, uploadID int64) (result *
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// First, get the upload metadata to retrieve the download URL
 	upload, err := s.Get(ctx, uploadID)
 	if err != nil {
 		return nil, err
@@ -1036,18 +1037,15 @@ func (s *UploadsService) Download(ctx context.Context, uploadID int64) (result *
 		return nil, err
 	}
 
-	// Fetch the file content from the signed download URL (no auth headers, no timeout).
-	resp, err := s.client.parent.fetchSignedDownload(ctx, upload.DownloadURL) //nolint:bodyclose // body ownership transfers to caller via DownloadResult
+	result, err = s.client.parent.fetchAPIDownload(ctx, upload.DownloadURL)
 	if err != nil {
 		return nil, err
 	}
-
-	return &DownloadResult{
-		Body:          resp.Body,
-		ContentType:   resp.Header.Get("Content-Type"),
-		ContentLength: resp.ContentLength,
-		Filename:      upload.Filename,
-	}, nil
+	// Prefer the filename from upload metadata over URL-derived filename.
+	if upload.Filename != "" {
+		result.Filename = upload.Filename
+	}
+	return result, nil
 }
 
 // vaultFromGenerated converts a generated Vault to our clean Vault type.

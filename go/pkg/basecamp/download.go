@@ -77,8 +77,24 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 	ctx = ac.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { ac.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// URL rewriting: replace scheme+host with cfg.BaseURL origin, preserve path+query
-	baseURL, baseErr := url.Parse(ac.parent.cfg.BaseURL)
+	return ac.parent.fetchAPIDownload(ctx, rawURL)
+}
+
+// fetchAPIDownload executes the authenticated-hop + optional 302-follow flow
+// used by both AccountClient.DownloadURL and UploadsService.Download. It
+// rewrites the URL's host to the configured API base, authenticates the first
+// hop, and either returns the 2xx body directly or follows a 3xx Location
+// through an unauthenticated second hop to a signed URL.
+//
+// Callers own operation-hook lifecycle and are responsible for closing the
+// returned Body. Filename is derived from rawURL; callers may override.
+func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*DownloadResult, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, ErrUsage("download URL must be a valid URL")
+	}
+
+	baseURL, baseErr := url.Parse(c.cfg.BaseURL)
 	if baseErr != nil {
 		return nil, fmt.Errorf("invalid base URL: %w", baseErr)
 	}
@@ -96,14 +112,14 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	if authErr := ac.parent.authStrategy.Authenticate(ctx, req); authErr != nil {
+	if authErr := c.authStrategy.Authenticate(ctx, req); authErr != nil {
 		return nil, authErr
 	}
-	req.Header.Set("User-Agent", ac.parent.userAgent)
+	req.Header.Set("User-Agent", c.userAgent)
 
 	apiClient := &http.Client{
-		Transport: ac.parent.httpClient.Transport, // loggingTransport — fires hooks
-		Timeout:   0,                              // no client-level timeout — body may be streamed on direct 2xx
+		Transport: c.httpClient.Transport, // loggingTransport — fires hooks
+		Timeout:   0,                      // no client-level timeout — body may be streamed on direct 2xx
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -117,21 +133,17 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 		return nil, ErrNetwork(err)
 	}
 
-	// Dispatch on response status
 	switch {
 	case resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 303 ||
 		resp.StatusCode == 307 || resp.StatusCode == 308:
-		// Redirect — extract Location, close body, proceed to hop 2
 		location := resp.Header.Get("Location")
 		_ = resp.Body.Close()
 		if location == "" {
 			return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d with no Location header", resp.StatusCode))
 		}
-		// Resolve relative Location against the rewritten API URL
 		resolvedLocation := resolveURL(rewrittenURL, location)
 
-		// Hop 2: fetch from signed URL
-		signedResp, signedErr := ac.parent.fetchSignedDownload(ctx, resolvedLocation) //nolint:bodyclose // body ownership transfers to caller via DownloadResult
+		signedResp, signedErr := c.fetchSignedDownload(ctx, resolvedLocation) //nolint:bodyclose // body ownership transfers to caller via DownloadResult
 		if signedErr != nil {
 			return nil, signedErr
 		}
@@ -143,7 +155,6 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 		}, nil
 
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
-		// Direct download — no second hop
 		return &DownloadResult{
 			Body:          resp.Body,
 			ContentType:   resp.Header.Get("Content-Type"),

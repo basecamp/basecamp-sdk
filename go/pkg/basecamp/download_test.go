@@ -568,9 +568,11 @@ func TestDownloadURL_GateRejection(t *testing.T) {
 // --- UploadsService.Download regression: second leg assertions ---
 
 func TestDownload_SecondLegNoAuth(t *testing.T) {
+	var secondLegHit bool
 	var s3AuthHeader string
 
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		secondLegHit = true
 		s3AuthHeader = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "image/png")
 		w.WriteHeader(http.StatusOK)
@@ -578,16 +580,29 @@ func TestDownload_SecondLegNoAuth(t *testing.T) {
 	}))
 	defer s3Server.Close()
 
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":           1069479400,
-			"title":        "logo.png",
-			"filename":     "logo.png",
-			"download_url": s3Server.URL + "/bucket/file.png",
+	mux := http.NewServeMux()
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			apiHost := "http://" + r.Host
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":           1069479400,
+				"title":        "logo.png",
+				"filename":     "logo.png",
+				"download_url": apiHost + "/12345/buckets/137/uploads/1069479400/download/logo.png",
+			})
 		})
-	}))
+	mux.HandleFunc("/12345/buckets/137/uploads/1069479400/download/logo.png",
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
+			w.WriteHeader(http.StatusFound)
+		})
+	apiServer := httptest.NewServer(mux)
 	defer apiServer.Close()
 
 	cfg := DefaultConfig()
@@ -603,6 +618,9 @@ func TestDownload_SecondLegNoAuth(t *testing.T) {
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
 
+	if !secondLegHit {
+		t.Fatal("second leg (signed URL fetch) was never reached")
+	}
 	if s3AuthHeader != "" {
 		t.Errorf("expected no Authorization header on S3 request, got %q", s3AuthHeader)
 	}
@@ -611,7 +629,10 @@ func TestDownload_SecondLegNoAuth(t *testing.T) {
 func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	// Verify the bare client used for signed downloads has no client-level timeout.
 	// Use a fresh context.Background() so no preexisting deadline can confuse the check.
+	var secondLegHit bool
+
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		secondLegHit = true
 		// Assert no deadline on the request context — proves Timeout: 0 on the bare client
 		if _, hasDeadline := r.Context().Deadline(); hasDeadline {
 			t.Error("expected no deadline on S3 request context (bare client should have Timeout: 0)")
@@ -622,16 +643,29 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	}))
 	defer s3Server.Close()
 
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":           1069479400,
-			"title":        "logo.png",
-			"filename":     "logo.png",
-			"download_url": s3Server.URL + "/bucket/file.png",
+	mux := http.NewServeMux()
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			apiHost := "http://" + r.Host
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":           1069479400,
+				"title":        "logo.png",
+				"filename":     "logo.png",
+				"download_url": apiHost + "/12345/buckets/137/uploads/1069479400/download/logo.png",
+			})
 		})
-	}))
+	mux.HandleFunc("/12345/buckets/137/uploads/1069479400/download/logo.png",
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
+			w.WriteHeader(http.StatusFound)
+		})
+	apiServer := httptest.NewServer(mux)
 	defer apiServer.Close()
 
 	cfg := DefaultConfig()
@@ -647,6 +681,10 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	}
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
+
+	if !secondLegHit {
+		t.Fatal("second leg (signed URL fetch) was never reached — no-deadline assertion did not run")
+	}
 }
 
 // --- test helpers ---
