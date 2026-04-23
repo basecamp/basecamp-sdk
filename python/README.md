@@ -293,6 +293,30 @@ project = account.projects.create(name="My Project", description="A new project"
 todos = account.todos.list(todolist_id=456, status="active")
 ```
 
+## Downloading Files
+
+Fetch an upload's file content in one call. The SDK fetches the upload
+metadata, then follows the authenticated-hop + 302 flow against the signed
+storage URL.
+
+```python
+# Sync
+result = account.uploads.download(upload_id=1069479400)
+with open("uploaded.bin", "wb") as f:
+    f.write(result.body)
+
+# Async
+result = await account.uploads.download(upload_id=1069479400)
+```
+
+For any authenticated download URL (e.g. a `download_url` you already
+have in hand), use `Client.download_url` / `AsyncClient.download_url`:
+
+```python
+result = account.download_url(url)          # sync
+result = await account.download_url(url)    # async
+```
+
 ## Pagination
 
 Paginated methods return a `ListResult`, which is a `list` subclass with a `.meta` attribute:
