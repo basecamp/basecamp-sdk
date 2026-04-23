@@ -15,14 +15,17 @@ type DownloadURLFn = (rawURL: string) => Promise<DownloadResult>;
  * flow stays in one place (`createDownloadURL` in `download.ts`).
  */
 export class UploadsService extends GeneratedUploadsService {
-  private readonly downloadURLFn: DownloadURLFn;
+  private readonly downloadURLFn?: DownloadURLFn;
 
+  // downloadURLFn is optional so direct `new UploadsService(client, hooks, fetchPage, maxPages)`
+  // construction stays backwards-compatible. `download()` throws a clear usage error if the
+  // primitive wasn't injected (i.e. the service was constructed outside createBasecampClient).
   constructor(
     client: RawClient,
-    hooks: BasecampHooks | undefined,
-    fetchPage: ((url: string) => Promise<Response>) | undefined,
-    maxPages: number | undefined,
-    downloadURLFn: DownloadURLFn,
+    hooks?: BasecampHooks,
+    fetchPage?: (url: string) => Promise<Response>,
+    maxPages?: number,
+    downloadURLFn?: DownloadURLFn,
   ) {
     super(client, hooks, fetchPage, maxPages);
     this.downloadURLFn = downloadURLFn;
@@ -37,9 +40,16 @@ export class UploadsService extends GeneratedUploadsService {
    * @param uploadId - The upload's numeric id.
    * @returns A `DownloadResult` whose `filename` prefers `upload.filename`
    *   from metadata, falling back to the URL-derived filename.
-   * @throws {BasecampError} `usage` if the upload has no `download_url`.
+   * @throws {BasecampError} `usage` if the upload has no `download_url`,
+   *   or if the service was constructed without the injected download
+   *   primitive (obtain the service through `createBasecampClient().uploads`).
    */
   async download(uploadId: number): Promise<DownloadResult> {
+    if (!this.downloadURLFn) {
+      throw Errors.usage(
+        "uploads.download requires the download primitive — obtain UploadsService via createBasecampClient(...).uploads rather than instantiating it directly",
+      );
+    }
     const upload = await this.get(uploadId);
     const url = upload.download_url;
     if (!url) {
