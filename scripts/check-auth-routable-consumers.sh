@@ -12,7 +12,7 @@ set -euo pipefail
 # matches doc-comment examples — stale examples warrant review.
 EXTERNAL=$(grep -rnE --include='*.go' --exclude='*_test.go' \
   '\bfetchSignedDownload[[:space:]]*\(' go/pkg/basecamp/ \
-  | grep -v '/download\.go:' || true)
+  | grep -v '^go/pkg/basecamp/download\.go:' || true)
 
 if [ -n "${EXTERNAL}" ]; then
   echo "ERROR: fetchSignedDownload reference outside go/pkg/basecamp/download.go"
