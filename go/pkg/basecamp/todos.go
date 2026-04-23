@@ -95,14 +95,19 @@ type Bucket struct {
 
 // TodoListOptions specifies options for listing todos.
 type TodoListOptions struct {
-	// Status filters todos by lifecycle status or by legacy completion shortcuts.
+	// Status filters by recording lifecycle: "archived" or "trashed".
+	// Omit for the API default — incomplete todos with status inherited
+	// from the parent list.
 	//
-	// Supported values:
-	//   - "completed": completed todos (sent as completed=true)
-	//   - "pending": active, incomplete todos (default API behavior)
-	//   - "active", "archived", "trashed": recording status filters
-	//   - "": default API behavior (active, incomplete todos)
+	// For backward compatibility, "completed" and "pending" are also
+	// accepted as shortcuts: "completed" is translated to Completed=true,
+	// "pending" is translated to the API default.
 	Status string
+
+	// Completed, when true, returns only completed todos.
+	// May be combined with Status (e.g. Status="archived", Completed=true
+	// to list archived completed todos).
+	Completed bool
 
 	// Limit is the maximum number of todos to return.
 	// If 0, uses DefaultTodoLimit (100). Use -1 for unlimited.
@@ -192,19 +197,20 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Build params for generated client.
-	// The API uses completed=true for completion filtering and reserves status
-	// for recording lifecycle state (active/archived/trashed).
+	// Build params for generated client. Status and Completed are orthogonal
+	// upstream: Status filters by recording lifecycle (archived/trashed),
+	// Completed=true narrows to completed todos, and they may be combined.
 	var params *generated.ListTodosParams
-	if opts != nil && opts.Status != "" {
-		switch opts.Status {
+	if opts != nil {
+		status, completed := opts.Status, opts.Completed
+		switch status {
 		case "completed":
-			params = &generated.ListTodosParams{Completed: true}
+			status, completed = "", true
 		case "pending":
-			// Default API behavior already returns active, incomplete todos.
-			params = nil
-		default:
-			params = &generated.ListTodosParams{Status: opts.Status}
+			status = ""
+		}
+		if status != "" || completed {
+			params = &generated.ListTodosParams{Status: status, Completed: completed}
 		}
 	}
 

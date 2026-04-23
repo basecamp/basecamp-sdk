@@ -493,19 +493,27 @@ func TestTodoListOptions_Defaults(t *testing.T) {
 
 func TestTodoListOptions_StatusFilter(t *testing.T) {
 	tests := []struct {
-		name   string
-		status string
+		name      string
+		status    string
+		completed bool
 	}{
-		{"completed", "completed"},
-		{"pending", "pending"},
-		{"empty", ""},
+		{name: "completed shortcut", status: "completed"},
+		{name: "pending shortcut", status: "pending"},
+		{name: "archived", status: "archived"},
+		{name: "trashed", status: "trashed"},
+		{name: "completed bool", completed: true},
+		{name: "archived + completed", status: "archived", completed: true},
+		{name: "empty", status: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := &TodoListOptions{Status: tt.status}
+			opts := &TodoListOptions{Status: tt.status, Completed: tt.completed}
 			if opts.Status != tt.status {
 				t.Errorf("expected status %q, got %q", tt.status, opts.Status)
+			}
+			if opts.Completed != tt.completed {
+				t.Errorf("expected completed %t, got %t", tt.completed, opts.Completed)
 			}
 		})
 	}
@@ -962,11 +970,13 @@ func TestTodosService_List_QueryParameters(t *testing.T) {
 		wantCompleted string
 	}{
 		{name: "nil options", opts: nil},
-		{name: "completed shortcut", opts: &TodoListOptions{Status: "completed"}, wantCompleted: "true"},
-		{name: "pending shortcut", opts: &TodoListOptions{Status: "pending"}},
+		{name: "completed bool", opts: &TodoListOptions{Completed: true}, wantCompleted: "true"},
 		{name: "archived status", opts: &TodoListOptions{Status: "archived"}, wantStatus: "archived"},
 		{name: "trashed status", opts: &TodoListOptions{Status: "trashed"}, wantStatus: "trashed"},
-		{name: "active status", opts: &TodoListOptions{Status: "active"}, wantStatus: "active"},
+		{name: "archived + completed", opts: &TodoListOptions{Status: "archived", Completed: true}, wantStatus: "archived", wantCompleted: "true"},
+		{name: "trashed + completed", opts: &TodoListOptions{Status: "trashed", Completed: true}, wantStatus: "trashed", wantCompleted: "true"},
+		{name: "completed shortcut", opts: &TodoListOptions{Status: "completed"}, wantCompleted: "true"},
+		{name: "pending shortcut", opts: &TodoListOptions{Status: "pending"}},
 	}
 
 	for _, tt := range tests {
