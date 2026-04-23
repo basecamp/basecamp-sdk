@@ -1,0 +1,31 @@
+ruby/lib/basecamp/generated/services/uploads_service.rb
+  1b5c1196d613a7eb 60-76
+ruby/test/basecamp/services/uploads_service_test.rb
+  1b5c1196d613a7eb 81-123
+conformance/runner/ruby/runner.rb
+  1b5c1196d613a7eb 147-148,178,182,195
+ruby/README.md
+  1b5c1196d613a7eb 197-215
+ruby/scripts/generate-services.rb
+  1b5c1196d613a7eb 266-290,570-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9b071f966b6a4a8f5d93ca196d6913d3da5d164b",
+  "prompts": {
+    "1b5c1196d613a7eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5088c83-ce8f-4e93-a939-be274f847af5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 999,
+      "total_deletions": 17,
+      "accepted_lines": 3428,
+      "overriden_lines": 0
+    }
+  }
+}
