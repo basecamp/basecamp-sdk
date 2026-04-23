@@ -1,0 +1,23 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  28a57320a1b71fa5 18-26,56-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "dda8482f0a1c5b974601124c53a429ba2cf2d1b3",
+  "prompts": {
+    "28a57320a1b71fa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a75ae23-55da-4eaf-913e-149f82b1ca37",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 1538,
+      "total_deletions": 763,
+      "accepted_lines": 785,
+      "overriden_lines": 0
+    }
+  }
+}
