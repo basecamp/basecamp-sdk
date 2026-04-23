@@ -1,0 +1,27 @@
+conformance/runner/ruby/runner.rb
+  2879d967e1b0d227 296-307
+conformance/runner/typescript/runner.test.ts
+  2879d967e1b0d227 379-391
+conformance/runner/python/runner.py
+  2879d967e1b0d227 224-233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "580ce47dbcd982a0578f63d9ffea4e1085cb6286",
+  "prompts": {
+    "2879d967e1b0d227": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d735d28-fbb0-4478-9ca2-158d2d9453a9",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 35,
+      "total_deletions": 781,
+      "accepted_lines": 35,
+      "overriden_lines": 0
+    }
+  }
+}
