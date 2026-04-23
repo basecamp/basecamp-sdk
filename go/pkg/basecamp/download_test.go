@@ -2,7 +2,6 @@ package basecamp
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -320,6 +319,10 @@ func TestDownloadURL_RedirectNoLocation(t *testing.T) {
 // --- Error handling ---
 
 func TestDownloadURL_APIError(t *testing.T) {
+	// 502/503/504 exercise the retry loop (see TestDownloadURL_AuthHopRetriesOn503);
+	// this table covers non-retryable error-mapping paths, including 500 which
+	// fetchAPIDownload intentionally does not retry (matches the @retryable set
+	// in Client.singleRequest).
 	tests := []struct {
 		name     string
 		status   int
@@ -332,7 +335,9 @@ func TestDownloadURL_APIError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var requests atomic.Int32
 			apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
 				w.WriteHeader(tt.status)
 			}))
 			defer apiServer.Close()
@@ -354,6 +359,9 @@ func TestDownloadURL_APIError(t *testing.T) {
 			}
 			if sdkErr.Code != tt.wantCode {
 				t.Errorf("expected code %q, got %q", tt.wantCode, sdkErr.Code)
+			}
+			if got := requests.Load(); got != 1 {
+				t.Errorf("expected 1 request (non-retryable), got %d", got)
 			}
 		})
 	}
@@ -568,27 +576,39 @@ func TestDownloadURL_GateRejection(t *testing.T) {
 // --- UploadsService.Download regression: second leg assertions ---
 
 func TestDownload_SecondLegNoAuth(t *testing.T) {
-	var s3AuthHeader string
+	var secondLegHit atomic.Bool
+	var s3AuthHeader atomic.Value
+	s3AuthHeader.Store("")
 
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s3AuthHeader = r.Header.Get("Authorization")
+		secondLegHit.Store(true)
+		s3AuthHeader.Store(r.Header.Get("Authorization"))
 		w.Header().Set("Content-Type", "image/png")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("pixels"))
 	}))
 	defer s3Server.Close()
 
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":           1069479400,
-			"title":        "logo.png",
-			"filename":     "logo.png",
-			"download_url": s3Server.URL + "/bucket/file.png",
-		})
-	}))
+	mux := http.NewServeMux()
+	apiServer := httptest.NewServer(mux)
 	defer apiServer.Close()
+
+	metadataBody, downloadPath := loadUploadFixture(t, apiServer.URL)
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(metadataBody)
+		})
+	mux.HandleFunc(downloadPath,
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
+			w.WriteHeader(http.StatusFound)
+		})
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL
@@ -603,15 +623,21 @@ func TestDownload_SecondLegNoAuth(t *testing.T) {
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
 
-	if s3AuthHeader != "" {
-		t.Errorf("expected no Authorization header on S3 request, got %q", s3AuthHeader)
+	if !secondLegHit.Load() {
+		t.Fatal("second leg (signed URL fetch) was never reached")
+	}
+	if auth := s3AuthHeader.Load().(string); auth != "" {
+		t.Errorf("expected no Authorization header on S3 request, got %q", auth)
 	}
 }
 
 func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	// Verify the bare client used for signed downloads has no client-level timeout.
 	// Use a fresh context.Background() so no preexisting deadline can confuse the check.
+	var secondLegHit atomic.Bool
+
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		secondLegHit.Store(true)
 		// Assert no deadline on the request context — proves Timeout: 0 on the bare client
 		if _, hasDeadline := r.Context().Deadline(); hasDeadline {
 			t.Error("expected no deadline on S3 request context (bare client should have Timeout: 0)")
@@ -622,17 +648,26 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	}))
 	defer s3Server.Close()
 
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":           1069479400,
-			"title":        "logo.png",
-			"filename":     "logo.png",
-			"download_url": s3Server.URL + "/bucket/file.png",
-		})
-	}))
+	mux := http.NewServeMux()
+	apiServer := httptest.NewServer(mux)
 	defer apiServer.Close()
+
+	metadataBody, downloadPath := loadUploadFixture(t, apiServer.URL)
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(metadataBody)
+		})
+	mux.HandleFunc(downloadPath,
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
+			w.WriteHeader(http.StatusFound)
+		})
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL
@@ -647,6 +682,213 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	}
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
+
+	if !secondLegHit.Load() {
+		t.Fatal("second leg (signed URL fetch) was never reached — no-deadline assertion did not run")
+	}
+}
+
+// --- Auth-hop retry behavior ---
+
+func TestDownloadURL_AuthHopRetriesOn503(t *testing.T) {
+	fileContent := "retried-ok"
+	var attempts atomic.Int32
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if attempts.Add(1) < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"error":"try again"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/pdf")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fileContent))
+	}))
+	defer apiServer.Close()
+
+	baseDelay := 30 * time.Millisecond
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithMaxRetries(3),
+		WithBaseDelay(baseDelay),
+		WithMaxJitter(time.Millisecond),
+	)
+	ac := client.ForAccount("12345")
+
+	start := time.Now()
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/doc.pdf")
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+
+	if got := attempts.Load(); got != 3 {
+		t.Errorf("expected 3 attempts, got %d", got)
+	}
+	// Backoff between attempts: baseDelay then 2*baseDelay. Require at least 3*baseDelay
+	// total so a regression that flattened the second delay back to baseDelay fails.
+	if elapsed < 3*baseDelay {
+		t.Errorf("expected elapsed >= %v, got %v", 3*baseDelay, elapsed)
+	}
+	body, _ := io.ReadAll(result.Body)
+	if string(body) != fileContent {
+		t.Errorf("expected body %q, got %q", fileContent, string(body))
+	}
+}
+
+func TestDownloadURL_AuthHopRetriesOn429WithRetryAfter(t *testing.T) {
+	fileContent := "rate-limit-ok"
+	var attempts atomic.Int32
+
+	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/pdf")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fileContent))
+	}))
+	defer s3Server.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if attempts.Add(1) == 1 {
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.Header().Set("Location", s3Server.URL+"/bucket/file.pdf")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	// Use a tiny BaseDelay so, if Retry-After is ignored, the test would finish
+	// well under 1s and surface the regression.
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithMaxRetries(3),
+		WithBaseDelay(10*time.Millisecond),
+		WithMaxJitter(time.Millisecond),
+		WithTransport(http.DefaultTransport),
+	)
+	ac := client.ForAccount("12345")
+
+	start := time.Now()
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/doc.pdf")
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+
+	if got := attempts.Load(); got != 2 {
+		t.Errorf("expected 2 attempts, got %d", got)
+	}
+	if elapsed < time.Second {
+		t.Errorf("expected elapsed >= 1s (Retry-After), got %v", elapsed)
+	}
+	body, _ := io.ReadAll(result.Body)
+	if string(body) != fileContent {
+		t.Errorf("expected body %q, got %q", fileContent, string(body))
+	}
+}
+
+// flakyRoundTripper fails the first N RoundTrips with a synthetic network error,
+// then delegates to inner. Used to prove network-error retry without relying on
+// OS-level connection-reset semantics (which Go's transport sometimes retries
+// on its own for idempotent requests).
+type flakyRoundTripper struct {
+	inner    http.RoundTripper
+	failures atomic.Int32
+	limit    int32
+}
+
+func (t *flakyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.failures.Add(1) <= t.limit {
+		return nil, errors.New("synthetic network failure")
+	}
+	return t.inner.RoundTrip(req)
+}
+
+func TestDownloadURL_AuthHopRetriesOnNetworkError(t *testing.T) {
+	fileContent := "net-ok"
+	var serverHits atomic.Int32
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHits.Add(1)
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fileContent))
+	}))
+	defer apiServer.Close()
+
+	flaky := &flakyRoundTripper{inner: apiServer.Client().Transport, limit: 1}
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithTransport(flaky),
+		WithMaxRetries(3),
+		WithBaseDelay(10*time.Millisecond),
+		WithMaxJitter(time.Millisecond),
+	)
+	ac := client.ForAccount("12345")
+
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/file.txt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+
+	if got := flaky.failures.Load(); got != 2 {
+		t.Errorf("expected 2 RoundTrip calls, got %d", got)
+	}
+	if got := serverHits.Load(); got != 1 {
+		t.Errorf("expected 1 successful request to reach the server, got %d", got)
+	}
+	body, _ := io.ReadAll(result.Body)
+	if string(body) != fileContent {
+		t.Errorf("expected body %q, got %q", fileContent, string(body))
+	}
+}
+
+func TestDownloadURL_AuthHopNoRetryOn404(t *testing.T) {
+	var attempts atomic.Int32
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithMaxRetries(3),
+		WithBaseDelay(time.Millisecond),
+	)
+	ac := client.ForAccount("12345")
+
+	_, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/file.txt")
+	if err == nil {
+		t.Fatal("expected error for 404")
+	}
+	var sdkErr *Error
+	if !isSDKError(err, &sdkErr) || sdkErr.Code != CodeNotFound {
+		t.Errorf("expected not_found error, got: %v", err)
+	}
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("expected 1 attempt on 404, got %d", got)
+	}
 }
 
 // --- test helpers ---

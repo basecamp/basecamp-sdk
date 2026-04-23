@@ -180,7 +180,7 @@ func WithAuthStrategy(strategy AuthStrategy) ClientOption {
 //
 // Configuration options:
 //   - WithTimeout(d)      - Request timeout (default: 30s)
-//   - WithMaxRetries(n)   - Max retry attempts for GET (default: 3)
+//   - WithMaxRetries(n)   - Total attempt count for GET (default: 3, minimum 1)
 //   - WithCache(c)        - Enable ETag-based caching
 //   - WithTransport(t)    - Custom http.RoundTripper
 //   - WithLogger(l)       - slog.Logger for debug output
@@ -242,8 +242,11 @@ func NewClient(cfg *Config, tokenProvider TokenProvider, opts ...ClientOption) *
 	if c.httpOpts.Timeout <= 0 {
 		panic("basecamp: timeout must be positive")
 	}
-	if c.httpOpts.MaxRetries < 0 {
-		panic("basecamp: max retries must be non-negative")
+	if c.httpOpts.MaxRetries < 1 {
+		// MaxRetries names the total attempt count used by the retry loops in
+		// doRequestURL and fetchAPIDownload. Zero attempts is always a
+		// misconfiguration; reject it here so both loops can assume >= 1.
+		panic("basecamp: max retries must be at least 1")
 	}
 	if c.httpOpts.MaxPages <= 0 {
 		panic("basecamp: max pages must be positive")

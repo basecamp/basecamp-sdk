@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -733,23 +734,32 @@ func TestUploadsService_Download_MissingDownloadURL(t *testing.T) {
 }
 
 func TestUploadsService_Download_S3Error(t *testing.T) {
-	// Test that Download handles non-200 responses from S3
+	// Test that Download surfaces non-2xx responses from the signed S3 hop.
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 	}))
 	defer s3Server.Close()
 
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":           1069479400,
-			"title":        "logo.png",
-			"filename":     "logo.png",
-			"download_url": s3Server.URL + "/bucket/file.png",
-		})
-	}))
+	mux := http.NewServeMux()
+	apiServer := httptest.NewServer(mux)
 	defer apiServer.Close()
+
+	metadataBody, downloadPath := loadUploadFixture(t, apiServer.URL)
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(metadataBody)
+		})
+	mux.HandleFunc(downloadPath,
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
+			w.WriteHeader(http.StatusFound)
+		})
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL
@@ -769,7 +779,9 @@ func TestUploadsService_Download_S3Error(t *testing.T) {
 }
 
 func TestUploadsService_Download_Success(t *testing.T) {
-	// Test successful download with proper header extraction
+	// Test successful download with proper header extraction.
+	// Matches real API shape: download_url is an API-host URL that 302s
+	// to a signed S3 URL.
 	fileContent := "test file content"
 
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -780,17 +792,26 @@ func TestUploadsService_Download_Success(t *testing.T) {
 	}))
 	defer s3Server.Close()
 
-	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"id":           1069479400,
-			"title":        "logo.png",
-			"filename":     "logo.png",
-			"download_url": s3Server.URL + "/bucket/file.png",
-		})
-	}))
+	mux := http.NewServeMux()
+	apiServer := httptest.NewServer(mux)
 	defer apiServer.Close()
+
+	metadataBody, downloadPath := loadUploadFixture(t, apiServer.URL)
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(metadataBody)
+		})
+	mux.HandleFunc(downloadPath,
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
+			w.WriteHeader(http.StatusFound)
+		})
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL
@@ -810,6 +831,71 @@ func TestUploadsService_Download_Success(t *testing.T) {
 	}
 	if result.Filename != "logo.png" {
 		t.Errorf("expected Filename 'logo.png', got %q", result.Filename)
+	}
+
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		t.Fatalf("failed to read body: %v", err)
+	}
+	if string(body) != fileContent {
+		t.Errorf("expected body %q, got %q", fileContent, string(body))
+	}
+}
+
+func TestUploadsService_Download_DirectBody(t *testing.T) {
+	// URL path filename deliberately differs from metadata filename so the
+	// assertion proves the metadata-filename override is in effect on the
+	// direct-2xx branch.
+	fileContent := "png bytes"
+	var downloadHit atomic.Bool
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/12345/uploads/1069479400",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			apiHost := "http://" + r.Host
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":           1069479400,
+				"title":        "logo.png",
+				"filename":     "logo.png",
+				"download_url": apiHost + "/12345/buckets/137/uploads/1069479400/download/logo.bin",
+			})
+		})
+	mux.HandleFunc("/12345/buckets/137/uploads/1069479400/download/logo.bin",
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			downloadHit.Store(true)
+			w.Header().Set("Content-Type", "image/png")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(fileContent))
+		})
+	apiServer := httptest.NewServer(mux)
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token, WithTransport(apiServer.Client().Transport))
+
+	ac := client.ForAccount("12345")
+	result, err := ac.Uploads().Download(context.Background(), 1069479400)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+
+	if !downloadHit.Load() {
+		t.Fatal("download endpoint was never reached")
+	}
+	if result.ContentType != "image/png" {
+		t.Errorf("expected Content-Type 'image/png', got %q", result.ContentType)
+	}
+	if result.Filename != "logo.png" {
+		t.Errorf("expected Filename 'logo.png' (from metadata), got %q", result.Filename)
 	}
 
 	body, err := io.ReadAll(result.Body)

@@ -15,6 +15,15 @@ import java.util.concurrent.atomic.AtomicInteger
 /** Default account ID for conformance tests. */
 private const val TEST_ACCOUNT_ID = "999"
 
+/** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
+private val KOTLIN_SKIPS: Map<String, String> = mapOf(
+    "DownloadURL auth'd first hop 302s to signed URL" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "DownloadURL direct 2xx body" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "DownloadURL retries on 503 at the auth'd first hop" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "DownloadURL honors Retry-After on 429 at the auth'd first hop" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "DownloadURL surfaces redirect with no Location" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
+)
+
 fun main() {
     val testsDir = File("../conformance/tests")
 
@@ -42,6 +51,13 @@ fun main() {
                 skipped++
                 println("  SKIP: ${tc.name}")
                 println("        Kotlin SDK auto-paginates (follows Link headers by design)")
+                continue
+            }
+            val skipReason = KOTLIN_SKIPS[tc.name]
+            if (skipReason != null) {
+                skipped++
+                println("  SKIP: ${tc.name}")
+                println("        $skipReason")
                 continue
             }
             // Note: MissingFieldException from kotlinx.serialization (when mock

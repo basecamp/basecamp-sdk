@@ -370,11 +370,22 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
+    _DOWNLOAD_SKIP = "Python runner does not yet dispatch DownloadURL (tracked as follow-up)"
     SKIPS: set[str] = {
         "maxItems caps results across pages",
+        "DownloadURL auth'd first hop 302s to signed URL",
+        "DownloadURL direct 2xx body",
+        "DownloadURL retries on 503 at the auth'd first hop",
+        "DownloadURL honors Retry-After on 429 at the auth'd first hop",
+        "DownloadURL surfaces redirect with no Location",
     }
     SKIP_REASONS: dict[str, str] = {
         "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
+        "DownloadURL auth'd first hop 302s to signed URL": _DOWNLOAD_SKIP,
+        "DownloadURL direct 2xx body": _DOWNLOAD_SKIP,
+        "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_SKIP,
+        "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_SKIP,
+        "DownloadURL surfaces redirect with no Location": _DOWNLOAD_SKIP,
     }
 
     def __init__(self, tests_dir: str):

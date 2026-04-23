@@ -71,6 +71,16 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK retry middleware yields at most 1 retry per middleware pass",
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
+  "DownloadURL auth'd first hop 302s to signed URL":
+    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+  "DownloadURL direct 2xx body":
+    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+  "DownloadURL retries on 503 at the auth'd first hop":
+    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+  "DownloadURL honors Retry-After on 429 at the auth'd first hop":
+    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+  "DownloadURL surfaces redirect with no Location":
+    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
 };
 
 // =============================================================================
