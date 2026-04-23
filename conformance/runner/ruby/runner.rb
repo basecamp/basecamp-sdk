@@ -242,7 +242,11 @@ class TestRunner
     # Register the stub with a block to track requests and return queued responses
     method = @test["method"]&.downcase&.to_sym || :get
     url_pattern = if @test["operation"] == "DownloadURL"
-      %r{.*}
+      # Catch-all on the API host: the SDK rewrites the synthetic download
+      # URL onto base_url, then resolves a relative Location to a second
+      # path on the same host. Constraining to the host ensures a misroute
+      # to a different origin fails instead of consuming a queued response.
+      %r{\Ahttps://3\.basecampapi\.com/}
     else
       %r{#{Regexp.escape(path)}}
     end
