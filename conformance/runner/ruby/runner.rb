@@ -242,11 +242,19 @@ class TestRunner
     # Register the stub with a block to track requests and return queued responses
     method = @test["method"]&.downcase&.to_sym || :get
     url_pattern = if @test["operation"] == "DownloadURL"
-      # Catch-all on the API host: the SDK rewrites the synthetic download
-      # URL onto base_url, then resolves a relative Location to a second
-      # path on the same host. Constraining to the host ensures a misroute
-      # to a different origin fails instead of consuming a queued response.
-      %r{\Ahttps://3\.basecampapi\.com/}
+      # Catch-all on the active client's host: the SDK rewrites the synthetic
+      # download URL onto base_url, then resolves a relative Location to a
+      # second path on the same host. Constraining to the origin (derived
+      # from configOverrides.baseUrl when present) ensures a misroute to a
+      # different host fails instead of consuming a queued response.
+      overrides = @test["configOverrides"] || {}
+      download_base = overrides["baseUrl"] || "https://3.basecampapi.com"
+      download_uri = URI.parse(download_base)
+      port_part = download_uri.port && download_uri.port != download_uri.default_port \
+        ? ":#{download_uri.port}" \
+        : ""
+      download_origin = "#{download_uri.scheme}://#{download_uri.host}#{port_part}"
+      %r{\A#{Regexp.escape(download_origin)}/}
     else
       %r{#{Regexp.escape(path)}}
     end

@@ -189,11 +189,16 @@ class TestRunner:
                 return httpx.Response(500, content=b'{"error":"No more mock responses"}', headers={"Content-Type": "application/json"})
 
         if self._test["operation"] == "DownloadURL":
-            # Catch-all on the API host: the SDK rewrites the synthetic download
-            # URL onto base_url, then resolves a relative Location to a second
-            # path on the same host. Constraining to the host ensures a misroute
-            # to a different origin fails instead of consuming a queued response.
-            respx.route(method=method, url__regex=r"https://3\.basecampapi\.com/.*").mock(side_effect=side_effect)
+            # Catch-all on the active client's host: the SDK rewrites the synthetic
+            # download URL onto base_url, then resolves a relative Location to a
+            # second path on the same host. Constraining to the origin (derived
+            # from configOverrides.baseUrl when present) ensures a misroute to a
+            # different host fails instead of consuming a queued response.
+            overrides = self._test.get("configOverrides") or {}
+            download_base = overrides.get("baseUrl", "https://3.basecampapi.com")
+            parsed = urlparse(download_base)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            respx.route(method=method, url__regex=rf"{re.escape(origin)}/.*").mock(side_effect=side_effect)
         else:
             respx.route(method=method, url__regex=f".*{re.escape(path)}.*").mock(side_effect=side_effect)
 

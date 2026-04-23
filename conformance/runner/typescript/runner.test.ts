@@ -227,6 +227,9 @@ async function executeOperation(
       }
 
       case "DownloadURL": {
+        if (!tc.path) {
+          throw new Error("DownloadURL test case requires a non-empty path");
+        }
         const rawURL = "https://storage.3.basecamp.com" + tc.path;
         const result = await client.downloadURL(rawURL);
         // Fire-and-forget cancel — matches typescript/tests/download.test.ts.
