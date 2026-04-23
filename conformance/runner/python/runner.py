@@ -67,6 +67,8 @@ class OperationMapper:
     def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None, path: str = "") -> Any:
         match operation:
             case "DownloadURL":
+                if not path:
+                    raise ValueError("DownloadURL test case requires a non-empty path")
                 raw_url = "https://storage.3.basecamp.com" + path
                 return self._account.download_url(raw_url)
             case "ListProjects":

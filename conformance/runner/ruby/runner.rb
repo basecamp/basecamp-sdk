@@ -69,6 +69,7 @@ class OperationMapper
   def call(operation, path_params: {}, query_params: {}, body: nil, path: "")
     case operation
     when "DownloadURL"
+      raise "DownloadURL test case requires a non-empty path" if path.nil? || path.empty?
       raw_url = "https://storage.3.basecamp.com" + path
       @account.download_url(raw_url)
     when "ListProjects"

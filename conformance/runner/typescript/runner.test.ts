@@ -235,8 +235,9 @@ async function executeOperation(
         const result = await client.downloadURL(rawURL);
         // Fire-and-forget cancel — matches typescript/tests/download.test.ts.
         // Awaiting MSW's mocked ReadableStream.cancel() can hang past vitest's
-        // default 5s test timeout, so don't await it here.
-        result.body.cancel();
+        // default 5s test timeout, so don't await it here. void marks intent;
+        // .catch() suppresses any unhandled-rejection from the discarded Promise.
+        void result.body.cancel().catch(() => {});
         return {};
       }
 
