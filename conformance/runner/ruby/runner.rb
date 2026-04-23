@@ -287,6 +287,14 @@ class TestRunner
     end
   end
 
+  # Return captured headers at index (0-based; negative counts from end), or nil if out of range.
+  def request_headers_at(index)
+    requests = @tracker.requests
+    n = requests.size
+    resolved = index < 0 ? index + n : index
+    resolved >= 0 && resolved < n ? requests[resolved][:headers] : nil
+  end
+
   def verify_assertions(result:, error:)
     failures = []
 
@@ -425,25 +433,40 @@ class TestRunner
       when "headerInjected"
         header_name = assertion["path"]
         expected = assertion["expected"]
-        requests = @tracker.requests
-        if requests.empty?
-          failures << "Expected header #{header_name}=#{expected.inspect}, but no requests recorded"
+        idx = assertion["index"] || 0
+        headers = request_headers_at(idx)
+        if headers.nil?
+          failures << "Expected header #{header_name}=#{expected.inspect} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
         else
-          actual = requests.first[:headers]&.[](header_name)
+          actual = headers[header_name]
           unless actual == expected
-            failures << "Expected header #{header_name}=#{expected.inspect}, got #{actual.inspect}"
+            failures << "Expected header #{header_name}=#{expected.inspect} on request index #{idx}, got #{actual.inspect}"
           end
         end
 
       when "headerPresent"
         header_name = assertion["path"]
-        requests = @tracker.requests
-        if requests.empty?
-          failures << "Expected header #{header_name} to be present, but no requests recorded"
+        idx = assertion["index"] || 0
+        headers = request_headers_at(idx)
+        if headers.nil?
+          failures << "Expected header #{header_name} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
         else
-          actual = requests.first[:headers]&.[](header_name)
+          actual = headers[header_name]
           if actual.nil? || actual.empty?
-            failures << "Expected header #{header_name} to be present, but it was missing or empty"
+            failures << "Expected header #{header_name} on request index #{idx}, but it was empty or missing"
+          end
+        end
+
+      when "headerAbsent"
+        header_name = assertion["path"]
+        idx = assertion["index"] || 0
+        headers = request_headers_at(idx)
+        if headers.nil?
+          failures << "Expected header #{header_name} absent on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
+        else
+          actual = headers[header_name]
+          unless actual.nil? || actual.empty?
+            failures << "Expected header #{header_name} absent on request index #{idx}, got #{actual.inspect}"
           end
         end
 

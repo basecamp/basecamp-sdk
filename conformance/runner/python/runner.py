@@ -208,6 +208,18 @@ class TestRunner:
             for r in self._test.get("mockResponses", [])
         )
 
+    def _request_headers_at(self, index: int) -> dict | None:
+        """Return captured headers at index (0-based; negative counts from end), or None if out of range."""
+        requests = self._tracker.requests
+        n = len(requests)
+        if n == 0:
+            return None
+        if index < 0:
+            index += n
+        if index < 0 or index >= n:
+            return None
+        return requests[index]["headers"]
+
     def _verify_assertions(self, *, result: Any, error: Exception | None) -> TestResult:
         failures: list[str] = []
 
@@ -308,21 +320,36 @@ class TestRunner:
                 case "headerInjected":
                     header_name = assertion["path"]
                     expected = assertion["expected"]
-                    if not self._tracker.requests:
-                        failures.append(f"Expected header {header_name}={expected!r}, but no requests recorded")
+                    idx = assertion.get("index", 0)
+                    headers = self._request_headers_at(idx)
+                    if headers is None:
+                        failures.append(f"Expected header {header_name}={expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
                     else:
-                        actual = self._tracker.requests[0]["headers"].get(header_name.lower())
+                        actual = headers.get(header_name.lower())
                         if actual != expected:
-                            failures.append(f"Expected header {header_name}={expected!r}, got {actual!r}")
+                            failures.append(f"Expected header {header_name}={expected!r} on request index {idx}, got {actual!r}")
 
                 case "headerPresent":
                     header_name = assertion["path"]
-                    if not self._tracker.requests:
-                        failures.append(f"Expected header {header_name} to be present, but no requests recorded")
+                    idx = assertion.get("index", 0)
+                    headers = self._request_headers_at(idx)
+                    if headers is None:
+                        failures.append(f"Expected header {header_name} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
                     else:
-                        actual = self._tracker.requests[0]["headers"].get(header_name.lower())
+                        actual = headers.get(header_name.lower())
                         if not actual:
-                            failures.append(f"Expected header {header_name} to be present, but it was missing")
+                            failures.append(f"Expected header {header_name} on request index {idx}, but it was empty or missing")
+
+                case "headerAbsent":
+                    header_name = assertion["path"]
+                    idx = assertion.get("index", 0)
+                    headers = self._request_headers_at(idx)
+                    if headers is None:
+                        failures.append(f"Expected header {header_name} absent on request index {idx}, but only {self._tracker.request_count} requests were recorded")
+                    else:
+                        actual = headers.get(header_name.lower())
+                        if actual:
+                            failures.append(f"Expected header {header_name} absent on request index {idx}, got {actual!r}")
 
                 case "requestScheme":
                     expected = assertion["expected"]

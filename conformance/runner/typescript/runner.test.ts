@@ -33,6 +33,7 @@ interface Assertion {
   min?: number;
   max?: number;
   path?: string;
+  index?: number;
 }
 
 interface TestCase {
@@ -358,6 +359,19 @@ function installMockHandlers(tc: TestCase): {
 // Assertion checker
 // =============================================================================
 
+/** Resolve captured headers at index (0-based; negative counts from end), or undefined if out of range. */
+function requestHeadersAt(
+  all: Record<string, string>[],
+  index: number,
+): Record<string, string> | undefined {
+  const n = all.length;
+  if (n === 0) return undefined;
+  let i = index;
+  if (i < 0) i += n;
+  if (i < 0 || i >= n) return undefined;
+  return all[i];
+}
+
 function checkAssertions(
   tc: TestCase,
   tracker: ReturnType<typeof installMockHandlers>,
@@ -452,16 +466,35 @@ function checkAssertions(
 
       case "headerPresent": {
         const headerName = assertion.path!;
-        const headers = tracker.requestHeaders();
-        expect(
-          headers.length,
-          `[${tc.name}] expected at least one request for header presence check`,
-        ).toBeGreaterThan(0);
-        const actual = headers[0]![headerName.toLowerCase()];
+        const idx = assertion.index ?? 0;
+        const headers = requestHeadersAt(tracker.requestHeaders(), idx);
+        if (headers === undefined) {
+          throw new Error(
+            `[${tc.name}] expected header ${headerName} on request index ${idx}, but only ${tracker.requestCount()} requests were recorded`,
+          );
+        }
+        const actual = headers[headerName.toLowerCase()];
         expect(
           actual,
-          `[${tc.name}] expected header ${headerName} to be present, but it was empty or missing`,
+          `[${tc.name}] expected header ${headerName} on request index ${idx}, but it was empty or missing`,
         ).toBeTruthy();
+        break;
+      }
+
+      case "headerAbsent": {
+        const headerName = assertion.path!;
+        const idx = assertion.index ?? 0;
+        const headers = requestHeadersAt(tracker.requestHeaders(), idx);
+        if (headers === undefined) {
+          throw new Error(
+            `[${tc.name}] expected header ${headerName} absent on request index ${idx}, but only ${tracker.requestCount()} requests were recorded`,
+          );
+        }
+        const actual = headers[headerName.toLowerCase()];
+        expect(
+          actual,
+          `[${tc.name}] expected header ${headerName} absent on request index ${idx}, got "${actual}"`,
+        ).toBeFalsy();
         break;
       }
 
@@ -553,15 +586,17 @@ function checkAssertions(
       case "headerInjected": {
         const headerName = assertion.path!;
         const expected = String(assertion.expected);
-        const headers = tracker.requestHeaders();
-        expect(
-          headers.length,
-          `[${tc.name}] expected at least one request for header check`,
-        ).toBeGreaterThan(0);
-        const actual = headers[0]![headerName.toLowerCase()];
+        const idx = assertion.index ?? 0;
+        const headers = requestHeadersAt(tracker.requestHeaders(), idx);
+        if (headers === undefined) {
+          throw new Error(
+            `[${tc.name}] expected header ${headerName}="${expected}" on request index ${idx}, but only ${tracker.requestCount()} requests were recorded`,
+          );
+        }
+        const actual = headers[headerName.toLowerCase()];
         expect(
           actual,
-          `[${tc.name}] expected header ${headerName}="${expected}", got "${actual}"`,
+          `[${tc.name}] expected header ${headerName}="${expected}" on request index ${idx}, got "${actual}"`,
         ).toBe(expected);
         break;
       }
