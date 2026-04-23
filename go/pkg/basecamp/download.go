@@ -168,15 +168,14 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 			r.StatusCode == http.StatusBadGateway ||
 			r.StatusCode == http.StatusServiceUnavailable ||
 			r.StatusCode == http.StatusGatewayTimeout:
-			// Drain up to MaxErrorBodyBytes so the connection can return to
-			// the keep-alive pool before the next retry. checkResponse only
-			// uses the first maxErrorMessageLen*2 bytes for the error message.
-			drained, _ := io.ReadAll(io.LimitReader(r.Body, MaxErrorBodyBytes))
+			// Read only the prefix checkResponse needs for the error message,
+			// then drain the remainder up to MaxErrorBodyBytes so the
+			// connection can return to the keep-alive pool before the next
+			// retry. Reading everything up front would allocate up to 1 MB
+			// per retry even though we only consume ~1 KB of it.
+			bodyForErr, _ := io.ReadAll(io.LimitReader(r.Body, int64(maxErrorMessageLen*2)))
+			_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, MaxErrorBodyBytes))
 			_ = r.Body.Close()
-			bodyForErr := drained
-			if len(bodyForErr) > maxErrorMessageLen*2 {
-				bodyForErr = bodyForErr[:maxErrorMessageLen*2]
-			}
 			lastErr = checkResponse(r, bodyForErr)
 			if r.StatusCode == http.StatusTooManyRequests {
 				retryAfter = parseRetryAfter(r.Header.Get("Retry-After"))
@@ -220,9 +219,11 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	case resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 303 ||
 		resp.StatusCode == 307 || resp.StatusCode == 308:
 		location := resp.Header.Get("Location")
-		// Drain a bounded prefix of the body before close so the underlying
-		// connection can be returned to the keep-alive pool for hop 2.
-		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		// Drain the redirect body up to MaxErrorBodyBytes before close so the
+		// underlying connection can return to the keep-alive pool for hop 2.
+		// net/http requires reading to EOF for connection reuse; the cap
+		// guards against an adversarial server sending unbounded bytes.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, MaxErrorBodyBytes))
 		_ = resp.Body.Close()
 		if location == "" {
 			return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d with no Location header", resp.StatusCode))
