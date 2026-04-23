@@ -1,0 +1,27 @@
+conformance/schema.json
+  28a57320a1b71fa5 90,118-121
+conformance/tests/downloads.json
+  28a57320a1b71fa5 15-16,52-53,72-73
+conformance/runner/go/main.go
+  28a57320a1b71fa5 67-94,703-706,708,710,715-729,731-732
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b2df40fb6f0689ec9cc55b7befb37b3154d55290",
+  "prompts": {
+    "28a57320a1b71fa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a75ae23-55da-4eaf-913e-149f82b1ca37",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 1253,
+      "total_deletions": 1203,
+      "accepted_lines": 832,
+      "overriden_lines": 0
+    }
+  }
+}
