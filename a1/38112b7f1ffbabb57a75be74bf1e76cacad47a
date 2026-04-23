@@ -1,0 +1,27 @@
+conformance/tests/uploads_download.json
+  1b5c1196d613a7eb 1-39
+conformance/runner/go/main.go
+  1b5c1196d613a7eb 526-537
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  1b5c1196d613a7eb 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a138112b7f1ffbabb57a75be74bf1e76cacad47a",
+  "prompts": {
+    "1b5c1196d613a7eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5088c83-ce8f-4e93-a939-be274f847af5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2767,
+      "overriden_lines": 0
+    }
+  }
+}
