@@ -8,14 +8,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import type { UploadsService } from "../../src/generated/services/uploads.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
+// Infer the service type from client.uploads so download() is visible on the
+// type (the subclass lives in src/services/uploads-extensions.ts).
+type UploadsServiceT = ReturnType<typeof createBasecampClient>["uploads"];
+
 describe("UploadsService", () => {
-  let service: UploadsService;
+  let service: UploadsServiceT;
 
   beforeEach(() => {
     vi.clearAllMocks();
