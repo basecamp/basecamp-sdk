@@ -1,0 +1,25 @@
+scripts/check-auth-routable-consumers.sh
+  ec52a9416af4b778 11-17
+.github/workflows/test.yml
+  ec52a9416af4b778 73-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "efc2eafd057829ea56f8b1500d16466fe5d152e0",
+  "prompts": {
+    "ec52a9416af4b778": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0af7478e-965e-4b2f-8eb3-b659e64bcd7b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 4,
+      "accepted_lines": 803,
+      "overriden_lines": 0
+    }
+  }
+}
