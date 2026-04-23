@@ -1,0 +1,34 @@
+python/tests/services/test_uploads.py
+  1b5c1196d613a7eb 1-142
+conformance/runner/python/runner.py
+  1b5c1196d613a7eb 116-117,376,384,393
+  28a57320a1b71fa5 375,379-383,388-392
+python/src/basecamp/services/__init__.py
+  1b5c1196d613a7eb 2,4-9
+python/src/basecamp/async_client.py
+  1b5c1196d613a7eb 264
+python/src/basecamp/services/uploads.py
+  1b5c1196d613a7eb 1-45
+python/src/basecamp/client.py
+  1b5c1196d613a7eb 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "281f6e3d9a3700e2fa7c5397508d263bfc2e3364",
+  "prompts": {
+    "1b5c1196d613a7eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5088c83-ce8f-4e93-a939-be274f847af5",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 201,
+      "overriden_lines": 0
+    }
+  }
+}
