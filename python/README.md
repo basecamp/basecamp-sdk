@@ -310,7 +310,8 @@ result = await account.uploads.download(upload_id=1069479400)
 ```
 
 For any authenticated download URL (e.g. a `download_url` you already
-have in hand), use `Client.download_url` / `AsyncClient.download_url`:
+have in hand), use `AccountClient.download_url` /
+`AsyncAccountClient.download_url`:
 
 ```python
 result = account.download_url(url)          # sync
