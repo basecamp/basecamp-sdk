@@ -45,6 +45,7 @@ use basecamp.traits#basecampPagination
 use basecamp.traits#basecampIdempotent
 use basecamp.traits#basecampMultipart
 use basecamp.traits#basecampSensitive
+use basecamp.traits#basecampAuthRoutableUrl
 
 /// Basecamp API
 @restJson1
@@ -3038,6 +3039,7 @@ structure Upload {
   byte_size: Long
   width: Integer
   height: Integer
+  @basecampAuthRoutableUrl
   download_url: String
   filename: String
   boosts_count: Integer
@@ -3840,6 +3842,7 @@ structure CampfireLineAttachment {
   filename: String
   content_type: String
   byte_size: Long
+  @basecampAuthRoutableUrl
   download_url: String
 }
 

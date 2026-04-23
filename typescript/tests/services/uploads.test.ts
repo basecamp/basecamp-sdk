@@ -37,7 +37,7 @@ describe("UploadsService", () => {
         filename: "report.pdf",
         content_type: "application/pdf",
         byte_size: 1024000,
-        download_url: "https://example.com/download/report.pdf",
+        download_url: "https://3.basecampapi.com/12345/blobs/abcd/download/report.pdf",
         status: "active",
       };
 
