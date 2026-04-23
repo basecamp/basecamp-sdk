@@ -7,13 +7,16 @@ set -euo pipefail
 # authenticated hop 1 first. Any other caller is either re-inventing the
 # two-hop flow or skipping hop 1.
 
-# Rule 1: any reference to fetchSignedDownload( in non-test Go code outside
+# Rule 1: any reference to fetchSignedDownload in non-test Go code outside
 # download.go is a violation. Uses `git grep` (only tracked files, clean
 # pathspec for excluding tests) and a POSIX word-boundary — `(^|[^[:alnum:]_])`
 # rather than `\b` — so the pattern works on any POSIX ERE, not just the
-# GNU/BSD extension. The broad match intentionally also catches doc-comment
-# examples; stale examples warrant review.
-EXTERNAL=$(git grep -nE '(^|[^[:alnum:]_])fetchSignedDownload[[:space:]]*\(' \
+# GNU/BSD extension. The identifier is matched whether it is followed by `(`
+# (a direct call) or any other non-word boundary — catches method-value
+# captures like `fn := c.fetchSignedDownload` that would bypass a
+# `\(`-anchored pattern, plus doc-comment mentions (stale examples warrant
+# review).
+EXTERNAL=$(git grep -nE '(^|[^[:alnum:]_])fetchSignedDownload([^[:alnum:]_]|$)' \
   -- 'go/pkg/basecamp/' ':!*_test.go' \
   | grep -v '^go/pkg/basecamp/download\.go:' || true)
 

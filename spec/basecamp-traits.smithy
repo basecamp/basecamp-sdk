@@ -109,9 +109,11 @@ structure basecampSensitive {
 ///   4. On direct 2xx, stream the first response body as-is.
 ///   5. Tests that exercise the download flow MUST stub with a URL
 ///      whose host matches the configured API base and whose path
-///      matches the fixture shape (e.g.
-///      `/{accountId}/buckets/{bucketId}/uploads/{id}/download/{filename}`),
-///      AND MUST assert the unauthenticated hop actually fired.
+///      matches the fixture shape for the resource:
+///      `/{accountId}/blobs/{blob}/download/{filename}` for Upload,
+///      `/{accountId}/buckets/{bucketId}/uploads/{id}/download/{filename}`
+///      for CampfireLineAttachment. The test MUST also assert the
+///      unauthenticated hop actually fired.
 ///      "No assertion fired" and "assertion fired and passed" are
 ///      indistinguishable otherwise — both masked the bug behind
 ///      PR #278. Schema-shape-only tests (unmarshaling assertions that
