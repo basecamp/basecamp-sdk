@@ -64,8 +64,11 @@ class OperationMapper:
     def __init__(self, account_client):
         self._account = account_client
 
-    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None) -> Any:
+    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None, path: str = "") -> Any:
         match operation:
+            case "DownloadURL":
+                raw_url = "https://storage.3.basecamp.com" + path
+                return self._account.download_url(raw_url)
             case "ListProjects":
                 return self._account.projects.list()
             case "GetProject":
@@ -144,6 +147,7 @@ class TestRunner:
                     path_params=self._test.get("pathParams", {}),
                     query_params=self._test.get("queryParams", {}),
                     body=self._test.get("requestBody"),
+                    path=self._test.get("path", ""),
                 )
                 return self._verify_assertions(result=result, error=None)
             except Exception as e:
@@ -184,7 +188,10 @@ class TestRunner:
             else:
                 return httpx.Response(500, content=b'{"error":"No more mock responses"}', headers={"Content-Type": "application/json"})
 
-        respx.route(method=method, url__regex=f".*{re.escape(path)}.*").mock(side_effect=side_effect)
+        if self._test["operation"] == "DownloadURL":
+            respx.route(method=method).mock(side_effect=side_effect)
+        else:
+            respx.route(method=method, url__regex=f".*{re.escape(path)}.*").mock(side_effect=side_effect)
 
     def _auto_paginates(self) -> bool:
         return any(
@@ -372,24 +379,18 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
-    _DOWNLOAD_SKIP = "Python runner does not yet dispatch DownloadURL (tracked as follow-up)"
+    _DOWNLOAD_RETRY_SKIP = "Python SDK download path uses get_no_retry; retry on 5xx / Retry-After is not implemented"
     _MULTIHOP_SKIP = "Python runner's respx stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)"
     SKIPS: set[str] = {
         "maxItems caps results across pages",
-        "DownloadURL auth'd first hop 302s to signed URL",
-        "DownloadURL direct 2xx body",
         "DownloadURL retries on 503 at the auth'd first hop",
         "DownloadURL honors Retry-After on 429 at the auth'd first hop",
-        "DownloadURL surfaces redirect with no Location",
         "UploadsDownload delegates through DownloadURL primitive",
     }
     SKIP_REASONS: dict[str, str] = {
         "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
-        "DownloadURL auth'd first hop 302s to signed URL": _DOWNLOAD_SKIP,
-        "DownloadURL direct 2xx body": _DOWNLOAD_SKIP,
-        "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_SKIP,
-        "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_SKIP,
-        "DownloadURL surfaces redirect with no Location": _DOWNLOAD_SKIP,
+        "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
+        "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
         "UploadsDownload delegates through DownloadURL primitive": _MULTIHOP_SKIP,
     }
 

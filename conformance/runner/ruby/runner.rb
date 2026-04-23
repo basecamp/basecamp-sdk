@@ -66,8 +66,11 @@ class OperationMapper
     @account = account_client
   end
 
-  def call(operation, path_params: {}, query_params: {}, body: nil)
+  def call(operation, path_params: {}, query_params: {}, body: nil, path: "")
     case operation
+    when "DownloadURL"
+      raw_url = "https://storage.3.basecamp.com" + path
+      @account.download_url(raw_url)
     when "ListProjects"
       @account.projects.list.to_a
     when "GetProject"
@@ -170,15 +173,12 @@ RUBY_SKIPS = Set.new([
   "Missing X-Total-Count returns zero",
   "Pagination stops at maxPages safety cap",
   "maxItems caps results across pages",
-  "DownloadURL auth'd first hop 302s to signed URL",
-  "DownloadURL direct 2xx body",
   "DownloadURL retries on 503 at the auth'd first hop",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop",
-  "DownloadURL surfaces redirect with no Location",
   "UploadsDownload delegates through DownloadURL primitive",
 ].freeze)
 
-DOWNLOAD_SKIP = "Ruby runner does not yet dispatch DownloadURL (tracked as follow-up)".freeze
+DOWNLOAD_RETRY_SKIP = "Ruby SDK download path uses http.get_no_retry; retry on 5xx / Retry-After is not implemented".freeze
 MULTIHOP_SKIP = "Ruby runner's WebMock stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)".freeze
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
@@ -187,11 +187,8 @@ RUBY_SKIP_REASONS = {
   "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",
   "maxItems caps results across pages" => "Ruby SDK paginate doesn't support maxItems",
-  "DownloadURL auth'd first hop 302s to signed URL" => DOWNLOAD_SKIP,
-  "DownloadURL direct 2xx body" => DOWNLOAD_SKIP,
-  "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_SKIP,
-  "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_SKIP,
-  "DownloadURL surfaces redirect with no Location" => DOWNLOAD_SKIP,
+  "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
+  "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
   "UploadsDownload delegates through DownloadURL primitive" => MULTIHOP_SKIP,
 }.freeze
 
@@ -212,7 +209,8 @@ class TestRunner
         @test["operation"],
         path_params: @test["pathParams"] || {},
         query_params: @test["queryParams"] || {},
-        body: @test["requestBody"]
+        body: @test["requestBody"],
+        path: @test["path"] || ""
       )
       verify_assertions(result: result, error: nil)
     rescue StandardError => e
@@ -243,7 +241,11 @@ class TestRunner
 
     # Register the stub with a block to track requests and return queued responses
     method = @test["method"]&.downcase&.to_sym || :get
-    url_pattern = %r{#{Regexp.escape(path)}}
+    url_pattern = if @test["operation"] == "DownloadURL"
+      %r{.*}
+    else
+      %r{#{Regexp.escape(path)}}
+    end
 
     stub = WebMock.stub_request(method, url_pattern)
 

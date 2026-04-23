@@ -71,16 +71,10 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK retry middleware yields at most 1 retry per middleware pass",
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
-  "DownloadURL auth'd first hop 302s to signed URL":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
-  "DownloadURL direct 2xx body":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
   "DownloadURL retries on 503 at the auth'd first hop":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
-  "DownloadURL surfaces redirect with no Location":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "UploadsDownload delegates through DownloadURL primitive":
     "TS runner's MSW stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)",
 };
@@ -232,8 +226,18 @@ async function executeOperation(
         break;
       }
 
+      case "DownloadURL": {
+        const rawURL = "https://storage.3.basecamp.com" + tc.path;
+        const result = await client.downloadURL(rawURL);
+        // Fire-and-forget cancel — matches typescript/tests/download.test.ts.
+        // Awaiting MSW's mocked ReadableStream.cancel() can hang past vitest's
+        // default 5s test timeout, so don't await it here.
+        result.body.cancel();
+        return {};
+      }
+
       default:
-        throw new Error(`Unknown operation: ${tc.operation}`);
+      throw new Error(`Unknown operation: ${tc.operation}`);
     }
 
     // Success path: no error
