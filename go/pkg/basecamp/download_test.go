@@ -319,8 +319,10 @@ func TestDownloadURL_RedirectNoLocation(t *testing.T) {
 // --- Error handling ---
 
 func TestDownloadURL_APIError(t *testing.T) {
-	// 5xx status codes exercise the retry loop (see TestDownloadURL_AuthHopRetriesOn503);
-	// this table covers the non-retryable error-mapping paths.
+	// 502/503/504 exercise the retry loop (see TestDownloadURL_AuthHopRetriesOn503);
+	// this table covers non-retryable error-mapping paths, including 500 which
+	// fetchAPIDownload intentionally does not retry (matches the @retryable set
+	// in Client.singleRequest).
 	tests := []struct {
 		name     string
 		status   int
@@ -328,11 +330,14 @@ func TestDownloadURL_APIError(t *testing.T) {
 	}{
 		{"not found", http.StatusNotFound, CodeNotFound},
 		{"forbidden", http.StatusForbidden, CodeForbidden},
+		{"server error", http.StatusInternalServerError, CodeAPI},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var requests atomic.Int32
 			apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests.Add(1)
 				w.WriteHeader(tt.status)
 			}))
 			defer apiServer.Close()
@@ -354,6 +359,9 @@ func TestDownloadURL_APIError(t *testing.T) {
 			}
 			if sdkErr.Code != tt.wantCode {
 				t.Errorf("expected code %q, got %q", tt.wantCode, sdkErr.Code)
+			}
+			if got := requests.Load(); got != 1 {
+				t.Errorf("expected 1 request (non-retryable), got %d", got)
 			}
 		})
 	}

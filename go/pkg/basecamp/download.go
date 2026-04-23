@@ -87,12 +87,14 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 // through an unauthenticated second hop to a signed URL.
 //
 // The authenticated hop is wrapped in the SDK-standard GET retry loop:
-// network errors and 429/5xx responses are retried up to MaxRetries with
-// exponential backoff, honoring Retry-After on 429. Retries stop once the
-// response enters 2xx/3xx dispatch — the body then belongs to the caller
-// (2xx direct) or has already been discarded in favor of the Location hop
-// (3xx). Not sharing doWithRetry because that path is tightly coupled to
-// the JSON-response generated client; this loop owns raw *http.Response.
+// network errors and 429/502/503/504 responses are retried up to MaxRetries
+// with exponential backoff, honoring Retry-After on 429. Other 5xx statuses
+// (500 and up) are surfaced without retry, matching Client.singleRequest's
+// @retryable markings. Retries stop once the response enters 2xx/3xx
+// dispatch — the body then belongs to the caller (2xx direct) or has
+// already been discarded in favor of the Location hop (3xx). Not sharing
+// doWithRetry because that path is tightly coupled to the JSON-response
+// generated client; this loop owns raw *http.Response.
 //
 // Callers own operation-hook lifecycle and are responsible for closing the
 // returned Body. Filename is derived from rawURL; callers may override.
@@ -205,12 +207,10 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 
 	if resp == nil {
-		// maxAttempts <= 0 skips the loop entirely and leaves lastErr nil;
-		// surface that as a usage error rather than wrapping nil with %w.
-		if lastErr == nil {
-			return nil, ErrUsage(fmt.Sprintf("download aborted: MaxRetries (%d) must be >= 1", maxAttempts))
-		}
-		return nil, fmt.Errorf("download failed after %d attempts: %w", maxAttempts, lastErr)
+		// Exhaustion after real attempts is handled inside the loop (`return
+		// nil, lastErr`). The only path that reaches this fallback is a
+		// misconfigured MaxRetries<=0 that skips the loop entirely.
+		return nil, ErrUsage(fmt.Sprintf("download aborted: MaxRetries (%d) must be >= 1", maxAttempts))
 	}
 
 	switch {
