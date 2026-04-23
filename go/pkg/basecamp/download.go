@@ -130,9 +130,14 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		},
 	}
 
-	// Iteration semantics mirror Client.doRequestURL: MaxRetries is the total
-	// attempt count, and a misconfigured MaxRetries<=0 yields zero attempts and
-	// an error (same "failed after N attempts" shape as the main GET loop).
+	// MaxRetries is the total attempt count for this loop, matching
+	// Client.doRequestURL's iteration. MaxRetries<=0 skips the loop entirely
+	// and is surfaced as ErrUsage by the fallback after the loop. On
+	// exhaustion, the last per-attempt error is returned directly. Retry-
+	// eligible statuses are aligned with the main GET loop's @retryable set:
+	// 429 (rate limit) and 502/503/504 (gateway errors), plus transport
+	// errors. 500 and other non-@retryable 5xx fall through to the dispatch
+	// switch and surface as errors without retry.
 	maxAttempts := c.httpOpts.MaxRetries
 
 	var resp *http.Response
@@ -155,10 +160,20 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		switch {
 		case doErr != nil:
 			lastErr = ErrNetwork(doErr)
-		case r.StatusCode == http.StatusTooManyRequests || (r.StatusCode >= 500 && r.StatusCode < 600):
-			body, _ := io.ReadAll(io.LimitReader(r.Body, maxErrorMessageLen*2))
+		case r.StatusCode == http.StatusTooManyRequests ||
+			r.StatusCode == http.StatusBadGateway ||
+			r.StatusCode == http.StatusServiceUnavailable ||
+			r.StatusCode == http.StatusGatewayTimeout:
+			// Drain up to MaxErrorBodyBytes so the connection can return to
+			// the keep-alive pool before the next retry. checkResponse only
+			// uses the first maxErrorMessageLen*2 bytes for the error message.
+			drained, _ := io.ReadAll(io.LimitReader(r.Body, MaxErrorBodyBytes))
 			_ = r.Body.Close()
-			lastErr = checkResponse(r, body)
+			bodyForErr := drained
+			if len(bodyForErr) > maxErrorMessageLen*2 {
+				bodyForErr = bodyForErr[:maxErrorMessageLen*2]
+			}
+			lastErr = checkResponse(r, bodyForErr)
 			if r.StatusCode == http.StatusTooManyRequests {
 				retryAfter = parseRetryAfter(r.Header.Get("Retry-After"))
 			}
