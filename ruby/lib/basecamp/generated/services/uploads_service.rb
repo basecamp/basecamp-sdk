@@ -57,6 +57,23 @@ module Basecamp
           http_post("/vaults/#{vault_id}/uploads.json", body: compact_params(attachable_sgid: attachable_sgid, description: description, base_name: base_name, subscriptions: subscriptions)).json
         end
       end
+
+      # Download an upload's file content in one call.
+      # Fetches upload metadata, then delegates to the AccountClient download
+      # primitive so the auth'd-hop + 302-follow flow lives in one place.
+      # @param upload_id [Integer] upload id ID
+      # @return [Basecamp::DownloadResult]
+      def download(upload_id:)
+        with_operation(service: "uploads", operation: "download", is_mutation: false, resource_id: upload_id) do
+          upload = get(upload_id: upload_id)
+          url = upload["download_url"]
+          raise UsageError.new("upload #{upload_id} has no download_url") if url.nil? || url.empty?
+
+          result = @client.download_url(url)
+          filename = upload["filename"]
+          filename.to_s.empty? ? result : result.with(filename: filename)
+        end
+      end
     end
   end
 end
