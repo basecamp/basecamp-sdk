@@ -385,6 +385,19 @@ function checkAssertions(
     (r) => r.headers?.["Link"]?.includes('rel="next"'),
   );
 
+  // DownloadURL implicit invariant: hop 1 must hit the test case path.
+  // The MSW handler is origin-wide so hop 2's relative-resolved URL is
+  // served, but a regression that misroutes hop 1 to a different path on
+  // the same origin would otherwise pass silently.
+  if (tc.operation === "DownloadURL") {
+    const recordedPaths = tracker.requestPaths();
+    if (recordedPaths.length > 0 && recordedPaths[0] !== tc.path) {
+      throw new Error(
+        `[${tc.name}] DownloadURL hop 1 expected path ${tc.path}, got ${recordedPaths[0]}`,
+      );
+    }
+  }
+
   for (const assertion of tc.assertions) {
     switch (assertion.type) {
       case "requestCount": {

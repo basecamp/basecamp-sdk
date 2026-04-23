@@ -223,6 +223,16 @@ class TestRunner:
     def _verify_assertions(self, *, result: Any, error: Exception | None) -> TestResult:
         failures: list[str] = []
 
+        # DownloadURL implicit invariant: hop 1 must hit the test case path.
+        # The mock route is origin-wide so hop 2's relative-resolved URL is
+        # served, but a regression that misroutes hop 1 to a different path
+        # on the same origin would otherwise pass silently.
+        if self._test["operation"] == "DownloadURL" and self._tracker.requests:
+            expected_path = self._test["path"]
+            actual_path = urlparse(self._tracker.requests[0]["url"]).path
+            if actual_path != expected_path:
+                failures.append(f"DownloadURL hop 1 expected path {expected_path!r}, got {actual_path!r}")
+
         for assertion in self._test.get("assertions", []):
             match assertion["type"]:
                 case "requestCount":

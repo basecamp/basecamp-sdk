@@ -298,6 +298,18 @@ class TestRunner
   def verify_assertions(result:, error:)
     failures = []
 
+    # DownloadURL implicit invariant: hop 1 must hit the test case path.
+    # The mock route is origin-wide so hop 2's relative-resolved URL is
+    # served, but a regression that misroutes hop 1 to a different path
+    # on the same origin would otherwise pass silently.
+    if @test["operation"] == "DownloadURL" && @tracker.requests.any?
+      expected_path = @test["path"]
+      actual_path = URI.parse(@tracker.requests.first[:uri]).path
+      unless actual_path == expected_path
+        failures << "DownloadURL hop 1 expected path #{expected_path.inspect}, got #{actual_path.inspect}"
+      end
+    end
+
     (@test["assertions"] || []).each do |assertion|
       case assertion["type"]
       when "requestCount"
