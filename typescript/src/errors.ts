@@ -247,6 +247,12 @@ export const Errors = {
     }),
 
   /**
+   * Creates a usage error — invalid arguments, missing configuration.
+   */
+  usage: (message: string, hint?: string): BasecampError =>
+    new BasecampError("usage", message, { hint }),
+
+  /**
    * Creates a generic API error.
    */
   apiError: (

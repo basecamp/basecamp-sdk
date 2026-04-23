@@ -306,8 +306,8 @@ export {
   type UpdateDocumentRequest,
 } from "./generated/services/documents.js";
 
+export { UploadsService } from "./services/uploads-extensions.js";
 export {
-  UploadsService,
   type Upload,
   type CreateUploadRequest,
   type UpdateUploadRequest,
