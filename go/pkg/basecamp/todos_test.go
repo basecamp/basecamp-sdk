@@ -3,9 +3,11 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -492,19 +494,25 @@ func TestTodoListOptions_Defaults(t *testing.T) {
 
 func TestTodoListOptions_StatusFilter(t *testing.T) {
 	tests := []struct {
-		name   string
-		status string
+		name      string
+		status    string
+		completed bool
 	}{
-		{"completed", "completed"},
-		{"pending", "pending"},
-		{"empty", ""},
+		{name: "archived", status: "archived"},
+		{name: "trashed", status: "trashed"},
+		{name: "completed bool", completed: true},
+		{name: "archived + completed", status: "archived", completed: true},
+		{name: "empty", status: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := &TodoListOptions{Status: tt.status}
+			opts := &TodoListOptions{Status: tt.status, Completed: tt.completed}
 			if opts.Status != tt.status {
 				t.Errorf("expected status %q, got %q", tt.status, opts.Status)
+			}
+			if opts.Completed != tt.completed {
+				t.Errorf("expected completed %t, got %t", tt.completed, opts.Completed)
 			}
 		})
 	}
@@ -949,6 +957,82 @@ func testTodosServer(t *testing.T, handler http.HandlerFunc) *TodosService {
 	client := NewClient(cfg, token)
 	account := client.ForAccount("99999")
 	return account.Todos()
+}
+
+func TestTodosService_List_QueryParameters(t *testing.T) {
+	fixture := loadTodosFixture(t, "list.json")
+
+	tests := []struct {
+		name          string
+		opts          *TodoListOptions
+		wantStatus    string
+		wantCompleted string
+	}{
+		{name: "nil options", opts: nil},
+		{name: "completed bool", opts: &TodoListOptions{Completed: true}, wantCompleted: "true"},
+		{name: "archived status", opts: &TodoListOptions{Status: "archived"}, wantStatus: "archived"},
+		{name: "trashed status", opts: &TodoListOptions{Status: "trashed"}, wantStatus: "trashed"},
+		{name: "archived + completed", opts: &TodoListOptions{Status: "archived", Completed: true}, wantStatus: "archived", wantCompleted: "true"},
+		{name: "trashed + completed", opts: &TodoListOptions{Status: "trashed", Completed: true}, wantStatus: "trashed", wantCompleted: "true"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotQuery url.Values
+			svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != "GET" {
+					t.Errorf("expected GET, got %s", r.Method)
+				}
+				gotQuery = r.URL.Query()
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("X-Total-Count", "2")
+				w.WriteHeader(200)
+				_, _ = w.Write(fixture)
+			})
+
+			result, err := svc.List(context.Background(), 1069479519, tt.opts)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(result.Todos) != 2 {
+				t.Fatalf("expected 2 todos, got %d", len(result.Todos))
+			}
+			if tt.wantStatus == "" {
+				if gotQuery.Has("status") {
+					t.Fatalf("expected status to be absent, got %q", gotQuery.Get("status"))
+				}
+			} else if got := gotQuery.Get("status"); got != tt.wantStatus {
+				t.Fatalf("status query = %q, want %q", got, tt.wantStatus)
+			}
+			if tt.wantCompleted == "" {
+				if gotQuery.Has("completed") {
+					t.Fatalf("expected completed to be absent, got %q", gotQuery.Get("completed"))
+				}
+			} else if got := gotQuery.Get("completed"); got != tt.wantCompleted {
+				t.Fatalf("completed query = %q, want %q", got, tt.wantCompleted)
+			}
+		})
+	}
+}
+
+func TestTodosService_List_RejectsInvalidStatus(t *testing.T) {
+	// Server must never be reached — validation happens before the request.
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("handler should not be called for invalid status; got %s %s", r.Method, r.URL.Path)
+	})
+
+	for _, status := range []string{"completed", "pending", "active", "something-else"} {
+		t.Run(status, func(t *testing.T) {
+			_, err := svc.List(context.Background(), 1069479519, &TodoListOptions{Status: status})
+			if err == nil {
+				t.Fatalf("expected usage error for Status=%q, got nil", status)
+			}
+			apiErr, ok := errors.AsType[*Error](err)
+			if !ok || apiErr.Code != CodeUsage {
+				t.Fatalf("expected CodeUsage for Status=%q, got %T %v", status, err, err)
+			}
+		})
+	}
 }
 
 func TestTodosService_Update(t *testing.T) {

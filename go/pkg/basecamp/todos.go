@@ -95,10 +95,18 @@ type Bucket struct {
 
 // TodoListOptions specifies options for listing todos.
 type TodoListOptions struct {
-	// Status filters by completion status.
-	// "completed" returns completed todos, "pending" returns pending todos.
-	// Empty returns all todos.
+	// Status filters by recording lifecycle: "archived" or "trashed".
+	// Omit for the API default — incomplete todos with status inherited
+	// from the parent list. Unsupported values are rejected at the wrapper
+	// boundary (the BC3 server silently coerces them to nil, so we fail
+	// fast to surface bugs instead of returning unexpectedly-default
+	// results).
 	Status string
+
+	// Completed, when true, returns only completed todos.
+	// May be combined with Status (e.g. Status="archived", Completed=true
+	// to list archived completed todos).
+	Completed bool
 
 	// Limit is the maximum number of todos to return.
 	// If 0, uses DefaultTodoLimit (100). Use -1 for unlimited.
@@ -188,10 +196,17 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	// Build params for generated client
+	if opts != nil && opts.Status != "" && opts.Status != "archived" && opts.Status != "trashed" {
+		err = ErrUsage(fmt.Sprintf("todo list status must be empty, %q, or %q (got %q)", "archived", "trashed", opts.Status))
+		return nil, err
+	}
+
+	// Build params for generated client. Status and Completed are orthogonal
+	// upstream: Status filters by recording lifecycle (archived/trashed),
+	// Completed=true narrows to completed todos, and they may be combined.
 	var params *generated.ListTodosParams
-	if opts != nil && opts.Status != "" {
-		params = &generated.ListTodosParams{Status: opts.Status}
+	if opts != nil && (opts.Status != "" || opts.Completed) {
+		params = &generated.ListTodosParams{Status: opts.Status, Completed: opts.Completed}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
