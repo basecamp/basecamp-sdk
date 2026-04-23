@@ -86,6 +86,14 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 // hop, and either returns the 2xx body directly or follows a 3xx Location
 // through an unauthenticated second hop to a signed URL.
 //
+// The authenticated hop is wrapped in the SDK-standard GET retry loop:
+// network errors and 429/5xx responses are retried up to MaxRetries with
+// exponential backoff, honoring Retry-After on 429. Retries stop once the
+// response enters 2xx/3xx dispatch — the body then belongs to the caller
+// (2xx direct) or has already been discarded in favor of the Location hop
+// (3xx). Not sharing doWithRetry because that path is tightly coupled to
+// the JSON-response generated client; this loop owns raw *http.Response.
+//
 // Callers own operation-hook lifecycle and are responsible for closing the
 // returned Body. Filename is derived from rawURL; callers may override.
 func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*DownloadResult, error) {
@@ -107,16 +115,6 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 	rewrittenURL := rewritten.String()
 
-	// Hop 1: Authenticated API request (capture redirect)
-	req, err := http.NewRequestWithContext(ctx, "GET", rewrittenURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	if authErr := c.authStrategy.Authenticate(ctx, req); authErr != nil {
-		return nil, authErr
-	}
-	req.Header.Set("User-Agent", c.userAgent)
-
 	apiClient := &http.Client{
 		Transport: c.httpClient.Transport, // loggingTransport — fires hooks
 		Timeout:   0,                      // no client-level timeout — body may be streamed on direct 2xx
@@ -125,12 +123,63 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		},
 	}
 
-	ctx = contextWithAttempt(ctx, 1)
-	req = req.WithContext(ctx)
+	maxAttempts := c.httpOpts.MaxRetries
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
 
-	resp, err := apiClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
-	if err != nil {
-		return nil, ErrNetwork(err)
+	var resp *http.Response
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		attemptCtx := contextWithAttempt(ctx, attempt)
+
+		req, reqErr := http.NewRequestWithContext(attemptCtx, "GET", rewrittenURL, nil)
+		if reqErr != nil {
+			return nil, fmt.Errorf("failed to create request: %w", reqErr)
+		}
+		if authErr := c.authStrategy.Authenticate(attemptCtx, req); authErr != nil {
+			return nil, authErr
+		}
+		req.Header.Set("User-Agent", c.userAgent)
+
+		r, doErr := apiClient.Do(req) // #nosec G704 -- SDK HTTP client: URL is caller-configured
+
+		var retryAfter int
+		switch {
+		case doErr != nil:
+			lastErr = ErrNetwork(doErr)
+		case r.StatusCode == http.StatusTooManyRequests || (r.StatusCode >= 500 && r.StatusCode < 600):
+			body, _ := io.ReadAll(io.LimitReader(r.Body, maxErrorMessageLen*2))
+			_ = r.Body.Close()
+			lastErr = checkResponse(r, body)
+			if r.StatusCode == http.StatusTooManyRequests {
+				retryAfter = parseRetryAfter(r.Header.Get("Retry-After"))
+			}
+		default:
+			resp = r
+		}
+
+		if resp != nil {
+			break
+		}
+
+		if attempt >= maxAttempts {
+			return nil, lastErr
+		}
+
+		delay := c.backoffDelay(attempt)
+		if retryAfter > 0 {
+			delay = time.Duration(retryAfter) * time.Second
+		}
+		info := RequestInfo{Method: "GET", URL: rewrittenURL, Attempt: attempt}
+		c.hooks.OnRetry(ctx, info, attempt+1, lastErr)
+		c.logger.Debug("retrying download request", "attempt", attempt, "maxRetries", maxAttempts, "delay", delay, "error", lastErr)
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
 	}
 
 	switch {

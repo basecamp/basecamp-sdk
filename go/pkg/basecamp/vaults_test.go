@@ -740,19 +740,17 @@ func TestUploadsService_Download_S3Error(t *testing.T) {
 	defer s3Server.Close()
 
 	mux := http.NewServeMux()
+	apiServer := httptest.NewServer(mux)
+	defer apiServer.Close()
+
+	metadataBody, downloadPath := loadUploadFixture(t, apiServer.URL)
 	mux.HandleFunc("/12345/uploads/1069479400",
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			apiHost := "http://" + r.Host
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"id":           1069479400,
-				"title":        "logo.png",
-				"filename":     "logo.png",
-				"download_url": apiHost + "/12345/buckets/137/uploads/1069479400/download/logo.png",
-			})
+			_, _ = w.Write(metadataBody)
 		})
-	mux.HandleFunc("/12345/buckets/137/uploads/1069479400/download/logo.png",
+	mux.HandleFunc(downloadPath,
 		func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Authorization") == "" {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -761,8 +759,6 @@ func TestUploadsService_Download_S3Error(t *testing.T) {
 			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
 			w.WriteHeader(http.StatusFound)
 		})
-	apiServer := httptest.NewServer(mux)
-	defer apiServer.Close()
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL
@@ -796,19 +792,17 @@ func TestUploadsService_Download_Success(t *testing.T) {
 	defer s3Server.Close()
 
 	mux := http.NewServeMux()
+	apiServer := httptest.NewServer(mux)
+	defer apiServer.Close()
+
+	metadataBody, downloadPath := loadUploadFixture(t, apiServer.URL)
 	mux.HandleFunc("/12345/uploads/1069479400",
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			apiHost := "http://" + r.Host
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"id":           1069479400,
-				"title":        "logo.png",
-				"filename":     "logo.png",
-				"download_url": apiHost + "/12345/buckets/137/uploads/1069479400/download/logo.png",
-			})
+			_, _ = w.Write(metadataBody)
 		})
-	mux.HandleFunc("/12345/buckets/137/uploads/1069479400/download/logo.png",
+	mux.HandleFunc(downloadPath,
 		func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Authorization") == "" {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -817,8 +811,6 @@ func TestUploadsService_Download_Success(t *testing.T) {
 			w.Header().Set("Location", s3Server.URL+"/bucket/file.png")
 			w.WriteHeader(http.StatusFound)
 		})
-	apiServer := httptest.NewServer(mux)
-	defer apiServer.Close()
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = apiServer.URL
