@@ -123,10 +123,10 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		},
 	}
 
+	// Iteration semantics mirror Client.doRequestURL: MaxRetries is the total
+	// attempt count, and a misconfigured MaxRetries<=0 yields zero attempts and
+	// an error (same "failed after N attempts" shape as the main GET loop).
 	maxAttempts := c.httpOpts.MaxRetries
-	if maxAttempts < 1 {
-		maxAttempts = 1
-	}
 
 	var resp *http.Response
 	var lastErr error
@@ -182,10 +182,17 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 		}
 	}
 
+	if resp == nil {
+		return nil, fmt.Errorf("download failed after %d attempts: %w", maxAttempts, lastErr)
+	}
+
 	switch {
 	case resp.StatusCode == 301 || resp.StatusCode == 302 || resp.StatusCode == 303 ||
 		resp.StatusCode == 307 || resp.StatusCode == 308:
 		location := resp.Header.Get("Location")
+		// Drain a bounded prefix of the body before close so the underlying
+		// connection can be returned to the keep-alive pool for hop 2.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		_ = resp.Body.Close()
 		if location == "" {
 			return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("redirect %d with no Location header", resp.StatusCode))

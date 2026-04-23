@@ -568,12 +568,13 @@ func TestDownloadURL_GateRejection(t *testing.T) {
 // --- UploadsService.Download regression: second leg assertions ---
 
 func TestDownload_SecondLegNoAuth(t *testing.T) {
-	var secondLegHit bool
-	var s3AuthHeader string
+	var secondLegHit atomic.Bool
+	var s3AuthHeader atomic.Value
+	s3AuthHeader.Store("")
 
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		secondLegHit = true
-		s3AuthHeader = r.Header.Get("Authorization")
+		secondLegHit.Store(true)
+		s3AuthHeader.Store(r.Header.Get("Authorization"))
 		w.Header().Set("Content-Type", "image/png")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("pixels"))
@@ -614,21 +615,21 @@ func TestDownload_SecondLegNoAuth(t *testing.T) {
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
 
-	if !secondLegHit {
+	if !secondLegHit.Load() {
 		t.Fatal("second leg (signed URL fetch) was never reached")
 	}
-	if s3AuthHeader != "" {
-		t.Errorf("expected no Authorization header on S3 request, got %q", s3AuthHeader)
+	if auth := s3AuthHeader.Load().(string); auth != "" {
+		t.Errorf("expected no Authorization header on S3 request, got %q", auth)
 	}
 }
 
 func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	// Verify the bare client used for signed downloads has no client-level timeout.
 	// Use a fresh context.Background() so no preexisting deadline can confuse the check.
-	var secondLegHit bool
+	var secondLegHit atomic.Bool
 
 	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		secondLegHit = true
+		secondLegHit.Store(true)
 		// Assert no deadline on the request context — proves Timeout: 0 on the bare client
 		if _, hasDeadline := r.Context().Deadline(); hasDeadline {
 			t.Error("expected no deadline on S3 request context (bare client should have Timeout: 0)")
@@ -674,7 +675,7 @@ func TestDownload_SecondLegNoTimeout(t *testing.T) {
 	defer result.Body.Close()
 	io.Copy(io.Discard, result.Body)
 
-	if !secondLegHit {
+	if !secondLegHit.Load() {
 		t.Fatal("second leg (signed URL fetch) was never reached — no-deadline assertion did not run")
 	}
 }

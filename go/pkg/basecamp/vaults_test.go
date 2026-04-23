@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -846,7 +847,7 @@ func TestUploadsService_Download_DirectBody(t *testing.T) {
 	// assertion proves the metadata-filename override is in effect on the
 	// direct-2xx branch.
 	fileContent := "png bytes"
-	var downloadHit bool
+	var downloadHit atomic.Bool
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/12345/uploads/1069479400",
@@ -867,7 +868,7 @@ func TestUploadsService_Download_DirectBody(t *testing.T) {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			downloadHit = true
+			downloadHit.Store(true)
 			w.Header().Set("Content-Type", "image/png")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(fileContent))
@@ -887,7 +888,7 @@ func TestUploadsService_Download_DirectBody(t *testing.T) {
 	}
 	defer result.Body.Close()
 
-	if !downloadHit {
+	if !downloadHit.Load() {
 		t.Fatal("download endpoint was never reached")
 	}
 	if result.ContentType != "image/png" {
