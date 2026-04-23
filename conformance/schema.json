@@ -87,6 +87,7 @@
               "responseStatus",
               "responseBody",
               "headerPresent",
+              "headerAbsent",
               "headerValue",
               "errorType",
               "noError",
@@ -114,6 +115,10 @@
           "path": {
             "type": "string",
             "description": "JSONPath or dot-notation path for nested value assertions"
+          },
+          "index": {
+            "type": "integer",
+            "description": "Request index for headerPresent / headerAbsent / headerInjected (0-based; negative values index from the end, e.g. -1 = last request). Default 0."
           }
         }
       }

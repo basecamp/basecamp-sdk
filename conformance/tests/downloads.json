@@ -12,7 +12,8 @@
     "assertions": [
       {"type": "requestCount", "expected": 2},
       {"type": "noError"},
-      {"type": "headerPresent", "path": "Authorization"}
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1}
     ],
     "tags": ["download", "redirect"]
   },
@@ -48,7 +49,8 @@
       {"type": "requestCount", "expected": 4},
       {"type": "delayBetweenRequests", "min": 1000},
       {"type": "noError"},
-      {"type": "headerPresent", "path": "Authorization"}
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1}
     ],
     "tags": ["download", "retry", "503"]
   },
@@ -67,7 +69,8 @@
       {"type": "requestCount", "expected": 3},
       {"type": "delayBetweenRequests", "min": 1000},
       {"type": "noError"},
-      {"type": "headerPresent", "path": "Authorization"}
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1}
     ],
     "tags": ["download", "retry", "429", "retry-after"]
   },

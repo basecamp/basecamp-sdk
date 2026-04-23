@@ -64,6 +64,34 @@ type Assertion struct {
 	Min      float64     `json:"min"`
 	Max      float64     `json:"max"`
 	Path     string      `json:"path"`
+	// Index selects which captured request to inspect for header assertions.
+	// Defaults to 0 (first request); negative values index from the end.
+	Index *int `json:"index,omitempty"`
+}
+
+// requestHeadersAt returns the headers captured for the given request index.
+// Negative indexes count from the end (-1 = last). Returns (nil, false) when
+// the index is out of range.
+func requestHeadersAt(requestHeaders []http.Header, index int) (http.Header, bool) {
+	n := len(requestHeaders)
+	if n == 0 {
+		return nil, false
+	}
+	if index < 0 {
+		index += n
+	}
+	if index < 0 || index >= n {
+		return nil, false
+	}
+	return requestHeaders[index], true
+}
+
+// assertionIndex returns the Index value, defaulting to 0 if unset.
+func assertionIndex(a Assertion) int {
+	if a.Index == nil {
+		return 0
+	}
+	return *a.Index
 }
 
 // TestResult captures the outcome of a test case.
@@ -672,22 +700,36 @@ func checkAssertion(
 	case "headerInjected":
 		headerName := assertion.Path
 		expected := expectedString(assertion.Expected)
-		if len(requestHeaders) == 0 {
-			return fail(tc, fmt.Sprintf("Expected header %s=%q, but no requests were recorded", headerName, expected))
+		idx := assertionIndex(assertion)
+		headers, ok := requestHeadersAt(requestHeaders, idx)
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected header %s=%q on request index %d, but only %d requests were recorded", headerName, expected, idx, len(requestHeaders)))
 		}
-		actual := requestHeaders[0].Get(headerName)
+		actual := headers.Get(headerName)
 		if actual != expected {
-			return fail(tc, fmt.Sprintf("Expected header %s=%q, got %q", headerName, expected, actual))
+			return fail(tc, fmt.Sprintf("Expected header %s=%q on request index %d, got %q", headerName, expected, idx, actual))
 		}
 
 	case "headerPresent":
 		headerName := assertion.Path
-		if len(requestHeaders) == 0 {
-			return fail(tc, fmt.Sprintf("Expected header %s to be present, but no requests were recorded", headerName))
+		idx := assertionIndex(assertion)
+		headers, ok := requestHeadersAt(requestHeaders, idx)
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected header %s on request index %d, but only %d requests were recorded", headerName, idx, len(requestHeaders)))
 		}
-		actual := requestHeaders[0].Get(headerName)
-		if actual == "" {
-			return fail(tc, fmt.Sprintf("Expected header %s to be present, but it was empty or missing", headerName))
+		if headers.Get(headerName) == "" {
+			return fail(tc, fmt.Sprintf("Expected header %s on request index %d, but it was empty or missing", headerName, idx))
+		}
+
+	case "headerAbsent":
+		headerName := assertion.Path
+		idx := assertionIndex(assertion)
+		headers, ok := requestHeadersAt(requestHeaders, idx)
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected header %s absent on request index %d, but only %d requests were recorded", headerName, idx, len(requestHeaders)))
+		}
+		if v := headers.Get(headerName); v != "" {
+			return fail(tc, fmt.Sprintf("Expected header %s absent on request index %d, got %q", headerName, idx, v))
 		}
 
 	case "headerValue":
