@@ -8,10 +8,13 @@ set -euo pipefail
 # two-hop flow or skipping hop 1.
 
 # Rule 1: any reference to fetchSignedDownload( in non-test Go code outside
-# download.go is a violation. The broad `\b...\(` pattern intentionally also
-# matches doc-comment examples — stale examples warrant review.
-EXTERNAL=$(grep -rnE --include='*.go' --exclude='*_test.go' \
-  '\bfetchSignedDownload[[:space:]]*\(' go/pkg/basecamp/ \
+# download.go is a violation. Uses `git grep` (only tracked files, clean
+# pathspec for excluding tests) and a POSIX word-boundary — `(^|[^[:alnum:]_])`
+# rather than `\b` — so the pattern works on any POSIX ERE, not just the
+# GNU/BSD extension. The broad match intentionally also catches doc-comment
+# examples; stale examples warrant review.
+EXTERNAL=$(git grep -nE '(^|[^[:alnum:]_])fetchSignedDownload[[:space:]]*\(' \
+  -- 'go/pkg/basecamp/' ':!*_test.go' \
   | grep -v '^go/pkg/basecamp/download\.go:' || true)
 
 if [ -n "${EXTERNAL}" ]; then
