@@ -282,7 +282,7 @@ func runTest(tc TestCase) TestResult {
 				msg := fmt.Sprintf("%v", r)
 				if strings.HasPrefix(msg, "basecamp: base URL must use HTTPS") ||
 					strings.HasPrefix(msg, "basecamp: timeout must be positive") ||
-					strings.HasPrefix(msg, "basecamp: max retries must be non-negative") ||
+					strings.HasPrefix(msg, "basecamp: max retries must be at least 1") ||
 					strings.HasPrefix(msg, "basecamp: max pages must be positive") {
 					opResult.err = basecamp.ErrUsage(msg)
 				} else {
@@ -728,8 +728,11 @@ func checkAssertion(
 		if !ok {
 			return fail(tc, fmt.Sprintf("Expected header %s absent on request index %d, but only %d requests were recorded", headerName, idx, len(requestHeaders)))
 		}
-		if v := headers.Get(headerName); v != "" {
-			return fail(tc, fmt.Sprintf("Expected header %s absent on request index %d, got %q", headerName, idx, v))
+		// Use Values (not Get): Get returns "" for both "not present" and
+		// "present with empty value"; for an absence assertion, a present-
+		// but-empty header must fail.
+		if values := headers.Values(headerName); len(values) > 0 {
+			return fail(tc, fmt.Sprintf("Expected header %s absent on request index %d, got %q", headerName, idx, values))
 		}
 
 	case "headerValue":

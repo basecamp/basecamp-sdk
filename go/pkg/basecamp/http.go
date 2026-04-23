@@ -21,8 +21,9 @@ type HTTPOptions struct {
 	// Timeout is the request timeout (default: 30s).
 	Timeout time.Duration
 
-	// MaxRetries is the maximum retry attempts for GET requests (default: 3).
-	// POST/PUT/DELETE requests only get 1 retry after successful token refresh.
+	// MaxRetries is the total attempt count for GET requests (default: 3,
+	// minimum 1 — NewClient panics on lower values). POST/PUT/DELETE requests
+	// make one attempt plus one retry after a successful token refresh.
 	MaxRetries int
 
 	// BaseDelay is the initial backoff delay (default: 1s).
@@ -57,7 +58,8 @@ func WithTimeout(d time.Duration) ClientOption {
 	}
 }
 
-// WithMaxRetries sets the maximum number of retry attempts for GET requests.
+// WithMaxRetries sets the total attempt count for GET requests.
+// Must be at least 1 (NewClient panics otherwise).
 func WithMaxRetries(n int) ClientOption {
 	return func(c *Client) {
 		c.httpOpts.MaxRetries = n

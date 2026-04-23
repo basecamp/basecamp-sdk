@@ -86,11 +86,13 @@ func (ac *AccountClient) DownloadURL(ctx context.Context, rawURL string) (result
 // hop, and either returns the 2xx body directly or follows a 3xx Location
 // through an unauthenticated second hop to a signed URL.
 //
-// The authenticated hop is wrapped in the SDK-standard GET retry loop:
-// network errors and 429/502/503/504 responses are retried up to MaxRetries
-// with exponential backoff, honoring Retry-After on 429. Other 5xx statuses
-// (500 and up) are surfaced without retry, matching Client.singleRequest's
-// @retryable markings. Retries stop once the response enters 2xx/3xx
+// The authenticated hop is wrapped in the SDK-standard GET retry loop.
+// Retry scope matches Client.singleRequest's @retryable set: network errors
+// and 429/502/503/504 responses are retried up to MaxRetries with exponential
+// backoff, honoring Retry-After on 429. Non-retried statuses (including 500)
+// are surfaced via the dispatch switch — 500 is mapped to a non-retryable
+// Error that mirrors singleRequest's ErrAPI(500, ...); other statuses go
+// through checkResponse. Retries stop once the response enters 2xx/3xx
 // dispatch — the body then belongs to the caller (2xx direct) or has
 // already been discarded in favor of the Location hop (3xx). Not sharing
 // doWithRetry because that path is tightly coupled to the JSON-response
@@ -207,9 +209,10 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 
 	if resp == nil {
-		// Exhaustion after real attempts is handled inside the loop (`return
-		// nil, lastErr`). The only path that reaches this fallback is a
-		// misconfigured MaxRetries<=0 that skips the loop entirely.
+		// Defense in depth: NewClient panics on MaxRetries<1, so this path
+		// is unreachable from normal construction. Direct-struct-built
+		// Clients with a zero MaxRetries would skip the loop entirely and
+		// land here.
 		return nil, ErrUsage(fmt.Sprintf("download aborted: MaxRetries (%d) must be >= 1", maxAttempts))
 	}
 
@@ -248,6 +251,14 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	default:
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorMessageLen*2))
 		_ = resp.Body.Close()
+		// Align the Retryable flag with Client.singleRequest's classification
+		// for statuses outside the retry loop's set: 500 surfaces as non-
+		// retryable, mirroring ErrAPI(500, "Server error (500)"). checkResponse
+		// would otherwise mark all 5xx as Retryable=true, which contradicts
+		// the fact that this loop intentionally did not retry 500.
+		if resp.StatusCode == http.StatusInternalServerError {
+			return nil, ErrAPI(500, "Server error (500)")
+		}
 		return nil, checkResponse(resp, body)
 	}
 }
