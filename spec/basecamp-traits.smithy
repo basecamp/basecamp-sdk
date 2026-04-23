@@ -125,7 +125,7 @@ structure basecampSensitive {
 ///
 /// This trait does NOT apply to pagination `Link: rel=next` URLs,
 /// which are fetched as same-origin authed GETs without a redirect
-/// step (see Go `Client.followPagination` at `client.go:499`).
+/// step (see Go `Client.followPagination` in `client.go`).
 ///
 /// Every SDK implements hops 1–4 in a language-native primitive;
 /// external (cross-package/application-level) consumers MUST call the
