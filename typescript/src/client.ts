@@ -390,7 +390,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage, maxPages));
   defineService("vaults", () => new VaultsService(client, hooks, fetchPage, maxPages));
   defineService("documents", () => new DocumentsService(client, hooks, fetchPage, maxPages));
-  defineService("uploads", () => new UploadsService(client, hooks, fetchPage, maxPages, downloadURLFn));
+  defineService("uploads", () =>
+    // Positional args mirror BaseService (incl. authenticatedFetch/baseUrl slots the
+    // factory leaves unset), with downloadURLFn appended at the end.
+    new UploadsService(client, hooks, fetchPage, maxPages, undefined, undefined, downloadURLFn),
+  );
   defineService("schedules", () => new SchedulesService(client, hooks, fetchPage, maxPages));
   defineService("events", () => new EventsService(client, hooks, fetchPage, maxPages));
   defineService("recordings", () => new RecordingsService(client, hooks, fetchPage, maxPages));

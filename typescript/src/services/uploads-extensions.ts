@@ -17,17 +17,22 @@ type DownloadURLFn = (rawURL: string) => Promise<DownloadResult>;
 export class UploadsService extends GeneratedUploadsService {
   private readonly downloadURLFn?: DownloadURLFn;
 
-  // downloadURLFn is optional so direct `new UploadsService(client, hooks, fetchPage, maxPages)`
-  // construction stays backwards-compatible. `download()` throws a clear usage error if the
-  // primitive wasn't injected (i.e. the service was constructed outside createBasecampClient).
+  // Preserve BaseService's full positional signature (authenticatedFetch, baseUrl),
+  // then append downloadURLFn — otherwise existing `new UploadsService(client, hooks,
+  // fetchPage, maxPages, authenticatedFetch, baseUrl)` callers would silently miswire
+  // authenticatedFetch into the 5th slot. All params optional for direct-construction
+  // back-compat; `download()` throws a clear usage error if the primitive wasn't
+  // injected (i.e. the service was constructed outside createBasecampClient).
   constructor(
     client: RawClient,
     hooks?: BasecampHooks,
     fetchPage?: (url: string) => Promise<Response>,
     maxPages?: number,
+    authenticatedFetch?: (url: string, init: RequestInit) => Promise<Response>,
+    baseUrl?: string,
     downloadURLFn?: DownloadURLFn,
   ) {
-    super(client, hooks, fetchPage, maxPages);
+    super(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl);
     this.downloadURLFn = downloadURLFn;
   }
 
