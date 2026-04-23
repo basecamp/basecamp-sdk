@@ -721,9 +721,10 @@ func TestDownloadURL_AuthHopRetriesOn503(t *testing.T) {
 	if got := attempts.Load(); got != 3 {
 		t.Errorf("expected 3 attempts, got %d", got)
 	}
-	// Backoff between attempts: baseDelay then 2*baseDelay. Require at least 2*baseDelay total.
-	if elapsed < 2*baseDelay {
-		t.Errorf("expected elapsed >= %v, got %v", 2*baseDelay, elapsed)
+	// Backoff between attempts: baseDelay then 2*baseDelay. Require at least 3*baseDelay
+	// total so a regression that flattened the second delay back to baseDelay fails.
+	if elapsed < 3*baseDelay {
+		t.Errorf("expected elapsed >= %v, got %v", 3*baseDelay, elapsed)
 	}
 	body, _ := io.ReadAll(result.Body)
 	if string(body) != fileContent {

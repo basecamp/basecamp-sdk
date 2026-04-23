@@ -490,7 +490,9 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			return operationResult{err: err}
 		}
 		defer result.Body.Close()
-		_, _ = io.Copy(io.Discard, result.Body)
+		if _, copyErr := io.Copy(io.Discard, result.Body); copyErr != nil {
+			return operationResult{err: copyErr}
+		}
 		return operationResult{err: nil}
 
 	default:

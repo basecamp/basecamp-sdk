@@ -47,7 +47,8 @@
     "assertions": [
       {"type": "requestCount", "expected": 4},
       {"type": "delayBetweenRequests", "min": 1000},
-      {"type": "noError"}
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization"}
     ],
     "tags": ["download", "retry", "503"]
   },
@@ -65,7 +66,8 @@
     "assertions": [
       {"type": "requestCount", "expected": 3},
       {"type": "delayBetweenRequests", "min": 1000},
-      {"type": "noError"}
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization"}
     ],
     "tags": ["download", "retry", "429", "retry-after"]
   },
