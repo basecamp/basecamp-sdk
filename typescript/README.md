@@ -259,6 +259,26 @@ The SDK provides typed services for the complete Basecamp API:
 |---------|---------|
 | `forwards` | list, get, createReply |
 
+## Downloading Files
+
+Fetch an upload's file content in one call. The SDK fetches the upload
+metadata, then follows the authenticated-hop + 302 flow against the signed
+storage URL.
+
+```ts
+const result = await client.uploads.download(1069479400);
+// result.body is a ReadableStream<Uint8Array>
+const bytes = new Uint8Array(await new Response(result.body).arrayBuffer());
+// result.contentType, result.contentLength, result.filename are also available
+```
+
+For any authenticated download URL (e.g. a `download_url` you already have
+in hand), use `client.downloadURL`:
+
+```ts
+const result = await client.downloadURL(url);
+```
+
 ## Pagination
 
 List methods return a single page of results by default. Use the pagination helpers with low-level API calls to fetch all pages:

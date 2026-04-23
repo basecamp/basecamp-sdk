@@ -204,6 +204,26 @@ let client = BasecampClient(
 | `clientReplies` | Client replies |
 | `clientVisibility` | Client visibility settings |
 
+## Downloading Files
+
+Fetch an upload's file content in one call. The SDK fetches the upload
+metadata, then follows the authenticated-hop + 302 flow against the signed
+storage URL.
+
+```swift
+let account = client.forAccount("999999999")
+let result = try await account.uploads.download(uploadId: 1069479400)
+try result.body.write(to: URL(fileURLWithPath: "uploaded.bin"))
+// result.contentType, result.contentLength, result.filename are also available
+```
+
+For any authenticated download URL (e.g. a `downloadUrl` you already have
+in hand), use `AccountClient.downloadURL(_:)`:
+
+```swift
+let result = try await account.downloadURL(url)
+```
+
 ## Pagination
 
 List methods automatically follow Link headers and return all pages:

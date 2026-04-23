@@ -263,6 +263,31 @@ class ServiceGenerator
     { prefix: 'Search', method: 'search' }
   ].freeze
 
+  # Hand-written methods appended to specific generated services.
+  # Keyed by service name; value is an array of method code strings indented to match generated output.
+  HAND_WRITTEN_METHODS = {
+    'Uploads' => [
+      <<~RUBY.chomp
+        # Download an upload's file content in one call.
+        # Fetches upload metadata, then delegates to the AccountClient download
+        # primitive so the auth'd-hop + 302-follow flow lives in one place.
+        # @param upload_id [Integer] upload id ID
+        # @return [Basecamp::DownloadResult]
+        def download(upload_id:)
+          with_operation(service: "uploads", operation: "download", is_mutation: false, resource_id: upload_id) do
+            upload = get(upload_id: upload_id)
+            url = upload["download_url"]
+            raise UsageError.new("upload \#{upload_id} has no download_url") if url.nil? || url.empty?
+
+            result = @client.download_url(url)
+            filename = upload["filename"]
+            filename.to_s.empty? ? result : result.with(filename: filename)
+          end
+        end
+      RUBY
+    ]
+  }.freeze
+
   SIMPLE_RESOURCES = %w[
     todo todos todolist todolists todoset message messages comment comments
     card cards cardtable cardcolumn cardstep column step project projects
@@ -540,6 +565,13 @@ class ServiceGenerator
     service[:operations].each do |op|
       lines << ''
       lines.concat(generate_method(op, service_name: service[:name]))
+    end
+
+    (HAND_WRITTEN_METHODS[service[:name]] || []).each do |method_code|
+      lines << ''
+      method_code.each_line do |l|
+        lines << (l.chomp.empty? ? '' : "      #{l.chomp}")
+      end
     end
 
     lines << '    end'

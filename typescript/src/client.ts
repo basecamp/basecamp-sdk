@@ -49,7 +49,7 @@ import { SubscriptionsService } from "./generated/services/subscriptions.js";
 import { AttachmentsService } from "./generated/services/attachments.js";
 import { VaultsService } from "./generated/services/vaults.js";
 import { DocumentsService } from "./generated/services/documents.js";
-import { UploadsService } from "./generated/services/uploads.js";
+import { UploadsService } from "./services/uploads-extensions.js";
 import { SchedulesService } from "./generated/services/schedules.js";
 import { EventsService } from "./generated/services/events.js";
 import { RecordingsService } from "./generated/services/recordings.js";
@@ -353,6 +353,17 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     });
   };
 
+  // Wire downloadURL — raw fetch, not openapi-fetch (like fetchPage).
+  // Defined before service factories so UploadsService can inject it.
+  const downloadURLFn = createDownloadURL({
+    authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs,
+  });
+  Object.defineProperty(enhancedClient, "downloadURL", {
+    value: downloadURLFn,
+    writable: false,
+    enumerable: false,
+  });
+
   defineService("projects", () => new ProjectsService(client, hooks, fetchPage, maxPages));
   defineService("todos", () => new TodosService(client, hooks, fetchPage, maxPages));
   defineService("todolists", () => new TodolistsService(client, hooks, fetchPage, maxPages));
@@ -379,7 +390,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage, maxPages));
   defineService("vaults", () => new VaultsService(client, hooks, fetchPage, maxPages));
   defineService("documents", () => new DocumentsService(client, hooks, fetchPage, maxPages));
-  defineService("uploads", () => new UploadsService(client, hooks, fetchPage, maxPages));
+  defineService("uploads", () =>
+    // Positional args mirror BaseService (incl. authenticatedFetch/baseUrl slots the
+    // factory leaves unset), with downloadURLFn appended at the end.
+    new UploadsService(client, hooks, fetchPage, maxPages, undefined, undefined, downloadURLFn),
+  );
   defineService("schedules", () => new SchedulesService(client, hooks, fetchPage, maxPages));
   defineService("events", () => new EventsService(client, hooks, fetchPage, maxPages));
   defineService("recordings", () => new RecordingsService(client, hooks, fetchPage, maxPages));
@@ -398,16 +413,6 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("gauges", () => new GaugesService(client, hooks, fetchPage, maxPages));
   defineService("myAssignments", () => new MyAssignmentsService(client, hooks, fetchPage, maxPages));
   defineService("myNotifications", () => new MyNotificationsService(client, hooks, fetchPage, maxPages));
-
-  // Wire downloadURL — raw fetch, not openapi-fetch (like fetchPage)
-  const downloadURLFn = createDownloadURL({
-    authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs,
-  });
-  Object.defineProperty(enhancedClient, "downloadURL", {
-    value: downloadURLFn,
-    writable: false,
-    enumerable: false,
-  });
 
   return enhancedClient;
 }

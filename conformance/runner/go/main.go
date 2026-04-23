@@ -523,6 +523,18 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{err: nil}
 
+	case "UploadsDownload":
+		uploadID := getInt64Param(tc.PathParams, "uploadId")
+		result, err := account.Uploads().Download(ctx, uploadID)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		defer result.Body.Close()
+		if _, copyErr := io.Copy(io.Discard, result.Body); copyErr != nil {
+			return operationResult{err: copyErr}
+		}
+		return operationResult{err: nil}
+
 	default:
 		return operationResult{
 			err: fmt.Errorf("unknown operation: %s", tc.Operation),

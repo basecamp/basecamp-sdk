@@ -261,7 +261,7 @@ class AsyncAccountClient:
 
     @property
     def uploads(self):
-        from basecamp.generated.services.uploads import AsyncUploadsService
+        from basecamp.services.uploads import AsyncUploadsService
 
         return self._service("uploads", lambda: AsyncUploadsService(self))
 

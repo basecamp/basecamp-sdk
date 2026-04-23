@@ -144,6 +144,8 @@ class OperationMapper
       @account.tools.enable(
         tool_id: path_params["toolId"]
       )
+    when "UploadsDownload"
+      @account.uploads.download(upload_id: path_params["uploadId"])
     else
       raise "Unknown operation: #{operation}"
     end
@@ -173,9 +175,11 @@ RUBY_SKIPS = Set.new([
   "DownloadURL retries on 503 at the auth'd first hop",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop",
   "DownloadURL surfaces redirect with no Location",
+  "UploadsDownload delegates through DownloadURL primitive",
 ].freeze)
 
 DOWNLOAD_SKIP = "Ruby runner does not yet dispatch DownloadURL (tracked as follow-up)".freeze
+MULTIHOP_SKIP = "Ruby runner's WebMock stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)".freeze
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
@@ -188,6 +192,7 @@ RUBY_SKIP_REASONS = {
   "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_SKIP,
   "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_SKIP,
   "DownloadURL surfaces redirect with no Location" => DOWNLOAD_SKIP,
+  "UploadsDownload delegates through DownloadURL primitive" => MULTIHOP_SKIP,
 }.freeze
 
 # Single test case

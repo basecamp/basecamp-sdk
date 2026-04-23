@@ -113,6 +113,8 @@ class OperationMapper:
                 return self._account.tools.clone(source_recording_id=body["source_recording_id"], title=body["title"])
             case "EnableTool":
                 return self._account.tools.enable(tool_id=path_params["toolId"])
+            case "UploadsDownload":
+                return self._account.uploads.download(upload_id=path_params["uploadId"])
             case _:
                 raise ValueError(f"Unknown operation: {operation}")
 
@@ -371,6 +373,7 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 class ConformanceRunner:
     _DOWNLOAD_SKIP = "Python runner does not yet dispatch DownloadURL (tracked as follow-up)"
+    _MULTIHOP_SKIP = "Python runner's respx stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)"
     SKIPS: set[str] = {
         "maxItems caps results across pages",
         "DownloadURL auth'd first hop 302s to signed URL",
@@ -378,6 +381,7 @@ class ConformanceRunner:
         "DownloadURL retries on 503 at the auth'd first hop",
         "DownloadURL honors Retry-After on 429 at the auth'd first hop",
         "DownloadURL surfaces redirect with no Location",
+        "UploadsDownload delegates through DownloadURL primitive",
     }
     SKIP_REASONS: dict[str, str] = {
         "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
@@ -386,6 +390,7 @@ class ConformanceRunner:
         "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_SKIP,
         "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_SKIP,
         "DownloadURL surfaces redirect with no Location": _DOWNLOAD_SKIP,
+        "UploadsDownload delegates through DownloadURL primitive": _MULTIHOP_SKIP,
     }
 
     def __init__(self, tests_dir: str):

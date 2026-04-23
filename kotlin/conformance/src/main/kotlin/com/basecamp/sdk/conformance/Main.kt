@@ -22,6 +22,8 @@ private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "DownloadURL retries on 503 at the auth'd first hop" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
     "DownloadURL honors Retry-After on 429 at the auth'd first hop" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
     "DownloadURL surfaces redirect with no Location" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "UploadsDownload delegates through DownloadURL primitive" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
+    "UploadsDownload errors when upload has no download_url" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
 )
 
 fun main() {

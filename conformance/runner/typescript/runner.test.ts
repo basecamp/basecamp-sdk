@@ -81,6 +81,8 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
   "DownloadURL surfaces redirect with no Location":
     "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+  "UploadsDownload delegates through DownloadURL primitive":
+    "TS runner's MSW stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)",
 };
 
 // =============================================================================
@@ -222,6 +224,13 @@ async function executeOperation(
       case "EnableTool":
         await client.tools.enable(Number(params.toolId));
         break;
+
+      case "UploadsDownload": {
+        const result = await client.uploads.download(Number(params.uploadId));
+        // Drain the stream so the socket can be reused and we don't leak.
+        await new Response(result.body).arrayBuffer();
+        break;
+      }
 
       default:
         throw new Error(`Unknown operation: ${tc.operation}`);

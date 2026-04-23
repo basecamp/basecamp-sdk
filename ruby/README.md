@@ -194,6 +194,25 @@ first_10 = account.todos.list(todolist_id: 456).take(10)
 all_projects = account.projects.list.to_a
 ```
 
+## Downloading Files
+
+Fetch an upload's file content in one call. The SDK fetches the upload
+metadata, then follows the authenticated-hop + 302 flow against the
+signed storage URL.
+
+```ruby
+result = account.uploads.download(upload_id: 1069479400)
+File.binwrite("uploaded.bin", result.body)
+# result.content_type, result.content_length, result.filename are also available
+```
+
+For any authenticated download URL (e.g. a `download_url` you already
+have in hand), use `AccountClient#download_url`:
+
+```ruby
+result = account.download_url(url)
+```
+
 ## Retry Behavior
 
 GET requests automatically retry on transient failures with exponential backoff:

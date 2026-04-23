@@ -8,14 +8,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
-import type { UploadsService } from "../../src/generated/services/uploads.js";
 import { BasecampError } from "../../src/errors.js";
 import { createBasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
+// Infer the service type from client.uploads so download() is visible on the
+// type (the subclass lives in src/services/uploads-extensions.ts).
+type UploadsServiceT = ReturnType<typeof createBasecampClient>["uploads"];
+
 describe("UploadsService", () => {
-  let service: UploadsService;
+  let service: UploadsServiceT;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -243,5 +246,86 @@ describe("UploadsService", () => {
 
   // Note: trash() is on RecordingsService, not UploadsService (spec-conformant)
   // Use client.recordings.trash(uploadId) instead
+
+  describe("download", () => {
+    const API_ORIGIN = "https://3.basecampapi.com";
+    const SIGNED_URL = "https://signed.example/bucket/xyz?sig=abc";
+
+    it("delegates through the downloadURL primitive", async () => {
+      const authorizationHeaders: Array<string | null> = [];
+
+      server.use(
+        // Metadata fetch
+        http.get(`${BASE_URL}/uploads/1069479400`, ({ request }) => {
+          authorizationHeaders.push(request.headers.get("authorization"));
+          return HttpResponse.json({
+            id: 1069479400,
+            filename: "logo.png",
+            download_url: "https://storage.3.basecamp.com/12345/blobs/abc/download/logo.png",
+          });
+        }),
+        // Hop 1: origin-rewritten to API_ORIGIN
+        http.get(`${API_ORIGIN}/12345/blobs/abc/download/logo.png`, ({ request }) => {
+          authorizationHeaders.push(request.headers.get("authorization"));
+          return new HttpResponse(null, {
+            status: 302,
+            headers: { Location: SIGNED_URL },
+          });
+        }),
+        // Hop 2: signed URL (no auth)
+        http.get(SIGNED_URL, ({ request }) => {
+          authorizationHeaders.push(request.headers.get("authorization"));
+          return new HttpResponse("pixels", {
+            status: 200,
+            headers: { "Content-Type": "image/png", "Content-Length": "6" },
+          });
+        }),
+      );
+
+      const result = await service.download(1069479400);
+
+      expect(result.contentType).toBe("image/png");
+      expect(result.contentLength).toBe(6);
+      // filename from upload metadata wins over URL-derived
+      expect(result.filename).toBe("logo.png");
+
+      const bodyText = await new Response(result.body).text();
+      expect(bodyText).toBe("pixels");
+
+      // Metadata request + auth'd download hop must carry bearer; signed hop must not
+      expect(authorizationHeaders).toHaveLength(3);
+      expect(authorizationHeaders[0]).toBe("Bearer test-token");
+      expect(authorizationHeaders[1]).toBe("Bearer test-token");
+      expect(authorizationHeaders[2]).toBeNull();
+    });
+
+    it("throws usage error when upload has no download_url", async () => {
+      let downloadHopCalled = false;
+
+      server.use(
+        http.get(`${BASE_URL}/uploads/1069479400`, () => {
+          return HttpResponse.json({
+            id: 1069479400,
+            filename: "logo.png",
+            download_url: null,
+          });
+        }),
+        // No download hop should fire — this handler would record it if so
+        http.get(`${API_ORIGIN}/12345/blobs/*`, () => {
+          downloadHopCalled = true;
+          return new HttpResponse(null, { status: 500 });
+        }),
+      );
+
+      const error = await service.download(1069479400).catch((err) => err);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      const e = error as BasecampError;
+      expect(e.code).toBe("usage");
+      expect(e.message).toContain("1069479400");
+      expect(e.message).toContain("download_url");
+      expect(downloadHopCalled).toBe(false);
+    });
+  });
 });
 

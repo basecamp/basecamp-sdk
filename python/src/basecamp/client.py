@@ -262,7 +262,7 @@ class AccountClient:
 
     @property
     def uploads(self):
-        from basecamp.generated.services.uploads import UploadsService
+        from basecamp.services.uploads import UploadsService
 
         return self._service("uploads", lambda: UploadsService(self))
 

@@ -1,0 +1,39 @@
+[
+  {
+    "name": "UploadsDownload delegates through DownloadURL primitive",
+    "description": "Convenience method fetches upload metadata, extracts download_url, then delegates to the authenticated download primitive. Expect three requests: the metadata fetch (auth'd), hop 1 of the download (auth'd, 302s), and hop 2 (signed, unauthenticated). The Location is relative so hop 2 hits the same mock server.",
+    "operation": "UploadsDownload",
+    "method": "GET",
+    "path": "/uploads/1069479400",
+    "pathParams": {"uploadId": 1069479400},
+    "mockResponses": [
+      {"status": 200, "headers": {"Content-Type": "application/json"}, "body": {"id": 1069479400, "filename": "logo.png", "download_url": "https://storage.3.basecamp.com/999999999/blobs/abcd1234/download/logo.png"}},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerPresent", "path": "Authorization", "index": 1},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+    ],
+    "tags": ["upload", "download", "redirect"]
+  },
+  {
+    "name": "UploadsDownload errors when upload has no download_url",
+    "description": "If the API returns upload metadata with no download_url, the SDK raises a usage error after the metadata fetch. No download hop should fire.",
+    "operation": "UploadsDownload",
+    "method": "GET",
+    "path": "/uploads/1069479400",
+    "pathParams": {"uploadId": 1069479400},
+    "mockResponses": [
+      {"status": 200, "headers": {"Content-Type": "application/json"}, "body": {"id": 1069479400, "filename": "logo.png", "download_url": null}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "errorMessage", "expected": "has no download"}
+    ],
+    "tags": ["upload", "download", "error"]
+  }
+]
