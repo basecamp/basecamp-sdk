@@ -168,8 +168,14 @@ RUBY_SKIPS = Set.new([
   "Missing X-Total-Count returns zero",
   "Pagination stops at maxPages safety cap",
   "maxItems caps results across pages",
+  "DownloadURL auth'd first hop 302s to signed URL",
+  "DownloadURL direct 2xx body",
+  "DownloadURL retries on 503 at the auth'd first hop",
+  "DownloadURL honors Retry-After on 429 at the auth'd first hop",
+  "DownloadURL surfaces redirect with no Location",
 ].freeze)
 
+DOWNLOAD_SKIP = "Ruby runner does not yet dispatch DownloadURL (tracked as follow-up)".freeze
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
@@ -177,6 +183,11 @@ RUBY_SKIP_REASONS = {
   "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",
   "maxItems caps results across pages" => "Ruby SDK paginate doesn't support maxItems",
+  "DownloadURL auth'd first hop 302s to signed URL" => DOWNLOAD_SKIP,
+  "DownloadURL direct 2xx body" => DOWNLOAD_SKIP,
+  "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_SKIP,
+  "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_SKIP,
+  "DownloadURL surfaces redirect with no Location" => DOWNLOAD_SKIP,
 }.freeze
 
 # Single test case

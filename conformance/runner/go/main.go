@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -478,6 +479,19 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		toolID := getInt64Param(tc.PathParams, "toolId")
 		err := account.Tools().Enable(ctx, toolID)
 		return operationResult{err: err}
+
+	case "DownloadURL":
+		// Construct an absolute URL the SDK will accept. The SDK rewrites the
+		// scheme+host to the configured BaseURL, so the synthetic host here
+		// is never actually hit — only tc.Path matters for mock-server routing.
+		rawURL := "https://storage.3.basecamp.com" + tc.Path
+		result, err := account.DownloadURL(ctx, rawURL)
+		if err != nil {
+			return operationResult{err: err}
+		}
+		defer result.Body.Close()
+		_, _ = io.Copy(io.Discard, result.Body)
+		return operationResult{err: nil}
 
 	default:
 		return operationResult{

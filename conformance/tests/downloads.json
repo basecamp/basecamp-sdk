@@ -1,0 +1,87 @@
+[
+  {
+    "name": "DownloadURL auth'd first hop 302s to signed URL",
+    "description": "Two-hop download: authenticated request to API host returns 302 with Location; SDK follows Location (unauthenticated) to fetch the body. Location is relative so hop 2 hits the same mock server.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization"}
+    ],
+    "tags": ["download", "redirect"]
+  },
+  {
+    "name": "DownloadURL direct 2xx body",
+    "description": "Authenticated first hop returns 200 with body directly (no redirect).",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/doc.pdf",
+    "mockResponses": [
+      {"status": 200, "headers": {"Content-Type": "application/pdf"}, "body": "pdf-data"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization"}
+    ],
+    "tags": ["download", "direct-body"]
+  },
+  {
+    "name": "DownloadURL retries on 503 at the auth'd first hop",
+    "description": "The first hop is a GET and must follow SDK-wide GET retry semantics (spec 2A.2): retry on 5xx with exponential backoff. After two 503s, the third attempt returns 302 and hop 2 completes.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 503},
+      {"status": 503},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 4},
+      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "noError"}
+    ],
+    "tags": ["download", "retry", "503"]
+  },
+  {
+    "name": "DownloadURL honors Retry-After on 429 at the auth'd first hop",
+    "description": "429 Too Many Requests with Retry-After: 1 pauses for at least one second before retry. Retry succeeds with 302 → 200 body.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 429, "headers": {"Retry-After": "1"}},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "noError"}
+    ],
+    "tags": ["download", "retry", "429", "retry-after"]
+  },
+  {
+    "name": "DownloadURL surfaces redirect with no Location",
+    "description": "A 3xx response without a Location header is a protocol error, not a retryable failure. SDK surfaces an error after one request.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 302}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "errorMessage", "expected": "no Location"}
+    ],
+    "tags": ["download", "redirect", "error"]
+  }
+]
