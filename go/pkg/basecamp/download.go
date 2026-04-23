@@ -101,6 +101,13 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	if err != nil {
 		return nil, ErrUsage("download URL must be a valid URL")
 	}
+	// Defense-in-depth: AccountClient.DownloadURL already validates user input,
+	// but UploadsService.Download passes upload.download_url straight from the
+	// API response. Reject relative or non-http(s) URLs here so a malformed
+	// field can't silently collapse to requesting the API base root.
+	if !parsed.IsAbs() || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return nil, ErrUsage("download URL must be an absolute http or https URL")
+	}
 
 	baseURL, baseErr := url.Parse(c.cfg.BaseURL)
 	if baseErr != nil {
