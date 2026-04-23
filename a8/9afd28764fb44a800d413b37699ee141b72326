@@ -1,0 +1,29 @@
+conformance/runner/go/main.go
+  28a57320a1b71fa5 285,731-735
+go/pkg/basecamp/http.go
+  28a57320a1b71fa5 24-26,61-62
+go/pkg/basecamp/download.go
+  28a57320a1b71fa5 89-95,212-215,254-261
+go/pkg/basecamp/client.go
+  28a57320a1b71fa5 245-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a89afd28764fb44a800d413b37699ee141b72326",
+  "prompts": {
+    "28a57320a1b71fa5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a75ae23-55da-4eaf-913e-149f82b1ca37",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 2760,
+      "total_deletions": 2741,
+      "accepted_lines": 804,
+      "overriden_lines": 0
+    }
+  }
+}
