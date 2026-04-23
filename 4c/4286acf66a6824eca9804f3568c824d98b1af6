@@ -1,0 +1,25 @@
+go/pkg/basecamp/todos_test.go
+  45a9163983d36721 6,1018-1037
+go/pkg/basecamp/todos.go
+  45a9163983d36721 100-103,199-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "4c4286acf66a6824eca9804f3568c824d98b1af6",
+  "prompts": {
+    "45a9163983d36721": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b80d09b3-062b-4939-b664-2cd18902c5e1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 38,
+      "total_deletions": 1827,
+      "accepted_lines": 42,
+      "overriden_lines": 0
+    }
+  }
+}
