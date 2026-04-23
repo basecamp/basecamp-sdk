@@ -190,6 +190,11 @@ func (c *Client) fetchAPIDownload(ctx context.Context, rawURL string) (*Download
 	}
 
 	if resp == nil {
+		// maxAttempts <= 0 skips the loop entirely and leaves lastErr nil;
+		// surface that as a usage error rather than wrapping nil with %w.
+		if lastErr == nil {
+			return nil, ErrUsage(fmt.Sprintf("download aborted: MaxRetries (%d) must be >= 1", maxAttempts))
+		}
 		return nil, fmt.Errorf("download failed after %d attempts: %w", maxAttempts, lastErr)
 	}
 
