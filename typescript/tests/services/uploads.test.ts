@@ -317,15 +317,13 @@ describe("UploadsService", () => {
         }),
       );
 
-      await expect(service.download(1069479400)).rejects.toThrow(BasecampError);
-      try {
-        await service.download(1069479400);
-      } catch (err) {
-        const e = err as BasecampError;
-        expect(e.code).toBe("usage");
-        expect(e.message).toContain("1069479400");
-        expect(e.message).toContain("download_url");
-      }
+      const error = await service.download(1069479400).catch((err) => err);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      const e = error as BasecampError;
+      expect(e.code).toBe("usage");
+      expect(e.message).toContain("1069479400");
+      expect(e.message).toContain("download_url");
       expect(downloadHopCalled).toBe(false);
     });
   });
