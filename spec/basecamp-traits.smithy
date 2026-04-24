@@ -107,18 +107,24 @@ structure basecampSensitive {
 ///      and GET the resolved URL with a bare transport — no auth
 ///      headers, no logging middleware. The signature is the credential.
 ///   4. On direct 2xx, stream the first response body as-is.
-///   5. Tests that exercise the download flow MUST stub with a URL
-///      whose host matches the configured API base and whose path
-///      matches the fixture shape for the resource:
-///      `/{accountId}/blobs/{blob}/download/{filename}` for Upload,
-///      `/{accountId}/buckets/{bucketId}/uploads/{id}/download/{filename}`
-///      for CampfireLineAttachment. The test MUST also assert the
-///      unauthenticated hop actually fired.
+///   5. Tests that exercise the download flow MUST assert that BOTH
+///      hops fired with the correct auth: capture each request's
+///      Authorization header and check Bearer on the metadata fetch
+///      and authenticated download hop, none on the signed hop.
 ///      "No assertion fired" and "assertion fired and passed" are
-///      indistinguishable otherwise — both masked the bug behind
-///      PR #278. Schema-shape-only tests (unmarshaling assertions that
-///      set `download_url` without exercising transport) are exempt but
-///      should still use an API-host-shaped URL for clarity.
+///      indistinguishable otherwise — both masked the bug behind PR
+///      #278. The host of the URL stubbed in metadata may either
+///      match the configured API base (mirrors what real fixtures
+///      return — e.g. `/{accountId}/blobs/{blob}/download/{filename}`
+///      for Upload, `/{accountId}/buckets/{bucketId}/uploads/{id}/download/{filename}`
+///      for CampfireLineAttachment) or use a different host like
+///      `storage.3.basecamp.com/...` to make the SDK's host-rewrite
+///      step visible (the convention in primitive tests like Go's
+///      `download_test.go`). Either is acceptable; the auth-hop
+///      assertions are what enforce the contract. Schema-shape-only
+///      tests (unmarshaling assertions that set `download_url`
+///      without exercising transport) are exempt but should still
+///      use an API-host-shaped URL for clarity.
 ///
 /// The two-hop flow is not automatically retried end-to-end: streaming
 /// body ownership passes to the caller after hop 2, so a retry would
