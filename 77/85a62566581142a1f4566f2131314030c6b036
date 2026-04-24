@@ -1,0 +1,11 @@
+conformance/runner/ruby/runner.rb
+  28a57320a1b71fa5 176-177
+conformance/runner/python/runner.py
+  28a57320a1b71fa5 390-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7785a62566581142a1f4566f2131314030c6b036",
+  "prompts": {}
+}
