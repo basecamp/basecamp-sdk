@@ -67,6 +67,17 @@ func (e *Error) Unwrap() error {
 	return e.Cause
 }
 
+// withRequestID returns a shallow copy of the error with RequestID set.
+// If requestID is empty, it returns the original error unchanged.
+func (e *Error) withRequestID(requestID string) *Error {
+	if e == nil || requestID == "" {
+		return e
+	}
+	errCopy := *e
+	errCopy.RequestID = requestID
+	return &errCopy
+}
+
 // ExitCode returns the appropriate exit code for this error.
 func (e *Error) ExitCode() int {
 	return ExitCodeFor(e.Code)

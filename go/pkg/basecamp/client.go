@@ -708,6 +708,8 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 
 	c.logger.Debug("http response", "status", resp.StatusCode)
 
+	requestID := resp.Header.Get("X-Request-Id")
+
 	// Handle response based on status code
 	switch resp.StatusCode {
 	case http.StatusNotModified: // 304
@@ -723,7 +725,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 				}, nil
 			}
 		}
-		return nil, ErrAPI(304, "304 received but no cached response available")
+		return nil, ErrAPI(304, "304 received but no cached response available").withRequestID(requestID)
 
 	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
 		respBody, err := limitedReadAll(resp.Body, MaxResponseBodyBytes)
@@ -758,7 +760,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 
 	case http.StatusTooManyRequests: // 429
 		retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"))
-		return nil, ErrRateLimit(retryAfter)
+		return nil, ErrRateLimit(retryAfter).withRequestID(requestID)
 
 	case http.StatusUnauthorized: // 401
 		// Try token refresh on first 401
@@ -774,28 +776,28 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 				}
 			}
 		}
-		return nil, ErrAuth("Authentication failed")
+		return nil, ErrAuth("Authentication failed").withRequestID(requestID)
 
 	case http.StatusForbidden: // 403
 		// Check if this might be a scope issue
 		if method != "GET" {
-			return nil, ErrForbiddenScope()
+			return nil, ErrForbiddenScope().withRequestID(requestID)
 		}
-		return nil, ErrForbidden("Access denied")
+		return nil, ErrForbidden("Access denied").withRequestID(requestID)
 
 	case http.StatusNotFound: // 404
-		return nil, ErrNotFound("Resource", url)
+		return nil, ErrNotFound("Resource", url).withRequestID(requestID)
 
 	case http.StatusInternalServerError: // 500
-		return nil, ErrAPI(500, "Server error (500)")
+		return nil, ErrAPI(500, "Server error (500)").withRequestID(requestID)
 
 	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout: // 502, 503, 504
-		return nil, &Error{
+		return nil, (&Error{
 			Code:       CodeAPI,
 			Message:    fmt.Sprintf("Gateway error (%d)", resp.StatusCode),
 			HTTPStatus: resp.StatusCode,
 			Retryable:  true,
-		}
+		}).withRequestID(requestID)
 
 	default:
 		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
@@ -810,10 +812,10 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 			}
 			if msg != "" {
 				// Truncate error messages to prevent information leakage and unbounded memory growth
-				return nil, ErrAPI(resp.StatusCode, truncateString(msg, MaxErrorMessageBytes))
+				return nil, ErrAPI(resp.StatusCode, truncateString(msg, MaxErrorMessageBytes)).withRequestID(requestID)
 			}
 		}
-		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode))
+		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)).withRequestID(requestID)
 	}
 }
 
