@@ -64,8 +64,13 @@ class OperationMapper:
     def __init__(self, account_client):
         self._account = account_client
 
-    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None) -> Any:
+    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None, path: str = "") -> Any:
         match operation:
+            case "DownloadURL":
+                if not path:
+                    raise ValueError("DownloadURL test case requires a non-empty path")
+                raw_url = "https://storage.3.basecamp.com" + path
+                return self._account.download_url(raw_url)
             case "ListProjects":
                 return self._account.projects.list()
             case "GetProject":
@@ -144,6 +149,7 @@ class TestRunner:
                     path_params=self._test.get("pathParams", {}),
                     query_params=self._test.get("queryParams", {}),
                     body=self._test.get("requestBody"),
+                    path=self._test.get("path", ""),
                 )
                 return self._verify_assertions(result=result, error=None)
             except Exception as e:
@@ -184,7 +190,19 @@ class TestRunner:
             else:
                 return httpx.Response(500, content=b'{"error":"No more mock responses"}', headers={"Content-Type": "application/json"})
 
-        respx.route(method=method, url__regex=f".*{re.escape(path)}.*").mock(side_effect=side_effect)
+        if self._test["operation"] == "DownloadURL":
+            # Catch-all on the active client's host: the SDK rewrites the synthetic
+            # download URL onto base_url, then resolves a relative Location to a
+            # second path on the same host. Constraining to the origin (derived
+            # from configOverrides.baseUrl when present) ensures a misroute to a
+            # different host fails instead of consuming a queued response.
+            overrides = self._test.get("configOverrides") or {}
+            download_base = overrides.get("baseUrl", "https://3.basecampapi.com")
+            parsed = urlparse(download_base)
+            origin = f"{parsed.scheme}://{parsed.netloc}"
+            respx.route(method=method, url__regex=rf"{re.escape(origin)}/.*").mock(side_effect=side_effect)
+        else:
+            respx.route(method=method, url__regex=f".*{re.escape(path)}.*").mock(side_effect=side_effect)
 
     def _auto_paginates(self) -> bool:
         return any(
@@ -192,8 +210,30 @@ class TestRunner:
             for r in self._test.get("mockResponses", [])
         )
 
+    def _request_headers_at(self, index: int) -> dict | None:
+        """Return captured headers at index (0-based; negative counts from end), or None if out of range."""
+        requests = self._tracker.requests
+        n = len(requests)
+        if n == 0:
+            return None
+        if index < 0:
+            index += n
+        if index < 0 or index >= n:
+            return None
+        return requests[index]["headers"]
+
     def _verify_assertions(self, *, result: Any, error: Exception | None) -> TestResult:
         failures: list[str] = []
+
+        # DownloadURL implicit invariant: hop 1 must hit the test case path.
+        # The mock route is origin-wide so hop 2's relative-resolved URL is
+        # served, but a regression that misroutes hop 1 to a different path
+        # on the same origin would otherwise pass silently.
+        if self._test["operation"] == "DownloadURL" and self._tracker.requests:
+            expected_path = self._test["path"]
+            actual_path = urlparse(self._tracker.requests[0]["url"]).path
+            if actual_path != expected_path:
+                failures.append(f"DownloadURL hop 1 expected path {expected_path!r}, got {actual_path!r}")
 
         for assertion in self._test.get("assertions", []):
             match assertion["type"]:
@@ -292,21 +332,36 @@ class TestRunner:
                 case "headerInjected":
                     header_name = assertion["path"]
                     expected = assertion["expected"]
-                    if not self._tracker.requests:
-                        failures.append(f"Expected header {header_name}={expected!r}, but no requests recorded")
+                    idx = assertion.get("index", 0)
+                    headers = self._request_headers_at(idx)
+                    if headers is None:
+                        failures.append(f"Expected header {header_name}={expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
                     else:
-                        actual = self._tracker.requests[0]["headers"].get(header_name.lower())
+                        actual = headers.get(header_name.lower())
                         if actual != expected:
-                            failures.append(f"Expected header {header_name}={expected!r}, got {actual!r}")
+                            failures.append(f"Expected header {header_name}={expected!r} on request index {idx}, got {actual!r}")
 
                 case "headerPresent":
                     header_name = assertion["path"]
-                    if not self._tracker.requests:
-                        failures.append(f"Expected header {header_name} to be present, but no requests recorded")
+                    idx = assertion.get("index", 0)
+                    headers = self._request_headers_at(idx)
+                    if headers is None:
+                        failures.append(f"Expected header {header_name} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
                     else:
-                        actual = self._tracker.requests[0]["headers"].get(header_name.lower())
+                        actual = headers.get(header_name.lower())
                         if not actual:
-                            failures.append(f"Expected header {header_name} to be present, but it was missing")
+                            failures.append(f"Expected header {header_name} on request index {idx}, but it was empty or missing")
+
+                case "headerAbsent":
+                    header_name = assertion["path"]
+                    idx = assertion.get("index", 0)
+                    headers = self._request_headers_at(idx)
+                    if headers is None:
+                        failures.append(f"Expected header {header_name} absent on request index {idx}, but only {self._tracker.request_count} requests were recorded")
+                    else:
+                        actual = headers.get(header_name.lower())
+                        if actual:
+                            failures.append(f"Expected header {header_name} absent on request index {idx}, got {actual!r}")
 
                 case "requestScheme":
                     expected = assertion["expected"]
@@ -372,24 +427,18 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
-    _DOWNLOAD_SKIP = "Python runner does not yet dispatch DownloadURL (tracked as follow-up)"
+    _DOWNLOAD_RETRY_SKIP = "Python SDK download path uses get_no_retry; retry on 5xx / Retry-After is not implemented"
     _MULTIHOP_SKIP = "Python runner's respx stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)"
     SKIPS: set[str] = {
         "maxItems caps results across pages",
-        "DownloadURL auth'd first hop 302s to signed URL",
-        "DownloadURL direct 2xx body",
         "DownloadURL retries on 503 at the auth'd first hop",
         "DownloadURL honors Retry-After on 429 at the auth'd first hop",
-        "DownloadURL surfaces redirect with no Location",
         "UploadsDownload delegates through DownloadURL primitive",
     }
     SKIP_REASONS: dict[str, str] = {
         "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
-        "DownloadURL auth'd first hop 302s to signed URL": _DOWNLOAD_SKIP,
-        "DownloadURL direct 2xx body": _DOWNLOAD_SKIP,
-        "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_SKIP,
-        "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_SKIP,
-        "DownloadURL surfaces redirect with no Location": _DOWNLOAD_SKIP,
+        "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
+        "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
         "UploadsDownload delegates through DownloadURL primitive": _MULTIHOP_SKIP,
     }
 

@@ -33,6 +33,7 @@ interface Assertion {
   min?: number;
   max?: number;
   path?: string;
+  index?: number;
 }
 
 interface TestCase {
@@ -71,16 +72,10 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK retry middleware yields at most 1 retry per middleware pass",
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
-  "DownloadURL auth'd first hop 302s to signed URL":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
-  "DownloadURL direct 2xx body":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
   "DownloadURL retries on 503 at the auth'd first hop":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
-  "DownloadURL surfaces redirect with no Location":
-    "TS runner does not yet dispatch DownloadURL (tracked as follow-up)",
+    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "UploadsDownload delegates through DownloadURL primitive":
     "TS runner's MSW stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)",
 };
@@ -232,8 +227,22 @@ async function executeOperation(
         break;
       }
 
+      case "DownloadURL": {
+        if (!tc.path) {
+          throw new Error("DownloadURL test case requires a non-empty path");
+        }
+        const rawURL = "https://storage.3.basecamp.com" + tc.path;
+        const result = await client.downloadURL(rawURL);
+        // Fire-and-forget cancel — matches typescript/tests/download.test.ts.
+        // Awaiting MSW's mocked ReadableStream.cancel() can hang past vitest's
+        // default 5s test timeout, so don't await it here. void marks intent;
+        // .catch() suppresses any unhandled-rejection from the discarded Promise.
+        void result.body.cancel().catch(() => {});
+        return {};
+      }
+
       default:
-        throw new Error(`Unknown operation: ${tc.operation}`);
+      throw new Error(`Unknown operation: ${tc.operation}`);
     }
 
     // Success path: no error
@@ -351,6 +360,19 @@ function installMockHandlers(tc: TestCase): {
 // Assertion checker
 // =============================================================================
 
+/** Resolve captured headers at index (0-based; negative counts from end), or undefined if out of range. */
+function requestHeadersAt(
+  all: Record<string, string>[],
+  index: number,
+): Record<string, string> | undefined {
+  const n = all.length;
+  if (n === 0) return undefined;
+  let i = index;
+  if (i < 0) i += n;
+  if (i < 0 || i >= n) return undefined;
+  return all[i];
+}
+
 function checkAssertions(
   tc: TestCase,
   tracker: ReturnType<typeof installMockHandlers>,
@@ -363,6 +385,19 @@ function checkAssertions(
   const hasLinkNextHeader = tc.mockResponses.some(
     (r) => r.headers?.["Link"]?.includes('rel="next"'),
   );
+
+  // DownloadURL implicit invariant: hop 1 must hit the test case path.
+  // The MSW handler is origin-wide so hop 2's relative-resolved URL is
+  // served, but a regression that misroutes hop 1 to a different path on
+  // the same origin would otherwise pass silently.
+  if (tc.operation === "DownloadURL") {
+    const recordedPaths = tracker.requestPaths();
+    if (recordedPaths.length > 0 && recordedPaths[0] !== tc.path) {
+      throw new Error(
+        `[${tc.name}] DownloadURL hop 1 expected path ${tc.path}, got ${recordedPaths[0]}`,
+      );
+    }
+  }
 
   for (const assertion of tc.assertions) {
     switch (assertion.type) {
@@ -445,16 +480,35 @@ function checkAssertions(
 
       case "headerPresent": {
         const headerName = assertion.path!;
-        const headers = tracker.requestHeaders();
-        expect(
-          headers.length,
-          `[${tc.name}] expected at least one request for header presence check`,
-        ).toBeGreaterThan(0);
-        const actual = headers[0]![headerName.toLowerCase()];
+        const idx = assertion.index ?? 0;
+        const headers = requestHeadersAt(tracker.requestHeaders(), idx);
+        if (headers === undefined) {
+          throw new Error(
+            `[${tc.name}] expected header ${headerName} on request index ${idx}, but only ${tracker.requestCount()} requests were recorded`,
+          );
+        }
+        const actual = headers[headerName.toLowerCase()];
         expect(
           actual,
-          `[${tc.name}] expected header ${headerName} to be present, but it was empty or missing`,
+          `[${tc.name}] expected header ${headerName} on request index ${idx}, but it was empty or missing`,
         ).toBeTruthy();
+        break;
+      }
+
+      case "headerAbsent": {
+        const headerName = assertion.path!;
+        const idx = assertion.index ?? 0;
+        const headers = requestHeadersAt(tracker.requestHeaders(), idx);
+        if (headers === undefined) {
+          throw new Error(
+            `[${tc.name}] expected header ${headerName} absent on request index ${idx}, but only ${tracker.requestCount()} requests were recorded`,
+          );
+        }
+        const actual = headers[headerName.toLowerCase()];
+        expect(
+          actual,
+          `[${tc.name}] expected header ${headerName} absent on request index ${idx}, got "${actual}"`,
+        ).toBeFalsy();
         break;
       }
 
@@ -546,15 +600,17 @@ function checkAssertions(
       case "headerInjected": {
         const headerName = assertion.path!;
         const expected = String(assertion.expected);
-        const headers = tracker.requestHeaders();
-        expect(
-          headers.length,
-          `[${tc.name}] expected at least one request for header check`,
-        ).toBeGreaterThan(0);
-        const actual = headers[0]![headerName.toLowerCase()];
+        const idx = assertion.index ?? 0;
+        const headers = requestHeadersAt(tracker.requestHeaders(), idx);
+        if (headers === undefined) {
+          throw new Error(
+            `[${tc.name}] expected header ${headerName}="${expected}" on request index ${idx}, but only ${tracker.requestCount()} requests were recorded`,
+          );
+        }
+        const actual = headers[headerName.toLowerCase()];
         expect(
           actual,
-          `[${tc.name}] expected header ${headerName}="${expected}", got "${actual}"`,
+          `[${tc.name}] expected header ${headerName}="${expected}" on request index ${idx}, got "${actual}"`,
         ).toBe(expected);
         break;
       }
