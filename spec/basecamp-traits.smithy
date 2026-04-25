@@ -94,6 +94,68 @@ structure basecampSensitive {
     redact: Boolean
 }
 
+/// Marks a URL member whose value must be fetched through the configured
+/// API host with the SDK's Bearer credential; the API host 302s to a
+/// short-lived signed URL that the consumer follows without auth.
+///
+/// Contract for consumers (SDKs and hand-rolled helpers):
+///   1. Rewrite the URL's scheme + host to the configured API base URL,
+///      preserving path, query, and fragment.
+///   2. Issue an authenticated GET (Bearer credential + SDK User-Agent)
+///      with auto-redirect disabled so the 3xx is captured.
+///   3. On 301/302/303/307/308, read Location, close the first body,
+///      and GET the resolved URL with a bare transport — no auth
+///      headers, no logging middleware. The signature is the credential.
+///   4. On direct 2xx, stream the first response body as-is.
+///   5. Tests that exercise the download flow MUST assert that BOTH
+///      hops fired with the correct auth: capture each request's
+///      Authorization header and check Bearer on the metadata fetch
+///      and authenticated download hop, none on the signed hop.
+///      "No assertion fired" and "assertion fired and passed" are
+///      indistinguishable otherwise — both masked the bug behind PR
+///      #278. The host of the URL stubbed in metadata may either
+///      match the configured API base (mirrors what real fixtures
+///      return — e.g. `/{accountId}/blobs/{blob}/download/{filename}`
+///      for Upload, `/{accountId}/buckets/{bucketId}/uploads/{id}/download/{filename}`
+///      for CampfireLineAttachment) or use a different host like
+///      `storage.3.basecamp.com/...` to make the SDK's host-rewrite
+///      step visible (the convention in primitive tests like Go's
+///      `download_test.go`). Either is acceptable; the auth-hop
+///      assertions are what enforce the contract. Schema-shape-only
+///      tests (unmarshaling assertions that set `download_url`
+///      without exercising transport) are exempt but should still
+///      use an API-host-shaped URL for clarity.
+///
+/// The two-hop flow is not automatically retried end-to-end: streaming
+/// body ownership passes to the caller after hop 2, so a retry would
+/// double-consume. The authenticated first hop may be retried internally
+/// per the SDK's standard retry policy (see PR #278 in the Go SDK).
+///
+/// This trait does NOT apply to pagination `Link: rel=next` URLs,
+/// which are fetched as same-origin authed GETs without a redirect
+/// step (see Go `Client.followPagination` in `client.go`).
+///
+/// Every SDK implements hops 1–4 in a language-native primitive;
+/// external (cross-package/application-level) consumers MUST call the
+/// public client method, not the raw HTTP client. References: Go
+/// `AccountClient.DownloadURL`, TypeScript `BasecampClient.downloadURL`
+/// (backed by `createDownloadURL`), Python `AccountClient.download_url`
+/// / `AsyncAccountClient.download_url` (backed by `download_sync` /
+/// `download_async`), Ruby `AccountClient#download_url`, Swift
+/// `AccountClient.downloadURL`, Kotlin `AccountClient.downloadURL`.
+///
+/// SDK-internal service code (e.g., Go service methods that already
+/// own an `OperationInfo` lifecycle, like `UploadsService.Download`)
+/// MUST call the internal two-hop helper directly (Go:
+/// `Client.fetchAPIDownload`) rather than the public primitive —
+/// otherwise the public primitive's own `OnOperationStart`/`OnOperationEnd`
+/// fires nested inside the caller's, creating a double-logged request.
+///
+/// Emits x-basecamp-auth-routable-url extension to OpenAPI for SDK code generators.
+@trait(selector: "structure > member")
+@specificationExtension(as: "x-basecamp-auth-routable-url")
+structure basecampAuthRoutableUrl {}
+
 // ============================================================================
 // Legacy Traits - Keep for backward compatibility (not emitted to OpenAPI)
 // ============================================================================

@@ -70,6 +70,9 @@ jobs:
       - name: Check service layer drift
         run: ../scripts/check-service-drift.sh
 
+      - name: Check auth-routable consumer invariants
+        run: ../scripts/check-auth-routable-consumers.sh
+
       - name: Test with coverage
         run: |
           # Measure coverage for hand-written code only (generated code is excluded)
