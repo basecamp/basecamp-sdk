@@ -20,10 +20,10 @@ jobs:
           persist-credentials: false
 
       - name: Run actionlint
-        uses: rhysd/actionlint@393031adb9afb225ee52ae2ccd7a5af5525e03e8 # v1.7.11
+        uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
 
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
+        uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
         with:
           advanced-security: false
 
@@ -143,7 +143,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@dffb23f65a78bba8db45d387d5ea1bbd6be3ef18 # v1.293.0
+        uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1.302.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
@@ -175,7 +175,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Set up Python
         run: uv python install ${{ matrix.python }}
@@ -249,7 +249,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - name: Build
         run: ./gradlew :basecamp-sdk:build
@@ -301,7 +301,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - name: Run Kotlin conformance tests
         working-directory: kotlin
@@ -327,7 +327,7 @@ jobs:
           npm test
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@dffb23f65a78bba8db45d387d5ea1bbd6be3ef18 # v1.293.0
+        uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1.302.0
         with:
           ruby-version: '3.3'
           bundler-cache: true
@@ -338,7 +338,7 @@ jobs:
         run: ruby runner.rb
 
       - name: Install uv (Python)
-        uses: astral-sh/setup-uv@c7f87aa956e4c323abf06d5dec078e358f6b4d04 # v6.0.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Run Python conformance tests
         working-directory: conformance/runner/python
@@ -413,7 +413,7 @@ jobs:
           cache-dependency-path: 'go/go.sum'
 
       - name: Cache Go tools
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/go/bin
           key: go-tools-${{ runner.os }}-go${{ hashFiles('go/go.mod') }}-apidiff-v0.9.0
