@@ -250,6 +250,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-provider: basic
 
       - name: Build
         run: ./gradlew :basecamp-sdk:build
@@ -302,6 +304,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+        with:
+          cache-provider: basic
 
       - name: Run Kotlin conformance tests
         working-directory: kotlin
