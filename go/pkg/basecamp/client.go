@@ -705,7 +705,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 
 	c.logger.Debug("http response", "status", resp.StatusCode)
 
-	requestID := resp.Header.Get("X-Request-Id")
+	requestID := resp.Header.Get(requestIDHeader)
 
 	// Handle response based on status code
 	switch resp.StatusCode {
