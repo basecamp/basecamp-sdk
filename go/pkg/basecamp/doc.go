@@ -90,18 +90,18 @@
 //
 // List todos in a todolist:
 //
-//	todos, err := account.Todos().List(ctx, projectID, todolistID, nil)
+//	todos, err := account.Todos().List(ctx, todolistID, nil)
 //
 // Create a todo:
 //
-//	todo, err := account.Todos().Create(ctx, projectID, todolistID, &basecamp.CreateTodoRequest{
+//	todo, err := account.Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest{
 //	    Content: "Ship the feature",
 //	    DueOn:   "2024-12-31",
 //	})
 //
 // Complete a todo:
 //
-//	err := account.Todos().Complete(ctx, projectID, todoID)
+//	err := account.Todos().Complete(ctx, todoID)
 //
 // # Searching
 //
@@ -176,6 +176,6 @@
 //	acme := client.ForAccount("12345")
 //	initech := client.ForAccount("67890")
 //
-//	go func() { acme.Todos().List(ctx, projectID, todolistID, nil) }()
+//	go func() { acme.Todos().List(ctx, todolistID, nil) }()
 //	go func() { initech.Projects().List(ctx, nil) }()
 package basecamp
