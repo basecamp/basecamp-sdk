@@ -18765,7 +18765,8 @@
             "format": "int64"
           },
           "download_url": {
-            "type": "string"
+            "type": "string",
+            "x-basecamp-auth-routable-url": {}
           }
         }
       },
@@ -25244,7 +25245,8 @@
             "x-go-type-skip-optional-pointer": true
           },
           "download_url": {
-            "type": "string"
+            "type": "string",
+            "x-basecamp-auth-routable-url": {}
           },
           "filename": {
             "type": "string"

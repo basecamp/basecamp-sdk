@@ -227,6 +227,14 @@ go-check-drift:
 	@echo "==> Checking service layer drift..."
 	@./scripts/check-service-drift.sh
 
+.PHONY: auth-routable-check
+
+# Check that hop-2-only primitives are not called outside the authenticated
+# download path. Guards against regressing the @basecampAuthRoutableUrl contract.
+auth-routable-check:
+	@echo "==> Checking auth-routable consumer invariants..."
+	@./scripts/check-auth-routable-consumers.sh
+
 #------------------------------------------------------------------------------
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
@@ -575,7 +583,7 @@ tools:
 #------------------------------------------------------------------------------
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
