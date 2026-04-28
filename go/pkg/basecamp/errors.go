@@ -43,6 +43,9 @@ const (
 	ExitValidation = 9 // Validation error (422)
 )
 
+// requestIDHeader is the response header carrying the server-issued request ID.
+const requestIDHeader = "X-Request-Id"
+
 // Error is a structured error with code, message, and optional hint.
 type Error struct {
 	Code       string
@@ -65,6 +68,17 @@ func (e *Error) Error() string {
 // Unwrap returns the underlying cause for errors.Is/As support.
 func (e *Error) Unwrap() error {
 	return e.Cause
+}
+
+// withRequestID returns a shallow copy of the error with RequestID set.
+// Returns the receiver unchanged when it is nil or when requestID is empty.
+func (e *Error) withRequestID(requestID string) *Error {
+	if e == nil || requestID == "" {
+		return e
+	}
+	errCopy := *e
+	errCopy.RequestID = requestID
+	return &errCopy
 }
 
 // ExitCode returns the appropriate exit code for this error.

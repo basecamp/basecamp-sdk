@@ -78,7 +78,7 @@ func checkResponse(resp *http.Response, body []byte) error {
 		return nil
 	}
 
-	requestID := resp.Header.Get("X-Request-Id")
+	requestID := resp.Header.Get(requestIDHeader)
 	serverMsg, serverHint := parseErrorBody(body)
 
 	switch resp.StatusCode {

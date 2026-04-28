@@ -90,6 +90,20 @@ func TestCheckResponse_JSONErrorWithDescription(t *testing.T) {
 	}
 }
 
+func TestCheckResponse_RequestID(t *testing.T) {
+	resp := &http.Response{StatusCode: 500, Header: http.Header{}}
+	resp.Header.Set("X-Request-Id", "req-sdk-123")
+
+	err := checkResponse(resp, nil)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.RequestID != "req-sdk-123" {
+		t.Fatalf("RequestID = %q, want %q", e.RequestID, "req-sdk-123")
+	}
+}
+
 func TestCheckResponse_EmptyBody(t *testing.T) {
 	resp := &http.Response{StatusCode: 403, Header: http.Header{}}
 	err := checkResponse(resp, nil)
