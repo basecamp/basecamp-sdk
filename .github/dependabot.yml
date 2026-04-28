@@ -76,6 +76,11 @@ updates:
       npm-dependencies:
         patterns:
           - "*"
+    ignore:
+      # openapi-typescript 7.x peers on typescript ^5.x; revisit when upstream
+      # publishes TS 6 support (openapi-ts/openapi-typescript#2723).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "deps(ts):"
     labels:
