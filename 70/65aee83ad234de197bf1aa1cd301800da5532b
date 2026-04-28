@@ -1,0 +1,36 @@
+go/pkg/basecamp/doc.go
+  7418553b02e07675 93,97,104,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7065aee83ad234de197bf1aa1cd301800da5532b",
+  "prompts": {
+    "7418553b02e07675": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e1c36e1-6097-4e29-b50b-994f8abe5632",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 605,
+      "total_deletions": 11,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    },
+    "d13d09bf3a3245fd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019dd588-a95e-7071-aec3-a9264df2c941",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}
