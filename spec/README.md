@@ -7,10 +7,10 @@ ergonomics.
 ## Files
 - `basecamp.smithy` — canonical model (types + operations)
 - `overlays/` — semantic overlays (pagination, retries, idempotency)
-- `api-provenance.json` — upstream revision tracking (bc3-api + bc3 SHAs)
+- `api-provenance.json` — upstream revision tracking (`basecamp/bc3` SHA)
 
 ## Grounding
-- API reference: `basecamp/bc3-api` → `sections/`
+- API reference: `basecamp/bc3` → `doc/api/`
 - App code: `basecamp/bc3` → `app/controllers/`
 
 ## Conventions

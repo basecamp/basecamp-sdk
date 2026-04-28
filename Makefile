@@ -99,26 +99,23 @@ provenance-check:
 	@echo "api-provenance.json is up to date"
 
 # Show upstream changes since last spec sync (queries GitHub via gh CLI).
-BC3_API_REPO ?= basecamp/bc3-api
-BC3_REPO     ?= basecamp/bc3
+BC3_REPO ?= basecamp/bc3
 
 sync-status:
 	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
 	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
-	@REV=$$(jq -r '.bc3_api.revision // empty' spec/api-provenance.json); \
-	if [ -z "$$REV" ]; then \
-		echo "==> bc3-api: no baseline revision set"; \
-	else \
-		echo "==> bc3-api changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
-		gh api "repos/$(BC3_API_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[] | select(.filename | startswith("sections/"))] | if length == 0 then "  (no changes in sections/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
-	fi
-	@echo ""
 	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
 	if [ -z "$$REV" ]; then \
-		echo "==> bc3: no baseline revision set"; \
+		echo "==> bc3 API docs: no baseline revision set"; \
+		echo ""; \
+		echo "==> bc3 API implementation: no baseline revision set"; \
 	else \
-		echo "==> bc3 API changes since last sync ($$(echo $$REV | cut -c1-7)):"; \
+		SHORT_REV=$$(echo $$REV | cut -c1-7); \
+		echo "==> bc3 API docs changes since last sync ($$SHORT_REV):"; \
+		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
+			--jq '[.files[] | select(.filename | startswith("doc/api/"))] | if length == 0 then "  (no changes in doc/api/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
+		echo ""; \
+		echo "==> bc3 API implementation changes since last sync ($$SHORT_REV):"; \
 		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
 			--jq '[.files[] | select(.filename | startswith("app/controllers/"))] | if length == 0 then "  (no changes in app/controllers/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
 	fi
@@ -176,13 +173,10 @@ sync-spec-version:
 sync-spec-version-check:
 	@echo "==> Checking Smithy service version freshness..."
 	@command -v jq > /dev/null 2>&1 || { echo "ERROR: jq not found. Install jq to run sync-spec-version-check (used by 'make check')."; exit 1; }
-	@PROVENANCE_DATE=$$(jq -r '.bc3_api.date' spec/api-provenance.json); \
-		BC3_DATE=$$(jq -r '.bc3.date' spec/api-provenance.json); \
+	@BC3_DATE=$$(jq -r '.bc3.date' spec/api-provenance.json); \
 		SMITHY_VER=$$(sed -n 's/^  version: "\(.*\)"/\1/p' spec/basecamp.smithy | head -1); \
-		if [ -z "$$PROVENANCE_DATE" ] || [ "$$PROVENANCE_DATE" = "null" ]; then echo "ERROR: Could not read bc3_api.date from spec/api-provenance.json"; exit 1; fi; \
 		if [ -z "$$BC3_DATE" ] || [ "$$BC3_DATE" = "null" ]; then echo "ERROR: Could not read bc3.date from spec/api-provenance.json"; exit 1; fi; \
-		if [ "$$PROVENANCE_DATE" != "$$BC3_DATE" ]; then echo "ERROR: Provenance dates differ: bc3_api.date=$$PROVENANCE_DATE bc3.date=$$BC3_DATE"; exit 1; fi; \
-		if [ "$$SMITHY_VER" != "$$PROVENANCE_DATE" ]; then echo "ERROR: Smithy service version is out of date. Run 'make sync-spec-version'"; exit 1; fi
+		if [ "$$SMITHY_VER" != "$$BC3_DATE" ]; then echo "ERROR: Smithy service version is out of date. Run 'make sync-spec-version'"; exit 1; fi
 	@echo "Smithy service version is up to date"
 
 # Sync API_VERSION constants from openapi.json info.version

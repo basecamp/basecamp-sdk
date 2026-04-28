@@ -1,6 +1,6 @@
 # Projects Fixtures
 
-JSON fixtures extracted from bc3-api/sections/projects.md for golden tests.
+JSON fixtures extracted from the canonical projects docs in `basecamp/bc3/doc/api/sections/projects.md` for golden tests.
 
 ## Fixture to Operation Mapping
 
