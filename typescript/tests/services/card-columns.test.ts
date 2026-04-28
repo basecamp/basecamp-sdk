@@ -104,17 +104,18 @@ describe("CardColumnsService", () => {
 
   describe("setColor", () => {
     it("should set the color of a column", async () => {
+      const bucketId = 999;
       const columnId = 42;
 
       server.use(
-        http.put(`${BASE_URL}/card_tables/columns/${columnId}/color.json`, async ({ request }) => {
+        http.put(`${BASE_URL}/buckets/${bucketId}/card_tables/columns/${columnId}/color.json`, async ({ request }) => {
           const body = (await request.json()) as Record<string, unknown>;
           expect(body.color).toBe("green");
           return HttpResponse.json(sampleColumn(columnId));
         })
       );
 
-      const column = await client.cardColumns.setColor(columnId, {
+      const column = await client.cardColumns.setColor(bucketId, columnId, {
         color: "green",
       });
       expect(column.id).toBe(columnId);
@@ -123,10 +124,11 @@ describe("CardColumnsService", () => {
 
   describe("enableOnHold", () => {
     it("should enable on-hold for a column", async () => {
+      const bucketId = 999;
       const columnId = 42;
 
       server.use(
-        http.post(`${BASE_URL}/card_tables/columns/${columnId}/on_hold.json`, () => {
+        http.post(`${BASE_URL}/buckets/${bucketId}/card_tables/columns/${columnId}/on_hold.json`, () => {
           return HttpResponse.json({
             ...sampleColumn(columnId),
             on_hold: {
@@ -139,7 +141,7 @@ describe("CardColumnsService", () => {
         })
       );
 
-      const column = await client.cardColumns.enableOnHold(columnId);
+      const column = await client.cardColumns.enableOnHold(bucketId, columnId);
       expect(column.id).toBe(columnId);
       expect(column.on_hold?.id).toBe(9999);
       expect(column.on_hold?.status).toBe("active");
@@ -148,15 +150,16 @@ describe("CardColumnsService", () => {
 
   describe("disableOnHold", () => {
     it("should disable on-hold for a column", async () => {
+      const bucketId = 999;
       const columnId = 42;
 
       server.use(
-        http.delete(`${BASE_URL}/card_tables/columns/${columnId}/on_hold.json`, () => {
+        http.delete(`${BASE_URL}/buckets/${bucketId}/card_tables/columns/${columnId}/on_hold.json`, () => {
           return HttpResponse.json(sampleColumn(columnId));
         })
       );
 
-      const column = await client.cardColumns.disableOnHold(columnId);
+      const column = await client.cardColumns.disableOnHold(bucketId, columnId);
       expect(column.id).toBe(columnId);
       expect(column.on_hold).toBeUndefined();
     });

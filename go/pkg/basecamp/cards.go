@@ -739,7 +739,7 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 // SetColor sets the color of a column.
 // Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown.
 // Returns the updated column.
-func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color string) (result *CardColumn, err error) {
+func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID int64, color string) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "SetColor",
 		ResourceType: "card_column", IsMutation: true,
@@ -763,7 +763,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color
 		Color: color,
 	}
 
-	resp, err := s.client.parent.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, columnID, body)
+	resp, err := s.client.parent.gen.SetCardColumnColorWithResponse(ctx, s.client.accountID, bucketID, columnID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -781,7 +781,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, columnID int64, color
 
 // EnableOnHold adds an on-hold section to a column.
 // Returns the updated column.
-func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (result *CardColumn, err error) {
+func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "EnableOnHold",
 		ResourceType: "card_column", IsMutation: true,
@@ -796,7 +796,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, columnID)
+	resp, err := s.client.parent.gen.EnableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}
@@ -814,7 +814,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, columnID int64) (
 
 // DisableOnHold removes the on-hold section from a column.
 // Returns the updated column.
-func (s *CardColumnsService) DisableOnHold(ctx context.Context, columnID int64) (result *CardColumn, err error) {
+func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, columnID int64) (result *CardColumn, err error) {
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "DisableOnHold",
 		ResourceType: "card_column", IsMutation: true,
@@ -829,7 +829,7 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, columnID int64) 
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, columnID)
+	resp, err := s.client.parent.gen.DisableCardColumnOnHoldWithResponse(ctx, s.client.accountID, bucketID, columnID)
 	if err != nil {
 		return nil, err
 	}

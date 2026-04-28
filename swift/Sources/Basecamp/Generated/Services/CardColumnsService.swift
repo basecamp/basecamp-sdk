@@ -12,20 +12,20 @@ public final class CardColumnsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func disableOnHold(columnId: Int) async throws -> CardColumn {
+    public func disableOnHold(bucketId: Int, columnId: Int) async throws -> CardColumn {
         return try await request(
             OperationInfo(service: "CardColumns", operation: "DisableCardColumnOnHold", resourceType: "card_column_on_hold", isMutation: true, resourceId: columnId),
             method: "DELETE",
-            path: "/card_tables/columns/\(columnId)/on_hold.json",
+            path: "/buckets/\(bucketId)/card_tables/columns/\(columnId)/on_hold.json",
             retryConfig: Metadata.retryConfig(for: "DisableCardColumnOnHold")
         )
     }
 
-    public func enableOnHold(columnId: Int) async throws -> CardColumn {
+    public func enableOnHold(bucketId: Int, columnId: Int) async throws -> CardColumn {
         return try await request(
             OperationInfo(service: "CardColumns", operation: "EnableCardColumnOnHold", resourceType: "card_column_on_hold", isMutation: true, resourceId: columnId),
             method: "POST",
-            path: "/card_tables/columns/\(columnId)/on_hold.json",
+            path: "/buckets/\(bucketId)/card_tables/columns/\(columnId)/on_hold.json",
             retryConfig: Metadata.retryConfig(for: "EnableCardColumnOnHold")
         )
     }
@@ -49,11 +49,11 @@ public final class CardColumnsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func setColor(columnId: Int, req: SetCardColumnColorRequest) async throws -> CardColumn {
+    public func setColor(bucketId: Int, columnId: Int, req: SetCardColumnColorRequest) async throws -> CardColumn {
         return try await request(
             OperationInfo(service: "CardColumns", operation: "SetCardColumnColor", resourceType: "card_column_color", isMutation: true, resourceId: columnId),
             method: "PUT",
-            path: "/card_tables/columns/\(columnId)/color.json",
+            path: "/buckets/\(bucketId)/card_tables/columns/\(columnId)/color.json",
             body: req,
             retryConfig: Metadata.retryConfig(for: "SetCardColumnColor")
         )

@@ -13,6 +13,72 @@ import kotlinx.serialization.json.JsonElement
 class CardColumnsService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Set the color of a column
+     * @param bucketId The bucket ID
+     * @param columnId The column ID
+     * @param body Request body
+     */
+    suspend fun setColor(bucketId: Long, columnId: Long, body: SetCardColumnColorBody): CardColumn {
+        val info = OperationInfo(
+            service = "CardColumns",
+            operation = "SetCardColumnColor",
+            resourceType = "card_column_color",
+            isMutation = true,
+            projectId = null,
+            resourceId = columnId,
+        )
+        return request(info, {
+            httpPut("/buckets/${bucketId}/card_tables/columns/${columnId}/color.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("color", kotlinx.serialization.json.JsonPrimitive(body.color))
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<CardColumn>(body)
+        }
+    }
+
+    /**
+     * Enable on-hold section in a column
+     * @param bucketId The bucket ID
+     * @param columnId The column ID
+     */
+    suspend fun enableOnHold(bucketId: Long, columnId: Long): CardColumn {
+        val info = OperationInfo(
+            service = "CardColumns",
+            operation = "EnableCardColumnOnHold",
+            resourceType = "card_column_on_hold",
+            isMutation = true,
+            projectId = null,
+            resourceId = columnId,
+        )
+        return request(info, {
+            httpPost("/buckets/${bucketId}/card_tables/columns/${columnId}/on_hold.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<CardColumn>(body)
+        }
+    }
+
+    /**
+     * Disable on-hold section in a column
+     * @param bucketId The bucket ID
+     * @param columnId The column ID
+     */
+    suspend fun disableOnHold(bucketId: Long, columnId: Long): CardColumn {
+        val info = OperationInfo(
+            service = "CardColumns",
+            operation = "DisableCardColumnOnHold",
+            resourceType = "card_column_on_hold",
+            isMutation = true,
+            projectId = null,
+            resourceId = columnId,
+        )
+        return request(info, {
+            httpDelete("/buckets/${bucketId}/card_tables/columns/${columnId}/on_hold.json", operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<CardColumn>(body)
+        }
+    }
+
+    /**
      * Get a card column by ID
      * @param columnId The column ID
      */
@@ -51,69 +117,6 @@ class CardColumnsService(client: AccountClient) : BaseService(client) {
                 body.title?.let { put("title", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<CardColumn>(body)
-        }
-    }
-
-    /**
-     * Set the color of a column
-     * @param columnId The column ID
-     * @param body Request body
-     */
-    suspend fun setColor(columnId: Long, body: SetCardColumnColorBody): CardColumn {
-        val info = OperationInfo(
-            service = "CardColumns",
-            operation = "SetCardColumnColor",
-            resourceType = "card_column_color",
-            isMutation = true,
-            projectId = null,
-            resourceId = columnId,
-        )
-        return request(info, {
-            httpPut("/card_tables/columns/${columnId}/color.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("color", kotlinx.serialization.json.JsonPrimitive(body.color))
-            }), operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<CardColumn>(body)
-        }
-    }
-
-    /**
-     * Enable on-hold section in a column
-     * @param columnId The column ID
-     */
-    suspend fun enableOnHold(columnId: Long): CardColumn {
-        val info = OperationInfo(
-            service = "CardColumns",
-            operation = "EnableCardColumnOnHold",
-            resourceType = "card_column_on_hold",
-            isMutation = true,
-            projectId = null,
-            resourceId = columnId,
-        )
-        return request(info, {
-            httpPost("/card_tables/columns/${columnId}/on_hold.json", operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<CardColumn>(body)
-        }
-    }
-
-    /**
-     * Disable on-hold section in a column
-     * @param columnId The column ID
-     */
-    suspend fun disableOnHold(columnId: Long): CardColumn {
-        val info = OperationInfo(
-            service = "CardColumns",
-            operation = "DisableCardColumnOnHold",
-            resourceType = "card_column_on_hold",
-            isMutation = true,
-            projectId = null,
-            resourceId = columnId,
-        )
-        return request(info, {
-            httpDelete("/card_tables/columns/${columnId}/on_hold.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<CardColumn>(body)
         }

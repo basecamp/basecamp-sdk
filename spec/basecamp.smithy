@@ -4277,7 +4277,7 @@ structure MoveCardColumnOutput {}
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/card_tables/columns/{columnId}/color.json")
+@http(method: "PUT", uri: "/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/color.json")
 operation SetCardColumnColor {
   input: SetCardColumnColorInput
   output: SetCardColumnColorOutput
@@ -4288,6 +4288,10 @@ structure SetCardColumnColorInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -4305,7 +4309,7 @@ structure SetCardColumnColorOutput {
 
 /// Enable on-hold section in a column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/card_tables/columns/{columnId}/on_hold.json")
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json")
 operation EnableCardColumnOnHold {
   input: EnableCardColumnOnHoldInput
   output: EnableCardColumnOnHoldOutput
@@ -4316,6 +4320,10 @@ structure EnableCardColumnOnHoldInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -4331,7 +4339,7 @@ structure EnableCardColumnOnHoldOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/card_tables/columns/{columnId}/on_hold.json")
+@http(method: "DELETE", uri: "/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json")
 operation DisableCardColumnOnHold {
   input: DisableCardColumnOnHoldInput
   output: DisableCardColumnOnHoldOutput
@@ -4342,6 +4350,10 @@ structure DisableCardColumnOnHoldInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
