@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -914,24 +913,28 @@ func TestCheckinsService_UpdateAnswerRejectsMissingResolvedGroupOn(t *testing.T)
 	}
 }
 
-func TestCheckinsService_ListAnswersByUser(t *testing.T) {
+func TestCheckinsService_ListAnswersByPerson(t *testing.T) {
 	fixture := loadCheckinsFixture(t, "answers_by_person.json")
 
-	var requestedPath string
+	var requestedMethod, requestedPath string
 	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
 		requestedPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		w.Write(fixture)
 	})
 
-	result, err := svc.ListAnswersByUser(context.Background(), 1069479410, 1049715914, nil)
+	result, err := svc.ListAnswersByPerson(context.Background(), 1069479410, 1049715914, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(requestedPath, "/questions/1069479410/answers/by/1049715914") {
-		t.Errorf("expected path to contain /questions/1069479410/answers/by/1049715914, got %q", requestedPath)
+	if requestedMethod != http.MethodGet {
+		t.Errorf("expected GET, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/questions/1069479410/answers/by/1049715914" {
+		t.Errorf("expected path /99999/questions/1069479410/answers/by/1049715914, got %q", requestedPath)
 	}
 
 	if len(result.Answers) != 1 {

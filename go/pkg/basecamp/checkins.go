@@ -434,7 +434,9 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 //
 // Pagination options:
 //   - Limit: maximum number of answers to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if non-zero, disables pagination and returns first page only.
+//     NOTE: The page number itself is not yet honored due to OpenAPI client
+//     limitations. Use 0 to paginate through all results up to Limit.
 //
 // The returned AnswerListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -507,16 +509,18 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
-// ListAnswersByUser returns all answers for a question posted by a specific person.
+// ListAnswersByPerson returns all answers for a question posted by a specific person.
+//
+// By default, returns all answers (no limit). Use Limit to cap results.
 //
 // Pagination options:
 //   - Limit: maximum number of answers to return (0 = all)
 //   - Page: if non-zero, disables pagination and returns first page only.
 //     NOTE: The page number itself is not yet honored due to OpenAPI client
 //     limitations. Use 0 to paginate through all results up to Limit.
-func (s *CheckinsService) ListAnswersByUser(ctx context.Context, questionID, personID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
+func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, personID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
 	op := OperationInfo{
-		Service: "Checkins", Operation: "ListAnswersByUser",
+		Service: "Checkins", Operation: "ListAnswersByPerson",
 		ResourceType: "answer", IsMutation: false,
 		ResourceID: questionID,
 	}

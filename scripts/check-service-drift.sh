@@ -19,7 +19,6 @@ SERVICE_DIR="$SDK_DIR/pkg/basecamp"
 
 # Operations intentionally not yet wrapped (tracked for Go service generator work)
 EXCLUDED_OPS=(
-  GetAnswersByPerson
   GetQuestionReminders
   ListQuestionAnswerers
   PauseQuestion
