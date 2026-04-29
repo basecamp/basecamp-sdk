@@ -1,0 +1,23 @@
+go/pkg/basecamp/cards_test.go
+  3b8661dc6e5815a4 904-1004
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9c15b67934140d892d168129fe5a3b56d263a3ea",
+  "prompts": {
+    "3b8661dc6e5815a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae3750f5-9982-460e-b5aa-eb183daf129f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 1105,
+      "total_deletions": 1004,
+      "accepted_lines": 101,
+      "overriden_lines": 0
+    }
+  }
+}
