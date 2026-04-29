@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -910,5 +911,126 @@ func TestCheckinsService_UpdateAnswerRejectsMissingResolvedGroupOn(t *testing.T)
 	}
 	if apiErr.Message != "group_on is required" {
 		t.Fatalf("unexpected error message: %q", apiErr.Message)
+	}
+}
+
+func TestCheckinsService_ListAnswersByPerson(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "answers_by_person.json")
+
+	var requestedMethod, requestedPath string
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	result, err := svc.ListAnswersByPerson(context.Background(), 1069479410, 1049715914, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != http.MethodGet {
+		t.Errorf("expected GET, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/questions/1069479410/answers/by/1049715914" {
+		t.Errorf("expected path /99999/questions/1069479410/answers/by/1049715914, got %q", requestedPath)
+	}
+
+	if len(result.Answers) != 1 {
+		t.Fatalf("expected 1 answer, got %d", len(result.Answers))
+	}
+
+	a := result.Answers[0]
+	if a.ID != 1069479450 {
+		t.Errorf("expected ID 1069479450, got %d", a.ID)
+	}
+	if a.Creator == nil || a.Creator.ID != 1049715914 {
+		t.Errorf("expected Creator.ID 1049715914, got %v", a.Creator)
+	}
+	if a.Creator.Name != "Victor Cooper" {
+		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", a.Creator.Name)
+	}
+}
+
+func TestCheckinsService_ListAnswersByPerson_Pagination(t *testing.T) {
+	page1Body := `[{"id":1,"creator":{"id":1049715914,"name":"A"}},{"id":2,"creator":{"id":1049715914,"name":"B"}}]`
+	page2Body := `[{"id":3,"creator":{"id":1049715914,"name":"C"}},{"id":4,"creator":{"id":1049715914,"name":"D"}}]`
+
+	cases := []struct {
+		name          string
+		emitNextLink  bool
+		opts          *AnswerListOptions
+		wantAnswers   int
+		wantRequests  int
+		wantTruncated bool
+	}{
+		{
+			name:          "collects across pages when no limit",
+			emitNextLink:  true,
+			opts:          nil,
+			wantAnswers:   4,
+			wantRequests:  2,
+			wantTruncated: false,
+		},
+		{
+			name:          "Page option returns first page and skips Link follow",
+			emitNextLink:  true,
+			opts:          &AnswerListOptions{Page: 1},
+			wantAnswers:   2,
+			wantRequests:  1,
+			wantTruncated: false,
+		},
+		{
+			name:          "Limit smaller than first page truncates without follow",
+			emitNextLink:  true,
+			opts:          &AnswerListOptions{Limit: 1},
+			wantAnswers:   1,
+			wantRequests:  1,
+			wantTruncated: true,
+		},
+		{
+			name:          "Limit straddling page boundary trims second page",
+			emitNextLink:  true,
+			opts:          &AnswerListOptions{Limit: 3},
+			wantAnswers:   3,
+			wantRequests:  2,
+			wantTruncated: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requestCount int
+			svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				w.Header().Set("Content-Type", "application/json")
+				if requestCount == 1 {
+					if tc.emitNextLink {
+						w.Header().Set("Link", fmt.Sprintf(`<http://%s/99999/questions/1069479410/answers/by/1049715914?page=2>; rel="next"`, r.Host))
+					}
+					w.WriteHeader(200)
+					w.Write([]byte(page1Body))
+					return
+				}
+				w.WriteHeader(200)
+				w.Write([]byte(page2Body))
+			})
+
+			result, err := svc.ListAnswersByPerson(context.Background(), 1069479410, 1049715914, tc.opts)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(result.Answers) != tc.wantAnswers {
+				t.Errorf("expected %d answers, got %d", tc.wantAnswers, len(result.Answers))
+			}
+			if requestCount != tc.wantRequests {
+				t.Errorf("expected %d HTTP requests, got %d", tc.wantRequests, requestCount)
+			}
+			if result.Meta.Truncated != tc.wantTruncated {
+				t.Errorf("expected Truncated=%v, got %v", tc.wantTruncated, result.Meta.Truncated)
+			}
+		})
 	}
 }
