@@ -901,3 +901,104 @@ func TestCardStepsService_UpdatePartial(t *testing.T) {
 		}
 	}
 }
+
+// testCardColumnsServer creates an httptest.Server and a CardColumnsService wired to it.
+func testCardColumnsServer(t *testing.T, handler http.HandlerFunc) *CardColumnsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.CardColumns()
+}
+
+// Distinct bucketID/columnID — a future swap of the (bucketID, columnID) argument
+// order would build a path with the IDs in the wrong slots and fail the assertion.
+const (
+	cardColumnsTestBucketID = int64(2085958499)
+	cardColumnsTestColumnID = int64(1069479347)
+)
+
+func TestCardColumnsService_SetColor(t *testing.T) {
+	fixture := loadCardsFixture(t, "column.json")
+	wantPath := "/99999/buckets/2085958499/card_tables/columns/1069479347/color.json"
+
+	var receivedBody map[string]any
+	svc := testCardColumnsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != wantPath {
+			t.Errorf("path = %q, want %q", r.URL.Path, wantPath)
+		}
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	column, err := svc.SetColor(context.Background(), cardColumnsTestBucketID, cardColumnsTestColumnID, "blue")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if column == nil || column.ID != cardColumnsTestColumnID {
+		t.Fatalf("expected column ID %d, got %+v", cardColumnsTestColumnID, column)
+	}
+	if got := receivedBody["color"]; got != "blue" {
+		t.Errorf("body color = %v, want \"blue\"", got)
+	}
+}
+
+func TestCardColumnsService_EnableOnHold(t *testing.T) {
+	fixture := loadCardsFixture(t, "column.json")
+	wantPath := "/99999/buckets/2085958499/card_tables/columns/1069479347/on_hold.json"
+
+	svc := testCardColumnsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != wantPath {
+			t.Errorf("path = %q, want %q", r.URL.Path, wantPath)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	column, err := svc.EnableOnHold(context.Background(), cardColumnsTestBucketID, cardColumnsTestColumnID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if column == nil || column.ID != cardColumnsTestColumnID {
+		t.Fatalf("expected column ID %d, got %+v", cardColumnsTestColumnID, column)
+	}
+}
+
+func TestCardColumnsService_DisableOnHold(t *testing.T) {
+	fixture := loadCardsFixture(t, "column.json")
+	wantPath := "/99999/buckets/2085958499/card_tables/columns/1069479347/on_hold.json"
+
+	svc := testCardColumnsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "DELETE" {
+			t.Errorf("expected DELETE, got %s", r.Method)
+		}
+		if r.URL.Path != wantPath {
+			t.Errorf("path = %q, want %q", r.URL.Path, wantPath)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	column, err := svc.DisableOnHold(context.Background(), cardColumnsTestBucketID, cardColumnsTestColumnID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if column == nil || column.ID != cardColumnsTestColumnID {
+		t.Fatalf("expected column ID %d, got %+v", cardColumnsTestColumnID, column)
+	}
+}
