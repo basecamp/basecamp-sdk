@@ -11,6 +11,31 @@ from basecamp.hooks import OperationInfo
 
 
 class CardColumnsService(BaseService):
+    def set_color(self, *, bucket_id: int, column_id: int, color: str) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="cardcolumns", operation="set_color", is_mutation=True, resource_id=column_id),
+            "PUT",
+            f"/buckets/{bucket_id}/card_tables/columns/{column_id}/color.json",
+            json_body=self._compact(color=color),
+            operation="SetCardColumnColor",
+        )
+
+    def enable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="cardcolumns", operation="enable_on_hold", is_mutation=True, resource_id=column_id),
+            "POST",
+            f"/buckets/{bucket_id}/card_tables/columns/{column_id}/on_hold.json",
+            operation="EnableCardColumnOnHold",
+        )
+
+    def disable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(service="cardcolumns", operation="disable_on_hold", is_mutation=True, resource_id=column_id),
+            "DELETE",
+            f"/buckets/{bucket_id}/card_tables/columns/{column_id}/on_hold.json",
+            operation="DisableCardColumnOnHold",
+        )
+
     def get(self, *, column_id: int) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
@@ -25,31 +50,6 @@ class CardColumnsService(BaseService):
             f"/card_tables/columns/{column_id}",
             json_body=self._compact(title=title, description=description),
             operation="UpdateCardColumn",
-        )
-
-    def set_color(self, *, column_id: int, color: str) -> dict[str, Any]:
-        return self._request(
-            OperationInfo(service="cardcolumns", operation="set_color", is_mutation=True, resource_id=column_id),
-            "PUT",
-            f"/card_tables/columns/{column_id}/color.json",
-            json_body=self._compact(color=color),
-            operation="SetCardColumnColor",
-        )
-
-    def enable_on_hold(self, *, column_id: int) -> dict[str, Any]:
-        return self._request(
-            OperationInfo(service="cardcolumns", operation="enable_on_hold", is_mutation=True, resource_id=column_id),
-            "POST",
-            f"/card_tables/columns/{column_id}/on_hold.json",
-            operation="EnableCardColumnOnHold",
-        )
-
-    def disable_on_hold(self, *, column_id: int) -> dict[str, Any]:
-        return self._request(
-            OperationInfo(service="cardcolumns", operation="disable_on_hold", is_mutation=True, resource_id=column_id),
-            "DELETE",
-            f"/card_tables/columns/{column_id}/on_hold.json",
-            operation="DisableCardColumnOnHold",
         )
 
     def subscribe_to_column(self, *, column_id: int) -> None:
@@ -92,6 +92,31 @@ class CardColumnsService(BaseService):
 
 
 class AsyncCardColumnsService(AsyncBaseService):
+    async def set_color(self, *, bucket_id: int, column_id: int, color: str) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="cardcolumns", operation="set_color", is_mutation=True, resource_id=column_id),
+            "PUT",
+            f"/buckets/{bucket_id}/card_tables/columns/{column_id}/color.json",
+            json_body=self._compact(color=color),
+            operation="SetCardColumnColor",
+        )
+
+    async def enable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="cardcolumns", operation="enable_on_hold", is_mutation=True, resource_id=column_id),
+            "POST",
+            f"/buckets/{bucket_id}/card_tables/columns/{column_id}/on_hold.json",
+            operation="EnableCardColumnOnHold",
+        )
+
+    async def disable_on_hold(self, *, bucket_id: int, column_id: int) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(service="cardcolumns", operation="disable_on_hold", is_mutation=True, resource_id=column_id),
+            "DELETE",
+            f"/buckets/{bucket_id}/card_tables/columns/{column_id}/on_hold.json",
+            operation="DisableCardColumnOnHold",
+        )
+
     async def get(self, *, column_id: int) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
@@ -108,31 +133,6 @@ class AsyncCardColumnsService(AsyncBaseService):
             f"/card_tables/columns/{column_id}",
             json_body=self._compact(title=title, description=description),
             operation="UpdateCardColumn",
-        )
-
-    async def set_color(self, *, column_id: int, color: str) -> dict[str, Any]:
-        return await self._request(
-            OperationInfo(service="cardcolumns", operation="set_color", is_mutation=True, resource_id=column_id),
-            "PUT",
-            f"/card_tables/columns/{column_id}/color.json",
-            json_body=self._compact(color=color),
-            operation="SetCardColumnColor",
-        )
-
-    async def enable_on_hold(self, *, column_id: int) -> dict[str, Any]:
-        return await self._request(
-            OperationInfo(service="cardcolumns", operation="enable_on_hold", is_mutation=True, resource_id=column_id),
-            "POST",
-            f"/card_tables/columns/{column_id}/on_hold.json",
-            operation="EnableCardColumnOnHold",
-        )
-
-    async def disable_on_hold(self, *, column_id: int) -> dict[str, Any]:
-        return await self._request(
-            OperationInfo(service="cardcolumns", operation="disable_on_hold", is_mutation=True, resource_id=column_id),
-            "DELETE",
-            f"/card_tables/columns/{column_id}/on_hold.json",
-            operation="DisableCardColumnOnHold",
         )
 
     async def subscribe_to_column(self, *, column_id: int) -> None:

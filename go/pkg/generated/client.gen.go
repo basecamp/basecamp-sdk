@@ -2729,6 +2729,9 @@ type UpdateAccountLogoMultipartRequestBody UpdateAccountLogoMultipartBody
 // UpdateAccountNameJSONRequestBody defines body for UpdateAccountName for application/json ContentType.
 type UpdateAccountNameJSONRequestBody = UpdateAccountNameRequestContent
 
+// SetCardColumnColorJSONRequestBody defines body for SetCardColumnColor for application/json ContentType.
+type SetCardColumnColorJSONRequestBody = SetCardColumnColorRequestContent
+
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
@@ -2746,9 +2749,6 @@ type CreateCardStepJSONRequestBody = CreateCardStepRequestContent
 
 // UpdateCardColumnJSONRequestBody defines body for UpdateCardColumn for application/json ContentType.
 type UpdateCardColumnJSONRequestBody = UpdateCardColumnRequestContent
-
-// SetCardColumnColorJSONRequestBody defines body for SetCardColumnColor for application/json ContentType.
-type SetCardColumnColorJSONRequestBody = SetCardColumnColorRequestContent
 
 // CreateCardJSONRequestBody defines body for CreateCard for application/json ContentType.
 type CreateCardJSONRequestBody = CreateCardRequestContent
@@ -3249,6 +3249,17 @@ type ClientInterface interface {
 	// GetBoost request
 	GetBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SetCardColumnColorWithBody request with any body
+	SetCardColumnColorWithBody(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SetCardColumnColor(ctx context.Context, accountId string, bucketId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DisableCardColumnOnHold request
+	DisableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// EnableCardColumnOnHold request
+	EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListWebhooks request
 	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3287,17 +3298,6 @@ type ClientInterface interface {
 	UpdateCardColumnWithBody(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateCardColumn(ctx context.Context, accountId string, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SetCardColumnColorWithBody request with any body
-	SetCardColumnColorWithBody(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	SetCardColumnColor(ctx context.Context, accountId string, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DisableCardColumnOnHold request
-	DisableCardColumnOnHold(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// EnableCardColumnOnHold request
-	EnableCardColumnOnHold(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCards request
 	ListCards(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4060,6 +4060,50 @@ func (c *Client) GetBoost(ctx context.Context, accountId string, boostId int64, 
 
 }
 
+// SetCardColumnColorWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) SetCardColumnColorWithBody(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSetCardColumnColorRequestWithBody(c.Server, accountId, bucketId, columnId, contentType, body)
+	}, true, "SetCardColumnColor", reqEditors...)
+
+}
+
+func (c *Client) SetCardColumnColor(ctx context.Context, accountId string, bucketId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSetCardColumnColorRequest(c.Server, accountId, bucketId, columnId, body)
+	}, true, "SetCardColumnColor", reqEditors...)
+
+}
+
+// DisableCardColumnOnHold is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DisableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDisableCardColumnOnHoldRequest(c.Server, accountId, bucketId, columnId)
+	}, true, "DisableCardColumnOnHold", reqEditors...)
+
+}
+
+// EnableCardColumnOnHold executes the EnableCardColumnOnHold operation.
+
+func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewEnableCardColumnOnHoldRequest(c.Server, accountId, bucketId, columnId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
 // ListWebhooks is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -4243,50 +4287,6 @@ func (c *Client) UpdateCardColumn(ctx context.Context, accountId string, columnI
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCardColumnRequest(c.Server, accountId, columnId, body)
 	}, true, "UpdateCardColumn", reqEditors...)
-
-}
-
-// SetCardColumnColorWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) SetCardColumnColorWithBody(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSetCardColumnColorRequestWithBody(c.Server, accountId, columnId, contentType, body)
-	}, true, "SetCardColumnColor", reqEditors...)
-
-}
-
-func (c *Client) SetCardColumnColor(ctx context.Context, accountId string, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewSetCardColumnColorRequest(c.Server, accountId, columnId, body)
-	}, true, "SetCardColumnColor", reqEditors...)
-
-}
-
-// DisableCardColumnOnHold is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) DisableCardColumnOnHold(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDisableCardColumnOnHoldRequest(c.Server, accountId, columnId)
-	}, true, "DisableCardColumnOnHold", reqEditors...)
-
-}
-
-// EnableCardColumnOnHold executes the EnableCardColumnOnHold operation.
-
-func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewEnableCardColumnOnHoldRequest(c.Server, accountId, columnId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 
 }
 
@@ -7273,6 +7273,163 @@ func NewGetBoostRequest(server string, accountId string, boostId int64) (*http.R
 	return req, nil
 }
 
+// NewSetCardColumnColorRequest calls the generic SetCardColumnColor builder with application/json body
+func NewSetCardColumnColorRequest(server string, accountId string, bucketId int64, columnId int64, body SetCardColumnColorJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetCardColumnColorRequestWithBody(server, accountId, bucketId, columnId, "application/json", bodyReader)
+}
+
+// NewSetCardColumnColorRequestWithBody generates requests for SetCardColumnColor with any type of body
+func NewSetCardColumnColorRequestWithBody(server string, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s/color.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDisableCardColumnOnHoldRequest generates requests for DisableCardColumnOnHold
+func NewDisableCardColumnOnHoldRequest(server string, accountId string, bucketId int64, columnId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewEnableCardColumnOnHoldRequest generates requests for EnableCardColumnOnHold
+func NewEnableCardColumnOnHoldRequest(server string, accountId string, bucketId int64, columnId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListWebhooksRequest generates requests for ListWebhooks
 func NewListWebhooksRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
 	var err error
@@ -7716,142 +7873,6 @@ func NewUpdateCardColumnRequestWithBody(server string, accountId string, columnI
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewSetCardColumnColorRequest calls the generic SetCardColumnColor builder with application/json body
-func NewSetCardColumnColorRequest(server string, accountId string, columnId int64, body SetCardColumnColorJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewSetCardColumnColorRequestWithBody(server, accountId, columnId, "application/json", bodyReader)
-}
-
-// NewSetCardColumnColorRequestWithBody generates requests for SetCardColumnColor with any type of body
-func NewSetCardColumnColorRequestWithBody(server string, accountId string, columnId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/card_tables/columns/%s/color.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDisableCardColumnOnHoldRequest generates requests for DisableCardColumnOnHold
-func NewDisableCardColumnOnHoldRequest(server string, accountId string, columnId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewEnableCardColumnOnHoldRequest generates requests for EnableCardColumnOnHold
-func NewEnableCardColumnOnHoldRequest(server string, accountId string, columnId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "columnId", runtime.ParamLocationPath, columnId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/card_tables/columns/%s/on_hold.json", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -16870,6 +16891,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
 	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
+	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
+	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
+	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
@@ -16879,9 +16903,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateCardStep":                     {Idempotent: false, HasSensitiveParams: false},
 	"GetCardColumn":                      {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCardColumn":                   {Idempotent: true, HasSensitiveParams: false},
-	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
-	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
-	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
 	"ListCards":                          {Idempotent: true, HasSensitiveParams: false},
 	"CreateCard":                         {Idempotent: false, HasSensitiveParams: false},
 	"UnsubscribeFromCardColumn":          {Idempotent: true, HasSensitiveParams: false},
@@ -18024,6 +18045,17 @@ type ClientWithResponsesInterface interface {
 	// GetBoostWithResponse request
 	GetBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*GetBoostResponse, error)
 
+	// SetCardColumnColorWithBodyWithResponse request with any body
+	SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
+
+	SetCardColumnColorWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
+
+	// DisableCardColumnOnHoldWithResponse request
+	DisableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error)
+
+	// EnableCardColumnOnHoldWithResponse request
+	EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
+
 	// ListWebhooksWithResponse request
 	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
 
@@ -18062,17 +18094,6 @@ type ClientWithResponsesInterface interface {
 	UpdateCardColumnWithBodyWithResponse(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
 
 	UpdateCardColumnWithResponse(ctx context.Context, accountId string, columnId int64, body UpdateCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCardColumnResponse, error)
-
-	// SetCardColumnColorWithBodyWithResponse request with any body
-	SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
-
-	SetCardColumnColorWithResponse(ctx context.Context, accountId string, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error)
-
-	// DisableCardColumnOnHoldWithResponse request
-	DisableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error)
-
-	// EnableCardColumnOnHoldWithResponse request
-	EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
 
 	// ListCardsWithResponse request
 	ListCardsWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*ListCardsResponse, error)
@@ -18932,6 +18953,88 @@ func (r GetBoostResponse) StatusCode() int {
 	return 0
 }
 
+type SetCardColumnColorResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SetCardColumnColorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r SetCardColumnColorResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetCardColumnColorResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type DisableCardColumnOnHoldResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DisableCardColumnOnHoldResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DisableCardColumnOnHoldResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DisableCardColumnOnHoldResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type EnableCardColumnOnHoldResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *EnableCardColumnOnHoldResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r EnableCardColumnOnHoldResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r EnableCardColumnOnHoldResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListWebhooksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19165,86 +19268,6 @@ func (r UpdateCardColumnResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateCardColumnResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type SetCardColumnColorResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *SetCardColumnColorResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r SetCardColumnColorResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SetCardColumnColorResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DisableCardColumnOnHoldResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DisableCardColumnOnHoldResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r DisableCardColumnOnHoldResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DisableCardColumnOnHoldResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type EnableCardColumnOnHoldResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *EnableCardColumnOnHoldResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r EnableCardColumnOnHoldResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r EnableCardColumnOnHoldResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -24148,6 +24171,41 @@ func (c *ClientWithResponses) GetBoostWithResponse(ctx context.Context, accountI
 	return ParseGetBoostResponse(rsp)
 }
 
+// SetCardColumnColorWithBodyWithResponse request with arbitrary body returning *SetCardColumnColorResponse
+func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
+	rsp, err := c.SetCardColumnColorWithBody(ctx, accountId, bucketId, columnId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetCardColumnColorResponse(rsp)
+}
+
+func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
+	rsp, err := c.SetCardColumnColor(ctx, accountId, bucketId, columnId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetCardColumnColorResponse(rsp)
+}
+
+// DisableCardColumnOnHoldWithResponse request returning *DisableCardColumnOnHoldResponse
+func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error) {
+	rsp, err := c.DisableCardColumnOnHold(ctx, accountId, bucketId, columnId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDisableCardColumnOnHoldResponse(rsp)
+}
+
+// EnableCardColumnOnHoldWithResponse request returning *EnableCardColumnOnHoldResponse
+func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error) {
+	rsp, err := c.EnableCardColumnOnHold(ctx, accountId, bucketId, columnId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseEnableCardColumnOnHoldResponse(rsp)
+}
+
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
 func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
 	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
@@ -24275,41 +24333,6 @@ func (c *ClientWithResponses) UpdateCardColumnWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseUpdateCardColumnResponse(rsp)
-}
-
-// SetCardColumnColorWithBodyWithResponse request with arbitrary body returning *SetCardColumnColorResponse
-func (c *ClientWithResponses) SetCardColumnColorWithBodyWithResponse(ctx context.Context, accountId string, columnId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
-	rsp, err := c.SetCardColumnColorWithBody(ctx, accountId, columnId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSetCardColumnColorResponse(rsp)
-}
-
-func (c *ClientWithResponses) SetCardColumnColorWithResponse(ctx context.Context, accountId string, columnId int64, body SetCardColumnColorJSONRequestBody, reqEditors ...RequestEditorFn) (*SetCardColumnColorResponse, error) {
-	rsp, err := c.SetCardColumnColor(ctx, accountId, columnId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSetCardColumnColorResponse(rsp)
-}
-
-// DisableCardColumnOnHoldWithResponse request returning *DisableCardColumnOnHoldResponse
-func (c *ClientWithResponses) DisableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*DisableCardColumnOnHoldResponse, error) {
-	rsp, err := c.DisableCardColumnOnHold(ctx, accountId, columnId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDisableCardColumnOnHoldResponse(rsp)
-}
-
-// EnableCardColumnOnHoldWithResponse request returning *EnableCardColumnOnHoldResponse
-func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error) {
-	rsp, err := c.EnableCardColumnOnHold(ctx, accountId, columnId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseEnableCardColumnOnHoldResponse(rsp)
 }
 
 // ListCardsWithResponse request returning *ListCardsResponse
@@ -26835,6 +26858,196 @@ func ParseGetBoostResponse(rsp *http.Response) (*GetBoostResponse, error) {
 	return response, nil
 }
 
+// ParseSetCardColumnColorResponse parses an HTTP response from a SetCardColumnColorWithResponse call
+func ParseSetCardColumnColorResponse(rsp *http.Response) (*SetCardColumnColorResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetCardColumnColorResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SetCardColumnColorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDisableCardColumnOnHoldResponse parses an HTTP response from a DisableCardColumnOnHoldWithResponse call
+func ParseDisableCardColumnOnHoldResponse(rsp *http.Response) (*DisableCardColumnOnHoldResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DisableCardColumnOnHoldResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DisableCardColumnOnHoldResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseEnableCardColumnOnHoldResponse parses an HTTP response from a EnableCardColumnOnHoldWithResponse call
+func ParseEnableCardColumnOnHoldResponse(rsp *http.Response) (*EnableCardColumnOnHoldResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &EnableCardColumnOnHoldResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest EnableCardColumnOnHoldResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListWebhooksResponse parses an HTTP response from a ListWebhooksWithResponse call
 func ParseListWebhooksResponse(rsp *http.Response) (*ListWebhooksResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -27343,182 +27556,6 @@ func ParseUpdateCardColumnResponse(rsp *http.Response) (*UpdateCardColumnRespons
 			return nil, err
 		}
 		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseSetCardColumnColorResponse parses an HTTP response from a SetCardColumnColorWithResponse call
-func ParseSetCardColumnColorResponse(rsp *http.Response) (*SetCardColumnColorResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SetCardColumnColorResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SetCardColumnColorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDisableCardColumnOnHoldResponse parses an HTTP response from a DisableCardColumnOnHoldWithResponse call
-func ParseDisableCardColumnOnHoldResponse(rsp *http.Response) (*DisableCardColumnOnHoldResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DisableCardColumnOnHoldResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DisableCardColumnOnHoldResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseEnableCardColumnOnHoldResponse parses an HTTP response from a EnableCardColumnOnHoldWithResponse call
-func ParseEnableCardColumnOnHoldResponse(rsp *http.Response) (*EnableCardColumnOnHoldResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &EnableCardColumnOnHoldResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest EnableCardColumnOnHoldResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

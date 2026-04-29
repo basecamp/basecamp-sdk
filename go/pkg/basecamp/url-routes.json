@@ -75,6 +75,49 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/color",
+      "resource": "Card Tables",
+      "operations": {
+        "PUT": "SetCardColumnColor"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "columnId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold",
+      "resource": "Card Tables",
+      "operations": {
+        "DELETE": "DisableCardColumnOnHold",
+        "POST": "EnableCardColumnOnHold"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "columnId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/webhooks",
       "resource": "Automation",
       "operations": {
@@ -175,41 +218,6 @@
         },
         "columnId": {
           "role": "recording",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/card_tables/columns/{columnId}/color",
-      "resource": "Card Tables",
-      "operations": {
-        "PUT": "SetCardColumnColor"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "columnId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/card_tables/columns/{columnId}/on_hold",
-      "resource": "Card Tables",
-      "operations": {
-        "DELETE": "DisableCardColumnOnHold",
-        "POST": "EnableCardColumnOnHold"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "columnId": {
-          "role": "parent",
           "type": "int64"
         }
       }

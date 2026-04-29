@@ -16,6 +16,14 @@ import { Errors } from "../../errors.js";
 export type CardColumn = components["schemas"]["CardColumn"];
 
 /**
+ * Request parameters for setColor.
+ */
+export interface SetColorCardColumnRequest {
+  /** Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown */
+  color: string;
+}
+
+/**
  * Request parameters for update.
  */
 export interface UpdateCardColumnRequest {
@@ -23,14 +31,6 @@ export interface UpdateCardColumnRequest {
   title?: string;
   /** Rich text description (HTML) */
   description?: string;
-}
-
-/**
- * Request parameters for setColor.
- */
-export interface SetColorCardColumnRequest {
-  /** Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown */
-  color: string;
 }
 
 /**
@@ -64,6 +64,106 @@ export interface MoveCardColumnRequest {
  * Service for CardColumns operations.
  */
 export class CardColumnsService extends BaseService {
+
+  /**
+   * Set the color of a column
+   * @param bucketId - The bucket ID
+   * @param columnId - The column ID
+   * @param req - Card_column_color request parameters
+   * @returns The CardColumn
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.setColor(123, 123, { color: "example" });
+   * ```
+   */
+  async setColor(bucketId: number, columnId: number, req: SetColorCardColumnRequest): Promise<CardColumn> {
+    if (!req.color) {
+      throw Errors.validation("Color is required");
+    }
+    const response = await this.request(
+      {
+        service: "CardColumns",
+        operation: "SetCardColumnColor",
+        resourceType: "card_column_color",
+        isMutation: true,
+        resourceId: columnId,
+      },
+      () =>
+        this.client.PUT("/buckets/{bucketId}/card_tables/columns/{columnId}/color.json", {
+          params: {
+            path: { bucketId, columnId },
+          },
+          body: {
+            color: req.color,
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Enable on-hold section in a column
+   * @param bucketId - The bucket ID
+   * @param columnId - The column ID
+   * @returns The CardColumn
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.enableOnHold(123, 123);
+   * ```
+   */
+  async enableOnHold(bucketId: number, columnId: number): Promise<CardColumn> {
+    const response = await this.request(
+      {
+        service: "CardColumns",
+        operation: "EnableCardColumnOnHold",
+        resourceType: "card_column_on_hold",
+        isMutation: true,
+        resourceId: columnId,
+      },
+      () =>
+        this.client.POST("/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json", {
+          params: {
+            path: { bucketId, columnId },
+          },
+        })
+    );
+    return response;
+  }
+
+  /**
+   * Disable on-hold section in a column
+   * @param bucketId - The bucket ID
+   * @param columnId - The column ID
+   * @returns The CardColumn
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * const result = await client.cardColumns.disableOnHold(123, 123);
+   * ```
+   */
+  async disableOnHold(bucketId: number, columnId: number): Promise<CardColumn> {
+    const response = await this.request(
+      {
+        service: "CardColumns",
+        operation: "DisableCardColumnOnHold",
+        resourceType: "card_column_on_hold",
+        isMutation: true,
+        resourceId: columnId,
+      },
+      () =>
+        this.client.DELETE("/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json", {
+          params: {
+            path: { bucketId, columnId },
+          },
+        })
+    );
+    return response;
+  }
 
   /**
    * Get a card column by ID
@@ -124,103 +224,6 @@ export class CardColumnsService extends BaseService {
           body: {
             title: req.title,
             description: req.description,
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Set the color of a column
-   * @param columnId - The column ID
-   * @param req - Card_column_color request parameters
-   * @returns The CardColumn
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * const result = await client.cardColumns.setColor(123, { color: "example" });
-   * ```
-   */
-  async setColor(columnId: number, req: SetColorCardColumnRequest): Promise<CardColumn> {
-    if (!req.color) {
-      throw Errors.validation("Color is required");
-    }
-    const response = await this.request(
-      {
-        service: "CardColumns",
-        operation: "SetCardColumnColor",
-        resourceType: "card_column_color",
-        isMutation: true,
-        resourceId: columnId,
-      },
-      () =>
-        this.client.PUT("/card_tables/columns/{columnId}/color.json", {
-          params: {
-            path: { columnId },
-          },
-          body: {
-            color: req.color,
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Enable on-hold section in a column
-   * @param columnId - The column ID
-   * @returns The CardColumn
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * const result = await client.cardColumns.enableOnHold(123);
-   * ```
-   */
-  async enableOnHold(columnId: number): Promise<CardColumn> {
-    const response = await this.request(
-      {
-        service: "CardColumns",
-        operation: "EnableCardColumnOnHold",
-        resourceType: "card_column_on_hold",
-        isMutation: true,
-        resourceId: columnId,
-      },
-      () =>
-        this.client.POST("/card_tables/columns/{columnId}/on_hold.json", {
-          params: {
-            path: { columnId },
-          },
-        })
-    );
-    return response;
-  }
-
-  /**
-   * Disable on-hold section in a column
-   * @param columnId - The column ID
-   * @returns The CardColumn
-   * @throws {BasecampError} If the request fails
-   *
-   * @example
-   * ```ts
-   * const result = await client.cardColumns.disableOnHold(123);
-   * ```
-   */
-  async disableOnHold(columnId: number): Promise<CardColumn> {
-    const response = await this.request(
-      {
-        service: "CardColumns",
-        operation: "DisableCardColumnOnHold",
-        resourceType: "card_column_on_hold",
-        isMutation: true,
-        resourceId: columnId,
-      },
-      () =>
-        this.client.DELETE("/card_tables/columns/{columnId}/on_hold.json", {
-          params: {
-            path: { columnId },
           },
         })
     );

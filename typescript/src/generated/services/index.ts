@@ -1,10 +1,10 @@
 export { AccountService } from "./account.js";
 export { AttachmentsService } from "./attachments.js";
 export { BoostsService } from "./boosts.js";
+export { CardColumnsService } from "./card-columns.js";
 export { WebhooksService } from "./webhooks.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
-export { CardColumnsService } from "./card-columns.js";
 export { CardTablesService } from "./card-tables.js";
 export { MessageTypesService } from "./message-types.js";
 export { CampfiresService } from "./campfires.js";

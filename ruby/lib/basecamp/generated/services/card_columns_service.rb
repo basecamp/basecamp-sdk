@@ -7,6 +7,37 @@ module Basecamp
     # @generated from OpenAPI spec
     class CardColumnsService < BaseService
 
+      # Set the color of a column
+      # @param bucket_id [Integer] bucket id ID
+      # @param column_id [Integer] column id ID
+      # @param color [String] Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown
+      # @return [Hash] response data
+      def set_color(bucket_id:, column_id:, color:)
+        with_operation(service: "cardcolumns", operation: "set_color", is_mutation: true, resource_id: column_id) do
+          http_put("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/color.json", body: compact_params(color: color)).json
+        end
+      end
+
+      # Enable on-hold section in a column
+      # @param bucket_id [Integer] bucket id ID
+      # @param column_id [Integer] column id ID
+      # @return [Hash] response data
+      def enable_on_hold(bucket_id:, column_id:)
+        with_operation(service: "cardcolumns", operation: "enable_on_hold", is_mutation: true, resource_id: column_id) do
+          http_post("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json
+        end
+      end
+
+      # Disable on-hold section in a column
+      # @param bucket_id [Integer] bucket id ID
+      # @param column_id [Integer] column id ID
+      # @return [Hash] response data
+      def disable_on_hold(bucket_id:, column_id:)
+        with_operation(service: "cardcolumns", operation: "disable_on_hold", is_mutation: true, resource_id: column_id) do
+          http_delete("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json
+        end
+      end
+
       # Get a card column by ID
       # @param column_id [Integer] column id ID
       # @return [Hash] response data
@@ -24,34 +55,6 @@ module Basecamp
       def update(column_id:, title: nil, description: nil)
         with_operation(service: "cardcolumns", operation: "update", is_mutation: true, resource_id: column_id) do
           http_put("/card_tables/columns/#{column_id}", body: compact_params(title: title, description: description)).json
-        end
-      end
-
-      # Set the color of a column
-      # @param column_id [Integer] column id ID
-      # @param color [String] Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown
-      # @return [Hash] response data
-      def set_color(column_id:, color:)
-        with_operation(service: "cardcolumns", operation: "set_color", is_mutation: true, resource_id: column_id) do
-          http_put("/card_tables/columns/#{column_id}/color.json", body: compact_params(color: color)).json
-        end
-      end
-
-      # Enable on-hold section in a column
-      # @param column_id [Integer] column id ID
-      # @return [Hash] response data
-      def enable_on_hold(column_id:)
-        with_operation(service: "cardcolumns", operation: "enable_on_hold", is_mutation: true, resource_id: column_id) do
-          http_post("/card_tables/columns/#{column_id}/on_hold.json").json
-        end
-      end
-
-      # Disable on-hold section in a column
-      # @param column_id [Integer] column id ID
-      # @return [Hash] response data
-      def disable_on_hold(column_id:)
-        with_operation(service: "cardcolumns", operation: "disable_on_hold", is_mutation: true, resource_id: column_id) do
-          http_delete("/card_tables/columns/#{column_id}/on_hold.json").json
         end
       end
 

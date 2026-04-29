@@ -61,15 +61,15 @@ data class ListCampfireUploadsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Request body for SetCardColumnColor. */
+data class SetCardColumnColorBody(
+    val color: String
+)
+
 /** Request body for UpdateCardColumn. */
 data class UpdateCardColumnBody(
     val title: String? = null,
     val description: String? = null
-)
-
-/** Request body for SetCardColumnColor. */
-data class SetCardColumnColorBody(
-    val color: String
 )
 
 /** Request body for CreateCardColumn. */

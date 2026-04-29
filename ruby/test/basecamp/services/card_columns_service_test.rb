@@ -78,9 +78,9 @@ class CardColumnsServiceTest < Minitest::Test
   def test_set_color
     colored_column = sample_column(id: 200)
     colored_column["color"] = "blue"
-    stub_put("/12345/card_tables/columns/200/color.json", response_body: colored_column)
+    stub_put("/12345/buckets/999/card_tables/columns/200/color.json", response_body: colored_column)
 
-    column = @account.card_columns.set_color(column_id: 200, color: "blue")
+    column = @account.card_columns.set_color(bucket_id: 999, column_id: 200, color: "blue")
 
     assert_equal "blue", column["color"]
   end
@@ -93,9 +93,9 @@ class CardColumnsServiceTest < Minitest::Test
       "updated_at" => "2024-01-15T10:00:00Z", "cards_count" => 0,
       "cards_url" => "https://3.basecampapi.com/12345/card_tables/lists/9999/cards.json"
     }
-    stub_post("/12345/card_tables/columns/200/on_hold.json", response_body: column_with_hold)
+    stub_post("/12345/buckets/999/card_tables/columns/200/on_hold.json", response_body: column_with_hold)
 
-    column = @account.card_columns.enable_on_hold(column_id: 200)
+    column = @account.card_columns.enable_on_hold(bucket_id: 999, column_id: 200)
 
     assert_equal 9999, column["on_hold"]["id"]
     assert_equal "active", column["on_hold"]["status"]
@@ -103,10 +103,10 @@ class CardColumnsServiceTest < Minitest::Test
 
   def test_disable_on_hold
     column_without_hold = sample_column(id: 200)
-    stub_request(:delete, "https://3.basecampapi.com/12345/card_tables/columns/200/on_hold.json")
+    stub_request(:delete, "https://3.basecampapi.com/12345/buckets/999/card_tables/columns/200/on_hold.json")
       .to_return(status: 200, body: column_without_hold.to_json, headers: { "Content-Type" => "application/json" })
 
-    column = @account.card_columns.disable_on_hold(column_id: 200)
+    column = @account.card_columns.disable_on_hold(bucket_id: 999, column_id: 200)
 
     assert_nil column["on_hold"]
   end

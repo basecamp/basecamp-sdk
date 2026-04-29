@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-03-30T13:40:08.204Z",
+  "generated": "2026-04-29T18:03:48.821Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -79,6 +79,45 @@
       }
     },
     "DeleteBoost": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "SetCardColumnColor": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "EnableCardColumnOnHold": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "DisableCardColumnOnHold": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
@@ -189,45 +228,6 @@
       }
     },
     "UpdateCardColumn": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "SetCardColumnColor": {
-      "retry": {
-        "maxAttempts": 3,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      },
-      "idempotent": {
-        "natural": true
-      }
-    },
-    "EnableCardColumnOnHold": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
-      }
-    },
-    "DisableCardColumnOnHold": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,
