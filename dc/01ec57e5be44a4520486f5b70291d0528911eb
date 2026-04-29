@@ -1,0 +1,23 @@
+go/pkg/basecamp/checkins_test.go
+  01f7369a80ab8851 6,956-1036
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "dc01ec57e5be44a4520486f5b70291d0528911eb",
+  "prompts": {
+    "01f7369a80ab8851": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8cbf69e-3d69-45a1-a791-f8680f35da9b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 1118,
+      "total_deletions": 1036,
+      "accepted_lines": 82,
+      "overriden_lines": 0
+    }
+  }
+}
