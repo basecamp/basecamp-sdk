@@ -4281,7 +4281,7 @@ structure MoveCardColumnOutput {}
 operation SetCardColumnColor {
   input: SetCardColumnColorInput
   output: SetCardColumnColorOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure SetCardColumnColorInput {
@@ -4343,7 +4343,7 @@ structure EnableCardColumnOnHoldOutput {
 operation DisableCardColumnOnHold {
   input: DisableCardColumnOnHoldInput
   output: DisableCardColumnOnHoldOutput
-  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure DisableCardColumnOnHoldInput {

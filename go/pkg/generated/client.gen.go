@@ -18961,6 +18961,7 @@ type SetCardColumnColorResponse struct {
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -18987,6 +18988,7 @@ type DisableCardColumnOnHoldResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -26905,6 +26907,13 @@ func ParseSetCardColumnColorResponse(rsp *http.Response) (*SetCardColumnColorRes
 		}
 		response.JSON422 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -26958,6 +26967,13 @@ func ParseDisableCardColumnOnHoldResponse(rsp *http.Response) (*DisableCardColum
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
