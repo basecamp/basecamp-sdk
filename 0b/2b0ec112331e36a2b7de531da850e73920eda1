@@ -1,0 +1,44 @@
+typescript/src/generated/schema.d.ts
+  8a25d90aac60e426 3291-3295,3297-3300,3302-3309,3589-3598,3646-3651,4097-4102,4210-4223
+  65321caac279d940 3296
+typescript/src/client.ts
+  8a25d90aac60e426 227
+typescript/src/generated/metadata.json
+  65321caac279d940 4
+typescript/src/generated/openapi-stripped.json
+  8a25d90aac60e426 5,21258,21260-21273,22383-22395,22542-22550,24136-24142,24539-24556
+  65321caac279d940 21259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0b2b0ec112331e36a2b7de531da850e73920eda1",
+  "prompts": {
+    "65321caac279d940": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ddab7-24dd-7f61-9849-997c07ab3799",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 663,
+      "total_deletions": 1,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 270,
+      "total_deletions": 51,
+      "accepted_lines": 117,
+      "overriden_lines": 0
+    }
+  }
+}
