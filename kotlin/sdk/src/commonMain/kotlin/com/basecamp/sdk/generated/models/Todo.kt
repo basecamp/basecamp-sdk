@@ -39,5 +39,6 @@ data class Todo(
     @SerialName("completion_subscribers") val completionSubscribers: List<Person> = emptyList(),
     @SerialName("completion_url") val completionUrl: String? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,
-    @SerialName("boosts_url") val boostsUrl: String? = null
+    @SerialName("boosts_url") val boostsUrl: String? = null,
+    val steps: List<CardStep> = emptyList()
 )
