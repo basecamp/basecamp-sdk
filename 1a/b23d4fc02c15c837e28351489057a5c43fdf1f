@@ -1,0 +1,29 @@
+typescript/src/generated/schema.d.ts
+  8a25d90aac60e426 3291-3300,3302-3309,3589-3598,3646-3651,4097-4102,4210-4223
+typescript/src/generated/metadata.json
+  8a25d90aac60e426 4
+typescript/src/generated/openapi-stripped.json
+  8a25d90aac60e426 5,21258-21273,22383-22395,22542-22550,24136-24142,24539-24556
+typescript/src/client.ts
+  8a25d90aac60e426 227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "1ab23d4fc02c15c837e28351489057a5c43fdf1f",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 270,
+      "total_deletions": 51,
+      "accepted_lines": 16653,
+      "overriden_lines": 0
+    }
+  }
+}
