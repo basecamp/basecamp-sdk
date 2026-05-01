@@ -23,6 +23,7 @@ public struct Person: Codable, Sendable {
     public var location: String?
     public var owner: Bool?
     public var personableType: String?
+    public var tagline: String?
     public var timeZone: String?
     public var title: String?
     public var updatedAt: String?
@@ -47,6 +48,7 @@ public struct Person: Codable, Sendable {
         location: String? = nil,
         owner: Bool? = nil,
         personableType: String? = nil,
+        tagline: String? = nil,
         timeZone: String? = nil,
         title: String? = nil,
         updatedAt: String? = nil
@@ -70,6 +72,7 @@ public struct Person: Codable, Sendable {
         self.location = location
         self.owner = owner
         self.personableType = personableType
+        self.tagline = tagline
         self.timeZone = timeZone
         self.title = title
         self.updatedAt = updatedAt

@@ -29,6 +29,7 @@ public struct Todo: Codable, Sendable {
     public var dueOn: String?
     public var position: Int32?
     public var startsOn: String?
+    public var steps: [CardStep]?
     public var subscriptionUrl: String?
 
     public init(
@@ -59,6 +60,7 @@ public struct Todo: Codable, Sendable {
         dueOn: String? = nil,
         position: Int32? = nil,
         startsOn: String? = nil,
+        steps: [CardStep]? = nil,
         subscriptionUrl: String? = nil
     ) {
         self.appUrl = appUrl
@@ -88,6 +90,7 @@ public struct Todo: Codable, Sendable {
         self.dueOn = dueOn
         self.position = position
         self.startsOn = startsOn
+        self.steps = steps
         self.subscriptionUrl = subscriptionUrl
     }
 }
