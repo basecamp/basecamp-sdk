@@ -999,9 +999,25 @@ type GetMyDueAssignmentsResponseContent = []MyAssignment
 
 // GetMyNotificationsResponseContent defines model for GetMyNotificationsResponseContent.
 type GetMyNotificationsResponseContent struct {
+	// BubbleUps Items the user has saved with Bubble Up (BC5 addition). Roughly the
+	// successor to `memories` but with optional scheduling — see
+	// `scheduled_bubble_ups` for the time-deferred subset.
+	BubbleUps []Notification `json:"bubble_ups,omitempty"`
+
+	// Memories Legacy "save forever" collection. Observed BC5 behavior: emits `[]`
+	// while BC4 still populates with real items — the BC team has not yet
+	// resolved whether to keep BC4-shaped data on BC5 (back-compat) or to
+	// accept the empty-array break with a documented BC5 changelog entry.
+	// See COORDINATION.md for the open decision. The conceptual
+	// replacement is `bubble_ups` (with optional scheduling via
+	// `scheduled_bubble_ups`), though wire shapes are not interchangeable
+	// per-item, so cross-version readers should consume both.
 	Memories []Notification `json:"memories,omitempty"`
 	Reads    []Notification `json:"reads,omitempty"`
-	Unreads  []Notification `json:"unreads,omitempty"`
+
+	// ScheduledBubbleUps Bubble Ups scheduled to resurface in the future (BC5 addition).
+	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitempty"`
+	Unreads            []Notification `json:"unreads,omitempty"`
 }
 
 // GetMyPreferencesResponseContent defines model for GetMyPreferencesResponseContent.
@@ -1407,8 +1423,16 @@ type NotFoundErrorResponseContent struct {
 
 // Notification defines model for Notification.
 type Notification struct {
-	AppUrl         string    `json:"app_url,omitempty"`
-	BookmarkUrl    string    `json:"bookmark_url,omitempty"`
+	AppUrl      string `json:"app_url,omitempty"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+
+	// BubbleUpAt Scheduled resurfacing time when this item is queued as a scheduled
+	// Bubble Up (BC5 addition). Absent when there is no scheduled time.
+	BubbleUpAt time.Time `json:"bubble_up_at,omitempty"`
+
+	// BubbleUpUrl URL for the Bubble Up record covering this notification (BC5 addition).
+	// Eligibility-gated — only present on items the current user can bubble up.
+	BubbleUpUrl    string    `json:"bubble_up_url,omitempty"`
 	BucketName     string    `json:"bucket_name,omitempty"`
 	ContentExcerpt string    `json:"content_excerpt,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -1489,9 +1513,13 @@ type Person struct {
 	Name                string              `json:"name"`
 	Owner               bool                `json:"owner,omitempty"`
 	PersonableType      string              `json:"personable_type,omitempty"`
-	TimeZone            string              `json:"time_zone,omitempty"`
-	Title               string              `json:"title,omitempty"`
-	UpdatedAt           time.Time           `json:"updated_at,omitempty"`
+
+	// Tagline Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
+	// older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
+	Tagline   string    `json:"tagline,omitempty"`
+	TimeZone  string    `json:"time_zone,omitempty"`
+	Title     string    `json:"title,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 }
 
 // PersonCompany defines model for PersonCompany.
@@ -1950,13 +1978,18 @@ type Todo struct {
 	StartsOn              types.Date `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
-	Status           string    `json:"status"`
-	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
-	Title            string    `json:"title"`
-	Type             string    `json:"type"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Url              string    `json:"url"`
-	VisibleToClients bool      `json:"visible_to_clients"`
+	Status string `json:"status"`
+
+	// Steps Steps embedded in the Todo response (BC5 addition). The shared
+	// `steps/step` jbuilder partial emits the same shape as `CardStep`,
+	// so the existing `CardStepList` is reused.
+	Steps            []CardStep `json:"steps,omitempty"`
+	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	Title            string     `json:"title"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
 // TodoBucket defines model for TodoBucket.
@@ -2052,26 +2085,38 @@ type TodolistOrGroup1 struct {
 
 // Todoset defines model for Todoset.
 type Todoset struct {
-	AppTodolistsUrl  string     `json:"app_todolists_url,omitempty"`
-	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket"`
-	Completed        bool       `json:"completed,omitempty"`
-	CompletedRatio   string     `json:"completed_ratio,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	Creator          Person     `json:"creator"`
-	Id               int64      `json:"id"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Name             string     `json:"name"`
-	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status"`
-	Title            string     `json:"title"`
-	TodolistsCount   int32      `json:"todolists_count,omitempty"`
-	TodolistsUrl     string     `json:"todolists_url,omitempty"`
-	Type             string     `json:"type"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Url              string     `json:"url"`
-	VisibleToClients bool       `json:"visible_to_clients"`
+	AppTodolistsUrl string `json:"app_todolists_url,omitempty"`
+
+	// AppTodosUrl In-app URL for viewing the todoset's todos (BC5 addition).
+	AppTodosUrl string     `json:"app_todos_url,omitempty"`
+	AppUrl      string     `json:"app_url"`
+	BookmarkUrl string     `json:"bookmark_url,omitempty"`
+	Bucket      TodoBucket `json:"bucket"`
+	Completed   bool       `json:"completed,omitempty"`
+
+	// CompletedLooseTodosCount Count of completed loose todos at the todoset level (BC5 addition).
+	CompletedLooseTodosCount int32     `json:"completed_loose_todos_count,omitempty"`
+	CompletedRatio           string    `json:"completed_ratio,omitempty"`
+	CreatedAt                time.Time `json:"created_at"`
+	Creator                  Person    `json:"creator"`
+	Id                       int64     `json:"id"`
+	InheritsStatus           bool      `json:"inherits_status"`
+	Name                     string    `json:"name"`
+	Position                 int32     `json:"position,omitempty"`
+	Status                   string    `json:"status"`
+	Title                    string    `json:"title"`
+	TodolistsCount           int32     `json:"todolists_count,omitempty"`
+	TodolistsUrl             string    `json:"todolists_url,omitempty"`
+
+	// TodosCount Total count of todos across all todolists in this todoset (BC5 addition).
+	TodosCount int32 `json:"todos_count,omitempty"`
+
+	// TodosUrl API URL for listing todos directly under this todoset (BC5 addition).
+	TodosUrl         string    `json:"todos_url,omitempty"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // ToggleGaugeRequestContent defines model for ToggleGaugeRequestContent.
