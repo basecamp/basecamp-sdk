@@ -1,18 +1,19 @@
 /**
  * Live-mode operation dispatch for the canary.
  *
- * Maps test-fixture `operation` strings to actual SDK calls, with fixture-ID
- * resolution applied. Returns the SDK's typed result; wire bytes are captured
- * separately via the global fetch wrapper in wire-capture.ts, so this module
- * only needs to drive the SDK.
+ * Each entry in `LIVE_OPERATIONS` declares (a) which fixture-IDs the call
+ * needs and (b) the SDK call itself. The runner pre-resolves fixture-IDs
+ * outside the wire-capture window so discovery traffic (e.g. the
+ * `ListProjects` call that backs PROJECT_ID resolution) doesn't bleed into
+ * the snapshot for the actual operation under test.
  *
- * The exported `LIVE_OPERATIONS` set is the single source of truth for the
- * coverage gate: any operation referenced by a live test must appear here,
- * or the runner refuses to start.
+ * `LIVE_OPERATIONS` is the single source of truth for the coverage gate:
+ * any operation referenced by a live test must appear here, or the runner
+ * refuses to start.
  */
 
 import type { BasecampClient } from "@37signals/basecamp";
-import { resolveFixtureId, type FixtureContext } from "./fixtures.js";
+import type { FixtureContext } from "./fixtures.js";
 
 export interface DispatchResult {
   /** Resolved fixture-ID values, for diagnostics. */
@@ -21,92 +22,108 @@ export interface DispatchResult {
   result?: unknown;
 }
 
-export class FixtureMissingError extends Error {
-  constructor(public readonly fixtureName: string) {
-    super(`Fixture ID ${fixtureName} not available`);
-    this.name = "FixtureMissingError";
-  }
+export interface DispatchSpec {
+  /**
+   * Fixture-ID names this operation requires. Pre-resolved by the runner
+   * before wire capture starts; missing fixtures cause the test to skip.
+   */
+  fixtures: readonly string[];
+  /** The SDK call itself, executed under wire capture. */
+  call: (ctx: FixtureContext, ids: Record<string, string>) => Promise<DispatchResult>;
 }
 
-async function need(ctx: FixtureContext, name: string, into: Record<string, string>): Promise<string> {
-  const value = await resolveFixtureId(ctx, name);
-  if (!value) throw new FixtureMissingError(name);
-  into[name] = value;
-  return value;
-}
-
-export type DispatchFn = (ctx: FixtureContext) => Promise<DispatchResult>;
-
-export const LIVE_OPERATIONS: Record<string, DispatchFn> = {
-  ListProjects: async (ctx) => {
-    const result = await ctx.client.projects.list();
-    return { resolvedIds: {}, result };
+export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
+  ListProjects: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.projects.list();
+      return { resolvedIds: {}, result };
+    },
   },
 
-  GetProject: async (ctx) => {
-    const ids: Record<string, string> = {};
-    const projectId = await need(ctx, "PROJECT_ID", ids);
-    const result = await ctx.client.projects.get(Number(projectId));
-    return { resolvedIds: ids, result };
+  GetProject: {
+    fixtures: ["PROJECT_ID"],
+    call: async (ctx, ids) => {
+      const result = await ctx.client.projects.get(Number(ids.PROJECT_ID));
+      return { resolvedIds: ids, result };
+    },
   },
 
-  GetMyAssignments: async (ctx) => {
-    const result = await ctx.client.myAssignments.myAssignments();
-    return { resolvedIds: {}, result };
+  GetMyAssignments: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.myAssignments.myAssignments();
+      return { resolvedIds: {}, result };
+    },
   },
 
-  GetMyCompletedAssignments: async (ctx) => {
-    const result = await ctx.client.myAssignments.myCompletedAssignments();
-    return { resolvedIds: {}, result };
+  GetMyCompletedAssignments: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.myAssignments.myCompletedAssignments();
+      return { resolvedIds: {}, result };
+    },
   },
 
-  GetMyDueAssignments: async (ctx) => {
-    const result = await ctx.client.myAssignments.myDueAssignments();
-    return { resolvedIds: {}, result };
+  GetMyDueAssignments: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.myAssignments.myDueAssignments();
+      return { resolvedIds: {}, result };
+    },
   },
 
-  GetMyNotifications: async (ctx) => {
-    const result = await ctx.client.myNotifications.myNotifications();
-    return { resolvedIds: {}, result };
+  GetMyNotifications: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.myNotifications.myNotifications();
+      return { resolvedIds: {}, result };
+    },
   },
 
-  GetMyProfile: async (ctx) => {
-    const result = await ctx.client.people.me();
-    return { resolvedIds: {}, result };
+  GetMyProfile: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.people.me();
+      return { resolvedIds: {}, result };
+    },
   },
 
-  GetTodoset: async (ctx) => {
-    const ids: Record<string, string> = {};
-    const todosetId = await need(ctx, "TODOSET_ID", ids);
-    const result = await ctx.client.todosets.get(Number(todosetId));
-    return { resolvedIds: ids, result };
+  GetTodoset: {
+    fixtures: ["TODOSET_ID"],
+    call: async (ctx, ids) => {
+      const result = await ctx.client.todosets.get(Number(ids.TODOSET_ID));
+      return { resolvedIds: ids, result };
+    },
   },
 
-  ListTodolists: async (ctx) => {
-    const ids: Record<string, string> = {};
-    const todosetId = await need(ctx, "TODOSET_ID", ids);
-    const result = await ctx.client.todolists.list(Number(todosetId));
-    return { resolvedIds: ids, result };
+  ListTodolists: {
+    fixtures: ["TODOSET_ID"],
+    call: async (ctx, ids) => {
+      const result = await ctx.client.todolists.list(Number(ids.TODOSET_ID));
+      return { resolvedIds: ids, result };
+    },
   },
 
-  ListTodos: async (ctx) => {
-    const ids: Record<string, string> = {};
-    const todolistId = await need(ctx, "TODOLIST_ID", ids);
-    const result = await ctx.client.todos.list(Number(todolistId));
-    return { resolvedIds: ids, result };
+  ListTodos: {
+    fixtures: ["TODOLIST_ID"],
+    call: async (ctx, ids) => {
+      const result = await ctx.client.todos.list(Number(ids.TODOLIST_ID));
+      return { resolvedIds: ids, result };
+    },
   },
 };
 
 /**
  * Validate that every operation referenced in the fixture has a dispatch
- * case. Throws on first missing operation so the runner refuses to start
- * with incomplete coverage.
+ * case. Uses `Object.hasOwn` rather than `in` so inherited keys
+ * (`toString`, `hasOwnProperty`, etc.) can't sneak past the gate.
  */
 export function assertDispatchCoverage(operationsInFixture: string[]): void {
-  const missing = operationsInFixture.filter((op) => !(op in LIVE_OPERATIONS));
+  const missing = operationsInFixture.filter((op) => !Object.hasOwn(LIVE_OPERATIONS, op));
   if (missing.length === 0) return;
   throw new Error(
     `Live runner is missing dispatch cases for: ${missing.join(", ")}. ` +
-      `Add a DispatchFn to LIVE_OPERATIONS in live-dispatch.ts.`,
+      `Add a DispatchSpec to LIVE_OPERATIONS in live-dispatch.ts.`,
   );
 }
