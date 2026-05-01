@@ -43,7 +43,12 @@ fun main() {
     var skipped = 0
 
     for (file in testFiles) {
+        // Live tests are TS-only (canonical wire-capturer). Filter them out
+        // here so the offline Kotlin runner doesn't see live entries with
+        // unresolved ${PROJECT_ID} fixtures or unknown operations.
         val testCases = json.decodeFromString<List<TestCase>>(file.readText())
+            .filter { it.mode == "mock" }
+        if (testCases.isEmpty()) continue
         println("\n=== ${file.name} ===")
 
         for (tc in testCases) {
@@ -107,6 +112,12 @@ data class TestCase(
     val assertions: List<Assertion> = emptyList(),
     val tags: List<String> = emptyList(),
     val configOverrides: ConfigOverrides? = null,
+    /**
+     * Execution mode. Defaults to "mock". Live tests are owned by the TS
+     * runner only (canonical wire-capturer); other-language runners filter
+     * them out at load time.
+     */
+    val mode: String = "mock",
 )
 
 @kotlinx.serialization.Serializable

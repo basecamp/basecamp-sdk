@@ -483,8 +483,15 @@ class ConformanceRunner:
         skipped = 0
 
         for file in files:
-            print(f"\n=== {file.name} ===")
             tests = json.loads(file.read_text())
+            # Live tests are TS-only (canonical wire-capturer); filter them out
+            # before mock dispatch so unresolved ${PROJECT_ID} fixtures and
+            # live-only operations don't surface here.
+            tests = [t for t in tests if t.get("mode", "mock") == "mock"]
+            if not tests:
+                continue
+
+            print(f"\n=== {file.name} ===")
 
             for test_case in tests:
                 name = test_case["name"]

@@ -614,9 +614,15 @@ class ConformanceRunner
     results = []
 
     files.each do |file|
+      tests = JSON.parse(File.read(file))
+      # Live tests are TS-only (canonical wire-capturer); filter them out
+      # before mock dispatch so unresolved ${PROJECT_ID} fixtures and
+      # live-only operations don't surface as mock failures or false passes.
+      tests = tests.reject { |t| t["mode"] == "live" }
+      next if tests.empty?
+
       puts "\n=== #{File.basename(file)} ==="
 
-      tests = JSON.parse(File.read(file))
       tests.each do |test_case|
         if RUBY_SKIPS.include?(test_case["name"])
           skipped += 1
