@@ -49,6 +49,11 @@ interface TestCase {
   assertions: Assertion[];
   tags?: string[];
   configOverrides?: { baseUrl?: string; maxPages?: number; maxItems?: number };
+  /**
+   * Live tests are loaded by live-runner.test.ts; this runner ignores them.
+   * Defaults to "mock" when omitted.
+   */
+  mode?: "mock" | "live";
 }
 
 // =============================================================================
@@ -704,10 +709,16 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
     .filter((f) => f.endsWith(".json"))
     .sort();
 
-  return files.map((filename) => {
-    const content = fs.readFileSync(path.join(TESTS_DIR, filename), "utf-8");
-    return { filename, tests: JSON.parse(content) as TestCase[] };
-  });
+  return files
+    .map((filename) => {
+      const content = fs.readFileSync(path.join(TESTS_DIR, filename), "utf-8");
+      const all = JSON.parse(content) as TestCase[];
+      // Live tests are owned by live-runner.test.ts. Drop them here so they
+      // never reach installMockHandlers / MSW.
+      const tests = all.filter((tc) => (tc.mode ?? "mock") === "mock");
+      return { filename, tests };
+    })
+    .filter((suite) => suite.tests.length > 0);
 }
 
 /**

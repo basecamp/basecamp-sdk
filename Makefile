@@ -370,7 +370,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-build
+.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-typescript-live conformance-ruby conformance-python conformance-build
 
 # Build conformance test runner
 conformance-build:
@@ -391,6 +391,17 @@ conformance-kotlin:
 conformance-typescript:
 	@echo "==> Running TypeScript conformance tests..."
 	cd conformance/runner/typescript && npm ci && npm test
+
+# Run TypeScript live canary against a real Basecamp backend.
+#
+# Required env: BASECAMP_LIVE=1, BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID.
+# Optional env: BASECAMP_HOST (origin only, e.g. https://3.basecampapi.com —
+# runner appends /{accountId}); BASECAMP_BACKEND=bc4|bc5 to namespace
+# snapshots; LIVE_RECORD_DIR to persist wire snapshots for downstream
+# replay/compare. Opt-in: not invoked by `make check`.
+conformance-typescript-live:
+	@echo "==> Running TypeScript live canary..."
+	cd conformance/runner/typescript && npm ci && BASECAMP_LIVE=1 npm test
 
 # Run Ruby conformance tests
 conformance-ruby:
