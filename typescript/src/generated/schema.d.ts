@@ -3288,7 +3288,25 @@ export interface components {
         GetMyNotificationsResponseContent: {
             unreads?: components["schemas"]["Notification"][];
             reads?: components["schemas"]["Notification"][];
+            /**
+             * @description Legacy "save forever" collection. Observed BC5 behavior: emits `[]`
+             *     while BC4 still populates with real items — the BC team has not yet
+             *     resolved whether to keep BC4-shaped data on BC5 (back-compat) or to
+             *     accept the empty-array break with a documented BC5 changelog entry.
+             *     See COORDINATION.md for the open decision. The conceptual
+             *     replacement is `bubble_ups` (with optional scheduling via
+             *     `scheduled_bubble_ups`), though wire shapes are not interchangeable
+             *     per-item, so cross-version readers should consume both.
+             */
             memories?: components["schemas"]["Notification"][];
+            /**
+             * @description Items the user has saved with Bubble Up (BC5 addition). Roughly the
+             *     successor to `memories` but with optional scheduling — see
+             *     `scheduled_bubble_ups` for the time-deferred subset.
+             */
+            bubble_ups?: components["schemas"]["Notification"][];
+            /** @description Bubble Ups scheduled to resurface in the future (BC5 addition). */
+            scheduled_bubble_ups?: components["schemas"]["Notification"][];
         };
         GetMyPreferencesResponseContent: components["schemas"]["Preferences"];
         GetMyProfileResponseContent: components["schemas"]["Person"];
@@ -3568,6 +3586,16 @@ export interface components {
             unread_url?: string;
             bookmark_url?: string;
             memory_url?: string;
+            /**
+             * @description URL for the Bubble Up record covering this notification (BC5 addition).
+             *     Eligibility-gated — only present on items the current user can bubble up.
+             */
+            bubble_up_url?: string;
+            /**
+             * @description Scheduled resurfacing time when this item is queued as a scheduled
+             *     Bubble Up (BC5 addition). Absent when there is no scheduled time.
+             */
+            bubble_up_at?: string;
             subscription_url?: string;
             subscribed?: boolean;
             previewable_attachments?: components["schemas"]["PreviewableAttachment"][];
@@ -3615,6 +3643,12 @@ export interface components {
             title?: string;
             /** Format: password */
             bio?: string;
+            /**
+             * Format: password
+             * @description Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
+             *     older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
+             */
+            tagline?: string;
             /** Format: password */
             location?: string;
             created_at?: string;
@@ -4060,6 +4094,12 @@ export interface components {
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
+            /**
+             * @description Steps embedded in the Todo response (BC5 addition). The shared
+             *     `steps/step` jbuilder partial emits the same shape as `CardStep`,
+             *     so the existing `CardStepList` is reused.
+             */
+            steps?: components["schemas"]["CardStep"][];
         };
         TodoBucket: {
             /** Format: int64 */
@@ -4167,6 +4207,20 @@ export interface components {
             completed_ratio?: string;
             completed?: boolean;
             app_todolists_url?: string;
+            /**
+             * Format: int32
+             * @description Total count of todos across all todolists in this todoset (BC5 addition).
+             */
+            todos_count?: number;
+            /**
+             * Format: int32
+             * @description Count of completed loose todos at the todoset level (BC5 addition).
+             */
+            completed_loose_todos_count?: number;
+            /** @description API URL for listing todos directly under this todoset (BC5 addition). */
+            todos_url?: string;
+            /** @description In-app URL for viewing the todoset's todos (BC5 addition). */
+            app_todos_url?: string;
         };
         ToggleGaugeRequestContent: {
             gauge: components["schemas"]["GaugeTogglePayload"];
