@@ -1,6 +1,14 @@
 {
   "bc3": {
+    "branch": "master",
     "revision": "e52453ff35a6292473eb095a8568649aa132fef9",
     "date": "2026-07-17"
+  },
+  "compatibility": {
+    "bc3-four": {
+      "branch": "four",
+      "revision": "9d73959a62538bbd2d474fbf806ce386bb4092a8",
+      "date": "2026-06-12"
+    }
   }
 }
