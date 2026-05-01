@@ -7,6 +7,8 @@ public struct Notification: Codable, Sendable {
     public let updatedAt: String
     public var appUrl: String?
     public var bookmarkUrl: String?
+    public var bubbleUpAt: String?
+    public var bubbleUpUrl: String?
     public var bucketName: String?
     public var contentExcerpt: String?
     public var creator: Person?
@@ -33,6 +35,8 @@ public struct Notification: Codable, Sendable {
         updatedAt: String,
         appUrl: String? = nil,
         bookmarkUrl: String? = nil,
+        bubbleUpAt: String? = nil,
+        bubbleUpUrl: String? = nil,
         bucketName: String? = nil,
         contentExcerpt: String? = nil,
         creator: Person? = nil,
@@ -58,6 +62,8 @@ public struct Notification: Codable, Sendable {
         self.updatedAt = updatedAt
         self.appUrl = appUrl
         self.bookmarkUrl = bookmarkUrl
+        self.bubbleUpAt = bubbleUpAt
+        self.bubbleUpUrl = bubbleUpUrl
         self.bucketName = bucketName
         self.contentExcerpt = contentExcerpt
         self.creator = creator
