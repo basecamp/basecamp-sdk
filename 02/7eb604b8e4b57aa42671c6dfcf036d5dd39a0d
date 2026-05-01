@@ -1,0 +1,23 @@
+Makefile
+  8a25d90aac60e426 576-587,592-604,606,711-712
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "027eb604b8e4b57aa42671c6dfcf036d5dd39a0d",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 75,
+      "total_deletions": 307,
+      "accepted_lines": 75,
+      "overriden_lines": 0
+    }
+  }
+}
