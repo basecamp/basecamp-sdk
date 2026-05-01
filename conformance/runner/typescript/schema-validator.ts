@@ -1,17 +1,19 @@
 /**
  * OpenAPI response-body schema validation for the live canary.
  *
- * The validator operates on raw JSON (per §5b/5f of the plan) — never on
- * SDK-decoded structures, since language-specific decoders silently drop
- * unknown fields and we need the canary to surface them.
+ * Operates on raw JSON (per §5b/5f of the plan) — never on SDK-decoded
+ * structures, since language-specific decoders silently drop unknown
+ * fields and we need the canary to surface them.
  *
- * Rules per §5b:
+ * Rules:
  *   - additionalProperties permissive (forward-compat must not break the canary)
  *   - required strict
  *   - type/format/nullable per OpenAPI
- *   - $ref resolved against openapi.json
- *   - failure reports include path, expected schema, actual value
- *   - extras collected per-run as "fields seen but not modeled"
+ *   - $ref rewritten from "#/..." to "openapi.json#/..." so refs in the
+ *     compiled response-schema fragment resolve against the registered
+ *     OpenAPI document, not the fragment root
+ *   - extras collected per-run, walking arrays and nested objects, so
+ *     item-level unknown fields on list responses are visible
  */
 
 import Ajv, { type ValidateFunction, type ErrorObject } from "ajv";
@@ -22,6 +24,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OPENAPI_PATH = path.resolve(__dirname, "../../../openapi.json");
+const OPENAPI_KEY = "openapi.json";
 
 interface OpenAPIDocument {
   paths: Record<string, Record<string, OpenAPIOperation>>;
@@ -47,23 +50,15 @@ function init(): { ajv: Ajv; doc: OpenAPIDocument } {
   ajv = new Ajv({
     strict: false,
     allErrors: true,
-    // Required strict (default), additionalProperties permissive (default false
-    // for openapi-generated schemas means "no extras allowed"; we explicitly
-    // override at validation time to permit forward-compat additions).
   });
   addFormats(ajv);
 
   const raw = fs.readFileSync(OPENAPI_PATH, "utf-8");
   openapi = JSON.parse(raw) as OpenAPIDocument;
 
-  // Register the openapi document so $refs resolve.
-  ajv.addSchema(
-    {
-      $id: "openapi",
-      ...openapi,
-    } as object,
-    "openapi.json",
-  );
+  // Register the OpenAPI document under a stable key so rewritten refs of
+  // the form `openapi.json#/...` resolve against it.
+  ajv.addSchema(openapi as object, OPENAPI_KEY);
 
   return { ajv, doc: openapi };
 }
@@ -81,17 +76,23 @@ function findResponseSchema(doc: OpenAPIDocument, operationId: string): unknown 
 }
 
 /**
- * Strip `additionalProperties: false` from a schema tree so that extra fields
- * on the wire (forward-compat additions from BC5) do not fail validation.
- * Required-field checks still apply.
+ * Walk the schema tree, doing two things in one pass:
+ *   1. Rewrite "$ref": "#/..." to "$ref": "openapi.json#/..." so refs
+ *      resolve against the registered OpenAPI doc, not the fragment root.
+ *   2. Drop "additionalProperties: false" so forward-compat fields on the
+ *      wire don't fail validation. Required-field checks still apply.
  */
-function permitExtras(schema: unknown): unknown {
+function prepareForCompile(schema: unknown): unknown {
   if (!schema || typeof schema !== "object") return schema;
-  if (Array.isArray(schema)) return schema.map(permitExtras);
+  if (Array.isArray(schema)) return schema.map(prepareForCompile);
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema as Record<string, unknown>)) {
     if (key === "additionalProperties" && value === false) continue;
-    out[key] = permitExtras(value);
+    if (key === "$ref" && typeof value === "string" && value.startsWith("#/")) {
+      out[key] = `${OPENAPI_KEY}${value}`;
+      continue;
+    }
+    out[key] = prepareForCompile(value);
   }
   return out;
 }
@@ -120,8 +121,8 @@ export function validateResponse(operationId: string, body: unknown): Validation
       validatorByOperation.set(operationId, null);
       validator = null;
     } else {
-      const permissive = permitExtras(schema);
-      validator = ajv.compile(permissive as object);
+      const prepared = prepareForCompile(schema);
+      validator = ajv.compile(prepared as object);
       validatorByOperation.set(operationId, validator);
     }
   }
@@ -136,51 +137,83 @@ export function validateResponse(operationId: string, body: unknown): Validation
 
   const ok = validator(body) as boolean;
   const errors = (validator.errors ?? []).map(formatError);
-  const extras = collectExtras(operationId, body, doc);
+  const schema = findResponseSchema(doc, operationId);
+  const extras = schema ? collectExtras("", body, schema, doc) : [];
   return { ok, errors, extras };
 }
 
 function formatError(err: ErrorObject): string {
-  const path = err.instancePath || "(root)";
+  const where = err.instancePath || "(root)";
   const expected = err.schemaPath ? ` (schema ${err.schemaPath})` : "";
-  return `${path}: ${err.message}${expected}`;
+  return `${where}: ${err.message}${expected}`;
 }
 
 /**
- * Collect dotted-path field names that appear on the wire body but are not
- * declared in the operation's response schema. Top-level scan only — nested
- * extras are reported when their parent property's schema permits them.
+ * Resolve a $ref one level. Returns the target schema, or the input
+ * unchanged if it isn't a ref.
  */
-function collectExtras(
-  operationId: string,
-  body: unknown,
-  doc: OpenAPIDocument,
-): string[] {
-  const schema = findResponseSchema(doc, operationId);
-  if (!schema || typeof body !== "object" || body === null) return [];
-  const props = readObjectProperties(schema, doc);
-  if (!props) return [];
-
-  const declared = new Set(Object.keys(props));
-  const extras: string[] = [];
-  for (const key of Object.keys(body as Record<string, unknown>)) {
-    if (!declared.has(key)) extras.push(key);
-  }
-  return extras;
+function resolveRef(schema: unknown, doc: OpenAPIDocument): unknown {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return schema;
+  const s = schema as Record<string, unknown>;
+  const ref = s["$ref"];
+  if (typeof ref !== "string") return schema;
+  // Accept both "#/components/schemas/X" and "openapi.json#/components/schemas/X".
+  const m = ref.match(/^(?:openapi\.json)?#\/components\/schemas\/(.+)$/);
+  if (!m) return schema;
+  return doc.components?.schemas?.[m[1]] ?? schema;
 }
 
-function readObjectProperties(
+/**
+ * Walk body + schema together, emitting dotted-path field names that
+ * appear on the wire but are not declared in the schema.
+ *
+ * Conventions:
+ *   - Object extras emit at the property path (e.g. `unreads`).
+ *   - Array items use [] as the path segment (e.g. `unreads[].some_field`).
+ *   - Recurses into known properties so nested extras surface.
+ *   - Bounded depth as a cycle guard; OpenAPI schemas are typically shallow.
+ */
+function collectExtras(
+  prefix: string,
+  body: unknown,
   schema: unknown,
   doc: OpenAPIDocument,
-): Record<string, unknown> | null {
-  if (!schema || typeof schema !== "object") return null;
-  const s = schema as Record<string, unknown>;
-  if (typeof s["$ref"] === "string") {
-    const refName = (s["$ref"] as string).replace("#/components/schemas/", "");
-    return readObjectProperties(doc.components?.schemas?.[refName], doc);
+  depth = 0,
+): string[] {
+  if (depth > 12) return [];
+  if (body === null || body === undefined) return [];
+  const resolved = resolveRef(schema, doc);
+  if (!resolved || typeof resolved !== "object") return [];
+  const s = resolved as Record<string, unknown>;
+
+  if (Array.isArray(body)) {
+    if (s.type !== "array" || !s.items) return [];
+    const seen = new Set<string>();
+    const childPrefix = prefix ? `${prefix}[]` : "[]";
+    for (const item of body) {
+      for (const e of collectExtras(childPrefix, item, s.items, doc, depth + 1)) {
+        seen.add(e);
+      }
+    }
+    return [...seen];
   }
-  if (s.type === "object" && s.properties && typeof s.properties === "object") {
-    return s.properties as Record<string, unknown>;
+
+  if (typeof body !== "object") return [];
+
+  // For non-object schemas (e.g., type: "string"), don't recurse.
+  if (s.type !== undefined && s.type !== "object") return [];
+
+  const props = (s.properties as Record<string, unknown> | undefined) ?? {};
+  const extras: string[] = [];
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
+    const fieldPath = prefix ? `${prefix}.${key}` : key;
+    if (!(key in props)) {
+      extras.push(fieldPath);
+    } else {
+      for (const e of collectExtras(fieldPath, value, props[key], doc, depth + 1)) {
+        extras.push(e);
+      }
+    }
   }
-  return null;
+  return extras;
 }
