@@ -22,6 +22,7 @@ data class Person(
     @SerialName("personable_type") val personableType: String? = null,
     val title: String? = null,
     val bio: String? = null,
+    val tagline: String? = null,
     val location: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
