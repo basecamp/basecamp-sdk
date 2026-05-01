@@ -26,7 +26,6 @@ import {
   LIVE_OPERATIONS,
   assertDispatchCoverage,
   FixtureMissingError,
-  type DispatchResult,
 } from "./live-dispatch.js";
 import type { Backend, FixtureContext } from "./fixtures.js";
 
@@ -175,7 +174,7 @@ LIVE_DESCRIBE("conformance live runner", () => {
   for (const { filename, tests } of suites) {
     describe(`live/${filename}`, () => {
       for (const tc of tests) {
-        it(tc.name, async () => {
+        it(tc.name, async (testCtx) => {
           const dispatch = LIVE_OPERATIONS[tc.operation];
           // Coverage is enforced in beforeAll, but this guards against races.
           if (!dispatch) {
@@ -187,11 +186,10 @@ LIVE_DESCRIBE("conformance live runner", () => {
 
           const ctx: FixtureContext = { client, backend: BACKEND };
           const capture = installWireCapture();
-          let dispatchResult: DispatchResult | undefined;
           let dispatchError: Error | undefined;
 
           try {
-            dispatchResult = await dispatch(ctx);
+            await dispatch(ctx);
           } catch (err) {
             dispatchError = err instanceof Error ? err : new Error(String(err));
           } finally {
@@ -200,11 +198,10 @@ LIVE_DESCRIBE("conformance live runner", () => {
 
           if (dispatchError instanceof FixtureMissingError) {
             // Per §5d: fall through, skip with skipReason.
-            return Promise.reject(
-              Object.assign(new Error(`SKIP: Fixture ID for \${${dispatchError.fixtureName}} not available`), {
-                skip: true,
-              }),
-            );
+            // Vitest's test context provides runtime skip — a rejected
+            // promise would be reported as a failure instead.
+            testCtx.skip(`Fixture ID for \${${dispatchError.fixtureName}} not available`);
+            return;
           }
 
           const snapshot = capture.drain();
