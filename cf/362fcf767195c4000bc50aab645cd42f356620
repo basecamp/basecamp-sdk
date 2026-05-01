@@ -1,0 +1,33 @@
+swift/Sources/Basecamp/Generated/Models/Person.swift
+  8a25d90aac60e426 26,51,75
+swift/Sources/Basecamp/Generated/Models/Notification.swift
+  8a25d90aac60e426 10-11,38-39,65-66
+swift/Sources/Basecamp/Generated/Models/Todo.swift
+  8a25d90aac60e426 32,63,93
+swift/Sources/Basecamp/Generated/Models/GetMyNotificationsResponseContent.swift
+  8a25d90aac60e426 5,8
+swift/Sources/Basecamp/BasecampConfig.swift
+  8a25d90aac60e426 30
+swift/Sources/Basecamp/Generated/Models/Todoset.swift
+  8a25d90aac60e426 19,22,27-28,45,48,52-54,70,73,78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "cf362fcf767195c4000bc50aab645cd42f356620",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 2,
+      "accepted_lines": 28,
+      "overriden_lines": 0
+    }
+  }
+}
