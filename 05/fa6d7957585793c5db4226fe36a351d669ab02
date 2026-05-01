@@ -1,0 +1,59 @@
+briefs/api-gaps/todoset-completed-list-visibility.md
+  8a25d90aac60e426 1-63
+briefs/COORDINATION.md
+  8a25d90aac60e426 1-55
+scripts/validate-briefs.rb
+  8a25d90aac60e426 1-217
+briefs/api-gaps/step-top-level.md
+  8a25d90aac60e426 1-68
+briefs/api-gaps/recording-bubbleupable-field.md
+  8a25d90aac60e426 1-57
+briefs/api-gaps/rich-text-project-attachable.md
+  8a25d90aac60e426 1-53
+briefs/api-gaps/calendar.md
+  8a25d90aac60e426 1-64
+briefs/api-gaps/allowlist.yml
+  8a25d90aac60e426 1-29
+briefs/api-gaps/activity-timeline.md
+  8a25d90aac60e426 1-70
+briefs/api-gaps/recordable-subtypes-doc.md
+  8a25d90aac60e426 1-112
+briefs/api-gaps/stack-doc-and-smithy.md
+  8a25d90aac60e426 1-75
+briefs/api-gaps/README.md
+  8a25d90aac60e426 1-73
+briefs/api-gaps/scratchpad.md
+  8a25d90aac60e426 1-67
+briefs/api-gaps/allowlist-schema.json
+  8a25d90aac60e426 1-36
+briefs/api-gaps/everything-aggregates.md
+  8a25d90aac60e426 1-91
+briefs/api-gaps/schema.json
+  8a25d90aac60e426 1-59
+briefs/api-gaps/search-filter-additions.md
+  8a25d90aac60e426 1-65
+CONTRIBUTING.md
+  8a25d90aac60e426 211,213,216-218,234-273
+scripts/validate-briefs.sh
+  8a25d90aac60e426 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "05fa6d7957585793c5db4226fe36a351d669ab02",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 1584,
+      "total_deletions": 54,
+      "accepted_lines": 17967,
+      "overriden_lines": 0
+    }
+  }
+}
