@@ -208,12 +208,14 @@ All SDKs are generated from a single Smithy specification. When adding support f
    - Define the resource, operations, and shapes
    - Follow patterns from existing resources (e.g., `Project`, `Todo`)
 
-2. **Regenerate the OpenAPI spec**
+2. **Regenerate everything** in one step:
    ```bash
-   make smithy-build
+   make generate
    ```
 
-3. **Run per-SDK generators** to update generated service code:
+   This runs Smithy build, behavior model, URL routes, provenance sync, and per-language generators (TypeScript, Ruby, Python, Kotlin, Swift, Go) in dependency order.
+
+3. **Run per-SDK generators individually** if you only need one:
    - **Go:** `make go-check-drift` — Go services are hand-written wrappers around the generated client; the drift check verifies all generated operations are covered
    - **TypeScript:** `make ts-generate-services`
    - **Ruby:** `make rb-generate-services`
@@ -228,6 +230,47 @@ All SDKs are generated from a single Smithy specification. When adding support f
 6. **Update documentation**:
    - Add to the services table in each SDK's README
    - Add to CHANGELOG under `[Unreleased]`
+
+## Spec-shape lints
+
+The repo enforces a small set of structural invariants on the OpenAPI spec
+beyond the language-specific drift checks. These run as part of `make check`:
+
+- **Bucket↔flat parity** (`make check-bucket-flat-parity`): every
+  `GET /{accountId}/buckets/{bucketId}/<resource>(/...).json` list operation
+  must have a flat counterpart at `/{accountId}/<resource>.json`, or be
+  justified in [`spec/bucket-scoped-allowlist.txt`](spec/bucket-scoped-allowlist.txt).
+  The intent is that cross-project SDK consumers shouldn't have to walk every
+  project to query account-wide resources.
+
+  When adding a bucket-scoped list endpoint, either add the matching flat
+  endpoint or append a one-line entry to the allowlist with a justification
+  comment.
+
+## API gap registry (`spec/api-gaps/`)
+
+When BC ships a new user-visible feature without a JSON API (or with an
+incomplete one), add an entry under [`spec/api-gaps/`](spec/api-gaps/).
+The registry is the SDK side of the [BC3 API parity coordination](COORDINATION.md):
+the BC3 plan owns server-side delivery; the registry tracks the gap from
+detection through absorption, with status changes in git history.
+
+To add a new entry:
+
+1. Copy an existing entry in `spec/api-gaps/` as a template.
+2. Set frontmatter status to `no-json-contract` (or `partial-coverage` /
+   `ambiguous` as appropriate). See
+   [`spec/api-gaps/schema.json`](spec/api-gaps/schema.json) for valid
+   statuses.
+3. Add a row to the table in
+   [`spec/api-gaps/README.md`](spec/api-gaps/README.md).
+4. Run `make validate-api-gaps` to confirm frontmatter and required body
+   sections are well-formed. Wired into `make check`.
+
+For routes that should *not* warrant an entry (transient nav state, internal
+endpoints, duplicates of a route already covered elsewhere), add a record
+to [`spec/api-gaps/allowlist.yml`](spec/api-gaps/allowlist.yml) with a
+justification.
 
 ## Reporting Issues
 

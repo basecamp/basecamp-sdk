@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "API Gap Entry Frontmatter",
+  "description": "Schema for the YAML frontmatter at the top of each spec/api-gaps/*.md file. Validated by scripts/validate-api-gaps.sh.",
+  "type": "object",
+  "required": ["gap", "status", "detected", "bc3_refs"],
+  "additionalProperties": false,
+  "properties": {
+    "gap": {
+      "type": "string",
+      "description": "Short kebab-case identifier matching the brief filename (without .md)."
+    },
+    "status": {
+      "description": "Lifecycle status. Statuses follow the detector emit set + closure states.",
+      "oneOf": [
+        { "type": "string", "enum": [
+          "no-json-contract",
+          "partial-coverage",
+          "ambiguous",
+          "confirmed-not-api-resource",
+          "absorbed-in-sdk"
+        ] },
+        { "type": "string", "pattern": "^addressed-in-bc3-pr-[0-9]+$" }
+      ]
+    },
+    "detected": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "ISO date when the gap was first identified."
+    },
+    "bc3_refs": {
+      "type": "object",
+      "description": "Pointers into the BC3 source/plan that frame the gap.",
+      "additionalProperties": true,
+      "properties": {
+        "introduced_in": { "type": "string" },
+        "bc3_plan_phase": { "type": "string" },
+        "bc3_plan_section": { "type": "string" },
+        "routes": { "type": "array", "items": { "type": "string" } },
+        "controllers": { "type": "array", "items": { "type": "string" } },
+        "related_existing_api": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sdk_demand": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Editorial estimate of how much SDK consumers need this gap closed."
+    },
+    "bc3_pr": {
+      "type": ["string", "integer"],
+      "description": "Reference to the BC3 PR that addressed the gap (when status is addressed-in-bc3-pr-N or absorbed-in-sdk)."
+    },
+    "smithy_refs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Smithy structures/operations that absorbed the contract (when status is absorbed-in-sdk)."
+    }
+  }
+}
