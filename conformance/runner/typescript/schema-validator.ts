@@ -67,9 +67,23 @@ function findResponseSchema(doc: OpenAPIDocument, operationId: string): unknown 
   for (const pathItem of Object.values(doc.paths)) {
     for (const op of Object.values(pathItem)) {
       if (op.operationId !== operationId) continue;
-      const response = op.responses?.["200"] ?? op.responses?.["default"];
-      const schema = response?.content?.["application/json"]?.schema;
-      if (schema) return schema;
+      const responses = op.responses ?? {};
+      // Prefer 200; fall through to any 2xx success (201, 202, 204, ...);
+      // last resort is "default". Operations that return 201 (Create*)
+      // shouldn't fall back to "" because their response body still has
+      // a schema worth validating.
+      const candidates = ["200", "201", "202", "203", "204", "default"];
+      for (const code of candidates) {
+        if (!responses[code]) continue;
+        const schema = responses[code].content?.["application/json"]?.schema;
+        if (schema) return schema;
+      }
+      // Last resort: any 2xx key not in the explicit list above.
+      for (const [code, response] of Object.entries(responses)) {
+        if (!/^2\d\d$/.test(code)) continue;
+        const schema = response.content?.["application/json"]?.schema;
+        if (schema) return schema;
+      }
     }
   }
   return null;
@@ -149,18 +163,26 @@ function formatError(err: ErrorObject): string {
 }
 
 /**
- * Resolve a $ref one level. Returns the target schema, or the input
- * unchanged if it isn't a ref.
+ * Resolve $ref chains until we hit a non-ref schema (or a cycle).
+ * One-level resolution misreports valid fields as extras when the schema
+ * uses alias chains (e.g. Foo → Bar → Baz).
  */
 function resolveRef(schema: unknown, doc: OpenAPIDocument): unknown {
-  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return schema;
-  const s = schema as Record<string, unknown>;
-  const ref = s["$ref"];
-  if (typeof ref !== "string") return schema;
-  // Accept both "#/components/schemas/X" and "openapi.json#/components/schemas/X".
-  const m = ref.match(/^(?:openapi\.json)?#\/components\/schemas\/(.+)$/);
-  if (!m) return schema;
-  return doc.components?.schemas?.[m[1]] ?? schema;
+  const seen = new Set<string>();
+  let current: unknown = schema;
+  while (current && typeof current === "object" && !Array.isArray(current)) {
+    const ref = (current as Record<string, unknown>)["$ref"];
+    if (typeof ref !== "string") return current;
+    if (seen.has(ref)) return current;
+    seen.add(ref);
+    // Accept both "#/components/schemas/X" and "openapi.json#/components/schemas/X".
+    const m = ref.match(/^(?:openapi\.json)?#\/components\/schemas\/(.+)$/);
+    if (!m) return current;
+    const next = doc.components?.schemas?.[m[1]];
+    if (!next) return current;
+    current = next;
+  }
+  return current;
 }
 
 /**

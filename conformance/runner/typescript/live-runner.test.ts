@@ -25,9 +25,8 @@ import { validateResponse, type ValidationResult } from "./schema-validator.js";
 import {
   LIVE_OPERATIONS,
   assertDispatchCoverage,
-  FixtureMissingError,
 } from "./live-dispatch.js";
-import type { Backend, FixtureContext } from "./fixtures.js";
+import { resolveFixtureId, type Backend, type FixtureContext } from "./fixtures.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TESTS_DIR = path.resolve(__dirname, "../../tests");
@@ -175,9 +174,9 @@ LIVE_DESCRIBE("conformance live runner", () => {
     describe(`live/${filename}`, () => {
       for (const tc of tests) {
         it(tc.name, async (testCtx) => {
-          const dispatch = LIVE_OPERATIONS[tc.operation];
+          const spec = LIVE_OPERATIONS[tc.operation];
           // Coverage is enforced in beforeAll, but this guards against races.
-          if (!dispatch) {
+          if (!spec) {
             throw new Error(`No dispatch for operation ${tc.operation}`);
           }
           if (!client) {
@@ -185,23 +184,29 @@ LIVE_DESCRIBE("conformance live runner", () => {
           }
 
           const ctx: FixtureContext = { client, backend: BACKEND };
+
+          // Pre-resolve fixture-IDs OUTSIDE the wire-capture window so
+          // discovery traffic (e.g. ListProjects → first project) doesn't
+          // bleed into the snapshot for the operation under test.
+          const resolvedIds: Record<string, string> = {};
+          for (const fixture of spec.fixtures) {
+            const value = await resolveFixtureId(ctx, fixture);
+            if (!value) {
+              testCtx.skip(`Fixture ID for \${${fixture}} not available`);
+              return;
+            }
+            resolvedIds[fixture] = value;
+          }
+
           const capture = installWireCapture();
           let dispatchError: Error | undefined;
 
           try {
-            await dispatch(ctx);
+            await spec.call(ctx, resolvedIds);
           } catch (err) {
             dispatchError = err instanceof Error ? err : new Error(String(err));
           } finally {
             capture.restore();
-          }
-
-          if (dispatchError instanceof FixtureMissingError) {
-            // Per §5d: fall through, skip with skipReason.
-            // Vitest's test context provides runtime skip — a rejected
-            // promise would be reported as a failure instead.
-            testCtx.skip(`Fixture ID for \${${dispatchError.fixtureName}} not available`);
-            return;
           }
 
           const snapshot = capture.drain();

@@ -110,6 +110,30 @@ describe("validateResponse — GetMyNotifications (object root, array fields)", 
 });
 
 // =============================================================================
+// Non-200 success responses
+// =============================================================================
+
+describe("validateResponse — non-200 success responses", () => {
+  it("resolves a schema for operations that return 201 (Create*)", () => {
+    // CreateProject's success status is 201 Created. Pre-fix the lookup
+    // checked only "200"/"default" and missed it.
+    const result = validateResponse("CreateProject", {
+      id: 1,
+      status: "active",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+      name: "Test",
+      url: "https://3.basecampapi.com/999/projects/1.json",
+      app_url: "https://3.basecamp.com/999/projects/1",
+    });
+    // Either ok=true or field-level errors — but never the
+    // "No response schema found" sentinel (which would prove the lookup
+    // failed entirely).
+    expect(result.errors.join("\n")).not.toContain("No response schema found");
+  });
+});
+
+// =============================================================================
 // Unknown operation
 // =============================================================================
 
