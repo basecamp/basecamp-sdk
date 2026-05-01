@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-04-29T18:03:49Z
+# Generated: 2026-05-01T22:48:07Z
 
 require "json"
 require "time"
@@ -2093,7 +2093,7 @@ module Basecamp
     # Notification
     class Notification
       include TypeHelpers
-      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :bucket_name, :content_excerpt, :creator, :image_url, :memory_url, :named, :participants, :previewable_attachments, :read_at, :readable_identifier, :readable_sgid, :section, :subscribed, :subscription_url, :title, :type, :unread_at, :unread_count, :unread_url
+      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :bubble_up_at, :bubble_up_url, :bucket_name, :content_excerpt, :creator, :image_url, :memory_url, :named, :participants, :previewable_attachments, :read_at, :readable_identifier, :readable_sgid, :section, :subscribed, :subscription_url, :title, :type, :unread_at, :unread_count, :unread_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2106,6 +2106,8 @@ module Basecamp
         @updated_at = parse_datetime(data["updated_at"])
         @app_url = data["app_url"]
         @bookmark_url = data["bookmark_url"]
+        @bubble_up_at = parse_datetime(data["bubble_up_at"])
+        @bubble_up_url = data["bubble_up_url"]
         @bucket_name = data["bucket_name"]
         @content_excerpt = data["content_excerpt"]
         @creator = parse_type(data["creator"], "Person")
@@ -2134,6 +2136,8 @@ module Basecamp
           "updated_at" => @updated_at,
           "app_url" => @app_url,
           "bookmark_url" => @bookmark_url,
+          "bubble_up_at" => @bubble_up_at,
+          "bubble_up_url" => @bubble_up_url,
           "bucket_name" => @bucket_name,
           "content_excerpt" => @content_excerpt,
           "creator" => @creator,
@@ -2246,7 +2250,7 @@ module Basecamp
     # Person
     class Person
       include TypeHelpers
-      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :time_zone, :title, :updated_at, :system_label
+      attr_accessor :id, :name, :admin, :attachable_sgid, :avatar_url, :bio, :can_access_hill_charts, :can_access_timesheet, :can_manage_people, :can_manage_projects, :can_ping, :client, :company, :created_at, :email_address, :employee, :location, :owner, :personable_type, :tagline, :time_zone, :title, :updated_at, :system_label
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2274,6 +2278,7 @@ module Basecamp
         @location = data["location"]
         @owner = parse_boolean(data["owner"])
         @personable_type = data["personable_type"]
+        @tagline = data["tagline"]
         @time_zone = data["time_zone"]
         @title = data["title"]
         @updated_at = parse_datetime(data["updated_at"])
@@ -2300,6 +2305,7 @@ module Basecamp
           "location" => @location,
           "owner" => @owner,
           "personable_type" => @personable_type,
+          "tagline" => @tagline,
           "time_zone" => @time_zone,
           "title" => @title,
           "updated_at" => @updated_at,
@@ -3375,7 +3381,7 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3410,6 +3416,7 @@ module Basecamp
         @due_on = data["due_on"]
         @position = parse_integer(data["position"])
         @starts_on = data["starts_on"]
+        @steps = parse_array(data["steps"], "CardStep")
         @subscription_url = data["subscription_url"]
       end
 
@@ -3442,6 +3449,7 @@ module Basecamp
           "due_on" => @due_on,
           "position" => @position,
           "starts_on" => @starts_on,
+          "steps" => @steps,
           "subscription_url" => @subscription_url,
         }.compact
       end
@@ -3662,7 +3670,7 @@ module Basecamp
     # Todoset
     class Todoset
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todolists_url, :bookmark_url, :completed, :completed_ratio, :position, :todolists_count, :todolists_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todolists_url, :app_todos_url, :bookmark_url, :completed, :completed_loose_todos_count, :completed_ratio, :position, :todolists_count, :todolists_url, :todos_count, :todos_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3684,12 +3692,16 @@ module Basecamp
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @app_todolists_url = data["app_todolists_url"]
+        @app_todos_url = data["app_todos_url"]
         @bookmark_url = data["bookmark_url"]
         @completed = parse_boolean(data["completed"])
+        @completed_loose_todos_count = parse_integer(data["completed_loose_todos_count"])
         @completed_ratio = data["completed_ratio"]
         @position = parse_integer(data["position"])
         @todolists_count = parse_integer(data["todolists_count"])
         @todolists_url = data["todolists_url"]
+        @todos_count = parse_integer(data["todos_count"])
+        @todos_url = data["todos_url"]
       end
 
       def to_h
@@ -3708,12 +3720,16 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "app_todolists_url" => @app_todolists_url,
+          "app_todos_url" => @app_todos_url,
           "bookmark_url" => @bookmark_url,
           "completed" => @completed,
+          "completed_loose_todos_count" => @completed_loose_todos_count,
           "completed_ratio" => @completed_ratio,
           "position" => @position,
           "todolists_count" => @todolists_count,
           "todolists_url" => @todolists_url,
+          "todos_count" => @todos_count,
+          "todos_url" => @todos_url,
         }.compact
       end
 
