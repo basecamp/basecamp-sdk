@@ -290,6 +290,11 @@ Adding an operation to the live canary requires both a fixture entry in
 `conformance/runner/typescript/live-dispatch.ts`. The runner's startup
 gate refuses to run if any fixture operation lacks a dispatch.
 
+Because live canary fixtures live in the shared `conformance/tests/` directory,
+offline conformance runners must treat `mode` as part of the shared schema and
+execute only mock tests: omitted `mode` or `mode: "mock"`. `mode: "live"` entries
+belong to the TypeScript live wire-capture runner until replay runners are added.
+
 ## API gap registry (`spec/api-gaps/`)
 
 When BC ships a new user-visible feature without a JSON API (or with an
