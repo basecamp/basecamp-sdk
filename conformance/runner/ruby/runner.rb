@@ -615,10 +615,11 @@ class ConformanceRunner
 
     files.each do |file|
       tests = JSON.parse(File.read(file))
-      # Live tests are TS-only (canonical wire-capturer); filter them out
-      # before mock dispatch so unresolved ${PROJECT_ID} fixtures and
-      # live-only operations don't surface as mock failures or false passes.
-      tests = tests.reject { |t| t["mode"] == "live" }
+      # Live tests are TS-only (canonical wire-capturer); accept only mock
+      # so unresolved ${PROJECT_ID} fixtures and live-only operations don't
+      # surface as mock failures or false passes — and any future mode added
+      # to the schema enum stays opt-in for this runner.
+      tests = tests.select { |t| (t["mode"] || "mock") == "mock" }
       next if tests.empty?
 
       puts "\n=== #{File.basename(file)} ==="
