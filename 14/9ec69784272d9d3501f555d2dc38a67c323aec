@@ -1,0 +1,25 @@
+conformance/runner/ruby/runner.rb
+  8a25d90aac60e426 618-622
+CONTRIBUTING.md
+  8a25d90aac60e426 293-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "149ec69784272d9d3501f555d2dc38a67c323aec",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 4,
+      "accepted_lines": 1203,
+      "overriden_lines": 0
+    }
+  }
+}
