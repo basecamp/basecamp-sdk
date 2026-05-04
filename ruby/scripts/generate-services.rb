@@ -45,7 +45,7 @@ class ServiceGenerator
       'Campfires' => %w[
         GetCampfire ListCampfires
         ListChatbots CreateChatbot GetChatbot UpdateChatbot DeleteChatbot
-        ListCampfireLines CreateCampfireLine GetCampfireLine DeleteCampfireLine
+        ListCampfireLines CreateCampfireLine GetCampfireLine UpdateCampfireLine DeleteCampfireLine
         ListCampfireUploads CreateCampfireUpload
       ]
     },
@@ -190,6 +190,7 @@ class ServiceGenerator
     'ListCampfireLines' => 'list_lines',
     'CreateCampfireLine' => 'create_line',
     'GetCampfireLine' => 'get_line',
+    'UpdateCampfireLine' => 'update_line',
     'DeleteCampfireLine' => 'delete_line',
     'ListCampfireUploads' => 'list_uploads',
     'CreateCampfireUpload' => 'create_upload',

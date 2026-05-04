@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-22T08:19:34.802Z",
+  "generated": "2026-07-22T08:30:27.785Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -610,6 +610,20 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      }
+    },
+    "UpdateCampfireLine": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "DeleteCampfireLine": {

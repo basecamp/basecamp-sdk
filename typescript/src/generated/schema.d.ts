@@ -539,7 +539,8 @@ export interface paths {
         };
         /** @description Get a campfire line by ID */
         get: operations["GetCampfireLine"];
-        put?: never;
+        /** @description Update an existing campfire line */
+        put: operations["UpdateCampfireLine"];
         post?: never;
         /** @description Delete a campfire line */
         delete: operations["DeleteCampfireLine"];
@@ -4299,6 +4300,10 @@ export interface components {
             name: string;
         };
         UpdateAccountNameResponseContent: components["schemas"]["Account"];
+        UpdateCampfireLineRequestContent: {
+            content: string;
+            content_type?: string;
+        };
         UpdateCardColumnRequestContent: {
             title?: string;
             description?: string;
@@ -7496,6 +7501,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateCampfireLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campfireId: number;
+                lineId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCampfireLineRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateCampfireLine 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-22T08:19:36Z",
+  "generated": "2026-07-22T08:30:29Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -574,6 +574,20 @@
           429,
           503
         ]
+      }
+    },
+    "UpdateCampfireLine": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "DeleteCampfireLine": {

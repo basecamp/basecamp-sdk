@@ -233,6 +233,29 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Update an existing campfire line
+     * @param campfireId The campfire ID
+     * @param lineId The line ID
+     * @param body Request body
+     */
+    suspend fun updateLine(campfireId: Long, lineId: Long, body: UpdateCampfireLineBody): Unit {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "UpdateCampfireLine",
+            resourceType = "campfire_line",
+            isMutation = true,
+            projectId = null,
+            resourceId = lineId,
+        )
+        request(info, {
+            httpPut("/chats/${campfireId}/lines/${lineId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
+                body.contentType?.let { put("content_type", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * Delete a campfire line
      * @param campfireId The campfire ID
      * @param lineId The line ID

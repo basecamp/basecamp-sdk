@@ -188,6 +188,28 @@ describe("CampfiresService", () => {
     });
   });
 
+  describe("updateLine", () => {
+    it("should update a line", async () => {
+      server.use(
+        http.put(`${BASE_URL}/chats/42/lines/10`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.content).toBe("Edited!");
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(
+        client.campfires.updateLine(42, 10, { content: "Edited!" })
+      ).resolves.toBeUndefined();
+    });
+
+    it("should reject empty content", async () => {
+      await expect(
+        client.campfires.updateLine(42, 10, { content: "" })
+      ).rejects.toThrow();
+    });
+  });
+
   describe("deleteLine", () => {
     it("should delete a line", async () => {
       server.use(
