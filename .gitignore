@@ -37,7 +37,11 @@ python/dist/
 python/.pytest_cache/
 python/.coverage
 python/src/*.egg-info/
+
+# Python conformance runner artifacts
 conformance/runner/python/.venv/
+conformance/runner/python/**/__pycache__/
+conformance/runner/python/**/*.pyc
 conformance/runner/python/uv.lock
 
 # TypeScript SDK build artifacts
