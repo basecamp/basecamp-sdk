@@ -293,7 +293,76 @@ gate refuses to run if any fixture operation lacks a dispatch.
 Because live canary fixtures live in the shared `conformance/tests/` directory,
 offline conformance runners must treat `mode` as part of the shared schema and
 execute only mock tests: omitted `mode` or `mode: "mock"`. `mode: "live"` entries
-belong to the TypeScript live wire-capture runner until replay runners are added.
+belong to the TypeScript live wire-capture runner and the cross-language
+wire-replay runners described next.
+
+### Wire replay (cross-language)
+
+The TypeScript live runner is the single canonical wire-capturer. When invoked
+with `LIVE_RECORD_DIR=<path>`, it persists every captured response to
+`<path>/<backend>/wire/<test>.json` with the snapshot format
+`{ operation, pages: [{status, headers, body, bodyText, url}], pages_count }`.
+
+The Ruby, Python, Go, and Kotlin runners each have a *wire-replay mode* that
+reads those snapshots and decodes each page through their SDK. No HTTP calls,
+no mock servers — the input is the canonical wire bytes captured by the TS
+runner. Decode results land at
+`<path>/<backend>/decode/<language>/<test>.json` with the format
+`{ schema_version, operation, pages: [{decoded, decode_error, missing_required, extras_seen}] }`.
+
+Each runner enforces three coverage gates at startup before doing any decode
+work:
+
+1. **Decoder coverage** — every operation in `live-my-surface.json` has a
+   decode case in this runner.
+2. **Snapshot completeness** — every operation in `live-my-surface.json` has
+   a corresponding snapshot file at `<path>/<backend>/wire/`.
+3. **Snapshot recognition** — every snapshot's `operation` field is in
+   `live-my-surface.json` (catches drift between TS dispatch and the shared
+   fixture).
+
+Each gate prints which operations triggered it so the operator can fix the
+right side: TS dispatch, the fixture, or the replay runner.
+
+Two-stage flow:
+
+```bash
+# Step 1: TS captures canonical wire snapshots (live HTTP, requires creds).
+BASECAMP_LIVE=1 \
+BASECAMP_TOKEN=<token> \
+BASECAMP_ACCOUNT_ID=<account> \
+BASECAMP_BACKEND=bc4 \
+LIVE_RECORD_DIR=tmp/canary \
+make conformance-typescript-live
+
+# Step 2: each language replays those snapshots through its SDK (offline).
+for lang in ruby python go kotlin; do
+  WIRE_REPLAY_DIR=tmp/canary BASECAMP_BACKEND=bc4 \
+    make conformance-$lang-replay
+done
+```
+
+Step 2 needs no credentials and no network — it's pure decode + walk. The
+extras-observed output across languages is a consistency check on the
+hand-rolled schema walkers (which mirror the TS validator's required + extras
+algorithm in each language). Any per-language divergence in `extras_seen`
+points at a walker bug in the diverging language.
+
+`make conformance-typescript-live` is owned by PR 2; the four
+`make conformance-*-replay` targets ship in PR 3. The orchestrating
+`make conformance-live` and `make check-bc5-compat` targets that thread
+TS capture → replay → BC4↔BC5 comparison together land in PR 4.
+
+When the SDK gains a new operation in `live-my-surface.json`, it must be
+added to:
+
+- `conformance/runner/typescript/live-dispatch.ts` — TS dispatch case.
+- `conformance/runner/ruby/replay-runner.rb` — Ruby decoder.
+- `conformance/runner/python/replay_runner.py` — Python decoder.
+- `conformance/runner/go/replay_runner.go` — Go decoder.
+- `kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt` — Kotlin decoder.
+
+Each runner's coverage gate refuses to start until all five are in place.
 
 ## API gap registry (`spec/api-gaps/`)
 

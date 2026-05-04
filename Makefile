@@ -370,7 +370,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-typescript-live conformance-ruby conformance-python conformance-build
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build
 
 # Build conformance test runner
 conformance-build:
@@ -382,10 +382,26 @@ conformance-go: conformance-build
 	@echo "==> Running Go conformance tests..."
 	cd conformance/runner/go && ./conformance-runner
 
+# Run Go wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-go-replay:
+	@echo "==> Running Go wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd conformance/runner/go && go run .
+
 # Run Kotlin conformance tests
 conformance-kotlin:
 	@echo "==> Running Kotlin conformance tests..."
 	cd kotlin && ./gradlew :conformance:run
+
+# Run Kotlin wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-kotlin-replay:
+	@echo "==> Running Kotlin wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd kotlin && ./gradlew --quiet :conformance:runReplay
 
 # Run TypeScript conformance tests
 conformance-typescript:
@@ -408,10 +424,26 @@ conformance-ruby:
 	@echo "==> Running Ruby conformance tests..."
 	cd conformance/runner/ruby && bundle install --quiet && ruby runner.rb
 
+# Run Ruby wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-ruby-replay:
+	@echo "==> Running Ruby wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd conformance/runner/ruby && bundle install --quiet && ruby replay-runner.rb
+
 # Run Python conformance tests
 conformance-python:
 	@echo "==> Running Python conformance tests..."
 	cd conformance/runner/python && uv sync && uv run python runner.py
+
+# Run Python wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-python-replay:
+	@echo "==> Running Python wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd conformance/runner/python && uv sync && uv run python replay_runner.py
 
 # Run all conformance tests
 conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
@@ -678,13 +710,18 @@ help:
 	@echo "  swift-clean      Remove Swift build artifacts"
 	@echo ""
 	@echo "Conformance:"
-	@echo "  conformance            Run all conformance tests"
-	@echo "  conformance-go         Run Go conformance tests"
-	@echo "  conformance-kotlin     Run Kotlin conformance tests"
-	@echo "  conformance-typescript Run TypeScript conformance tests"
-	@echo "  conformance-ruby       Run Ruby conformance tests"
-	@echo "  conformance-python     Run Python conformance tests"
-	@echo "  conformance-build      Build Go conformance test runner"
+	@echo "  conformance                Run all conformance tests"
+	@echo "  conformance-go             Run Go conformance tests"
+	@echo "  conformance-go-replay      Decode TS-captured wire snapshots through Go SDK"
+	@echo "  conformance-kotlin         Run Kotlin conformance tests"
+	@echo "  conformance-kotlin-replay  Decode TS-captured wire snapshots through Kotlin SDK"
+	@echo "  conformance-typescript     Run TypeScript conformance tests"
+	@echo "  conformance-typescript-live Run TypeScript live canary against a real backend"
+	@echo "  conformance-ruby           Run Ruby conformance tests"
+	@echo "  conformance-ruby-replay    Decode TS-captured wire snapshots through Ruby SDK"
+	@echo "  conformance-python         Run Python conformance tests"
+	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
+	@echo "  conformance-build          Build Go conformance test runner"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"
