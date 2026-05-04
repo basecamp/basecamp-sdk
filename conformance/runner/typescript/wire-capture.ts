@@ -7,8 +7,13 @@
  * we can clone the response and record its raw bytes/headers without
  * affecting SDK behavior.
  *
- * Snapshot format per test:
- *   { pages: [{status, headers, body}, ...], pages_count: N }
+ * Snapshot format per test (persisted by live-runner):
+ *   { operation: "GetProject", pages: [{status, headers, body, ...}, ...], pages_count: N }
+ *
+ * The top-level `operation` field is added by the runner when serializing,
+ * so cross-language replay runners (PR 3) can dispatch without re-parsing
+ * the test fixture. Backwards compatible — existing readers ignore unknown
+ * top-level keys.
  *
  * Schema validation runs per page; extras-observed reporting unions extras
  * across all pages.
@@ -29,6 +34,11 @@ export interface WirePage {
 export interface WireSnapshot {
   pages: WirePage[];
   pages_count: number;
+}
+
+/** Snapshot as persisted to disk: WireSnapshot plus the operation that produced it. */
+export interface PersistedWireSnapshot extends WireSnapshot {
+  operation: string;
 }
 
 export interface WireCaptureSession {

@@ -20,7 +20,12 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { installWireCapture, type WireSnapshot, type WirePage } from "./wire-capture.js";
+import {
+  installWireCapture,
+  type WireSnapshot,
+  type WirePage,
+  type PersistedWireSnapshot,
+} from "./wire-capture.js";
 import { validateResponse, type ValidationResult } from "./schema-validator.js";
 import {
   LIVE_OPERATIONS,
@@ -97,13 +102,16 @@ function recordExtras(operation: string, extras: string[]): void {
   for (const e of extras) bucket.add(e);
 }
 
-function persistSnapshot(testName: string, snapshot: WireSnapshot): void {
+function persistSnapshot(testName: string, operation: string, snapshot: WireSnapshot): void {
   if (!RECORD_DIR) return;
   const wireDir = path.join(RECORD_DIR, BACKEND, "wire");
   fs.mkdirSync(wireDir, { recursive: true });
   const safeName = testName.replace(/[^a-z0-9_-]+/gi, "_");
   const file = path.join(wireDir, `${safeName}.json`);
-  fs.writeFileSync(file, JSON.stringify(snapshot, null, 2));
+  // Top-level `operation` lets replay runners (PR 3) dispatch without
+  // re-parsing the live-my-surface fixture.
+  const payload: PersistedWireSnapshot = { operation, ...snapshot };
+  fs.writeFileSync(file, JSON.stringify(payload, null, 2));
 }
 
 function checkRequiredFields(page: WirePage, fields: string[]): string[] {
@@ -214,7 +222,7 @@ LIVE_DESCRIBE("conformance live runner", () => {
           }
 
           const snapshot = capture.drain();
-          persistSnapshot(tc.name, snapshot);
+          persistSnapshot(tc.name, tc.operation, snapshot);
 
           if (dispatchError) {
             throw new Error(`SDK dispatch threw: ${dispatchError.message}`);
