@@ -1,0 +1,27 @@
+conformance/runner/go/main.go
+  02cba45918a7d653 110-132
+conformance/runner/go/replay_runner.go
+  02cba45918a7d653 1-340
+conformance/runner/go/schema_walker.go
+  02cba45918a7d653 1-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b6241f6fd81f891f4e8ceeb1b09761ae32defd7d",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1885,
+      "overriden_lines": 0
+    }
+  }
+}
