@@ -90,6 +90,7 @@ let methodNameOverrides: [String: String] = [
     "ListCampfireLines": "listLines",
     "CreateCampfireLine": "createLine",
     "GetCampfireLine": "getLine",
+    "UpdateCampfireLine": "updateLine",
     "DeleteCampfireLine": "deleteLine",
     "ListCampfireUploads": "listUploads",
     "CreateCampfireUpload": "createUpload",

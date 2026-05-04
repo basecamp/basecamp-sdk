@@ -198,7 +198,7 @@ The SDK provides typed services for the complete Basecamp API:
 | `messageBoards` | get |
 | `messageTypes` | list, get, create, update, delete |
 | `comments` | list, get, create, update |
-| `campfires` | list, get, listLines, getLine, createLine, deleteLine |
+| `campfires` | list, get, listLines, getLine, createLine, updateLine, deleteLine |
 
 ### Card Tables (Kanban)
 

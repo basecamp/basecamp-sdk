@@ -175,7 +175,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     Campfires: [
       "GetCampfire", "ListCampfires",
       "ListChatbots", "CreateChatbot", "GetChatbot", "UpdateChatbot", "DeleteChatbot",
-      "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "DeleteCampfireLine",
+      "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "UpdateCampfireLine", "DeleteCampfireLine",
       "ListCampfireUploads", "CreateCampfireUpload",
     ],
   },
@@ -352,6 +352,7 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   ListCampfireLines: "listLines",
   CreateCampfireLine: "createLine",
   GetCampfireLine: "getLine",
+  UpdateCampfireLine: "updateLine",
   DeleteCampfireLine: "deleteLine",
   ListCampfireUploads: "listUploads",
   CreateCampfireUpload: "createUpload",

@@ -173,6 +173,16 @@ public final class CampfiresService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func updateLine(campfireId: Int, lineId: Int, req: UpdateCampfireLineRequest) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Campfires", operation: "UpdateCampfireLine", resourceType: "campfire_line", isMutation: true, resourceId: lineId),
+            method: "PUT",
+            path: "/chats/\(campfireId)/lines/\(lineId)",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "UpdateCampfireLine")
+        )
+    }
+
     public func updateChatbot(campfireId: Int, chatbotId: Int, req: UpdateChatbotRequest) async throws -> Chatbot {
         return try await request(
             OperationInfo(service: "Campfires", operation: "UpdateChatbot", resourceType: "chatbot", isMutation: true, resourceId: chatbotId),
