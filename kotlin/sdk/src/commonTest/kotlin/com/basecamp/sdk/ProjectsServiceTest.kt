@@ -29,6 +29,7 @@ class ProjectsServiceTest {
     private fun projectJson(id: Long, name: String, description: String? = null) = """{
         "id": $id, "status": "active", "name": "$name",
         "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z",
+        "start_date": "2024-01-01", "end_date": "2024-03-31",
         "url": "https://3.basecampapi.com/12345/projects/$id.json",
         "app_url": "https://3.basecamp.com/12345/projects/$id",
         "dock": []
@@ -108,6 +109,8 @@ class ProjectsServiceTest {
         assertEquals(42L, project.id)
         assertEquals("My Project", project.name)
         assertEquals("A test project", project.description)
+        assertEquals("2024-01-01", project.startDate)
+        assertEquals("2024-03-31", project.endDate)
 
         client.close()
     }

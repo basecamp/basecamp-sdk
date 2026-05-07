@@ -3678,6 +3678,8 @@ export interface components {
             name: string;
             description?: string;
             purpose?: string;
+            start_date?: string;
+            end_date?: string;
             clients_enabled?: boolean;
             bookmark_url?: string;
             url: string;

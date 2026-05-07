@@ -18,6 +18,8 @@ type Project struct {
 	Name           string         `json:"name"`
 	Description    string         `json:"description"`
 	Purpose        string         `json:"purpose"`
+	StartDate      string         `json:"start_date,omitempty"`
+	EndDate        string         `json:"end_date,omitempty"`
 	ClientsEnabled bool           `json:"clients_enabled"`
 	BookmarkURL    string         `json:"bookmark_url"`
 	URL            string         `json:"url"`
@@ -374,6 +376,8 @@ func projectFromGenerated(gp generated.Project) Project {
 		Name:           gp.Name,
 		Description:    gp.Description,
 		Purpose:        gp.Purpose,
+		StartDate:      gp.StartDate,
+		EndDate:        gp.EndDate,
 		ClientsEnabled: gp.ClientsEnabled,
 		BookmarkURL:    gp.BookmarkUrl,
 		URL:            gp.Url,

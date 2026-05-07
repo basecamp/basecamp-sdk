@@ -13,6 +13,7 @@ final class GeneratedServiceTests: XCTestCase {
             "id": 42, "name": "My Project", "status": "active",
             "app_url": "https://3.basecamp.com/1/projects/42", "url": "https://3.basecampapi.com/1/projects/42.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "start_date": "2024-01-01", "end_date": "2024-03-31",
         ]
         let data = try JSONSerialization.data(withJSONObject: json)
 
@@ -23,6 +24,8 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(project.id, 42)
         XCTAssertEqual(project.name, "My Project")
         XCTAssertEqual(project.status, "active")
+        XCTAssertEqual(project.startDate, "2024-01-01")
+        XCTAssertEqual(project.endDate, "2024-03-31")
 
         // Verify request was sent to the correct path
         let lastURL = transport.lastRequest!.request.url!.absoluteString
@@ -79,7 +82,8 @@ final class GeneratedServiceTests: XCTestCase {
         let projects: [[String: Any]] = [
             ["id": 1, "name": "Project A", "status": "active",
              "app_url": "https://3.basecamp.com/1/projects/1", "url": "https://3.basecampapi.com/1/projects/1.json",
-             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"],
+             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+             "start_date": "2024-01-01", "end_date": "2024-03-31"],
             ["id": 2, "name": "Project B", "status": "active",
              "app_url": "https://3.basecamp.com/1/projects/2", "url": "https://3.basecampapi.com/1/projects/2.json",
              "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"],
@@ -93,6 +97,7 @@ final class GeneratedServiceTests: XCTestCase {
         let result = try await account.projects.list()
         XCTAssertEqual(result.count, 2)
         XCTAssertEqual(result[0].id, 1)
+        XCTAssertEqual(result[0].startDate, "2024-01-01")
         XCTAssertEqual(result[1].name, "Project B")
         XCTAssertEqual(result.meta.totalCount, 2)
     }

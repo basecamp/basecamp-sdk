@@ -16,7 +16,9 @@ public struct Project: Codable, Sendable {
     public var clientside: ClientSide?
     public var description: String?
     public var dock: [DockItem]?
+    public var endDate: String?
     public var purpose: String?
+    public var startDate: String?
 
     public init(
         appUrl: String,
@@ -33,7 +35,9 @@ public struct Project: Codable, Sendable {
         clientside: ClientSide? = nil,
         description: String? = nil,
         dock: [DockItem]? = nil,
-        purpose: String? = nil
+        endDate: String? = nil,
+        purpose: String? = nil,
+        startDate: String? = nil
     ) {
         self.appUrl = appUrl
         self.createdAt = createdAt
@@ -49,6 +53,8 @@ public struct Project: Codable, Sendable {
         self.clientside = clientside
         self.description = description
         self.dock = dock
+        self.endDate = endDate
         self.purpose = purpose
+        self.startDate = startDate
     }
 }

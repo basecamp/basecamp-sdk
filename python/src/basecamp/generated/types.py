@@ -1002,9 +1002,11 @@ class Project(TypedDict):
     created_at: str
     description: NotRequired[str]
     dock: NotRequired[list[DockItem]]
+    end_date: NotRequired[str]
     id: int
     name: str
     purpose: NotRequired[str]
+    start_date: NotRequired[str]
     status: str
     updated_at: str
     url: str
