@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-04-29T18:03:49Z
+# Generated: 2026-05-07T21:00:08Z
 
 require "json"
 require "time"
@@ -2427,7 +2427,7 @@ module Basecamp
     # Project
     class Project
       include TypeHelpers
-      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :purpose
+      attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :start_date
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2449,7 +2449,9 @@ module Basecamp
         @clientside = parse_type(data["clientside"], "ClientSide")
         @description = data["description"]
         @dock = parse_array(data["dock"], "DockItem")
+        @end_date = data["end_date"]
         @purpose = data["purpose"]
+        @start_date = data["start_date"]
       end
 
       def to_h
@@ -2468,7 +2470,9 @@ module Basecamp
           "clientside" => @clientside,
           "description" => @description,
           "dock" => @dock,
+          "end_date" => @end_date,
           "purpose" => @purpose,
+          "start_date" => @start_date,
         }.compact
       end
 

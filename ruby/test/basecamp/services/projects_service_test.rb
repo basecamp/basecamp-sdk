@@ -20,7 +20,9 @@ class ProjectsServiceTest < Minitest::Test
       "id" => id,
       "name" => name,
       "description" => "A test project",
-      "status" => "active"
+      "status" => "active",
+      "start_date" => "2024-01-01",
+      "end_date" => "2024-03-31"
     }
   end
 
@@ -52,6 +54,8 @@ class ProjectsServiceTest < Minitest::Test
 
     assert_equal 123, project["id"]
     assert_equal "Test Project", project["name"]
+    assert_equal "2024-01-01", project["start_date"]
+    assert_equal "2024-03-31", project["end_date"]
   end
 
   def test_create_project

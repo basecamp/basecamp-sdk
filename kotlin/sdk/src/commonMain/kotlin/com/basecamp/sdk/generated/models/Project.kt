@@ -21,6 +21,8 @@ data class Project(
     @SerialName("app_url") val appUrl: String,
     val description: String? = null,
     val purpose: String? = null,
+    @SerialName("start_date") val startDate: String? = null,
+    @SerialName("end_date") val endDate: String? = null,
     @SerialName("clients_enabled") val clientsEnabled: Boolean = false,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     val dock: List<DockItem> = emptyList(),
