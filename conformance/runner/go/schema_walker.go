@@ -130,11 +130,13 @@ func (w *SchemaWalker) walkRequired(prefix string, body, schema any, depth int) 
 	props, _ := s["properties"].(map[string]any)
 	required, _ := s["required"].([]any)
 	var missing []string
-	// Required check: iterate the required array in declaration order.
+	// Required-field paths use `/` as the separator (walkExtras uses `.`)
+	// so the two streams are visually distinct in tooling and consistent
+	// across Ruby/Python/Go/Kotlin walkers.
 	for _, r := range required {
 		name, _ := r.(string)
 		if _, ok := obj[name]; !ok {
-			missing = append(missing, joinDot(prefix, name))
+			missing = append(missing, joinSlash(prefix, name))
 		}
 	}
 	// Recurse into present known props. Sort keys: cross-language
@@ -142,7 +144,7 @@ func (w *SchemaWalker) walkRequired(prefix string, body, schema any, depth int) 
 	// is randomized, so sorted keys keep diffs stable).
 	for _, name := range sortedKeys(props) {
 		if value, ok := obj[name]; ok {
-			missing = append(missing, w.walkRequired(joinDot(prefix, name), value, props[name], depth+1)...)
+			missing = append(missing, w.walkRequired(joinSlash(prefix, name), value, props[name], depth+1)...)
 		}
 	}
 	return missing
@@ -265,6 +267,13 @@ func joinDot(prefix, name string) string {
 		return name
 	}
 	return prefix + "." + name
+}
+
+func joinSlash(prefix, name string) string {
+	if prefix == "" {
+		return name
+	}
+	return prefix + "/" + name
 }
 
 func joinIndex(prefix string, i int) string {
