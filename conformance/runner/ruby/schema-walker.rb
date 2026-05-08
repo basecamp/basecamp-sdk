@@ -91,9 +91,12 @@ module Basecamp
         required = resolved["required"] || []
         missing = []
 
+        # Required-field paths use `/` as the separator (extras_seen uses `.`)
+        # so the two streams are visually distinct in tooling and consistent
+        # across Ruby/Python/Go/Kotlin walkers.
         required.each do |name|
           unless body.key?(name)
-            field_path = prefix.empty? ? name : "#{prefix}.#{name}"
+            field_path = prefix.empty? ? name : "#{prefix}/#{name}"
             missing << field_path
           end
         end
@@ -101,7 +104,7 @@ module Basecamp
         body.each do |key, value|
           next unless props.key?(key)
 
-          field_path = prefix.empty? ? key : "#{prefix}.#{key}"
+          field_path = prefix.empty? ? key : "#{prefix}/#{key}"
           missing.concat(walk_required(field_path, value, props[key], depth + 1))
         end
 

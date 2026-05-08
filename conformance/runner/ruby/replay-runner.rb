@@ -8,10 +8,10 @@
 # through the Ruby SDK's decode boundary, and writes a per-test
 # decode-result snapshot under <WIRE_REPLAY_DIR>/<BACKEND>/decode/ruby/.
 #
-# Mode-gate: this runner only does anything when WIRE_REPLAY_DIR is set.
-# When unset, the existing mock runner.rb handles things and this file is a
-# no-op if invoked. The make target only invokes this when WIRE_REPLAY_DIR
-# is set.
+# Mode-gate: invoking this script directly aborts unless WIRE_REPLAY_DIR
+# and BASECAMP_BACKEND are set. The make target `conformance-ruby-replay`
+# is the intended entrypoint and enforces both env vars in its preflight;
+# the existing mock runner.rb is unaffected.
 
 require "bundler/setup"
 require "basecamp"
