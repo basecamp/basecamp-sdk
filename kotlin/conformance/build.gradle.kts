@@ -23,9 +23,10 @@ tasks.register<JavaExec>("runReplay") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("com.basecamp.sdk.conformance.ReplayRunnerKt")
     workingDir = rootProject.projectDir
-    // Pass through the env vars the runner reads.
-    environment("WIRE_REPLAY_DIR", System.getenv("WIRE_REPLAY_DIR") ?: "")
-    environment("BASECAMP_BACKEND", System.getenv("BASECAMP_BACKEND") ?: "")
+    // JavaExec inherits the parent process environment by default; we don't
+    // explicitly set WIRE_REPLAY_DIR/BASECAMP_BACKEND because forcing them in
+    // (with `?: ""` fallbacks) would smuggle empty strings into the child env
+    // and bypass the runner's "is required" gate.
 }
 
 dependencies {
