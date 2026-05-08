@@ -208,7 +208,10 @@ class ReplayRunner(
             try {
                 decoder(bodyText)
                 decoded = true
-            } catch (e: Throwable) {
+            } catch (e: Exception) {
+                // Catch Exception, not Throwable: fatal JVM errors (OOM,
+                // StackOverflow, LinkageError) shouldn't be silently demoted
+                // to a decode-failure record.
                 decodeError = "${e::class.simpleName}: ${e.message}"
             }
 
@@ -219,7 +222,7 @@ class ReplayRunner(
                     val body = parserJson.parseToJsonElement(bodyText)
                     missing = walker.missingRequired(body, schema)
                     extras = walker.extrasSeen(body, schema)
-                } catch (_: Throwable) {
+                } catch (_: Exception) {
                     // Body is not parseable JSON; decode_error above already
                     // records the failure. Leave walker output empty.
                 }
@@ -232,9 +235,12 @@ class ReplayRunner(
 }
 
 fun main() {
-    val replayDir = System.getenv("WIRE_REPLAY_DIR")
+    // Treat empty/blank as missing — Gradle and shells can pass empty strings
+    // through, and those would otherwise slip past a `?: null` guard and let
+    // the runner read/write relative to CWD or `<dir>/<empty>/...`.
+    val replayDir = System.getenv("WIRE_REPLAY_DIR")?.takeUnless { it.isBlank() }
         ?: run { System.err.println("WIRE_REPLAY_DIR is required"); exitProcess(1) }
-    val backend = System.getenv("BASECAMP_BACKEND")
+    val backend = System.getenv("BASECAMP_BACKEND")?.takeUnless { it.isBlank() }
         ?: run { System.err.println("BASECAMP_BACKEND is required"); exitProcess(1) }
 
     // Resolve repo paths relative to the kotlin/ root. The Gradle `runReplay`
