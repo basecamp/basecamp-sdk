@@ -2,7 +2,7 @@
 kotlin = "2.3.21"
 ktor = "3.4.3"
 kotlinx-serialization = "1.11.0"
-kotlinx-coroutines = "1.10.2"
+kotlinx-coroutines = "1.11.0"
 
 # Testing
 junit = "6.0.3"
