@@ -3,13 +3,17 @@ package main
 // Pure-Go port of conformance/runner/typescript/schema-validator.ts.
 //
 // Walks parsed JSON against the OpenAPI response schema, surfacing:
-//   - MissingRequired: required-field paths absent from the body
-//   - ExtrasSeen: field paths present on the wire but not declared
+//   - MissingRequired: slash-separated paths for required fields absent
+//     from the body (e.g. "owner/id")
+//   - ExtrasSeen: dotted paths for fields present on the wire but not
+//     declared (e.g. "unreads[].new_field")
 //
 // Conventions match the TS walker (and the Python/Ruby ports under
 // conformance/runner/{python,ruby}/) so cross-language extras parity diffs
 // (PR 4 §Verification) don't false-fire:
-//   - Object paths use "."  (e.g. "owner.id")
+//   - Required-walk object paths use "/" (e.g. "owner/id"); extras-walk
+//     object paths use "." (e.g. "owner.new_field"). The two streams use
+//     distinct separators so they're visually distinguishable in tooling.
 //   - Required walk uses "[i]" element segments; extras walk uses "[]"
 //     to dedupe item-level extras across an array
 //   - "$ref" chains resolve until a non-ref schema or a cycle. Both
@@ -83,8 +87,8 @@ func (w *SchemaWalker) FindResponseSchema(operationID string) map[string]any {
 	return nil
 }
 
-// MissingRequired returns dotted-path strings for required fields absent
-// from body.
+// MissingRequired returns slash-separated path strings for required fields
+// absent from body (e.g. "owner/id").
 func (w *SchemaWalker) MissingRequired(body any, schema map[string]any) []string {
 	return w.walkRequired("", body, schema, 0)
 }
