@@ -565,6 +565,8 @@ structure Project {
   name: ProjectName
   description: ProjectDescription
   purpose: String
+  start_date: ISO8601Date
+  end_date: ISO8601Date
   clients_enabled: Boolean
   bookmark_url: String
   @required

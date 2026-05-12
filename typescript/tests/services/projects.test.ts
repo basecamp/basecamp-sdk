@@ -15,6 +15,8 @@ const sampleProject = (id = 1) => ({
   name: "My Project",
   description: "<p>A cool project</p>",
   status: "active",
+  start_date: "2024-01-01",
+  end_date: "2024-03-31",
   created_at: "2024-01-15T10:00:00Z",
   updated_at: "2024-01-15T10:00:00Z",
 });
@@ -41,6 +43,7 @@ describe("ProjectsService", () => {
       const projects = await client.projects.list();
       expect(projects).toHaveLength(2);
       expect(projects[0]!.id).toBe(1);
+      expect(projects[0]!.start_date).toBe("2024-01-01");
       expect(projects[1]!.id).toBe(2);
     });
 
@@ -69,6 +72,8 @@ describe("ProjectsService", () => {
       const project = await client.projects.get(projectId);
       expect(project.id).toBe(projectId);
       expect(project.name).toBe("My Project");
+      expect(project.start_date).toBe("2024-01-01");
+      expect(project.end_date).toBe("2024-03-31");
     });
 
     it("should throw not_found for missing project", async () => {

@@ -37,7 +37,7 @@ JSON fixtures extracted from the canonical projects docs in `basecamp/bc3/doc/ap
 
 ## Notes
 
-- list.json includes a project with `client_company` and `clientside` fields (id: 2085958500)
-- get.json is a basic project without client fields
+- get.json includes a scheduled project with `start_date` and `end_date`
+- list.json includes one scheduled project and one project with `client_company` and `clientside` fields (id: 2085958500)
 - DockItem.position can be null when enabled=false
 - All timestamps are ISO8601 format
