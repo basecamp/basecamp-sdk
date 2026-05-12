@@ -5,12 +5,16 @@ require "json"
 # Pure-Ruby port of conformance/runner/typescript/schema-validator.ts.
 #
 # Walks parsed JSON against the OpenAPI response schema, surfacing:
-#   - missing_required: required-field paths absent from the body
-#   - extras_seen: field paths present on the wire but not declared in the schema
+#   - missing_required: slash-separated paths for required fields absent
+#     from the body (e.g. "owner/id")
+#   - extras_seen: dotted paths for fields present on the wire but not
+#     declared in the schema (e.g. "unreads[].new_field")
 #
 # Conventions match the TS walker exactly so cross-language replay output is
 # directly comparable:
-#   - Object paths use "."  (e.g. "owner.id")
+#   - Required-walk object paths use "/" (e.g. "owner/id"); extras-walk
+#     object paths use "." (e.g. "owner.new_field"). The two streams use
+#     distinct separators so they're visually distinguishable in tooling.
 #   - Array element paths use "[i]" for required walk, "[]" for extras walk
 #     (mirrors how the TS validator's collectExtras tags item-level extras and
 #     how a per-index required-field check identifies the offending element).
@@ -53,7 +57,8 @@ module Basecamp
         nil
       end
 
-      # Returns array of dotted-path strings for required fields absent from body.
+      # Returns array of slash-separated path strings for required fields
+      # absent from body (e.g. "owner/id").
       def missing_required(body, schema)
         walk_required("", body, schema, 0)
       end
