@@ -1,0 +1,23 @@
+conformance/runner/go/schema_walker.go
+  s_2e4b116409b569::t_b992dd23bad64a 90-91
+  s_2e4b116409b569::t_5c9274d1577191 6-9,14-16
+conformance/runner/ruby/schema-walker.rb
+  s_2e4b116409b569::t_636dd811a831c3 8-11,15-17
+  s_2e4b116409b569::t_9bfb96cd4c3921 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "428eeff3ebd4306e6b1541d783596257eec7113a",
+  "prompts": {},
+  "sessions": {
+    "s_2e4b116409b569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46a02e81-3999-407c-ba33-b5da5d935e66",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
