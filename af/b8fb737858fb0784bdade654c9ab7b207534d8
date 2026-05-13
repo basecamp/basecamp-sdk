@@ -1,0 +1,38 @@
+conformance/runner/go/replay_runner_test.go
+  s_d84172d91a31eb::t_0fb576f803c6eb 1-62
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_d84172d91a31eb::t_05fbdf3c993f00 13
+  s_d84172d91a31eb::t_1aa6d11f143640 148-151
+conformance/runner/go/replay_runner.go
+  s_d84172d91a31eb::t_f2e8b3ed4ea689 315
+  s_d84172d91a31eb::t_0951e9e018b6e4 117-133
+conformance/runner/python/replay_runner.py
+  s_d84172d91a31eb::t_962ae9067bfdde 175
+  s_d84172d91a31eb::t_02ebff28a17b85 78-89
+conformance/runner/ruby/replay_runner_test.rb
+  s_d84172d91a31eb::t_7b11881f5058aa 3-10,12-16,29-30
+  s_d84172d91a31eb::t_99ee386c633a4f 1-2,11,17-28
+conformance/runner/ruby/replay-runner.rb
+  s_d84172d91a31eb::t_d783f3b5f3b1ab 34-37
+conformance/runner/python/test_replay_runner.py
+  s_d84172d91a31eb::t_a7de64af875afc 1-9,11-15,17-20,25,29,33,40-41
+  s_d84172d91a31eb::t_e0690633b20c6a 10,16,21-24,26-28,30-32,34-39,42-43
+conformance/runner/ruby/Gemfile
+  s_d84172d91a31eb::t_3cbdb9e58cab77 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "afb8fb737858fb0784bdade654c9ab7b207534d8",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
