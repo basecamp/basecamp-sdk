@@ -1,0 +1,21 @@
+conformance/runner/python/replay_runner.py
+  s_f1e7c9875f19f5::t_96871f2fac812a 132-137
+conformance/runner/python/test_replay_runner.py
+  s_f1e7c9875f19f5::t_42ecd051bafc4c 1,3-18,26,28,30,54-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "ce68aa11601ddf9a8e1dcb4b64c39425069eae25",
+  "prompts": {},
+  "sessions": {
+    "s_f1e7c9875f19f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "992a3843-efd7-4f1a-88a0-3eb6c288874d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
