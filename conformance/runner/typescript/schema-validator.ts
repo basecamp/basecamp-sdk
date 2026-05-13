@@ -142,6 +142,13 @@ export function validateResponse(operationId: string, body: unknown): Validation
   }
 
   if (!validator) {
+    // Distinguish a bodyless success response (e.g. 204 No Content on a
+    // delete/update) from a missing operation. The former is structurally
+    // valid by design — no schema means no body to validate. The latter
+    // is still a hard failure: the operation isn't covered by the spec.
+    if (operationHasBodylessSuccessOnly(doc, operationId)) {
+      return { ok: true, errors: [], extras: [] };
+    }
     return {
       ok: false,
       errors: [`No response schema found for operation ${operationId}`],
@@ -154,6 +161,28 @@ export function validateResponse(operationId: string, body: unknown): Validation
   const schema = findResponseSchema(doc, operationId);
   const extras = schema ? collectExtras("", body, schema, doc) : [];
   return { ok, errors, extras };
+}
+
+/**
+ * True when the operation declares at least one 2xx success response and
+ * none of its 2xx responses carry an `application/json` schema — i.e. the
+ * operation is intentionally bodyless (204 No Content, etc).
+ */
+function operationHasBodylessSuccessOnly(doc: OpenAPIDocument, operationId: string): boolean {
+  for (const pathItem of Object.values(doc.paths)) {
+    for (const op of Object.values(pathItem)) {
+      if (op.operationId !== operationId) continue;
+      const responses = op.responses ?? {};
+      let hasSuccess = false;
+      for (const [code, response] of Object.entries(responses)) {
+        if (!/^2\d\d$/.test(code)) continue;
+        hasSuccess = true;
+        if (response.content?.["application/json"]?.schema) return false;
+      }
+      return hasSuccess;
+    }
+  }
+  return false;
 }
 
 function formatError(err: ErrorObject): string {

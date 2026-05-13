@@ -120,13 +120,17 @@ function checkRequiredFields(page: WirePage, fields: string[]): string[] {
 function fieldExists(value: unknown, fieldPath: string): boolean {
   const parts = fieldPath.split(".");
   let cur: unknown = value;
-  for (const part of parts) {
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     if (cur === null || cur === undefined) return false;
     if (typeof cur !== "object") return false;
     if (Array.isArray(cur)) {
       // Array path means "every item must have this field". Empty arrays count as present.
+      // Pass the suffix from the current segment (`i`), not `parts.indexOf(part)`:
+      // the latter returns the first occurrence and misroutes paths with repeated
+      // segment names (e.g. `a.b.b.x`).
       if (cur.length === 0) return true;
-      const remaining = parts.slice(parts.indexOf(part)).join(".");
+      const remaining = parts.slice(i).join(".");
       return cur.every((item) => fieldExists(item, remaining));
     }
     if (!(part in (cur as Record<string, unknown>))) return false;
