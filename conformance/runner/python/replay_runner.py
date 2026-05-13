@@ -129,6 +129,12 @@ class ReplayRunner:
                 except OSError as e:
                     msgs.append(f"Snapshot {f.name} could not be read: {type(e).__name__}: {e}.")
                     continue
+                except UnicodeDecodeError as e:
+                    # Path.read_text() decodes UTF-8 by default; malformed
+                    # bytes raise UnicodeDecodeError (a ValueError, NOT an
+                    # OSError), so it must be caught separately.
+                    msgs.append(f"Snapshot {f.name} is not valid UTF-8: {e}.")
+                    continue
                 except json.JSONDecodeError as e:
                     msgs.append(f"Snapshot {f.name} is not valid JSON: {e}.")
                     continue
