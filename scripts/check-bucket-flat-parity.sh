@@ -41,8 +41,8 @@ fi
 # A "list" response is a top-level array (recursively resolving $ref one level).
 # jq exits non-zero for invalid OpenAPI / broken filter — let it fail loud rather
 # than silently turning bad input into "0 operations found".
-CANDIDATES=$(jq -r --slurpfile spec "$SPEC" '
-  $spec[0] as $s
+CANDIDATES=$(jq -r '
+  . as $s
   | $s.paths
   | to_entries[]
   | select(.key | test("^/\\{accountId\\}/buckets/\\{bucketId\\}/[^/]+(/\\{[^}]+\\})?\\.json$"))
