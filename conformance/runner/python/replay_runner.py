@@ -160,7 +160,8 @@ class ReplayRunner:
 
         pages = []
         for page in snapshot["pages"]:
-            body_text: str = page.get("bodyText") or json.dumps(page["body"])
+            raw = page.get("bodyText")
+            body_text: str = raw if raw is not None else json.dumps(page["body"])
             decoded = False
             decode_error: str | None = None
             missing_required: list[str] = []
