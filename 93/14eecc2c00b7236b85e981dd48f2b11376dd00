@@ -1,0 +1,28 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/SchemaWalker.kt
+  s_d84172d91a31eb::t_c4a75f6c929212 45-48,66
+  s_d84172d91a31eb::t_2d9908f22cc11d 179
+conformance/runner/ruby/schema-walker.rb
+  s_d84172d91a31eb::t_ebe954fa8cfb6c 37,39,55-56
+conformance/runner/go/schema_walker.go
+  s_d84172d91a31eb::t_994de8ab66f333 73,85-86
+conformance/runner/typescript/schema-validator.ts
+  s_d84172d91a31eb::t_ab6d3a2f834843 75,81,87-90
+conformance/runner/python/schema_walker.py
+  s_d84172d91a31eb::t_1bf23bc63ecc9e 51,60-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "9314eecc2c00b7236b85e981dd48f2b11376dd00",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
