@@ -31,8 +31,10 @@ class ReplayRunner
   # every page) is the canonical decoder boundary, so each lambda exercises
   # exactly that.
   SDK_DECODE = lambda do |body_text|
-    return nil if body_text.nil? || body_text.empty?
-
+    # No empty-body guard: Basecamp::Http#json calls JSON.parse(@body)
+    # directly, so an empty body surfaces as a JSON::ParserError in
+    # production. The runner mirrors that to record decode_error rather
+    # than silently green-passing on an empty wire payload.
     parsed = JSON.parse(body_text)
     Basecamp::Http.normalize_person_ids(parsed)
     parsed

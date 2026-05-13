@@ -114,6 +114,23 @@ type wirePage struct {
 	URL      string            `json:"url"`
 }
 
+// resolveBodyText returns the bytes the decoder should see for a wire-snapshot
+// page. Empty-but-present bodyText (HTTP 204 or an actually-empty 200 body)
+// must flow through as "" so the decoder errors — not be silently replaced
+// with a re-serialized body, which would mask a real decode failure. *string
+// distinguishes a missing key (nil) from an empty value (&"").
+func resolveBodyText(page wirePage) string {
+	switch {
+	case page.BodyText != nil:
+		return *page.BodyText
+	case page.Body != nil:
+		if b, err := json.Marshal(page.Body); err == nil {
+			return string(b)
+		}
+	}
+	return ""
+}
+
 type wireSnapshot struct {
 	Operation  string     `json:"operation"`
 	Pages      []wirePage `json:"pages"`
@@ -295,15 +312,7 @@ func (r *ReplayRunner) decodeSnapshot(snap *wireSnapshot) ReplayResult {
 
 	pages := make([]ReplayPage, 0, len(snap.Pages))
 	for _, page := range snap.Pages {
-		var bodyText string
-		switch {
-		case page.BodyText != nil:
-			bodyText = *page.BodyText
-		case page.Body != nil:
-			if b, err := json.Marshal(page.Body); err == nil {
-				bodyText = string(b)
-			}
-		}
+		bodyText := resolveBodyText(page)
 
 		rp := ReplayPage{Decoded: false}
 		if err := decoder(bodyText); err == nil {
