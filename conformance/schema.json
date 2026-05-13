@@ -4,8 +4,30 @@
   "title": "SDK Conformance Test",
   "description": "Schema for cross-language SDK conformance tests",
   "type": "object",
-  "required": ["name", "operation", "assertions"],
+  "required": ["name", "operation"],
+  "allOf": [
+    {
+      "if": { "anyOf": [
+        { "not": { "required": ["mode"] } },
+        { "properties": { "mode": { "const": "mock" } } }
+      ] },
+      "then": { "required": ["mockResponses", "assertions"] }
+    },
+    {
+      "if": { "properties": { "mode": { "const": "live" } }, "required": ["mode"] },
+      "then": {
+        "not": { "required": ["mockResponses"] },
+        "required": ["liveAssertions"]
+      }
+    }
+  ],
   "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["mock", "live"],
+      "default": "mock",
+      "description": "Execution mode. 'mock' (default) registers MSW handlers and asserts SDK behavior offline. 'live' dispatches against a real Basecamp backend, captures raw wire bytes, and validates against the OpenAPI response schema."
+    },
     "name": {
       "type": "string",
       "description": "Human-readable test name"
@@ -140,6 +162,41 @@
           "description": "Override the maximum number of items to fetch across all pages"
         }
       }
+    },
+    "liveAssertions": {
+      "type": "array",
+      "description": "Assertions evaluated when mode=live, against the raw wire response (not SDK-decoded structures).",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "liveCallSucceeds",
+              "liveResponseFieldsRequired",
+              "liveResponseFieldsExpected",
+              "liveSchemaValidate"
+            ],
+            "description": "liveCallSucceeds: dispatch returns without throwing, HTTP 2xx, JSON parses. liveResponseFieldsRequired: dotted paths that must be structurally present (per spec @required). liveResponseFieldsExpected: dotted paths that should be present; missing logs a warning, never fails. liveSchemaValidate: validate the raw wire body against the OpenAPI response schema for the operation."
+          },
+          "fields": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Dotted-path fields for liveResponseFieldsRequired / liveResponseFieldsExpected. Empty arrays count as present."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Set false to disable a default-on assertion such as liveSchemaValidate."
+          }
+        }
+      }
+    },
+    "fixtureIds": {
+      "type": "object",
+      "description": "Placeholder names referenced in pathParams/queryParams for live tests (e.g., PROJECT_ID, TODOLIST_ID). Resolved per the fixture-ID ladder: explicit env var → generic env var → discovery → skip.",
+      "additionalProperties": { "type": "string" }
     },
     "tags": {
       "type": "array",

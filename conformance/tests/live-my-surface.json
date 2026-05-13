@@ -1,0 +1,146 @@
+[
+  {
+    "mode": "live",
+    "name": "ListProjects returns a list and validates against schema",
+    "description": "Smoke check + schema validation for the canonical list endpoint. Required fields are enforced per spec; new BC5-only fields surface as extras-observed.",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetProject decodes the spec-required fields",
+    "description": "First-project fallback is acceptable; verifies Project @required fields are structurally present.",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/${PROJECT_ID}.json",
+    "fixtureIds": { "PROJECT_ID": "PROJECT_ID" },
+    "pathParams": { "projectId": "${PROJECT_ID}" },
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" },
+      {
+        "type": "liveResponseFieldsRequired",
+        "fields": ["id", "status", "created_at", "updated_at", "name", "url", "app_url"]
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetMyAssignments decodes priorities + non_priorities",
+    "description": "Verifies MyAssignment.bucket JSON-key compat — the field is preserved despite route renames.",
+    "operation": "GetMyAssignments",
+    "method": "GET",
+    "path": "/my/assignments.json",
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetMyCompletedAssignments decodes the assignments list",
+    "operation": "GetMyCompletedAssignments",
+    "method": "GET",
+    "path": "/my/assignments/completed.json",
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetMyDueAssignments decodes the assignments list",
+    "operation": "GetMyDueAssignments",
+    "method": "GET",
+    "path": "/my/assignments/due.json",
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
+    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays. Also exercises the memories[] observation that pairs with the COORDINATION.md decision.",
+    "operation": "GetMyNotifications",
+    "method": "GET",
+    "path": "/my/readings.json",
+    "tags": ["live", "read-only", "bc5-additive"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetMyProfile decodes the self-Person payload",
+    "description": "Self profile via people.me(). Exercises Person required fields and BC5 tagline alias.",
+    "operation": "GetMyProfile",
+    "method": "GET",
+    "path": "/my/profile.json",
+    "tags": ["live", "read-only", "bc5-additive"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" },
+      {
+        "type": "liveResponseFieldsRequired",
+        "fields": ["id", "name"]
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetTodoset decodes the BC5 count + url additions",
+    "description": "Verifies todos_count, completed_loose_todos_count, todos_url, app_todos_url decode (when present — eligibility-gated like other BC5 additions).",
+    "operation": "GetTodoset",
+    "method": "GET",
+    "path": "/todosets/${TODOSET_ID}.json",
+    "fixtureIds": { "TODOSET_ID": "TODOSET_ID" },
+    "pathParams": { "todosetId": "${TODOSET_ID}" },
+    "tags": ["live", "read-only", "bc5-additive"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "ListTodolists returns a list under a todoset",
+    "description": "Single-arg dispatch via client.todolists.list(todosetId).",
+    "operation": "ListTodolists",
+    "method": "GET",
+    "path": "/todosets/${TODOSET_ID}/todolists.json",
+    "fixtureIds": { "TODOSET_ID": "TODOSET_ID" },
+    "pathParams": { "todosetId": "${TODOSET_ID}" },
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "ListTodos exercises Todo.steps additive field",
+    "description": "When BC5 emits Todo.steps, the additive field decodes through the existing CardStep shape.",
+    "operation": "ListTodos",
+    "method": "GET",
+    "path": "/todolists/${TODOLIST_ID}/todos.json",
+    "fixtureIds": { "TODOLIST_ID": "TODOLIST_ID" },
+    "pathParams": { "todolistId": "${TODOLIST_ID}" },
+    "tags": ["live", "read-only", "bc5-additive"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  }
+]

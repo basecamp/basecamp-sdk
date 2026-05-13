@@ -247,6 +247,54 @@ beyond the language-specific drift checks. These run as part of `make check`:
   endpoint or append a one-line entry to the allowlist with a justification
   comment.
 
+## Live canary
+
+The TypeScript runner also drives a *live canary* against a real Basecamp
+backend. It dispatches every operation in
+[`conformance/tests/live-my-surface.json`](conformance/tests/live-my-surface.json)
+through the SDK's typed surface, captures the raw wire response (bytes +
+headers), and validates each response body against the OpenAPI response
+schema. Forward-compat additions on the wire surface as "extras observed"
+in the run summary — never as failures — so new BC5 fields don't break
+the canary while still being visible.
+
+The canary is **opt-in** and **does not run as part of `make check`**:
+
+```bash
+BASECAMP_LIVE=1 \
+BASECAMP_TOKEN=<your-token> \
+BASECAMP_ACCOUNT_ID=<your-account> \
+make conformance-typescript-live
+```
+
+Optional env:
+
+- `BASECAMP_HOST` — backend **origin** only (e.g. `https://3.basecampapi.com`);
+  the runner appends `/{accountId}` to mirror `createBasecampClient`'s
+  default URL composition.
+- `BASECAMP_BACKEND=bc4|bc5` — namespaces persisted snapshots so BC4 and
+  BC5 runs don't collide.
+- `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
+  `<path>/<backend>/wire/<test>.json`. Used by downstream cross-language
+  decoders (PR 3) and BC4↔BC5 comparison (PR 4).
+- `BASECAMP_BC4_PROJECT_ID` / `BASECAMP_BC5_PROJECT_ID` /
+  `BASECAMP_PROJECT_ID` etc. — explicit fixture-IDs override the runner's
+  discovery walk. Same pattern applies for `TODOSET_ID`, `TODOLIST_ID`,
+  `TODO_ID`.
+
+Tests skip with a clear `skipReason` when a fixture-ID can't be resolved
+(no env override, no discovery match) — they don't fail.
+
+Adding an operation to the live canary requires both a fixture entry in
+`live-my-surface.json` and a dispatch case in
+`conformance/runner/typescript/live-dispatch.ts`. The runner's startup
+gate refuses to run if any fixture operation lacks a dispatch.
+
+Because live canary fixtures live in the shared `conformance/tests/` directory,
+offline conformance runners must treat `mode` as part of the shared schema and
+execute only mock tests: omitted `mode` or `mode: "mock"`. `mode: "live"` entries
+belong to the TypeScript live wire-capture runner until replay runners are added.
+
 ## API gap registry (`spec/api-gaps/`)
 
 When BC ships a new user-visible feature without a JSON API (or with an

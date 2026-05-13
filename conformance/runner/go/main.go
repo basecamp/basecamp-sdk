@@ -28,6 +28,11 @@ import (
 
 // TestCase represents a single conformance test.
 type TestCase struct {
+	// Mode is "mock" (default) or "live". Live tests are owned by the TS
+	// runner; non-TS runners filter them out at load time so unresolved
+	// fixture placeholders and unknown operations don't false-pass as
+	// mock conformance.
+	Mode            string                 `json:"mode"`
 	Name            string                 `json:"name"`
 	Description     string                 `json:"description"`
 	Operation       string                 `json:"operation"`
@@ -173,7 +178,16 @@ func loadTests(filename string) ([]TestCase, error) {
 		return nil, err
 	}
 
-	return tests, nil
+	// Live tests are TS-only — filter them out so this runner doesn't
+	// attempt mock dispatch on entries with unresolved ${PROJECT_ID}
+	// fixtures or operations that only the live runner knows about.
+	mockTests := tests[:0]
+	for _, tc := range tests {
+		if tc.Mode == "" || tc.Mode == "mock" {
+			mockTests = append(mockTests, tc)
+		}
+	}
+	return mockTests, nil
 }
 
 // Default account ID for conformance tests
