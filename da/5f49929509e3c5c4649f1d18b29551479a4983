@@ -1,0 +1,27 @@
+conformance/runner/ruby/replay-runner.rb
+  s_d84172d91a31eb::t_db5b9c68e8adb2 113-121,123
+conformance/runner/go/replay_runner.go
+  s_d84172d91a31eb::t_e57323dbafd3ff 220-223,230-233
+conformance/runner/python/replay_runner.py
+  s_d84172d91a31eb::t_2280eb3c7ac3d9 127-134
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_d84172d91a31eb::t_c70e0fb8cae96e 9
+  s_d84172d91a31eb::t_4337eadc1f56f0 148-164
+  s_d84172d91a31eb::t_9ea58225f1fda8 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "da5f49929509e3c5c4649f1d18b29551479a4983",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
