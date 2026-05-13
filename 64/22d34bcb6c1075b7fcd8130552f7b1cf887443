@@ -1,0 +1,36 @@
+conformance/runner/go/schema_walker.go
+  02cba45918a7d653 1-5,10-13,17-72,74-89,92-136,140-142,144-150,152-275,283-320,277,279,281-282
+  s_02cba45918a7d6::t_a50079178ab99e 137-139,143,151
+  s_02cba45918a7d6::t_22fc62c962fa9d 276,278,280
+  s_2e4b116409b569::t_5c9274d1577191 6-9,14-16
+  s_2e4b116409b569::t_b992dd23bad64a 90-91
+conformance/runner/ruby/schema-walker.rb
+  02cba45918a7d653 1-7,12-14,18-36,38,40-59,62-98,102-103,105-111,113-175
+  s_02cba45918a7d6::t_7f0c0a6b779f04 99-101,104,112
+  s_2e4b116409b569::t_636dd811a831c3 8-11,15-17
+  s_2e4b116409b569::t_9bfb96cd4c3921 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "6422d34bcb6c1075b7fcd8130552f7b1cf887443",
+  "prompts": {},
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_2e4b116409b569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46a02e81-3999-407c-ba33-b5da5d935e66",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

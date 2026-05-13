@@ -1,0 +1,24 @@
+kotlin/conformance/build.gradle.kts
+  02cba45918a7d653 15-25,30-31
+  s_02cba45918a7d6::t_c47d833a602343 26-29
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  02cba45918a7d653 1-10,12-14,16-148,150-210,215-224,226-237,242,244-257
+  s_02cba45918a7d6::t_15f3826054c472 211-214,225
+  s_02cba45918a7d6::t_6c367eb4a55507 238-241,243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "79727d86228856758c7d816f2be0a4c644735403",
+  "prompts": {},
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

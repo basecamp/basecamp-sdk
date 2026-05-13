@@ -1,0 +1,67 @@
+conformance/runner/python/replay_runner.py
+  02cba45918a7d653 1-77,90-174,176-227,80,88-89
+  s_d84172d91a31eb::t_02ebff28a17b85 78-79,81-87
+  s_d84172d91a31eb::t_962ae9067bfdde 175
+conformance/runner/ruby/replay-runner.rb
+  02cba45918a7d653 1-10,15-33,38-200
+  s_02cba45918a7d6::t_48fa7d86a5c163 11-14
+  s_d84172d91a31eb::t_d783f3b5f3b1ab 34-37
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  02cba45918a7d653 1-12,14-147,152-212,217-226,228-239,244,246-259
+  s_02cba45918a7d6::t_15f3826054c472 213-216,227
+  s_02cba45918a7d6::t_6c367eb4a55507 240-243,245
+  s_d84172d91a31eb::t_05fbdf3c993f00 13
+  s_d84172d91a31eb::t_1aa6d11f143640 148-151
+conformance/runner/go/replay_runner_test.go
+  s_d84172d91a31eb::t_0fb576f803c6eb 1-62
+conformance/runner/ruby/Gemfile
+  s_d84172d91a31eb::t_3cbdb9e58cab77 8
+conformance/runner/ruby/replay_runner_test.rb
+  s_d84172d91a31eb::t_99ee386c633a4f 1-2,11,17-28
+  s_d84172d91a31eb::t_7b11881f5058aa 3-10,12-16,29-30
+conformance/runner/go/replay_runner.go
+  02cba45918a7d653 1-112,114-116,134-314,316-352,129-130,132-133
+  s_d84172d91a31eb::t_4777a931bbca69 113
+  s_d84172d91a31eb::t_0951e9e018b6e4 117-128,131
+  s_d84172d91a31eb::t_f2e8b3ed4ea689 315
+conformance/runner/python/test_replay_runner.py
+  s_d84172d91a31eb::t_a7de64af875afc 1-9,11-15,17-20,25,29,33,40-41
+  s_d84172d91a31eb::t_e0690633b20c6a 10,16,21-24,26-28,30-32,34-39,42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "751b72223bce45a365c2c410202a0624d67564cb",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 2990,
+      "total_deletions": 59,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

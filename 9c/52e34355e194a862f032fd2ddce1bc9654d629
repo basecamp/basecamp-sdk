@@ -1,0 +1,23 @@
+conformance/runner/ruby/replay-runner.rb
+  02cba45918a7d653 1-10,15-33,36-198
+  s_02cba45918a7d6::t_48fa7d86a5c163 11-14
+conformance/runner/ruby/schema-walker.rb
+  02cba45918a7d653 1-7,10-12,14-32,34,36-55,57-93,97-98,100-106,108-170
+  s_02cba45918a7d6::t_7f0c0a6b779f04 94-96,99,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "9c52e34355e194a862f032fd2ddce1bc9654d629",
+  "prompts": {},
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
