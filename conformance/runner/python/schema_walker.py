@@ -48,7 +48,7 @@ class SchemaWalker:
                     continue
                 responses = op.get("responses") or {}
                 # Match TS preference order: 200 first, then any 2xx, then default.
-                for code in ("200", "201", "202", "203", "204", "default"):
+                for code in ("200", "201", "202", "203", "204"):
                     schema = _schema_for(responses.get(code))
                     if schema is not None:
                         return schema
@@ -57,6 +57,9 @@ class SchemaWalker:
                         schema = _schema_for(response)
                         if schema is not None:
                             return schema
+                schema = _schema_for(responses.get("default"))
+                if schema is not None:
+                    return schema
         return None
 
     def missing_required(self, body: Any, schema: dict) -> list[str]:

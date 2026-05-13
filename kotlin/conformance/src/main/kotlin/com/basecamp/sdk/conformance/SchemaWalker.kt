@@ -42,7 +42,10 @@ class SchemaWalker(openapiPath: String) {
     private val schemas: JsonObject = doc["components"]?.jsonObject?.get("schemas")?.jsonObject
         ?: JsonObject(emptyMap())
 
-    /** Returns null when no response schema is found (do not throw). */
+    /**
+     * Returns null when no response schema is found (do not throw).
+     * Preference order: 200, then any 2xx, then "default" — matches TS.
+     */
     fun findResponseSchema(operationId: String): JsonObject? {
         val paths = doc["paths"]?.jsonObject ?: return null
         for ((_, pathItemEl) in paths) {
@@ -60,6 +63,7 @@ class SchemaWalker(openapiPath: String) {
                         schemaFor(response)?.let { return it }
                     }
                 }
+                schemaFor(responses["default"])?.let { return it }
             }
         }
         return null
@@ -172,7 +176,7 @@ class SchemaWalker(openapiPath: String) {
 
     companion object {
         private const val MAX_DEPTH = 12
-        private val PREFERRED_CODES = listOf("200", "201", "202", "203", "204", "default")
+        private val PREFERRED_CODES = listOf("200", "201", "202", "203", "204")
         private val REF_REGEX = Regex("^(?:openapi\\.json)?#/components/schemas/(.+)$")
     }
 }
