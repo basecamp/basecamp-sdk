@@ -1,0 +1,19 @@
+.gitignore
+  s_d84172d91a31eb::t_45f144613ed77e 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "c2a6002b715f5b2a63a0f9d0b96489ffc3eed5d0",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
