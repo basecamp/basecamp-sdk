@@ -70,7 +70,7 @@ func (w *SchemaWalker) FindResponseSchema(operationID string) map[string]any {
 				continue
 			}
 			responses, _ := op["responses"].(map[string]any)
-			for _, code := range []string{"200", "201", "202", "203", "204", "default"} {
+			for _, code := range []string{"200", "201", "202", "203", "204"} {
 				if s := schemaFor(responses[code]); s != nil {
 					return s
 				}
@@ -81,6 +81,9 @@ func (w *SchemaWalker) FindResponseSchema(operationID string) map[string]any {
 						return s
 					}
 				}
+			}
+			if s := schemaFor(responses["default"]); s != nil {
+				return s
 			}
 		}
 	}

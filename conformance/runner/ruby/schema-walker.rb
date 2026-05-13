@@ -34,9 +34,9 @@ module Basecamp
       end
 
       # Returns the response schema for operation_id, or nil when none exists.
-      # Prefers 200, then any explicit 2xx, then "default".
+      # Prefers 200, then any 2xx, then "default" — matches TS.
       def find_response_schema(operation_id)
-        candidates = %w[200 201 202 203 204 default]
+        candidates = %w[200 201 202 203 204]
         @doc.fetch("paths", {}).each_value do |path_item|
           path_item.each_value do |op|
             next unless op.is_a?(Hash) && op["operationId"] == operation_id
@@ -52,6 +52,8 @@ module Basecamp
               schema = response.dig("content", "application/json", "schema")
               return schema if schema
             end
+            schema = responses.dig("default", "content", "application/json", "schema")
+            return schema if schema
           end
         end
         nil
