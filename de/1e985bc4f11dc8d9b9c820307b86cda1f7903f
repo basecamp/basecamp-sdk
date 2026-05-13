@@ -1,0 +1,38 @@
+conformance/runner/go/replay_runner.go
+  02cba45918a7d653 1-112,114-297,304-340
+conformance/runner/go/main.go
+  8a25d90aac60e426 31-35,204-213
+  02cba45918a7d653 110-132
+conformance/runner/go/schema_walker.go
+  02cba45918a7d653 1-5,8-11,13-68,70-85,88-132,134-136,138-144,146-267,270-307
+  s_02cba45918a7d6::t_22fc62c962fa9d 268-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "de1e985bc4f11dc8d9b9c820307b86cda1f7903f",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 652,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

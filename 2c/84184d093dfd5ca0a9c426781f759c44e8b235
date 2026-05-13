@@ -1,0 +1,24 @@
+conformance/runner/ruby/schema-walker.rb
+  02cba45918a7d653 1-7,10-12,14-32,34,36-55,57-95,97-103,105-167
+conformance/runner/ruby/replay-runner.rb
+  02cba45918a7d653 1-10,15-33,36-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "2c84184d093dfd5ca0a9c426781f759c44e8b235",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 351,
+      "overriden_lines": 0
+    }
+  }
+}

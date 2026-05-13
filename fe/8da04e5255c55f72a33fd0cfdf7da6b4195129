@@ -1,0 +1,21 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  02cba45918a7d653 1-146,148-208,213-222,224-235,240,242-255
+  s_02cba45918a7d6::t_15f3826054c472 209-212,223
+  s_02cba45918a7d6::t_6c367eb4a55507 236-239,241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "fe8da04e5255c55f72a33fd0cfdf7da6b4195129",
+  "prompts": {},
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

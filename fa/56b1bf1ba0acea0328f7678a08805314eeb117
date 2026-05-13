@@ -1,0 +1,24 @@
+conformance/runner/python/schema_walker.py
+  02cba45918a7d653 1-50,52-146
+conformance/runner/python/replay_runner.py
+  02cba45918a7d653 1-162,164-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "fa56b1bf1ba0acea0328f7678a08805314eeb117",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 359,
+      "overriden_lines": 0
+    }
+  }
+}

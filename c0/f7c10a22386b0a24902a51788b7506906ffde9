@@ -1,0 +1,26 @@
+conformance/runner/typescript/live-runner.test.ts
+  8a25d90aac60e426 1-22,29-104,106-110,115-220,222-317
+  02cba45918a7d653 23-28,105,111-114,221
+conformance/runner/typescript/wire-capture.ts
+  8a25d90aac60e426 1-9,17-38,44-113
+  02cba45918a7d653 10-16,39-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "c0f7c10a22386b0a24902a51788b7506906ffde9",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 2990,
+      "total_deletions": 59,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}

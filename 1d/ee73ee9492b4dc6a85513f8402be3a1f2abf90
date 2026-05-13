@@ -1,0 +1,26 @@
+kotlin/conformance/build.gradle.kts
+  02cba45918a7d653 15-25,29-30
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  02cba45918a7d653 1-10,12-14,16-148,150-210,212-221,223-234,236,238-251
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/SchemaWalker.kt
+  02cba45918a7d653 1-44,46-174,176-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "1dee73ee9492b4dc6a85513f8402be3a1f2abf90",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 433,
+      "overriden_lines": 0
+    }
+  }
+}
