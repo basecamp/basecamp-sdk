@@ -1,0 +1,29 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  8a25d90aac60e426 46-48,50-51,115-120
+conformance/runner/ruby/runner.rb
+  8a25d90aac60e426 617-623
+conformance/runner/python/runner.py
+  8a25d90aac60e426 487-494
+conformance/runner/go/main.go
+  8a25d90aac60e426 31-35,181-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7653f2c7b160aaf04eb366fde1c8032966415336",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 3,
+      "accepted_lines": 1234,
+      "overriden_lines": 0
+    }
+  }
+}
