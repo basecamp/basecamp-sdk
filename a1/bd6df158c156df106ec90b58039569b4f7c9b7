@@ -1,0 +1,22 @@
+conformance/runner/go/replay_runner.go
+  s_d84172d91a31eb::t_4777a931bbca69 113
+  s_d84172d91a31eb::t_425db24b1f7f73 298-302
+conformance/runner/python/replay_runner.py
+  s_d84172d91a31eb::t_4764a31cfe7216 163-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "a1bd6df158c156df106ec90b58039569b4f7c9b7",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
