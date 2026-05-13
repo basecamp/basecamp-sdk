@@ -144,3 +144,18 @@ describe("validateResponse — error paths", () => {
     expect(result.errors[0]).toContain("DoesNotExist");
   });
 });
+
+// =============================================================================
+// Bodyless 2xx (204 No Content)
+// =============================================================================
+
+describe("validateResponse — bodyless success responses", () => {
+  it("returns ok=true for operations whose only success is 204 No Content", () => {
+    // DeleteBoost is documented with only a 204 response — no JSON body
+    // ever returns. Pre-fix, the lookup yielded no schema and the
+    // validator returned ok=false, blocking such ops from the canary.
+    const result = validateResponse("DeleteBoost", null);
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+});
