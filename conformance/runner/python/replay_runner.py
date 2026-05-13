@@ -124,7 +124,14 @@ class ReplayRunner:
         #    must be in the shared fixture (catches TS-side dispatch drift).
         if wire_dir.exists():
             for f in sorted(wire_dir.glob("*.json")):
-                snap = json.loads(f.read_text())
+                try:
+                    snap = json.loads(f.read_text())
+                except OSError as e:
+                    msgs.append(f"Snapshot {f.name} could not be read: {type(e).__name__}: {e}.")
+                    continue
+                except json.JSONDecodeError as e:
+                    msgs.append(f"Snapshot {f.name} is not valid JSON: {e}.")
+                    continue
                 op = snap.get("operation")
                 if op is None:
                     msgs.append(
