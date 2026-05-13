@@ -1,0 +1,23 @@
+conformance/runner/typescript/live-runner.test.ts
+  s_d84172d91a31eb::t_c3d695d5bc62b0 123-124,129-131,133
+conformance/runner/typescript/schema-validator.test.ts
+  s_d84172d91a31eb::t_c868510cb539e1 147-161
+conformance/runner/typescript/schema-validator.ts
+  s_d84172d91a31eb::t_9fd81396b8f1c3 145-151,166-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "6e78222a67a082e755dfb8803f23dc08c255beda",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
