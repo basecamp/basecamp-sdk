@@ -1,0 +1,21 @@
+spec/api-gaps/todoset-completed-list-visibility.md
+  s_d84172d91a31eb::t_74c59d649aeed3 26-28
+scripts/check-bucket-flat-parity.sh
+  s_d84172d91a31eb::t_45ff13ba6cf459 44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "6d6d16fe26a54a785d6bac83e70801814eca8f20",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
