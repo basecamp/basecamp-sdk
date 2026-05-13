@@ -217,12 +217,20 @@ func (r *ReplayRunner) coverageGate() []string {
 			}
 			data, err := os.ReadFile(filepath.Join(wireDir, e.Name()))
 			if err != nil {
+				msgs = append(msgs, fmt.Sprintf(
+					"Snapshot %s could not be read: %v.",
+					e.Name(), err,
+				))
 				continue
 			}
 			var snap struct {
 				Operation string `json:"operation"`
 			}
 			if err := json.Unmarshal(data, &snap); err != nil {
+				msgs = append(msgs, fmt.Sprintf(
+					"Snapshot %s is not valid JSON: %v.",
+					e.Name(), err,
+				))
 				continue
 			}
 			if snap.Operation == "" {

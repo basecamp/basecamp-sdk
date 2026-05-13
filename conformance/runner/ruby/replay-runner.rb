@@ -110,9 +110,17 @@ class ReplayRunner
     # 3. Snapshot recognition: every snapshot's operation is in the fixture.
     if Dir.exist?(wire_dir)
       Dir.glob(File.join(wire_dir, "*.json")).each do |f|
-        snap = JSON.parse(File.read(f))
-        op = snap["operation"]
+        snap = begin
+          JSON.parse(File.read(f))
+        rescue Errno::ENOENT, IOError, SystemCallError => e
+          msgs << "Snapshot #{File.basename(f)} could not be read: #{e.class}: #{e.message}."
+          next
+        rescue JSON::ParserError => e
+          msgs << "Snapshot #{File.basename(f)} is not valid JSON: #{e.message}."
+          next
+        end
 
+        op = snap["operation"]
         if op.nil?
           msgs << "Snapshot #{File.basename(f)} is missing the top-level `operation` field. " \
                   "Re-run the TS live canary; pre-PR3 snapshots are no longer supported."

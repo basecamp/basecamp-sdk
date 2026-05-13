@@ -6,6 +6,7 @@ import com.basecamp.sdk.generated.models.Todo
 import com.basecamp.sdk.generated.models.Todolist
 import com.basecamp.sdk.generated.models.Todoset
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -16,6 +17,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.system.exitProcess
@@ -143,8 +145,23 @@ class ReplayRunner(
         //    be in the shared fixture (catches TS-side dispatch drift).
         if (wireDir.exists()) {
             wireDir.listFiles { f -> f.extension == "json" }?.forEach { f ->
-                val snap = parserJson.parseToJsonElement(f.readText()) as? JsonObject
-                    ?: return@forEach
+                val text = try {
+                    f.readText()
+                } catch (e: IOException) {
+                    msgs += "Snapshot ${f.name} could not be read: ${e::class.simpleName}: ${e.message}."
+                    return@forEach
+                }
+                val parsed = try {
+                    parserJson.parseToJsonElement(text)
+                } catch (e: SerializationException) {
+                    msgs += "Snapshot ${f.name} is not valid JSON: ${e.message}."
+                    return@forEach
+                }
+                val snap = parsed as? JsonObject
+                if (snap == null) {
+                    msgs += "Snapshot ${f.name} top-level JSON is not an object; expected the wire-snapshot envelope."
+                    return@forEach
+                }
                 // Defensive: `.jsonPrimitive` on JsonNull/JsonObject/JsonArray
                 // throws, which would crash the gate. Cast first so a malformed
                 // `operation` value emits the gate message instead.
