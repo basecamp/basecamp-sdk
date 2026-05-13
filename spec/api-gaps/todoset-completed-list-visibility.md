@@ -23,8 +23,9 @@ A new route `todosets/completed_list_visibility` was detected on
 list at the todoset level (matches the existing UI toggle).
 
 **This entry is currently `ambiguous`**: the BC3 plan has not classified
-whether this is an API-shaped resource or UI-only state. PR 1 must classify
-it before merging:
+whether this is an API-shaped resource or UI-only state. Classification
+must happen on the BC3 side (the SDK can't determine the right answer
+unilaterally); the brief stays in the registry either way:
 
 - If JSON-API: SDK absorbs as `UpdateTodosetCompletedListVisibility` op,
   this entry flips to `no-json-contract` and the absorption PR ships once
