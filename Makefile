@@ -104,20 +104,17 @@ BC3_REPO ?= basecamp/bc3
 sync-status:
 	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
 	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
-	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
-	if [ -z "$$REV" ]; then \
-		echo "==> bc3 API docs: no baseline revision set"; \
+	@./scripts/report-bc3-drift.sh \
+		"$$(jq -r '.bc3.revision // empty' spec/api-provenance.json)" \
+		"$$(jq -r '.bc3.branch // "master"' spec/api-provenance.json)" \
+		"primary"
+	@COMPAT_REV=$$(jq -r '.compatibility["bc3-master"].revision // empty' spec/api-provenance.json); \
+	if [ -n "$$COMPAT_REV" ]; then \
 		echo ""; \
-		echo "==> bc3 API implementation: no baseline revision set"; \
-	else \
-		SHORT_REV=$$(echo $$REV | cut -c1-7); \
-		echo "==> bc3 API docs changes since last sync ($$SHORT_REV):"; \
-		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[] | select(.filename | startswith("doc/api/"))] | if length == 0 then "  (no changes in doc/api/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
-		echo ""; \
-		echo "==> bc3 API implementation changes since last sync ($$SHORT_REV):"; \
-		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[] | select(.filename | startswith("app/controllers/"))] | if length == 0 then "  (no changes in app/controllers/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
+		./scripts/report-bc3-drift.sh \
+			"$$COMPAT_REV" \
+			"$$(jq -r '.compatibility["bc3-master"].branch // "master"' spec/api-provenance.json)" \
+			"compat"; \
 	fi
 
 #------------------------------------------------------------------------------
@@ -573,11 +570,44 @@ tools:
 	@echo "==> Done"
 
 #------------------------------------------------------------------------------
+# Spec-shape lints
+#------------------------------------------------------------------------------
+
+.PHONY: check-bucket-flat-parity validate-api-gaps
+
+# Verify every bucket-scoped GET list operation has a flat-path counterpart
+# (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
+# consumers shouldn't need to enumerate projects to reach account-wide data.
+check-bucket-flat-parity:
+	@./scripts/check-bucket-flat-parity.sh
+
+# Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
+validate-api-gaps:
+	@./scripts/validate-api-gaps.sh
+
+#------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
+.PHONY: generate
+
+# Regenerate every machine-derived artifact in the repo, in dependency order.
+# Run after editing spec/basecamp.smithy or spec/api-provenance.json.
+# Sequential phases via sub-makes so language generators don't run in
+# parallel against a stale openapi.json under `make -j`.
+generate:
+	@$(MAKE) smithy-build
+	@$(MAKE) behavior-model url-routes provenance-sync
+	@$(MAKE) ts-generate ts-generate-services \
+	         rb-generate rb-generate-services \
+	         py-generate \
+	         kt-generate-services \
+	         swift-generate
+	@$(MAKE) -C go generate
+	@echo "==> Generation complete"
+
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -682,6 +712,7 @@ help:
 	@echo "  tools            Install development tools (smithy, golangci-lint, actionlint, zizmor)"
 	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + Actions lint)"
+	@echo "  generate         Regenerate every machine-derived artifact (Smithy + per-language SDKs + provenance)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"
