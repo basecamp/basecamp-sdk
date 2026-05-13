@@ -110,7 +110,7 @@ type wirePage struct {
 	Status   int               `json:"status"`
 	Headers  map[string]string `json:"headers"`
 	Body     any               `json:"body"`
-	BodyText string            `json:"bodyText"`
+	BodyText *string           `json:"bodyText"`
 	URL      string            `json:"url"`
 }
 
@@ -295,8 +295,11 @@ func (r *ReplayRunner) decodeSnapshot(snap *wireSnapshot) ReplayResult {
 
 	pages := make([]ReplayPage, 0, len(snap.Pages))
 	for _, page := range snap.Pages {
-		bodyText := page.BodyText
-		if bodyText == "" && page.Body != nil {
+		var bodyText string
+		switch {
+		case page.BodyText != nil:
+			bodyText = *page.BodyText
+		case page.Body != nil:
 			if b, err := json.Marshal(page.Body); err == nil {
 				bodyText = string(b)
 			}
