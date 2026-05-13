@@ -75,6 +75,18 @@ def _safe_name(name: str) -> str:
     return re.sub(r"[^a-z0-9_-]+", "_", name, flags=re.IGNORECASE)
 
 
+def _resolve_body_text(page: dict) -> str:
+    """Return the bytes the decoder should see for a wire-snapshot page.
+
+    Empty-but-present ``bodyText`` (HTTP 204 or an actually-empty 200 body)
+    must flow through as ``""`` so the decoder errors — not be silently
+    replaced with a re-serialized ``body`` field, which would mask a real
+    decode failure.
+    """
+    raw = page.get("bodyText")
+    return raw if raw is not None else json.dumps(page["body"])
+
+
 class ReplayRunner:
     def __init__(self, replay_dir: Path, backend: str, fixture_path: Path, openapi_path: Path) -> None:
         self._replay_dir = replay_dir
@@ -160,8 +172,7 @@ class ReplayRunner:
 
         pages = []
         for page in snapshot["pages"]:
-            raw = page.get("bodyText")
-            body_text: str = raw if raw is not None else json.dumps(page["body"])
+            body_text: str = _resolve_body_text(page)
             decoded = False
             decode_error: str | None = None
             missing_required: list[str] = []

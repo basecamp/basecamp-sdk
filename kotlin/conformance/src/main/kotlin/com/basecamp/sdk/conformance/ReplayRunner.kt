@@ -10,6 +10,7 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -144,7 +145,10 @@ class ReplayRunner(
             wireDir.listFiles { f -> f.extension == "json" }?.forEach { f ->
                 val snap = parserJson.parseToJsonElement(f.readText()) as? JsonObject
                     ?: return@forEach
-                val op = snap["operation"]?.jsonPrimitive?.contentOrNull
+                // Defensive: `.jsonPrimitive` on JsonNull/JsonObject/JsonArray
+                // throws, which would crash the gate. Cast first so a malformed
+                // `operation` value emits the gate message instead.
+                val op = (snap["operation"] as? JsonPrimitive)?.contentOrNull
                 if (op == null) {
                     msgs += "Snapshot ${f.name} is missing the top-level `operation` field. " +
                         "Re-run the TS live canary; pre-PR3 snapshots are no longer supported."
