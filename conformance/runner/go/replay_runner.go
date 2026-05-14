@@ -311,6 +311,16 @@ func (r *ReplayRunner) readSnapshot(testName string) (*wireSnapshot, error) {
 	if err := json.Unmarshal(raw, &snap); err != nil {
 		return nil, err
 	}
+	// A snapshot like `{"operation":"GetProject"}` unmarshals cleanly with
+	// Pages == nil; decodeSnapshot would then loop zero times and Run()
+	// would record zero failures — a silent green-pass with no decode
+	// actually attempted. Require at least one page and a matching count.
+	if len(snap.Pages) == 0 {
+		return nil, fmt.Errorf("snapshot %s has no pages; expected at least one wire response", path)
+	}
+	if snap.PagesCount != len(snap.Pages) {
+		return nil, fmt.Errorf("snapshot %s pages_count (%d) does not match len(pages) (%d)", path, snap.PagesCount, len(snap.Pages))
+	}
 	return &snap, nil
 }
 
