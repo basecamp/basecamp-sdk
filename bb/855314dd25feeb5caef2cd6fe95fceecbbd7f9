@@ -1,0 +1,19 @@
+conformance/runner/typescript/live-runner.test.ts
+  s_f1e7c9875f19f5::t_374a83ca2a9739 112-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "bb855314dd25feeb5caef2cd6fe95fceecbbd7f9",
+  "prompts": {},
+  "sessions": {
+    "s_f1e7c9875f19f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "992a3843-efd7-4f1a-88a0-3eb6c288874d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
