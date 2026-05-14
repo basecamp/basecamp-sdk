@@ -109,8 +109,10 @@ function persistSnapshot(testName: string, operation: string, snapshot: WireSnap
   const safeName = testName.replace(/[^a-z0-9_-]+/gi, "_");
   const file = path.join(wireDir, `${safeName}.json`);
   // Top-level `operation` lets replay runners (PR 3) dispatch without
-  // re-parsing the live-my-surface fixture.
-  const payload: PersistedWireSnapshot = { operation, ...snapshot };
+  // re-parsing the live-my-surface fixture. Spread `snapshot` first so
+  // `operation` stays authoritative even if WireSnapshot ever grows a
+  // colliding key.
+  const payload: PersistedWireSnapshot = { ...snapshot, operation };
   fs.writeFileSync(file, JSON.stringify(payload, null, 2));
 }
 
