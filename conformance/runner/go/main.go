@@ -107,6 +107,29 @@ type TestResult struct {
 }
 
 func main() {
+	// Wire-replay mode gate: when WIRE_REPLAY_DIR is set, dispatch to
+	// the replay runner (replay_runner.go) and exit. The replay runner
+	// consumes wire snapshots written by the canonical TS live runner;
+	// see conformance/runner/typescript/live-runner.test.ts. Mock mode
+	// (the rest of this function) runs only when the gate is unset.
+	if dir := os.Getenv("WIRE_REPLAY_DIR"); dir != "" {
+		backend := os.Getenv("BASECAMP_BACKEND")
+		if backend == "" {
+			fmt.Fprintln(os.Stderr, "BASECAMP_BACKEND is required when WIRE_REPLAY_DIR is set")
+			os.Exit(1)
+		}
+		// Match the existing relative-path convention in this file: the
+		// runner is invoked with cwd = conformance/runner/go.
+		fixturePath := filepath.Join("..", "..", "tests", "live-my-surface.json")
+		openapiPath := filepath.Join("..", "..", "..", "openapi.json")
+		runner, err := NewReplayRunner(dir, backend, fixturePath, openapiPath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(runner.Run())
+	}
+
 	testsDir := filepath.Join("..", "..", "tests")
 
 	files, err := filepath.Glob(filepath.Join(testsDir, "*.json"))
