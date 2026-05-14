@@ -143,8 +143,11 @@ class ReplayRunner(
 
         // 3. Snapshot recognition — every captured snapshot's operation must
         //    be in the shared fixture (catches TS-side dispatch drift).
+        //
+        // Sort by name so gate diagnostics are deterministic across
+        // filesystems (matches Python/Ruby/Go runners).
         if (wireDir.exists()) {
-            wireDir.listFiles { f -> f.extension == "json" }?.forEach { f ->
+            wireDir.listFiles { f -> f.extension == "json" }?.sortedBy { it.name }?.forEach { f ->
                 val text = try {
                     f.readText()
                 } catch (e: IOException) {
@@ -217,8 +220,12 @@ class ReplayRunner(
 
         val pages = snap["pages"]!!.jsonArray.map { p ->
             val page = p.jsonObject
-            // Prefer bodyText (raw); fall back to serializing `body` if absent.
-            val bodyText = page["bodyText"]?.jsonPrimitive?.contentOrNull
+            // Prefer bodyText (raw); fall back to serializing `body` if
+            // absent. Defensive cast mirrors the operation-field handling
+            // in coverageGate(): `.jsonPrimitive` throws if the element is
+            // JsonNull/JsonObject/JsonArray, which would crash the runner
+            // before it can record `decode_error`.
+            val bodyText = (page["bodyText"] as? JsonPrimitive)?.contentOrNull
                 ?: page["body"]?.let { parserJson.encodeToString(JsonElement.serializer(), it) }
                 ?: ""
 
