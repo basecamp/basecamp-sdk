@@ -1,0 +1,19 @@
+CONTRIBUTING.md
+  s_13deffa07b5c67::t_d37284755733dc 278-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "a663ad93015dde878003769aa4e7d5666c741d59",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
