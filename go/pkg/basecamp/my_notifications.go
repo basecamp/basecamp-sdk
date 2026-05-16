@@ -26,12 +26,19 @@ type Notification struct {
 	AppURL             string    `json:"app_url,omitempty"`
 	BookmarkURL        string    `json:"bookmark_url,omitempty"`
 	MemoryURL          string    `json:"memory_url,omitempty"`
-	UnreadURL          string    `json:"unread_url,omitempty"`
-	SubscriptionURL    string    `json:"subscription_url,omitempty"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
-	ReadAt             time.Time `json:"read_at,omitempty"`
-	UnreadAt           time.Time `json:"unread_at,omitempty"`
+	// BubbleUpURL is the BC5-added URL for the Bubble Up record covering this
+	// notification. Eligibility-gated — only present on items the current user
+	// can bubble up.
+	BubbleUpURL string `json:"bubble_up_url,omitempty"`
+	// BubbleUpAt is the BC5-added scheduled resurfacing time when this item is
+	// queued as a scheduled Bubble Up. Zero when there is no scheduled time.
+	BubbleUpAt      time.Time `json:"bubble_up_at,omitempty"`
+	UnreadURL       string    `json:"unread_url,omitempty"`
+	SubscriptionURL string    `json:"subscription_url,omitempty"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	ReadAt          time.Time `json:"read_at,omitempty"`
+	UnreadAt        time.Time `json:"unread_at,omitempty"`
 }
 
 // NotificationsResult contains the notifications grouped by status.
@@ -39,6 +46,13 @@ type NotificationsResult struct {
 	Unreads  []Notification `json:"unreads,omitempty"`
 	Reads    []Notification `json:"reads,omitempty"`
 	Memories []Notification `json:"memories,omitempty"`
+	// BubbleUps is the BC5-added list of Bubble Up notifications. BC3 also
+	// populates Memories as an alias for BC4-API consumer compat; new
+	// integrations should prefer BubbleUps.
+	BubbleUps []Notification `json:"bubble_ups,omitempty"`
+	// ScheduledBubbleUps is the BC5-added list of scheduled Bubble Up
+	// notifications (resurface time in the future).
+	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitempty"`
 }
 
 // MyNotificationsService handles notification operations for the current user.

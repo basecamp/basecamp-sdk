@@ -738,6 +738,7 @@ func personFromGenerated(gp generated.Person) Person {
 		PersonableType:    gp.PersonableType,
 		Title:             gp.Title,
 		Bio:               gp.Bio,
+		Tagline:           gp.Tagline, // BC5 forward-compat field
 		Location:          gp.Location,
 		Admin:             gp.Admin,
 		Owner:             gp.Owner,
