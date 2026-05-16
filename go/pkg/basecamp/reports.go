@@ -102,14 +102,8 @@ func (s *ReportsService) AssignedTodos(ctx context.Context, personID int64, opts
 	}
 
 	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
-		result.Person = &Person{
-			ID:           int64(resp.JSON200.Person.Id),
-			Name:         resp.JSON200.Person.Name,
-			EmailAddress: resp.JSON200.Person.EmailAddress,
-			AvatarURL:    resp.JSON200.Person.AvatarUrl,
-			Admin:        resp.JSON200.Person.Admin,
-			Owner:        resp.JSON200.Person.Owner,
-		}
+		p := personFromGenerated(resp.JSON200.Person)
+		result.Person = &p
 	}
 
 	result.Todos = make([]Todo, 0, len(resp.JSON200.Todos))

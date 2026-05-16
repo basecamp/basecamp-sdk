@@ -467,25 +467,13 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 	}
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
-		e.Creator = &Person{
-			ID:           int64(ge.Creator.Id),
-			Name:         ge.Creator.Name,
-			EmailAddress: ge.Creator.EmailAddress,
-			AvatarURL:    ge.Creator.AvatarUrl,
-			Admin:        ge.Creator.Admin,
-			Owner:        ge.Creator.Owner,
-		}
+		creator := personFromGenerated(ge.Creator)
+		e.Creator = &creator
 	}
 
 	if ge.Person.Id != 0 || ge.Person.Name != "" {
-		e.Person = &Person{
-			ID:           int64(ge.Person.Id),
-			Name:         ge.Person.Name,
-			EmailAddress: ge.Person.EmailAddress,
-			AvatarURL:    ge.Person.AvatarUrl,
-			Admin:        ge.Person.Admin,
-			Owner:        ge.Person.Owner,
-		}
+		person := personFromGenerated(ge.Person)
+		e.Person = &person
 	}
 
 	if ge.Parent.Id != 0 || ge.Parent.Title != "" {

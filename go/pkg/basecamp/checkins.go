@@ -745,14 +745,8 @@ func questionnaireFromGenerated(gq generated.Questionnaire) Questionnaire {
 	}
 
 	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
-		q.Creator = &Person{
-			ID:           int64(gq.Creator.Id),
-			Name:         gq.Creator.Name,
-			EmailAddress: gq.Creator.EmailAddress,
-			AvatarURL:    gq.Creator.AvatarUrl,
-			Admin:        gq.Creator.Admin,
-			Owner:        gq.Creator.Owner,
-		}
+		creator := personFromGenerated(gq.Creator)
+		q.Creator = &creator
 	}
 
 	return q
@@ -829,14 +823,8 @@ func questionFromGenerated(gq generated.Question) Question {
 	}
 
 	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
-		q.Creator = &Person{
-			ID:           int64(gq.Creator.Id),
-			Name:         gq.Creator.Name,
-			EmailAddress: gq.Creator.EmailAddress,
-			AvatarURL:    gq.Creator.AvatarUrl,
-			Admin:        gq.Creator.Admin,
-			Owner:        gq.Creator.Owner,
-		}
+		creator := personFromGenerated(gq.Creator)
+		q.Creator = &creator
 	}
 
 	return q
@@ -889,14 +877,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 	}
 
 	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
-		a.Creator = &Person{
-			ID:           int64(ga.Creator.Id),
-			Name:         ga.Creator.Name,
-			EmailAddress: ga.Creator.EmailAddress,
-			AvatarURL:    ga.Creator.AvatarUrl,
-			Admin:        ga.Creator.Admin,
-			Owner:        ga.Creator.Owner,
-		}
+		creator := personFromGenerated(ga.Creator)
+		a.Creator = &creator
 	}
 
 	return a

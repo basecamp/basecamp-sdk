@@ -396,14 +396,8 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 	}
 
 	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
-		r.Creator = &Person{
-			ID:           int64(gr.Creator.Id),
-			Name:         gr.Creator.Name,
-			EmailAddress: gr.Creator.EmailAddress,
-			AvatarURL:    gr.Creator.AvatarUrl,
-			Admin:        gr.Creator.Admin,
-			Owner:        gr.Creator.Owner,
-		}
+		creator := personFromGenerated(gr.Creator)
+		r.Creator = &creator
 	}
 
 	return r

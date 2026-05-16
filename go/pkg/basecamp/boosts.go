@@ -364,14 +364,8 @@ func boostFromGenerated(gb generated.Boost) Boost {
 	b.ID = gb.Id
 
 	if gb.Booster.Id != 0 || gb.Booster.Name != "" {
-		b.Booster = &Person{
-			ID:           int64(gb.Booster.Id),
-			Name:         gb.Booster.Name,
-			EmailAddress: gb.Booster.EmailAddress,
-			AvatarURL:    gb.Booster.AvatarUrl,
-			Admin:        gb.Booster.Admin,
-			Owner:        gb.Booster.Owner,
-		}
+		booster := personFromGenerated(gb.Booster)
+		b.Booster = &booster
 	}
 
 	if gb.Recording.Id != 0 || gb.Recording.Title != "" {

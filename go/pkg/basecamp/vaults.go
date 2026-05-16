@@ -1093,14 +1093,8 @@ func vaultFromGenerated(gv generated.Vault) Vault {
 	}
 
 	if gv.Creator.Id != 0 || gv.Creator.Name != "" {
-		v.Creator = &Person{
-			ID:           int64(gv.Creator.Id),
-			Name:         gv.Creator.Name,
-			EmailAddress: gv.Creator.EmailAddress,
-			AvatarURL:    gv.Creator.AvatarUrl,
-			Admin:        gv.Creator.Admin,
-			Owner:        gv.Creator.Owner,
-		}
+		creator := personFromGenerated(gv.Creator)
+		v.Creator = &creator
 	}
 
 	return v
@@ -1150,14 +1144,8 @@ func documentFromGenerated(gd generated.Document) Document {
 	}
 
 	if gd.Creator.Id != 0 || gd.Creator.Name != "" {
-		d.Creator = &Person{
-			ID:           int64(gd.Creator.Id),
-			Name:         gd.Creator.Name,
-			EmailAddress: gd.Creator.EmailAddress,
-			AvatarURL:    gd.Creator.AvatarUrl,
-			Admin:        gd.Creator.Admin,
-			Owner:        gd.Creator.Owner,
-		}
+		creator := personFromGenerated(gd.Creator)
+		d.Creator = &creator
 	}
 
 	return d
@@ -1213,14 +1201,8 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 	}
 
 	if gu.Creator.Id != 0 || gu.Creator.Name != "" {
-		u.Creator = &Person{
-			ID:           int64(gu.Creator.Id),
-			Name:         gu.Creator.Name,
-			EmailAddress: gu.Creator.EmailAddress,
-			AvatarURL:    gu.Creator.AvatarUrl,
-			Admin:        gu.Creator.Admin,
-			Owner:        gu.Creator.Owner,
-		}
+		creator := personFromGenerated(gu.Creator)
+		u.Creator = &creator
 	}
 
 	return u

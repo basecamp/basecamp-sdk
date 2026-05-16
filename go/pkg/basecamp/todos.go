@@ -590,14 +590,8 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	if gt.Creator.Id != 0 || gt.Creator.Name != "" {
-		t.Creator = &Person{
-			ID:           int64(gt.Creator.Id),
-			Name:         gt.Creator.Name,
-			EmailAddress: gt.Creator.EmailAddress,
-			AvatarURL:    gt.Creator.AvatarUrl,
-			Admin:        gt.Creator.Admin,
-			Owner:        gt.Creator.Owner,
-		}
+		creator := personFromGenerated(gt.Creator)
+		t.Creator = &creator
 	}
 
 	// Convert assignees
