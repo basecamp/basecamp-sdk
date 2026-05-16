@@ -199,7 +199,7 @@ sync-api-version-check:
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: go-test go-lint go-check go-clean go-check-drift
+.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift
 
 go-test:
 	@$(MAKE) -C go test
@@ -217,6 +217,13 @@ go-clean:
 go-check-drift:
 	@echo "==> Checking service layer drift..."
 	@./scripts/check-service-drift.sh
+
+# Check for field-level drift between generated structs and hand-written
+# wrappers in go/pkg/basecamp/. Sibling of go-check-drift; that check is
+# operation-level, this one is field-level.
+go-check-wrapper-drift:
+	@echo "==> Checking wrapper field-level drift..."
+	@cd $(CURDIR) && go run ./scripts/check-wrapper-drift/
 
 .PHONY: auth-routable-check
 
@@ -607,7 +614,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -638,7 +645,8 @@ help:
 	@echo "  go-test          Run Go tests"
 	@echo "  go-lint          Run Go linter"
 	@echo "  go-check         Run all Go checks"
-	@echo "  go-check-drift   Check service layer drift vs generated client"
+	@echo "  go-check-drift           Check service layer drift vs generated client (operation-level)"
+	@echo "  go-check-wrapper-drift   Check wrapper struct drift vs generated structs (field-level)"
 	@echo "  go-clean         Remove Go build artifacts"
 	@echo ""
 	@echo "TypeScript SDK:"

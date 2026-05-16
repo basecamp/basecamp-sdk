@@ -14,17 +14,23 @@ const DefaultCommentLimit = 100
 
 // Comment represents a Basecamp comment on a recording.
 type Comment struct {
-	ID        int64     `json:"id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Content   string    `json:"content"`
-	Type      string    `json:"type"`
-	URL       string    `json:"url"`
-	AppURL    string    `json:"app_url"`
-	Parent    *Parent   `json:"parent,omitempty"`
-	Bucket    *Bucket   `json:"bucket,omitempty"`
-	Creator   *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title,omitempty"`
+	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Content          string    `json:"content"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // CreateCommentRequest specifies the parameters for creating a comment.
@@ -298,13 +304,19 @@ func (s *CommentsService) Trash(ctx context.Context, commentID int64) (err error
 // commentFromGenerated converts a generated Comment to our clean Comment type.
 func commentFromGenerated(gc generated.Comment) Comment {
 	c := Comment{
-		Status:    gc.Status,
-		Content:   gc.Content,
-		Type:      gc.Type,
-		URL:       gc.Url,
-		AppURL:    gc.AppUrl,
-		CreatedAt: gc.CreatedAt,
-		UpdatedAt: gc.UpdatedAt,
+		Status:           gc.Status,
+		VisibleToClients: gc.VisibleToClients,
+		Title:            gc.Title,
+		InheritsStatus:   gc.InheritsStatus,
+		Content:          gc.Content,
+		Type:             gc.Type,
+		URL:              gc.Url,
+		AppURL:           gc.AppUrl,
+		BookmarkURL:      gc.BookmarkUrl,
+		BoostsCount:      int(gc.BoostsCount),
+		BoostsURL:        gc.BoostsUrl,
+		CreatedAt:        gc.CreatedAt,
+		UpdatedAt:        gc.UpdatedAt,
 	}
 
 	if gc.Id != 0 {
@@ -331,14 +343,8 @@ func commentFromGenerated(gc generated.Comment) Comment {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		c.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		c.Creator = &creator
 	}
 
 	return c

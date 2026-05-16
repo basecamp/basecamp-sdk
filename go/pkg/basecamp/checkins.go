@@ -107,6 +107,8 @@ type QuestionAnswer struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	CommentsURL      string    `json:"comments_url"`
@@ -745,14 +747,8 @@ func questionnaireFromGenerated(gq generated.Questionnaire) Questionnaire {
 	}
 
 	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
-		q.Creator = &Person{
-			ID:           int64(gq.Creator.Id),
-			Name:         gq.Creator.Name,
-			EmailAddress: gq.Creator.EmailAddress,
-			AvatarURL:    gq.Creator.AvatarUrl,
-			Admin:        gq.Creator.Admin,
-			Owner:        gq.Creator.Owner,
-		}
+		creator := personFromGenerated(gq.Creator)
+		q.Creator = &creator
 	}
 
 	return q
@@ -829,14 +825,8 @@ func questionFromGenerated(gq generated.Question) Question {
 	}
 
 	if gq.Creator.Id != 0 || gq.Creator.Name != "" {
-		q.Creator = &Person{
-			ID:           int64(gq.Creator.Id),
-			Name:         gq.Creator.Name,
-			EmailAddress: gq.Creator.EmailAddress,
-			AvatarURL:    gq.Creator.AvatarUrl,
-			Admin:        gq.Creator.Admin,
-			Owner:        gq.Creator.Owner,
-		}
+		creator := personFromGenerated(gq.Creator)
+		q.Creator = &creator
 	}
 
 	return q
@@ -855,6 +845,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		URL:              ga.Url,
 		AppURL:           ga.AppUrl,
 		BookmarkURL:      ga.BookmarkUrl,
+		BoostsCount:      int(ga.BoostsCount),
+		BoostsURL:        ga.BoostsUrl,
 		SubscriptionURL:  ga.SubscriptionUrl,
 		CommentsCount:    int(ga.CommentsCount),
 		CommentsURL:      ga.CommentsUrl,
@@ -889,14 +881,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 	}
 
 	if ga.Creator.Id != 0 || ga.Creator.Name != "" {
-		a.Creator = &Person{
-			ID:           int64(ga.Creator.Id),
-			Name:         ga.Creator.Name,
-			EmailAddress: ga.Creator.EmailAddress,
-			AvatarURL:    ga.Creator.AvatarUrl,
-			Admin:        ga.Creator.Admin,
-			Owner:        ga.Creator.Owner,
-		}
+		creator := personFromGenerated(ga.Creator)
+		a.Creator = &creator
 	}
 
 	return a

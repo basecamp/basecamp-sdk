@@ -67,10 +67,14 @@ type Campfire struct {
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Title            string    `json:"title"`
+	Topic            string    `json:"topic,omitempty"`
+	Position         int       `json:"position,omitempty"`
 	InheritsStatus   bool      `json:"inherits_status"`
 	Type             string    `json:"type"`
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	SubscriptionURL  string    `json:"subscription_url,omitempty"`
 	LinesURL         string    `json:"lines_url"`
 	FilesURL         string    `json:"files_url,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
@@ -90,12 +94,14 @@ type CampfireLine struct {
 	Type             string                   `json:"type"`
 	URL              string                   `json:"url"`
 	AppURL           string                   `json:"app_url"`
+	BookmarkURL      string                   `json:"bookmark_url,omitempty"`
+	BoostsCount      int                      `json:"boosts_count,omitempty"`
+	BoostsURL        string                   `json:"boosts_url,omitempty"`
 	Content          string                   `json:"content,omitempty"`
 	Attachments      []CampfireLineAttachment `json:"attachments,omitempty"`
 	Parent           *Parent                  `json:"parent,omitempty"`
 	Bucket           *Bucket                  `json:"bucket,omitempty"`
 	Creator          *Person                  `json:"creator,omitempty"`
-	BoostsCount      int                      `json:"boosts_count,omitempty"`
 }
 
 // CampfireLineAttachment represents a file attached to an upload line.
@@ -905,10 +911,14 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 		Status:           gc.Status,
 		VisibleToClients: gc.VisibleToClients,
 		Title:            gc.Title,
+		Topic:            gc.Topic,
+		Position:         int(gc.Position),
 		InheritsStatus:   gc.InheritsStatus,
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
+		BookmarkURL:      gc.BookmarkUrl,
+		SubscriptionURL:  gc.SubscriptionUrl,
 		LinesURL:         gc.LinesUrl,
 		FilesURL:         gc.FilesUrl,
 		CreatedAt:        gc.CreatedAt,
@@ -926,14 +936,8 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		c.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		c.Creator = &creator
 	}
 
 	return c
@@ -949,10 +953,12 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		Type:             gl.Type,
 		URL:              gl.Url,
 		AppURL:           gl.AppUrl,
+		BookmarkURL:      gl.BookmarkUrl,
+		BoostsCount:      int(gl.BoostsCount),
+		BoostsURL:        gl.BoostsUrl,
 		Content:          gl.Content,
 		CreatedAt:        gl.CreatedAt,
 		UpdatedAt:        gl.UpdatedAt,
-		BoostsCount:      int(gl.BoostsCount),
 	}
 
 	l.ID = gl.Id
@@ -990,14 +996,8 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 	}
 
 	if gl.Creator.Id != 0 || gl.Creator.Name != "" {
-		l.Creator = &Person{
-			ID:           int64(gl.Creator.Id),
-			Name:         gl.Creator.Name,
-			EmailAddress: gl.Creator.EmailAddress,
-			AvatarURL:    gl.Creator.AvatarUrl,
-			Admin:        gl.Creator.Admin,
-			Owner:        gl.Creator.Owner,
-		}
+		creator := personFromGenerated(gl.Creator)
+		l.Creator = &creator
 	}
 
 	return l

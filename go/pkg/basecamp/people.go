@@ -732,21 +732,25 @@ func (s *PeopleService) DisableOutOfOffice(ctx context.Context, personID int64) 
 // personFromGenerated converts a generated Person to our clean Person type.
 func personFromGenerated(gp generated.Person) Person {
 	p := Person{
-		AttachableSGID:    gp.AttachableSgid,
-		Name:              gp.Name,
-		EmailAddress:      gp.EmailAddress,
-		PersonableType:    gp.PersonableType,
-		Title:             gp.Title,
-		Bio:               gp.Bio,
-		Location:          gp.Location,
-		Admin:             gp.Admin,
-		Owner:             gp.Owner,
-		Client:            gp.Client,
-		Employee:          gp.Employee,
-		TimeZone:          gp.TimeZone,
-		AvatarURL:         gp.AvatarUrl,
-		CanManageProjects: gp.CanManageProjects,
-		CanManagePeople:   gp.CanManagePeople,
+		AttachableSGID:      gp.AttachableSgid,
+		Name:                gp.Name,
+		EmailAddress:        gp.EmailAddress,
+		PersonableType:      gp.PersonableType,
+		Title:               gp.Title,
+		Bio:                 gp.Bio,
+		Tagline:             gp.Tagline, // BC5 forward-compat field
+		Location:            gp.Location,
+		Admin:               gp.Admin,
+		Owner:               gp.Owner,
+		Client:              gp.Client,
+		Employee:            gp.Employee,
+		TimeZone:            gp.TimeZone,
+		AvatarURL:           gp.AvatarUrl,
+		CanPing:             gp.CanPing,
+		CanAccessHillCharts: gp.CanAccessHillCharts,
+		CanAccessTimesheet:  gp.CanAccessTimesheet,
+		CanManageProjects:   gp.CanManageProjects,
+		CanManagePeople:     gp.CanManagePeople,
 	}
 
 	if gp.Id != 0 {

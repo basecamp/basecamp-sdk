@@ -15,30 +15,41 @@ const DefaultTodoLimit = 100
 
 // Todo represents a Basecamp todo item.
 type Todo struct {
-	ID          int64      `json:"id"`
-	Status      string     `json:"status"`
-	VisibleTo   []int64    `json:"visible_to"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	Title       string     `json:"title"`
-	InheritsVis bool       `json:"inherits_status"`
-	Type        string     `json:"type"`
-	URL         string     `json:"url"`
-	AppURL      string     `json:"app_url"`
-	BookmarkURL string     `json:"bookmark_url"`
-	Parent      *Parent    `json:"parent,omitempty"`
-	Bucket      *Bucket    `json:"bucket,omitempty"`
-	Creator     *Person    `json:"creator,omitempty"`
-	Content     string     `json:"content"`
-	Description string     `json:"description"`
-	StartsOn    string     `json:"starts_on,omitempty"`
-	DueOn       string     `json:"due_on,omitempty"`
-	Completed   bool       `json:"completed"`
-	BoostsCount int        `json:"boosts_count,omitempty"`
-	CompletedAt *time.Time `json:"completed_at,omitempty"`
-	Completer   *Person    `json:"completer,omitempty"`
-	Assignees   []Person   `json:"assignees,omitempty"`
-	Position    int        `json:"position"`
+	ID                    int64      `json:"id"`
+	Status                string     `json:"status"`
+	VisibleTo             []int64    `json:"visible_to"`
+	VisibleToClients      bool       `json:"visible_to_clients,omitempty"`
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
+	Title                 string     `json:"title"`
+	InheritsVis           bool       `json:"inherits_status"`
+	Type                  string     `json:"type"`
+	URL                   string     `json:"url"`
+	AppURL                string     `json:"app_url"`
+	BookmarkURL           string     `json:"bookmark_url"`
+	SubscriptionURL       string     `json:"subscription_url,omitempty"`
+	Parent                *Parent    `json:"parent,omitempty"`
+	Bucket                *Bucket    `json:"bucket,omitempty"`
+	Creator               *Person    `json:"creator,omitempty"`
+	Content               string     `json:"content"`
+	Description           string     `json:"description"`
+	StartsOn              string     `json:"starts_on,omitempty"`
+	DueOn                 string     `json:"due_on,omitempty"`
+	Completed             bool       `json:"completed"`
+	BoostsCount           int        `json:"boosts_count,omitempty"`
+	BoostsURL             string     `json:"boosts_url,omitempty"`
+	CommentsCount         int        `json:"comments_count,omitempty"`
+	CommentsURL           string     `json:"comments_url,omitempty"`
+	CompletionURL         string     `json:"completion_url,omitempty"`
+	CompletedAt           *time.Time `json:"completed_at,omitempty"`
+	Completer             *Person    `json:"completer,omitempty"`
+	Assignees             []Person   `json:"assignees,omitempty"`
+	CompletionSubscribers []Person   `json:"completion_subscribers,omitempty"`
+	Position              int        `json:"position"`
+	// Steps are the BC5-added subtasks embedded in a Todo response.
+	// The shared `steps/step` jbuilder partial emits the same shape as
+	// `CardStep`, so this is `[]CardStep` rather than a separate type.
+	Steps []CardStep `json:"steps,omitempty"`
 }
 
 // Person represents a Basecamp user or system actor.
@@ -48,27 +59,33 @@ type Todo struct {
 // Endpoints that decode through the generated parser lose the label —
 // use PersonableType == "LocalPerson" as the authoritative discriminator.
 type Person struct {
-	ID                int64          `json:"id"`
-	SystemLabel       string         `json:"system_label,omitempty"`
-	AttachableSGID    string         `json:"attachable_sgid,omitempty"`
-	Name              string         `json:"name"`
-	EmailAddress      string         `json:"email_address,omitempty"`
-	PersonableType    string         `json:"personable_type,omitempty"`
-	Title             string         `json:"title,omitempty"`
-	Bio               string         `json:"bio,omitempty"`
-	Location          string         `json:"location,omitempty"`
-	CreatedAt         string         `json:"created_at,omitempty"`
-	UpdatedAt         string         `json:"updated_at,omitempty"`
-	Admin             bool           `json:"admin,omitempty"`
-	Owner             bool           `json:"owner,omitempty"`
-	Client            bool           `json:"client,omitempty"`
-	Employee          bool           `json:"employee,omitempty"`
-	TimeZone          string         `json:"time_zone,omitempty"`
-	AvatarURL         string         `json:"avatar_url,omitempty"`
-	CanPing           bool           `json:"can_ping,omitempty"`
-	Company           *PersonCompany `json:"company,omitempty"`
-	CanManageProjects bool           `json:"can_manage_projects,omitempty"`
-	CanManagePeople   bool           `json:"can_manage_people,omitempty"`
+	ID             int64  `json:"id"`
+	SystemLabel    string `json:"system_label,omitempty"`
+	AttachableSGID string `json:"attachable_sgid,omitempty"`
+	Name           string `json:"name"`
+	EmailAddress   string `json:"email_address,omitempty"`
+	PersonableType string `json:"personable_type,omitempty"`
+	Title          string `json:"title,omitempty"`
+	Bio            string `json:"bio,omitempty"`
+	// Tagline is the BC5-added alias of Bio. BC3 emits both keys with identical
+	// content; older BC4 responses may omit `tagline`. Prefer `Bio` for
+	// cross-version reads. Surfaced as a separate wrapper field per spec note.
+	Tagline             string         `json:"tagline,omitempty"`
+	Location            string         `json:"location,omitempty"`
+	CreatedAt           string         `json:"created_at,omitempty"`
+	UpdatedAt           string         `json:"updated_at,omitempty"`
+	Admin               bool           `json:"admin,omitempty"`
+	Owner               bool           `json:"owner,omitempty"`
+	Client              bool           `json:"client,omitempty"`
+	Employee            bool           `json:"employee,omitempty"`
+	TimeZone            string         `json:"time_zone,omitempty"`
+	AvatarURL           string         `json:"avatar_url,omitempty"`
+	CanPing             bool           `json:"can_ping,omitempty"`
+	CanAccessHillCharts bool           `json:"can_access_hill_charts,omitempty"`
+	CanAccessTimesheet  bool           `json:"can_access_timesheet,omitempty"`
+	Company             *PersonCompany `json:"company,omitempty"`
+	CanManageProjects   bool           `json:"can_manage_projects,omitempty"`
+	CanManagePeople     bool           `json:"can_manage_people,omitempty"`
 }
 
 // PersonCompany represents a company associated with a person.
@@ -542,20 +559,26 @@ func (s *TodosService) Reposition(ctx context.Context, todoID int64, position in
 // todoFromGenerated converts a generated Todo to our clean Todo type.
 func todoFromGenerated(gt generated.Todo) Todo {
 	t := Todo{
-		Status:      gt.Status,
-		Title:       gt.Title,
-		Type:        gt.Type,
-		URL:         gt.Url,
-		AppURL:      gt.AppUrl,
-		BookmarkURL: gt.BookmarkUrl,
-		Content:     gt.Content,
-		Description: gt.Description,
-		Completed:   gt.Completed,
-		Position:    int(gt.Position),
-		CreatedAt:   gt.CreatedAt,
-		UpdatedAt:   gt.UpdatedAt,
-		InheritsVis: gt.InheritsStatus,
-		BoostsCount: int(gt.BoostsCount),
+		Status:           gt.Status,
+		VisibleToClients: gt.VisibleToClients,
+		Title:            gt.Title,
+		Type:             gt.Type,
+		URL:              gt.Url,
+		AppURL:           gt.AppUrl,
+		BookmarkURL:      gt.BookmarkUrl,
+		SubscriptionURL:  gt.SubscriptionUrl,
+		Content:          gt.Content,
+		Description:      gt.Description,
+		Completed:        gt.Completed,
+		Position:         int(gt.Position),
+		CreatedAt:        gt.CreatedAt,
+		UpdatedAt:        gt.UpdatedAt,
+		InheritsVis:      gt.InheritsStatus,
+		BoostsCount:      int(gt.BoostsCount),
+		BoostsURL:        gt.BoostsUrl,
+		CommentsCount:    int(gt.CommentsCount),
+		CommentsURL:      gt.CommentsUrl,
+		CompletionURL:    gt.CompletionUrl,
 	}
 
 	if gt.Id != 0 {
@@ -590,14 +613,8 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	if gt.Creator.Id != 0 || gt.Creator.Name != "" {
-		t.Creator = &Person{
-			ID:           int64(gt.Creator.Id),
-			Name:         gt.Creator.Name,
-			EmailAddress: gt.Creator.EmailAddress,
-			AvatarURL:    gt.Creator.AvatarUrl,
-			Admin:        gt.Creator.Admin,
-			Owner:        gt.Creator.Owner,
-		}
+		creator := personFromGenerated(gt.Creator)
+		t.Creator = &creator
 	}
 
 	// Convert assignees
@@ -605,6 +622,22 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		t.Assignees = make([]Person, 0, len(gt.Assignees))
 		for _, ga := range gt.Assignees {
 			t.Assignees = append(t.Assignees, personFromGenerated(ga))
+		}
+	}
+
+	// Convert completion subscribers
+	if len(gt.CompletionSubscribers) > 0 {
+		t.CompletionSubscribers = make([]Person, 0, len(gt.CompletionSubscribers))
+		for _, gs := range gt.CompletionSubscribers {
+			t.CompletionSubscribers = append(t.CompletionSubscribers, personFromGenerated(gs))
+		}
+	}
+
+	// BC5: convert embedded steps
+	if len(gt.Steps) > 0 {
+		t.Steps = make([]CardStep, 0, len(gt.Steps))
+		for _, gs := range gt.Steps {
+			t.Steps = append(t.Steps, cardStepFromGenerated(gs))
 		}
 	}
 

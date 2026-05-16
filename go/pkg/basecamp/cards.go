@@ -48,6 +48,7 @@ type CardColumn struct {
 	Description      string            `json:"description,omitempty"`
 	CardsCount       int               `json:"cards_count"`
 	CommentCount     int               `json:"comment_count"`
+	CommentsCount    int               `json:"comments_count,omitempty"`
 	CardsURL         string            `json:"cards_url,omitempty"`
 	OnHold           *CardColumnOnHold `json:"on_hold,omitempty"`
 	Parent           *Parent           `json:"parent,omitempty"`
@@ -90,6 +91,7 @@ type Card struct {
 	CompletedAt           *time.Time `json:"completed_at,omitempty"`
 	CommentsCount         int        `json:"comments_count"`
 	BoostsCount           int        `json:"boosts_count"`
+	BoostsURL             string     `json:"boosts_url,omitempty"`
 	CommentsURL           string     `json:"comments_url,omitempty"`
 	CommentCount          int        `json:"comment_count"`
 	CompletionURL         string     `json:"completion_url,omitempty"`
@@ -115,6 +117,7 @@ type CardStep struct {
 	URL              string     `json:"url"`
 	AppURL           string     `json:"app_url"`
 	BookmarkURL      string     `json:"bookmark_url"`
+	CompletionURL    string     `json:"completion_url,omitempty"`
 	Position         int        `json:"position"`
 	DueOn            string     `json:"due_on,omitempty"`
 	Completed        bool       `json:"completed"`
@@ -1207,14 +1210,8 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		ct.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		ct.Creator = &creator
 	}
 
 	if len(gc.Subscribers) > 0 {
@@ -1250,6 +1247,7 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		Description:      gc.Description,
 		CardsCount:       int(gc.CardsCount),
 		CommentCount:     int(gc.CommentsCount),
+		CommentsCount:    int(gc.CommentsCount),
 		CardsURL:         gc.CardsUrl,
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
@@ -1278,14 +1276,8 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		cc.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		cc.Creator = &creator
 	}
 
 	if gc.OnHold.Id != 0 {
@@ -1329,6 +1321,7 @@ func cardFromGenerated(gc generated.Card) Card {
 		Completed:        gc.Completed,
 		CommentsCount:    int(gc.CommentsCount),
 		BoostsCount:      int(gc.BoostsCount),
+		BoostsURL:        gc.BoostsUrl,
 		CommentsURL:      gc.CommentsUrl,
 		CompletionURL:    gc.CompletionUrl,
 		CreatedAt:        gc.CreatedAt,
@@ -1368,25 +1361,13 @@ func cardFromGenerated(gc generated.Card) Card {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		c.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		c.Creator = &creator
 	}
 
 	if gc.Completer.Id != 0 || gc.Completer.Name != "" {
-		c.Completer = &Person{
-			ID:           int64(gc.Completer.Id),
-			Name:         gc.Completer.Name,
-			EmailAddress: gc.Completer.EmailAddress,
-			AvatarURL:    gc.Completer.AvatarUrl,
-			Admin:        gc.Completer.Admin,
-			Owner:        gc.Completer.Owner,
-		}
+		completer := personFromGenerated(gc.Completer)
+		c.Completer = &completer
 	}
 
 	if len(gc.Assignees) > 0 {
@@ -1424,6 +1405,7 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		URL:              gs.Url,
 		AppURL:           gs.AppUrl,
 		BookmarkURL:      gs.BookmarkUrl,
+		CompletionURL:    gs.CompletionUrl,
 		Position:         int(gs.Position),
 		Completed:        gs.Completed,
 		CreatedAt:        gs.CreatedAt,
@@ -1463,25 +1445,13 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 	}
 
 	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
-		s.Creator = &Person{
-			ID:           int64(gs.Creator.Id),
-			Name:         gs.Creator.Name,
-			EmailAddress: gs.Creator.EmailAddress,
-			AvatarURL:    gs.Creator.AvatarUrl,
-			Admin:        gs.Creator.Admin,
-			Owner:        gs.Creator.Owner,
-		}
+		creator := personFromGenerated(gs.Creator)
+		s.Creator = &creator
 	}
 
 	if gs.Completer.Id != 0 || gs.Completer.Name != "" {
-		s.Completer = &Person{
-			ID:           int64(gs.Completer.Id),
-			Name:         gs.Completer.Name,
-			EmailAddress: gs.Completer.EmailAddress,
-			AvatarURL:    gs.Completer.AvatarUrl,
-			Admin:        gs.Completer.Admin,
-			Owner:        gs.Completer.Owner,
-		}
+		completer := personFromGenerated(gs.Completer)
+		s.Completer = &completer
 	}
 
 	if len(gs.Assignees) > 0 {

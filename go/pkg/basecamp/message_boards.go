@@ -10,18 +10,23 @@ import (
 
 // MessageBoard represents a Basecamp message board in a project.
 type MessageBoard struct {
-	ID            int64     `json:"id"`
-	Status        string    `json:"status"`
-	Title         string    `json:"title"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	Type          string    `json:"type"`
-	URL           string    `json:"url"`
-	AppURL        string    `json:"app_url"`
-	MessagesCount int       `json:"messages_count"`
-	MessagesURL   string    `json:"messages_url"`
-	Bucket        *Bucket   `json:"bucket,omitempty"`
-	Creator       *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Position         int       `json:"position,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	MessagesCount    int       `json:"messages_count"`
+	MessagesURL      string    `json:"messages_url"`
+	AppMessagesURL   string    `json:"app_messages_url,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // MessageBoardsService handles message board operations.
@@ -69,15 +74,20 @@ func (s *MessageBoardsService) Get(ctx context.Context, boardID int64) (result *
 // messageBoardFromGenerated converts a generated MessageBoard to our clean MessageBoard type.
 func messageBoardFromGenerated(gb generated.MessageBoard) MessageBoard {
 	mb := MessageBoard{
-		Status:        gb.Status,
-		Title:         gb.Title,
-		Type:          gb.Type,
-		URL:           gb.Url,
-		AppURL:        gb.AppUrl,
-		MessagesCount: int(gb.MessagesCount),
-		MessagesURL:   gb.MessagesUrl,
-		CreatedAt:     gb.CreatedAt,
-		UpdatedAt:     gb.UpdatedAt,
+		Status:           gb.Status,
+		VisibleToClients: gb.VisibleToClients,
+		Title:            gb.Title,
+		InheritsStatus:   gb.InheritsStatus,
+		Type:             gb.Type,
+		URL:              gb.Url,
+		AppURL:           gb.AppUrl,
+		BookmarkURL:      gb.BookmarkUrl,
+		MessagesCount:    int(gb.MessagesCount),
+		MessagesURL:      gb.MessagesUrl,
+		AppMessagesURL:   gb.AppMessagesUrl,
+		Position:         int(gb.Position),
+		CreatedAt:        gb.CreatedAt,
+		UpdatedAt:        gb.UpdatedAt,
 	}
 
 	if gb.Id != 0 {
@@ -93,14 +103,8 @@ func messageBoardFromGenerated(gb generated.MessageBoard) MessageBoard {
 	}
 
 	if gb.Creator.Id != 0 || gb.Creator.Name != "" {
-		mb.Creator = &Person{
-			ID:           int64(gb.Creator.Id),
-			Name:         gb.Creator.Name,
-			EmailAddress: gb.Creator.EmailAddress,
-			AvatarURL:    gb.Creator.AvatarUrl,
-			Admin:        gb.Creator.Admin,
-			Owner:        gb.Creator.Owner,
-		}
+		creator := personFromGenerated(gb.Creator)
+		mb.Creator = &creator
 	}
 
 	return mb

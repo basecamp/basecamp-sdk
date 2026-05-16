@@ -31,6 +31,11 @@ type Todoset struct {
 	CompletedRatio   string    `json:"completed_ratio"`
 	Completed        bool      `json:"completed"`
 	AppTodolistsURL  string    `json:"app_todolists_url"`
+	// BC5 additions: total + completed counts and the top-level todos URLs.
+	TodosCount               int    `json:"todos_count,omitempty"`
+	CompletedLooseTodosCount int    `json:"completed_loose_todos_count,omitempty"`
+	TodosURL                 string `json:"todos_url,omitempty"`
+	AppTodosURL              string `json:"app_todos_url,omitempty"`
 }
 
 // TodosetsService handles todoset operations.
@@ -92,8 +97,13 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 		CompletedRatio:   gts.CompletedRatio,
 		Completed:        gts.Completed,
 		AppTodolistsURL:  gts.AppTodolistsUrl,
-		CreatedAt:        gts.CreatedAt,
-		UpdatedAt:        gts.UpdatedAt,
+		// BC5 forward-compat fields.
+		TodosCount:               int(gts.TodosCount),
+		CompletedLooseTodosCount: int(gts.CompletedLooseTodosCount),
+		TodosURL:                 gts.TodosUrl,
+		AppTodosURL:              gts.AppTodosUrl,
+		CreatedAt:                gts.CreatedAt,
+		UpdatedAt:                gts.UpdatedAt,
 	}
 
 	if gts.Id != 0 {
@@ -115,14 +125,8 @@ func todosetFromGenerated(gts generated.Todoset) Todoset {
 	}
 
 	if gts.Creator.Id != 0 || gts.Creator.Name != "" {
-		ts.Creator = &Person{
-			ID:           int64(gts.Creator.Id),
-			Name:         gts.Creator.Name,
-			EmailAddress: gts.Creator.EmailAddress,
-			AvatarURL:    gts.Creator.AvatarUrl,
-			Admin:        gts.Creator.Admin,
-			Owner:        gts.Creator.Owner,
-		}
+		creator := personFromGenerated(gts.Creator)
+		ts.Creator = &creator
 	}
 
 	return ts

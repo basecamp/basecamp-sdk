@@ -11,17 +11,25 @@ import (
 
 // TimesheetEntry represents a single time entry in a Basecamp timesheet report.
 type TimesheetEntry struct {
-	ID             int64     `json:"id"`
-	Date           string    `json:"date"`
-	Hours          string    `json:"hours"`
-	Description    string    `json:"description,omitempty"`
-	Creator        *Person   `json:"creator,omitempty"`
-	Person         *Person   `json:"person,omitempty"`
-	Parent         *Parent   `json:"parent,omitempty"`
-	Bucket         *Bucket   `json:"bucket,omitempty"`
-	BillableStatus string    `json:"billable_status,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status,omitempty"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	Title            string    `json:"title,omitempty"`
+	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Type             string    `json:"type,omitempty"`
+	URL              string    `json:"url,omitempty"`
+	AppURL           string    `json:"app_url,omitempty"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	Date             string    `json:"date"`
+	Hours            string    `json:"hours"`
+	Description      string    `json:"description,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
+	Person           *Person   `json:"person,omitempty"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	BillableStatus   string    `json:"billable_status,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // CreateTimesheetEntryRequest specifies the parameters for creating a timesheet entry.
@@ -455,11 +463,19 @@ func (s *TimesheetService) Trash(ctx context.Context, entryID int64) (err error)
 // timesheetEntryFromGenerated converts a generated TimesheetEntry to our clean type.
 func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 	e := TimesheetEntry{
-		Date:        ge.Date,
-		Hours:       ge.Hours,
-		Description: ge.Description,
-		CreatedAt:   ge.CreatedAt,
-		UpdatedAt:   ge.UpdatedAt,
+		Status:           ge.Status,
+		VisibleToClients: ge.VisibleToClients,
+		Title:            ge.Title,
+		InheritsStatus:   ge.InheritsStatus,
+		Type:             ge.Type,
+		URL:              ge.Url,
+		AppURL:           ge.AppUrl,
+		BookmarkURL:      ge.BookmarkUrl,
+		Date:             ge.Date,
+		Hours:            ge.Hours,
+		Description:      ge.Description,
+		CreatedAt:        ge.CreatedAt,
+		UpdatedAt:        ge.UpdatedAt,
 	}
 
 	if ge.Id != 0 {
@@ -467,25 +483,13 @@ func timesheetEntryFromGenerated(ge generated.TimesheetEntry) TimesheetEntry {
 	}
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
-		e.Creator = &Person{
-			ID:           int64(ge.Creator.Id),
-			Name:         ge.Creator.Name,
-			EmailAddress: ge.Creator.EmailAddress,
-			AvatarURL:    ge.Creator.AvatarUrl,
-			Admin:        ge.Creator.Admin,
-			Owner:        ge.Creator.Owner,
-		}
+		creator := personFromGenerated(ge.Creator)
+		e.Creator = &creator
 	}
 
 	if ge.Person.Id != 0 || ge.Person.Name != "" {
-		e.Person = &Person{
-			ID:           int64(ge.Person.Id),
-			Name:         ge.Person.Name,
-			EmailAddress: ge.Person.EmailAddress,
-			AvatarURL:    ge.Person.AvatarUrl,
-			Admin:        ge.Person.Admin,
-			Owner:        ge.Person.Owner,
-		}
+		person := personFromGenerated(ge.Person)
+		e.Person = &person
 	}
 
 	if ge.Parent.Id != 0 || ge.Parent.Title != "" {

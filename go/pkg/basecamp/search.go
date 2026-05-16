@@ -245,14 +245,8 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 	}
 
 	if gsr.Creator.Id != 0 || gsr.Creator.Name != "" {
-		sr.Creator = &Person{
-			ID:           int64(gsr.Creator.Id),
-			Name:         gsr.Creator.Name,
-			EmailAddress: gsr.Creator.EmailAddress,
-			AvatarURL:    gsr.Creator.AvatarUrl,
-			Admin:        gsr.Creator.Admin,
-			Owner:        gsr.Creator.Owner,
-		}
+		creator := personFromGenerated(gsr.Creator)
+		sr.Creator = &creator
 	}
 
 	return sr
