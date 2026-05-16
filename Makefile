@@ -370,7 +370,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live check-bc5-compat
 
 # Build conformance test runner
 conformance-build:
@@ -448,6 +448,62 @@ conformance-python-replay:
 # Run all conformance tests
 conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
+
+# Orchestrate one canary pass against a single backend:
+#   1. TS captures canonical wire snapshots (live HTTP).
+#   2. Each replay runner decodes those snapshots through its SDK + walks raw JSON.
+#
+# Required env (passed through to children):
+#   BASECAMP_LIVE=1, BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BASECAMP_BACKEND, LIVE_RECORD_DIR
+#
+# The four replay runners run sequentially after the TS capture completes
+# (the per-language replays need the wire snapshots TS just wrote). They
+# read from `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/` and write to
+# `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/decode/<lang>/`. Failures in any
+# stage fail the orchestrator.
+#
+# Opt-in target: not invoked by `make check`.
+conformance-live: conformance-typescript-live
+	@echo "==> Running cross-language wire-replay against just-captured snapshots..."
+	@test -n "$$LIVE_RECORD_DIR" || (echo "LIVE_RECORD_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-ruby-replay
+	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-python-replay
+	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-go-replay
+	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-kotlin-replay
+	@echo "==> conformance-live: capture + replay complete for backend $$BASECAMP_BACKEND"
+
+# Top-level orchestrator: full canary against BC4 then BC5, then pairwise comparison.
+#
+# Required env:
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BC5_HOST (BC5 backend origin)
+# Optional env:
+#   BASECAMP_HOST (BC4 backend origin; defaults to https://3.basecampapi.com)
+#   LIVE_RECORD_DIR (snapshot root; defaults to tmp/live-canary)
+#
+# Snapshot dirs are per-backend: $$LIVE_RECORD_DIR/{bc4,bc5}/{wire,decode}/.
+# The TS runner writes to `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/`, so the
+# orchestrator distinguishes runs by switching BASECAMP_BACKEND and the host
+# while reusing one snapshot root.
+#
+# Each pass must pass per-backend (TS schema validation + 4-language decode).
+# After both, the pairwise script applies the additive-only invariant to BC4
+# vs BC5 snapshots and fails on the first violation outside pairwiseDeltaAllowed.
+#
+# Account state must be identical across the two runs — see CONTRIBUTING.md.
+check-bc5-compat: LIVE_RECORD_DIR ?= tmp/live-canary
+check-bc5-compat: BASECAMP_HOST ?= https://3.basecampapi.com
+check-bc5-compat:
+	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
+	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
+	@test -n "$$BC5_HOST" || (echo "BC5_HOST is required (BC5 backend origin, e.g. https://5.basecampapi.com)" >&2; exit 2)
+	rm -rf "$(LIVE_RECORD_DIR)"
+	@echo "==> check-bc5-compat: BC4 pass"
+	BASECAMP_LIVE=1 BASECAMP_HOST="$(BASECAMP_HOST)" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$(LIVE_RECORD_DIR)" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: BC5 pass"
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$(LIVE_RECORD_DIR)" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison"
+	./scripts/compare-canary-runs.sh "$(LIVE_RECORD_DIR)/bc4/wire" "$(LIVE_RECORD_DIR)/bc5/wire"
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets
