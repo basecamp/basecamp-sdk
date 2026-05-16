@@ -48,6 +48,7 @@ type CardColumn struct {
 	Description      string            `json:"description,omitempty"`
 	CardsCount       int               `json:"cards_count"`
 	CommentCount     int               `json:"comment_count"`
+	CommentsCount    int               `json:"comments_count,omitempty"`
 	CardsURL         string            `json:"cards_url,omitempty"`
 	OnHold           *CardColumnOnHold `json:"on_hold,omitempty"`
 	Parent           *Parent           `json:"parent,omitempty"`
@@ -90,6 +91,7 @@ type Card struct {
 	CompletedAt           *time.Time `json:"completed_at,omitempty"`
 	CommentsCount         int        `json:"comments_count"`
 	BoostsCount           int        `json:"boosts_count"`
+	BoostsURL             string     `json:"boosts_url,omitempty"`
 	CommentsURL           string     `json:"comments_url,omitempty"`
 	CommentCount          int        `json:"comment_count"`
 	CompletionURL         string     `json:"completion_url,omitempty"`
@@ -115,6 +117,7 @@ type CardStep struct {
 	URL              string     `json:"url"`
 	AppURL           string     `json:"app_url"`
 	BookmarkURL      string     `json:"bookmark_url"`
+	CompletionURL    string     `json:"completion_url,omitempty"`
 	Position         int        `json:"position"`
 	DueOn            string     `json:"due_on,omitempty"`
 	Completed        bool       `json:"completed"`
@@ -1244,6 +1247,7 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 		Description:      gc.Description,
 		CardsCount:       int(gc.CardsCount),
 		CommentCount:     int(gc.CommentsCount),
+		CommentsCount:    int(gc.CommentsCount),
 		CardsURL:         gc.CardsUrl,
 		CreatedAt:        gc.CreatedAt,
 		UpdatedAt:        gc.UpdatedAt,
@@ -1317,6 +1321,7 @@ func cardFromGenerated(gc generated.Card) Card {
 		Completed:        gc.Completed,
 		CommentsCount:    int(gc.CommentsCount),
 		BoostsCount:      int(gc.BoostsCount),
+		BoostsURL:        gc.BoostsUrl,
 		CommentsURL:      gc.CommentsUrl,
 		CompletionURL:    gc.CompletionUrl,
 		CreatedAt:        gc.CreatedAt,
@@ -1400,6 +1405,7 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 		URL:              gs.Url,
 		AppURL:           gs.AppUrl,
 		BookmarkURL:      gs.BookmarkUrl,
+		CompletionURL:    gs.CompletionUrl,
 		Position:         int(gs.Position),
 		Completed:        gs.Completed,
 		CreatedAt:        gs.CreatedAt,

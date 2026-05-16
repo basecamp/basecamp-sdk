@@ -111,6 +111,7 @@ type Document struct {
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	CommentsURL      string    `json:"comments_url"`
 	Position         int       `json:"position,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
@@ -135,6 +136,7 @@ type Upload struct {
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	CommentsURL      string    `json:"comments_url"`
 	Position         int       `json:"position,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
@@ -1114,6 +1116,7 @@ func documentFromGenerated(gd generated.Document) Document {
 		SubscriptionURL:  gd.SubscriptionUrl,
 		CommentsCount:    int(gd.CommentsCount),
 		BoostsCount:      int(gd.BoostsCount),
+		BoostsURL:        gd.BoostsUrl,
 		CommentsURL:      gd.CommentsUrl,
 		Position:         int(gd.Position),
 		Content:          gd.Content,
@@ -1165,6 +1168,7 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		SubscriptionURL:  gu.SubscriptionUrl,
 		CommentsCount:    int(gu.CommentsCount),
 		BoostsCount:      int(gu.BoostsCount),
+		BoostsURL:        gu.BoostsUrl,
 		CommentsURL:      gu.CommentsUrl,
 		Position:         int(gu.Position),
 		Description:      gu.Description,
