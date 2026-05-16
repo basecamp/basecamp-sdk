@@ -59,21 +59,21 @@ type Todo struct {
 // Endpoints that decode through the generated parser lose the label —
 // use PersonableType == "LocalPerson" as the authoritative discriminator.
 type Person struct {
-	ID                int64          `json:"id"`
-	SystemLabel       string         `json:"system_label,omitempty"`
-	AttachableSGID    string         `json:"attachable_sgid,omitempty"`
-	Name              string         `json:"name"`
-	EmailAddress      string         `json:"email_address,omitempty"`
-	PersonableType    string         `json:"personable_type,omitempty"`
-	Title             string         `json:"title,omitempty"`
-	Bio               string         `json:"bio,omitempty"`
+	ID             int64  `json:"id"`
+	SystemLabel    string `json:"system_label,omitempty"`
+	AttachableSGID string `json:"attachable_sgid,omitempty"`
+	Name           string `json:"name"`
+	EmailAddress   string `json:"email_address,omitempty"`
+	PersonableType string `json:"personable_type,omitempty"`
+	Title          string `json:"title,omitempty"`
+	Bio            string `json:"bio,omitempty"`
 	// Tagline is the BC5-added alias of Bio. BC3 emits both keys with identical
 	// content; older BC4 responses may omit `tagline`. Prefer `Bio` for
 	// cross-version reads. Surfaced as a separate wrapper field per spec note.
-	Tagline           string         `json:"tagline,omitempty"`
-	Location          string         `json:"location,omitempty"`
-	CreatedAt         string         `json:"created_at,omitempty"`
-	UpdatedAt         string         `json:"updated_at,omitempty"`
+	Tagline             string         `json:"tagline,omitempty"`
+	Location            string         `json:"location,omitempty"`
+	CreatedAt           string         `json:"created_at,omitempty"`
+	UpdatedAt           string         `json:"updated_at,omitempty"`
 	Admin               bool           `json:"admin,omitempty"`
 	Owner               bool           `json:"owner,omitempty"`
 	Client              bool           `json:"client,omitempty"`

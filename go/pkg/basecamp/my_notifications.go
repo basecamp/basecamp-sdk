@@ -11,21 +11,21 @@ import (
 
 // Notification represents a single notification item.
 type Notification struct {
-	ID                     int64                   `json:"id"`
-	Type                   string                  `json:"type,omitempty"`
-	Title                  string                  `json:"title,omitempty"`
-	Section                string                  `json:"section,omitempty"`
-	ContentExcerpt         string                  `json:"content_excerpt,omitempty"`
-	BucketName             string                  `json:"bucket_name,omitempty"`
-	ReadableIdentifier     string                  `json:"readable_identifier,omitempty"`
-	ReadableSGID           string                  `json:"readable_sgid,omitempty"`
-	Subscribed             bool                    `json:"subscribed,omitempty"`
-	Named                  bool                    `json:"named,omitempty"`
-	UnreadCount            int32                   `json:"unread_count,omitempty"`
-	ImageURL               string                  `json:"image_url,omitempty"`
-	AppURL                 string                  `json:"app_url,omitempty"`
-	BookmarkURL            string                  `json:"bookmark_url,omitempty"`
-	MemoryURL              string                  `json:"memory_url,omitempty"`
+	ID                 int64  `json:"id"`
+	Type               string `json:"type,omitempty"`
+	Title              string `json:"title,omitempty"`
+	Section            string `json:"section,omitempty"`
+	ContentExcerpt     string `json:"content_excerpt,omitempty"`
+	BucketName         string `json:"bucket_name,omitempty"`
+	ReadableIdentifier string `json:"readable_identifier,omitempty"`
+	ReadableSGID       string `json:"readable_sgid,omitempty"`
+	Subscribed         bool   `json:"subscribed,omitempty"`
+	Named              bool   `json:"named,omitempty"`
+	UnreadCount        int32  `json:"unread_count,omitempty"`
+	ImageURL           string `json:"image_url,omitempty"`
+	AppURL             string `json:"app_url,omitempty"`
+	BookmarkURL        string `json:"bookmark_url,omitempty"`
+	MemoryURL          string `json:"memory_url,omitempty"`
 	// BubbleUpURL is the BC5-added URL for the Bubble Up record covering this
 	// notification. Eligibility-gated — only present on items the current user
 	// can bubble up.
