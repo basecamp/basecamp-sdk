@@ -1,0 +1,22 @@
+CONTRIBUTING.md
+  s_13deffa07b5c67::t_78d374bb768e4c 362-459
+.github/workflows/live-canary.yml
+  s_13deffa07b5c67::t_894ed5c390762f 128
+  s_13deffa07b5c67::t_5b286a54b67696 1-127,129-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "dc66b5fafe25e7f837458921b12369e1b21bf708",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
