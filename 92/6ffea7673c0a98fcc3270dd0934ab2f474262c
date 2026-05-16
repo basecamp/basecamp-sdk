@@ -1,0 +1,36 @@
+go/pkg/basecamp/todos.go
+  s_13deffa07b5c67::t_b648060a7387eb 18-48
+  s_13deffa07b5c67::t_877f09bc936a8f 628-635
+  s_13deffa07b5c67::t_13b2199abd35e3 562-581
+go/pkg/basecamp/cards.go
+  s_13deffa07b5c67::t_63994a090ccfe6 120
+  s_13deffa07b5c67::t_0b50abb5179109 1324
+  s_13deffa07b5c67::t_2a8551a5ec099a 1408
+  s_13deffa07b5c67::t_c823ce01393138 51
+  s_13deffa07b5c67::t_cbf0a74f77f629 94
+  s_13deffa07b5c67::t_96712b3081078a 1250
+go/pkg/basecamp/events.go
+  s_13deffa07b5c67::t_f33be87f9cb96b 41-42
+  s_13deffa07b5c67::t_0a133ef9439f77 156-157
+go/pkg/basecamp/vaults.go
+  s_13deffa07b5c67::t_9e1b1ab3b0eaa2 114
+  s_13deffa07b5c67::t_a36662fb5ae9c4 1119
+  s_13deffa07b5c67::t_c84afd94d8d8a6 139
+  s_13deffa07b5c67::t_ab3d6490d0f66d 1171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "926ffea7673c0a98fcc3270dd0934ab2f474262c",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
