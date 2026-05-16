@@ -71,7 +71,7 @@
   {
     "mode": "live",
     "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
-    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays. Also exercises the memories[] observation that pairs with the COORDINATION.md decision.",
+    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays. Also exercises the memories[] observation that pairs with the COORDINATION.md decision: BC3 commit 64acf34 aliases BC5 memories[] to bubble_ups[] so existing BC4 API consumers keep receiving the same population. The pairwise rule below hard-fails if that alias ever drops.",
     "operation": "GetMyNotifications",
     "method": "GET",
     "path": "/my/readings.json",
@@ -79,6 +79,18 @@
     "liveAssertions": [
       { "type": "liveCallSucceeds" },
       { "type": "liveSchemaValidate" }
+    ],
+    "pairwiseAssertions": [
+      {
+        "type": "pairwiseSupersetArray",
+        "paths": ["memories"],
+        "reason": "BC3 commit 64acf34 aliases BC5 memories[] to bubble_ups[] so BC4 API consumers keep receiving the same population on BC5. This rule fails if BC5 ever emits fewer memories than BC4 — the canonical canary signal for the BC3↔SDK contract."
+      },
+      {
+        "type": "pairwiseSupersetKeys",
+        "paths": [""],
+        "reason": "Top-level GetMyNotifications keys must not regress between BC4 and BC5 — additive-only invariant. New BC5 keys (bubble_ups, scheduled_bubble_ups) are expected; key removals fail."
+      }
     ]
   },
   {
