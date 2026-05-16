@@ -67,10 +67,14 @@ type Campfire struct {
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Title            string    `json:"title"`
+	Topic            string    `json:"topic,omitempty"`
+	Position         int       `json:"position,omitempty"`
 	InheritsStatus   bool      `json:"inherits_status"`
 	Type             string    `json:"type"`
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	SubscriptionURL  string    `json:"subscription_url,omitempty"`
 	LinesURL         string    `json:"lines_url"`
 	FilesURL         string    `json:"files_url,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
@@ -907,10 +911,14 @@ func campfireFromGenerated(gc generated.Campfire) Campfire {
 		Status:           gc.Status,
 		VisibleToClients: gc.VisibleToClients,
 		Title:            gc.Title,
+		Topic:            gc.Topic,
+		Position:         int(gc.Position),
 		InheritsStatus:   gc.InheritsStatus,
 		Type:             gc.Type,
 		URL:              gc.Url,
 		AppURL:           gc.AppUrl,
+		BookmarkURL:      gc.BookmarkUrl,
+		SubscriptionURL:  gc.SubscriptionUrl,
 		LinesURL:         gc.LinesUrl,
 		FilesURL:         gc.FilesUrl,
 		CreatedAt:        gc.CreatedAt,

@@ -67,16 +67,18 @@ type Person struct {
 	Location          string         `json:"location,omitempty"`
 	CreatedAt         string         `json:"created_at,omitempty"`
 	UpdatedAt         string         `json:"updated_at,omitempty"`
-	Admin             bool           `json:"admin,omitempty"`
-	Owner             bool           `json:"owner,omitempty"`
-	Client            bool           `json:"client,omitempty"`
-	Employee          bool           `json:"employee,omitempty"`
-	TimeZone          string         `json:"time_zone,omitempty"`
-	AvatarURL         string         `json:"avatar_url,omitempty"`
-	CanPing           bool           `json:"can_ping,omitempty"`
-	Company           *PersonCompany `json:"company,omitempty"`
-	CanManageProjects bool           `json:"can_manage_projects,omitempty"`
-	CanManagePeople   bool           `json:"can_manage_people,omitempty"`
+	Admin               bool           `json:"admin,omitempty"`
+	Owner               bool           `json:"owner,omitempty"`
+	Client              bool           `json:"client,omitempty"`
+	Employee            bool           `json:"employee,omitempty"`
+	TimeZone            string         `json:"time_zone,omitempty"`
+	AvatarURL           string         `json:"avatar_url,omitempty"`
+	CanPing             bool           `json:"can_ping,omitempty"`
+	CanAccessHillCharts bool           `json:"can_access_hill_charts,omitempty"`
+	CanAccessTimesheet  bool           `json:"can_access_timesheet,omitempty"`
+	Company             *PersonCompany `json:"company,omitempty"`
+	CanManageProjects   bool           `json:"can_manage_projects,omitempty"`
+	CanManagePeople     bool           `json:"can_manage_people,omitempty"`
 }
 
 // PersonCompany represents a company associated with a person.

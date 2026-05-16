@@ -15,6 +15,7 @@ type MessageBoard struct {
 	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
 	Title            string    `json:"title"`
 	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Position         int       `json:"position,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 	Type             string    `json:"type"`
@@ -23,6 +24,7 @@ type MessageBoard struct {
 	BookmarkURL      string    `json:"bookmark_url,omitempty"`
 	MessagesCount    int       `json:"messages_count"`
 	MessagesURL      string    `json:"messages_url"`
+	AppMessagesURL   string    `json:"app_messages_url,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 }
@@ -82,6 +84,8 @@ func messageBoardFromGenerated(gb generated.MessageBoard) MessageBoard {
 		BookmarkURL:      gb.BookmarkUrl,
 		MessagesCount:    int(gb.MessagesCount),
 		MessagesURL:      gb.MessagesUrl,
+		AppMessagesURL:   gb.AppMessagesUrl,
+		Position:         int(gb.Position),
 		CreatedAt:        gb.CreatedAt,
 		UpdatedAt:        gb.UpdatedAt,
 	}
