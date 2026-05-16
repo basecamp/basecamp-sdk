@@ -1,0 +1,44 @@
+go/pkg/basecamp/gauges.go
+  s_13deffa07b5c67::t_99cfeac6cebdff 28-29,53-55
+go/pkg/basecamp/projects.go
+  s_13deffa07b5c67::t_6bbff029d2a1ae 394
+  s_13deffa07b5c67::t_ac08a692f9ffff 416-435
+go/pkg/basecamp/my_notifications.go
+  s_13deffa07b5c67::t_5082d7ed7eed98 14-28,35-57
+go/pkg/basecamp/todos.go
+  s_13deffa07b5c67::t_0bd258a69c86e4 70-81
+go/pkg/basecamp/message_boards.go
+  s_13deffa07b5c67::t_ede8fe3fd6b28e 18,27
+  s_13deffa07b5c67::t_2ee86ea7e60220 87-88
+go/pkg/basecamp/people.go
+  s_13deffa07b5c67::t_d2920312d980de 735-753
+go/pkg/basecamp/my_notifications_test.go
+  s_13deffa07b5c67::t_8aca4814d3fd6e 66-70,82-83,101-113
+go/pkg/basecamp/templates.go
+  s_13deffa07b5c67::t_916df731f0f386 389-390,397-401
+  s_13deffa07b5c67::t_53769a8529e731 24-32
+go/pkg/basecamp/forwards.go
+  s_13deffa07b5c67::t_fae97bd58771ff 451,456-457
+  s_13deffa07b5c67::t_8372c398c17595 95-96
+  s_13deffa07b5c67::t_d1301352b3ba6f 67,72-73
+  s_13deffa07b5c67::t_fd13fdf9153555 497-498
+go/pkg/basecamp/campfires.go
+  s_13deffa07b5c67::t_9925cf184ec95c 914-915,920-921
+  s_13deffa07b5c67::t_d97e64e4a1ca60 70-71,76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f11de77694a2ad62b82447c12185b4a311b3917b",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
