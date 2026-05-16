@@ -38,6 +38,8 @@ type Event struct {
 	ID          int64         `json:"id"`
 	RecordingID int64         `json:"recording_id"`
 	Action      string        `json:"action"`
+	BoostsCount int           `json:"boosts_count,omitempty"`
+	BoostsURL   string        `json:"boosts_url,omitempty"`
 	Details     *EventDetails `json:"details,omitempty"`
 	CreatedAt   time.Time     `json:"created_at"`
 	Creator     *Person       `json:"creator,omitempty"`
@@ -151,6 +153,8 @@ func eventFromGenerated(ge generated.Event) Event {
 	e := Event{
 		RecordingID: ge.RecordingId,
 		Action:      ge.Action,
+		BoostsCount: int(ge.BoostsCount),
+		BoostsURL:   ge.BoostsUrl,
 		CreatedAt:   ge.CreatedAt,
 	}
 
