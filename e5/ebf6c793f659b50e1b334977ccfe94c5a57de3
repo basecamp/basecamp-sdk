@@ -1,0 +1,28 @@
+go/pkg/basecamp/people.go
+  s_13deffa07b5c67::t_de10ef3e23df99 741
+go/pkg/basecamp/todos.go
+  s_13deffa07b5c67::t_b7e880f7cef09e 613-620
+  s_13deffa07b5c67::t_040b7bc563da0a 63-66
+  s_13deffa07b5c67::t_72c211a6563300 42-45
+go/pkg/basecamp/my_notifications.go
+  s_13deffa07b5c67::t_32c45996f73a62 29-41,49-55
+go/pkg/basecamp/todosets.go
+  s_13deffa07b5c67::t_a52990726764d8 86-106
+  s_13deffa07b5c67::t_ea9a78cd36e634 14-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e5ebf6c793f659b50e1b334977ccfe94c5a57de3",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
