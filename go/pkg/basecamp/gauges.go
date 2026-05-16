@@ -25,6 +25,8 @@ type Gauge struct {
 	URL                    string    `json:"url,omitempty"`
 	AppURL                 string    `json:"app_url,omitempty"`
 	BookmarkURL            string    `json:"bookmark_url,omitempty"`
+	Creator                *Person   `json:"creator,omitempty"`
+	Bucket                 *Bucket   `json:"bucket,omitempty"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }
@@ -48,6 +50,9 @@ type GaugeNeedle struct {
 	CommentsURL      string    `json:"comments_url,omitempty"`
 	BoostsURL        string    `json:"boosts_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Parent           *Parent   `json:"parent,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }

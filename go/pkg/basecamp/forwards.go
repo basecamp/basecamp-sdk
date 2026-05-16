@@ -64,10 +64,13 @@ type Inbox struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 	Title            string    `json:"title"`
 	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Position         int       `json:"position,omitempty"`
 	Type             string    `json:"type"`
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	ForwardsCount    int       `json:"forwards_count,omitempty"`
+	ForwardsURL      string    `json:"forwards_url,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 }
@@ -89,6 +92,8 @@ type Forward struct {
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url,omitempty"`
+	RepliesCount     int       `json:"replies_count,omitempty"`
+	RepliesURL       string    `json:"replies_url,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
@@ -443,10 +448,13 @@ func inboxFromGenerated(gi generated.Inbox) Inbox {
 		UpdatedAt:        gi.UpdatedAt,
 		Title:            gi.Title,
 		InheritsStatus:   gi.InheritsStatus,
+		Position:         int(gi.Position),
 		Type:             gi.Type,
 		URL:              gi.Url,
 		AppURL:           gi.AppUrl,
 		BookmarkURL:      gi.BookmarkUrl,
+		ForwardsCount:    int(gi.ForwardsCount),
+		ForwardsURL:      gi.ForwardsUrl,
 	}
 
 	if gi.Id != 0 {
@@ -486,6 +494,8 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		AppURL:           gf.AppUrl,
 		BookmarkURL:      gf.BookmarkUrl,
 		SubscriptionURL:  gf.SubscriptionUrl,
+		RepliesCount:     int(gf.RepliesCount),
+		RepliesURL:       gf.RepliesUrl,
 	}
 
 	if gf.Id != 0 {

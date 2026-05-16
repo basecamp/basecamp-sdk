@@ -11,34 +11,50 @@ import (
 
 // Notification represents a single notification item.
 type Notification struct {
-	ID                 int64     `json:"id"`
-	Type               string    `json:"type,omitempty"`
-	Title              string    `json:"title,omitempty"`
-	Section            string    `json:"section,omitempty"`
-	ContentExcerpt     string    `json:"content_excerpt,omitempty"`
-	BucketName         string    `json:"bucket_name,omitempty"`
-	ReadableIdentifier string    `json:"readable_identifier,omitempty"`
-	ReadableSGID       string    `json:"readable_sgid,omitempty"`
-	Subscribed         bool      `json:"subscribed,omitempty"`
-	Named              bool      `json:"named,omitempty"`
-	UnreadCount        int32     `json:"unread_count,omitempty"`
-	ImageURL           string    `json:"image_url,omitempty"`
-	AppURL             string    `json:"app_url,omitempty"`
-	BookmarkURL        string    `json:"bookmark_url,omitempty"`
-	MemoryURL          string    `json:"memory_url,omitempty"`
+	ID                     int64                   `json:"id"`
+	Type                   string                  `json:"type,omitempty"`
+	Title                  string                  `json:"title,omitempty"`
+	Section                string                  `json:"section,omitempty"`
+	ContentExcerpt         string                  `json:"content_excerpt,omitempty"`
+	BucketName             string                  `json:"bucket_name,omitempty"`
+	ReadableIdentifier     string                  `json:"readable_identifier,omitempty"`
+	ReadableSGID           string                  `json:"readable_sgid,omitempty"`
+	Subscribed             bool                    `json:"subscribed,omitempty"`
+	Named                  bool                    `json:"named,omitempty"`
+	UnreadCount            int32                   `json:"unread_count,omitempty"`
+	ImageURL               string                  `json:"image_url,omitempty"`
+	AppURL                 string                  `json:"app_url,omitempty"`
+	BookmarkURL            string                  `json:"bookmark_url,omitempty"`
+	MemoryURL              string                  `json:"memory_url,omitempty"`
 	// BubbleUpURL is the BC5-added URL for the Bubble Up record covering this
 	// notification. Eligibility-gated — only present on items the current user
 	// can bubble up.
 	BubbleUpURL string `json:"bubble_up_url,omitempty"`
 	// BubbleUpAt is the BC5-added scheduled resurfacing time when this item is
 	// queued as a scheduled Bubble Up. Zero when there is no scheduled time.
-	BubbleUpAt      time.Time `json:"bubble_up_at,omitempty"`
-	UnreadURL       string    `json:"unread_url,omitempty"`
-	SubscriptionURL string    `json:"subscription_url,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-	ReadAt          time.Time `json:"read_at,omitempty"`
-	UnreadAt        time.Time `json:"unread_at,omitempty"`
+	BubbleUpAt             time.Time               `json:"bubble_up_at,omitempty"`
+	UnreadURL              string                  `json:"unread_url,omitempty"`
+	SubscriptionURL        string                  `json:"subscription_url,omitempty"`
+	Creator                *Person                 `json:"creator,omitempty"`
+	Participants           []Person                `json:"participants,omitempty"`
+	PreviewableAttachments []PreviewableAttachment `json:"previewable_attachments,omitempty"`
+	CreatedAt              time.Time               `json:"created_at"`
+	UpdatedAt              time.Time               `json:"updated_at"`
+	ReadAt                 time.Time               `json:"read_at,omitempty"`
+	UnreadAt               time.Time               `json:"unread_at,omitempty"`
+}
+
+// PreviewableAttachment represents a preview-renderable attachment surfaced on
+// a Notification (e.g. images in a ping).
+type PreviewableAttachment struct {
+	ID          *int64 `json:"id,omitempty"`
+	AppURL      string `json:"app_url,omitempty"`
+	URL         string `json:"url,omitempty"`
+	ContentType string `json:"content_type,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	Filesize    int64  `json:"filesize,omitempty"`
+	Width       int32  `json:"width,omitempty"`
+	Height      int32  `json:"height,omitempty"`
 }
 
 // NotificationsResult contains the notifications grouped by status.
