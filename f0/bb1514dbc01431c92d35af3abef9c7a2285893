@@ -1,0 +1,76 @@
+go/pkg/basecamp/todolist_groups.go
+  s_13deffa07b5c67::t_0cdad889b68a45 392-393
+go/pkg/basecamp/client_approvals.go
+  s_13deffa07b5c67::t_fa44d72b5ec953 259-260,264-265
+  s_13deffa07b5c67::t_ff01740e594f71 305-306
+go/pkg/basecamp/campfires.go
+  s_13deffa07b5c67::t_c2ba4ed16b493e 929-930
+  s_13deffa07b5c67::t_0ef374205dcd95 987-988
+go/pkg/basecamp/message_boards.go
+  s_13deffa07b5c67::t_6324258a79ac1a 96-97
+go/pkg/basecamp/forwards.go
+  s_13deffa07b5c67::t_e0d432044e94dd 492-493
+  s_13deffa07b5c67::t_26a555f568d0cc 448-449
+  s_13deffa07b5c67::t_6fcb748cf3026c 534-535
+go/pkg/basecamp/comments.go
+  s_13deffa07b5c67::t_6aafe3a160907f 334-335
+go/pkg/basecamp/schedules.go
+  s_13deffa07b5c67::t_91654056fdbc9f 635-636,643
+  s_13deffa07b5c67::t_ac6fd8b7fbdd81 582-583
+go/pkg/basecamp/todolists.go
+  s_13deffa07b5c67::t_d572eefbe21f62 383-384
+go/pkg/basecamp/todosets.go
+  s_13deffa07b5c67::t_ad66b6d2c9ea7a 118-119
+go/pkg/basecamp/recordings.go
+  s_13deffa07b5c67::t_ac0282d0b53e3c 399-400
+go/pkg/basecamp/timesheet.go
+  s_13deffa07b5c67::t_909b5177f8e38b 470-471,475-476
+go/pkg/basecamp/events.go
+  s_13deffa07b5c67::t_f9ee1b498f0534 171-172
+go/pkg/basecamp/boosts.go
+  s_13deffa07b5c67::t_8a414f969c1c4d 367-368
+go/pkg/basecamp/search.go
+  s_13deffa07b5c67::t_1fc8a03e1679b4 248-249
+go/pkg/basecamp/client_replies.go
+  s_13deffa07b5c67::t_0c7515e03fa450 210-211
+go/pkg/basecamp/vaults.go
+  s_13deffa07b5c67::t_7a31ae07c5de05 1147-1148
+  s_13deffa07b5c67::t_db77103f614a7c 1096-1097
+  s_13deffa07b5c67::t_11f041f8f4769b 1204-1205
+go/pkg/basecamp/client_correspondences.go
+  s_13deffa07b5c67::t_78528aeb73fa36 230-231
+go/pkg/basecamp/cards.go
+  s_13deffa07b5c67::t_690337389a64a1 1275-1276
+  s_13deffa07b5c67::t_a61d54326ddc98 1442-1443,1447-1448
+  s_13deffa07b5c67::t_ab2e25f74f0cb8 1210-1211
+  s_13deffa07b5c67::t_a6026ffae161b8 1359-1360,1364-1365
+go/pkg/basecamp/todos.go
+  s_13deffa07b5c67::t_af1b5700669864 593-594
+go/pkg/basecamp/reports.go
+  s_13deffa07b5c67::t_24770bfbb325e6 105-106
+go/pkg/basecamp/timeline.go
+  s_13deffa07b5c67::t_d608fba4273554 390-391
+  s_13deffa07b5c67::t_313dca25fecaad 259-260
+go/pkg/basecamp/messages.go
+  s_13deffa07b5c67::t_fc32a97ee26bda 478-479
+go/pkg/basecamp/checkins.go
+  s_13deffa07b5c67::t_de63ed0986ab87 826-827
+  s_13deffa07b5c67::t_5e1633c3b1851a 880-881
+  s_13deffa07b5c67::t_f1ed2e01a56be7 748-749
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f0bb1514dbc01431c92d35af3abef9c7a2285893",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
