@@ -1,0 +1,19 @@
+go/pkg/basecamp/wrapper_propagation_test.go
+  s_13deffa07b5c67::t_7743c6fb9be0c9 1-774
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "87bb3e4c2a879bb23924c2d986ac6746bd013c5d",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
