@@ -68,7 +68,6 @@ Both records live on in the registry and this SDK plan's §8.
   `five+api`)
 - SDK-side absorption status: [`spec/api-gaps/README.md`](spec/api-gaps/README.md)
 - Live canary results: `make check-bc5-compat` against current refs
-  (lands in PR 4 of the SDK plan)
 - Cross-team alignment status: this file
 
 — The basecamp-sdk team

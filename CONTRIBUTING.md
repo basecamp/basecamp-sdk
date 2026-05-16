@@ -275,8 +275,9 @@ Optional env:
 - `BASECAMP_BACKEND=bc4|bc5` — namespaces persisted snapshots so BC4 and
   BC5 runs don't collide.
 - `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
-  `<path>/<backend>/wire/<test>.json`. Used by downstream cross-language
-  decoders (PR 3) and BC4↔BC5 comparison (PR 4).
+  `<path>/<backend>/wire/<test>.json`. Consumed by the cross-language
+  replay runners (`make conformance-*-replay`) and by the pairwise
+  BC4↔BC5 comparison (`scripts/compare-canary-runs.sh`).
 - `BASECAMP_BC4_PROJECT_ID` / `BASECAMP_BC5_PROJECT_ID` /
   `BASECAMP_PROJECT_ID` etc. — explicit fixture-IDs override the runner's
   discovery walk. Same pattern applies for `TODOSET_ID`, `TODOLIST_ID`,
