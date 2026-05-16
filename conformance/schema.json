@@ -198,6 +198,41 @@
       "description": "Placeholder names referenced in pathParams/queryParams for live tests (e.g., PROJECT_ID, TODOLIST_ID). Resolved per the fixture-ID ladder: explicit env var → generic env var → discovery → skip.",
       "additionalProperties": { "type": "string" }
     },
+    "pairwiseAssertions": {
+      "type": "array",
+      "description": "Rules that compare a BC4 wire snapshot to a BC5 wire snapshot of the same operation. Paths are dotted, relative to each snapshot body — equivalent to `pages[0].body.<path>` for single-page bodies; use explicit `pages[N].body.<path>` to address a specific page or `pages[*].body.<path>` to aggregate across pages. The empty path `\"\"` addresses the body root. These rules enforce the canary's additive-only invariant: BC5 must not regress fields/keys/values that BC4 emitted.",
+      "items": {
+        "type": "object",
+        "required": ["type", "paths"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "pairwiseSupersetArray",
+              "pairwiseSupersetKeys",
+              "pairwiseEqual",
+              "pairwiseDeltaAllowed"
+            ],
+            "description": "pairwiseSupersetArray: BC5 array length at each path must be >= BC4's. pairwiseSupersetKeys: BC5 object's keys at each path must be a superset of BC4's keys. pairwiseEqual: BC5 value at each path must equal BC4's (use sparingly; intended for type discriminators). pairwiseDeltaAllowed: paths where divergence is explicitly accepted; requires `reason`."
+          },
+          "paths": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Dotted-path identifiers. Empty string \"\" addresses the body root."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Free-form justification. Required for `pairwiseDeltaAllowed` (a public compatibility report indexes accepted divergences). Recommended for other rule types so the reader of a future failure knows the invariant being enforced."
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "pairwiseDeltaAllowed" } } },
+            "then": { "required": ["reason"] }
+          }
+        ]
+      }
+    },
     "tags": {
       "type": "array",
       "description": "Tags for filtering tests (e.g., retry, pagination, idempotent)",
