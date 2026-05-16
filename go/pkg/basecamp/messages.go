@@ -14,20 +14,28 @@ const DefaultMessageLimit = 100
 
 // Message represents a Basecamp message on a message board.
 type Message struct {
-	ID          int64        `json:"id"`
-	Status      string       `json:"status"`
-	Subject     string       `json:"subject"`
-	Content     string       `json:"content"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
-	Type        string       `json:"type"`
-	URL         string       `json:"url"`
-	AppURL      string       `json:"app_url"`
-	Parent      *Parent      `json:"parent,omitempty"`
-	Bucket      *Bucket      `json:"bucket,omitempty"`
-	Creator     *Person      `json:"creator,omitempty"`
-	Category    *MessageType `json:"category,omitempty"`
-	BoostsCount int          `json:"boosts_count,omitempty"`
+	ID               int64        `json:"id"`
+	Status           string       `json:"status"`
+	VisibleToClients bool         `json:"visible_to_clients,omitempty"`
+	Subject          string       `json:"subject"`
+	Content          string       `json:"content"`
+	CreatedAt        time.Time    `json:"created_at"`
+	UpdatedAt        time.Time    `json:"updated_at"`
+	Title            string       `json:"title,omitempty"`
+	InheritsStatus   bool         `json:"inherits_status,omitempty"`
+	Type             string       `json:"type"`
+	URL              string       `json:"url"`
+	AppURL           string       `json:"app_url"`
+	BookmarkURL      string       `json:"bookmark_url,omitempty"`
+	BoostsCount      int          `json:"boosts_count,omitempty"`
+	BoostsURL        string       `json:"boosts_url,omitempty"`
+	CommentsCount    int          `json:"comments_count,omitempty"`
+	CommentsURL      string       `json:"comments_url,omitempty"`
+	SubscriptionURL  string       `json:"subscription_url,omitempty"`
+	Parent           *Parent      `json:"parent,omitempty"`
+	Bucket           *Bucket      `json:"bucket,omitempty"`
+	Creator          *Person      `json:"creator,omitempty"`
+	Category         *MessageType `json:"category,omitempty"`
 }
 
 // CreateMessageRequest specifies the parameters for creating a message.
@@ -440,15 +448,23 @@ func (s *MessagesService) Unarchive(ctx context.Context, messageID int64) (err e
 // messageFromGenerated converts a generated Message to our clean Message type.
 func messageFromGenerated(gm generated.Message) Message {
 	m := Message{
-		Status:      gm.Status,
-		Subject:     gm.Subject,
-		Content:     gm.Content,
-		Type:        gm.Type,
-		URL:         gm.Url,
-		AppURL:      gm.AppUrl,
-		CreatedAt:   gm.CreatedAt,
-		UpdatedAt:   gm.UpdatedAt,
-		BoostsCount: int(gm.BoostsCount),
+		Status:           gm.Status,
+		VisibleToClients: gm.VisibleToClients,
+		Subject:          gm.Subject,
+		Content:          gm.Content,
+		Title:            gm.Title,
+		InheritsStatus:   gm.InheritsStatus,
+		Type:             gm.Type,
+		URL:              gm.Url,
+		AppURL:           gm.AppUrl,
+		BookmarkURL:      gm.BookmarkUrl,
+		BoostsCount:      int(gm.BoostsCount),
+		BoostsURL:        gm.BoostsUrl,
+		CommentsCount:    int(gm.CommentsCount),
+		CommentsURL:      gm.CommentsUrl,
+		SubscriptionURL:  gm.SubscriptionUrl,
+		CreatedAt:        gm.CreatedAt,
+		UpdatedAt:        gm.UpdatedAt,
 	}
 
 	if gm.Id != 0 {

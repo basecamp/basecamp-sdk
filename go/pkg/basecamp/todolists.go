@@ -25,6 +25,8 @@ type Todolist struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	CommentsURL      string    `json:"comments_url"`
@@ -341,6 +343,8 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		URL:              gtl.Url,
 		AppURL:           gtl.AppUrl,
 		BookmarkURL:      gtl.BookmarkUrl,
+		BoostsCount:      int(gtl.BoostsCount),
+		BoostsURL:        gtl.BoostsUrl,
 		SubscriptionURL:  gtl.SubscriptionUrl,
 		CommentsCount:    int(gtl.CommentsCount),
 		CommentsURL:      gtl.CommentsUrl,

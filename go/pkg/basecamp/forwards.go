@@ -57,48 +57,62 @@ type ForwardReplyListResult struct {
 
 // Inbox represents a Basecamp email inbox (forwards tool).
 type Inbox struct {
-	ID        int64     `json:"id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Title     string    `json:"title"`
-	Type      string    `json:"type"`
-	URL       string    `json:"url"`
-	AppURL    string    `json:"app_url"`
-	Bucket    *Bucket   `json:"bucket,omitempty"`
-	Creator   *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // Forward represents a forwarded email in Basecamp.
 type Forward struct {
-	ID        int64     `json:"id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Subject   string    `json:"subject"`
-	Content   string    `json:"content"`
-	From      string    `json:"from"`
-	Type      string    `json:"type"`
-	URL       string    `json:"url"`
-	AppURL    string    `json:"app_url"`
-	Parent    *Parent   `json:"parent,omitempty"`
-	Bucket    *Bucket   `json:"bucket,omitempty"`
-	Creator   *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title,omitempty"`
+	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Subject          string    `json:"subject"`
+	Content          string    `json:"content"`
+	From             string    `json:"from"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	SubscriptionURL  string    `json:"subscription_url,omitempty"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // ForwardReply represents a reply to a forwarded email.
 type ForwardReply struct {
-	ID        int64     `json:"id"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Content   string    `json:"content"`
-	Type      string    `json:"type"`
-	URL       string    `json:"url"`
-	AppURL    string    `json:"app_url"`
-	Parent    *Parent   `json:"parent,omitempty"`
-	Bucket    *Bucket   `json:"bucket,omitempty"`
-	Creator   *Person   `json:"creator,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title,omitempty"`
+	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	Content          string    `json:"content"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url,omitempty"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
 }
 
 // CreateForwardReplyRequest specifies the parameters for creating a reply to a forward.
@@ -423,13 +437,16 @@ func (s *ForwardsService) CreateReply(ctx context.Context, forwardID int64, req 
 // inboxFromGenerated converts a generated Inbox to our clean type.
 func inboxFromGenerated(gi generated.Inbox) Inbox {
 	i := Inbox{
-		Status:    gi.Status,
-		CreatedAt: gi.CreatedAt,
-		UpdatedAt: gi.UpdatedAt,
-		Title:     gi.Title,
-		Type:      gi.Type,
-		URL:       gi.Url,
-		AppURL:    gi.AppUrl,
+		Status:           gi.Status,
+		VisibleToClients: gi.VisibleToClients,
+		CreatedAt:        gi.CreatedAt,
+		UpdatedAt:        gi.UpdatedAt,
+		Title:            gi.Title,
+		InheritsStatus:   gi.InheritsStatus,
+		Type:             gi.Type,
+		URL:              gi.Url,
+		AppURL:           gi.AppUrl,
+		BookmarkURL:      gi.BookmarkUrl,
 	}
 
 	if gi.Id != 0 {
@@ -455,15 +472,20 @@ func inboxFromGenerated(gi generated.Inbox) Inbox {
 // forwardFromGenerated converts a generated Forward to our clean type.
 func forwardFromGenerated(gf generated.Forward) Forward {
 	f := Forward{
-		Status:    gf.Status,
-		CreatedAt: gf.CreatedAt,
-		UpdatedAt: gf.UpdatedAt,
-		Subject:   gf.Subject,
-		Content:   gf.Content,
-		From:      gf.From,
-		Type:      gf.Type,
-		URL:       gf.Url,
-		AppURL:    gf.AppUrl,
+		Status:           gf.Status,
+		VisibleToClients: gf.VisibleToClients,
+		CreatedAt:        gf.CreatedAt,
+		UpdatedAt:        gf.UpdatedAt,
+		Title:            gf.Title,
+		InheritsStatus:   gf.InheritsStatus,
+		Subject:          gf.Subject,
+		Content:          gf.Content,
+		From:             gf.From,
+		Type:             gf.Type,
+		URL:              gf.Url,
+		AppURL:           gf.AppUrl,
+		BookmarkURL:      gf.BookmarkUrl,
+		SubscriptionURL:  gf.SubscriptionUrl,
 	}
 
 	if gf.Id != 0 {
@@ -499,13 +521,19 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 // forwardReplyFromGenerated converts a generated ForwardReply to our clean type.
 func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 	r := ForwardReply{
-		Status:    gr.Status,
-		CreatedAt: gr.CreatedAt,
-		UpdatedAt: gr.UpdatedAt,
-		Content:   gr.Content,
-		Type:      gr.Type,
-		URL:       gr.Url,
-		AppURL:    gr.AppUrl,
+		Status:           gr.Status,
+		VisibleToClients: gr.VisibleToClients,
+		CreatedAt:        gr.CreatedAt,
+		UpdatedAt:        gr.UpdatedAt,
+		Title:            gr.Title,
+		InheritsStatus:   gr.InheritsStatus,
+		Content:          gr.Content,
+		Type:             gr.Type,
+		URL:              gr.Url,
+		AppURL:           gr.AppUrl,
+		BookmarkURL:      gr.BookmarkUrl,
+		BoostsCount:      int(gr.BoostsCount),
+		BoostsURL:        gr.BoostsUrl,
 	}
 
 	if gr.Id != 0 {

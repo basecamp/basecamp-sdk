@@ -43,6 +43,10 @@ type Recording struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
+	Content          string    `json:"content,omitempty"`
+	CommentsCount    int       `json:"comments_count,omitempty"`
+	CommentsURL      string    `json:"comments_url,omitempty"`
+	SubscriptionURL  string    `json:"subscription_url,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
@@ -371,6 +375,10 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		URL:              gr.Url,
 		AppURL:           gr.AppUrl,
 		BookmarkURL:      gr.BookmarkUrl,
+		Content:          gr.Content,
+		CommentsCount:    int(gr.CommentsCount),
+		CommentsURL:      gr.CommentsUrl,
+		SubscriptionURL:  gr.SubscriptionUrl,
 	}
 
 	if gr.Id != 0 {
