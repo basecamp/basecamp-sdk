@@ -1,0 +1,32 @@
+.github/workflows/live-canary.yml
+  s_13deffa07b5c67::t_894ed5c390762f 128
+  s_13deffa07b5c67::t_5b286a54b67696 1-127,129-133
+conformance/schema.json
+  s_13deffa07b5c67::t_11c495ca29376c 201-235
+conformance/tests/live-my-surface.json
+  s_13deffa07b5c67::t_975129e334269e 74,82-93
+scripts/compare-canary-runs.sh
+  s_13deffa07b5c67::t_d03dd67cec304a 1-186,195-288
+  s_13deffa07b5c67::t_ded8cd8aaa2f23 187-194
+Makefile
+  s_13deffa07b5c67::t_959686b55da67b 452-507
+  s_13deffa07b5c67::t_2be30fd537ac86 373
+CONTRIBUTING.md
+  s_13deffa07b5c67::t_78d374bb768e4c 362-459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "671b0105ffdbdb440dd347e7246b72640c4a96e7",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
