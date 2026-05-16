@@ -1,0 +1,20 @@
+scripts/compare-canary-runs.sh
+  s_13deffa07b5c67::t_ded8cd8aaa2f23 187-194
+  s_13deffa07b5c67::t_d03dd67cec304a 1-186,195-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8c95ed9a18ddb6616b17e45959ba528fc05bcccb",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
