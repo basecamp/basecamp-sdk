@@ -1207,14 +1207,8 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		ct.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		ct.Creator = &creator
 	}
 
 	if len(gc.Subscribers) > 0 {
@@ -1278,14 +1272,8 @@ func cardColumnFromGenerated(gc generated.CardColumn) CardColumn {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		cc.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		cc.Creator = &creator
 	}
 
 	if gc.OnHold.Id != 0 {
@@ -1368,25 +1356,13 @@ func cardFromGenerated(gc generated.Card) Card {
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		c.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		c.Creator = &creator
 	}
 
 	if gc.Completer.Id != 0 || gc.Completer.Name != "" {
-		c.Completer = &Person{
-			ID:           int64(gc.Completer.Id),
-			Name:         gc.Completer.Name,
-			EmailAddress: gc.Completer.EmailAddress,
-			AvatarURL:    gc.Completer.AvatarUrl,
-			Admin:        gc.Completer.Admin,
-			Owner:        gc.Completer.Owner,
-		}
+		completer := personFromGenerated(gc.Completer)
+		c.Completer = &completer
 	}
 
 	if len(gc.Assignees) > 0 {
@@ -1463,25 +1439,13 @@ func cardStepFromGenerated(gs generated.CardStep) CardStep {
 	}
 
 	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
-		s.Creator = &Person{
-			ID:           int64(gs.Creator.Id),
-			Name:         gs.Creator.Name,
-			EmailAddress: gs.Creator.EmailAddress,
-			AvatarURL:    gs.Creator.AvatarUrl,
-			Admin:        gs.Creator.Admin,
-			Owner:        gs.Creator.Owner,
-		}
+		creator := personFromGenerated(gs.Creator)
+		s.Creator = &creator
 	}
 
 	if gs.Completer.Id != 0 || gs.Completer.Name != "" {
-		s.Completer = &Person{
-			ID:           int64(gs.Completer.Id),
-			Name:         gs.Completer.Name,
-			EmailAddress: gs.Completer.EmailAddress,
-			AvatarURL:    gs.Completer.AvatarUrl,
-			Admin:        gs.Completer.Admin,
-			Owner:        gs.Completer.Owner,
-		}
+		completer := personFromGenerated(gs.Completer)
+		s.Completer = &completer
 	}
 
 	if len(gs.Assignees) > 0 {

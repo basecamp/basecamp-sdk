@@ -380,14 +380,8 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 	}
 
 	if gtl.Creator.Id != 0 || gtl.Creator.Name != "" {
-		tl.Creator = &Person{
-			ID:           int64(gtl.Creator.Id),
-			Name:         gtl.Creator.Name,
-			EmailAddress: gtl.Creator.EmailAddress,
-			AvatarURL:    gtl.Creator.AvatarUrl,
-			Admin:        gtl.Creator.Admin,
-			Owner:        gtl.Creator.Owner,
-		}
+		creator := personFromGenerated(gtl.Creator)
+		tl.Creator = &creator
 	}
 
 	return tl

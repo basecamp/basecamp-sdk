@@ -475,14 +475,8 @@ func messageFromGenerated(gm generated.Message) Message {
 	}
 
 	if gm.Creator.Id != 0 || gm.Creator.Name != "" {
-		m.Creator = &Person{
-			ID:           int64(gm.Creator.Id),
-			Name:         gm.Creator.Name,
-			EmailAddress: gm.Creator.EmailAddress,
-			AvatarURL:    gm.Creator.AvatarUrl,
-			Admin:        gm.Creator.Admin,
-			Owner:        gm.Creator.Owner,
-		}
+		creator := personFromGenerated(gm.Creator)
+		m.Creator = &creator
 	}
 
 	if gm.Category.Id != 0 || gm.Category.Name != "" {
