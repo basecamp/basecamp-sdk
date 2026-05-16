@@ -107,6 +107,8 @@ type QuestionAnswer struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	CommentsURL      string    `json:"comments_url"`
@@ -843,6 +845,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		URL:              ga.Url,
 		AppURL:           ga.AppUrl,
 		BookmarkURL:      ga.BookmarkUrl,
+		BoostsCount:      int(ga.BoostsCount),
+		BoostsURL:        ga.BoostsUrl,
 		SubscriptionURL:  ga.SubscriptionUrl,
 		CommentsCount:    int(ga.CommentsCount),
 		CommentsURL:      ga.CommentsUrl,

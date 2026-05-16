@@ -90,12 +90,14 @@ type CampfireLine struct {
 	Type             string                   `json:"type"`
 	URL              string                   `json:"url"`
 	AppURL           string                   `json:"app_url"`
+	BookmarkURL      string                   `json:"bookmark_url,omitempty"`
+	BoostsCount      int                      `json:"boosts_count,omitempty"`
+	BoostsURL        string                   `json:"boosts_url,omitempty"`
 	Content          string                   `json:"content,omitempty"`
 	Attachments      []CampfireLineAttachment `json:"attachments,omitempty"`
 	Parent           *Parent                  `json:"parent,omitempty"`
 	Bucket           *Bucket                  `json:"bucket,omitempty"`
 	Creator          *Person                  `json:"creator,omitempty"`
-	BoostsCount      int                      `json:"boosts_count,omitempty"`
 }
 
 // CampfireLineAttachment represents a file attached to an upload line.
@@ -943,10 +945,12 @@ func campfireLineFromGenerated(gl generated.CampfireLine) CampfireLine {
 		Type:             gl.Type,
 		URL:              gl.Url,
 		AppURL:           gl.AppUrl,
+		BookmarkURL:      gl.BookmarkUrl,
+		BoostsCount:      int(gl.BoostsCount),
+		BoostsURL:        gl.BoostsUrl,
 		Content:          gl.Content,
 		CreatedAt:        gl.CreatedAt,
 		UpdatedAt:        gl.UpdatedAt,
-		BoostsCount:      int(gl.BoostsCount),
 	}
 
 	l.ID = gl.Id

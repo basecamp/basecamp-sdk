@@ -61,6 +61,8 @@ type ScheduleEntry struct {
 	URL              string             `json:"url"`
 	AppURL           string             `json:"app_url"`
 	BookmarkURL      string             `json:"bookmark_url"`
+	BoostsCount      int                `json:"boosts_count,omitempty"`
+	BoostsURL        string             `json:"boosts_url,omitempty"`
 	SubscriptionURL  string             `json:"subscription_url"`
 	CommentsURL      string             `json:"comments_url"`
 	CommentsCount    int                `json:"comments_count"`
@@ -600,6 +602,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		URL:              ge.Url,
 		AppURL:           ge.AppUrl,
 		BookmarkURL:      ge.BookmarkUrl,
+		BoostsCount:      int(ge.BoostsCount),
+		BoostsURL:        ge.BoostsUrl,
 		SubscriptionURL:  ge.SubscriptionUrl,
 		CommentsURL:      ge.CommentsUrl,
 		CommentsCount:    int(ge.CommentsCount),
