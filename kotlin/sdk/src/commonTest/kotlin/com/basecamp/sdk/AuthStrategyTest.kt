@@ -21,7 +21,7 @@ class AuthStrategyTest {
             respondOk("[]")
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -46,7 +46,7 @@ class AuthStrategyTest {
             respondOk("[]")
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             auth(AuthStrategy { request ->
                 request.header("Cookie", "session=abc123")
             })
@@ -67,7 +67,7 @@ class AuthStrategyTest {
     @Test
     fun builderRejectsBothAccessTokenAndAuth() {
         assertFailsWith<IllegalArgumentException> {
-            BasecampClient {
+            testBasecampClient {
                 accessToken("token")
                 auth(BearerAuth(StaticTokenProvider("other-token")))
                 baseUrl = "http://localhost:3000"
@@ -78,7 +78,7 @@ class AuthStrategyTest {
     @Test
     fun builderRequiresAccessTokenOrAuth() {
         assertFailsWith<IllegalArgumentException> {
-            BasecampClient {
+            testBasecampClient {
                 baseUrl = "http://localhost:3000"
             }
         }
@@ -94,7 +94,7 @@ class AuthStrategyTest {
 
         val externalClient = HttpClient(engine)
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             httpClient = externalClient
@@ -119,7 +119,7 @@ class AuthStrategyTest {
             expectSuccess = true
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             httpClient = externalClient
@@ -144,7 +144,7 @@ class AuthStrategyTest {
 
         val externalClient = HttpClient(engine)
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             httpClient = externalClient

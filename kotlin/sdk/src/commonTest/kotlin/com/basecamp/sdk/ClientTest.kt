@@ -3,6 +3,8 @@ package com.basecamp.sdk
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
 import io.ktor.utils.io.*
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,7 +17,7 @@ class ClientTest {
         handler: MockRequestHandler,
     ): BasecampClient {
         val engine = MockEngine(handler)
-        return BasecampClient {
+        return testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -89,7 +91,7 @@ class ClientTest {
     @Test
     fun builderRequiresAccessToken() {
         assertFailsWith<IllegalArgumentException> {
-            BasecampClient {
+            testBasecampClient {
                 baseUrl = "http://localhost:3000"
             }
         }
@@ -98,7 +100,7 @@ class ClientTest {
     @Test
     fun builderRejectsNonHttpsUrl() {
         assertFailsWith<IllegalArgumentException> {
-            BasecampClient {
+            testBasecampClient {
                 accessToken("token")
                 baseUrl = "http://not-localhost.com"
             }
@@ -107,11 +109,60 @@ class ClientTest {
 
     @Test
     fun builderAllowsLocalhost() {
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("token")
             baseUrl = "http://localhost:3000"
         }
         assertEquals("http://localhost:3000", client.config.baseUrl)
+        client.close()
+    }
+
+    @Test
+    fun builderPropagatesTimeoutToConfig() {
+        val client = testBasecampClient {
+            accessToken("token")
+            baseUrl = "http://localhost:3000"
+            timeout = 5.seconds
+        }
+        assertEquals(5.seconds, client.config.timeout)
+        client.close()
+    }
+
+    @Test
+    fun builderRejectsNonPositiveTimeout() {
+        assertFailsWith<IllegalArgumentException> {
+            BasecampClient {
+                accessToken("token")
+                baseUrl = "http://localhost:3000"
+                timeout = Duration.ZERO
+            }
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BasecampClient {
+                accessToken("token")
+                baseUrl = "http://localhost:3000"
+                timeout = (-1).seconds
+            }
+        }
+    }
+
+    @Test
+    fun infiniteTimeoutAllowsRequestUnderRunTest() = runTest {
+        // Regression guard: HttpTimeout is skipped when timeout is INFINITE,
+        // sidestepping the KTOR-8271 virtual-clock race in MockEngine + runTest.
+        val engine = MockEngine { respondOk("[]") }
+        val client = BasecampClient {
+            accessToken("token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+            timeout = Duration.INFINITE
+            enableRetry = false
+        }
+        val account = client.forAccount("12345")
+        val response = account.httpClient.requestWithRetry(
+            HttpMethod.Get, "${client.config.baseUrl}/12345/projects.json"
+        )
+        assertEquals(200, response.status.value)
         client.close()
     }
 
@@ -148,7 +199,7 @@ class ClientTest {
         }
 
         val engine = MockEngine { respondOk("[]") }
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine

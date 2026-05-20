@@ -14,7 +14,7 @@ class DownloadTest {
         enableRetry: Boolean = false,
     ): BasecampClient {
         val mockEngine = MockEngine(handler)
-        return BasecampClient {
+        return testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             engine = mockEngine

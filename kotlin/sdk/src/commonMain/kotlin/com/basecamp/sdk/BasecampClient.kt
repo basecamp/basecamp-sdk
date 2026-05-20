@@ -5,6 +5,7 @@ import io.ktor.client.*
 import io.ktor.client.engine.*
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.http.*
+import kotlin.time.Duration
 import kotlinx.serialization.json.Json
 
 /**
@@ -41,6 +42,9 @@ class BasecampClientBuilder {
     /** Maximum pages to follow during pagination (safety cap). */
     var maxPages: Int = BasecampConfig.DEFAULT_MAX_PAGES
 
+    /** Request timeout. Use [Duration.INFINITE] to disable. */
+    var timeout: Duration = BasecampConfig.DEFAULT_TIMEOUT
+
     /** Observability hooks. */
     var hooks: BasecampHooks = NoopHooks
 
@@ -72,6 +76,9 @@ class BasecampClientBuilder {
         require(httpClient == null || engine == null) {
             "Cannot set both httpClient and engine. Use one or the other."
         }
+        require(timeout == Duration.INFINITE || timeout.isPositive()) {
+            "timeout must be positive or Duration.INFINITE, got: $timeout"
+        }
 
         val resolvedAuth = authStrategy
             ?: tokenProvider?.let { BearerAuth(it) }
@@ -84,6 +91,7 @@ class BasecampClientBuilder {
             userAgent = userAgent,
             enableCache = enableCache,
             enableRetry = enableRetry,
+            timeout = timeout,
             maxPages = maxPages,
         )
 
@@ -165,10 +173,12 @@ class BasecampClient internal constructor(
 
     private fun HttpClientConfig<*>.configureClient() {
         expectSuccess = false
-        install(HttpTimeout) {
-            requestTimeoutMillis = config.timeout.inWholeMilliseconds
-            connectTimeoutMillis = config.timeout.inWholeMilliseconds
-            socketTimeoutMillis = config.timeout.inWholeMilliseconds
+        if (config.timeout.isFinite()) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = config.timeout.inWholeMilliseconds
+                connectTimeoutMillis = config.timeout.inWholeMilliseconds
+                socketTimeoutMillis = config.timeout.inWholeMilliseconds
+            }
         }
     }
 

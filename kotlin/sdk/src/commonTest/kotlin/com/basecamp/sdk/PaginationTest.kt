@@ -179,7 +179,7 @@ class PaginationTest {
 
     private fun mockClient(handler: MockRequestHandler): BasecampClient {
         val engine = MockEngine(handler)
-        return BasecampClient {
+        return testBasecampClient {
             accessToken("test-token")
             this.engine = engine
         }
