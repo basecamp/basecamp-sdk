@@ -48,7 +48,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -75,7 +75,7 @@ class RetryTest {
             )
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -110,7 +110,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -143,7 +143,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -169,7 +169,7 @@ class RetryTest {
             )
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -205,7 +205,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -237,7 +237,7 @@ class RetryTest {
             )
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -271,7 +271,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -301,7 +301,7 @@ class RetryTest {
             )
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             enableRetry = false
@@ -329,7 +329,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine
@@ -376,7 +376,7 @@ class RetryTest {
             }
         }
 
-        val client = BasecampClient {
+        val client = testBasecampClient {
             accessToken("test-token")
             baseUrl = "http://localhost:3000"
             this.engine = engine

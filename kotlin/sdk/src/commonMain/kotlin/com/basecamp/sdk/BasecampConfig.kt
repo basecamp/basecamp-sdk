@@ -19,7 +19,7 @@ data class BasecampConfig(
     /** Enable automatic retry on 429/503 with exponential backoff. */
     val enableRetry: Boolean = true,
     /** Request timeout. */
-    val timeout: Duration = 30.seconds,
+    val timeout: Duration = DEFAULT_TIMEOUT,
     /** Maximum retry attempts for GET requests. */
     val maxRetries: Int = DEFAULT_MAX_RETRIES,
     /** Maximum pages to follow for pagination (safety cap). */
@@ -34,5 +34,6 @@ data class BasecampConfig(
         const val DEFAULT_USER_AGENT = "basecamp-sdk-kotlin/$VERSION (api:$API_VERSION)"
         const val DEFAULT_MAX_RETRIES = 3
         const val DEFAULT_MAX_PAGES = 10_000
+        val DEFAULT_TIMEOUT: Duration = 30.seconds
     }
 }
