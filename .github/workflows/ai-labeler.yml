@@ -120,7 +120,7 @@ jobs:
       - name: Analyze impact
         if: steps.check.outputs.skip != 'true'
         id: analyze
-        uses: actions/ai-inference@e09e65981758de8b2fdab13c2bfb7c7d5493b0b6 # v2.0.7
+        uses: actions/ai-inference@17ff458cb182449bbb2e43701fcd98f6af8f6570 # v2.1.0
         with:
           prompt-file: /tmp/prompt.yml
 
