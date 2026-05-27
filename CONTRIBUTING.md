@@ -404,7 +404,7 @@ Example — the canonical `memories` canary on `GetMyNotifications`:
   {
     "type": "pairwiseDeltaAllowed",
     "paths": ["memories"],
-    "reason": "Confirmed live regression: BC5 master ships `json.memories []` while BC4 four still populates it. The fix is written but unmerged (BC3 #10947: `json.memories @bubble_ups`). Temporary — remove this waiver once #10947 merges. Tracked in spec/api-gaps/memories-emptied-regression.md."
+    "reason": "Confirmed live regression: BC5 master ships `json.memories []` while BC4 (the four branch) still populates it. The fix is written but unmerged (BC3 #10947: `json.memories @bubble_ups`). Temporary — remove this waiver once #10947 merges. Tracked in spec/api-gaps/memories-emptied-regression.md."
   }
 ]
 ```
