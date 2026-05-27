@@ -71,7 +71,7 @@
   {
     "mode": "live",
     "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
-    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays, and exercises the top-level memories[] regression: BC5 master ships memories as [] while BC4 four still populates it. The pairwiseSupersetArray rule below encodes the intended additive-only invariant but is currently waived (pairwiseDeltaAllowed) because the BC3 fix (#10947, json.memories @bubble_ups) is written but unmerged — see spec/api-gaps/memories-emptied-regression.md.",
+    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays, and exercises the top-level memories[] regression: BC5 master ships memories as [] while BC4 (the four branch) still populates it. The pairwiseSupersetArray rule below encodes the intended additive-only invariant but is currently waived (pairwiseDeltaAllowed) because the BC3 fix (#10947, json.memories @bubble_ups) is written but unmerged — see spec/api-gaps/memories-emptied-regression.md.",
     "operation": "GetMyNotifications",
     "method": "GET",
     "path": "/my/readings.json",
@@ -94,7 +94,7 @@
       {
         "type": "pairwiseDeltaAllowed",
         "paths": ["memories"],
-        "reason": "TEMPORARY waiver for a confirmed live regression: BC5 master ships `json.memories []` while BC4 four still populates it. The fix is written but unmerged — BC3 #10947 carries `json.memories @bubble_ups` (head 9dc63e2e). Remove this waiver (restoring the pairwiseSupersetArray hard-fail) once #10947 merges and provenance is repinned. Tracked in spec/api-gaps/memories-emptied-regression.md."
+        "reason": "TEMPORARY waiver for a confirmed live regression: BC5 master ships `json.memories []` while BC4 (the four branch) still populates it. The fix is written but unmerged — BC3 #10947 carries `json.memories @bubble_ups` (head 9dc63e2e). Remove this waiver (restoring the pairwiseSupersetArray hard-fail) once #10947 merges and provenance is repinned. Tracked in spec/api-gaps/memories-emptied-regression.md."
       }
     ]
   },
