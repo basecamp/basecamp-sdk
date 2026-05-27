@@ -7,22 +7,26 @@ bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3c
   routes:
-    - "GET /:account_id/todos.json"
     - "GET /:account_id/todos/open.json"
-    - "GET /:account_id/cards.json"
+    - "GET /:account_id/todos/completed.json"
+    - "GET /:account_id/todos/overdue.json"
+    - "GET /:account_id/todos/unassigned.json"
+    - "GET /:account_id/todos/no_due_date.json"
+    - "GET /:account_id/cards/open.json"
+    - "GET /:account_id/cards/completed.json"
+    - "GET /:account_id/cards/overdue.json"
+    - "GET /:account_id/cards/unassigned.json"
+    - "GET /:account_id/cards/no_due_date.json"
     - "GET /:account_id/cards/not_now.json"
-    - "GET /:account_id/files.json"
-    - "GET /:account_id/messages.json"
-    - "GET /:account_id/comments.json"
+    - "GET /:account_id/documents/recent.json"
+    - "GET /:account_id/messages/recent.json"
+    - "GET /:account_id/comments/recent.json"
+    - "GET /:account_id/checkins/recent.json"
+    - "GET /:account_id/forwards/recent.json"
     - "GET /:account_id/boosts.json"
-    - "GET /:account_id/checkins.json"
-    - "GET /:account_id/forwards.json"
-    - "GET /:account_id/documents.json"
-    - "(plus per-group filter sub-routes; final route list pending BC3 settlement)"
   controllers:
     - app/controllers/everything/todos_controller.rb
     - app/controllers/everything/cards_controller.rb
-    - app/controllers/everything/files_controller.rb
     - app/controllers/everything/messages_controller.rb
     - app/controllers/everything/comments_controller.rb
     - app/controllers/everything/boosts_controller.rb
@@ -40,15 +44,20 @@ bc3_refs:
 BC5 introduces account-wide flat listings of recordings by type, served by the
 `everything/*_controller.rb` namespace under flat top-level paths (note:
 `/everything/...` is the **Rails controller namespace**, not part of the URL).
-There are 9 recording-type groups: todos, cards, files, messages, comments,
-boosts, checkins, forwards, documents.
+There are 8 active groups after the launch reconciliation: todos, cards,
+messages, comments, boosts, checkins, forwards, documents (the files group was
+dropped — see below).
 
-**Current BC3 Phase 3c scope: 22 API-eligible endpoints.** The earlier top
-summary listed 30 endpoints across the 9 groups (bare top-level routes plus
-filter sub-routes per group); the Phase 3c detail narrowed it to 22 by
-excluding the bare top-level routes that stay HTML shells. Treat 22 as the
-working number for absorption planning; if BC3 settles a different final
-count before the absorption PR opens, this brief gets re-synced.
+**Current BC3 scope: 17 API-eligible endpoints** (BC3 PR #10947, open/unmerged).
+The launch reconciliation (`BRIEF-bc5-reconciliation-scope-cuts.md`, `five+api`
+@ `716e710ee5`) dropped the **files group**: `master` consolidated file-type
+routes into `GET /files/recent.json?kind=` and unions unrenderable attachment
+recordings (no API recordable-partial), so files are out of #10947's scope. Net
+22 → 17. Bare collection routes (`/todos.json`, `/cards.json`, …) are HTML
+shells and intentionally do **not** return JSON; the API surface is the named
+subroutes in the frontmatter plus standalone `/boosts.json`. Files-by-kind
+(`/files/recent?kind=`) is a possible *future* BC3 deliverable — file a fresh
+brief then; do not model it speculatively now.
 
 ## Why it matters
 
@@ -72,20 +81,22 @@ e.g. `/cards/not_now.json` is the per-status filter variant of `/cards.json`.
 
 ## Implementation notes for BC3
 
-- 9 controllers under `app/controllers/everything/` already exist (web).
-  Add a `respond_to :json` branch and corresponding jbuilder views.
-- Consider whether to ship bare top-level routes (`/todos.json`, etc.) or
-  scope to sub-routes only. Mirror that decision in `doc/api/`.
+- 8 controllers under `app/controllers/everything/` already exist (web; the
+  files group is out of scope — see What's missing). Add a `respond_to :json`
+  branch and corresponding jbuilder views.
+- Bare top-level routes (`/todos.json`, etc.) stay HTML shells; the JSON
+  surface is the named subroutes only. Mirror that in `doc/api/`.
 - Consistency: all 9 groups should use the same pagination + filter idiom.
   Inconsistency between groups creates per-endpoint absorption work in the SDK.
 
 ## SDK absorption plan when this lands
 
-- New `EverythingService` with one op per endpoint BC3 ships.
+- New `EverythingService` with **17** operations (one per endpoint in the
+  frontmatter route list), opening once BC3 PR #10947 merges.
 - Each op routed at the flat top-level path (no `/everything/` URL prefix).
 - Reuse existing recording shapes (`Todo`, `Card`, `Document`, `Message`, etc.).
 - Canary fixture: cover at least one operation per group to catch shape drift.
   Pairwise check: BC4 absent → BC5 present is fine.
-- Operation count in PR description must match what BC3 actually ships.
-  Working number is 22 (Phase 3c API-eligible endpoints); brief author
-  re-syncs route list before the absorption PR opens.
+- Operation count in the PR description must match what #10947 actually ships
+  (17 after the files-group drop); re-sync the route list if BC3 settles a
+  different final count before the absorption PR opens.
