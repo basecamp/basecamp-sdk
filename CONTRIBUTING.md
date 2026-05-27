@@ -399,13 +399,22 @@ Example — the canonical `memories` canary on `GetMyNotifications`:
   {
     "type": "pairwiseSupersetArray",
     "paths": ["memories"],
-    "reason": "BC3 commit 64acf34 aliases BC5 memories[] to bubble_ups[] so BC4 API consumers keep receiving the same population on BC5. This rule fails if BC5 ever emits fewer memories than BC4."
+    "reason": "Additive-only invariant: BC5 memories[] must stay a superset of BC4's. Currently waived by the pairwiseDeltaAllowed entry below — see spec/api-gaps/memories-emptied-regression.md."
+  },
+  {
+    "type": "pairwiseDeltaAllowed",
+    "paths": ["memories"],
+    "reason": "Confirmed live regression: BC5 master ships `json.memories []` while BC4 four still populates it. The fix is written but unmerged (BC3 #10947: `json.memories @bubble_ups`). Temporary — remove this waiver once #10947 merges. Tracked in spec/api-gaps/memories-emptied-regression.md."
   }
 ]
 ```
 
-If a future BC5 server change drops the alias, this rule fires immediately —
-the canary's contract with BC3 made concrete.
+BC5 `master` currently ships `memories: []` (a confirmed regression — the fix
+is written but unmerged in BC3 #10947), so the superset rule is waived by the
+`pairwiseDeltaAllowed` entry above and tracked in
+`spec/api-gaps/memories-emptied-regression.md`. Once #10947 merges and the spec
+provenance is repinned, drop the waiver; the superset rule then fires on any
+future regression — the canary's contract with BC3 made concrete.
 
 ### Orchestrator
 
@@ -427,8 +436,8 @@ What it runs, in order:
 2. `BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR=tmp/live-canary make conformance-live`
    — same against the BC5 origin set via `BC5_HOST`.
 3. `./scripts/compare-canary-runs.sh tmp/live-canary/bc4/wire tmp/live-canary/bc5/wire`
-   — applies pairwise rules. Fails on the first violation outside
-   `pairwiseDeltaAllowed`.
+   — applies pairwise rules. Reports all violations outside
+   `pairwiseDeltaAllowed` and exits non-zero if any are found.
 
 Override `LIVE_RECORD_DIR` (default `tmp/live-canary`) or `BASECAMP_HOST`
 (default `https://3.basecampapi.com`) on the make line.

@@ -71,7 +71,7 @@
   {
     "mode": "live",
     "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
-    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays. Also exercises the memories[] observation that pairs with the COORDINATION.md decision: BC3 commit 64acf34 aliases BC5 memories[] to bubble_ups[] so existing BC4 API consumers keep receiving the same population. The pairwise rule below hard-fails if that alias ever drops.",
+    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays, and exercises the top-level memories[] regression: BC5 master ships memories as [] while BC4 four still populates it. The pairwiseSupersetArray rule below encodes the intended additive-only invariant but is currently waived (pairwiseDeltaAllowed) because the BC3 fix (#10947, json.memories @bubble_ups) is written but unmerged — see spec/api-gaps/memories-emptied-regression.md.",
     "operation": "GetMyNotifications",
     "method": "GET",
     "path": "/my/readings.json",
@@ -84,12 +84,17 @@
       {
         "type": "pairwiseSupersetArray",
         "paths": ["memories"],
-        "reason": "BC3 commit 64acf34 aliases BC5 memories[] to bubble_ups[] so BC4 API consumers keep receiving the same population on BC5. This rule fails if BC5 ever emits fewer memories than BC4 — the canonical canary signal for the BC3↔SDK contract."
+        "reason": "Additive-only invariant: BC5 memories[] should remain a superset of BC4's. Currently WAIVED by the pairwiseDeltaAllowed entry below — see spec/api-gaps/memories-emptied-regression.md for the confirmed live regression."
       },
       {
         "type": "pairwiseSupersetKeys",
         "paths": [""],
-        "reason": "Top-level GetMyNotifications keys must not regress between BC4 and BC5 — additive-only invariant. New BC5 keys (bubble_ups, scheduled_bubble_ups) are expected; key removals fail."
+        "reason": "Top-level GetMyNotifications keys must not regress between BC4 and BC5 — additive-only invariant. New BC5 keys (bubble_ups, scheduled_bubble_ups) are expected; key removals fail. memories remains present as a key on BC5 (only its contents are emptied), so this rule is unaffected by the memories regression."
+      },
+      {
+        "type": "pairwiseDeltaAllowed",
+        "paths": ["memories"],
+        "reason": "TEMPORARY waiver for a confirmed live regression: BC5 master ships `json.memories []` while BC4 four still populates it. The fix is written but unmerged — BC3 #10947 carries `json.memories @bubble_ups` (head 9dc63e2e). Remove this waiver (restoring the pairwiseSupersetArray hard-fail) once #10947 merges and provenance is repinned. Tracked in spec/api-gaps/memories-emptied-regression.md."
       }
     ]
   },
