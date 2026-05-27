@@ -27,6 +27,12 @@ Note: there is **no `/buckets/:id/timeline` route** — earlier drafts of this
 brief used the wrong path. Per-project routes are keyed by `project_id`, not
 `bucket_id`.
 
+**Launch FYI (2026-05-27):** both `/activity.json` and
+`/projects/:project_id/timeline.json` ship on `master` **directly** (not via
+BC3 PR #10947), so SDK absorption pulls from `master`. The BC5-new
+`/activity/days/:date` and `/activity/dates` sub-routes were removed in the
+timeline rewrite — they were never modeled here, so there is nothing to remove.
+
 ## Why it matters
 
 Activity feeds are a primary integration surface for dashboards, audit logs,

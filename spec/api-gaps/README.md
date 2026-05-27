@@ -42,11 +42,18 @@ making the absorption journey publicly auditable.
 | [everything-aggregates](everything-aggregates.md) | no-json-contract | 3c | high |
 | [activity-timeline](activity-timeline.md) | no-json-contract | 3d | high |
 | [recordable-subtypes-doc](recordable-subtypes-doc.md) | partial-coverage | 3a | medium |
-| [stack-doc-and-smithy](stack-doc-and-smithy.md) | partial-coverage | 3b | medium |
+| [stack-doc-and-smithy](stack-doc-and-smithy.md) | confirmed-not-api-resource | 3b | medium |
 | [search-filter-additions](search-filter-additions.md) | no-json-contract | 3e | medium |
 | [rich-text-project-attachable](rich-text-project-attachable.md) | no-json-contract | 3e | low |
 | [recording-bubbleupable-field](recording-bubbleupable-field.md) | no-json-contract | 3e | low |
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |
+| [memories-emptied-regression](memories-emptied-regression.md) | partial-coverage | launch | high |
+
+> `memories-emptied-regression` is a *subtractive regression* (a field BC4
+> populates that BC5 emptied), not an additive gap; `partial-coverage` is the
+> closest status fit — see the entry. The fix is written but unmerged in BC3
+> #10947. `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
+> classification record (Stacks are web-only on both `four` and `master`).
 
 The detector also maintains [`allowlist.yml`](allowlist.yml) for routes
 classified as not-an-API-resource or absorbed under another entry. Allowlist
