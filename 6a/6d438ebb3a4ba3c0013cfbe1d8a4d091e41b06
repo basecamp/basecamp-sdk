@@ -1,0 +1,33 @@
+spec/api-gaps/stack-doc-and-smithy.md
+  s_83c0f2fdc30030::t_8fdaae54a1de9b 3,9,11,14,17,19-21,23,25-26,28-33,35-38,40,42-46,48,50-53,57-60,64-68
+spec/api-gaps/activity-timeline.md
+  s_83c0f2fdc30030::t_a586dad267fe62 30-35
+spec/api-gaps/everything-aggregates.md
+  s_83c0f2fdc30030::t_2f2c61cafe27a8 11-19,21-25
+  s_83c0f2fdc30030::t_d470e8d73921bc 84-88
+  s_83c0f2fdc30030::t_4d4b778449cc1c 47-49,51-60
+  s_83c0f2fdc30030::t_31116204e56206 94-95,100-102
+spec/api-gaps/README.md
+  s_83c0f2fdc30030::t_19900f69b7eb58 45,50
+  s_83c0f2fdc30030::t_a5ae2ef0734f80 52-56
+COORDINATION.md
+  s_83c0f2fdc30030::t_e66d4b29228259 32-44,46-49,51-52
+spec/api-gaps/memories-emptied-regression.md
+  s_83c0f2fdc30030::t_4f4bcb3fb2412e 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a6d438ebb3a4ba3c0013cfbe1d8a4d091e41b06",
+  "prompts": {},
+  "sessions": {
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
