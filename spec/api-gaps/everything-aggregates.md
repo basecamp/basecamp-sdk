@@ -86,7 +86,7 @@ e.g. `/cards/not_now.json` is the per-status filter variant of `/cards.json`.
   branch and corresponding jbuilder views.
 - Bare top-level routes (`/todos.json`, etc.) stay HTML shells; the JSON
   surface is the named subroutes only. Mirror that in `doc/api/`.
-- Consistency: all 9 groups should use the same pagination + filter idiom.
+- Consistency: all 8 groups should use the same pagination + filter idiom.
   Inconsistency between groups creates per-endpoint absorption work in the SDK.
 
 ## SDK absorption plan when this lands
