@@ -275,8 +275,9 @@ Optional env:
 - `BASECAMP_BACKEND=bc4|bc5` — namespaces persisted snapshots so BC4 and
   BC5 runs don't collide.
 - `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
-  `<path>/<backend>/wire/<test>.json`. Used by downstream cross-language
-  decoders (PR 3) and BC4↔BC5 comparison (PR 4).
+  `<path>/<backend>/wire/<test>.json`. Consumed by the cross-language
+  replay runners (`make conformance-*-replay`) and by the pairwise
+  BC4↔BC5 comparison (`scripts/compare-canary-runs.sh`).
 - `BASECAMP_BC4_PROJECT_ID` / `BASECAMP_BC5_PROJECT_ID` /
   `BASECAMP_PROJECT_ID` etc. — explicit fixture-IDs override the runner's
   discovery walk. Same pattern applies for `TODOSET_ID`, `TODOLIST_ID`,
@@ -348,11 +349,6 @@ hand-rolled schema walkers (which mirror the TS validator's required + extras
 algorithm in each language). Any per-language divergence in `extras_seen`
 points at a walker bug in the diverging language.
 
-`make conformance-typescript-live` is owned by PR 2; the four
-`make conformance-*-replay` targets ship in PR 3. The orchestrating
-`make conformance-live` and `make check-bc5-compat` targets that thread
-TS capture → replay → BC4↔BC5 comparison together land in PR 4.
-
 When the SDK gains a new operation in `live-my-surface.json`, it must be
 added to:
 
@@ -363,6 +359,114 @@ added to:
 - `kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt` — Kotlin decoder.
 
 Each runner's coverage gate refuses to start until all five are in place.
+
+### Pairwise BC4↔BC5 comparison
+
+Per-backend schema validation is necessary but not sufficient. With every
+new BC5 field marked optional, a regression where BC4 emits `memories:
+[item, item]` and BC5 emits `memories: []` would pass per-backend schema
+checks — yet that's exactly the additive-only invariant the canary should
+catch. The pairwise comparison closes that loop.
+
+Each live test in `conformance/tests/live-my-surface.json` can carry
+`pairwiseAssertions`, which apply to a matched pair of BC4 and BC5 wire
+snapshots for the same operation. Four rule types:
+
+- `pairwiseSupersetArray` — BC5 array length at each path must be ≥ BC4's.
+  Catches "this array shrank between backends".
+- `pairwiseSupersetKeys` — BC5 object's keys at each path must be a superset
+  of BC4's keys. Catches "this field disappeared".
+- `pairwiseEqual` — BC5 value at each path must equal BC4's. Use sparingly;
+  most useful for type-discriminator fields.
+- `pairwiseDeltaAllowed` — paths where divergence is explicitly accepted.
+  The listed paths are skipped by the other three rules for this operation.
+  `reason` is **required** — a public compatibility report indexes accepted
+  divergences.
+
+Path syntax (dotted identifiers, evaluated against each snapshot):
+
+- `""` (empty string) addresses the body root.
+- `foo.bar` is shorthand for `pages[0].body.foo.bar` — single-page bodies.
+- `pages[N].body.X` addresses a specific page in multi-page snapshots.
+- `pages[*].body.X` aggregates across pages into a list (each page's value
+  becomes one element of the result; useful for "how many pages emitted
+  this" checks).
+
+Example — the canonical `memories` canary on `GetMyNotifications`:
+
+```json
+"pairwiseAssertions": [
+  {
+    "type": "pairwiseSupersetArray",
+    "paths": ["memories"],
+    "reason": "Additive-only invariant: BC5 memories[] must stay a superset of BC4's. Currently waived by the pairwiseDeltaAllowed entry below — see spec/api-gaps/memories-emptied-regression.md."
+  },
+  {
+    "type": "pairwiseDeltaAllowed",
+    "paths": ["memories"],
+    "reason": "Confirmed live regression: BC5 master ships `json.memories []` while BC4 (the four branch) still populates it. The fix is written but unmerged (BC3 #10947: `json.memories @bubble_ups`). Temporary — remove this waiver once #10947 merges. Tracked in spec/api-gaps/memories-emptied-regression.md."
+  }
+]
+```
+
+BC5 `master` currently ships `memories: []` (a confirmed regression — the fix
+is written but unmerged in BC3 #10947), so the superset rule is waived by the
+`pairwiseDeltaAllowed` entry above and tracked in
+`spec/api-gaps/memories-emptied-regression.md`. Once #10947 merges and the spec
+provenance is repinned, drop the waiver; the superset rule then fires on any
+future regression — the canary's contract with BC3 made concrete.
+
+### Orchestrator
+
+`make check-bc5-compat` threads the two-backend capture plus pairwise
+comparison together:
+
+```bash
+BASECAMP_TOKEN=<token> \
+BASECAMP_ACCOUNT_ID=<account> \
+BC5_HOST=https://5.basecampapi.com \
+make check-bc5-compat
+```
+
+What it runs, in order:
+
+1. `BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR=tmp/live-canary make conformance-live`
+   — TS captures wire snapshots from BC4 (defaulting `BASECAMP_HOST` to
+   `https://3.basecampapi.com`), then Ruby/Python/Go/Kotlin replay-decode.
+2. `BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR=tmp/live-canary make conformance-live`
+   — same against the BC5 origin set via `BC5_HOST`.
+3. `./scripts/compare-canary-runs.sh tmp/live-canary/bc4/wire tmp/live-canary/bc5/wire`
+   — applies pairwise rules. Reports all violations outside
+   `pairwiseDeltaAllowed` and exits non-zero if any are found.
+
+Override `LIVE_RECORD_DIR` (default `tmp/live-canary`) or `BASECAMP_HOST`
+(default `https://3.basecampapi.com`) on the make line.
+
+**Identical account state across both runs is mandatory.** The pairwise
+rules assume the BC4 and BC5 backends see the same projects, the same
+todosets, the same reading list, etc. Without that, `unreads`/`reads`
+arrays drift naturally between captures and pairwise asserts will false-fail.
+Use a dedicated test account with stable, equivalent fixtures (e.g. a
+sandbox account snapshot replicated to each backend).
+
+### Scheduled CI
+
+`.github/workflows/live-canary.yml` runs `check-bc5-compat` nightly via
+cron and on `workflow_dispatch`. It is **opt-in**: the workflow no-ops
+with a clear log message if the required repo secrets aren't configured.
+
+Required secrets:
+
+- `BASECAMP_TOKEN` — OAuth token with read scope for the canary fixtures.
+- `BASECAMP_ACCOUNT_ID` — the numeric account ID used on both backends.
+- `BC5_HOST` — origin of the BC5 backend.
+
+Optional:
+
+- `BASECAMP_HOST` — origin of the BC4 backend; defaults to `https://3.basecampapi.com`.
+
+Snapshots are uploaded as a workflow artifact (`live-canary-<run-id>`,
+14-day retention) so failures can be inspected post-hoc without rerunning.
 
 ## API gap registry (`spec/api-gaps/`)
 
