@@ -33,7 +33,8 @@
 # ----------
 # 0  clean: every rule held, or violations were covered by pairwiseDeltaAllowed.
 # 1  one or more pairwise violations.
-# 2  operator error: missing directory, missing test fixture, jq unavailable, etc.
+# 2  operator error: missing directory, missing test fixture, a missing or
+#    malformed wire snapshot for a pairwise test, jq unavailable, etc.
 #
 # Usage
 # -----
@@ -101,6 +102,14 @@ to_jq_path() {
   fi
 }
 
+# Snapshot reads that fail (malformed JSON, unreadable file) are operator
+# errors, not pairwise violations. Remap jq's exit status (often 4 or 5) to
+# the documented exit code 2 so the 0/1/2 contract holds under `set -e`.
+snapshot_read_error() {
+  echo "ERROR: failed to read snapshot '$1' at path '$2' (malformed JSON?)" >&2
+  exit 2
+}
+
 # Read a JSON value at a normalized jq path from a snapshot file.
 # Streams from pages[*] are wrapped into an array so the caller can treat
 # them as a single aggregated value.
@@ -111,9 +120,9 @@ read_value() {
   jq_path="$(to_jq_path "$user_path")"
 
   if [[ "$user_path" == *"[*]"* ]]; then
-    jq -c "[ $jq_path ]" "$snapshot"
+    jq -c "[ $jq_path ]" "$snapshot" || snapshot_read_error "$snapshot" "$user_path"
   else
-    jq -c "$jq_path" "$snapshot"
+    jq -c "$jq_path" "$snapshot" || snapshot_read_error "$snapshot" "$user_path"
   fi
 }
 
@@ -144,29 +153,30 @@ if [ "${#TEST_ENTRIES[@]}" -eq 0 ]; then
 fi
 
 COMPARED=0
-SKIPPED_MISSING=0
-FILE_MISSING_DETAIL=""
+MISSING_SNAPSHOTS=0
 
 for entry in "${TEST_ENTRIES[@]}"; do
   NAME="$(jq -r '.name' <<<"$entry")"
   OPERATION="$(jq -r '.operation' <<<"$entry")"
 
-  # Snapshot filenames in the TS live runner are the operation name (per
-  # conformance/runner/typescript/wire-capture.ts safeTestName). Look for
-  # both `<operation>.json` and the historical `<name>.json` form so callers
-  # don't have to pre-rename anything if conventions shift.
-  BC4_SNAPSHOT=""
-  BC5_SNAPSHOT=""
-  for candidate in "$OPERATION" "$NAME"; do
-    safe="$(echo "$candidate" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g')"
-    [ -f "$BC4_DIR/$safe.json" ] && BC4_SNAPSHOT="$BC4_DIR/$safe.json"
-    [ -f "$BC5_DIR/$safe.json" ] && BC5_SNAPSHOT="$BC5_DIR/$safe.json"
-  done
+  # Snapshot filenames must match exactly what the TS live runner writes.
+  # conformance/runner/typescript/live-runner.test.ts persistSnapshot() uses
+  #   safeName = testName.replace(/[^a-z0-9_-]+/gi, "_")
+  # i.e. the TEST NAME (not the operation), case preserved, with each run of
+  # characters outside [A-Za-z0-9_-] collapsed to a single "_". There is no
+  # operation-based or lowercased filename — the earlier candidate forms never
+  # matched a real file, so every comparison was silently skipped.
+  safe="$(printf '%s' "$NAME" | sed -E 's/[^a-zA-Z0-9_-]+/_/g')"
+  BC4_SNAPSHOT="$BC4_DIR/$safe.json"
+  BC5_SNAPSHOT="$BC5_DIR/$safe.json"
 
-  if [ -z "$BC4_SNAPSHOT" ] || [ -z "$BC5_SNAPSHOT" ]; then
-    SKIPPED_MISSING=$((SKIPPED_MISSING + 1))
-    FILE_MISSING_DETAIL="${FILE_MISSING_DETAIL}  $OPERATION
-"
+  # TEST_ENTRIES contains only tests that declare pairwiseAssertions, so a
+  # missing snapshot on either backend is a hard error (exit 2): skipping it
+  # would let check-bc5-compat pass without ever evaluating the declared rule.
+  if [ ! -f "$BC4_SNAPSHOT" ] || [ ! -f "$BC5_SNAPSHOT" ]; then
+    MISSING_SNAPSHOTS=$((MISSING_SNAPSHOTS + 1))
+    [ ! -f "$BC4_SNAPSHOT" ] && echo "ERROR: missing BC4 snapshot for test '$NAME' ($OPERATION): $BC4_SNAPSHOT" >&2
+    [ ! -f "$BC5_SNAPSHOT" ] && echo "ERROR: missing BC5 snapshot for test '$NAME' ($OPERATION): $BC5_SNAPSHOT" >&2
     continue
   fi
 
@@ -210,7 +220,15 @@ for entry in "${TEST_ENTRIES[@]}"; do
     RULE_TYPE="$(jq -r '.type' <<<"$rule")"
     mapfile -t RULE_PATHS < <(jq -r '.paths[]' <<<"$rule")
 
-    for upath in "${RULE_PATHS[@]:-}"; do
+    # Guard the empty-array case explicitly: "${RULE_PATHS[@]:-}" would expand
+    # an empty `paths` to a single empty string and run the rule against the
+    # body root. schema.json enforces minItems:1, so this is defense in depth.
+    if [ "${#RULE_PATHS[@]}" -eq 0 ]; then
+      echo "ERROR: $RULE_TYPE rule on $OPERATION has an empty 'paths' array" >&2
+      exit 2
+    fi
+
+    for upath in "${RULE_PATHS[@]}"; do
       if is_allowed "$upath"; then
         continue
       fi
@@ -254,7 +272,10 @@ for entry in "${TEST_ENTRIES[@]}"; do
           ;;
 
         pairwiseEqual)
-          if [ "$BC4_VAL" != "$BC5_VAL" ]; then
+          # Compare semantically: jq deep-equality is independent of object
+          # key order, so two snapshots that serialize the same object with
+          # different key order don't false-fail.
+          if [ "$(jq -n --argjson a "$BC4_VAL" --argjson b "$BC5_VAL" '$a == $b')" != "true" ]; then
             violation "$OPERATION  pairwiseEqual($DISPLAY): BC4=$BC4_VAL BC5=$BC5_VAL"
           fi
           ;;
@@ -269,10 +290,20 @@ for entry in "${TEST_ENTRIES[@]}"; do
 done
 
 echo "==> Pairwise canary: compared $COMPARED operation(s)"
-if [ "$SKIPPED_MISSING" -gt 0 ]; then
-  echo "    Skipped $SKIPPED_MISSING operation(s) due to missing snapshot files:"
-  printf '%s' "$FILE_MISSING_DETAIL"
-  echo "    (the TS live runner skips tests that can't resolve a fixture ID — confirm the corresponding snapshot exists for both backends)"
+
+if [ "$MISSING_SNAPSHOTS" -gt 0 ]; then
+  echo "" >&2
+  echo "ERROR: $MISSING_SNAPSHOTS pairwise test(s) were missing a wire snapshot on" >&2
+  echo "one or both backends (listed above). The TS live runner must capture every" >&2
+  echo "pairwise-bearing test for both BC4 and BC5 before comparison; a missing" >&2
+  echo "snapshot is a hard error so check-bc5-compat can't report a false green" >&2
+  echo "without evaluating the declared rule." >&2
+  if [ -n "$VIOLATIONS" ]; then
+    echo "" >&2
+    echo "Pairwise violations were also found in the snapshots that were present:" >&2
+    printf '%s' "$VIOLATIONS" >&2
+  fi
+  exit 2
 fi
 
 if [ -n "$VIOLATIONS" ]; then

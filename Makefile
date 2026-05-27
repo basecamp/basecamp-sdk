@@ -463,10 +463,12 @@ conformance: conformance-go conformance-kotlin conformance-typescript conformanc
 # stage fail the orchestrator.
 #
 # Opt-in target: not invoked by `make check`.
-conformance-live: conformance-typescript-live
-	@echo "==> Running cross-language wire-replay against just-captured snapshots..."
+conformance-live:
 	@test -n "$$LIVE_RECORD_DIR" || (echo "LIVE_RECORD_DIR is required" >&2; exit 1)
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	@echo "==> conformance-live: capturing canonical wire snapshots (TypeScript)..."
+	$(MAKE) conformance-typescript-live
+	@echo "==> Running cross-language wire-replay against just-captured snapshots..."
 	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-ruby-replay
 	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-python-replay
 	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-go-replay
@@ -488,7 +490,8 @@ conformance-live: conformance-typescript-live
 #
 # Each pass must pass per-backend (TS schema validation + 4-language decode).
 # After both, the pairwise script applies the additive-only invariant to BC4
-# vs BC5 snapshots and fails on the first violation outside pairwiseDeltaAllowed.
+# vs BC5 snapshots, reports all violations outside pairwiseDeltaAllowed, and
+# exits non-zero if any are found.
 #
 # Account state must be identical across the two runs — see CONTRIBUTING.md.
 check-bc5-compat: LIVE_RECORD_DIR ?= tmp/live-canary
@@ -497,6 +500,11 @@ check-bc5-compat:
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
 	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
 	@test -n "$$BC5_HOST" || (echo "BC5_HOST is required (BC5 backend origin, e.g. https://5.basecampapi.com)" >&2; exit 2)
+	@# Guard against a catastrophic rm -rf: refuse empty, "/", or paths with "..".
+	@case "$(LIVE_RECORD_DIR)" in \
+	  ""|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$(LIVE_RECORD_DIR)'" >&2; exit 2 ;; \
+	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$(LIVE_RECORD_DIR)'" >&2; exit 2 ;; \
+	esac
 	rm -rf "$(LIVE_RECORD_DIR)"
 	@echo "==> check-bc5-compat: BC4 pass"
 	BASECAMP_LIVE=1 BASECAMP_HOST="$(BASECAMP_HOST)" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$(LIVE_RECORD_DIR)" $(MAKE) conformance-live
@@ -672,7 +680,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps
+.PHONY: check-bucket-flat-parity validate-api-gaps check-compare-canary
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -683,6 +691,12 @@ check-bucket-flat-parity:
 # Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
 validate-api-gaps:
 	@./scripts/validate-api-gaps.sh
+
+# Network-free regression tests for the pairwise compare script (filename
+# scheme, missing-snapshot hard-fail, memories waiver scoping, pairwiseEqual
+# key-order, empty-paths guard).
+check-compare-canary:
+	@./scripts/test-compare-canary-runs.sh
 
 #------------------------------------------------------------------------------
 # Combined targets
@@ -706,7 +720,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-compare-canary
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
