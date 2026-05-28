@@ -373,6 +373,59 @@ func fooFromGenerated(g generated.Foo) Foo {
 	}
 }
 
+// TestRun_DirectDecodeRenamedPair drives run() with a direct-decode pair whose
+// wrapper name differs from the generated type — the shape used by the
+// MyAssignmentsResult ↔ GetMyAssignmentsResponseContent and similar entries in
+// the production directDecodePairs map. Two assertions matter: (1) the pair is
+// walked via the injected directDecode map even with no *FromGenerated function,
+// and (2) the tag-presence check fires on a missing generated tag.
+func TestRun_DirectDecodeRenamedPair(t *testing.T) {
+	genSrc := `package generated
+
+type GetMyAssignmentsResponseContent struct {
+	NonPriorities []MyAssignment ` + "`json:\"non_priorities,omitempty\"`" + `
+	Priorities    []MyAssignment ` + "`json:\"priorities,omitempty\"`" + `
+}
+type MyAssignment struct {
+	Id int64 ` + "`json:\"id\"`" + `
+}
+`
+	// Wrapper has both tags — clean run.
+	wrapperOK := `package basecamp
+
+type MyAssignment struct {
+	ID int64 ` + "`json:\"id\"`" + `
+}
+type MyAssignmentsResult struct {
+	Priorities    []MyAssignment ` + "`json:\"priorities,omitempty\"`" + `
+	NonPriorities []MyAssignment ` + "`json:\"non_priorities,omitempty\"`" + `
+}
+`
+	pairs := map[string]string{
+		"MyAssignmentsResult": "GetMyAssignmentsResponseContent",
+		"MyAssignment":        "MyAssignment",
+	}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"my_assignments.go": wrapperOK})
+	if err := run(wrapperDir, generatedFile, pairs, false); err != nil {
+		t.Errorf("run (in-sync renamed direct-decode pair): expected no drift, got %v", err)
+	}
+
+	// Wrapper drops the non_priorities tag with no marker — drift expected.
+	wrapperMissing := `package basecamp
+
+type MyAssignment struct {
+	ID int64 ` + "`json:\"id\"`" + `
+}
+type MyAssignmentsResult struct {
+	Priorities []MyAssignment ` + "`json:\"priorities,omitempty\"`" + `
+}
+`
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"my_assignments.go": wrapperMissing})
+	if err := run(wrapperDir, generatedFile, pairs, false); err == nil {
+		t.Error("run (renamed direct-decode pair missing non_priorities): expected drift, got nil")
+	}
+}
+
 // TestCollectAssignedFields verifies the walker collects fields from both the
 // wrapper composite literal and selector assignments, and does NOT collect keys
 // from nested helper literals (Parent/Bucket) — the one-level-nesting boundary.
