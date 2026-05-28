@@ -3300,14 +3300,14 @@ export interface components {
             unreads?: components["schemas"]["Notification"][];
             reads?: components["schemas"]["Notification"][];
             /**
-             * @description Legacy "save forever" collection. Observed BC5 behavior: emits `[]`
-             *     while BC4 still populates with real items — the BC team has not yet
-             *     resolved whether to keep BC4-shaped data on BC5 (back-compat) or to
-             *     accept the empty-array break with a documented BC5 changelog entry.
-             *     See COORDINATION.md for the open decision. The conceptual
-             *     replacement is `bubble_ups` (with optional scheduling via
-             *     `scheduled_bubble_ups`), though wire shapes are not interchangeable
-             *     per-item, so cross-version readers should consume both.
+             * @description Legacy "save forever" collection. On BC5 `master` this currently ships as
+             *     `[]` while BC4 (the `four` branch) still populates it — a confirmed
+             *     subtractive regression tracked in
+             *     `spec/api-gaps/memories-emptied-regression.md`. The fix is written but
+             *     unmerged: BC3 #10947 repopulates it via `json.memories @bubble_ups`. New
+             *     integrations should prefer `bubble_ups` (the durable successor, with
+             *     optional scheduling via `scheduled_bubble_ups`); until #10947 ships, do
+             *     not rely on `memories` being populated on BC5.
              */
             memories?: components["schemas"]["Notification"][];
             /**
