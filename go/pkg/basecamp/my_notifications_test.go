@@ -114,6 +114,68 @@ func TestMyNotificationsService_Get_SentinelCreatorID(t *testing.T) {
 	}
 }
 
+func TestMyNotificationsService_Get_StringCreatorIDWithoutPersonableType(t *testing.T) {
+	// BC3 sometimes serializes a real person's notification creator/participants
+	// id as a JSON string ("1049715914") on an object that has no
+	// personable_type. Notification.Creator/Participants decode into Person.ID
+	// (a plain int64), which cannot unmarshal a JSON string, so the whole Get
+	// would fail. normalizeNotificationsJSON coerces these ids by their
+	// creator/participants position even without personable_type.
+	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{
+			"unreads": [{
+				"id": 7,
+				"title": "Comment",
+				"created_at": "2024-01-01T00:00:00Z",
+				"updated_at": "2024-01-01T00:00:00Z",
+				"creator": {
+					"id": "1049715914",
+					"name": "Jane"
+				},
+				"participants": [
+					{"id": "2000000001", "name": "P1"},
+					{"id": "basecamp", "name": "System"}
+				]
+			}],
+			"reads": [],
+			"memories": []
+		}`))
+	})
+
+	result, err := svc.Get(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error (string creator.id without personable_type should not crash): %v", err)
+	}
+	if len(result.Unreads) != 1 {
+		t.Fatalf("expected 1 unread, got %d", len(result.Unreads))
+	}
+	n := result.Unreads[0]
+	if n.Creator == nil {
+		t.Fatal("expected Creator to be populated")
+	}
+	if n.Creator.ID != 1049715914 {
+		t.Errorf("expected creator.id 1049715914, got %d", n.Creator.ID)
+	}
+	if n.Creator.Name != "Jane" {
+		t.Errorf("expected creator name Jane, got %q", n.Creator.Name)
+	}
+	if len(n.Participants) != 2 {
+		t.Fatalf("expected 2 participants, got %d", len(n.Participants))
+	}
+	if n.Participants[0].ID != 2000000001 {
+		t.Errorf("expected participant[0].id 2000000001, got %d", n.Participants[0].ID)
+	}
+	// The sentinel participant collapses to 0 with the label preserved.
+	if n.Participants[1].ID != 0 {
+		t.Errorf("expected sentinel participant[1].id to normalize to 0, got %d", n.Participants[1].ID)
+	}
+	if n.Participants[1].SystemLabel != "basecamp" {
+		t.Errorf("expected participant[1].system_label %q, got %q", "basecamp", n.Participants[1].SystemLabel)
+	}
+}
+
 func TestMyNotificationsService_MarkAsRead(t *testing.T) {
 	var receivedBody map[string]any
 	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {
