@@ -78,11 +78,15 @@ For each generated field added in PR 1, do exactly one of:
    semantic meaning, JSON tag matching the wire format, and propagate
    it inside the relevant `*FromGenerated` conversion. Default to this
    for fields the CLI / external consumers will want to read.
-2. **Document the omission inline** with a `// intentionally not
-   surfaced because <reason>` comment on the wrapper struct, if a field
-   is genuinely not appropriate for the public Go surface (e.g. an
-   internal echo). Phase 1 fields should not need this — they're all
-   user-visible.
+2. **Document the omission inline** with an `// intentionally-omitted:
+   <tag> - <reason>` comment anywhere inside the wrapper struct's
+   declaration block, if a field is genuinely not appropriate for the
+   public Go surface (e.g. an internal echo). `<tag>` is the JSON tag of
+   the omitted field on the GENERATED struct (e.g. `hidden`, not
+   `Hidden`); `<reason>` is required and free-form. The drift check
+   (`scripts/check-wrapper-drift`) recognises only this exact marker
+   form — see its `markerRe` regexp for the canonical syntax. Phase 1
+   fields should not need this — they're all user-visible.
 
 Per-type concrete proposals (signatures, no behavior change for
 existing fields):
@@ -129,8 +133,8 @@ type Person struct {
 // pkg/basecamp/my_notifications.go
 type Notification struct {
     // … existing fields …
-    BubbleUpURL string    `json:"bubble_up_url,omitempty"` // BC5
-    BubbleUpAt  time.Time `json:"bubble_up_at,omitempty"`  // BC5
+    BubbleUpURL string     `json:"bubble_up_url,omitempty"` // BC5
+    BubbleUpAt  *time.Time `json:"bubble_up_at,omitempty"`  // BC5
 }
 
 type NotificationsResult struct {
@@ -140,9 +144,17 @@ type NotificationsResult struct {
 }
 ```
 
-For `Notification.BubbleUpAt`, follow the same `time.Time` zero-value
-pattern the wrapper already uses for `ReadAt` / `UnreadAt` — the CLI
-checks `IsZero()` on those today.
+For `Notification.BubbleUpAt`, use `*time.Time` rather than the bare
+`time.Time` pattern the wrapper uses for `ReadAt` / `UnreadAt`. The
+pointer is what shipped (see `my_notifications.go`): a bare `time.Time`
+with `omitempty` still marshals the zero time as
+`"0001-01-01T00:00:00Z"` (Go's `omitempty` does not suppress structs
+that are merely zero-valued), so the absence of a scheduled bubble-up
+would surface as a wrong wire value rather than an omitted key. The
+`*time.Time` convention mirrors `Card.CompletedAt` and `Todo.CompletedAt`,
+where the same omit-cleanly semantics matter. Consumers should
+`nil`-check or use the `time.Time` returned by dereferencing rather than
+calling `IsZero()`.
 
 ## Verification
 
