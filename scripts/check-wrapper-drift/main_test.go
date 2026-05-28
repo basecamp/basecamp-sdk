@@ -426,6 +426,81 @@ type MyAssignmentsResult struct {
 	}
 }
 
+// TestRun_InlineConvertedPair drives run() with a tier-3 pair: the wrapper has
+// no *FromGenerated of its own and is populated by a composite literal inside a
+// parent's *FromGenerated body — the shape the production directDecodePairs
+// tier-3 entries (CampfireLineAttachment, EventDetails, etc.) follow. Two
+// assertions matter: (1) the pair is walked via the injected directDecode map
+// despite no *FromGenerated function for the inline-converted wrapper, and (2)
+// the tag-presence check fires on a missing generated tag — exactly the
+// regression the tier exists to catch (parent's body silently dropping a new
+// generated field).
+func TestRun_InlineConvertedPair(t *testing.T) {
+	genSrc := `package generated
+
+type Parent struct {
+	Id     int64 ` + "`json:\"id\"`" + `
+	Nested Nested ` + "`json:\"nested,omitempty\"`" + `
+}
+type Nested struct {
+	Name  string ` + "`json:\"name\"`" + `
+	Color string ` + "`json:\"color\"`" + `
+}
+`
+	// In-sync wrapper: Nested carries both tags and the parent's *FromGenerated
+	// builds it inline. Only Parent has a *FromGenerated; Nested is tier 3.
+	wrapperOK := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Nested struct {
+	Name  string ` + "`json:\"name\"`" + `
+	Color string ` + "`json:\"color\"`" + `
+}
+type Parent struct {
+	ID     int64   ` + "`json:\"id\"`" + `
+	Nested *Nested ` + "`json:\"nested,omitempty\"`" + `
+}
+
+func parentFromGenerated(g generated.Parent) Parent {
+	p := Parent{}
+	p.ID = g.Id
+	p.Nested = &Nested{Name: g.Nested.Name, Color: g.Nested.Color}
+	return p
+}
+`
+	pairs := map[string]string{"Nested": "Nested"}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperOK})
+	if err := run(wrapperDir, generatedFile, pairs, false); err != nil {
+		t.Errorf("run (in-sync inline-converted pair): expected no drift, got %v", err)
+	}
+
+	// Wrapper drops the `color` tag with no marker — drift expected.
+	wrapperMissing := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Nested struct {
+	Name string ` + "`json:\"name\"`" + `
+}
+type Parent struct {
+	ID     int64   ` + "`json:\"id\"`" + `
+	Nested *Nested ` + "`json:\"nested,omitempty\"`" + `
+}
+
+func parentFromGenerated(g generated.Parent) Parent {
+	p := Parent{}
+	p.ID = g.Id
+	p.Nested = &Nested{Name: g.Nested.Name}
+	return p
+}
+`
+	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperMissing})
+	if err := run(wrapperDir, generatedFile, pairs, false); err == nil {
+		t.Error("run (inline-converted pair missing nested color tag): expected drift, got nil")
+	}
+}
+
 // TestCollectAssignedFields verifies the walker collects fields from both the
 // wrapper composite literal and selector assignments, and does NOT collect keys
 // from nested helper literals (Parent/Bucket) — the one-level-nesting boundary.
