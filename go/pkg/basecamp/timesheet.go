@@ -13,9 +13,9 @@ import (
 type TimesheetEntry struct {
 	ID               int64     `json:"id"`
 	Status           string    `json:"status,omitempty"`
-	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 	Title            string    `json:"title,omitempty"`
-	InheritsStatus   bool      `json:"inherits_status,omitempty"`
+	InheritsStatus   bool      `json:"inherits_status"`
 	Type             string    `json:"type,omitempty"`
 	URL              string    `json:"url,omitempty"`
 	AppURL           string    `json:"app_url,omitempty"`
