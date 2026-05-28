@@ -13,18 +13,15 @@
 //     from the *FromGenerated convention check below — it is a parallel
 //     mapping for WebhookEventPerson, not a Person wrapper.)
 //
-//  2. By an explicit `directDecodePairs` map covering wrappers that decode
-//     straight from JSON bytes (Notification, NotificationsResult, MyAssignment,
-//     MyAssignmentsResult, Gauge, GaugeNeedle, Account, Preferences,
-//     OutOfOffice) plus the nested public wrapper structs reachable from them
-//     (PreviewableAttachment, MyAssignmentAssignee, MyAssignmentBucket,
-//     MyAssignmentParent, AccountLogo, AccountLimits, AccountSettings,
-//     AccountSubscription, OutOfOfficePerson). These do not have
-//     *FromGenerated declarations; the JSON tags on the wrapper struct fields
-//     are what the JSON decoder uses to read the wire payload. Listing the
-//     nested structs explicitly carries the tag-presence check into them
-//     rather than stopping at the parent field. See the directDecodePairs
-//     declaration below for the derivation recipe that produced the list.
+//  2. By an explicit `directDecodePairs` map covering tag-presence-only
+//     pairs: wrappers with a `generated.X` counterpart but no *FromGenerated
+//     function the AST walker can follow. The map organizes these into two
+//     labeled tiers — tier 2 (direct-decode via json.Unmarshal, including
+//     nested wrappers reachable from the same Unmarshal pass) and tier 3
+//     (inline-converted via composite literal inside a *FromGenerated body
+//     or service method). Both tiers run the tag-presence check; neither
+//     runs the population check. See the directDecodePairs declaration
+//     below for the full tier model, derivation recipe, and exclusion list.
 //
 // # Check
 //
@@ -68,9 +65,11 @@
 //     personFromGenerated(...)`) counts because the parent field is assigned;
 //     the nested Person's own fields are verified through the separate
 //     Person ↔ generated.Person pair.
-//   - Direct-decode wrappers (the directDecodePairs set) are EXEMPT: they have
-//     no *FromGenerated body and are populated by json.Unmarshal straight onto
-//     the struct tags, so tag presence already is population for them.
+//   - Tier-2 and tier-3 wrappers (the directDecodePairs set) are EXEMPT: tier 2
+//     has no *FromGenerated body and is populated by json.Unmarshal straight
+//     onto the struct tags (tag presence is population); tier 3 is populated by
+//     a composite literal inside someone else's body and the walker has nothing
+//     local to verify (population is enforced by review of that composite).
 //   - A field genuinely populated by some mechanism the walker cannot see
 //     (none exist today) should carry an `// intentionally-omitted` marker with
 //     a reason, which suppresses both the tag and population checks for it.
@@ -101,49 +100,95 @@ import (
 	"strings"
 )
 
-// directDecodePairs maps the wrapper struct name to the generated struct
-// name for §C-2 wrappers that decode via json.Unmarshal on the (sometimes
-// pre-normalized) raw body. Their *FromGenerated function does not exist;
-// the wrapper struct's JSON tags are the contract.
+// directDecodePairs maps the wrapper struct name to the generated struct name
+// for tag-presence-only pairs: wrappers that have a `generated.X` counterpart
+// but no `*FromGenerated` function the AST walker can follow, so the population
+// check is structurally inapplicable and only the tag-presence check runs.
 //
-// The set covers both the top-level raw-body wrappers AND the nested public
-// wrapper structs reachable from them that have a generated counterpart but no
-// *FromGenerated of their own (they are populated by the same json.Unmarshal
-// pass as their parent). Listing the nested structs explicitly extends the
-// tag-presence check into them; without these entries the parent check only
-// verifies the parent field (e.g. previewable_attachments, assignees, bucket)
-// and a future generated-field addition inside the nested struct would slip
-// through. Because they are direct-decode, only the tag-presence check applies
-// (json.Unmarshal populates them straight from the tags), not the population
-// check.
+// # Coverage model: three tiers
 //
-// # Completeness
+// The drift check operates on a UNION of wrapper↔generated pairs derived from
+// three sources. Tiers 1 and 2 differ in HOW the pair is discovered and what
+// checks run; tier 3 piggybacks on the same logic as tier 2. All three live in
+// one tag-presence check so future contributors see the coverage as a single
+// surface.
 //
-// This map is intended to be the COMPLETE set of (wrapper, generated) direct-
-// decode pairs as of this PR. The derivation recipe used to build it (and the
-// recipe future contributors should re-run when adding endpoints):
+//   - Tier 1: *FromGenerated-backed pairs. Discovered automatically by walking
+//     every `<lower>FromGenerated(g generated.X) Y` declaration (see
+//     collectFromGeneratedPairs). These get BOTH the tag-presence check AND
+//     the population check — the function body is AST-walked to confirm each
+//     tagged wrapper field is assigned (see collectAssignedFields). This tier
+//     is NOT in this map; the function signature is the contract.
 //
-//  1. Grep go/pkg/basecamp/*.go (non-test) for raw-decode call sites:
-//     `json.Unmarshal(... &<local>)`, `json.NewDecoder(...).Decode(&<local>)`,
-//     and decode helpers (e.g. `decodeGaugePayload`).
-//  2. For each site whose target local is a hand-written WRAPPER struct (not a
-//     `generated.X` value routed through a `*FromGenerated` function), check
-//     whether a `generated.<Name>` (or close-named) counterpart exists in
-//     `go/pkg/generated/client.gen.go`.
-//  3. If yes, add (wrapper, generated) here. Also add every nested PUBLIC
-//     wrapper struct reachable from it whose fields are populated by the same
-//     json.Unmarshal (no *FromGenerated of its own).
+//   - Tier 2: direct-decode pairs (raw json.Unmarshal). Wrappers populated by
+//     `json.Unmarshal(rawBody, &wrapper)` on a (sometimes pre-normalized) raw
+//     response body, with no *FromGenerated function. The JSON decoder writes
+//     each generated field straight onto the matching wrapper tag, so tag
+//     presence IS population — no body to walk. The wrapper struct's JSON tags
+//     are the contract. Includes both top-level raw-body wrappers and the
+//     nested public wrapper structs reachable from them that share the same
+//     json.Unmarshal pass.
 //
-// Excluded by design:
+//   - Tier 3: inline-converted pairs (composite-literal construction). Wrappers
+//     populated by an explicit `Wrapper{Field: g.Field, ...}` composite literal
+//     inside a parent `*FromGenerated` body (e.g. CampfireLineAttachment built
+//     in campfireLineFromGenerated) OR inside a service method that builds the
+//     wrapper directly from a generated response value (e.g. LineupMarker built
+//     in LineupService.ListMarkers, SearchMetadata in SearchService.Metadata,
+//     UpdateProjectAccessResponse in PeopleService.UpdateProjectAccess). They
+//     have no *FromGenerated of their own. The population guarantee here comes
+//     from REVIEW of the composite literal's key set, not from the walker — the
+//     check verifies the wrapper struct's tag set keeps up with the generated
+//     struct so a future field addition can be detected. Tag-presence-only is
+//     the correct floor for this tier because the wrapper's job is to expose
+//     the surface; the conversion code's job (reviewed in the PR diff) is to
+//     populate it. Adding a tag without populating it would surface in the
+//     conformance suite, not here.
+//
+// # Derivation recipe
+//
+// This map is intended to be the COMPLETE set of (wrapper, generated) tier-2
+// and tier-3 pairs as of this PR. To re-derive when adding endpoints or to
+// audit for a suspected 4th category:
+//
+//  1. Enumerate every `^type <Name> struct` declared in go/pkg/basecamp/*.go
+//     (non-test) AND in go/pkg/generated/client.gen.go.
+//  2. Intersect the two type-name sets.
+//  3. Subtract pairs already covered by tier 1 (every wrapper with a
+//     `<lower>FromGenerated` function) and the design exclusions below. Each
+//     remaining shared name is a tier-2 or tier-3 candidate.
+//  4. Classify by HOW it is populated:
+//       - `json.Unmarshal(rawBody, &<wrapper>)` (or a thin decode helper) →
+//         tier 2; add it here, plus every nested PUBLIC wrapper struct
+//         reachable from it that shares the same Unmarshal pass.
+//       - `Wrapper{...}` composite literal in a *FromGenerated body or a
+//         service method, reading fields off a `generated.X` value → tier 3;
+//         add it here.
+//       - Neither → out of scope (likely a request envelope, a non-spec
+//         endpoint type, or a parallel webhook-flavored shape).
+//
+// # Excluded by design
+//
 //   - WebhookEvent and its parallel webhook-flavored wrapper types
-//     (WebhookEventRecording / WebhookEventPerson / ...): these are a separate
-//     representation, not aligned 1:1 with `generated.WebhookEvent`'s nested
-//     `Recording` / `Person`. They follow the same precedent as
-//     `webhookPersonFromGenerated` (see excludedFromGenerated).
+//     (WebhookEventRecording / WebhookEventPerson / WebhookCopy /
+//     WebhookCopyBucket / WebhookDelivery / WebhookDeliveryRequest /
+//     WebhookDeliveryResponse): a separate representation, not aligned 1:1
+//     with `generated.WebhookEvent`'s nested `Recording` / `Person`. Follow
+//     the same precedent as `webhookPersonFromGenerated` (see
+//     excludedFromGenerated).
 //   - Local request / response envelope structs used to read upstream API
 //     errors, the Launchpad authorization endpoint, embedded SDK provenance,
-//     and the like, which are not driven by the OpenAPI spec.
+//     and similar non-spec wrappers.
+//   - Outgoing request wrappers whose name happens to match a
+//     `generated.CreateXRequest` / etc. (e.g. CreatePersonRequest,
+//     ScheduleAttributes): data flows wrapper→generated, not generated→
+//     wrapper. The tag-presence check still works in principle, but the
+//     semantics (caller-driven vs server-driven payloads) and the failure mode
+//     (caller cannot supply a new field vs wire data silently dropped) differ
+//     enough to warrant a separate tier with its own documentation, deferred
+//     to a follow-up.
 var directDecodePairs = map[string]string{
+	// Tier 2: direct-decode (raw json.Unmarshal on a response body), top-level.
 	"Notification":        "Notification",
 	"NotificationsResult": "GetMyNotificationsResponseContent",
 	"MyAssignment":        "MyAssignment",
@@ -153,7 +198,7 @@ var directDecodePairs = map[string]string{
 	"Preferences":         "Preferences",
 	"OutOfOffice":         "OutOfOffice",
 	"MyAssignmentsResult": "GetMyAssignmentsResponseContent",
-	// Nested direct-decode structs (no *FromGenerated; decoded with their parent).
+	// Tier 2: direct-decode nested wrappers (no *FromGenerated; decoded with their parent).
 	"PreviewableAttachment": "PreviewableAttachment", // nested in Notification.previewable_attachments
 	"MyAssignmentAssignee":  "MyAssignmentAssignee",  // nested in MyAssignment.assignees
 	"MyAssignmentBucket":    "MyAssignmentBucket",    // nested in MyAssignment.bucket
@@ -163,6 +208,19 @@ var directDecodePairs = map[string]string{
 	"AccountSettings":       "AccountSettings",       // nested in Account.settings
 	"AccountSubscription":   "AccountSubscription",   // nested in Account.subscription
 	"OutOfOfficePerson":     "OutOfOfficePerson",     // nested in OutOfOffice.person
+	// Tier 3: inline-converted (composite literal in *FromGenerated body or service method).
+	"CampfireLineAttachment":      "CampfireLineAttachment", // composite literal in campfireLineFromGenerated (campfires.go)
+	"CardColumnOnHold":            "CardColumnOnHold",       // composite literal in cardColumnFromGenerated (cards.go)
+	"ClientApprovalResponse":      "ClientApprovalResponse", // composite literal in clientApprovalFromGenerated (client_approvals.go)
+	"ClientCompany":               "ClientCompany",          // composite literal in projectFromGenerated (projects.go)
+	"EventDetails":                "EventDetails",           // composite literal in eventFromGenerated (events.go)
+	"HillChartDot":                "HillChartDot",           // composite literal in hillChartFromGenerated (hill_charts.go)
+	"LineupMarker":                "LineupMarker",           // composite literal in LineupService.ListMarkers (lineup.go)
+	"PersonCompany":               "PersonCompany",          // composite literal in personFromGenerated (people.go)
+	"QuestionSchedule":            "QuestionSchedule",       // composite literal in questionFromGenerated (checkins.go)
+	"SearchMetadata":              "SearchMetadata",         // composite literal in SearchService.Metadata (search.go)
+	"SearchProject":               "SearchProject",          // composite literal in SearchService.Metadata (search.go)
+	"UpdateProjectAccessResponse": "ProjectAccessResult",    // composite literal in PeopleService.UpdateProjectAccess (people.go)
 }
 
 // excludedFromGenerated lists *FromGenerated functions whose argument type
@@ -327,10 +385,14 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 			continue
 		}
 
-		// Direct-decode wrappers (Notification, MyAssignment, ...) have no
-		// *FromGenerated body: the JSON decoder populates them straight from the
-		// struct tags, so tag presence IS population. The population check below
-		// only applies to *FromGenerated-backed pairs.
+		// Tier-2 and tier-3 wrappers (everything in the directDecode map) have no
+		// *FromGenerated body for the walker to inspect. Tier 2 (Notification,
+		// MyAssignment, ...) is populated by json.Unmarshal straight onto struct
+		// tags, so tag presence IS population. Tier 3 (CampfireLineAttachment,
+		// EventDetails, ...) is populated by a composite literal inside someone
+		// else's body — out of scope for the AST walker, enforced by code review.
+		// Either way, the population check below only applies to *FromGenerated-
+		// backed pairs (tier 1).
 		_, isDirectDecode := directDecode[wrapName]
 		assigned := assignedFields[wrapName]
 
