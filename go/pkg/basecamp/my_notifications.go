@@ -31,8 +31,11 @@ type Notification struct {
 	// can bubble up.
 	BubbleUpURL string `json:"bubble_up_url,omitempty"`
 	// BubbleUpAt is the BC5-added scheduled resurfacing time when this item is
-	// queued as a scheduled Bubble Up. Zero when there is no scheduled time.
-	BubbleUpAt             time.Time               `json:"bubble_up_at,omitempty"`
+	// queued as a scheduled Bubble Up. A pointer so an absent scheduled time
+	// omits cleanly on the wire instead of marshaling as the zero time
+	// (0001-01-01T00:00:00Z); mirrors the *time.Time convention used for
+	// Card.CompletedAt / Todo.CompletedAt.
+	BubbleUpAt             *time.Time              `json:"bubble_up_at,omitempty"`
 	UnreadURL              string                  `json:"unread_url,omitempty"`
 	SubscriptionURL        string                  `json:"subscription_url,omitempty"`
 	Creator                *Person                 `json:"creator,omitempty"`
