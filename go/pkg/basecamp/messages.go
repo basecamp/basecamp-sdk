@@ -16,13 +16,13 @@ const DefaultMessageLimit = 100
 type Message struct {
 	ID               int64        `json:"id"`
 	Status           string       `json:"status"`
-	VisibleToClients bool         `json:"visible_to_clients,omitempty"`
+	VisibleToClients bool         `json:"visible_to_clients"`
 	Subject          string       `json:"subject"`
 	Content          string       `json:"content"`
 	CreatedAt        time.Time    `json:"created_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
 	Title            string       `json:"title,omitempty"`
-	InheritsStatus   bool         `json:"inherits_status,omitempty"`
+	InheritsStatus   bool         `json:"inherits_status"`
 	Type             string       `json:"type"`
 	URL              string       `json:"url"`
 	AppURL           string       `json:"app_url"`
