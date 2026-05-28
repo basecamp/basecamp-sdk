@@ -13,14 +13,16 @@
 //     from the *FromGenerated convention check below — it is a parallel
 //     mapping for WebhookEventPerson, not a Person wrapper.)
 //
-//  2. By an explicit `directDecodePairs` map covering tag-presence-only
-//     pairs: wrappers with a `generated.X` counterpart but no *FromGenerated
-//     function the AST walker can follow. The map organizes these into two
-//     labeled tiers — tier 2 (direct-decode via json.Unmarshal, including
-//     nested wrappers reachable from the same Unmarshal pass) and tier 3
-//     (inline-converted via composite literal inside a *FromGenerated body
-//     or service method). Both tiers run the tag-presence check; neither
-//     runs the population check. See the directDecodePairs declaration
+//  2. By an explicit `directDecodePairs` map covering pairs whose wrappers
+//     have no *FromGenerated function for the signature walker to find. The
+//     map organizes these into two labeled tiers — tier 2 (direct-decode via
+//     json.Unmarshal, including nested wrappers reachable from the same
+//     Unmarshal pass) and tier 3 (inline-converted via composite literal
+//     inside a *FromGenerated body or service method). Both tiers run the
+//     tag-presence check. Tier 3 also runs the population check, sourced from
+//     collectCompositeLiteralFields rather than a *FromGenerated body; tier 2
+//     is the only tier where the JSON decoder is the population guarantee and
+//     tag presence alone is sufficient. See the directDecodePairs declaration
 //     below for the full tier model, derivation recipe, and exclusion list.
 //
 // # Check
@@ -41,35 +43,46 @@
 // # Population check
 //
 // Declaring the tag is necessary but not sufficient: a wrapper field can carry
-// the right JSON tag yet never be assigned by its *FromGenerated conversion
-// function, so it silently stays zero-valued on the wire while the tag-presence
-// check passes. For every *FromGenerated-backed pair, the script therefore also
-// confirms the conversion body actually assigns each tagged wrapper field. It
-// AST-walks the function body and collects assigned wrapper fields from two
-// forms (see collectAssignedFields): the wrapper's own composite literal
-// (`c := Card{Status: ...}`) and selector-target assignments (`c.Creator =
-// ...`, `c.Steps = append(...)`). A tag-present-but-never-assigned field is
-// reported as drift.
+// the right JSON tag yet never be assigned by the wrapper's construction site,
+// so it silently stays zero-valued on the wire while the tag-presence check
+// passes. The check therefore also confirms the construction site actually
+// assigns each tagged wrapper field. Two construction shapes are covered:
+//
+//   - Tier 1 (*FromGenerated body): for every `<lower>FromGenerated(g
+//     generated.X) Y` declaration, the body is AST-walked to collect the
+//     assigned wrapper fields from two forms (see collectAssignedFields): the
+//     wrapper's own composite literal (`c := Card{Status: ...}`) and
+//     selector-target assignments (`c.Creator = ...`, `c.Steps = append(...)`).
+//   - Tier 3 (inline composite literal): the wrapper has no *FromGenerated of
+//     its own and is built by a `Wrapper{...}` (or `&Wrapper{...}`) composite
+//     literal inside some other function — a parent *FromGenerated body or a
+//     service method. For each such literal anywhere in go/pkg/basecamp/, the
+//     walker collects keys from the literal AND from subsequent selector writes
+//     to the local path (bare identifier or selector chain like `q.Schedule`)
+//     the literal is bound to. See collectCompositeLiteralFields.
+//
+// A tag-present-but-never-assigned field is reported as drift.
 //
 // Scope and limitations of the population check (verified against the current
-// go/pkg/basecamp/ corpus, where every *FromGenerated follows this shape):
+// go/pkg/basecamp/ corpus, where every wrapper follows one of these shapes):
 //
 //   - It is a *reachability* check, not a value check: it proves the field is
-//     written somewhere in the body, not that the written value is correct or
-//     that the assignment is unconditional. A field assigned only inside an
-//     `if` branch (e.g. nested Creator/Bucket pointers, which are gated on the
-//     generated value being non-empty) counts as populated — matching the
-//     wrappers' intentional "leave nil when the source is empty" semantics.
+//     written somewhere in the construction site, not that the written value
+//     is correct or that the assignment is unconditional. A field assigned only
+//     inside an `if` branch (e.g. nested Creator/Bucket pointers, which are
+//     gated on the generated value being non-empty) counts as populated —
+//     matching the wrappers' intentional "leave nil when the source is empty"
+//     semantics.
 //   - One level of nesting only, consistent with the tag check: a parent field
 //     assigned via a nested helper (`c.Creator = &creator` where `creator =
 //     personFromGenerated(...)`) counts because the parent field is assigned;
 //     the nested Person's own fields are verified through the separate
 //     Person ↔ generated.Person pair.
-//   - Tier-2 and tier-3 wrappers (the directDecodePairs set) are EXEMPT: tier 2
-//     has no *FromGenerated body and is populated by json.Unmarshal straight
-//     onto the struct tags (tag presence is population); tier 3 is populated by
-//     a composite literal inside someone else's body and the walker has nothing
-//     local to verify (population is enforced by review of that composite).
+//   - Tier-2 wrappers (the json.Unmarshal subset of directDecodePairs) are
+//     EXEMPT: they have no *FromGenerated body and no composite literal — they
+//     are populated by json.Unmarshal straight onto the struct tags, so tag
+//     presence IS population. The tier-3 subset of directDecodePairs DOES get
+//     a population check via the composite-literal walker.
 //   - A field genuinely populated by some mechanism the walker cannot see
 //     (none exist today) should carry an `// intentionally-omitted` marker with
 //     a reason, which suppresses both the tag and population checks for it.
@@ -101,17 +114,19 @@ import (
 )
 
 // directDecodePairs maps the wrapper struct name to the generated struct name
-// for tag-presence-only pairs: wrappers that have a `generated.X` counterpart
-// but no `*FromGenerated` function the AST walker can follow, so the population
-// check is structurally inapplicable and only the tag-presence check runs.
+// for wrappers that have a `generated.X` counterpart but no `*FromGenerated`
+// function the tier-1 walker discovers — i.e. wrappers populated either by a
+// raw json.Unmarshal (tier 2) or by an inline composite literal inside someone
+// else's body (tier 3). Tier-3 entries are also listed in tier3Wrappers so the
+// population walker knows to scan composite literals for them.
 //
 // # Coverage model: three tiers
 //
 // The drift check operates on a UNION of wrapper↔generated pairs derived from
-// three sources. Tiers 1 and 2 differ in HOW the pair is discovered and what
-// checks run; tier 3 piggybacks on the same logic as tier 2. All three live in
-// one tag-presence check so future contributors see the coverage as a single
-// surface.
+// three sources. Tiers 1 and 3 both get the population check; tier 2 does not
+// (it has no in-package literal — the JSON decoder is the population). All
+// three live in one tag-presence pass so future contributors see the coverage
+// as a single surface.
 //
 //   - Tier 1: *FromGenerated-backed pairs. Discovered automatically by walking
 //     every `<lower>FromGenerated(g generated.X) Y` declaration (see
@@ -122,12 +137,12 @@ import (
 //
 //   - Tier 2: direct-decode pairs (raw json.Unmarshal). Wrappers populated by
 //     `json.Unmarshal(rawBody, &wrapper)` on a (sometimes pre-normalized) raw
-//     response body, with no *FromGenerated function. The JSON decoder writes
-//     each generated field straight onto the matching wrapper tag, so tag
-//     presence IS population — no body to walk. The wrapper struct's JSON tags
-//     are the contract. Includes both top-level raw-body wrappers and the
-//     nested public wrapper structs reachable from them that share the same
-//     json.Unmarshal pass.
+//     response body, with no *FromGenerated function and no in-package
+//     composite literal to walk. The JSON decoder writes each generated field
+//     straight onto the matching wrapper tag, so tag presence IS population.
+//     The wrapper struct's JSON tags are the contract. Includes both top-level
+//     raw-body wrappers and the nested public wrapper structs reachable from
+//     them that share the same json.Unmarshal pass.
 //
 //   - Tier 3: inline-converted pairs (composite-literal construction). Wrappers
 //     populated by an explicit `Wrapper{Field: g.Field, ...}` composite literal
@@ -136,14 +151,12 @@ import (
 //     wrapper directly from a generated response value (e.g. LineupMarker built
 //     in LineupService.ListMarkers, SearchMetadata in SearchService.Metadata,
 //     UpdateProjectAccessResponse in PeopleService.UpdateProjectAccess). They
-//     have no *FromGenerated of their own. The population guarantee here comes
-//     from REVIEW of the composite literal's key set, not from the walker — the
-//     check verifies the wrapper struct's tag set keeps up with the generated
-//     struct so a future field addition can be detected. Tag-presence-only is
-//     the correct floor for this tier because the wrapper's job is to expose
-//     the surface; the conversion code's job (reviewed in the PR diff) is to
-//     populate it. Adding a tag without populating it would surface in the
-//     conformance suite, not here.
+//     have no *FromGenerated of their own. These get BOTH checks: the
+//     tag-presence check (this map) AND the population check, via
+//     collectCompositeLiteralFields which walks every non-test wrapper file for
+//     composite literals of any tier3Wrappers type, collecting keys from the
+//     literal and from subsequent selector writes to the local path the literal
+//     is bound to (`resp := Wrapper{...}`, `q.Schedule = &Wrapper{...}`).
 //
 // # Derivation recipe
 //
@@ -158,14 +171,14 @@ import (
 //     `<lower>FromGenerated` function) and the design exclusions below. Each
 //     remaining shared name is a tier-2 or tier-3 candidate.
 //  4. Classify by HOW it is populated:
-//       - `json.Unmarshal(rawBody, &<wrapper>)` (or a thin decode helper) →
-//         tier 2; add it here, plus every nested PUBLIC wrapper struct
-//         reachable from it that shares the same Unmarshal pass.
-//       - `Wrapper{...}` composite literal in a *FromGenerated body or a
-//         service method, reading fields off a `generated.X` value → tier 3;
-//         add it here.
-//       - Neither → out of scope (likely a request envelope, a non-spec
-//         endpoint type, or a parallel webhook-flavored shape).
+//     - `json.Unmarshal(rawBody, &<wrapper>)` (or a thin decode helper) →
+//     tier 2; add it here, plus every nested PUBLIC wrapper struct
+//     reachable from it that shares the same Unmarshal pass.
+//     - `Wrapper{...}` composite literal in a *FromGenerated body or a
+//     service method, reading fields off a `generated.X` value → tier 3;
+//     add it here.
+//     - Neither → out of scope (likely a request envelope, a non-spec
+//     endpoint type, or a parallel webhook-flavored shape).
 //
 // # Excluded by design
 //
@@ -223,6 +236,26 @@ var directDecodePairs = map[string]string{
 	"UpdateProjectAccessResponse": "ProjectAccessResult",    // composite literal in PeopleService.UpdateProjectAccess (people.go)
 }
 
+// tier3Wrappers is the subset of directDecodePairs keys whose wrappers are built
+// by inline composite literal (not raw json.Unmarshal). For these, the
+// population check is sourced from collectCompositeLiteralFields, which scans
+// every non-test wrapper file for composite literals of these types. Keep in
+// sync with the tier-3 entries in directDecodePairs.
+var tier3Wrappers = map[string]bool{
+	"CampfireLineAttachment":      true,
+	"CardColumnOnHold":            true,
+	"ClientApprovalResponse":      true,
+	"ClientCompany":               true,
+	"EventDetails":                true,
+	"HillChartDot":                true,
+	"LineupMarker":                true,
+	"PersonCompany":               true,
+	"QuestionSchedule":            true,
+	"SearchMetadata":              true,
+	"SearchProject":               true,
+	"UpdateProjectAccessResponse": true,
+}
+
 // excludedFromGenerated lists *FromGenerated functions whose argument type
 // is not the structurally-aligned generated struct of their return type
 // (e.g. webhookPersonFromGenerated maps generated.Person → WebhookEventPerson,
@@ -267,7 +300,7 @@ func main() {
 	wrapperDir := filepath.Join(repoRoot, "go", "pkg", "basecamp")
 	generatedFile := filepath.Join(repoRoot, "go", "pkg", "generated", "client.gen.go")
 
-	if err := run(wrapperDir, generatedFile, directDecodePairs, *verbose); err != nil {
+	if err := run(wrapperDir, generatedFile, directDecodePairs, tier3Wrappers, *verbose); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
@@ -297,12 +330,12 @@ func resolveRoot(root string) (string, error) {
 	}
 }
 
-// run performs the full drift check. directDecode is injected (rather than read
-// from the package global) so tests can drive run() end-to-end with their own
-// fixtures without dragging in the production direct-decode pair set, whose
-// generated structs would otherwise have to exist in every test fixture.
-// main() passes the package-level directDecodePairs.
-func run(wrapperDir, generatedFile string, directDecode map[string]string, verbose bool) error {
+// run performs the full drift check. directDecode and tier3 are injected
+// (rather than read from the package globals) so tests can drive run()
+// end-to-end with their own fixtures without dragging in the production
+// pair set / tier-3 set, whose generated structs would otherwise have to exist
+// in every test fixture. main() passes directDecodePairs and tier3Wrappers.
+func run(wrapperDir, generatedFile string, directDecode map[string]string, tier3 map[string]bool, verbose bool) error {
 	fset := token.NewFileSet()
 
 	// Parse the generated client.
@@ -319,7 +352,11 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 	}
 	wrapperStructs := map[string]*structFields{}
 	fromGenPairs := map[string]string{}            // wrapper name -> generated name (derived from *FromGenerated signatures)
-	assignedFields := map[string]map[string]bool{} // wrapper name -> set of Go fields its *FromGenerated body assigns
+	assignedFields := map[string]map[string]bool{} // wrapper name -> set of Go fields written at the wrapper's construction site (tier 1 + tier 3)
+	// Tier-3 names sourced from the production tier3Wrappers set. Tests can
+	// inject only tier-2 pairs via the directDecode argument; in that case
+	// none of them appear in tier3Wrappers and the composite-literal walker
+	// is a no-op for them, matching the existing tier-2 semantics.
 	for _, entry := range entries {
 		name := entry.Name()
 		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
@@ -342,6 +379,21 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 			fromGenPairs[k] = v
 		}
 		for k, fields := range collectAssignedFields(f) {
+			set := assignedFields[k]
+			if set == nil {
+				set = map[string]bool{}
+				assignedFields[k] = set
+			}
+			for fn := range fields {
+				set[fn] = true
+			}
+		}
+		// Tier-3 wrappers have no *FromGenerated of their own. Collect their
+		// assigned fields from inline composite literals (and selector writes
+		// against any local path the literal is bound to) anywhere in the
+		// non-test wrapper files. Results merge into the same assignedFields
+		// map so the population check below is uniform for tier 1 and tier 3.
+		for k, fields := range collectCompositeLiteralFields(f, tier3) {
 			set := assignedFields[k]
 			if set == nil {
 				set = map[string]bool{}
@@ -385,15 +437,14 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 			continue
 		}
 
-		// Tier-2 and tier-3 wrappers (everything in the directDecode map) have no
-		// *FromGenerated body for the walker to inspect. Tier 2 (Notification,
-		// MyAssignment, ...) is populated by json.Unmarshal straight onto struct
-		// tags, so tag presence IS population. Tier 3 (CampfireLineAttachment,
-		// EventDetails, ...) is populated by a composite literal inside someone
-		// else's body — out of scope for the AST walker, enforced by code review.
-		// Either way, the population check below only applies to *FromGenerated-
-		// backed pairs (tier 1).
+		// The population check runs for tier 1 (assignedFields sourced from
+		// the *FromGenerated body) and tier 3 (assignedFields sourced from the
+		// inline composite literal walker). Tier 2 is the only path that skips
+		// the population check — its wrappers have no in-package literal; the
+		// JSON decoder writes straight onto struct tags, so tag presence IS
+		// population.
 		_, isDirectDecode := directDecode[wrapName]
+		isTier2 := isDirectDecode && !tier3[wrapName]
 		assigned := assignedFields[wrapName]
 
 		// Walk every JSON tag declared on the generated struct.
@@ -414,11 +465,11 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 				missing = append(missing, tag)
 				continue
 			}
-			// Tag is declared on the wrapper. For *FromGenerated-backed pairs,
-			// also confirm the conversion body actually assigns the field —
+			// Tag is declared on the wrapper. For tier-1 and tier-3 pairs,
+			// also confirm the construction site actually assigns the field —
 			// otherwise a tag-present-but-unassigned field silently stays
 			// zero-valued while this check would otherwise pass.
-			if !isDirectDecode {
+			if !isTier2 {
 				totalFieldsPopChecked++
 				goField := wrap.tagToGoField[tag]
 				if goField != "" && (assigned == nil || !assigned[goField]) {
@@ -430,11 +481,11 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: missing JSON tags %v (add to wrapper struct or mark with `// intentionally-omitted: <tag> - <reason>`)", wrapName, genName, missing))
 		}
 		if len(unpopulated) > 0 {
-			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: wrapper declares these tags but %sFromGenerated never assigns them %v (assign the field in the conversion function, or mark with `// intentionally-omitted: <tag> - <reason>` if the wrapper field is populated by some other means)", wrapName, genName, lowercaseFirst(wrapName), unpopulated))
+			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: wrapper declares these tags but no %s{...} composite literal or %sFromGenerated body assigns them %v (assign the field at the wrapper's construction site, or mark with `// intentionally-omitted: <tag> - <reason>` if the wrapper field is populated by some other means)", wrapName, genName, wrapName, lowercaseFirst(wrapName), unpopulated))
 		}
 		if verbose {
-			fmt.Printf("  %s ↔ generated.%s (%d generated tags, %d wrapper tags, %d omitted, %d assigned fields, directDecode=%v)\n",
-				wrapName, genName, len(gen.tags), len(wrap.tags), len(wrap.omitted), len(assigned), isDirectDecode)
+			fmt.Printf("  %s ↔ generated.%s (%d generated tags, %d wrapper tags, %d omitted, %d assigned fields, directDecode=%v, tier2=%v)\n",
+				wrapName, genName, len(gen.tags), len(wrap.tags), len(wrap.omitted), len(assigned), isDirectDecode, isTier2)
 		}
 	}
 
@@ -455,7 +506,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 		}
 	}
 
-	fmt.Printf("Wrapper drift check: %d pairs walked, %d generated fields verified (%d field assignments verified in *FromGenerated bodies)\n", len(pairNames), totalFieldsChecked, totalFieldsPopChecked)
+	fmt.Printf("Wrapper drift check: %d pairs walked, %d generated fields verified (%d field assignments verified at tier-1 *FromGenerated bodies + tier-3 composite literals)\n", len(pairNames), totalFieldsChecked, totalFieldsPopChecked)
 
 	if len(drift) > 0 {
 		fmt.Fprintln(os.Stderr)
@@ -464,7 +515,7 @@ func run(wrapperDir, generatedFile string, directDecode map[string]string, verbo
 			fmt.Fprintln(os.Stderr, "  -", d)
 		}
 		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "Fix: either propagate the generated field on the wrapper struct + assign it in the *FromGenerated function, or add a comment of the form")
+		fmt.Fprintln(os.Stderr, "Fix: either propagate the generated field on the wrapper struct + assign it at the wrapper's construction site (the *FromGenerated function for tier 1, or the inline composite literal for tier 3), or add a comment of the form")
 		fmt.Fprintln(os.Stderr, "     `// intentionally-omitted: <tag> - <reason>` inside the wrapper struct's declaration.")
 		return fmt.Errorf("wrapper drift: %d issue(s)", len(drift))
 	}
@@ -767,6 +818,138 @@ func selectorBaseAndField(expr ast.Expr) (base, field string) {
 		return "", ""
 	}
 	return ident.Name, sel.Sel.Name
+}
+
+// exprToPath converts an identifier-rooted selector chain into a dotted path
+// string. `q` -> "q", `q.Schedule` -> "q.Schedule", `a.b.c` -> "a.b.c". Returns
+// "" for anything not rooted in a bare identifier (index expressions, calls,
+// type assertions, ...). Used by collectCompositeLiteralFields to key its local
+// bindings so subsequent selector writes can be matched.
+func exprToPath(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		return e.Name
+	case *ast.SelectorExpr:
+		base := exprToPath(e.X)
+		if base == "" {
+			return ""
+		}
+		return base + "." + e.Sel.Name
+	}
+	return ""
+}
+
+// pathPrefixAndField decomposes any identifier-rooted selector expression into
+// its prefix-path string and final field name. `q.Schedule.WeekInstance` ->
+// ("q.Schedule", "WeekInstance"); `resp.ID` -> ("resp", "ID"). Returns "", ""
+// for non-selector or non-identifier-rooted expressions. The prefix lets
+// callers look up a previously-recorded composite-literal binding to determine
+// which wrapper this write targets.
+func pathPrefixAndField(expr ast.Expr) (prefix, field string) {
+	sel, ok := expr.(*ast.SelectorExpr)
+	if !ok {
+		return "", ""
+	}
+	prefix = exprToPath(sel.X)
+	if prefix == "" {
+		return "", ""
+	}
+	return prefix, sel.Sel.Name
+}
+
+// collectCompositeLiteralFields walks every function body in f and, for each
+// composite literal whose type is in tier3Wrappers, collects assignment field
+// names from two sources, mirroring tier-1's collectAssignedFields contract so
+// the population check can treat tier 1 and tier 3 uniformly:
+//
+//  1. The literal's own KeyValueExpr keys (`&Wrapper{ID: ..., Name: ...}` →
+//     ID, Name). Both bare `Wrapper{...}` and pointer `&Wrapper{...}` forms
+//     are caught because ast.Inspect descends through the UnaryExpr into the
+//     inner CompositeLit, and only the CompositeLit's bare-Ident type matters.
+//  2. Selector writes against any local path the literal is bound to. The
+//     binding is the LHS path of an assignment whose RHS is the literal —
+//     either a bare local (`resp := Wrapper{...}` binds "resp") or a selector
+//     chain (`q.Schedule = &Wrapper{...}` binds "q.Schedule"). Subsequent
+//     `resp.X = ...` or `q.Schedule.X = ...` writes are then attributed to
+//     the wrapper. Selector writes against an unbound path are ignored.
+//
+// The per-function `bindings` map scopes the binding to one function body, so
+// a `resp` local in one function does not contaminate another. This is enough
+// for the current corpus, where every tier-3 wrapper is built inside a single
+// function. The walker does not require the enclosing function to be a
+// *FromGenerated — service methods (LineupService.ListMarkers,
+// SearchService.Metadata, PeopleService.UpdateProjectAccess) that build a
+// wrapper inline are covered the same way.
+//
+// Returns wrapper name -> set of assigned Go field names. Wrappers not in
+// tier3Wrappers are ignored; if tier3Wrappers is empty the function is a no-op.
+func collectCompositeLiteralFields(f *ast.File, tier3 map[string]bool) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	if len(tier3) == 0 {
+		return out
+	}
+	addField := func(wrapper, field string) {
+		if !tier3[wrapper] {
+			return
+		}
+		set := out[wrapper]
+		if set == nil {
+			set = map[string]bool{}
+			out[wrapper] = set
+		}
+		set[field] = true
+	}
+	for _, decl := range f.Decls {
+		fd, ok := decl.(*ast.FuncDecl)
+		if !ok || fd.Body == nil {
+			continue
+		}
+		bindings := map[string]string{} // path -> tier-3 wrapper type bound to it
+		ast.Inspect(fd.Body, func(n ast.Node) bool {
+			switch node := n.(type) {
+			case *ast.CompositeLit:
+				if t := litTypeName(node.Type); tier3[t] {
+					for _, elt := range node.Elts {
+						kv, ok := elt.(*ast.KeyValueExpr)
+						if !ok {
+							continue
+						}
+						if key, ok := kv.Key.(*ast.Ident); ok {
+							addField(t, key.Name)
+						}
+					}
+				}
+			case *ast.AssignStmt:
+				// Record any LHS-path -> tier-3-wrapper binding so subsequent
+				// selector writes can be attributed to the wrapper.
+				if len(node.Lhs) == len(node.Rhs) {
+					for i, rhs := range node.Rhs {
+						if t := compositeLitTypeName(rhs); tier3[t] {
+							if path := exprToPath(node.Lhs[i]); path != "" {
+								bindings[path] = t
+							}
+						}
+					}
+				}
+				// Attribute selector-target writes to any bound path.
+				for _, lhs := range node.Lhs {
+					if prefix, field := pathPrefixAndField(lhs); field != "" {
+						if wrapper, ok := bindings[prefix]; ok {
+							addField(wrapper, field)
+						}
+					}
+				}
+			case *ast.IncDecStmt:
+				if prefix, field := pathPrefixAndField(node.X); field != "" {
+					if wrapper, ok := bindings[prefix]; ok {
+						addField(wrapper, field)
+					}
+				}
+			}
+			return true
+		})
+	}
+	return out
 }
 
 // extractGeneratedTypeName recognizes `generated.X` (SelectorExpr) and returns
