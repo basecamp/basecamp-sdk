@@ -13,15 +13,18 @@
 //     from the *FromGenerated convention check below — it is a parallel
 //     mapping for WebhookEventPerson, not a Person wrapper.)
 //
-//  2. By a small explicit `directDecodePairs` map covering wrappers that
-//     decode straight from JSON bytes (Notification, NotificationsResult,
-//     MyAssignment, Gauge, GaugeNeedle) plus the nested public wrapper structs
-//     reachable from them (PreviewableAttachment, MyAssignmentAssignee,
-//     MyAssignmentBucket, MyAssignmentParent). These do not have *FromGenerated
-//     declarations; the JSON tags on the wrapper struct fields are what the
-//     JSON decoder uses to read the wire payload. Listing the nested structs
-//     explicitly carries the tag-presence check into them rather than stopping
-//     at the parent field.
+//  2. By an explicit `directDecodePairs` map covering wrappers that decode
+//     straight from JSON bytes (Notification, NotificationsResult, MyAssignment,
+//     MyAssignmentsResult, Gauge, GaugeNeedle, Account, Preferences,
+//     OutOfOffice) plus the nested public wrapper structs reachable from them
+//     (PreviewableAttachment, MyAssignmentAssignee, MyAssignmentBucket,
+//     MyAssignmentParent, AccountLogo, AccountLimits, AccountSettings,
+//     AccountSubscription, OutOfOfficePerson). These do not have
+//     *FromGenerated declarations; the JSON tags on the wrapper struct fields
+//     are what the JSON decoder uses to read the wire payload. Listing the
+//     nested structs explicitly carries the tag-presence check into them
+//     rather than stopping at the parent field. See the directDecodePairs
+//     declaration below for the derivation recipe that produced the list.
 //
 // # Check
 //
@@ -113,17 +116,53 @@ import (
 // through. Because they are direct-decode, only the tag-presence check applies
 // (json.Unmarshal populates them straight from the tags), not the population
 // check.
+//
+// # Completeness
+//
+// This map is intended to be the COMPLETE set of (wrapper, generated) direct-
+// decode pairs as of this PR. The derivation recipe used to build it (and the
+// recipe future contributors should re-run when adding endpoints):
+//
+//  1. Grep go/pkg/basecamp/*.go (non-test) for raw-decode call sites:
+//     `json.Unmarshal(... &<local>)`, `json.NewDecoder(...).Decode(&<local>)`,
+//     and decode helpers (e.g. `decodeGaugePayload`).
+//  2. For each site whose target local is a hand-written WRAPPER struct (not a
+//     `generated.X` value routed through a `*FromGenerated` function), check
+//     whether a `generated.<Name>` (or close-named) counterpart exists in
+//     `go/pkg/generated/client.gen.go`.
+//  3. If yes, add (wrapper, generated) here. Also add every nested PUBLIC
+//     wrapper struct reachable from it whose fields are populated by the same
+//     json.Unmarshal (no *FromGenerated of its own).
+//
+// Excluded by design:
+//   - WebhookEvent and its parallel webhook-flavored wrapper types
+//     (WebhookEventRecording / WebhookEventPerson / ...): these are a separate
+//     representation, not aligned 1:1 with `generated.WebhookEvent`'s nested
+//     `Recording` / `Person`. They follow the same precedent as
+//     `webhookPersonFromGenerated` (see excludedFromGenerated).
+//   - Local request / response envelope structs used to read upstream API
+//     errors, the Launchpad authorization endpoint, embedded SDK provenance,
+//     and the like, which are not driven by the OpenAPI spec.
 var directDecodePairs = map[string]string{
 	"Notification":        "Notification",
 	"NotificationsResult": "GetMyNotificationsResponseContent",
 	"MyAssignment":        "MyAssignment",
 	"Gauge":               "Gauge",
 	"GaugeNeedle":         "GaugeNeedle",
+	"Account":             "Account",
+	"Preferences":         "Preferences",
+	"OutOfOffice":         "OutOfOffice",
+	"MyAssignmentsResult": "GetMyAssignmentsResponseContent",
 	// Nested direct-decode structs (no *FromGenerated; decoded with their parent).
 	"PreviewableAttachment": "PreviewableAttachment", // nested in Notification.previewable_attachments
 	"MyAssignmentAssignee":  "MyAssignmentAssignee",  // nested in MyAssignment.assignees
 	"MyAssignmentBucket":    "MyAssignmentBucket",    // nested in MyAssignment.bucket
 	"MyAssignmentParent":    "MyAssignmentParent",    // nested in MyAssignment.parent
+	"AccountLogo":           "AccountLogo",           // nested in Account.logo
+	"AccountLimits":         "AccountLimits",         // nested in Account.limits
+	"AccountSettings":       "AccountSettings",       // nested in Account.settings
+	"AccountSubscription":   "AccountSubscription",   // nested in Account.subscription
+	"OutOfOfficePerson":     "OutOfOfficePerson",     // nested in OutOfOffice.person
 }
 
 // excludedFromGenerated lists *FromGenerated functions whose argument type
