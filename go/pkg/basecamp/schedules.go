@@ -61,6 +61,8 @@ type ScheduleEntry struct {
 	URL              string             `json:"url"`
 	AppURL           string             `json:"app_url"`
 	BookmarkURL      string             `json:"bookmark_url"`
+	BoostsCount      int                `json:"boosts_count,omitempty"`
+	BoostsURL        string             `json:"boosts_url,omitempty"`
 	SubscriptionURL  string             `json:"subscription_url"`
 	CommentsURL      string             `json:"comments_url"`
 	CommentsCount    int                `json:"comments_count"`
@@ -579,14 +581,8 @@ func scheduleFromGenerated(gs generated.Schedule) Schedule {
 	}
 
 	if gs.Creator.Id != 0 || gs.Creator.Name != "" {
-		s.Creator = &Person{
-			ID:           int64(gs.Creator.Id),
-			Name:         gs.Creator.Name,
-			EmailAddress: gs.Creator.EmailAddress,
-			AvatarURL:    gs.Creator.AvatarUrl,
-			Admin:        gs.Creator.Admin,
-			Owner:        gs.Creator.Owner,
-		}
+		creator := personFromGenerated(gs.Creator)
+		s.Creator = &creator
 	}
 
 	return s
@@ -606,6 +602,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 		URL:              ge.Url,
 		AppURL:           ge.AppUrl,
 		BookmarkURL:      ge.BookmarkUrl,
+		BoostsCount:      int(ge.BoostsCount),
+		BoostsURL:        ge.BoostsUrl,
 		SubscriptionURL:  ge.SubscriptionUrl,
 		CommentsURL:      ge.CommentsUrl,
 		CommentsCount:    int(ge.CommentsCount),
@@ -638,31 +636,15 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 	}
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
-		e.Creator = &Person{
-			ID:           int64(ge.Creator.Id),
-			Name:         ge.Creator.Name,
-			EmailAddress: ge.Creator.EmailAddress,
-			AvatarURL:    ge.Creator.AvatarUrl,
-			Admin:        ge.Creator.Admin,
-			Owner:        ge.Creator.Owner,
-		}
+		creator := personFromGenerated(ge.Creator)
+		e.Creator = &creator
 	}
 
 	// Convert participants
 	if len(ge.Participants) > 0 {
 		e.Participants = make([]Person, 0, len(ge.Participants))
 		for _, gp := range ge.Participants {
-			p := Person{
-				Name:         gp.Name,
-				EmailAddress: gp.EmailAddress,
-				AvatarURL:    gp.AvatarUrl,
-				Admin:        gp.Admin,
-				Owner:        gp.Owner,
-			}
-			if gp.Id != 0 {
-				p.ID = int64(gp.Id)
-			}
-			e.Participants = append(e.Participants, p)
+			e.Participants = append(e.Participants, personFromGenerated(gp))
 		}
 	}
 

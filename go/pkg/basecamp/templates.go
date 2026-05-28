@@ -21,12 +21,15 @@ type TemplateListOptions struct {
 
 // Template represents a Basecamp project template.
 type Template struct {
-	ID          int64     `json:"id"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
+	ID          int64      `json:"id"`
+	Status      string     `json:"status"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	URL         string     `json:"url,omitempty"`
+	AppURL      string     `json:"app_url,omitempty"`
+	Dock        []DockItem `json:"dock,omitempty"`
 }
 
 // ProjectConstruction represents the status of a project being created from a template.
@@ -383,10 +386,19 @@ func templateFromGenerated(gt generated.Template) Template {
 		UpdatedAt:   gt.UpdatedAt,
 		Name:        gt.Name,
 		Description: gt.Description,
+		URL:         gt.Url,
+		AppURL:      gt.AppUrl,
 	}
 
 	if gt.Id != 0 {
 		t.ID = gt.Id
+	}
+
+	if len(gt.Dock) > 0 {
+		t.Dock = make([]DockItem, 0, len(gt.Dock))
+		for _, gd := range gt.Dock {
+			t.Dock = append(t.Dock, dockItemFromGenerated(gd))
+		}
 	}
 
 	return t

@@ -227,14 +227,8 @@ func clientCorrespondenceFromGenerated(gc generated.ClientCorrespondence) Client
 	}
 
 	if gc.Creator.Id != 0 || gc.Creator.Name != "" {
-		c.Creator = &Person{
-			ID:           int64(gc.Creator.Id),
-			Name:         gc.Creator.Name,
-			EmailAddress: gc.Creator.EmailAddress,
-			AvatarURL:    gc.Creator.AvatarUrl,
-			Admin:        gc.Creator.Admin,
-			Owner:        gc.Creator.Owner,
-		}
+		creator := personFromGenerated(gc.Creator)
+		c.Creator = &creator
 	}
 
 	return c

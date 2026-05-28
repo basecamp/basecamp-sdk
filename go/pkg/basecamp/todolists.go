@@ -25,6 +25,8 @@ type Todolist struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
+	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	CommentsURL      string    `json:"comments_url"`
@@ -341,6 +343,8 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		URL:              gtl.Url,
 		AppURL:           gtl.AppUrl,
 		BookmarkURL:      gtl.BookmarkUrl,
+		BoostsCount:      int(gtl.BoostsCount),
+		BoostsURL:        gtl.BoostsUrl,
 		SubscriptionURL:  gtl.SubscriptionUrl,
 		CommentsCount:    int(gtl.CommentsCount),
 		CommentsURL:      gtl.CommentsUrl,
@@ -380,14 +384,8 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 	}
 
 	if gtl.Creator.Id != 0 || gtl.Creator.Name != "" {
-		tl.Creator = &Person{
-			ID:           int64(gtl.Creator.Id),
-			Name:         gtl.Creator.Name,
-			EmailAddress: gtl.Creator.EmailAddress,
-			AvatarURL:    gtl.Creator.AvatarUrl,
-			Admin:        gtl.Creator.Admin,
-			Owner:        gtl.Creator.Owner,
-		}
+		creator := personFromGenerated(gtl.Creator)
+		tl.Creator = &creator
 	}
 
 	return tl
