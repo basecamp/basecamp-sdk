@@ -42,14 +42,14 @@ func coercePersonID(obj map[string]any) {
 	if !ok {
 		return
 	}
-	if _, err := strconv.ParseInt(idStr, 10, 64); err == nil {
+	_, err := strconv.ParseInt(idStr, 10, 64)
+	if err == nil {
 		obj["id"] = json.Number(idStr) // numeric string — preserve as json.Number
 		return
-	} else {
-		var numErr *strconv.NumError
-		if errors.As(err, &numErr) && numErr.Err == strconv.ErrRange {
-			return // numeric overflow — leave as string, let decoder reject
-		}
+	}
+	var numErr *strconv.NumError
+	if errors.As(err, &numErr) && numErr.Err == strconv.ErrRange {
+		return // numeric overflow — leave as string, let decoder reject
 	}
 	// Non-numeric sentinel (e.g. "basecamp" for system-generated entities).
 	obj["system_label"] = idStr
@@ -92,25 +92,6 @@ func normalizeEmbeddedPersonIds(v any) {
 	}
 }
 
-// normalizeJSON parses raw JSON, normalizes Person-shaped objects, and
-// re-serializes. Uses json.Number to preserve integer precision.
-func normalizeJSON(data []byte) ([]byte, error) {
-	// Short-circuit: skip the parse/re-serialize if no Person-shaped objects
-	if !bytes.Contains(data, []byte(`"personable_type"`)) {
-		return data, nil
-	}
-
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-
-	var raw any
-	if err := dec.Decode(&raw); err != nil {
-		return data, err
-	}
-	normalizePersonIds(raw)
-	return json.Marshal(raw)
-}
-
 // normalizeEmbeddedPeopleJSON normalizes a raw response that embeds *Person
 // under "creator"/"participants" (notifications, gauges, gauge needles) before
 // it is decoded onto the wrapper. It applies both the generic
@@ -118,7 +99,7 @@ func normalizeJSON(data []byte) ([]byte, error) {
 // pass, so embedded people with string ids decode into Person.ID (a plain int64)
 // even when those person objects omit "personable_type".
 //
-// Unlike normalizeJSON it short-circuits only when the body contains none of
+// It short-circuits only when the body contains none of
 // "personable_type", "creator", or "participants" — an embedded person id can be
 // a string without any "personable_type" appearing in the body, so the
 // personable_type-only guard would skip the very payloads this exists to fix.
