@@ -223,7 +223,7 @@ go-check-drift:
 # operation-level, this one is field-level.
 go-check-wrapper-drift:
 	@echo "==> Checking wrapper field-level drift..."
-	@cd $(CURDIR) && go run ./scripts/check-wrapper-drift/
+	@go run ./scripts/check-wrapper-drift/
 
 .PHONY: auth-routable-check
 

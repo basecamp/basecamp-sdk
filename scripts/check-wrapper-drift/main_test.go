@@ -3,6 +3,8 @@ package main
 import (
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -129,25 +131,41 @@ func TestMarkerRegex_RequiresReason(t *testing.T) {
 	}
 }
 
-// TestEndToEnd_HappyAndDrift drives the full check against two minimal
-// fixtures: one in sync, one with a missing tag and an omitted-marker hit.
-func TestEndToEnd_HappyAndDrift(t *testing.T) {
+// writeDriftFixtures writes a generated client file and one or more wrapper
+// files into a temp tree laid out the way run() expects (a wrapper dir + a
+// separate generated file path) and returns the two paths. This lets tests
+// drive the real run() entry point end-to-end instead of reimplementing the
+// check's internals.
+func writeDriftFixtures(t *testing.T, genSrc string, wrapperSrcByName map[string]string) (wrapperDir, generatedFile string) {
+	t.Helper()
+	root := t.TempDir()
+	wrapperDir = filepath.Join(root, "wrappers")
+	if err := os.MkdirAll(wrapperDir, 0o755); err != nil {
+		t.Fatalf("mkdir wrappers: %v", err)
+	}
+	generatedFile = filepath.Join(root, "client.gen.go")
+	if err := os.WriteFile(generatedFile, []byte(genSrc), 0o644); err != nil {
+		t.Fatalf("write generated: %v", err)
+	}
+	for name, src := range wrapperSrcByName {
+		if err := os.WriteFile(filepath.Join(wrapperDir, name), []byte(src), 0o644); err != nil {
+			t.Fatalf("write wrapper %s: %v", name, err)
+		}
+	}
+	return wrapperDir, generatedFile
+}
+
+// TestRun_InSync drives the real run() over a tree where every generated tag is
+// either propagated + assigned or intentionally-omitted. run() must return nil.
+func TestRun_InSync(t *testing.T) {
 	genSrc := `package generated
 
 type Foo struct {
-	Id    int64  ` + "`json:\"id\"`" + `
-	Title string ` + "`json:\"title\"`" + `
+	Id     int64  ` + "`json:\"id\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
 	Hidden string ` + "`json:\"hidden,omitempty\"`" + `
 }
-
-type Bar struct {
-	Id   int64  ` + "`json:\"id\"`" + `
-	Name string ` + "`json:\"name\"`" + `
-	NewField string ` + "`json:\"new_field,omitempty\"`" + `
-}
 `
-	// Wrapper fixture: Foo is in sync (Hidden marked as intentionally-omitted),
-	// Bar is drifted (missing NewField).
 	wrapperSrc := `package basecamp
 
 import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -159,53 +177,187 @@ type Foo struct {
 	internalNote string
 }
 
-func fooFromGenerated(g generated.Foo) Foo { return Foo{} }
+func fooFromGenerated(g generated.Foo) Foo {
+	f := Foo{Title: g.Title}
+	f.ID = g.Id
+	return f
+}
+`
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"foo.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, false); err != nil {
+		t.Errorf("run: expected no drift, got %v", err)
+	}
+}
+
+// TestRun_MissingTag drives run() over a wrapper missing a generated tag with no
+// marker. run() must return a drift error.
+func TestRun_MissingTag(t *testing.T) {
+	genSrc := `package generated
+
+type Bar struct {
+	Id       int64  ` + "`json:\"id\"`" + `
+	Name     string ` + "`json:\"name\"`" + `
+	NewField string ` + "`json:\"new_field,omitempty\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
 
 type Bar struct {
 	ID   int64  ` + "`json:\"id\"`" + `
 	Name string ` + "`json:\"name\"`" + `
 }
 
-func barFromGenerated(g generated.Bar) Bar { return Bar{} }
+func barFromGenerated(g generated.Bar) Bar {
+	b := Bar{Name: g.Name}
+	b.ID = g.Id
+	return b
+}
+`
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"bar.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+		t.Error("run: expected drift on missing tag new_field, got nil")
+	}
+}
+
+// TestRun_TagPresentButUnassigned is the P1 regression: a wrapper that DECLARES
+// the right tag but whose *FromGenerated never assigns the field must still be
+// caught. This is exactly the case the tag-only check let through.
+func TestRun_TagPresentButUnassigned(t *testing.T) {
+	genSrc := `package generated
+
+type Baz struct {
+	Id      int64  ` + "`json:\"id\"`" + `
+	Tagline string ` + "`json:\"tagline\"`" + `
+}
+`
+	// Tagline carries the right tag but bazFromGenerated never assigns it.
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Baz struct {
+	ID      int64  ` + "`json:\"id\"`" + `
+	Tagline string ` + "`json:\"tagline\"`" + `
+}
+
+func bazFromGenerated(g generated.Baz) Baz {
+	b := Baz{}
+	b.ID = g.Id
+	return b
+}
+`
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"baz.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+		t.Error("run: expected population drift on unassigned Tagline, got nil")
+	}
+}
+
+// TestRun_AssignedViaSelectorAndCompositeLit confirms both assignment forms the
+// population walker recognizes count: a field set in the composite literal and a
+// field set via a later `x.Field = ...` statement.
+func TestRun_AssignedViaSelectorAndCompositeLit(t *testing.T) {
+	genSrc := `package generated
+
+type Qux struct {
+	Id    int64  ` + "`json:\"id\"`" + `
+	Name  string ` + "`json:\"name\"`" + `
+	Title string ` + "`json:\"title\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Qux struct {
+	ID    int64  ` + "`json:\"id\"`" + `
+	Name  string ` + "`json:\"name\"`" + `
+	Title string ` + "`json:\"title\"`" + `
+}
+
+func quxFromGenerated(g generated.Qux) Qux {
+	q := Qux{Name: g.Name}
+	q.ID = g.Id
+	q.Title = g.Title
+	return q
+}
+`
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"qux.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, false); err != nil {
+		t.Errorf("run: expected no drift (all fields assigned), got %v", err)
+	}
+}
+
+// TestRun_OmitMarkerMismatch confirms run() flags an intentionally-omitted
+// marker that names a tag the generated struct does not emit.
+func TestRun_OmitMarkerMismatch(t *testing.T) {
+	genSrc := `package generated
+
+type Foo struct {
+	Id int64 ` + "`json:\"id\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Foo struct {
+	ID int64 ` + "`json:\"id\"`" + `
+	// intentionally-omitted: not_a_real_tag - typo that should be flagged
+	note string
+}
+
+func fooFromGenerated(g generated.Foo) Foo {
+	f := Foo{}
+	f.ID = g.Id
+	return f
+}
+`
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"foo.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+		t.Error("run: expected drift on stale omit marker not_a_real_tag, got nil")
+	}
+}
+
+// TestCollectAssignedFields verifies the walker collects fields from both the
+// wrapper composite literal and selector assignments, and does NOT collect keys
+// from nested helper literals (Parent/Bucket) — the one-level-nesting boundary.
+func TestCollectAssignedFields(t *testing.T) {
+	src := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Thing struct {
+	ID     int64
+	Status string
+	Parent *Parent
+}
+
+func thingFromGenerated(g generated.Thing) Thing {
+	t := Thing{Status: g.Status}
+	t.ID = g.Id
+	if g.Parent.Id != 0 {
+		t.Parent = &Parent{ID: g.Parent.Id, Title: g.Parent.Title}
+	}
+	return t
+}
 `
 	fset := token.NewFileSet()
-	genFile, err := parser.ParseFile(fset, "gen.go", genSrc, parser.ParseComments)
+	f, err := parser.ParseFile(fset, "wrapper.go", src, parser.ParseComments)
 	if err != nil {
-		t.Fatalf("parse gen: %v", err)
+		t.Fatalf("parse: %v", err)
 	}
-	wrapFile, err := parser.ParseFile(fset, "wrapper.go", wrapperSrc, parser.ParseComments)
-	if err != nil {
-		t.Fatalf("parse wrap: %v", err)
-	}
-	genStructs := collectStructsAndMarkers(fset, genFile)
-	wrapStructs := collectStructsAndMarkers(fset, wrapFile)
-	pairs := collectFromGeneratedPairs(wrapFile)
-
-	// Foo: in sync (Hidden marked as intentionally-omitted).
-	fooGen := genStructs["Foo"]
-	fooWrap := wrapStructs["Foo"]
-	for tag := range fooGen.tags {
-		if !fooWrap.tags[tag] && !fooWrap.omitted[tag] {
-			t.Errorf("Foo: expected tag %q to be matched or omitted, got drift", tag)
+	got := collectAssignedFields(f)["Thing"]
+	for _, want := range []string{"Status", "ID", "Parent"} {
+		if !got[want] {
+			t.Errorf("expected %q to be collected as assigned, got %v", want, got)
 		}
 	}
-
-	// Bar: missing new_field, no marker → drift expected.
-	barGen := genStructs["Bar"]
-	barWrap := wrapStructs["Bar"]
-	missing := []string{}
-	for tag := range barGen.tags {
-		if !barWrap.tags[tag] && !barWrap.omitted[tag] {
-			missing = append(missing, tag)
-		}
-	}
-	if len(missing) != 1 || missing[0] != "new_field" {
-		t.Errorf("Bar: expected drift on [new_field], got %v", missing)
-	}
-
-	// Sanity: pair extraction worked.
-	if pairs["Foo"] != "Foo" || pairs["Bar"] != "Bar" {
-		t.Errorf("pair extraction: got %v", pairs)
+	// Title is a key on the nested &Parent{} literal, NOT a Thing field — it
+	// must not leak into Thing's assigned set.
+	if got["Title"] {
+		t.Errorf("nested literal key Title must not be attributed to Thing: %v", got)
 	}
 }
 

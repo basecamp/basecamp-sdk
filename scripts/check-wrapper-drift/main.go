@@ -2,30 +2,30 @@
 // hand-written wrappers in go/pkg/basecamp/ and the generated types in
 // go/pkg/generated/.
 //
-// Discovery
+// # Discovery
 //
 // The script walks (wrapper, generated) pairs in two ways:
 //
-//   1. By signature reading every `<lower>FromGenerated(g generated.X) Y`
-//      function declaration in go/pkg/basecamp/*.go (non-test). The argument
-//      type names the generated struct; the return type names the wrapper
-//      struct. (`webhookPersonFromGenerated` is special-cased and excluded
-//      from the *FromGenerated convention check below — it is a parallel
-//      mapping for WebhookEventPerson, not a Person wrapper.)
+//  1. By signature reading every `<lower>FromGenerated(g generated.X) Y`
+//     function declaration in go/pkg/basecamp/*.go (non-test). The argument
+//     type names the generated struct; the return type names the wrapper
+//     struct. (`webhookPersonFromGenerated` is special-cased and excluded
+//     from the *FromGenerated convention check below — it is a parallel
+//     mapping for WebhookEventPerson, not a Person wrapper.)
 //
-//   2. By a small explicit `directDecodePairs` map covering wrappers that
-//      decode straight from JSON bytes (Notification, NotificationsResult,
-//      MyAssignment, Gauge, GaugeNeedle). These do not have *FromGenerated
-//      declarations; the JSON tags on the wrapper struct fields are what the
-//      JSON decoder uses to read the wire payload.
+//  2. By a small explicit `directDecodePairs` map covering wrappers that
+//     decode straight from JSON bytes (Notification, NotificationsResult,
+//     MyAssignment, Gauge, GaugeNeedle). These do not have *FromGenerated
+//     declarations; the JSON tags on the wrapper struct fields are what the
+//     JSON decoder uses to read the wire payload.
 //
-// Check
+// # Check
 //
 // For each pair, the script compares JSON tag names (not Go field names —
-// shape-equivalent tag collisions like wrapper `URL string \`json:"url"\``
-// vs generated `Url string \`json:"url"\`` are handled correctly because the
-// match is keyed on the `json:"…"` tag value, e.g. "url"). For every JSON
-// tag declared on the generated struct, the wrapper must either:
+// shape-equivalent tag collisions like wrapper URL with json tag "url" vs
+// generated Url with json tag "url" are handled correctly because the match
+// is keyed on the json:"…" tag value, e.g. "url"). For every JSON tag
+// declared on the generated struct, the wrapper must either:
 //
 //   - declare a field with the same JSON tag, or
 //   - carry an `// intentionally-omitted: <tag> - <reason>` marker (ASCII
@@ -33,6 +33,40 @@
 //     inside the wrapper struct's definition block.
 //
 // If neither is present, the script reports drift and exits 1.
+//
+// # Population check
+//
+// Declaring the tag is necessary but not sufficient: a wrapper field can carry
+// the right JSON tag yet never be assigned by its *FromGenerated conversion
+// function, so it silently stays zero-valued on the wire while the tag-presence
+// check passes. For every *FromGenerated-backed pair, the script therefore also
+// confirms the conversion body actually assigns each tagged wrapper field. It
+// AST-walks the function body and collects assigned wrapper fields from two
+// forms (see collectAssignedFields): the wrapper's own composite literal
+// (`c := Card{Status: ...}`) and selector-target assignments (`c.Creator =
+// ...`, `c.Steps = append(...)`). A tag-present-but-never-assigned field is
+// reported as drift.
+//
+// Scope and limitations of the population check (verified against the current
+// go/pkg/basecamp/ corpus, where every *FromGenerated follows this shape):
+//
+//   - It is a *reachability* check, not a value check: it proves the field is
+//     written somewhere in the body, not that the written value is correct or
+//     that the assignment is unconditional. A field assigned only inside an
+//     `if` branch (e.g. nested Creator/Bucket pointers, which are gated on the
+//     generated value being non-empty) counts as populated — matching the
+//     wrappers' intentional "leave nil when the source is empty" semantics.
+//   - One level of nesting only, consistent with the tag check: a parent field
+//     assigned via a nested helper (`c.Creator = &creator` where `creator =
+//     personFromGenerated(...)`) counts because the parent field is assigned;
+//     the nested Person's own fields are verified through the separate
+//     Person ↔ generated.Person pair.
+//   - Direct-decode wrappers (the directDecodePairs set) are EXEMPT: they have
+//     no *FromGenerated body and are populated by json.Unmarshal straight onto
+//     the struct tags, so tag presence already is population for them.
+//   - A field genuinely populated by some mechanism the walker cannot see
+//     (none exist today) should carry an `// intentionally-omitted` marker with
+//     a reason, which suppresses both the tag and population checks for it.
 //
 // The wrapper may declare additional fields not in the generated struct
 // (e.g. SystemLabel on Person, BillableStatus on TimesheetEntry); these are
@@ -90,10 +124,16 @@ var markerRe = regexp.MustCompile(`intentionally-omitted:\s*([a-zA-Z0-9_]+)\s*-\
 // structFields captures the JSON tag set of a struct plus the
 // intentionally-omitted markers associated with it. Tag is the JSON tag
 // (the part before any comma, e.g. "tagline" from `json:"tagline,omitempty"`).
+//
+// tagToGoField maps each JSON tag back to its Go field identifier (e.g.
+// "tagline" -> "Tagline"). The population check (see run) uses it to translate
+// the set of assigned Go fields collected from a *FromGenerated body into the
+// JSON-tag space the rest of the check operates in.
 type structFields struct {
-	tags        map[string]bool
-	omitted     map[string]bool
-	declaration token.Pos
+	tags         map[string]bool
+	omitted      map[string]bool
+	tagToGoField map[string]string
+	declaration  token.Pos
 }
 
 func main() {
@@ -110,7 +150,7 @@ func main() {
 	wrapperDir := filepath.Join(repoRoot, "go", "pkg", "basecamp")
 	generatedFile := filepath.Join(repoRoot, "go", "pkg", "generated", "client.gen.go")
 
-	if err := run(wrapperDir, generatedFile, *verbose); err != nil {
+	if err := run(wrapperDir, generatedFile, directDecodePairs, *verbose); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
@@ -140,7 +180,12 @@ func resolveRoot(root string) (string, error) {
 	}
 }
 
-func run(wrapperDir, generatedFile string, verbose bool) error {
+// run performs the full drift check. directDecode is injected (rather than read
+// from the package global) so tests can drive run() end-to-end with their own
+// fixtures without dragging in the production direct-decode pair set, whose
+// generated structs would otherwise have to exist in every test fixture.
+// main() passes the package-level directDecodePairs.
+func run(wrapperDir, generatedFile string, directDecode map[string]string, verbose bool) error {
 	fset := token.NewFileSet()
 
 	// Parse the generated client.
@@ -156,7 +201,8 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 		return fmt.Errorf("read wrapper dir: %w", err)
 	}
 	wrapperStructs := map[string]*structFields{}
-	fromGenPairs := map[string]string{} // wrapper name -> generated name (derived from *FromGenerated signatures)
+	fromGenPairs := map[string]string{}            // wrapper name -> generated name (derived from *FromGenerated signatures)
+	assignedFields := map[string]map[string]bool{} // wrapper name -> set of Go fields its *FromGenerated body assigns
 	for _, entry := range entries {
 		name := entry.Name()
 		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
@@ -170,9 +216,22 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 		for k, v := range collectStructsAndMarkers(fset, f) {
 			wrapperStructs[k] = v
 		}
+		// collectFromGeneratedPairs already drops excluded functions by their
+		// function name (see excludedFromGenerated check inside it), so no
+		// second exclusion is needed here. Re-filtering by wrapper struct name
+		// would be dead code: the keys are wrapper struct names (e.g.
+		// WebhookEventPerson), not function names (webhookPersonFromGenerated).
 		for k, v := range collectFromGeneratedPairs(f) {
-			if !excludedFromGenerated[k+"FromGenerated"] && !excludedFromGenerated[lowercaseFirst(k)+"FromGenerated"] {
-				fromGenPairs[k] = v
+			fromGenPairs[k] = v
+		}
+		for k, fields := range collectAssignedFields(f) {
+			set := assignedFields[k]
+			if set == nil {
+				set = map[string]bool{}
+				assignedFields[k] = set
+			}
+			for fn := range fields {
+				set[fn] = true
 			}
 		}
 	}
@@ -182,7 +241,7 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 	for k, v := range fromGenPairs {
 		pairs[k] = v
 	}
-	for k, v := range directDecodePairs {
+	for k, v := range directDecode {
 		pairs[k] = v
 	}
 
@@ -195,6 +254,7 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 
 	var drift []string
 	totalFieldsChecked := 0
+	totalFieldsPopChecked := 0
 	for _, wrapName := range pairNames {
 		genName := pairs[wrapName]
 		gen := genStructs[genName]
@@ -208,6 +268,13 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 			continue
 		}
 
+		// Direct-decode wrappers (Notification, MyAssignment, ...) have no
+		// *FromGenerated body: the JSON decoder populates them straight from the
+		// struct tags, so tag presence IS population. The population check below
+		// only applies to *FromGenerated-backed pairs.
+		_, isDirectDecode := directDecode[wrapName]
+		assigned := assignedFields[wrapName]
+
 		// Walk every JSON tag declared on the generated struct.
 		tags := make([]string, 0, len(gen.tags))
 		for t := range gen.tags {
@@ -216,22 +283,37 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 		sort.Strings(tags)
 
 		var missing []string
+		var unpopulated []string
 		for _, tag := range tags {
 			totalFieldsChecked++
-			if wrap.tags[tag] {
-				continue
-			}
 			if wrap.omitted[tag] {
 				continue
 			}
-			missing = append(missing, tag)
+			if !wrap.tags[tag] {
+				missing = append(missing, tag)
+				continue
+			}
+			// Tag is declared on the wrapper. For *FromGenerated-backed pairs,
+			// also confirm the conversion body actually assigns the field —
+			// otherwise a tag-present-but-unassigned field silently stays
+			// zero-valued while this check would otherwise pass.
+			if !isDirectDecode {
+				totalFieldsPopChecked++
+				goField := wrap.tagToGoField[tag]
+				if goField != "" && (assigned == nil || !assigned[goField]) {
+					unpopulated = append(unpopulated, fmt.Sprintf("%s (field %s)", tag, goField))
+				}
+			}
 		}
 		if len(missing) > 0 {
 			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: missing JSON tags %v (add to wrapper struct or mark with `// intentionally-omitted: <tag> - <reason>`)", wrapName, genName, missing))
 		}
+		if len(unpopulated) > 0 {
+			drift = append(drift, fmt.Sprintf("%s ↔ generated.%s: wrapper declares these tags but %sFromGenerated never assigns them %v (assign the field in the conversion function, or mark with `// intentionally-omitted: <tag> - <reason>` if the wrapper field is populated by some other means)", wrapName, genName, lowercaseFirst(wrapName), unpopulated))
+		}
 		if verbose {
-			fmt.Printf("  %s ↔ generated.%s (%d generated tags, %d wrapper tags, %d omitted)\n",
-				wrapName, genName, len(gen.tags), len(wrap.tags), len(wrap.omitted))
+			fmt.Printf("  %s ↔ generated.%s (%d generated tags, %d wrapper tags, %d omitted, %d assigned fields, directDecode=%v)\n",
+				wrapName, genName, len(gen.tags), len(wrap.tags), len(wrap.omitted), len(assigned), isDirectDecode)
 		}
 	}
 
@@ -252,7 +334,7 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 		}
 	}
 
-	fmt.Printf("Wrapper drift check: %d pairs walked, %d generated fields verified\n", len(pairNames), totalFieldsChecked)
+	fmt.Printf("Wrapper drift check: %d pairs walked, %d generated fields verified (%d field assignments verified in *FromGenerated bodies)\n", len(pairNames), totalFieldsChecked, totalFieldsPopChecked)
 
 	if len(drift) > 0 {
 		fmt.Fprintln(os.Stderr)
@@ -261,7 +343,7 @@ func run(wrapperDir, generatedFile string, verbose bool) error {
 			fmt.Fprintln(os.Stderr, "  -", d)
 		}
 		fmt.Fprintln(os.Stderr)
-		fmt.Fprintln(os.Stderr, "Fix: either propagate the generated field on the wrapper struct + the FromGenerated function, or add a comment of the form")
+		fmt.Fprintln(os.Stderr, "Fix: either propagate the generated field on the wrapper struct + assign it in the *FromGenerated function, or add a comment of the form")
 		fmt.Fprintln(os.Stderr, "     `// intentionally-omitted: <tag> - <reason>` inside the wrapper struct's declaration.")
 		return fmt.Errorf("wrapper drift: %d issue(s)", len(drift))
 	}
@@ -292,9 +374,10 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				continue
 			}
 			sf := &structFields{
-				tags:        map[string]bool{},
-				omitted:     map[string]bool{},
-				declaration: ts.Pos(),
+				tags:         map[string]bool{},
+				omitted:      map[string]bool{},
+				tagToGoField: map[string]string{},
+				declaration:  ts.Pos(),
 			}
 			for _, field := range st.Fields.List {
 				if field.Tag == nil {
@@ -303,6 +386,13 @@ func collectStructsAndMarkers(fset *token.FileSet, f *ast.File) map[string]*stru
 				tagVal := field.Tag.Value
 				if tag := extractJSONTag(tagVal); tag != "" {
 					sf.tags[tag] = true
+					// Record the Go field identifier for this tag. Tagged
+					// fields in these structs always have exactly one name;
+					// if a field ever had multiple names sharing a tag, the
+					// last wins (still correct for membership lookups).
+					for _, fn := range field.Names {
+						sf.tagToGoField[tag] = fn.Name
+					}
 				}
 			}
 			// Scan every comment inside the struct body for opt-out markers.
@@ -364,6 +454,113 @@ func collectFromGeneratedPairs(f *ast.File) map[string]string {
 		out[resultType] = paramType
 	}
 	return out
+}
+
+// collectAssignedFields walks every non-excluded *FromGenerated function in the
+// file and, for each, records the set of wrapper Go fields the body actually
+// assigns. Two assignment forms are recognized, which together cover every
+// *FromGenerated in go/pkg/basecamp/:
+//
+//  1. The wrapper's own composite literal, e.g. `c := Card{Status: ..., ...}` —
+//     every KeyValueExpr key whose enclosing composite-literal type names the
+//     wrapper struct. Nested literals like `&Parent{ID: ...}` and `&Bucket{...}`
+//     are correctly ignored because their type identifier is Parent/Bucket, not
+//     the wrapper, so only the parent field (`c.Parent = ...`) counts as
+//     populated — matching the check's one-level-nesting termination.
+//  2. Selector-target assignments, e.g. `c.ID = ...`, `c.Creator = &creator`,
+//     `c.Assignees = append(...)` — every AssignStmt / IncDecStmt whose LHS is a
+//     SelectorExpr rooted in a bare identifier. *FromGenerated bodies only ever
+//     write to the wrapper local (the generated param `g*` is read-only), so the
+//     selected field name is a wrapper field.
+//
+// The result maps wrapper struct name -> set of assigned Go field names. It is
+// keyed on the function's *return* type, so it lines up with the wrapper-side of
+// each (wrapper, generated) pair. Multiple functions returning the same wrapper
+// (across files) accumulate into one set.
+func collectAssignedFields(f *ast.File) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	for _, decl := range f.Decls {
+		fd, ok := decl.(*ast.FuncDecl)
+		if !ok || fd.Recv != nil || fd.Body == nil {
+			continue
+		}
+		if !strings.HasSuffix(fd.Name.Name, "FromGenerated") {
+			continue
+		}
+		if excludedFromGenerated[fd.Name.Name] {
+			continue
+		}
+		if fd.Type.Results == nil || len(fd.Type.Results.List) != 1 {
+			continue
+		}
+		wrapper := extractLocalTypeName(fd.Type.Results.List[0].Type)
+		if wrapper == "" {
+			continue
+		}
+		assigned := out[wrapper]
+		if assigned == nil {
+			assigned = map[string]bool{}
+			out[wrapper] = assigned
+		}
+		ast.Inspect(fd.Body, func(n ast.Node) bool {
+			switch node := n.(type) {
+			case *ast.CompositeLit:
+				// Only the wrapper's own literal contributes field names;
+				// nested helper literals (Parent/Bucket/...) are skipped.
+				if litTypeName(node.Type) != wrapper {
+					return true
+				}
+				for _, elt := range node.Elts {
+					kv, ok := elt.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					if key, ok := kv.Key.(*ast.Ident); ok {
+						assigned[key.Name] = true
+					}
+				}
+			case *ast.AssignStmt:
+				for _, lhs := range node.Lhs {
+					if name := selectorFieldName(lhs); name != "" {
+						assigned[name] = true
+					}
+				}
+			case *ast.IncDecStmt:
+				if name := selectorFieldName(node.X); name != "" {
+					assigned[name] = true
+				}
+			}
+			return true
+		})
+	}
+	return out
+}
+
+// litTypeName returns the type identifier of a composite-literal type
+// expression (`Card{}` -> "Card"). Returns "" for non-identifier types
+// (slices, maps, qualified types like generated.X).
+func litTypeName(expr ast.Expr) string {
+	if expr == nil {
+		return ""
+	}
+	if ident, ok := expr.(*ast.Ident); ok {
+		return ident.Name
+	}
+	return ""
+}
+
+// selectorFieldName returns the field name of an `x.Field` selector rooted in a
+// bare identifier (`c.Creator` -> "Creator"). Returns "" for anything else
+// (index expressions, deeper chains, non-selector LHS).
+func selectorFieldName(expr ast.Expr) string {
+	sel, ok := expr.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	if _, ok := sel.X.(*ast.Ident); !ok {
+		return ""
+	}
+	return sel.Sel.Name
 }
 
 // extractGeneratedTypeName recognizes `generated.X` (SelectorExpr) and returns
