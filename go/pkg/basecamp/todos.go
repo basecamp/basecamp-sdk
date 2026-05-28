@@ -18,7 +18,7 @@ type Todo struct {
 	ID                    int64      `json:"id"`
 	Status                string     `json:"status"`
 	VisibleTo             []int64    `json:"visible_to"`
-	VisibleToClients      bool       `json:"visible_to_clients,omitempty"`
+	VisibleToClients      bool       `json:"visible_to_clients"`
 	CreatedAt             time.Time  `json:"created_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
 	Title                 string     `json:"title"`
