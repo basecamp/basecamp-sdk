@@ -63,16 +63,20 @@ records that as the fix-in-flight rather than re-proposing a shape.
 
 ## SDK absorption plan when this lands
 
-- **Now (regression live):** the canary's `pairwiseSupersetArray: ["memories"]`
-  rule on `GetMyNotifications` (`conformance/tests/live-my-surface.json`)
-  encodes the intended invariant but is **waived** by a temporary
-  `pairwiseDeltaAllowed: ["memories"]` entry pointing at this brief. The canary
-  stays green on the known/reported regression while still protecting every
-  other path. (That rule reframe + waiver lands in PR #308.)
-- **On #10947 merge:** remove the `pairwiseDeltaAllowed` waiver (restoring the
-  hard-fail), repin `spec/api-provenance.json` past the fix, and flip this
-  entry's `status` to `addressed-in-bc3-pr-10947` (the `bc3_pr: 10947` field is
-  already set).
-- No Smithy change is required — `memories` is already modeled on
-  `GetMyNotificationsOutput`, and its doc comment already records the observed
-  `[]` behavior.
+- **Now (regression live):** the live-canary invariant for `memories` lives in
+  **PR #308**, not on this branch. That PR adds the
+  `pairwiseSupersetArray: ["memories"]` rule on `GetMyNotifications` plus a
+  temporary `pairwiseDeltaAllowed: ["memories"]` waiver (in
+  `conformance/tests/live-my-surface.json`, which exists on #308's branch) that
+  keeps the canary green on this known regression while still protecting every
+  other path. This branch carries the registry record only — no canary files —
+  and is what that waiver points back to.
+- **Once PR #308 and BC3 #10947 have both landed:** remove the
+  `pairwiseDeltaAllowed: ["memories"]` waiver from
+  `conformance/tests/live-my-surface.json` (restoring the hard-fail), repin
+  `spec/api-provenance.json` past the fix, and flip this entry's `status` to
+  `addressed-in-bc3-pr-10947` (the `bc3_pr: 10947` field is already set).
+- No **structural** Smithy change is required — `memories` is already modeled
+  on `GetMyNotificationsOutput`. (This PR does realign that field's doc comment
+  to describe the regression + the #10947 fix and regenerates the artifacts
+  that inherit it; that is documentation, not a shape change.)
