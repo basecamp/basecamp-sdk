@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
-	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // -----------------------------------------------------------------------------
@@ -201,11 +200,14 @@ func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) 
 			t.Errorf("Company.Name: got %q, want %q", p.Company.Name, gp.Company.Name)
 		}
 	}
-	if p.CreatedAt == "" {
-		t.Error("CreatedAt: expected non-empty string from non-zero time")
+	// Exact timestamp comparison against the same RFC3339 format
+	// personFromGenerated applies — a wrong field mapping (e.g. CreatedAt
+	// sourced from UpdatedAt) would pass a mere non-empty check.
+	if want := gp.CreatedAt.Format("2006-01-02T15:04:05Z07:00"); p.CreatedAt != want {
+		t.Errorf("CreatedAt: got %q, want %q", p.CreatedAt, want)
 	}
-	if p.UpdatedAt == "" {
-		t.Error("UpdatedAt: expected non-empty string from non-zero time")
+	if want := gp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"); p.UpdatedAt != want {
+		t.Errorf("UpdatedAt: got %q, want %q", p.UpdatedAt, want)
 	}
 }
 
@@ -370,8 +372,19 @@ func TestMessageFromGenerated_PropagatesNewFields(t *testing.T) {
 	if !w.VisibleToClients || w.Title != "M" || !w.InheritsStatus {
 		t.Errorf("base recording-shaped fields not propagated: %+v", w)
 	}
-	if w.BookmarkURL == "" || w.BoostsURL == "" || w.CommentsURL == "" || w.SubscriptionURL == "" {
-		t.Errorf("URL fields not propagated: %+v", w)
+	// Exact URL comparisons — a swapped field mapping (e.g. BookmarkURL
+	// sourced from BoostsUrl) passes a mere non-empty check.
+	if w.BookmarkURL != "https://example.com/bm" {
+		t.Errorf("BookmarkURL: got %q, want %q", w.BookmarkURL, "https://example.com/bm")
+	}
+	if w.BoostsURL != "https://example.com/boosts" {
+		t.Errorf("BoostsURL: got %q, want %q", w.BoostsURL, "https://example.com/boosts")
+	}
+	if w.CommentsURL != "https://example.com/comments" {
+		t.Errorf("CommentsURL: got %q, want %q", w.CommentsURL, "https://example.com/comments")
+	}
+	if w.SubscriptionURL != "https://example.com/sub" {
+		t.Errorf("SubscriptionURL: got %q, want %q", w.SubscriptionURL, "https://example.com/sub")
 	}
 	if w.CommentsCount != 7 {
 		t.Errorf("CommentsCount: got %d", w.CommentsCount)
@@ -646,8 +659,11 @@ func TestNotification_DirectDecode_PropagatesNewFields(t *testing.T) {
 	if n.BubbleUpURL != "https://example.com/bubble" {
 		t.Errorf("BubbleUpURL: got %q", n.BubbleUpURL)
 	}
-	if n.BubbleUpAt.IsZero() {
-		t.Error("BubbleUpAt: expected non-zero")
+	wantBubbleUpAt := time.Date(2024, 2, 1, 8, 0, 0, 0, time.UTC)
+	if n.BubbleUpAt == nil {
+		t.Error("BubbleUpAt: expected non-nil")
+	} else if !n.BubbleUpAt.Equal(wantBubbleUpAt) {
+		t.Errorf("BubbleUpAt: got %v, want %v", *n.BubbleUpAt, wantBubbleUpAt)
 	}
 	if n.Creator == nil || n.Creator.Name != "Author" {
 		t.Errorf("Creator: %+v", n.Creator)
@@ -689,8 +705,15 @@ func TestNotificationsResult_DirectDecode_PropagatesNewFields(t *testing.T) {
 	if len(r.ScheduledBubbleUps) != 1 || r.ScheduledBubbleUps[0].Title != "Future" {
 		t.Errorf("ScheduledBubbleUps: %+v", r.ScheduledBubbleUps)
 	}
-	if r.ScheduledBubbleUps[0].BubbleUpAt.IsZero() {
-		t.Error("ScheduledBubbleUps[0].BubbleUpAt: expected non-zero")
+	wantBubbleUpAt := time.Date(2024, 2, 1, 8, 0, 0, 0, time.UTC)
+	if got := r.ScheduledBubbleUps[0].BubbleUpAt; got == nil {
+		t.Error("ScheduledBubbleUps[0].BubbleUpAt: expected non-nil")
+	} else if !got.Equal(wantBubbleUpAt) {
+		t.Errorf("ScheduledBubbleUps[0].BubbleUpAt: got %v, want %v", *got, wantBubbleUpAt)
+	}
+	// BubbleUps entry has no scheduled time → pointer stays nil (omits cleanly).
+	if r.BubbleUps[0].BubbleUpAt != nil {
+		t.Errorf("BubbleUps[0].BubbleUpAt: expected nil, got %v", *r.BubbleUps[0].BubbleUpAt)
 	}
 }
 
@@ -766,9 +789,3 @@ func TestGaugeNeedle_DirectDecode_PropagatesNewFields(t *testing.T) {
 		t.Errorf("Parent: %+v", n.Parent)
 	}
 }
-
-// -----------------------------------------------------------------------------
-// types helper (silences unused-import lint when go test rebuilds)
-// -----------------------------------------------------------------------------
-
-var _ = types.Date{}
