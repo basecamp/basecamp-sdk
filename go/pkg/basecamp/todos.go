@@ -55,8 +55,8 @@ type Todo struct {
 // Person represents a Basecamp user or system actor.
 // For system actors (personable_type "LocalPerson"), ID is 0. SystemLabel
 // holds the original non-numeric identifier (e.g. "basecamp") when the
-// response is processed through the normalize pass (notifications route
-// through normalizeNotificationsJSON, which also coerces string-valued
+// response is processed through the normalize pass (notifications and gauges
+// route through normalizeEmbeddedPeopleJSON, which also coerces string-valued
 // creator/participants ids that lack personable_type so they decode into
 // Person.ID). Endpoints that decode through the generated parser lose the
 // label — use PersonableType == "LocalPerson" as the authoritative

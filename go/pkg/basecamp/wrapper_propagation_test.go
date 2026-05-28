@@ -789,3 +789,44 @@ func TestGaugeNeedle_DirectDecode_PropagatesNewFields(t *testing.T) {
 		t.Errorf("Parent: %+v", n.Parent)
 	}
 }
+
+// TestGauge_StringCreatorID_NormalizedDecode verifies the gauge service decode
+// path (decodeGaugePayload -> normalizeEmbeddedPeopleJSON) coerces a string
+// creator id with no personable_type into Gauge.Creator.ID (a plain int64). A
+// raw json.Unmarshal would fail here, which is the regression the gauge Creator
+// field would otherwise reintroduce.
+func TestGauge_StringCreatorID_NormalizedDecode(t *testing.T) {
+	raw := []byte(`{
+		"id": 1,
+		"title": "G",
+		"creator": {"id": "1049715914", "name": "Author"},
+		"bucket": {"id": 9, "name": "Project", "type": "Project"}
+	}`)
+	var g Gauge
+	if err := decodeGaugePayload(raw, &g); err != nil {
+		t.Fatalf("decode (string creator.id without personable_type should not crash): %v", err)
+	}
+	if g.Creator == nil {
+		t.Fatal("expected Creator to be populated")
+	}
+	if g.Creator.ID != 1049715914 {
+		t.Errorf("expected creator.id 1049715914, got %d", g.Creator.ID)
+	}
+	if g.Creator.Name != "Author" {
+		t.Errorf("expected creator name Author, got %q", g.Creator.Name)
+	}
+
+	// Sentinel id collapses to 0 with the label preserved.
+	rawSentinel := []byte(`{
+		"id": 2,
+		"title": "G2",
+		"creator": {"id": "basecamp", "name": "Basecamp", "personable_type": "LocalPerson"}
+	}`)
+	var g2 Gauge
+	if err := decodeGaugePayload(rawSentinel, &g2); err != nil {
+		t.Fatalf("decode (sentinel creator.id should not crash): %v", err)
+	}
+	if g2.Creator == nil || g2.Creator.ID != 0 || g2.Creator.SystemLabel != "basecamp" {
+		t.Errorf("expected sentinel creator normalized to id 0 + system_label basecamp, got %+v", g2.Creator)
+	}
+}
