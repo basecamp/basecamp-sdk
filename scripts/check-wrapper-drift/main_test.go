@@ -193,7 +193,7 @@ func fooFromGenerated(g generated.Foo) Foo {
 }
 `
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"foo.go": wrapperSrc})
-	if err := run(wrapperDir, generatedFile, nil, false); err != nil {
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
 		t.Errorf("run: expected no drift, got %v", err)
 	}
 }
@@ -225,7 +225,7 @@ func barFromGenerated(g generated.Bar) Bar {
 }
 `
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"bar.go": wrapperSrc})
-	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
 		t.Error("run: expected drift on missing tag new_field, got nil")
 	}
 }
@@ -258,7 +258,7 @@ func bazFromGenerated(g generated.Baz) Baz {
 }
 `
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"baz.go": wrapperSrc})
-	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
 		t.Error("run: expected population drift on unassigned Tagline, got nil")
 	}
 }
@@ -302,7 +302,7 @@ func wrapFromGenerated(g generated.Wrap) Wrap {
 }
 `
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"wrap.go": wrapperSrc})
-	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
 		t.Error("run: expected population drift on Wrap.Name (only a helper local assigns name), got nil")
 	}
 }
@@ -337,7 +337,7 @@ func quxFromGenerated(g generated.Qux) Qux {
 }
 `
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"qux.go": wrapperSrc})
-	if err := run(wrapperDir, generatedFile, nil, false); err != nil {
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err != nil {
 		t.Errorf("run: expected no drift (all fields assigned), got %v", err)
 	}
 }
@@ -368,7 +368,7 @@ func fooFromGenerated(g generated.Foo) Foo {
 }
 `
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"foo.go": wrapperSrc})
-	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+	if err := run(wrapperDir, generatedFile, nil, nil, false); err == nil {
 		t.Error("run: expected drift on stale omit marker not_a_real_tag, got nil")
 	}
 }
@@ -406,7 +406,7 @@ type MyAssignmentsResult struct {
 		"MyAssignment":        "MyAssignment",
 	}
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"my_assignments.go": wrapperOK})
-	if err := run(wrapperDir, generatedFile, pairs, false); err != nil {
+	if err := run(wrapperDir, generatedFile, pairs, nil, false); err != nil {
 		t.Errorf("run (in-sync renamed direct-decode pair): expected no drift, got %v", err)
 	}
 
@@ -421,7 +421,7 @@ type MyAssignmentsResult struct {
 }
 `
 	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"my_assignments.go": wrapperMissing})
-	if err := run(wrapperDir, generatedFile, pairs, false); err == nil {
+	if err := run(wrapperDir, generatedFile, pairs, nil, false); err == nil {
 		t.Error("run (renamed direct-decode pair missing non_priorities): expected drift, got nil")
 	}
 }
@@ -471,7 +471,7 @@ func parentFromGenerated(g generated.Parent) Parent {
 `
 	pairs := map[string]string{"Nested": "Nested"}
 	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperOK})
-	if err := run(wrapperDir, generatedFile, pairs, false); err != nil {
+	if err := run(wrapperDir, generatedFile, pairs, nil, false); err != nil {
 		t.Errorf("run (in-sync inline-converted pair): expected no drift, got %v", err)
 	}
 
@@ -496,7 +496,7 @@ func parentFromGenerated(g generated.Parent) Parent {
 }
 `
 	wrapperDir, generatedFile = writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperMissing})
-	if err := run(wrapperDir, generatedFile, pairs, false); err == nil {
+	if err := run(wrapperDir, generatedFile, pairs, nil, false); err == nil {
 		t.Error("run (inline-converted pair missing nested color tag): expected drift, got nil")
 	}
 }
@@ -624,5 +624,448 @@ func webhookPersonFromGenerated(g generated.Person) WebhookEventPerson {
 func TestExtractJSONTag_DashSentinel(t *testing.T) {
 	if !strings.HasPrefix(extractJSONTag("`json:\"-,omitempty\"`"), "-") {
 		t.Error("expected `-` to be captured from `json:\"-,omitempty\"`")
+	}
+}
+
+// TestRun_Tier3PointerLiteralInSync drives run() with a tier-3 pair populated
+// by the pointer `Field: &Wrapper{...}` form inside a parent *FromGenerated.
+// Every generated tag on the tier-3 wrapper is assigned by the composite
+// literal, so the population check must pass.
+func TestRun_Tier3PointerLiteralInSync(t *testing.T) {
+	genSrc := `package generated
+
+type Parent struct {
+	Id     int64  ` + "`json:\"id\"`" + `
+	OnHold OnHold ` + "`json:\"on_hold,omitempty\"`" + `
+}
+type OnHold struct {
+	Id     int64  ` + "`json:\"id\"`" + `
+	Status string ` + "`json:\"status\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type OnHold struct {
+	ID     int64  ` + "`json:\"id\"`" + `
+	Status string ` + "`json:\"status\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
+}
+type Parent struct {
+	ID     int64   ` + "`json:\"id\"`" + `
+	OnHold *OnHold ` + "`json:\"on_hold,omitempty\"`" + `
+}
+
+func parentFromGenerated(g generated.Parent) Parent {
+	p := Parent{}
+	p.ID = g.Id
+	if g.OnHold.Id != 0 {
+		p.OnHold = &OnHold{
+			ID:     g.OnHold.Id,
+			Status: g.OnHold.Status,
+			Title:  g.OnHold.Title,
+		}
+	}
+	return p
+}
+`
+	pairs := map[string]string{"OnHold": "OnHold"}
+	tier3 := map[string]bool{"OnHold": true}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, pairs, tier3, false); err != nil {
+		t.Errorf("run (tier-3 pointer literal in sync): expected no drift, got %v", err)
+	}
+}
+
+// TestRun_Tier3PointerLiteralDroppedAssignment is the teeth proof for the
+// composite-literal walker: the wrapper declares the right tags, but the
+// inline `&OnHold{...}` in the parent's body silently drops one assignment.
+// The new tier-3 population check must catch it. Before this change the same
+// fixture would have passed (tier-3 was tag-presence-only / reviewer-enforced).
+func TestRun_Tier3PointerLiteralDroppedAssignment(t *testing.T) {
+	genSrc := `package generated
+
+type Parent struct {
+	Id     int64  ` + "`json:\"id\"`" + `
+	OnHold OnHold ` + "`json:\"on_hold,omitempty\"`" + `
+}
+type OnHold struct {
+	Id     int64  ` + "`json:\"id\"`" + `
+	Status string ` + "`json:\"status\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
+}
+`
+	// Title tag is declared on the wrapper but the composite literal omits it.
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type OnHold struct {
+	ID     int64  ` + "`json:\"id\"`" + `
+	Status string ` + "`json:\"status\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
+}
+type Parent struct {
+	ID     int64   ` + "`json:\"id\"`" + `
+	OnHold *OnHold ` + "`json:\"on_hold,omitempty\"`" + `
+}
+
+func parentFromGenerated(g generated.Parent) Parent {
+	p := Parent{}
+	p.ID = g.Id
+	if g.OnHold.Id != 0 {
+		p.OnHold = &OnHold{
+			ID:     g.OnHold.Id,
+			Status: g.OnHold.Status,
+		}
+	}
+	return p
+}
+`
+	pairs := map[string]string{"OnHold": "OnHold"}
+	tier3 := map[string]bool{"OnHold": true}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperSrc})
+	err := run(wrapperDir, generatedFile, pairs, tier3, false)
+	if err == nil {
+		t.Fatal("run (tier-3 dropped assignment): expected population drift on Title, got nil")
+	}
+	if !strings.Contains(err.Error(), "wrapper drift") {
+		t.Errorf("run: expected wrapper drift error, got %v", err)
+	}
+}
+
+// TestRun_Tier3BareLiteralInSync covers the bare `Wrapper{...}` (non-pointer)
+// construction form — the shape LineupMarker, HillChartDot, SearchProject, and
+// CampfireLineAttachment take inside an append/index-assign. Every generated
+// tag is assigned by the literal, so the population check must pass.
+func TestRun_Tier3BareLiteralInSync(t *testing.T) {
+	genSrc := `package generated
+
+type ParentList struct {
+	Markers []Marker ` + "`json:\"markers,omitempty\"`" + `
+}
+type Marker struct {
+	Id   int64  ` + "`json:\"id\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Marker struct {
+	ID   int64  ` + "`json:\"id\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+type ParentList struct {
+	Markers []Marker ` + "`json:\"markers,omitempty\"`" + `
+}
+
+func parentListFromGenerated(g generated.ParentList) ParentList {
+	pl := ParentList{}
+	for _, gm := range g.Markers {
+		pl.Markers = append(pl.Markers, Marker{
+			ID:   gm.Id,
+			Name: gm.Name,
+		})
+	}
+	return pl
+}
+`
+	pairs := map[string]string{"Marker": "Marker"}
+	tier3 := map[string]bool{"Marker": true}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, pairs, tier3, false); err != nil {
+		t.Errorf("run (tier-3 bare literal in sync): expected no drift, got %v", err)
+	}
+}
+
+// TestRun_Tier3BareLiteralDroppedAssignment proves the bare-literal form also
+// catches dropped assignments — a regression check independent of the pointer
+// form. The wrapper declares both tags but the inline literal in the for-loop
+// silently drops Name.
+func TestRun_Tier3BareLiteralDroppedAssignment(t *testing.T) {
+	genSrc := `package generated
+
+type ParentList struct {
+	Markers []Marker ` + "`json:\"markers,omitempty\"`" + `
+}
+type Marker struct {
+	Id   int64  ` + "`json:\"id\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Marker struct {
+	ID   int64  ` + "`json:\"id\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+type ParentList struct {
+	Markers []Marker ` + "`json:\"markers,omitempty\"`" + `
+}
+
+func parentListFromGenerated(g generated.ParentList) ParentList {
+	pl := ParentList{}
+	for _, gm := range g.Markers {
+		pl.Markers = append(pl.Markers, Marker{
+			ID: gm.Id,
+		})
+	}
+	return pl
+}
+`
+	pairs := map[string]string{"Marker": "Marker"}
+	tier3 := map[string]bool{"Marker": true}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, pairs, tier3, false); err == nil {
+		t.Error("run (tier-3 bare literal missing Name): expected population drift, got nil")
+	}
+}
+
+// TestRun_Tier3LocalBoundSelectorWrites covers the shape that
+// ClientApprovalResponse and UpdateProjectAccessResponse take in the real
+// corpus: the wrapper is bound to a local via `resp := Wrapper{...}` and then
+// fields are written by subsequent `resp.X = ...` selector statements. The
+// walker must attribute those writes to the wrapper, so every generated tag
+// counts as populated.
+func TestRun_Tier3LocalBoundSelectorWrites(t *testing.T) {
+	genSrc := `package generated
+
+type ParentList struct {
+	Items []Item ` + "`json:\"items,omitempty\"`" + `
+}
+type Item struct {
+	Id     int64  ` + "`json:\"id\"`" + `
+	Status string ` + "`json:\"status\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Item struct {
+	ID     int64  ` + "`json:\"id\"`" + `
+	Status string ` + "`json:\"status\"`" + `
+	Title  string ` + "`json:\"title\"`" + `
+}
+type ParentList struct {
+	Items []Item ` + "`json:\"items,omitempty\"`" + `
+}
+
+func parentListFromGenerated(g generated.ParentList) ParentList {
+	pl := ParentList{}
+	for _, gi := range g.Items {
+		resp := Item{Status: gi.Status}
+		resp.ID = gi.Id
+		resp.Title = gi.Title
+		pl.Items = append(pl.Items, resp)
+	}
+	return pl
+}
+`
+	pairs := map[string]string{"Item": "Item"}
+	tier3 := map[string]bool{"Item": true}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, pairs, tier3, false); err != nil {
+		t.Errorf("run (tier-3 local-bound + selector writes): expected no drift, got %v", err)
+	}
+}
+
+// TestRun_Tier3SelectorChainBoundWrites covers the shape QuestionSchedule
+// takes: the wrapper is bound to a selector chain (`q.Schedule =
+// &Wrapper{...}`) and conditional `q.Schedule.X = ...` writes set the
+// remaining fields. The walker must track selector-chain bindings, not just
+// bare-identifier locals.
+func TestRun_Tier3SelectorChainBoundWrites(t *testing.T) {
+	genSrc := `package generated
+
+type Parent struct {
+	Schedule Schedule ` + "`json:\"schedule,omitempty\"`" + `
+}
+type Schedule struct {
+	Frequency    string ` + "`json:\"frequency\"`" + `
+	WeekInstance int32  ` + "`json:\"week_instance,omitempty\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Schedule struct {
+	Frequency    string ` + "`json:\"frequency\"`" + `
+	WeekInstance *int   ` + "`json:\"week_instance,omitempty\"`" + `
+}
+type Parent struct {
+	Schedule *Schedule ` + "`json:\"schedule,omitempty\"`" + `
+}
+
+func parentFromGenerated(g generated.Parent) Parent {
+	q := Parent{}
+	if g.Schedule.Frequency != "" {
+		q.Schedule = &Schedule{
+			Frequency: g.Schedule.Frequency,
+		}
+		if g.Schedule.WeekInstance != 0 {
+			wi := int(g.Schedule.WeekInstance)
+			q.Schedule.WeekInstance = &wi
+		}
+	}
+	return q
+}
+`
+	pairs := map[string]string{"Schedule": "Schedule"}
+	tier3 := map[string]bool{"Schedule": true}
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"parent.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, pairs, tier3, false); err != nil {
+		t.Errorf("run (tier-3 selector-chain binding): expected no drift, got %v", err)
+	}
+}
+
+// TestCollectCompositeLiteralFields verifies the walker collects keys from
+// both bare and pointer composite literals, attributes subsequent selector
+// writes against bound locals (`resp.X`) and bound selector chains
+// (`q.Schedule.X`), and ignores composite literals of types not in tier3.
+func TestCollectCompositeLiteralFields(t *testing.T) {
+	src := `package basecamp
+
+type Marker struct{ ID int64; Name string }
+type Item struct{ ID int64; Status string; Title string }
+type Schedule struct{ Frequency string; WeekInstance *int }
+type Other struct{ X string } // not in tier3; must be ignored
+type wrap struct{ M *Marker }
+type parent struct{ Schedule *Schedule }
+
+func _build() {
+	// Bare literal inside a slice — keys must be collected.
+	_ = []Marker{{ID: 1, Name: "n"}}
+
+	// Pointer literal as a field assignment.
+	w := wrap{}
+	w.M = &Marker{ID: 2, Name: "n2"}
+
+	// Local-bound + selector writes.
+	resp := Item{Status: "active"}
+	resp.ID = 3
+	resp.Title = "t"
+	_ = resp
+
+	// Selector-chain binding + chain selector writes.
+	q := parent{}
+	q.Schedule = &Schedule{Frequency: "daily"}
+	wi := 1
+	q.Schedule.WeekInstance = &wi
+
+	// Other type — must not appear in output.
+	_ = Other{X: "ignored"}
+}
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "wrapper.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	tier3 := map[string]bool{"Marker": true, "Item": true, "Schedule": true}
+	got := collectCompositeLiteralFields(f, tier3)
+	for _, want := range []string{"ID", "Name"} {
+		if !got["Marker"][want] {
+			t.Errorf("Marker: expected %q in assigned set, got %v", want, got["Marker"])
+		}
+	}
+	for _, want := range []string{"ID", "Status", "Title"} {
+		if !got["Item"][want] {
+			t.Errorf("Item: expected %q in assigned set, got %v", want, got["Item"])
+		}
+	}
+	for _, want := range []string{"Frequency", "WeekInstance"} {
+		if !got["Schedule"][want] {
+			t.Errorf("Schedule: expected %q in assigned set, got %v", want, got["Schedule"])
+		}
+	}
+	if _, ok := got["Other"]; ok {
+		t.Errorf("Other is not in tier3 and must not be in the output: %v", got["Other"])
+	}
+}
+
+// TestCollectCompositeLiteralFields_EmptyTier3 confirms the walker is a no-op
+// when tier3 is empty — preserves the tier-2-only semantics callers rely on
+// when they don't want any composite-literal sourcing.
+func TestCollectCompositeLiteralFields_EmptyTier3(t *testing.T) {
+	src := `package basecamp
+
+type Marker struct{ ID int64 }
+
+func _f() { _ = []Marker{{ID: 1}} }
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "wrapper.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if got := collectCompositeLiteralFields(f, nil); len(got) != 0 {
+		t.Errorf("expected empty output with nil tier3, got %v", got)
+	}
+	if got := collectCompositeLiteralFields(f, map[string]bool{}); len(got) != 0 {
+		t.Errorf("expected empty output with empty tier3, got %v", got)
+	}
+}
+
+// TestExprToPath verifies the dotted-path conversion the composite-literal
+// walker uses to key its bindings. Identifier roots are preserved, deeper
+// chains are joined with dots, and anything not identifier-rooted returns "".
+func TestExprToPath(t *testing.T) {
+	cases := []struct {
+		src  string
+		want string
+	}{
+		{"x", "x"},
+		{"x.y", "x.y"},
+		{"x.y.z", "x.y.z"},
+		{"f()", ""},    // call — not identifier-rooted
+		{"a[0]", ""},   // index — not identifier-rooted
+		{"a[0].b", ""}, // index inside a chain
+	}
+	for _, c := range cases {
+		expr, err := parser.ParseExpr(c.src)
+		if err != nil {
+			t.Fatalf("parse %q: %v", c.src, err)
+		}
+		if got := exprToPath(expr); got != c.want {
+			t.Errorf("exprToPath(%q) = %q, want %q", c.src, got, c.want)
+		}
+	}
+}
+
+// TestPathPrefixAndField verifies the decomposition the walker uses to
+// attribute selector writes (`q.Schedule.WeekInstance`) to a previously
+// recorded binding (`q.Schedule`).
+func TestPathPrefixAndField(t *testing.T) {
+	cases := []struct {
+		src        string
+		wantPrefix string
+		wantField  string
+	}{
+		{"x.Y", "x", "Y"},
+		{"x.Y.Z", "x.Y", "Z"},
+		{"a.b.c.d", "a.b.c", "d"},
+		{"x", "", ""},      // bare ident — no selector
+		{"f().Y", "", ""},  // call-rooted — no path
+		{"a[0].Y", "", ""}, // index-rooted — no path
+	}
+	for _, c := range cases {
+		expr, err := parser.ParseExpr(c.src)
+		if err != nil {
+			t.Fatalf("parse %q: %v", c.src, err)
+		}
+		prefix, field := pathPrefixAndField(expr)
+		if prefix != c.wantPrefix || field != c.wantField {
+			t.Errorf("pathPrefixAndField(%q) = (%q, %q), want (%q, %q)",
+				c.src, prefix, field, c.wantPrefix, c.wantField)
+		}
 	}
 }
