@@ -39,8 +39,11 @@ remain **open** — an earlier draft of this file framed them as pending a
    [`spec/api-gaps/memories-emptied-regression.md`](spec/api-gaps/memories-emptied-regression.md).
    The fix is **already written but unmerged**: BC3 #10947 (open, head
    `9dc63e2e`) carries `json.memories @bubble_ups`. So this awaits #10947's
-   merge, not a decision. The live canary's `pairwiseSupersetArray: ["memories"]`
-   rule is waived via `pairwiseDeltaAllowed` until then. (There is no commit
+   merge, not a decision. PR #308's live canary encodes the intended invariant
+   (`pairwiseSupersetArray: ["memories"]` on `GetMyNotifications`) and
+   temporarily waives it via `pairwiseDeltaAllowed` until #10947 merges; that
+   canary surface lives on #308's branch
+   (`conformance/tests/live-my-surface.json`), not here. (There is no commit
    `64acf34` — the once-assumed alias is counterfactual.)
 2. Longstanding `app_todoslists_url` typo at
    `app/views/api/todosets/_todoset.json.jbuilder:28` — **the planned alias is
