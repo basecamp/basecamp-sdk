@@ -227,6 +227,8 @@ go-check-drift:
 # wrappers in go/pkg/basecamp/. Sibling of go-check-drift; that check is
 # operation-level, this one is field-level.
 go-check-wrapper-drift:
+	@echo "==> Running wrapper-drift checker tests..."
+	@go test ./scripts/check-wrapper-drift/
 	@echo "==> Checking wrapper field-level drift..."
 	@go run ./scripts/check-wrapper-drift/
 
