@@ -830,3 +830,39 @@ func TestGauge_StringCreatorID_NormalizedDecode(t *testing.T) {
 		t.Errorf("expected sentinel creator normalized to id 0 + system_label basecamp, got %+v", g2.Creator)
 	}
 }
+
+// TestRequiredBools_FalseMarshalsExplicitly pins the behavioral change from
+// dropping omitempty on visible_to_clients / inherits_status: a false value must
+// now serialize the key rather than omit it, matching the generated structs
+// where these booleans are required. Marshaling each wrapper with the fields
+// left false and asserting the keys are present would fail if omitempty crept
+// back onto either tag.
+func TestRequiredBools_FalseMarshalsExplicitly(t *testing.T) {
+	hasKey := func(t *testing.T, v any, keys ...string) {
+		t.Helper()
+		b, err := json.Marshal(v)
+		if err != nil {
+			t.Fatalf("marshal %T: %v", v, err)
+		}
+		var m map[string]json.RawMessage
+		if err := json.Unmarshal(b, &m); err != nil {
+			t.Fatalf("unmarshal %T back to map: %v", v, err)
+		}
+		for _, k := range keys {
+			raw, ok := m[k]
+			if !ok {
+				t.Errorf("%T marshaled without key %q (omitempty dropped a false value): %s", v, k, b)
+				continue
+			}
+			if string(raw) != "false" {
+				t.Errorf("%T key %q: expected false, got %s", v, k, raw)
+			}
+		}
+	}
+
+	// Each left zero-valued (false) on purpose.
+	hasKey(t, Todo{}, "visible_to_clients")
+	hasKey(t, Comment{}, "visible_to_clients", "inherits_status")
+	hasKey(t, Message{}, "visible_to_clients", "inherits_status")
+	hasKey(t, MessageBoard{}, "visible_to_clients", "inherits_status")
+}

@@ -119,7 +119,7 @@ func TestMyNotificationsService_Get_StringCreatorIDWithoutPersonableType(t *test
 	// id as a JSON string ("1049715914") on an object that has no
 	// personable_type. Notification.Creator/Participants decode into Person.ID
 	// (a plain int64), which cannot unmarshal a JSON string, so the whole Get
-	// would fail. normalizeNotificationsJSON coerces these ids by their
+	// would fail. normalizeEmbeddedPeopleJSON coerces these ids by their
 	// creator/participants position even without personable_type.
 	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
