@@ -115,7 +115,7 @@ func (s *MyNotificationsService) Get(ctx context.Context, page int32) (result *N
 		return nil, err
 	}
 
-	normalized, normalizeErr := normalizeJSON(resp.Body)
+	normalized, normalizeErr := normalizeNotificationsJSON(resp.Body)
 	if normalizeErr != nil {
 		normalized = resp.Body // fallback to raw
 	}
