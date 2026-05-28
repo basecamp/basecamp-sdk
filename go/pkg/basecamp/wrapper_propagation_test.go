@@ -122,6 +122,20 @@ func TestPerson_NewFields_NestedPropagation(t *testing.T) {
 		}
 		assertCreatorFullyPropagated(t, &w.Assignees[0], fullCreator)
 	})
+
+	t.Run("subscription.Subscribers", func(t *testing.T) {
+		gs := generated.Subscription{
+			Subscribed:  true,
+			Count:       1,
+			Url:         "https://example.com/sub",
+			Subscribers: []generated.Person{fullCreator},
+		}
+		w := subscriptionFromGenerated(gs)
+		if len(w.Subscribers) != 1 {
+			t.Fatalf("expected 1 subscriber, got %d", len(w.Subscribers))
+		}
+		assertCreatorFullyPropagated(t, &w.Subscribers[0], fullCreator)
+	})
 }
 
 func assertCreatorFullyPropagated(t *testing.T, p *Person, gp generated.Person) {

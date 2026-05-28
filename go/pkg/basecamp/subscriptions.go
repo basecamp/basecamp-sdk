@@ -180,17 +180,7 @@ func subscriptionFromGenerated(gs generated.Subscription) Subscription {
 	if len(gs.Subscribers) > 0 {
 		s.Subscribers = make([]Person, 0, len(gs.Subscribers))
 		for _, gp := range gs.Subscribers {
-			p := Person{
-				Name:         gp.Name,
-				EmailAddress: gp.EmailAddress,
-				AvatarURL:    gp.AvatarUrl,
-				Admin:        gp.Admin,
-				Owner:        gp.Owner,
-			}
-			if gp.Id != 0 {
-				p.ID = int64(gp.Id)
-			}
-			s.Subscribers = append(s.Subscribers, p)
+			s.Subscribers = append(s.Subscribers, personFromGenerated(gp))
 		}
 	}
 
