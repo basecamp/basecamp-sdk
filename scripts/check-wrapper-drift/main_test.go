@@ -65,18 +65,23 @@ type Wrapper struct {
 }
 
 func TestCollectFromGeneratedPairs(t *testing.T) {
+	// Each exclusion case uses a DISTINCT return type so its absence from the
+	// pair map is a meaningful assertion: a regression that started accepting the
+	// excluded shape would surface that type as a key. (The previous version
+	// asserted on "Foo", a type no fixture produced, so it could never fail.)
 	src := `package fixture
 
 import "generated"
 
-// barFromGenerated maps generated.Bar to Bar.
+// barFromGenerated maps generated.Bar to Bar. This is the one valid pair.
 func barFromGenerated(g generated.Bar) Bar { return Bar{} }
 
-// receiverFnFromGenerated is a method, must be skipped.
-func (s *Service) receiverFnFromGenerated(g generated.X) X { return X{} }
+// receiverFnFromGenerated is a method returning Recv, must be skipped.
+func (s *Service) receiverFnFromGenerated(g generated.Recv) Recv { return Recv{} }
 
-// noGeneratedPrefix is missing the generated. qualifier on the param, skipped.
-func wrongParamFromGenerated(g Bar) Bar { return Bar{} }
+// unqualifiedParamFromGenerated has an unqualified (non-generated.X) param and
+// returns the distinct type Unqualified, so its exclusion is observable.
+func unqualifiedParamFromGenerated(g Unqualified) Unqualified { return Unqualified{} }
 `
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "fixture.go", src, parser.ParseComments)
@@ -87,11 +92,15 @@ func wrongParamFromGenerated(g Bar) Bar { return Bar{} }
 	if got := pairs["Bar"]; got != "Bar" {
 		t.Errorf("expected Bar -> Bar pair, got %q", got)
 	}
-	if _, ok := pairs["X"]; ok {
+	if _, ok := pairs["Recv"]; ok {
 		t.Error("method receiver fn must be excluded from pair extraction")
 	}
-	if _, ok := pairs["Foo"]; ok {
-		t.Error("non-generated-prefixed param must be excluded")
+	if _, ok := pairs["Unqualified"]; ok {
+		t.Error("function with a non-generated.X param must be excluded from pair extraction")
+	}
+	// The only pair must be Bar; nothing leaked from the excluded shapes.
+	if len(pairs) != 1 {
+		t.Errorf("expected exactly one pair (Bar), got %d: %v", len(pairs), pairs)
 	}
 }
 
@@ -254,6 +263,50 @@ func bazFromGenerated(g generated.Baz) Baz {
 	}
 }
 
+// TestRun_HelperLocalDoesNotMaskDrift is the end-to-end soundness regression for
+// the scoped population walk. The wrapper declares the `name` tag but its
+// *FromGenerated never assigns the wrapper's Name field — it only writes
+// `child.Name` on a helper local that happens to share the field name. The old
+// broad walk attributed `child.Name` to the wrapper and let this pass; the
+// scoped walk must report `name` as unpopulated drift.
+func TestRun_HelperLocalDoesNotMaskDrift(t *testing.T) {
+	genSrc := `package generated
+
+type Wrap struct {
+	Id   int64  ` + "`json:\"id\"`" + `
+	Name string ` + "`json:\"name\"`" + `
+}
+`
+	wrapperSrc := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Child struct {
+	Name string ` + "`json:\"name\"`" + `
+}
+
+type Wrap struct {
+	ID    int64  ` + "`json:\"id\"`" + `
+	Name  string ` + "`json:\"name\"`" + `
+	Child *Child ` + "`json:\"child,omitempty\"`" + `
+}
+
+func wrapFromGenerated(g generated.Wrap) Wrap {
+	w := Wrap{}
+	w.ID = g.Id
+	// Only the helper local's Name is written, never w.Name.
+	child := Child{}
+	child.Name = g.Name
+	w.Child = &child
+	return w
+}
+`
+	wrapperDir, generatedFile := writeDriftFixtures(t, genSrc, map[string]string{"wrap.go": wrapperSrc})
+	if err := run(wrapperDir, generatedFile, nil, false); err == nil {
+		t.Error("run: expected population drift on Wrap.Name (only a helper local assigns name), got nil")
+	}
+}
+
 // TestRun_AssignedViaSelectorAndCompositeLit confirms both assignment forms the
 // population walker recognizes count: a field set in the composite literal and a
 // field set via a later `x.Field = ...` statement.
@@ -358,6 +411,56 @@ func thingFromGenerated(g generated.Thing) Thing {
 	// must not leak into Thing's assigned set.
 	if got["Title"] {
 		t.Errorf("nested literal key Title must not be attributed to Thing: %v", got)
+	}
+}
+
+// TestCollectAssignedFields_HelperLocalSelectorExcluded is the soundness
+// regression for the scoped population walk. A *FromGenerated body routinely
+// builds a nested helper value via its own local and writes that local's fields
+// by selector (here `child.Name = ...` on a `child := Child{}`). Those writes
+// must NOT be attributed to the wrapper, even when the helper local shares a
+// field name with the wrapper (`Name`). Under the old broad walk — which
+// counted every `x.Field = ...` regardless of base — `Name` would be falsely
+// marked assigned on the wrapper, masking the fact that the wrapper itself never
+// assigns it.
+func TestCollectAssignedFields_HelperLocalSelectorExcluded(t *testing.T) {
+	src := `package basecamp
+
+import "github.com/basecamp/basecamp-sdk/go/pkg/generated"
+
+type Wrap struct {
+	ID    int64
+	Name  string
+	Child *Child
+}
+
+func wrapFromGenerated(g generated.Wrap) Wrap {
+	w := Wrap{}
+	w.ID = g.Id
+	// Helper local of a different type; its Name field shares the wrapper's
+	// field name but must not count toward the wrapper.
+	child := Child{}
+	child.Name = g.Child.Name
+	w.Child = &child
+	return w
+}
+`
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "wrapper.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got := collectAssignedFields(f)["Wrap"]
+	if !got["ID"] {
+		t.Errorf("expected ID (written on the wrapper var) to be collected, got %v", got)
+	}
+	if !got["Child"] {
+		t.Errorf("expected Child (written on the wrapper var) to be collected, got %v", got)
+	}
+	// The wrapper never assigns its own Name; only the helper local does. The
+	// scoped walk must not attribute the helper-local write to the wrapper.
+	if got["Name"] {
+		t.Errorf("helper-local selector write (child.Name) must not count as wrapper Wrap.Name: %v", got)
 	}
 }
 

@@ -15,9 +15,13 @@
 //
 //  2. By a small explicit `directDecodePairs` map covering wrappers that
 //     decode straight from JSON bytes (Notification, NotificationsResult,
-//     MyAssignment, Gauge, GaugeNeedle). These do not have *FromGenerated
+//     MyAssignment, Gauge, GaugeNeedle) plus the nested public wrapper structs
+//     reachable from them (PreviewableAttachment, MyAssignmentAssignee,
+//     MyAssignmentBucket, MyAssignmentParent). These do not have *FromGenerated
 //     declarations; the JSON tags on the wrapper struct fields are what the
-//     JSON decoder uses to read the wire payload.
+//     JSON decoder uses to read the wire payload. Listing the nested structs
+//     explicitly carries the tag-presence check into them rather than stopping
+//     at the parent field.
 //
 // # Check
 //
@@ -98,12 +102,28 @@ import (
 // name for §C-2 wrappers that decode via json.Unmarshal on the (sometimes
 // pre-normalized) raw body. Their *FromGenerated function does not exist;
 // the wrapper struct's JSON tags are the contract.
+//
+// The set covers both the top-level raw-body wrappers AND the nested public
+// wrapper structs reachable from them that have a generated counterpart but no
+// *FromGenerated of their own (they are populated by the same json.Unmarshal
+// pass as their parent). Listing the nested structs explicitly extends the
+// tag-presence check into them; without these entries the parent check only
+// verifies the parent field (e.g. previewable_attachments, assignees, bucket)
+// and a future generated-field addition inside the nested struct would slip
+// through. Because they are direct-decode, only the tag-presence check applies
+// (json.Unmarshal populates them straight from the tags), not the population
+// check.
 var directDecodePairs = map[string]string{
 	"Notification":        "Notification",
 	"NotificationsResult": "GetMyNotificationsResponseContent",
 	"MyAssignment":        "MyAssignment",
 	"Gauge":               "Gauge",
 	"GaugeNeedle":         "GaugeNeedle",
+	// Nested direct-decode structs (no *FromGenerated; decoded with their parent).
+	"PreviewableAttachment": "PreviewableAttachment", // nested in Notification.previewable_attachments
+	"MyAssignmentAssignee":  "MyAssignmentAssignee",  // nested in MyAssignment.assignees
+	"MyAssignmentBucket":    "MyAssignmentBucket",    // nested in MyAssignment.bucket
+	"MyAssignmentParent":    "MyAssignmentParent",    // nested in MyAssignment.parent
 }
 
 // excludedFromGenerated lists *FromGenerated functions whose argument type
@@ -467,11 +487,19 @@ func collectFromGeneratedPairs(f *ast.File) map[string]string {
 //     are correctly ignored because their type identifier is Parent/Bucket, not
 //     the wrapper, so only the parent field (`c.Parent = ...`) counts as
 //     populated — matching the check's one-level-nesting termination.
-//  2. Selector-target assignments, e.g. `c.ID = ...`, `c.Creator = &creator`,
-//     `c.Assignees = append(...)` — every AssignStmt / IncDecStmt whose LHS is a
-//     SelectorExpr rooted in a bare identifier. *FromGenerated bodies only ever
-//     write to the wrapper local (the generated param `g*` is read-only), so the
-//     selected field name is a wrapper field.
+//  2. Selector-target assignments to the wrapper instance, e.g. `c.ID = ...`,
+//     `c.Creator = &creator`, `c.Assignees = append(...)` — every
+//     AssignStmt / IncDecStmt whose LHS is a SelectorExpr rooted in the wrapper
+//     variable. The wrapper variable is identified up front (see
+//     findWrapperVars): the named result, the local the wrapper composite
+//     literal is bound to (`c := Card{...}`), and the operand of `return c`.
+//     Selector writes to any OTHER local are ignored — a *FromGenerated body
+//     frequently builds nested helper values via their own locals
+//     (`creator := personFromGenerated(...)`, `d := WebhookDelivery{...};
+//     d.ID = *gd.Id`, `c := &WebhookCopy{...}; c.ID = *ge.Copy.Id`). Counting
+//     a `d.ID`/`c.ID` selector write as a wrapper-field write would wrongly
+//     mark the wrapper's same-named field populated and mask genuine drift, so
+//     only writes whose base identifier is the wrapper instance count.
 //
 // The result maps wrapper struct name -> set of assigned Go field names. It is
 // keyed on the function's *return* type, so it lines up with the wrapper-side of
@@ -502,6 +530,9 @@ func collectAssignedFields(f *ast.File) map[string]map[string]bool {
 			assigned = map[string]bool{}
 			out[wrapper] = assigned
 		}
+		// Identify the variable(s) that hold the wrapper instance this function
+		// builds and returns, so selector-target writes can be scoped to it.
+		wrapperVars := findWrapperVars(fd, wrapper)
 		ast.Inspect(fd.Body, func(n ast.Node) bool {
 			switch node := n.(type) {
 			case *ast.CompositeLit:
@@ -521,12 +552,12 @@ func collectAssignedFields(f *ast.File) map[string]map[string]bool {
 				}
 			case *ast.AssignStmt:
 				for _, lhs := range node.Lhs {
-					if name := selectorFieldName(lhs); name != "" {
+					if base, name := selectorBaseAndField(lhs); name != "" && wrapperVars[base] {
 						assigned[name] = true
 					}
 				}
 			case *ast.IncDecStmt:
-				if name := selectorFieldName(node.X); name != "" {
+				if base, name := selectorBaseAndField(node.X); name != "" && wrapperVars[base] {
 					assigned[name] = true
 				}
 			}
@@ -534,6 +565,77 @@ func collectAssignedFields(f *ast.File) map[string]map[string]bool {
 		})
 	}
 	return out
+}
+
+// findWrapperVars returns the set of local identifier names that hold the
+// wrapper instance a *FromGenerated function builds and returns. Selector-target
+// assignments (`x.Field = ...`) only count as wrapper-field population when their
+// base identifier is in this set; writes to helper locals (a nested Person, a
+// WebhookDelivery, a WebhookCopy) are excluded so they cannot masquerade as
+// wrapper-field writes and mask drift.
+//
+// Three sources, covering every shape a *FromGenerated may take:
+//
+//   - Named result values: `func f(...) (w Wrapper)`. The result identifier is
+//     the wrapper instance even before any assignment.
+//   - The local bound to the wrapper's composite literal: `c := Card{...}` (or
+//     `c := &Card{...}`, or `var c Card`). This is the universal shape in the
+//     current corpus (`x := Wrapper{...}; ...; return x`).
+//   - The operand of a bare `return c`. Redundant with the composite-literal
+//     binding for today's code, but it keeps the var set correct if a body ever
+//     constructs the wrapper without a recognizable literal binding.
+func findWrapperVars(fd *ast.FuncDecl, wrapper string) map[string]bool {
+	vars := map[string]bool{}
+	// Named results.
+	if fd.Type.Results != nil {
+		for _, field := range fd.Type.Results.List {
+			for _, name := range field.Names {
+				if name.Name != "" && name.Name != "_" {
+					vars[name.Name] = true
+				}
+			}
+		}
+	}
+	ast.Inspect(fd.Body, func(n ast.Node) bool {
+		switch node := n.(type) {
+		case *ast.AssignStmt:
+			// `c := Wrapper{...}` / `c = Wrapper{...}` / `c := &Wrapper{...}`.
+			// Bind each LHS identifier whose paired RHS is a composite literal
+			// of the wrapper type.
+			if len(node.Lhs) == len(node.Rhs) {
+				for i, rhs := range node.Rhs {
+					if compositeLitTypeName(rhs) == wrapper {
+						if id, ok := node.Lhs[i].(*ast.Ident); ok && id.Name != "_" {
+							vars[id.Name] = true
+						}
+					}
+				}
+			}
+		case *ast.ReturnStmt:
+			// `return c` — the returned identifier is the wrapper instance.
+			for _, res := range node.Results {
+				if id, ok := res.(*ast.Ident); ok && id.Name != "_" {
+					vars[id.Name] = true
+				}
+			}
+		}
+		return true
+	})
+	return vars
+}
+
+// compositeLitTypeName returns the wrapper-type name of a composite-literal
+// expression, transparently unwrapping a leading address-of (`&Wrapper{}`).
+// Returns "" for anything that is not a bare-identifier-typed composite literal.
+func compositeLitTypeName(expr ast.Expr) string {
+	if u, ok := expr.(*ast.UnaryExpr); ok && u.Op == token.AND {
+		expr = u.X
+	}
+	cl, ok := expr.(*ast.CompositeLit)
+	if !ok {
+		return ""
+	}
+	return litTypeName(cl.Type)
 }
 
 // litTypeName returns the type identifier of a composite-literal type
@@ -549,18 +651,21 @@ func litTypeName(expr ast.Expr) string {
 	return ""
 }
 
-// selectorFieldName returns the field name of an `x.Field` selector rooted in a
-// bare identifier (`c.Creator` -> "Creator"). Returns "" for anything else
-// (index expressions, deeper chains, non-selector LHS).
-func selectorFieldName(expr ast.Expr) string {
+// selectorBaseAndField decomposes an `x.Field` selector rooted in a bare
+// identifier into its base identifier and field name (`c.Creator` -> "c",
+// "Creator"). Returns "", "" for anything else (index expressions, deeper
+// chains like `a.b.c`, non-selector expressions). The base lets callers scope
+// the write to a known wrapper variable.
+func selectorBaseAndField(expr ast.Expr) (base, field string) {
 	sel, ok := expr.(*ast.SelectorExpr)
 	if !ok {
-		return ""
+		return "", ""
 	}
-	if _, ok := sel.X.(*ast.Ident); !ok {
-		return ""
+	ident, ok := sel.X.(*ast.Ident)
+	if !ok {
+		return "", ""
 	}
-	return sel.Sel.Name
+	return ident.Name, sel.Sel.Name
 }
 
 // extractGeneratedTypeName recognizes `generated.X` (SelectorExpr) and returns
