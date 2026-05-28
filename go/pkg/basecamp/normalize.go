@@ -56,19 +56,20 @@ func coercePersonID(obj map[string]any) {
 	obj["id"] = json.Number("0")
 }
 
-// normalizeNotificationPeople walks a JSON-decoded notifications payload and
-// coerces the string ids of notification "creator" and "participants" people,
+// normalizeEmbeddedPersonIds walks a JSON-decoded payload and coerces the string
+// ids of people embedded under the well-known "creator" and "participants" keys,
 // regardless of whether those person objects carry a "personable_type" field.
 //
-// BC3 serializes notification person ids as strings (the wire-format mismatch
-// FlexibleInt64 documents). The wrapper Notification.Creator/Participants decode
-// into Person.ID (a plain int64), which cannot unmarshal a JSON string, so an
-// un-normalized string id fails the whole decode. The generic
-// normalizePersonIds pass only fires on objects that have "personable_type";
-// notification people frequently omit it, so this pass targets them by their
-// known structural position (the creator object and each participants element)
-// and applies the same coercePersonID rule.
-func normalizeNotificationPeople(v any) {
+// BC3 serializes person ids as strings (the wire-format mismatch FlexibleInt64
+// documents). Wrappers that embed *Person under these keys (Notification,
+// Gauge, GaugeNeedle, ...) decode into Person.ID (a plain int64), which cannot
+// unmarshal a JSON string, so an un-normalized string id fails the whole decode.
+// The generic normalizePersonIds pass only fires on objects that have
+// "personable_type"; embedded creator/participants people frequently omit it,
+// so this pass targets them by their known structural position (the creator
+// object and each participants element) and applies the same coercePersonID
+// rule.
+func normalizeEmbeddedPersonIds(v any) {
 	switch val := v.(type) {
 	case map[string]any:
 		if creator, ok := val["creator"].(map[string]any); ok {
@@ -82,11 +83,11 @@ func normalizeNotificationPeople(v any) {
 			}
 		}
 		for _, child := range val {
-			normalizeNotificationPeople(child)
+			normalizeEmbeddedPersonIds(child)
 		}
 	case []any:
 		for _, item := range val {
-			normalizeNotificationPeople(item)
+			normalizeEmbeddedPersonIds(item)
 		}
 	}
 }
@@ -110,18 +111,18 @@ func normalizeJSON(data []byte) ([]byte, error) {
 	return json.Marshal(raw)
 }
 
-// normalizeNotificationsJSON normalizes a /my/readings.json payload before it is
-// decoded into NotificationsResult. It applies both the generic
-// personable_type-keyed person normalization AND the notification-specific
-// creator/participants pass, so notification people with string ids decode into
-// Notification.Creator/Participants (Person.ID is a plain int64) even when those
-// person objects omit "personable_type".
+// normalizeEmbeddedPeopleJSON normalizes a raw response that embeds *Person
+// under "creator"/"participants" (notifications, gauges, gauge needles) before
+// it is decoded onto the wrapper. It applies both the generic
+// personable_type-keyed person normalization AND the embedded creator/participants
+// pass, so embedded people with string ids decode into Person.ID (a plain int64)
+// even when those person objects omit "personable_type".
 //
-// Unlike normalizeJSON it short-circuits only when the body contains neither
-// "creator" nor "participants" nor "personable_type" — a notification person id
-// can be a string without any "personable_type" appearing in the body, so the
+// Unlike normalizeJSON it short-circuits only when the body contains none of
+// "personable_type", "creator", or "participants" — an embedded person id can be
+// a string without any "personable_type" appearing in the body, so the
 // personable_type-only guard would skip the very payloads this exists to fix.
-func normalizeNotificationsJSON(data []byte) ([]byte, error) {
+func normalizeEmbeddedPeopleJSON(data []byte) ([]byte, error) {
 	if !bytes.Contains(data, []byte(`"personable_type"`)) &&
 		!bytes.Contains(data, []byte(`"creator"`)) &&
 		!bytes.Contains(data, []byte(`"participants"`)) {
@@ -136,6 +137,6 @@ func normalizeNotificationsJSON(data []byte) ([]byte, error) {
 		return data, err
 	}
 	normalizePersonIds(raw)
-	normalizeNotificationPeople(raw)
+	normalizeEmbeddedPersonIds(raw)
 	return json.Marshal(raw)
 }

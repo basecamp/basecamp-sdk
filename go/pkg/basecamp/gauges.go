@@ -87,6 +87,20 @@ func NewGaugesService(client *AccountClient) *GaugesService {
 	return &GaugesService{client: client}
 }
 
+// decodeGaugePayload normalizes a raw gauge/needle response body and unmarshals
+// it onto v. Gauge and GaugeNeedle embed *Person under "creator", and BC3 may
+// serialize a person id as a JSON string; Person.ID is a plain int64, so the
+// body is run through normalizeEmbeddedPeopleJSON first to coerce those ids.
+// Normalization failures fall back to the raw body so a malformed-but-decodable
+// payload is not lost.
+func decodeGaugePayload(data []byte, v any) error {
+	normalized, normalizeErr := normalizeEmbeddedPeopleJSON(data)
+	if normalizeErr != nil {
+		normalized = data
+	}
+	return json.Unmarshal(normalized, v)
+}
+
 // List returns all gauges for the account, following pagination automatically.
 func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 	op := OperationInfo{
@@ -111,7 +125,7 @@ func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 	}
 
 	var gauges []Gauge
-	if err = json.Unmarshal(resp.Body, &gauges); err != nil {
+	if err = decodeGaugePayload(resp.Body, &gauges); err != nil {
 		return nil, fmt.Errorf("failed to parse gauges: %w", err)
 	}
 
@@ -122,7 +136,7 @@ func (s *GaugesService) List(ctx context.Context) (result []Gauge, err error) {
 	}
 	for _, raw := range rawMore {
 		var g Gauge
-		if err = json.Unmarshal(raw, &g); err != nil {
+		if err = decodeGaugePayload(raw, &g); err != nil {
 			return nil, fmt.Errorf("failed to parse gauge: %w", err)
 		}
 		gauges = append(gauges, g)
@@ -155,7 +169,7 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 	}
 
 	var needles []GaugeNeedle
-	if err = json.Unmarshal(resp.Body, &needles); err != nil {
+	if err = decodeGaugePayload(resp.Body, &needles); err != nil {
 		return nil, fmt.Errorf("failed to parse gauge needles: %w", err)
 	}
 
@@ -166,7 +180,7 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 	}
 	for _, raw := range rawMore {
 		var n GaugeNeedle
-		if err = json.Unmarshal(raw, &n); err != nil {
+		if err = decodeGaugePayload(raw, &n); err != nil {
 			return nil, fmt.Errorf("failed to parse gauge needle: %w", err)
 		}
 		needles = append(needles, n)
@@ -200,7 +214,7 @@ func (s *GaugesService) GetNeedle(ctx context.Context, needleID int64) (result *
 	}
 
 	var needle GaugeNeedle
-	if err = json.Unmarshal(resp.Body, &needle); err != nil {
+	if err = decodeGaugePayload(resp.Body, &needle); err != nil {
 		return nil, fmt.Errorf("failed to parse gauge needle: %w", err)
 	}
 
@@ -248,7 +262,7 @@ func (s *GaugesService) CreateNeedle(ctx context.Context, projectID int64, req *
 	}
 
 	var needle GaugeNeedle
-	if err = json.Unmarshal(resp.Body, &needle); err != nil {
+	if err = decodeGaugePayload(resp.Body, &needle); err != nil {
 		return nil, fmt.Errorf("failed to parse gauge needle: %w", err)
 	}
 
@@ -291,7 +305,7 @@ func (s *GaugesService) UpdateNeedle(ctx context.Context, needleID int64, req *U
 	}
 
 	var needle GaugeNeedle
-	if err = json.Unmarshal(resp.Body, &needle); err != nil {
+	if err = decodeGaugePayload(resp.Body, &needle); err != nil {
 		return nil, fmt.Errorf("failed to parse gauge needle: %w", err)
 	}
 
