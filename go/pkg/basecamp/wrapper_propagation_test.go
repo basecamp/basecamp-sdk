@@ -879,4 +879,8 @@ func TestRequiredBools_FalseMarshalsExplicitly(t *testing.T) {
 	hasKey(t, Comment{}, "visible_to_clients", "inherits_status")
 	hasKey(t, Message{}, "visible_to_clients", "inherits_status")
 	hasKey(t, MessageBoard{}, "visible_to_clients", "inherits_status")
+	hasKey(t, Inbox{}, "visible_to_clients", "inherits_status")
+	hasKey(t, Forward{}, "visible_to_clients", "inherits_status")
+	hasKey(t, ForwardReply{}, "visible_to_clients", "inherits_status")
+	hasKey(t, TimesheetEntry{}, "visible_to_clients", "inherits_status")
 }
