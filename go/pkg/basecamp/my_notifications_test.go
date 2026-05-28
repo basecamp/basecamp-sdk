@@ -64,7 +64,7 @@ func TestMyNotificationsService_Get_WithPage(t *testing.T) {
 
 func TestMyNotificationsService_Get_SentinelCreatorID(t *testing.T) {
 	// The BC3 API returns system-generated notifications with creator.id: "basecamp"
-	// and personable_type: "LocalPerson". normalizeJSON walks Person-shaped objects
+	// and personable_type: "LocalPerson". The normalize pass walks Person-shaped objects
 	// (anything carrying personable_type) and coerces the non-numeric id to 0 while
 	// preserving the original label as system_label. The wrapper then decodes the
 	// resulting numeric payload into Notification.Creator without error.
