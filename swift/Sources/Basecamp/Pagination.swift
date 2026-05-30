@@ -108,9 +108,12 @@ func isSameOrigin(_ a: String, _ b: String) -> Bool {
           let urlB = URLComponents(string: b)
     else { return false }
 
-    return urlA.scheme == urlB.scheme
-        && urlA.host == urlB.host
-        && (urlA.port ?? defaultPort(for: urlA.scheme)) == (urlB.port ?? defaultPort(for: urlB.scheme))
+    // Scheme and host are case-insensitive (RFC 3986); normalize before comparing.
+    let schemeA = urlA.scheme?.lowercased()
+    let schemeB = urlB.scheme?.lowercased()
+    return schemeA == schemeB
+        && urlA.host?.lowercased() == urlB.host?.lowercased()
+        && (urlA.port ?? defaultPort(for: schemeA)) == (urlB.port ?? defaultPort(for: schemeB))
 }
 
 /// Parses the `X-Total-Count` header from a URL response.

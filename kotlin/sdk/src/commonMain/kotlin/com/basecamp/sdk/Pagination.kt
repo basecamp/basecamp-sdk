@@ -121,7 +121,9 @@ internal fun isLocalhost(url: String): Boolean {
         }
         url.substring(afterScheme, hostEnd)
     }
-    return host == "localhost" || host == "127.0.0.1" || host == "::1"
+    // Hostnames are case-insensitive (RFC 3986).
+    val normalizedHost = host.lowercase()
+    return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
 }
 
 /**

@@ -143,6 +143,8 @@ class PaginationTest {
     fun isLocalhostRecognizesLoopback() {
         assertTrue(isLocalhost("https://localhost:3000/x.json"))
         assertTrue(isLocalhost("http://127.0.0.1:8080/x"))
+        // Hostnames are case-insensitive (RFC 3986).
+        assertTrue(isLocalhost("https://LOCALHOST/x.json"))
     }
 
     @Test

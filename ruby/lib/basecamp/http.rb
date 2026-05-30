@@ -490,8 +490,10 @@ module Basecamp
 
     # Attach-point backstop: refuse to attach credentials to a foreign origin
     # before the auth strategy adds the bearer token. Localhost is carved out
-    # for dev/test. allow_cross_origin is set only for the intentional Launchpad
-    # call routed through get_absolute.
+    # for dev/test. allow_cross_origin is granted only by get_absolute, and only
+    # for the trusted Launchpad authorization endpoint — every other absolute
+    # URL (including a discovery-provided issuer on a different origin) must be
+    # same-origin with the configured base URL.
     def assert_credential_origin!(url, allow_cross_origin)
       return if allow_cross_origin
       return if Security.localhost?(url) || Security.same_origin?(url, @config.base_url)

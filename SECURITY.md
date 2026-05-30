@@ -14,7 +14,7 @@ All SDK implementations enforce HTTPS for API communication with specific except
 | OAuth endpoints | Yes | Yes - for local OAuth testing |
 | Webhook payload URLs | Yes | **No** - webhooks are production-only |
 
-Localhost is defined as: `localhost`, `127.0.0.1`, or `::1`.
+Localhost is defined as: `localhost`, any `*.localhost` subdomain (RFC 6761), `127.0.0.1`, or the IPv6 loopback `::1` (also accepted in its bracketed URL form `[::1]`). Host matching is case-insensitive.
 
 **Rationale**: Base URLs and OAuth endpoints may use localhost during development. Webhook payload URLs never allow localhost because webhooks are a server-to-server feature that only makes sense in production contexts.
 
@@ -30,7 +30,7 @@ This is enforced at two layers:
 - **URL-build chokepoint**: the URL builder rejects absolute URLs whose origin differs from the configured base URL.
 - **Token-attach backstop**: immediately before the `Authorization` header is added, the request origin is re-checked, so the invariant holds even if a future code path bypasses the URL builder.
 
-The one intentional exception is the authenticated cross-origin call to the Launchpad authorization endpoint (`https://launchpad.37signals.com/authorization.json`), which is explicitly allowed. This complements the redirect Authorization-stripping and same-origin pagination `Link` validation described above.
+The one intentional exception is the authenticated request to the OAuth **authorization endpoint** — by default Launchpad's (`https://launchpad.37signals.com/authorization.json`). Some SDKs let callers override this endpoint, validated as HTTPS (or localhost) before the token is attached. This is the sole sanctioned cross-origin credentialed request, and it complements the redirect Authorization-stripping and same-origin pagination `Link` validation described above.
 
 #### Pagination Security
 Link headers from paginated responses are validated for same-origin before following. This prevents:
