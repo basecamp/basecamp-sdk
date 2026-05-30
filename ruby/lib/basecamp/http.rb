@@ -67,7 +67,11 @@ module Basecamp
     # @return [Response]
     def get_absolute(url, params: {})
       Security.require_https_unless_localhost!(url, "absolute URL")
-      request(:get, url, params: params, allow_cross_origin: true)
+      # Cross-origin is permitted only for the trusted Launchpad authorization
+      # endpoint; any other foreign origin still trips the same-origin guard so
+      # the bearer token never leaks off the configured host.
+      allow_cross_origin = url == Security::LAUNCHPAD_AUTHORIZATION_URL
+      request(:get, url, params: params, allow_cross_origin: allow_cross_origin)
     end
 
     # Performs a POST request.
