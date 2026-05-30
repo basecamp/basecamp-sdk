@@ -145,6 +145,15 @@ class PaginationTest {
         assertTrue(isLocalhost("http://127.0.0.1:8080/x"))
         // Hostnames are case-insensitive (RFC 3986).
         assertTrue(isLocalhost("https://LOCALHOST/x.json"))
+        // RFC 6761 .localhost TLD.
+        assertTrue(isLocalhost("https://myapp.localhost/x.json"))
+    }
+
+    @Test
+    fun isLocalhostRejectsLocalhostLookalikes() {
+        // A host that merely contains "localhost" is not localhost.
+        assertFalse(isLocalhost("https://localhost.evil.example/x"))
+        assertFalse(isLocalhost("https://notlocalhost/x"))
     }
 
     @Test

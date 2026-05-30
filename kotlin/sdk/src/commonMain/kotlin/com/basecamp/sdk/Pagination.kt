@@ -123,7 +123,10 @@ internal fun isLocalhost(url: String): Boolean {
     }
     // Hostnames are case-insensitive (RFC 3986).
     val normalizedHost = host.lowercase()
-    return normalizedHost == "localhost" || normalizedHost == "127.0.0.1" || normalizedHost == "::1"
+    return normalizedHost == "localhost" ||
+        normalizedHost == "127.0.0.1" ||
+        normalizedHost == "::1" ||
+        normalizedHost.endsWith(".localhost") // RFC 6761 .localhost TLD
 }
 
 /**
