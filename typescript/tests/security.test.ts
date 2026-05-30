@@ -17,6 +17,7 @@ import {
   paginateAll,
 } from "../src/client.js";
 import { BasecampError } from "../src/errors.js";
+import { requireSameOrigin, isSameOriginAllowingLocalhost } from "../src/security.js";
 import { exchangeCode, refreshToken } from "../src/oauth/index.js";
 import { discover } from "../src/oauth/discovery.js";
 
@@ -774,5 +775,63 @@ describe("Header redaction", () => {
     expect(redacted.Authorization).toBe("[REDACTED]");
     expect(redacted.Cookie).toBe("[REDACTED]");
     expect(redacted["Content-Type"]).toBe("application/json");
+  });
+});
+
+
+// =============================================================================
+// Same-Origin Credential Attachment (initial, caller-influenced request)
+// =============================================================================
+
+describe("Same-origin credential attachment", () => {
+  const base = "https://3.basecampapi.com/12345";
+
+  it("requireSameOrigin accepts a same-origin URL", () => {
+    expect(() =>
+      requireSameOrigin("https://3.basecampapi.com/12345/projects.json", base)
+    ).not.toThrow();
+  });
+
+  it("requireSameOrigin accepts a localhost URL (dev carve-out)", () => {
+    expect(() =>
+      requireSameOrigin("http://localhost:3000/projects.json", base)
+    ).not.toThrow();
+  });
+
+  it("requireSameOrigin rejects a foreign-origin URL", () => {
+    expect(() =>
+      requireSameOrigin("https://evil.example/steal.json", base)
+    ).toThrow("different origin than the configured base URL");
+  });
+
+  it("requireSameOrigin throws a validation BasecampError", () => {
+    let caught: unknown;
+    try {
+      requireSameOrigin("https://evil.example/steal.json", base);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BasecampError);
+    expect((caught as BasecampError).code).toBe("validation");
+  });
+
+  it("isSameOriginAllowingLocalhost honors the localhost carve-out", () => {
+    expect(isSameOriginAllowingLocalhost("https://3.basecampapi.com/x", base)).toBe(true);
+    expect(isSameOriginAllowingLocalhost("http://127.0.0.1:9999/x", base)).toBe(true);
+    expect(isSameOriginAllowingLocalhost("https://evil.example/x", base)).toBe(false);
+  });
+
+  it("guard fails closed before any request is sent to a foreign origin", () => {
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof globalThis.fetch;
+    try {
+      expect(() =>
+        requireSameOrigin("https://evil.example/steal.json", base)
+      ).toThrow();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

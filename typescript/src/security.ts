@@ -5,6 +5,9 @@
  * sensitive information like tokens and cookies.
  */
 
+import { isSameOrigin } from "./pagination-utils.js";
+import { BasecampError } from "./errors.js";
+
 /**
  * Headers that contain sensitive values and should be redacted.
  */
@@ -113,4 +116,51 @@ export function isLocalhost(hostname: string): boolean {
     normalized === "::1" ||
     normalized.endsWith(".localhost")
   );
+}
+
+/**
+ * Returns true when `target` shares an origin with `base`, or when `target`
+ * is a localhost URL (dev/test carve-out, consistent with the base-URL HTTPS
+ * check in createBasecampClient).
+ */
+export function isSameOriginAllowingLocalhost(target: string, base: string): boolean {
+  try {
+    if (isSameOrigin(target, base)) return true;
+    return isLocalhost(new URL(target).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Throws a BasecampError unless `target` is same-origin with the configured
+ * base URL (localhost carve-out). This keeps the bearer token from being
+ * attached to a foreign host on the initial, caller-influenced request —
+ * mirroring the same-origin guard already applied to pagination Link headers
+ * and cross-origin redirects.
+ */
+export function requireSameOrigin(target: string, base: string): void {
+  if (!isSameOriginAllowingLocalhost(target, base)) {
+    throw new BasecampError(
+      "validation",
+      `Refusing to send credentials to a different origin than the configured base URL: ${target}`
+    );
+  }
+}
+
+/**
+ * Validates that an endpoint URL is secure: HTTPS, or localhost (RFC 6761)
+ * which is trusted for local development. Used to validate caller-supplied
+ * authorization endpoint overrides before the bearer token is attached.
+ */
+export function requireSecureEndpoint(url: string, label: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new BasecampError("validation", `Invalid ${label}: ${url}`);
+  }
+  if (parsed.protocol !== "https:" && !isLocalhost(parsed.hostname)) {
+    throw new BasecampError("validation", `${label} must use HTTPS: ${url}`);
+  }
 }
