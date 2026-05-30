@@ -34,6 +34,7 @@ internal class BasecampHttpClient(
         url: String,
         body: String? = null,
     ): HttpResponse {
+        requireSameOrigin(url)
         return try {
             httpClient.request(url) {
                 this.method = method
@@ -73,6 +74,17 @@ internal class BasecampHttpClient(
         try {
             response = request(method, url, body)
         } catch (e: CancellationException) {
+            throw e
+        } catch (e: BasecampException) {
+            // A deliberate SDK error (e.g. the same-origin credential guard) is
+            // already classified — surface it as-is rather than masking it as a
+            // retryable Network error.
+            val duration = currentTimeMillis() - startTime
+            hooks.safeOnRequestEnd(info, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e,
+            ))
             throw e
         } catch (e: Exception) {
             val duration = currentTimeMillis() - startTime
@@ -138,6 +150,7 @@ internal class BasecampHttpClient(
         data: ByteArray,
         contentType: String,
     ): HttpResponse {
+        requireSameOrigin(url)
         return try {
             httpClient.request(url) {
                 this.method = method
@@ -171,6 +184,17 @@ internal class BasecampHttpClient(
             response = requestBinary(method, url, data, contentType)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: BasecampException) {
+            // A deliberate SDK error (e.g. the same-origin credential guard) is
+            // already classified — surface it as-is rather than masking it as a
+            // retryable Network error.
+            val duration = currentTimeMillis() - startTime
+            hooks.safeOnRequestEnd(info, RequestResult(
+                statusCode = 0,
+                duration = duration.millisToDuration(),
+                error = e,
+            ))
+            throw e
         } catch (e: Exception) {
             val duration = currentTimeMillis() - startTime
             hooks.safeOnRequestEnd(info, RequestResult(
@@ -192,6 +216,19 @@ internal class BasecampHttpClient(
 
         // POST is not idempotent, so no retry for binary uploads
         return response
+    }
+
+    /**
+     * Attach-point backstop: refuse to attach credentials to a foreign origin.
+     * Localhost is carved out for dev/test. Mirrors the same-origin guard used
+     * for pagination Link headers.
+     */
+    private fun requireSameOrigin(url: String) {
+        if (!isLocalhost(url) && !isSameOrigin(url, config.baseUrl)) {
+            throw BasecampException.Usage(
+                "Refusing to send credentials to a different origin than base URL: $url"
+            )
+        }
     }
 
     companion object {
