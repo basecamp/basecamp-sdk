@@ -67,13 +67,11 @@ module Basecamp
     # @return [Response]
     def get_absolute(url, params: {})
       Security.require_https_unless_localhost!(url, "absolute URL")
-      # get_absolute exists to fetch the OAuth authorization endpoint, which lives
-      # on a different origin than the API base URL — Launchpad by default, or an
-      # issuer discovered from the configured base URL. Permit the credentialed
-      # cross-origin request only for that endpoint; every other foreign origin
-      # still trips the same-origin guard so the bearer token never leaks off the
-      # configured host.
-      allow_cross_origin = Security.authorization_endpoint?(url)
+      # Cross-origin is permitted only for the trusted Launchpad authorization
+      # endpoint; any other foreign origin (including an endpoint-shaped URL such
+      # as https://evil.example/authorization.json) still trips the same-origin
+      # guard, so the bearer token never leaks off the configured host.
+      allow_cross_origin = url == Security::LAUNCHPAD_AUTHORIZATION_URL
       request(:get, url, params: params, allow_cross_origin: allow_cross_origin)
     end
 
@@ -484,7 +482,11 @@ module Basecamp
 
         raise Basecamp::UsageError.new("URL origin does not match configured base URL: #{Security.truncate(path)}")
       elsif path.start_with?("http://")
-        raise Basecamp::UsageError.new("URL must use HTTPS: #{path}")
+        # Localhost may use plain HTTP for local development; every other host
+        # must use HTTPS.
+        return path if Security.localhost?(path)
+
+        raise Basecamp::UsageError.new("URL must use HTTPS: #{Security.truncate(path)}")
       end
 
       path = "/#{path}" unless path.start_with?("/")
@@ -494,8 +496,8 @@ module Basecamp
     # Attach-point backstop: refuse to attach credentials to a foreign origin
     # before the auth strategy adds the bearer token. Localhost is carved out
     # for dev/test. allow_cross_origin is granted only by get_absolute, and only
-    # for the OAuth authorization endpoint (Launchpad or a discovered issuer);
-    # every other absolute URL must be same-origin with the configured base URL.
+    # for the trusted Launchpad authorization endpoint; every other absolute URL
+    # must be same-origin with the configured base URL.
     def assert_credential_origin!(url, allow_cross_origin)
       return if allow_cross_origin
       return if Security.localhost?(url) || Security.same_origin?(url, @config.base_url)
