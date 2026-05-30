@@ -66,7 +66,8 @@ module Basecamp
     # @param params [Hash] query parameters
     # @return [Response]
     def get_absolute(url, params: {})
-      request(:get, url, params: params)
+      Security.require_https_unless_localhost!(url, "absolute URL")
+      request(:get, url, params: params, allow_cross_origin: true)
     end
 
     # Performs a POST request.
@@ -296,18 +297,18 @@ module Basecamp
       end
     end
 
-    def request(method, path, params: {}, body: nil)
-      url = build_url(path)
+    def request(method, path, params: {}, body: nil, allow_cross_origin: false)
+      url = build_url(path, allow_cross_origin: allow_cross_origin)
 
       # Mutations don't retry on 429/5xx to avoid duplicating data
       if method == :get
-        request_with_retry(method, url, params: params)
+        request_with_retry(method, url, params: params, allow_cross_origin: allow_cross_origin)
       else
-        single_request(method, url, params: params, body: body, attempt: 1)
+        single_request(method, url, params: params, body: body, attempt: 1, allow_cross_origin: allow_cross_origin)
       end
     end
 
-    def request_with_retry(method, url, params: {})
+    def request_with_retry(method, url, params: {}, allow_cross_origin: false)
       attempt = 0
       last_error = nil
 
@@ -316,7 +317,7 @@ module Basecamp
         break if attempt > @config.max_retries
 
         begin
-          return single_request(method, url, params: params, body: nil, attempt: attempt)
+          return single_request(method, url, params: params, body: nil, attempt: attempt, allow_cross_origin: allow_cross_origin)
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
           raise e unless e.retryable?
 
@@ -336,7 +337,8 @@ module Basecamp
       raise last_error || Basecamp::ApiError.new("Request failed after #{@config.max_retries} retries")
     end
 
-    def single_request(method, url, params:, body:, attempt:, retry_count: 0)
+    def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false)
+      assert_credential_origin!(url, allow_cross_origin)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
 
@@ -370,7 +372,7 @@ module Basecamp
         # After a successful token refresh on 401, retry the request once
         if error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 && @token_refreshed
           @token_refreshed = false
-          return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1)
+          return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1, allow_cross_origin: allow_cross_origin)
         end
 
         raise error
@@ -393,6 +395,7 @@ module Basecamp
     end
 
     def single_request_raw(method, url, body:, content_type:, attempt:)
+      assert_credential_origin!(url, false)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
 
@@ -467,15 +470,31 @@ module Basecamp
       err
     end
 
-    def build_url(path)
+    def build_url(path, allow_cross_origin: false)
       if path.start_with?("https://")
-        return path
+        return path if allow_cross_origin
+        return path if Security.localhost?(path) || Security.same_origin?(path, @config.base_url)
+
+        raise Basecamp::UsageError.new("URL origin does not match configured base URL: #{Security.truncate(path)}")
       elsif path.start_with?("http://")
         raise Basecamp::UsageError.new("URL must use HTTPS: #{path}")
       end
 
       path = "/#{path}" unless path.start_with?("/")
       "#{@config.base_url}#{path}"
+    end
+
+    # Attach-point backstop: refuse to attach credentials to a foreign origin
+    # before the auth strategy adds the bearer token. Localhost is carved out
+    # for dev/test. allow_cross_origin is set only for the intentional Launchpad
+    # call routed through get_absolute.
+    def assert_credential_origin!(url, allow_cross_origin)
+      return if allow_cross_origin
+      return if Security.localhost?(url) || Security.same_origin?(url, @config.base_url)
+
+      raise Basecamp::UsageError.new(
+        "Refusing to send credentials to a different origin than base URL: #{Security.truncate(url)}"
+      )
     end
 
     def calculate_delay(attempt, server_retry_after)
