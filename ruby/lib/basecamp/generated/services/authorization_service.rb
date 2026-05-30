@@ -12,10 +12,8 @@ module Basecamp
     #     puts "Account: #{account["name"]} (#{account["id"]})"
     #   end
     class AuthorizationService < BaseService
-      # Fallback Launchpad endpoint for authorization. Single-sourced from
-      # Security so it stays in lockstep with the cross-origin allowance in
-      # Http#get_absolute (a divergence would reject the legitimate call).
-      LAUNCHPAD_AUTHORIZATION_URL = Basecamp::Security::LAUNCHPAD_AUTHORIZATION_URL
+      # Fallback Launchpad endpoint for authorization
+      LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
 
       # Gets authorization information for the current user.
       #
