@@ -45,6 +45,16 @@ abstract class BaseService(
      * E.g., "/projects.json" -> "https://3.basecampapi.com/{accountId}/projects.json"
      */
     protected fun accountUrl(path: String): String {
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            // Absolute URL: require same-origin so we never build a request that
+            // would attach the bearer token to a foreign host.
+            if (!isLocalhost(path) && !isSameOrigin(path, accountClient.parent.config.baseUrl)) {
+                throw BasecampException.Usage(
+                    "Refusing to build a request URL for a different origin than base URL: $path"
+                )
+            }
+            return path
+        }
         val base = accountClient.parent.config.baseUrl.trimEnd('/')
         val accountId = accountClient.accountId
         val normalizedPath = if (path.startsWith("/")) path else "/$path"
