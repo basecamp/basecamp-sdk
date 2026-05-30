@@ -10,11 +10,6 @@ module Basecamp
     MAX_RESPONSE_BODY_BYTES = 50 * 1024 * 1024 # 50 MB
     MAX_ERROR_BODY_BYTES = 1 * 1024 * 1024      # 1 MB
 
-    # The Launchpad authorization endpoint is on a different origin than the
-    # configured API base URL, so it is the one sanctioned destination for a
-    # credentialed cross-origin request. Any other foreign origin is rejected.
-    LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
-
     def self.truncate(str, max = MAX_ERROR_MESSAGE_BYTES)
       return str if str.nil? || str.bytesize <= max
 
@@ -35,6 +30,19 @@ module Basecamp
 
       ua.scheme.downcase == ub.scheme.downcase &&
         normalize_host(ua) == normalize_host(ub)
+    rescue URI::InvalidURIError
+      false
+    end
+
+    # The OAuth authorization endpoint is the one sanctioned cross-origin
+    # destination for a credentialed request: it lives on a different origin
+    # than the API base URL (Launchpad by default, or an issuer discovered from
+    # the configured base URL). Matching the endpoint shape — an HTTPS
+    # `.../authorization.json` URL — preserves discovered issuers while keeping
+    # every other absolute URL subject to the same-origin guard.
+    def self.authorization_endpoint?(url)
+      uri = URI.parse(url.to_s)
+      uri.scheme&.downcase == "https" && uri.path&.end_with?("/authorization.json")
     rescue URI::InvalidURIError
       false
     end

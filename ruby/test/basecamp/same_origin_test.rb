@@ -66,9 +66,8 @@ class SameOriginCredentialTest < Minitest::Test
   end
 
   def test_get_absolute_rejects_foreign_origin
-    # get_absolute must not be a blanket origin-guard bypass: only the trusted
-    # Launchpad authorization endpoint may receive credentials cross-origin.
-    # Any other foreign origin is rejected before egress.
+    # get_absolute must not be a blanket origin-guard bypass: a foreign origin
+    # that is not the authorization endpoint is rejected before egress.
     error = assert_raises(Basecamp::UsageError) do
       @http.get_absolute("https://evil.example/steal")
     end
@@ -76,12 +75,16 @@ class SameOriginCredentialTest < Minitest::Test
     assert_not_requested(:get, "https://evil.example/steal")
   end
 
-  def test_launchpad_authorization_url_stays_in_lockstep
-    # get_absolute scopes its cross-origin allowance to Security's constant, while
-    # the (generated) AuthorizationService resolves the fallback to its own copy.
-    # If a regeneration ever changes the generated literal, this catches the drift
-    # before it silently breaks the legitimate Launchpad authorization call.
-    assert_equal Basecamp::Security::LAUNCHPAD_AUTHORIZATION_URL,
-      Basecamp::Services::AuthorizationService::LAUNCHPAD_AUTHORIZATION_URL
+  def test_get_absolute_allows_discovered_non_launchpad_issuer
+    # OAuth discovery may resolve a non-Launchpad issuer (e.g. a staging/custom
+    # auth server); its authorization endpoint must still be reachable with the
+    # bearer token, not rejected as a foreign origin.
+    stub_request(:get, "https://auth.staging.example/authorization.json")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 200, body: '{"ok":true}', headers: { "Content-Type" => "application/json" })
+
+    response = @http.get_absolute("https://auth.staging.example/authorization.json")
+    assert_equal 200, response.status
+    assert_requested(:get, "https://auth.staging.example/authorization.json")
   end
 end
