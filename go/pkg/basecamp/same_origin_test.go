@@ -79,6 +79,40 @@ func TestBuildURL_AcceptsLocalhostAbsoluteURL(t *testing.T) {
 	}
 }
 
+// TestBuildURL_LocalhostBaseDoesNotTrustForeignOrigin verifies that a localhost
+// base URL does not turn the same-origin guard into a no-op: a foreign-origin
+// absolute target must still be rejected (and carry no token), while a
+// same-origin localhost target still passes.
+func TestBuildURL_LocalhostBaseDoesNotTrustForeignOrigin(t *testing.T) {
+	rt := &recordingTransport{}
+	cfg := &Config{BaseURL: "https://localhost:3000"}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "secret-token"},
+		WithTransport(rt))
+
+	if _, err := client.buildURL("https://evil.example/x"); err == nil {
+		t.Fatal("expected error for foreign-origin absolute URL, got nil")
+	} else if !strings.Contains(err.Error(), "different origin") {
+		t.Errorf("expected error mentioning 'different origin', got: %v", err)
+	}
+
+	_, err := client.Get(context.Background(), "https://evil.example/x")
+	if err == nil {
+		t.Fatal("expected error for foreign-origin absolute URL, got nil")
+	}
+	if calls, auth := rt.snapshot(); calls != 0 || auth != "" {
+		t.Errorf("token egress to foreign origin: calls=%d auth=%q", calls, auth)
+	}
+
+	// Sanity: a same-origin localhost target still builds.
+	got, err := client.buildURL("https://localhost:3000/items.json")
+	if err != nil {
+		t.Fatalf("unexpected error for same-origin localhost URL: %v", err)
+	}
+	if got != "https://localhost:3000/items.json" {
+		t.Errorf("expected localhost passthrough, got: %q", got)
+	}
+}
+
 // TestForeignAbsoluteURL_NoTokenEgress is the end-to-end regression test for the
 // credential-exfiltration primitive: a request to a foreign-origin absolute URL
 // must error before any network send, and the transport must never see the

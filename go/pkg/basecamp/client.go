@@ -833,10 +833,10 @@ func (c *Client) buildURL(path string) (string, error) {
 	if strings.HasPrefix(path, "https://") {
 		// Absolute URLs must target the configured origin; otherwise we would
 		// attach the bearer token to a foreign host (credential exfiltration).
-		// Localhost is carved out for local development and httptest servers,
-		// matching NewClient's BaseURL HTTPS check and the same-origin guard
-		// already applied to pagination Link headers and cross-origin redirects.
-		if isLocalhost(path) || isLocalhost(c.cfg.BaseURL) || isSameOrigin(path, c.cfg.BaseURL) {
+		// Localhost targets are carved out for local development and httptest
+		// servers, matching the same-origin guard already applied to pagination
+		// Link headers and cross-origin redirects.
+		if isLocalhost(path) || isSameOrigin(path, c.cfg.BaseURL) {
 			return path, nil
 		}
 		return "", fmt.Errorf("absolute URL points to a different origin than base URL: %s", path)
@@ -860,7 +860,7 @@ func (c *Client) buildURL(path string) (string, error) {
 // token-attach site without going through buildURL.
 func (c *Client) assertCredentialOrigin(req *http.Request) error {
 	target := req.URL.String()
-	if isLocalhost(target) || isLocalhost(c.cfg.BaseURL) || isSameOrigin(target, c.cfg.BaseURL) {
+	if isLocalhost(target) || isSameOrigin(target, c.cfg.BaseURL) {
 		return nil
 	}
 	return fmt.Errorf("refusing to attach credentials to a different origin than base URL: %s", target)
