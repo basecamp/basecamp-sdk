@@ -128,3 +128,9 @@ private func defaultPort(for scheme: String?) -> Int? {
     default: nil
     }
 }
+
+/// Checks whether a URL points to localhost (for dev/test carve-out).
+func isLocalhost(_ urlString: String) -> Bool {
+    guard let host = URLComponents(string: urlString)?.host?.lowercased() else { return false }
+    return host == "localhost" || host == "127.0.0.1" || host == "::1" || host.hasSuffix(".localhost")
+}

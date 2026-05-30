@@ -49,7 +49,7 @@ open class BaseService: @unchecked Sendable {
             } else {
                 bodyData = try body.map { try Self.encoder.encode($0) }
             }
-            let url = accountClient.baseURL + path
+            let url = try buildURL(path)
 
             let (data, response) = try await accountClient.httpClient.performRequest(
                 method: method, url: url, body: bodyData, contentType: contentType, retryConfig: retryConfig
@@ -103,7 +103,7 @@ open class BaseService: @unchecked Sendable {
             } else {
                 bodyData = try body.map { try Self.encoder.encode($0) }
             }
-            let url = accountClient.baseURL + path
+            let url = try buildURL(path)
 
             let (data, response) = try await accountClient.httpClient.performRequest(
                 method: method, url: url, body: bodyData, contentType: contentType, retryConfig: retryConfig
@@ -150,7 +150,7 @@ open class BaseService: @unchecked Sendable {
         safeInvokeHooks { $0.onOperationStart(info) }
 
         do {
-            var urlString = accountClient.baseURL + path
+            var urlString = try buildURL(path)
             if let queryItems, !queryItems.isEmpty {
                 var components = URLComponents(string: urlString)
                 components?.queryItems = queryItems
@@ -230,7 +230,7 @@ open class BaseService: @unchecked Sendable {
         safeInvokeHooks { $0.onOperationStart(info) }
 
         do {
-            var urlString = accountClient.baseURL + path
+            var urlString = try buildURL(path)
             if let queryItems, !queryItems.isEmpty {
                 var components = URLComponents(string: urlString)
                 components?.queryItems = queryItems
@@ -417,6 +417,25 @@ open class BaseService: @unchecked Sendable {
     }()
 
     // MARK: - Helpers
+
+    /// Builds the full request URL for an account-relative path. Absolute URLs
+    /// must target the configured origin (localhost carve-out) so the bearer
+    /// token is never attached to a foreign host.
+    private func buildURL(_ path: String) throws -> String {
+        if path.hasPrefix("http://") {
+            throw BasecampError.usage(message: "Request URL must use HTTPS: \(path)", hint: nil)
+        }
+        if path.hasPrefix("https://") {
+            if isLocalhost(path) || isSameOrigin(path, accountClient.baseURL) {
+                return path
+            }
+            throw BasecampError.usage(
+                message: "Request URL points to a different origin than the configured base URL: \(path)",
+                hint: nil
+            )
+        }
+        return accountClient.baseURL + path
+    }
 
     private func millisSince(_ startTime: CFAbsoluteTime) -> Int {
         Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
