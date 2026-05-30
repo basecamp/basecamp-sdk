@@ -75,4 +75,13 @@ class SameOriginCredentialTest < Minitest::Test
     assert_match(/origin/, error.message)
     assert_not_requested(:get, "https://evil.example/steal")
   end
+
+  def test_launchpad_authorization_url_stays_in_lockstep
+    # get_absolute scopes its cross-origin allowance to Security's constant, while
+    # the (generated) AuthorizationService resolves the fallback to its own copy.
+    # If a regeneration ever changes the generated literal, this catches the drift
+    # before it silently breaks the legitimate Launchpad authorization call.
+    assert_equal Basecamp::Security::LAUNCHPAD_AUTHORIZATION_URL,
+      Basecamp::Services::AuthorizationService::LAUNCHPAD_AUTHORIZATION_URL
+  end
 end
