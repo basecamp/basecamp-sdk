@@ -714,6 +714,18 @@ describe("isLocalhost", () => {
     expect(isLocalhost("::1")).toBe(true);
   });
 
+  it("returns true for bracketed IPv6 loopback '[::1]' (as URL.hostname returns it)", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("[::1]")).toBe(true);
+    // URL.hostname brackets IPv6 literals, so this is the value real callers pass.
+    expect(isLocalhost(new URL("http://[::1]:8080/path").hostname)).toBe(true);
+  });
+
+  it("returns false for non-loopback bracketed IPv6", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("[2001:db8::1]")).toBe(false);
+  });
+
   it("returns true for .localhost TLD (RFC 6761)", async () => {
     const { isLocalhost } = await import("../src/security.js");
     expect(isLocalhost("myapp.localhost")).toBe(true);
@@ -819,6 +831,11 @@ describe("Same-origin credential attachment", () => {
     expect(isSameOriginAllowingLocalhost("https://3.basecampapi.com/x", base)).toBe(true);
     expect(isSameOriginAllowingLocalhost("http://127.0.0.1:9999/x", base)).toBe(true);
     expect(isSameOriginAllowingLocalhost("https://evil.example/x", base)).toBe(false);
+  });
+
+  it("isSameOriginAllowingLocalhost recognizes IPv6 loopback [::1]", () => {
+    // URL.hostname brackets IPv6 literals; the carve-out must still match.
+    expect(isSameOriginAllowingLocalhost("http://[::1]:8080/x", base)).toBe(true);
   });
 
   it("guard fails closed before any request is sent to a foreign origin", () => {

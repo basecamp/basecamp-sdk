@@ -51,10 +51,20 @@ class SameOriginTest {
     }
 
     @Test fun localhostAbsoluteUrlAllowed() = runTest {
-        var hit = false
-        val client = clientWith(MockEngine { hit = true; respondOk("[]") })
+        var auth: String? = null
+        val client = clientWith(MockEngine { req -> auth = req.headers["Authorization"]; respondOk("[]") })
         val account = client.forAccount("12345")
         account.httpClient.requestWithRetry(HttpMethod.Get, "https://localhost:8080/x.json")
-        assertTrue(hit); client.close()
+        // Localhost is allowed *and* authenticated — assert the token is present,
+        // not merely that a request was sent.
+        assertEquals("Bearer secret-token", auth); client.close()
+    }
+
+    @Test fun ipv6LoopbackAbsoluteUrlCarriesToken() = runTest {
+        var auth: String? = null
+        val client = clientWith(MockEngine { req -> auth = req.headers["Authorization"]; respondOk("[]") })
+        val account = client.forAccount("12345")
+        account.httpClient.requestWithRetry(HttpMethod.Get, "https://[::1]:8080/x.json")
+        assertEquals("Bearer secret-token", auth); client.close()
     }
 }
