@@ -45,7 +45,7 @@ abstract class BaseService(
      * E.g., "/projects.json" -> "https://3.basecampapi.com/{accountId}/projects.json"
      */
     protected fun accountUrl(path: String): String {
-        if (path.startsWith("http://") || path.startsWith("https://")) {
+        if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
             // Absolute URL: require same-origin so we never build a request that
             // would attach the bearer token to a foreign host.
             if (!isLocalhost(path) && !isSameOrigin(path, accountClient.parent.config.baseUrl)) {

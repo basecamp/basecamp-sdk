@@ -104,12 +104,15 @@ export function redactHeadersRecord(
  * isLocalhost("myapp.localhost");     // true
  * isLocalhost("127.0.0.1");           // true
  * isLocalhost("::1");                 // true
+ * isLocalhost("[::1]");               // true (bracketed IPv6 from URL.hostname)
  * isLocalhost("example.com");         // false
  * isLocalhost("localhost.example.com"); // false
  * ```
  */
 export function isLocalhost(hostname: string): boolean {
-  const normalized = hostname.toLowerCase();
+  // URL.hostname returns IPv6 literals bracketed (e.g. "[::1]"); strip the
+  // brackets so the loopback comparison matches.
+  const normalized = hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
   return (
     normalized === "localhost" ||
     normalized === "127.0.0.1" ||

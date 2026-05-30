@@ -263,3 +263,16 @@ class TestSameOriginGuard:
         resp = client.get_absolute("https://launchpad.37signals.com/authorization.json")
         assert resp.status_code == 200
         assert route.calls[0].request.headers["authorization"] == "Bearer test-token"
+
+    @respx.mock
+    def test_get_absolute_rejects_foreign_origin(self):
+        # get_absolute must not be a blanket origin-guard bypass: only the
+        # trusted Launchpad authorization endpoint may receive credentials
+        # cross-origin. Any other foreign origin is rejected before egress.
+        route = respx.get("https://evil.example/steal").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        client = make_client()
+        with pytest.raises(UsageError, match="different origin"):
+            client.get_absolute("https://evil.example/steal")
+        assert route.call_count == 0

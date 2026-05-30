@@ -55,7 +55,11 @@ class AsyncHttpClient:
     async def get_absolute(self, url: str, *, params: dict | None = None) -> httpx.Response:
         if not _security.is_localhost(url):
             _security.require_https(url, "URL")
-        return await self._request_with_retry("GET", url, params=params, allow_cross_origin=True)
+        # Cross-origin is permitted only for the trusted Launchpad authorization
+        # endpoint; any other foreign origin still trips the same-origin guard so
+        # the bearer token never leaks off the configured host.
+        allow_cross_origin = url == _security.LAUNCHPAD_AUTHORIZATION_URL
+        return await self._request_with_retry("GET", url, params=params, allow_cross_origin=allow_cross_origin)
 
     async def post(self, url: str, *, json_body: dict | None = None, operation: str | None = None) -> httpx.Response:
         url = self._build_url(url)
