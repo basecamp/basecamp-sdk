@@ -204,7 +204,7 @@ class AsyncHttpClient:
             _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
         ):
             raise UsageError(
-                f"Refusing to send credentials to a different origin than base URL: {url}"
+                f"Refusing to send credentials to a different origin than base URL: {_security.truncate(url)}"
             )
         info = RequestInfo(method=method, url=url, attempt=attempt)
         safe_hook(self._hooks.on_request_start, info)
@@ -280,10 +280,10 @@ class AsyncHttpClient:
         if path.startswith("https://"):
             if _security.is_localhost(path) or _security.same_origin(path, self._config.base_url):
                 return path
-            raise UsageError(f"URL host does not match configured base URL: {path}")
+            raise UsageError(f"URL host does not match configured base URL: {_security.truncate(path)}")
         if path.startswith("http://"):
             if not _security.is_localhost(path):
-                raise UsageError(f"URL must use HTTPS: {path}")
+                raise UsageError(f"URL must use HTTPS: {_security.truncate(path)}")
             return path
         if not path.startswith("/"):
             path = f"/{path}"

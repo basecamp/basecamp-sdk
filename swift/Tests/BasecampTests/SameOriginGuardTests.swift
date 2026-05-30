@@ -37,4 +37,22 @@ final class SameOriginGuardTests: XCTestCase {
         _ = try await svc.get("https://localhost:8080/x.json")
         XCTAssertEqual(transport.requests.count, 1)
     }
+
+    func testLocalhostAllowsPlainHTTP() async throws {
+        // Localhost may use plain HTTP for local development.
+        let transport = MockTransport(statusCode: 200, data: Data("[]".utf8))
+        let svc = ProbeService(accountClient: makeTestAccountClient(transport: transport))
+        _ = try await svc.get("http://localhost:8080/x.json")
+        XCTAssertEqual(transport.requests.count, 1)
+    }
+
+    func testForeignOriginPlainHTTPRejectedNoEgress() async throws {
+        // A non-localhost http:// target must still be rejected (HTTPS required),
+        // with no token egress.
+        let transport = MockTransport(statusCode: 200, data: Data("[]".utf8))
+        let svc = ProbeService(accountClient: makeTestAccountClient(transport: transport))
+        do { _ = try await svc.get("http://evil.example/steal.json"); XCTFail("expected rejection") }
+        catch let error as BasecampError { guard case .usage = error else { return XCTFail("got \(error)") } }
+        XCTAssertTrue(transport.requests.isEmpty)
+    }
 }

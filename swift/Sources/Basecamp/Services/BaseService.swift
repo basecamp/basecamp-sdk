@@ -422,11 +422,22 @@ open class BaseService: @unchecked Sendable {
     /// must target the configured origin (localhost carve-out) so the bearer
     /// token is never attached to a foreign host.
     private func buildURL(_ path: String) throws -> String {
-        if path.hasPrefix("http://") {
-            throw BasecampError.usage(message: "Request URL must use HTTPS: \(path)", hint: nil)
-        }
-        if path.hasPrefix("https://") {
-            if isLocalhost(path) || isSameOrigin(path, accountClient.baseURL) {
+        // Scheme detection is case-insensitive (RFC 3986) while the original
+        // string is preserved for the request.
+        let lowercased = path.lowercased()
+        let isHTTP = lowercased.hasPrefix("http://")
+        let isHTTPS = lowercased.hasPrefix("https://")
+        if isHTTP || isHTTPS {
+            // Localhost is carved out for local development and may use plain
+            // HTTP; every other origin must be same-origin and use HTTPS so the
+            // bearer token is never attached to a foreign host.
+            if isLocalhost(path) {
+                return path
+            }
+            if isHTTP {
+                throw BasecampError.usage(message: "Request URL must use HTTPS: \(path)", hint: nil)
+            }
+            if isSameOrigin(path, accountClient.baseURL) {
                 return path
             }
             throw BasecampError.usage(
