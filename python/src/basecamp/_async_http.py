@@ -55,7 +55,7 @@ class AsyncHttpClient:
     async def get_absolute(self, url: str, *, params: dict | None = None) -> httpx.Response:
         if not _security.is_localhost(url):
             _security.require_https(url, "URL")
-        return await self._request_with_retry("GET", url, params=params)
+        return await self._request_with_retry("GET", url, params=params, allow_cross_origin=True)
 
     async def post(self, url: str, *, json_body: dict | None = None, operation: str | None = None) -> httpx.Response:
         url = self._build_url(url)
@@ -140,6 +140,7 @@ class AsyncHttpClient:
         content: bytes | None = None,
         content_type: str | None = None,
         files: dict | None = None,
+        allow_cross_origin: bool = False,
     ) -> httpx.Response:
         attempt = 0
         last_error: BasecampError | None = None
@@ -159,6 +160,7 @@ class AsyncHttpClient:
                     content_type=content_type,
                     files=files,
                     attempt=attempt,
+                    allow_cross_origin=allow_cross_origin,
                 )
             except (RateLimitError, NetworkError, ApiError) as e:
                 if not e.retryable:
@@ -192,7 +194,14 @@ class AsyncHttpClient:
         files: dict | None = None,
         attempt: int = 1,
         _retry_count: int = 0,
+        allow_cross_origin: bool = False,
     ) -> httpx.Response:
+        if not allow_cross_origin and not (
+            _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
+        ):
+            raise UsageError(
+                f"Refusing to send credentials to a different origin than base URL: {url}"
+            )
         info = RequestInfo(method=method, url=url, attempt=attempt)
         safe_hook(self._hooks.on_request_start, info)
         start = time.monotonic()
@@ -229,6 +238,7 @@ class AsyncHttpClient:
                             files=files,
                             attempt=attempt,
                             _retry_count=_retry_count + 1,
+                            allow_cross_origin=allow_cross_origin,
                         )
                 raise error
 
@@ -264,7 +274,9 @@ class AsyncHttpClient:
 
     def _build_url(self, path: str) -> str:
         if path.startswith("https://"):
-            return path
+            if _security.is_localhost(path) or _security.same_origin(path, self._config.base_url):
+                return path
+            raise UsageError(f"URL host does not match configured base URL: {path}")
         if path.startswith("http://"):
             if not _security.is_localhost(path):
                 raise UsageError(f"URL must use HTTPS: {path}")

@@ -13,6 +13,7 @@ from basecamp.errors import (
     NetworkError,
     NotFoundError,
     RateLimitError,
+    UsageError,
 )
 from basecamp.hooks import BasecampHooks
 
@@ -181,3 +182,84 @@ class TestHeaders:
         client.get("/test")
         request = route.calls[0].request
         assert request.headers["authorization"] == "Bearer test-token"
+
+
+
+class TestSameOriginGuard:
+    @respx.mock
+    def test_foreign_origin_absolute_rejected_without_egress(self):
+        route = respx.get("https://evil.example/steal.json").mock(return_value=httpx.Response(200))
+        client = make_client()
+        with pytest.raises(UsageError):
+            client.get("https://evil.example/steal.json")
+        assert route.call_count == 0
+
+    @respx.mock
+    def test_foreign_origin_post_rejected(self):
+        route = respx.post("https://evil.example/x").mock(return_value=httpx.Response(200))
+        client = make_client()
+        with pytest.raises(UsageError):
+            client.post("https://evil.example/x", json_body={"a": 1})
+        assert route.call_count == 0
+
+    @respx.mock
+    def test_foreign_origin_put_rejected(self):
+        route = respx.put("https://evil.example/x").mock(return_value=httpx.Response(200))
+        client = make_client()
+        with pytest.raises(UsageError):
+            client.put("https://evil.example/x", json_body={"a": 1})
+        assert route.call_count == 0
+
+    @respx.mock
+    def test_foreign_origin_delete_rejected(self):
+        route = respx.delete("https://evil.example/x").mock(return_value=httpx.Response(204))
+        client = make_client()
+        with pytest.raises(UsageError):
+            client.delete("https://evil.example/x")
+        assert route.call_count == 0
+
+    @respx.mock
+    def test_same_origin_absolute_carries_token(self):
+        route = respx.get("https://3.basecampapi.com/page2.json").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        client = make_client()
+        resp = client.get("https://3.basecampapi.com/page2.json")
+        assert resp.status_code == 200
+        assert route.calls[0].request.headers["authorization"] == "Bearer test-token"
+
+    @respx.mock
+    def test_relative_path_resolves(self):
+        route = respx.get("https://3.basecampapi.com/projects.json").mock(
+            return_value=httpx.Response(200, json=[])
+        )
+        client = make_client()
+        resp = client.get("/projects.json")
+        assert resp.status_code == 200
+        assert route.call_count == 1
+
+    @respx.mock
+    def test_localhost_base_allows_absolute(self):
+        config = Config(
+            base_url="https://localhost:3000",
+            max_retries=1,
+            base_delay=0.001,
+            max_jitter=0.0,
+            timeout=5.0,
+        )
+        client = HttpClient(config, BearerAuth(StaticTokenProvider("test-token")), BasecampHooks())
+        route = respx.get("https://localhost:3000/x.json").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        resp = client.get("https://localhost:3000/x.json")
+        assert resp.status_code == 200
+
+    @respx.mock
+    def test_get_absolute_allows_cross_origin_launchpad(self):
+        route = respx.get("https://launchpad.37signals.com/authorization.json").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        client = make_client()
+        resp = client.get_absolute("https://launchpad.37signals.com/authorization.json")
+        assert resp.status_code == 200
+        assert route.calls[0].request.headers["authorization"] == "Bearer test-token"
