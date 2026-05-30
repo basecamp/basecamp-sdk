@@ -64,4 +64,15 @@ class SameOriginCredentialTest < Minitest::Test
     assert_equal 200, response.status
     assert_requested(:get, "https://launchpad.37signals.com/authorization.json")
   end
+
+  def test_get_absolute_rejects_foreign_origin
+    # get_absolute must not be a blanket origin-guard bypass: only the trusted
+    # Launchpad authorization endpoint may receive credentials cross-origin.
+    # Any other foreign origin is rejected before egress.
+    error = assert_raises(Basecamp::UsageError) do
+      @http.get_absolute("https://evil.example/steal")
+    end
+    assert_match(/origin/, error.message)
+    assert_not_requested(:get, "https://evil.example/steal")
+  end
 end
