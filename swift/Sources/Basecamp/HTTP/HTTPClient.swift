@@ -58,6 +58,7 @@ package final class HTTPClient: Sendable {
         request.timeoutInterval = config.timeoutInterval
 
         // Set auth and standard headers
+        try assertSameOrigin(url)
         try await authStrategy.authenticate(&request)
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -187,6 +188,7 @@ package final class HTTPClient: Sendable {
         request.httpMethod = "GET"
         request.timeoutInterval = config.timeoutInterval
 
+        try assertSameOrigin(url)
         try await authStrategy.authenticate(&request)
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -271,6 +273,18 @@ package final class HTTPClient: Sendable {
     }
 
     // MARK: - Private
+
+    /// Attach-point backstop: refuse to attach credentials to a foreign origin.
+    /// Localhost is carved out for dev/test.
+    private func assertSameOrigin(_ url: String) throws {
+        if isLocalhost(url) || isSameOrigin(url, config.baseURL) {
+            return
+        }
+        throw BasecampError.usage(
+            message: "Refusing to send credentials to a different origin than the configured base URL: \(url)",
+            hint: nil
+        )
+    }
 
     private func calculateDelay(
         attempt: Int,
