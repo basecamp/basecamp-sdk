@@ -210,7 +210,7 @@ async function executeOperation(
         break;
 
       case "CloneTool":
-        await client.tools.clone({
+        await client.tools.clone(Number(params.bucketId), {
           sourceRecordingId: Number(body.source_recording_id),
           title: String(body.title || "Conformance Test"),
         });

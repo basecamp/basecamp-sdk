@@ -60,7 +60,8 @@ describe("ToolsService", () => {
   });
 
   describe("clone", () => {
-    it("should clone a tool", async () => {
+    it("should clone a tool into a bucket", async () => {
+      const bucketId = 456;
       const sourceToolId = 222;
       const mockTool = {
         id: 333,
@@ -72,7 +73,7 @@ describe("ToolsService", () => {
 
       server.use(
         http.post(
-          `${BASE_URL}/dock/tools.json`,
+          `${BASE_URL}/buckets/${bucketId}/dock/tools.json`,
           async ({ request }) => {
             const body = await request.json() as { source_recording_id: number; title: string };
             expect(body.source_recording_id).toBe(sourceToolId);
@@ -82,7 +83,7 @@ describe("ToolsService", () => {
         )
       );
 
-      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId, title: "To-dos (Copy)" });
+      const tool = await client.tools.clone(bucketId, { sourceRecordingId: sourceToolId, title: "To-dos (Copy)" });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("To-dos (Copy)");
     });

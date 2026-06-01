@@ -669,9 +669,10 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
         }
 
         "CloneTool" -> {
+            val bucketId = tc.pathParams!!["bucketId"]!!.jsonPrimitive.long
             val sourceRecordingId = tc.requestBody!!["source_recording_id"]!!.jsonPrimitive.long
             val title = tc.requestBody?.get("title")?.jsonPrimitive?.contentOrNull
-            account.tools.clone(CloneToolBody(sourceRecordingId = sourceRecordingId, title = title))
+            account.tools.clone(bucketId, CloneToolBody(sourceRecordingId = sourceRecordingId, title = title))
             DispatchResult()
         }
 

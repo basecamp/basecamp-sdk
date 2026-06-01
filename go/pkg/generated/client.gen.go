@@ -2732,6 +2732,9 @@ type UpdateAccountNameJSONRequestBody = UpdateAccountNameRequestContent
 // SetCardColumnColorJSONRequestBody defines body for SetCardColumnColor for application/json ContentType.
 type SetCardColumnColorJSONRequestBody = SetCardColumnColorRequestContent
 
+// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
+type CloneToolJSONRequestBody = CloneToolRequestContent
+
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
@@ -2782,9 +2785,6 @@ type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
-
-// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
-type CloneToolJSONRequestBody = CloneToolRequestContent
 
 // UpdateToolJSONRequestBody defines body for UpdateTool for application/json ContentType.
 type UpdateToolJSONRequestBody = UpdateToolRequestContent
@@ -3260,6 +3260,11 @@ type ClientInterface interface {
 	// EnableCardColumnOnHold request
 	EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CloneToolWithBody request with any body
+	CloneToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CloneTool(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListWebhooks request
 	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3431,11 +3436,6 @@ type ClientInterface interface {
 	UpdateCommentWithBody(ctx context.Context, accountId string, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateComment(ctx context.Context, accountId string, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CloneToolWithBody request with any body
-	CloneToolWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CloneTool(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteTool request
 	DeleteTool(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4093,6 +4093,36 @@ func (c *Client) DisableCardColumnOnHold(ctx context.Context, accountId string, 
 func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewEnableCardColumnOnHoldRequest(c.Server, accountId, bucketId, columnId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// CloneToolWithBody executes the CloneTool operation.
+
+func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCloneToolRequestWithBody(c.Server, accountId, bucketId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CloneTool(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCloneToolRequest(c.Server, accountId, bucketId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4823,36 +4853,6 @@ func (c *Client) UpdateComment(ctx context.Context, accountId string, commentId 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateCommentRequest(c.Server, accountId, commentId, body)
 	}, true, "UpdateComment", reqEditors...)
-
-}
-
-// CloneToolWithBody executes the CloneTool operation.
-
-func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCloneToolRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CloneTool(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCloneToolRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 
 }
 
@@ -7430,6 +7430,60 @@ func NewEnableCardColumnOnHoldRequest(server string, accountId string, bucketId 
 	return req, nil
 }
 
+// NewCloneToolRequest calls the generic CloneTool builder with application/json body
+func NewCloneToolRequest(server string, accountId string, bucketId int64, body CloneToolJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCloneToolRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
+}
+
+// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
+func NewCloneToolRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewListWebhooksRequest generates requests for ListWebhooks
 func NewListWebhooksRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
 	var err error
@@ -9700,53 +9754,6 @@ func NewUpdateCommentRequestWithBody(server string, accountId string, commentId 
 	}
 
 	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCloneToolRequest calls the generic CloneTool builder with application/json body
-func NewCloneToolRequest(server string, accountId string, body CloneToolJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCloneToolRequestWithBody(server, accountId, "application/json", bodyReader)
-}
-
-// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
-func NewCloneToolRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/dock/tools.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -16894,6 +16901,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
 	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
 	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
+	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
@@ -16940,7 +16948,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
-	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
 	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetTool":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
@@ -18056,6 +18063,11 @@ type ClientWithResponsesInterface interface {
 	// EnableCardColumnOnHoldWithResponse request
 	EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
 
+	// CloneToolWithBodyWithResponse request with any body
+	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+
+	CloneToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+
 	// ListWebhooksWithResponse request
 	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
 
@@ -18227,11 +18239,6 @@ type ClientWithResponsesInterface interface {
 	UpdateCommentWithBodyWithResponse(ctx context.Context, accountId string, commentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
 
 	UpdateCommentWithResponse(ctx context.Context, accountId string, commentId int64, body UpdateCommentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCommentResponse, error)
-
-	// CloneToolWithBodyWithResponse request with any body
-	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
-
-	CloneToolWithResponse(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
 
 	// DeleteToolWithResponse request
 	DeleteToolWithResponse(ctx context.Context, accountId string, toolId int64, reqEditors ...RequestEditorFn) (*DeleteToolResponse, error)
@@ -19029,6 +19036,33 @@ func (r EnableCardColumnOnHoldResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r EnableCardColumnOnHoldResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CloneToolResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CloneToolResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CloneToolResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CloneToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -20237,33 +20271,6 @@ func (r UpdateCommentResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateCommentResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CloneToolResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CloneToolResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CloneToolResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CloneToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -24206,6 +24213,23 @@ func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Con
 	return ParseEnableCardColumnOnHoldResponse(rsp)
 }
 
+// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
+func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloneToolResponse(rsp)
+}
+
+func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
+	rsp, err := c.CloneTool(ctx, accountId, bucketId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCloneToolResponse(rsp)
+}
+
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
 func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
 	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
@@ -24754,23 +24778,6 @@ func (c *ClientWithResponses) UpdateCommentWithResponse(ctx context.Context, acc
 		return nil, err
 	}
 	return ParseUpdateCommentResponse(rsp)
-}
-
-// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneToolWithBody(ctx, accountId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCloneToolResponse(rsp)
-}
-
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneTool(ctx, accountId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCloneToolResponse(rsp)
 }
 
 // DeleteToolWithResponse request returning *DeleteToolResponse
@@ -27007,6 +27014,67 @@ func ParseEnableCardColumnOnHoldResponse(rsp *http.Response) (*EnableCardColumnO
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCloneToolResponse parses an HTTP response from a CloneToolWithResponse call
+func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CloneToolResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CloneToolResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
@@ -29603,67 +29671,6 @@ func ParseUpdateCommentResponse(rsp *http.Response) (*UpdateCommentResponse, err
 			return nil, err
 		}
 		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCloneToolResponse parses an HTTP response from a CloneToolWithResponse call
-func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CloneToolResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CloneToolResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
