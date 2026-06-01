@@ -118,7 +118,7 @@ class OperationMapper:
                 return self._account.tools.clone(
                     bucket_id=path_params["bucketId"],
                     source_recording_id=body["source_recording_id"],
-                    title=body["title"],
+                    title=body.get("title"),
                 )
             case "EnableTool":
                 return self._account.tools.enable(tool_id=path_params["toolId"])
