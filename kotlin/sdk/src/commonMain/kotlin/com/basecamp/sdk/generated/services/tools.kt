@@ -14,19 +14,20 @@ class ToolsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Clone an existing tool to create a new one
+     * @param bucketId The bucket ID
      * @param body Request body
      */
-    suspend fun clone(body: CloneToolBody): Tool {
+    suspend fun clone(bucketId: Long, body: CloneToolBody): Tool {
         val info = OperationInfo(
             service = "Tools",
             operation = "CloneTool",
             resourceType = "tool",
             isMutation = true,
             projectId = null,
-            resourceId = null,
+            resourceId = bucketId,
         )
         return request(info, {
-            httpPost("/dock/tools.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/buckets/${bucketId}/dock/tools.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("source_recording_id", kotlinx.serialization.json.JsonPrimitive(body.sourceRecordingId))
                 body.title?.let { put("title", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)

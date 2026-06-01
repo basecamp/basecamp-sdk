@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -74,6 +77,51 @@ func TestTool_UnmarshalGet(t *testing.T) {
 	}
 	if tool.Bucket.Type != "Project" {
 		t.Errorf("expected Bucket.Type 'Project', got %q", tool.Bucket.Type)
+	}
+}
+
+func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
+	const (
+		accountID    = "5245563"
+		bucketID     = int64(33861629)
+		sourceToolID = int64(6428743498)
+		title        = "Intervention Log / Journal"
+	)
+
+	var capturedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.Path
+		if r.Method != http.MethodPost || r.URL.Path != "/"+accountID+"/buckets/33861629/dock/tools.json" {
+			http.NotFound(w, r)
+			return
+		}
+
+		body := decodeRequestBody(t, r)
+		if got := body["source_recording_id"].(json.Number).String(); got != "6428743498" {
+			t.Fatalf("source_recording_id = %s, want 6428743498", got)
+		}
+		if got := body["title"]; got != title {
+			t.Fatalf("title = %v, want %q", got, title)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(loadToolsFixture(t, "create.json"))
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	_, err := client.ForAccount(accountID).Tools().Create(
+		context.Background(),
+		bucketID,
+		sourceToolID,
+		&CloneToolOptions{Title: title},
+	)
+	if err != nil {
+		t.Fatalf("Create() error = %v; request path = %s; want bucket %d dock tools endpoint", err, capturedPath, bucketID)
 	}
 }
 

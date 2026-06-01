@@ -145,17 +145,18 @@
     "tags": ["path", "tools"]
   },
   {
-    "name": "CloneTool uses flat /dock/tools.json path (no bucketId)",
-    "description": "Verifies that CloneTool constructs the flat URL path /dock/tools.json without bucket scoping",
+    "name": "CloneTool uses bucket-scoped /buckets/{bucketId}/dock/tools.json path",
+    "description": "Verifies that CloneTool constructs the bucket-scoped URL path /buckets/{bucketId}/dock/tools.json",
     "operation": "CloneTool",
     "method": "POST",
-    "path": "/dock/tools.json",
+    "path": "/buckets/{bucketId}/dock/tools.json",
+    "pathParams": {"bucketId": 456},
     "requestBody": {"source_recording_id": 789, "title": "To-dos (Copy)"},
     "mockResponses": [
       {"status": 201, "body": {"id": 800, "name": "todoset", "title": "To-dos (Copy)", "status": "active", "enabled": true, "position": 5, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/800.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/800", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/dock/tools.json"},
+      {"type": "requestPath", "expected": "/999/buckets/456/dock/tools.json"},
       {"type": "noError"}
     ],
     "tags": ["path", "tools"]

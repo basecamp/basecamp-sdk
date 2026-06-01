@@ -77,10 +77,10 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 	return &tool, nil
 }
 
-// Create clones an existing tool to create a new one.
+// Create clones an existing tool into the destination bucket.
 // An optional title can be provided; if empty, the source tool's title is used.
 // Returns the newly created tool.
-func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, opts *CloneToolOptions) (result *Tool, err error) {
+func (s *ToolsService) Create(ctx context.Context, bucketID int64, sourceToolID int64, opts *CloneToolOptions) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
@@ -102,7 +102,7 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, opts *Clo
 		body.Title = opts.Title
 	}
 
-	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}

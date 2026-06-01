@@ -141,6 +141,7 @@ class OperationMapper
       )
     when "CloneTool"
       @account.tools.clone(
+        bucket_id: path_params["bucketId"],
         source_recording_id: body["source_recording_id"],
         title: body["title"]
       )
