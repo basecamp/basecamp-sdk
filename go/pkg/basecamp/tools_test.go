@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -88,10 +89,12 @@ func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 		title        = "Intervention Log / Journal"
 	)
 
+	expectedPath := fmt.Sprintf("/%s/buckets/%d/dock/tools.json", accountID, bucketID)
+
 	var capturedPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedPath = r.URL.Path
-		if r.Method != http.MethodPost || r.URL.Path != "/"+accountID+"/buckets/33861629/dock/tools.json" {
+		if r.Method != http.MethodPost || r.URL.Path != expectedPath {
 			http.NotFound(w, r)
 			return
 		}
@@ -112,7 +115,14 @@ func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 
 	cfg := DefaultConfig()
 	cfg.BaseURL = server.URL
-	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	var capturedOp OperationInfo
+	hooks := &testHooks{
+		onOperationStart: func(ctx context.Context, op OperationInfo) context.Context {
+			capturedOp = op
+			return ctx
+		},
+	}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHooks(hooks))
 
 	_, err := client.ForAccount(accountID).Tools().Create(
 		context.Background(),
@@ -122,6 +132,9 @@ func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Create() error = %v; request path = %s; want bucket %d dock tools endpoint", err, capturedPath, bucketID)
+	}
+	if capturedOp.ResourceID != bucketID {
+		t.Fatalf("Create() operation ResourceID = %d, want destination bucket %d", capturedOp.ResourceID, bucketID)
 	}
 }
 

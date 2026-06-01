@@ -84,7 +84,7 @@ func (s *ToolsService) Create(ctx context.Context, bucketID int64, sourceToolID 
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
-		ResourceID: sourceToolID,
+		ResourceID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
