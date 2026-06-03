@@ -21,7 +21,6 @@ object Metadata {
 
     val operations: Map<String, OperationConfig> = mapOf(
         "ArchiveRecording" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
-        "CloneTool" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CompleteTodo" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateAnswer" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateAttachment" to OperationConfig(false, RetryConfig(3, 2000L, "exponential", setOf(429, 503))),
@@ -49,6 +48,7 @@ object Metadata {
         "CreateTodo" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateTodolist" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateTodolistGroup" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "CreateTool" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateUpload" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateVault" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateWebhook" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),

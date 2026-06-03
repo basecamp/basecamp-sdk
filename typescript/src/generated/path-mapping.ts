@@ -16,7 +16,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/color.json": "SetCardColumnColor",
   "DELETE:/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json": "DisableCardColumnOnHold",
   "POST:/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json": "EnableCardColumnOnHold",
-  "POST:/{accountId}/buckets/{bucketId}/dock/tools.json": "CloneTool",
+  "POST:/{accountId}/buckets/{bucketId}/dock/tools.json": "CreateTool",
   "GET:/{accountId}/buckets/{bucketId}/webhooks.json": "ListWebhooks",
   "POST:/{accountId}/buckets/{bucketId}/webhooks.json": "CreateWebhook",
   "GET:/{accountId}/card_tables/{cardTableId}": "GetCardTable",

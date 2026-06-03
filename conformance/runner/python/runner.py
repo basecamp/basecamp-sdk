@@ -114,10 +114,10 @@ class OperationMapper:
                 return self._account.reports.person_progress(person_id=path_params["personId"])
             case "GetTool":
                 return self._account.tools.get(tool_id=path_params["toolId"])
-            case "CloneTool":
-                return self._account.tools.clone(
+            case "CreateTool":
+                return self._account.tools.create(
                     bucket_id=path_params["bucketId"],
-                    source_recording_id=body["source_recording_id"],
+                    tool_type=body["tool_type"],
                     title=body.get("title"),
                 )
             case "EnableTool":

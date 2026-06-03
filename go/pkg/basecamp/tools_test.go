@@ -83,10 +83,10 @@ func TestTool_UnmarshalGet(t *testing.T) {
 
 func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 	const (
-		accountID    = "5245563"
-		bucketID     = int64(33861629)
-		sourceToolID = int64(6428743498)
-		title        = "Intervention Log / Journal"
+		accountID = "5245563"
+		bucketID  = int64(33861629)
+		toolType  = "Message::Board"
+		title     = "Intervention Log / Journal"
 	)
 
 	expectedPath := fmt.Sprintf("/%s/buckets/%d/dock/tools.json", accountID, bucketID)
@@ -100,8 +100,8 @@ func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 		}
 
 		body := decodeRequestBody(t, r)
-		if got := body["source_recording_id"].(json.Number).String(); got != "6428743498" {
-			t.Fatalf("source_recording_id = %s, want 6428743498", got)
+		if got := body["tool_type"]; got != toolType {
+			t.Fatalf("tool_type = %v, want %q", got, toolType)
 		}
 		if got := body["title"]; got != title {
 			t.Fatalf("title = %v, want %q", got, title)
@@ -127,8 +127,8 @@ func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 	_, err := client.ForAccount(accountID).Tools().Create(
 		context.Background(),
 		bucketID,
-		sourceToolID,
-		&CloneToolOptions{Title: title},
+		toolType,
+		&CreateToolOptions{Title: title},
 	)
 	if err != nil {
 		t.Fatalf("Create() error = %v; request path = %s; want bucket %d dock tools endpoint", err, capturedPath, bucketID)

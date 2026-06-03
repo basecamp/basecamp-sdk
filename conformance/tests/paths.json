@@ -145,15 +145,32 @@
     "tags": ["path", "tools"]
   },
   {
-    "name": "CloneTool uses bucket-scoped /buckets/{bucketId}/dock/tools.json path",
-    "description": "Verifies that CloneTool constructs the bucket-scoped URL path /buckets/{bucketId}/dock/tools.json",
-    "operation": "CloneTool",
+    "name": "CreateTool uses bucket-scoped /buckets/{bucketId}/dock/tools.json path",
+    "description": "Verifies that CreateTool constructs the bucket-scoped URL path /buckets/{bucketId}/dock/tools.json",
+    "operation": "CreateTool",
     "method": "POST",
     "path": "/buckets/{bucketId}/dock/tools.json",
     "pathParams": {"bucketId": 456},
-    "requestBody": {"source_recording_id": 789, "title": "To-dos (Copy)"},
+    "requestBody": {"tool_type": "Message::Board", "title": "Message Board (Copy)"},
     "mockResponses": [
-      {"status": 201, "body": {"id": 800, "name": "todoset", "title": "To-dos (Copy)", "status": "active", "enabled": true, "position": 5, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/800.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/800", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+      {"status": 201, "body": {"id": 800, "name": "message_board", "title": "Message Board (Copy)", "status": "active", "enabled": true, "position": 5, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/message_boards/800.json", "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/800", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+    ],
+    "assertions": [
+      {"type": "requestPath", "expected": "/999/buckets/456/dock/tools.json"},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "tools"]
+  },
+  {
+    "name": "CreateTool accepts omitted title on bucket-scoped path",
+    "description": "Verifies that CreateTool can omit the optional title while using /buckets/{bucketId}/dock/tools.json",
+    "operation": "CreateTool",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/dock/tools.json",
+    "pathParams": {"bucketId": 456},
+    "requestBody": {"tool_type": "Message::Board"},
+    "mockResponses": [
+      {"status": 201, "body": {"id": 801, "name": "message_board", "title": "Message Board", "status": "active", "enabled": true, "position": 6, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/message_boards/801.json", "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/801", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
     ],
     "assertions": [
       {"type": "requestPath", "expected": "/999/buckets/456/dock/tools.json"},

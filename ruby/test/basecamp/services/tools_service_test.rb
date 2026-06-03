@@ -20,14 +20,14 @@ class ToolsServiceTest < Minitest::Test
     assert_equal true, result["enabled"]
   end
 
-  def test_clone
+  def test_create
     response = { "id" => 2, "name" => "Message Board (Copy)" }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
-      .with(body: hash_including("source_recording_id" => 2, "title" => "Message Board (Copy)"))
+      .with(body: hash_including("tool_type" => "Message::Board", "title" => "Message Board (Copy)"))
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.clone(bucket_id: 456, source_recording_id: 2, title: "Message Board (Copy)")
+    result = @account.tools.create(bucket_id: 456, tool_type: "Message::Board", title: "Message Board (Copy)")
     assert_equal "Message Board (Copy)", result["name"]
   end
 

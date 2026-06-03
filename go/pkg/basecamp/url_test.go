@@ -361,6 +361,24 @@ func TestMatchAPI(t *testing.T) {
 		t.Errorf("Operation = %q, want ListRecordingBoosts", m.Operation)
 	}
 
+	// CreateTool uses the bucket-scoped API route.
+	m = r.MatchAPI("https://3.basecampapi.com/123/buckets/456/dock/tools.json")
+	if m == nil {
+		t.Fatal("MatchAPI should match bucket-scoped CreateTool route")
+	}
+	if m.Operation != "CreateTool" {
+		t.Errorf("Operation = %q, want CreateTool", m.Operation)
+	}
+	if m.Params["bucketId"] != "456" {
+		t.Errorf("Params[bucketId] = %q, want 456", m.Params["bucketId"])
+	}
+
+	// The flat CreateTool route is not an API route.
+	m = r.MatchAPI("https://3.basecampapi.com/123/dock/tools.json")
+	if m != nil {
+		t.Errorf("MatchAPI should return nil for flat CreateTool route, got %+v", m)
+	}
+
 	// Web-only URL should NOT match
 	m = r.MatchAPI("https://3.basecamp.com/123/buckets/456/sometype")
 	if m != nil {
