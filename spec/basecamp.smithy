@@ -50,7 +50,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-03-23"
+  version: "2026-06-01"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -235,7 +235,7 @@ service Basecamp {
     CreateProjectFromTemplate,
     GetProjectConstruction,
     GetTool,
-    CloneTool,
+    CreateTool,
     UpdateTool,
     DeleteTool,
     EnableTool,
@@ -6792,16 +6792,16 @@ structure GetToolOutput {
   tool: Tool
 }
 
-/// Clone an existing tool to create a new one
+/// Create a tool in a project dock
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/dock/tools.json", code: 201)
-operation CloneTool {
-  input: CloneToolInput
-  output: CloneToolOutput
+operation CreateTool {
+  input: CreateToolInput
+  output: CreateToolOutput
   errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
-structure CloneToolInput {
+structure CreateToolInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -6810,13 +6810,15 @@ structure CloneToolInput {
   @httpLabel
   bucketId: ProjectId
 
+  /// Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
   @required
-  source_recording_id: ToolId
+  tool_type: String
 
+  /// Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
   title: String
 }
 
-structure CloneToolOutput {
+structure CreateToolOutput {
 
   tool: Tool
 }

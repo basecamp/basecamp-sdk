@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-06-01T19:03:22Z",
+  "generated": "2026-06-01T20:21:47Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -131,7 +131,7 @@
         "natural": true
       }
     },
-    "CloneTool": {
+    "CreateTool": {
       "retry": {
         "maxAttempts": 2,
         "baseDelayMs": 1000,

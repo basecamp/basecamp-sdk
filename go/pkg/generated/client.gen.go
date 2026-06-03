@@ -398,15 +398,6 @@ type ClientSide struct {
 	Url    string `json:"url,omitempty"`
 }
 
-// CloneToolRequestContent defines model for CloneToolRequestContent.
-type CloneToolRequestContent struct {
-	SourceRecordingId int64  `json:"source_recording_id"`
-	Title             string `json:"title,omitempty"`
-}
-
-// CloneToolResponseContent defines model for CloneToolResponseContent.
-type CloneToolResponseContent = Tool
-
 // Comment defines model for Comment.
 type Comment struct {
 	AppUrl           string          `json:"app_url"`
@@ -682,6 +673,18 @@ type CreateTodolistRequestContent struct {
 
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
 type CreateTodolistResponseContent = Todolist
+
+// CreateToolRequestContent defines model for CreateToolRequestContent.
+type CreateToolRequestContent struct {
+	// Title Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
+	Title string `json:"title,omitempty"`
+
+	// ToolType Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
+	ToolType string `json:"tool_type"`
+}
+
+// CreateToolResponseContent defines model for CreateToolResponseContent.
+type CreateToolResponseContent = Tool
 
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
@@ -2732,8 +2735,8 @@ type UpdateAccountNameJSONRequestBody = UpdateAccountNameRequestContent
 // SetCardColumnColorJSONRequestBody defines body for SetCardColumnColor for application/json ContentType.
 type SetCardColumnColorJSONRequestBody = SetCardColumnColorRequestContent
 
-// CloneToolJSONRequestBody defines body for CloneTool for application/json ContentType.
-type CloneToolJSONRequestBody = CloneToolRequestContent
+// CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
+type CreateToolJSONRequestBody = CreateToolRequestContent
 
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
@@ -3260,10 +3263,10 @@ type ClientInterface interface {
 	// EnableCardColumnOnHold request
 	EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CloneToolWithBody request with any body
-	CloneToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// CreateToolWithBody request with any body
+	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CloneTool(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTool(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWebhooks request
 	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4104,11 +4107,11 @@ func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, b
 
 }
 
-// CloneToolWithBody executes the CloneTool operation.
+// CreateToolWithBody executes the CreateTool operation.
 
-func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCloneToolRequestWithBody(c.Server, accountId, bucketId, contentType, body)
+	req, err := NewCreateToolRequestWithBody(c.Server, accountId, bucketId, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -4120,9 +4123,9 @@ func (c *Client) CloneToolWithBody(ctx context.Context, accountId string, bucket
 
 }
 
-func (c *Client) CloneTool(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CreateTool(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewCloneToolRequest(c.Server, accountId, bucketId, body)
+	req, err := NewCreateToolRequest(c.Server, accountId, bucketId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7430,19 +7433,19 @@ func NewEnableCardColumnOnHoldRequest(server string, accountId string, bucketId 
 	return req, nil
 }
 
-// NewCloneToolRequest calls the generic CloneTool builder with application/json body
-func NewCloneToolRequest(server string, accountId string, bucketId int64, body CloneToolJSONRequestBody) (*http.Request, error) {
+// NewCreateToolRequest calls the generic CreateTool builder with application/json body
+func NewCreateToolRequest(server string, accountId string, bucketId int64, body CreateToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCloneToolRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
+	return NewCreateToolRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
 }
 
-// NewCloneToolRequestWithBody generates requests for CloneTool with any type of body
-func NewCloneToolRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
+// NewCreateToolRequestWithBody generates requests for CreateTool with any type of body
+func NewCreateToolRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -16901,7 +16904,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
 	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
 	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
-	"CloneTool":                          {Idempotent: false, HasSensitiveParams: false},
+	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
@@ -18063,10 +18066,10 @@ type ClientWithResponsesInterface interface {
 	// EnableCardColumnOnHoldWithResponse request
 	EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
 
-	// CloneToolWithBodyWithResponse request with any body
-	CloneToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+	// CreateToolWithBodyWithResponse request with any body
+	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
-	CloneToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error)
+	CreateToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
 	// ListWebhooksWithResponse request
 	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
@@ -19042,10 +19045,10 @@ func (r EnableCardColumnOnHoldResponse) StatusCode() int {
 	return 0
 }
 
-type CloneToolResponse struct {
+type CreateToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *CloneToolResponseContent
+	JSON201      *CreateToolResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
@@ -19054,7 +19057,7 @@ type CloneToolResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r CloneToolResponse) Status() string {
+func (r CreateToolResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -19062,7 +19065,7 @@ func (r CloneToolResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CloneToolResponse) StatusCode() int {
+func (r CreateToolResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -24213,21 +24216,21 @@ func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Con
 	return ParseEnableCardColumnOnHoldResponse(rsp)
 }
 
-// CloneToolWithBodyWithResponse request with arbitrary body returning *CloneToolResponse
-func (c *ClientWithResponses) CloneToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
+// CreateToolWithBodyWithResponse request with arbitrary body returning *CreateToolResponse
+func (c *ClientWithResponses) CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error) {
+	rsp, err := c.CreateToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCloneToolResponse(rsp)
+	return ParseCreateToolResponse(rsp)
 }
 
-func (c *ClientWithResponses) CloneToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CloneToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CloneToolResponse, error) {
-	rsp, err := c.CloneTool(ctx, accountId, bucketId, body, reqEditors...)
+func (c *ClientWithResponses) CreateToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateToolResponse, error) {
+	rsp, err := c.CreateTool(ctx, accountId, bucketId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCloneToolResponse(rsp)
+	return ParseCreateToolResponse(rsp)
 }
 
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
@@ -27055,22 +27058,22 @@ func ParseEnableCardColumnOnHoldResponse(rsp *http.Response) (*EnableCardColumnO
 	return response, nil
 }
 
-// ParseCloneToolResponse parses an HTTP response from a CloneToolWithResponse call
-func ParseCloneToolResponse(rsp *http.Response) (*CloneToolResponse, error) {
+// ParseCreateToolResponse parses an HTTP response from a CreateToolWithResponse call
+func ParseCreateToolResponse(rsp *http.Response) (*CreateToolResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CloneToolResponse{
+	response := &CreateToolResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CloneToolResponseContent
+		var dest CreateToolResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

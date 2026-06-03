@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-03-23",
+    "version": "2026-06-01",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -915,13 +915,13 @@
     },
     "/buckets/{bucketId}/dock/tools.json": {
       "post": {
-        "description": "Clone an existing tool to create a new one",
-        "operationId": "CloneTool",
+        "description": "Create a tool in a project dock",
+        "operationId": "CreateTool",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CloneToolRequestContent"
+                "$ref": "#/components/schemas/CreateToolRequestContent"
               }
             }
           },
@@ -940,11 +940,11 @@
         ],
         "responses": {
           "201": {
-            "description": "CloneTool 201 response",
+            "description": "CreateTool 201 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CloneToolResponseContent"
+                  "$ref": "#/components/schemas/CreateToolResponseContent"
                 }
               }
             }
@@ -19739,25 +19739,6 @@
           }
         }
       },
-      "CloneToolRequestContent": {
-        "type": "object",
-        "properties": {
-          "source_recording_id": {
-            "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "title": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "source_recording_id"
-        ]
-      },
-      "CloneToolResponseContent": {
-        "$ref": "#/components/schemas/Tool"
-      },
       "Comment": {
         "type": "object",
         "properties": {
@@ -20415,6 +20396,25 @@
       },
       "CreateTodolistResponseContent": {
         "$ref": "#/components/schemas/Todolist"
+      },
+      "CreateToolRequestContent": {
+        "type": "object",
+        "properties": {
+          "tool_type": {
+            "type": "string",
+            "description": "Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type."
+          }
+        },
+        "required": [
+          "tool_type"
+        ]
+      },
+      "CreateToolResponseContent": {
+        "$ref": "#/components/schemas/Tool"
       },
       "CreateUploadRequestContent": {
         "type": "object",

@@ -139,8 +139,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Clone an existing tool to create a new one */
-        post: operations["CloneTool"];
+        /** @description Create a tool in a project dock */
+        post: operations["CreateTool"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2866,12 +2866,6 @@ export interface components {
             url?: string;
             app_url?: string;
         };
-        CloneToolRequestContent: {
-            /** Format: int64 */
-            source_recording_id: number;
-            title?: string;
-        };
-        CloneToolResponseContent: components["schemas"]["Tool"];
         Comment: {
             /** Format: int64 */
             id: number;
@@ -3051,6 +3045,13 @@ export interface components {
             description?: string;
         };
         CreateTodolistResponseContent: components["schemas"]["Todolist"];
+        CreateToolRequestContent: {
+            /** @description Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault. */
+            tool_type: string;
+            /** @description Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type. */
+            title?: string;
+        };
+        CreateToolResponseContent: components["schemas"]["Tool"];
         CreateUploadRequestContent: {
             attachable_sgid: string;
             description?: string;
@@ -5153,7 +5154,7 @@ export interface operations {
             };
         };
     };
-    CloneTool: {
+    CreateTool: {
         parameters: {
             query?: never;
             header?: never;
@@ -5164,17 +5165,17 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CloneToolRequestContent"];
+                "application/json": components["schemas"]["CreateToolRequestContent"];
             };
         };
         responses: {
-            /** @description CloneTool 201 response */
+            /** @description CreateTool 201 response */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CloneToolResponseContent"];
+                    "application/json": components["schemas"]["CreateToolResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

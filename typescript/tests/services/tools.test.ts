@@ -59,14 +59,14 @@ describe("ToolsService", () => {
     });
   });
 
-  describe("clone", () => {
-    it("should clone a tool into a bucket", async () => {
+  describe("create", () => {
+    it("should create a tool in a bucket", async () => {
       const bucketId = 456;
-      const sourceToolId = 222;
+      const toolType = "Message::Board";
       const mockTool = {
         id: 333,
-        name: "todoset",
-        title: "To-dos (Copy)",
+        name: "message_board",
+        title: "Message Board (Copy)",
         enabled: true,
         position: 5,
       };
@@ -75,17 +75,17 @@ describe("ToolsService", () => {
         http.post(
           `${BASE_URL}/buckets/${bucketId}/dock/tools.json`,
           async ({ request }) => {
-            const body = await request.json() as { source_recording_id: number; title: string };
-            expect(body.source_recording_id).toBe(sourceToolId);
-            expect(body.title).toBe("To-dos (Copy)");
+            const body = await request.json() as { tool_type: string; title: string };
+            expect(body.tool_type).toBe(toolType);
+            expect(body.title).toBe("Message Board (Copy)");
             return HttpResponse.json(mockTool, { status: 201 });
           }
         )
       );
 
-      const tool = await client.tools.clone(bucketId, { sourceRecordingId: sourceToolId, title: "To-dos (Copy)" });
+      const tool = await client.tools.create(bucketId, { toolType, title: "Message Board (Copy)" });
       expect(tool.id).toBe(333);
-      expect(tool.title).toBe("To-dos (Copy)");
+      expect(tool.title).toBe("Message Board (Copy)");
     });
   });
 
