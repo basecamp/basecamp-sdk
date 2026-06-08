@@ -7,13 +7,14 @@ module Basecamp
     # @generated from OpenAPI spec
     class ToolsService < BaseService
 
-      # Clone an existing tool to create a new one
-      # @param source_recording_id [Integer] source recording id
-      # @param title [String, nil] title
+      # Create a tool in a project dock
+      # @param bucket_id [Integer] bucket id ID
+      # @param tool_type [String] Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
+      # @param title [String, nil] Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
       # @return [Hash] response data
-      def clone(source_recording_id:, title: nil)
-        with_operation(service: "tools", operation: "clone", is_mutation: true) do
-          http_post("/dock/tools.json", body: compact_params(source_recording_id: source_recording_id, title: title)).json
+      def create(bucket_id:, tool_type:, title: nil)
+        with_operation(service: "tools", operation: "create", is_mutation: true, resource_id: bucket_id) do
+          http_post("/buckets/#{bucket_id}/dock/tools.json", body: compact_params(tool_type: tool_type, title: title)).json
         end
       end
 

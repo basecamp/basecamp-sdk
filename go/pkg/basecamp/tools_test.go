@@ -1,7 +1,11 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -74,6 +78,63 @@ func TestTool_UnmarshalGet(t *testing.T) {
 	}
 	if tool.Bucket.Type != "Project" {
 		t.Errorf("expected Bucket.Type 'Project', got %q", tool.Bucket.Type)
+	}
+}
+
+func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
+	const (
+		accountID = "5245563"
+		bucketID  = int64(33861629)
+		toolType  = "Message::Board"
+		title     = "Intervention Log / Journal"
+	)
+
+	expectedPath := fmt.Sprintf("/%s/buckets/%d/dock/tools.json", accountID, bucketID)
+
+	var capturedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.Path
+		if r.Method != http.MethodPost || r.URL.Path != expectedPath {
+			http.NotFound(w, r)
+			return
+		}
+
+		body := decodeRequestBody(t, r)
+		if got := body["tool_type"]; got != toolType {
+			t.Fatalf("tool_type = %v, want %q", got, toolType)
+		}
+		if got := body["title"]; got != title {
+			t.Fatalf("title = %v, want %q", got, title)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(loadToolsFixture(t, "create.json"))
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	var capturedOp OperationInfo
+	hooks := &testHooks{
+		onOperationStart: func(ctx context.Context, op OperationInfo) context.Context {
+			capturedOp = op
+			return ctx
+		},
+	}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHooks(hooks))
+
+	_, err := client.ForAccount(accountID).Tools().Create(
+		context.Background(),
+		bucketID,
+		toolType,
+		&CreateToolOptions{Title: title},
+	)
+	if err != nil {
+		t.Fatalf("Create() error = %v; request path = %s; want bucket %d dock tools endpoint", err, capturedPath, bucketID)
+	}
+	if capturedOp.ResourceID != bucketID {
+		t.Fatalf("Create() operation ResourceID = %d, want destination bucket %d", capturedOp.ResourceID, bucketID)
 	}
 }
 

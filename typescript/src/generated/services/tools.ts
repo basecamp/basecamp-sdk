@@ -16,12 +16,12 @@ import { Errors } from "../../errors.js";
 export type Tool = components["schemas"]["Tool"];
 
 /**
- * Request parameters for clone.
+ * Request parameters for create.
  */
-export interface CloneToolRequest {
-  /** Source recording id */
-  sourceRecordingId: number;
-  /** Title */
+export interface CreateToolRequest {
+  /** Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault. */
+  toolType: string;
+  /** Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type. */
   title?: string;
 }
 
@@ -52,28 +52,36 @@ export interface RepositionToolRequest {
 export class ToolsService extends BaseService {
 
   /**
-   * Clone an existing tool to create a new one
-   * @param req - Tool request parameters
+   * Create a tool in a project dock
+   * @param bucketId - The bucket ID
+   * @param req - Tool creation parameters
    * @returns The Tool
-   * @throws {BasecampError} If the request fails
+   * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.tools.clone({ sourceRecordingId: 1 });
+   * const result = await client.tools.create(123, { toolType: "example" });
    * ```
    */
-  async clone(req: CloneToolRequest): Promise<Tool> {
+  async create(bucketId: number, req: CreateToolRequest): Promise<Tool> {
+    if (!req.toolType) {
+      throw Errors.validation("Tool type is required");
+    }
     const response = await this.request(
       {
         service: "Tools",
-        operation: "CloneTool",
+        operation: "CreateTool",
         resourceType: "tool",
         isMutation: true,
+        resourceId: bucketId,
       },
       () =>
-        this.client.POST("/dock/tools.json", {
+        this.client.POST("/buckets/{bucketId}/dock/tools.json", {
+          params: {
+            path: { bucketId },
+          },
           body: {
-            source_recording_id: req.sourceRecordingId,
+            tool_type: req.toolType,
             title: req.title,
           },
         })

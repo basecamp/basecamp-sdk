@@ -11,13 +11,13 @@ from basecamp.hooks import OperationInfo
 
 
 class ToolsService(BaseService):
-    def clone(self, *, source_recording_id: int, title: str | None = None) -> dict[str, Any]:
+    def create(self, *, bucket_id: int, tool_type: str, title: str | None = None) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="tools", operation="clone", is_mutation=True),
+            OperationInfo(service="tools", operation="create", is_mutation=True, resource_id=bucket_id),
             "POST",
-            "/dock/tools.json",
-            json_body=self._compact(source_recording_id=source_recording_id, title=title),
-            operation="CloneTool",
+            f"/buckets/{bucket_id}/dock/tools.json",
+            json_body=self._compact(tool_type=tool_type, title=title),
+            operation="CreateTool",
         )
 
     def get(self, *, tool_id: int) -> dict[str, Any]:
@@ -71,13 +71,13 @@ class ToolsService(BaseService):
 
 
 class AsyncToolsService(AsyncBaseService):
-    async def clone(self, *, source_recording_id: int, title: str | None = None) -> dict[str, Any]:
+    async def create(self, *, bucket_id: int, tool_type: str, title: str | None = None) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="tools", operation="clone", is_mutation=True),
+            OperationInfo(service="tools", operation="create", is_mutation=True, resource_id=bucket_id),
             "POST",
-            "/dock/tools.json",
-            json_body=self._compact(source_recording_id=source_recording_id, title=title),
-            operation="CloneTool",
+            f"/buckets/{bucket_id}/dock/tools.json",
+            json_body=self._compact(tool_type=tool_type, title=title),
+            operation="CreateTool",
         )
 
     async def get(self, *, tool_id: int) -> dict[str, Any]:
