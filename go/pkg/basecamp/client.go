@@ -688,7 +688,7 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, err
 	}
 	req.Header.Set("User-Agent", c.userAgent)
-	if body != nil {
+	if requestHasBody(req) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")

@@ -127,6 +127,9 @@ func TestSingleRequest_200WithBody(t *testing.T) {
 
 func TestSingleRequest_GETDoesNotSetContentType(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("expected GET, got %s", r.Method)
+		}
 		if got := r.Header.Get("Content-Type"); got != "" {
 			t.Errorf("expected no Content-Type for bodyless GET, got %q", got)
 		}
@@ -149,6 +152,9 @@ func TestSingleRequest_GETDoesNotSetContentType(t *testing.T) {
 
 func TestSingleRequest_POSTSetsContentTypeForJSONBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("expected POST, got %s", r.Method)
+		}
 		if got := r.Header.Get("Content-Type"); got != "application/json" {
 			t.Errorf("expected Content-Type application/json, got %q", got)
 		}

@@ -290,6 +290,9 @@ func TestSearchService_Search_NoSort(t *testing.T) {
 func TestSearchService_Search_DoesNotSetContentTypeOnGet(t *testing.T) {
 	fixture := loadSearchFixture(t, "results.json")
 	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("expected GET, got %s", r.Method)
+		}
 		if got := r.Header.Get("Content-Type"); got != "" {
 			t.Errorf("expected no Content-Type for bodyless GET, got %q", got)
 		}
@@ -300,7 +303,7 @@ func TestSearchService_Search_DoesNotSetContentTypeOnGet(t *testing.T) {
 			t.Errorf("expected q=leto, got %q", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		w.Write(fixture)
 	})
 
