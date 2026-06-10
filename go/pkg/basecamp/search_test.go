@@ -286,3 +286,26 @@ func TestSearchService_Search_NoSort(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestSearchService_Search_DoesNotSetContentTypeOnGet(t *testing.T) {
+	fixture := loadSearchFixture(t, "results.json")
+	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Content-Type"); got != "" {
+			t.Errorf("expected no Content-Type for bodyless GET, got %q", got)
+		}
+		if got := r.Header.Get("Accept"); got != "application/json" {
+			t.Errorf("expected Accept application/json, got %q", got)
+		}
+		if got := r.URL.Query().Get("q"); got != "leto" {
+			t.Errorf("expected q=leto, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Search(context.Background(), "leto", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
