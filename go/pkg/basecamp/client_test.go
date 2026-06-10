@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,9 @@ type contentTypeAuthStrategy struct {
 }
 
 func (s contentTypeAuthStrategy) Authenticate(_ context.Context, req *http.Request) error {
+	if req.Header.Get("Content-Type") != "" {
+		return errors.New("expected Content-Type to be empty before auth strategy sets it")
+	}
 	req.Header.Set("Content-Type", s.contentType)
 	return nil
 }
