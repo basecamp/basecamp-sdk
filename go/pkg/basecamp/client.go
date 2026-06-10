@@ -365,8 +365,8 @@ func (c *Client) initGeneratedClient() {
 				return err
 			}
 			req.Header.Set("User-Agent", c.userAgent)
-			// Only set Content-Type when a request body is present. GET requests
-			// carry parameters in the URL, and Content-Type describes a request body.
+			// Content-Type describes a request body, so set the JSON default only
+			// when a body is present and the caller has not already set one.
 			if requestHasBody(req) && req.Header.Get("Content-Type") == "" {
 				req.Header.Set("Content-Type", "application/json")
 			}
