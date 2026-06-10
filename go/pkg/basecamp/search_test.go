@@ -291,7 +291,9 @@ func TestSearchService_Search_DoesNotSetContentTypeOnGet(t *testing.T) {
 	fixture := loadSearchFixture(t, "results.json")
 	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			t.Fatalf("expected GET, got %s", r.Method)
+			t.Errorf("expected GET, got %s", r.Method)
+			http.Error(w, "wrong method", http.StatusBadRequest)
+			return
 		}
 		if got := r.Header.Get("Content-Type"); got != "" {
 			t.Errorf("expected no Content-Type for bodyless GET, got %q", got)
