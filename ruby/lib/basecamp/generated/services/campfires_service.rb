@@ -112,6 +112,19 @@ module Basecamp
         end
       end
 
+      # Update an existing campfire line
+      # @param campfire_id [Integer] campfire id ID
+      # @param line_id [Integer] line id ID
+      # @param content [String] content
+      # @param content_type [String, nil] content type
+      # @return [void]
+      def update_line(campfire_id:, line_id:, content:, content_type: nil)
+        with_operation(service: "campfires", operation: "update_line", is_mutation: true, resource_id: line_id) do
+          http_put("/chats/#{campfire_id}/lines/#{line_id}", body: compact_params(content: content, content_type: content_type))
+          nil
+        end
+      end
+
       # Delete a campfire line
       # @param campfire_id [Integer] campfire id ID
       # @param line_id [Integer] line id ID
