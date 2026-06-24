@@ -99,7 +99,34 @@ private fun extractOrigin(url: String): String? {
     // Find end of authority (host:port) — next / or end of string
     val pathStart = url.indexOf('/', afterScheme)
     val authority = if (pathStart < 0) url.substring(afterScheme) else url.substring(afterScheme, pathStart)
-    return url.substring(0, schemeEnd) + "://" + authority
+    // Scheme and host are case-insensitive (RFC 3986), so normalize before
+    // comparison — otherwise an uppercase-scheme URL would look cross-origin.
+    return (url.substring(0, schemeEnd) + "://" + authority).lowercase()
+}
+
+/** Returns true if the URL points to localhost (for dev/test). */
+internal fun isLocalhost(url: String): Boolean {
+    val schemeEnd = url.indexOf("://")
+    if (schemeEnd < 0) return false
+    val afterScheme = schemeEnd + 3
+    val host = if (afterScheme < url.length && url[afterScheme] == '[') {
+        // Bracketed IPv6 literal (RFC 3986), e.g. http://[::1]:8080/ — the host
+        // is everything between the brackets.
+        val close = url.indexOf(']', afterScheme)
+        if (close < 0) return false
+        url.substring(afterScheme + 1, close)
+    } else {
+        val hostEnd = url.indexOfAny(charArrayOf('/', ':', '?'), afterScheme).let {
+            if (it < 0) url.length else it
+        }
+        url.substring(afterScheme, hostEnd)
+    }
+    // Hostnames are case-insensitive (RFC 3986).
+    val normalizedHost = host.lowercase()
+    return normalizedHost == "localhost" ||
+        normalizedHost == "127.0.0.1" ||
+        normalizedHost == "::1" ||
+        normalizedHost.endsWith(".localhost") // RFC 6761 .localhost TLD
 }
 
 /**

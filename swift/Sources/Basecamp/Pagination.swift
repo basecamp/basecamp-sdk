@@ -108,9 +108,12 @@ func isSameOrigin(_ a: String, _ b: String) -> Bool {
           let urlB = URLComponents(string: b)
     else { return false }
 
-    return urlA.scheme == urlB.scheme
-        && urlA.host == urlB.host
-        && (urlA.port ?? defaultPort(for: urlA.scheme)) == (urlB.port ?? defaultPort(for: urlB.scheme))
+    // Scheme and host are case-insensitive (RFC 3986); normalize before comparing.
+    let schemeA = urlA.scheme?.lowercased()
+    let schemeB = urlB.scheme?.lowercased()
+    return schemeA == schemeB
+        && urlA.host?.lowercased() == urlB.host?.lowercased()
+        && (urlA.port ?? defaultPort(for: schemeA)) == (urlB.port ?? defaultPort(for: schemeB))
 }
 
 /// Parses the `X-Total-Count` header from a URL response.
@@ -127,4 +130,10 @@ private func defaultPort(for scheme: String?) -> Int? {
     case "http": 80
     default: nil
     }
+}
+
+/// Checks whether a URL points to localhost (for dev/test carve-out).
+func isLocalhost(_ urlString: String) -> Bool {
+    guard let host = URLComponents(string: urlString)?.host?.lowercased() else { return false }
+    return host == "localhost" || host == "127.0.0.1" || host == "::1" || host.hasSuffix(".localhost")
 }

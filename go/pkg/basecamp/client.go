@@ -361,6 +361,10 @@ func (c *Client) initGeneratedClient() {
 	c.genOnce.Do(func() {
 		serverURL := strings.TrimSuffix(c.cfg.BaseURL, "/")
 		authEditor := func(ctx context.Context, req *http.Request) error {
+			// Backstop: refuse to attach credentials to a foreign origin.
+			if err := c.assertCredentialOrigin(req); err != nil {
+				return err
+			}
 			if err := c.authStrategy.Authenticate(ctx, req); err != nil {
 				return err
 			}
@@ -679,6 +683,11 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, err
 	}
 
+	// Backstop: never attach credentials to a foreign origin, even if a future
+	// code path reaches here without going through buildURL.
+	if err := c.assertCredentialOrigin(req); err != nil {
+		return nil, err
+	}
 	if err := c.authStrategy.Authenticate(ctx, req); err != nil {
 		return nil, err
 	}
@@ -822,7 +831,15 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 func (c *Client) buildURL(path string) (string, error) {
 	// Absolute URLs: enforce HTTPS and return as-is (e.g., pagination Link headers)
 	if strings.HasPrefix(path, "https://") {
-		return path, nil
+		// Absolute URLs must target the configured origin; otherwise we would
+		// attach the bearer token to a foreign host (credential exfiltration).
+		// Localhost targets are carved out for local development and httptest
+		// servers, matching the same-origin guard already applied to pagination
+		// Link headers and cross-origin redirects.
+		if isLocalhost(path) || isSameOrigin(path, c.cfg.BaseURL) {
+			return path, nil
+		}
+		return "", fmt.Errorf("absolute URL points to a different origin than base URL: %s", path)
 	}
 	if strings.HasPrefix(path, "http://") {
 		return "", fmt.Errorf("URL must use HTTPS, got: %s", path)
@@ -834,6 +851,19 @@ func (c *Client) buildURL(path string) (string, error) {
 	// Normalize BaseURL to avoid double slashes when concatenating
 	base := strings.TrimSuffix(c.cfg.BaseURL, "/")
 	return base + path, nil
+}
+
+// assertCredentialOrigin verifies the outgoing request targets the configured
+// origin before any credential is attached. Localhost is carved out for local
+// development and httptest servers. This attach-point backstop complements the
+// buildURL chokepoint and fails closed if a future code path reaches the
+// token-attach site without going through buildURL.
+func (c *Client) assertCredentialOrigin(req *http.Request) error {
+	target := req.URL.String()
+	if isLocalhost(target) || isSameOrigin(target, c.cfg.BaseURL) {
+		return nil
+	}
+	return fmt.Errorf("refusing to attach credentials to a different origin than base URL: %s", target)
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {

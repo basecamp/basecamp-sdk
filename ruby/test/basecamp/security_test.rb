@@ -206,11 +206,19 @@ class SecurityHttpTest < Minitest::Test
     end
   end
 
-  def test_build_url_accepts_https
-    stub_request(:get, "https://other.example.com/path")
+  def test_build_url_rejects_cross_origin
+    error = assert_raises(Basecamp::UsageError) do
+      @http.get("https://other.example.com/path")
+    end
+    assert_match(/origin/, error.message)
+    assert_not_requested(:get, "https://other.example.com/path")
+  end
+
+  def test_build_url_accepts_same_origin_absolute
+    stub_request(:get, "https://3.basecampapi.com/path")
       .to_return(status: 200, body: "{}", headers: { "Content-Type" => "application/json" })
 
-    response = @http.get("https://other.example.com/path")
+    response = @http.get("https://3.basecampapi.com/path")
     assert_equal 200, response.status
   end
 

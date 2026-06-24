@@ -107,13 +107,12 @@ class HTTPTest < Minitest::Test
                      headers: { "User-Agent" => /basecamp-sdk-ruby/ })
   end
 
-  def test_handles_absolute_url
-    stub_request(:get, "https://other.api.com/path.json")
-      .to_return(status: 200, body: "{}")
-
-    response = @http.get("https://other.api.com/path.json")
-
-    assert_equal 200, response.status
+  def test_rejects_cross_origin_absolute_url
+    error = assert_raises(Basecamp::UsageError) do
+      @http.get("https://other.api.com/path.json")
+    end
+    assert_match(/origin/, error.message)
+    assert_not_requested(:get, "https://other.api.com/path.json")
   end
 
   def test_401_raises_auth_error

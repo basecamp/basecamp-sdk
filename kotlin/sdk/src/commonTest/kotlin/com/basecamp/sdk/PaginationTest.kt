@@ -125,6 +125,50 @@ class PaginationTest {
         ))
     }
 
+    @Test
+    fun sameOriginIgnoresSchemeCase() {
+        // Scheme is case-insensitive (RFC 3986): an uppercase-scheme URL must
+        // still be recognized as same-origin, not misclassified as foreign.
+        assertTrue(isSameOrigin(
+            "HTTPS://3.basecampapi.com/12345/projects.json",
+            "https://3.basecampapi.com",
+        ))
+    }
+
+    // =========================================================================
+    // isLocalhost
+    // =========================================================================
+
+    @Test
+    fun isLocalhostRecognizesLoopback() {
+        assertTrue(isLocalhost("https://localhost:3000/x.json"))
+        assertTrue(isLocalhost("http://127.0.0.1:8080/x"))
+        // Hostnames are case-insensitive (RFC 3986).
+        assertTrue(isLocalhost("https://LOCALHOST/x.json"))
+        // RFC 6761 .localhost TLD.
+        assertTrue(isLocalhost("https://myapp.localhost/x.json"))
+    }
+
+    @Test
+    fun isLocalhostRejectsLocalhostLookalikes() {
+        // A host that merely contains "localhost" is not localhost.
+        assertFalse(isLocalhost("https://localhost.evil.example/x"))
+        assertFalse(isLocalhost("https://notlocalhost/x"))
+    }
+
+    @Test
+    fun isLocalhostRecognizesBracketedIpv6Loopback() {
+        // RFC 3986 requires IPv6 literals in URLs to be bracketed, e.g. [::1].
+        assertTrue(isLocalhost("http://[::1]:8080/path"))
+        assertTrue(isLocalhost("https://[::1]/x.json"))
+    }
+
+    @Test
+    fun isLocalhostRejectsForeignHosts() {
+        assertFalse(isLocalhost("https://3.basecampapi.com/x"))
+        assertFalse(isLocalhost("https://evil.example/x"))
+    }
+
     // =========================================================================
     // parseRetryAfter
     // =========================================================================

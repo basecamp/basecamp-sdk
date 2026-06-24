@@ -10,6 +10,11 @@ MAX_ERROR_BODY_BYTES = 1 * 1024 * 1024  # 1 MB
 
 SENSITIVE_HEADERS = frozenset({"authorization", "cookie", "set-cookie", "x-csrf-token"})
 
+# The Launchpad authorization endpoint lives on a different origin than the
+# configured API base URL, so it is the one sanctioned destination for a
+# credentialed cross-origin request. Any other foreign origin must be rejected.
+LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
+
 
 def truncate(s: str | None, max_bytes: int = MAX_ERROR_MESSAGE_BYTES) -> str:
     if s is None:
