@@ -1547,9 +1547,11 @@ type Project struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	Description string     `json:"description,omitempty"`
 	Dock        []DockItem `json:"dock,omitempty"`
+	EndDate     string     `json:"end_date,omitempty"`
 	Id          int64      `json:"id"`
 	Name        string     `json:"name"`
 	Purpose     string     `json:"purpose,omitempty"`
+	StartDate   string     `json:"start_date,omitempty"`
 
 	// Status active|archived|trashed
 	Status    string    `json:"status"`
