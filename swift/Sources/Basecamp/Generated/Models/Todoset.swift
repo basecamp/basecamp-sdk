@@ -16,12 +16,16 @@ public struct Todoset: Codable, Sendable {
     public let url: String
     public let visibleToClients: Bool
     public var appTodolistsUrl: String?
+    public var appTodosUrl: String?
     public var bookmarkUrl: String?
     public var completed: Bool?
+    public var completedLooseTodosCount: Int32?
     public var completedRatio: String?
     public var position: Int32?
     public var todolistsCount: Int32?
     public var todolistsUrl: String?
+    public var todosCount: Int32?
+    public var todosUrl: String?
 
     public init(
         appUrl: String,
@@ -38,12 +42,16 @@ public struct Todoset: Codable, Sendable {
         url: String,
         visibleToClients: Bool,
         appTodolistsUrl: String? = nil,
+        appTodosUrl: String? = nil,
         bookmarkUrl: String? = nil,
         completed: Bool? = nil,
+        completedLooseTodosCount: Int32? = nil,
         completedRatio: String? = nil,
         position: Int32? = nil,
         todolistsCount: Int32? = nil,
-        todolistsUrl: String? = nil
+        todolistsUrl: String? = nil,
+        todosCount: Int32? = nil,
+        todosUrl: String? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
@@ -59,11 +67,15 @@ public struct Todoset: Codable, Sendable {
         self.url = url
         self.visibleToClients = visibleToClients
         self.appTodolistsUrl = appTodolistsUrl
+        self.appTodosUrl = appTodosUrl
         self.bookmarkUrl = bookmarkUrl
         self.completed = completed
+        self.completedLooseTodosCount = completedLooseTodosCount
         self.completedRatio = completedRatio
         self.position = position
         self.todolistsCount = todolistsCount
         self.todolistsUrl = todolistsUrl
+        self.todosCount = todosCount
+        self.todosUrl = todosUrl
     }
 }

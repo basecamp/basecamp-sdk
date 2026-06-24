@@ -50,7 +50,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-03-23"
+  version: "2026-05-01"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -1242,6 +1242,11 @@ structure Todo {
   completion_url: String
   boosts_count: Integer
   boosts_url: String
+
+  /// Steps embedded in the Todo response (BC5 addition). The shared
+  /// `steps/step` jbuilder partial emits the same shape as `CardStep`,
+  /// so the existing `CardStepList` is reused.
+  steps: CardStepList
 }
 
 structure TodoParent {
@@ -1285,6 +1290,11 @@ structure Person {
 
   @basecampSensitive(category: "pii", redact: false)
   bio: PersonBio
+
+  /// Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
+  /// older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
+  @basecampSensitive(category: "pii", redact: false)
+  tagline: PersonBio
 
   @basecampSensitive(category: "pii", redact: false)
   location: PersonLocation
@@ -1358,6 +1368,18 @@ structure Todoset {
   completed_ratio: String
   completed: Boolean
   app_todolists_url: String
+
+  /// Total count of todos across all todolists in this todoset (BC5 addition).
+  todos_count: Integer
+
+  /// Count of completed loose todos at the todoset level (BC5 addition).
+  completed_loose_todos_count: Integer
+
+  /// API URL for listing todos directly under this todoset (BC5 addition).
+  todos_url: String
+
+  /// In-app URL for viewing the todoset's todos (BC5 addition).
+  app_todos_url: String
 }
 
 // ===== Todolist Shapes =====
@@ -8150,7 +8172,24 @@ structure GetMyNotificationsInput {
 structure GetMyNotificationsOutput {
   unreads: NotificationList
   reads: NotificationList
+
+  /// Legacy "save forever" collection. Observed BC5 behavior: emits `[]`
+  /// while BC4 still populates with real items — the BC team has not yet
+  /// resolved whether to keep BC4-shaped data on BC5 (back-compat) or to
+  /// accept the empty-array break with a documented BC5 changelog entry.
+  /// See COORDINATION.md for the open decision. The conceptual
+  /// replacement is `bubble_ups` (with optional scheduling via
+  /// `scheduled_bubble_ups`), though wire shapes are not interchangeable
+  /// per-item, so cross-version readers should consume both.
   memories: NotificationList
+
+  /// Items the user has saved with Bubble Up (BC5 addition). Roughly the
+  /// successor to `memories` but with optional scheduling — see
+  /// `scheduled_bubble_ups` for the time-deferred subset.
+  bubble_ups: NotificationList
+
+  /// Bubble Ups scheduled to resurface in the future (BC5 addition).
+  scheduled_bubble_ups: NotificationList
 }
 
 /// Mark specified items as read
@@ -8208,6 +8247,15 @@ structure Notification {
   unread_url: String
   bookmark_url: String
   memory_url: String
+
+  /// URL for the Bubble Up record covering this notification (BC5 addition).
+  /// Eligibility-gated — only present on items the current user can bubble up.
+  bubble_up_url: String
+
+  /// Scheduled resurfacing time when this item is queued as a scheduled
+  /// Bubble Up (BC5 addition). Absent when there is no scheduled time.
+  bubble_up_at: ISO8601Timestamp
+
   subscription_url: String
   subscribed: Boolean
   previewable_attachments: PreviewableAttachmentList

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-03-23",
+    "version": "2026-05-01",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -23579,7 +23579,22 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
-            }
+            },
+            "description": "Legacy \"save forever\" collection. Observed BC5 behavior: emits `[]`\nwhile BC4 still populates with real items — the BC team has not yet\nresolved whether to keep BC4-shaped data on BC5 (back-compat) or to\naccept the empty-array break with a documented BC5 changelog entry.\nSee COORDINATION.md for the open decision. The conceptual\nreplacement is `bubble_ups` (with optional scheduling via\n`scheduled_bubble_ups`), though wire shapes are not interchangeable\nper-item, so cross-version readers should consume both."
+          },
+          "bubble_ups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "description": "Items the user has saved with Bubble Up (BC5 addition). Roughly the\nsuccessor to `memories` but with optional scheduling — see\n`scheduled_bubble_ups` for the time-deferred subset."
+          },
+          "scheduled_bubble_ups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "description": "Bubble Ups scheduled to resurface in the future (BC5 addition)."
           }
         }
       },
@@ -24689,6 +24704,19 @@
           "memory_url": {
             "type": "string"
           },
+          "bubble_up_url": {
+            "type": "string",
+            "description": "URL for the Bubble Up record covering this notification (BC5 addition).\nEligibility-gated — only present on items the current user can bubble up."
+          },
+          "bubble_up_at": {
+            "type": "string",
+            "description": "Scheduled resurfacing time when this item is queued as a scheduled\nBubble Up (BC5 addition). Absent when there is no scheduled time.",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
           "subscription_url": {
             "type": "string"
           },
@@ -24829,6 +24857,15 @@
           },
           "bio": {
             "type": "string",
+            "format": "password",
+            "x-basecamp-sensitive": {
+              "category": "pii",
+              "redact": false
+            }
+          },
+          "tagline": {
+            "type": "string",
+            "description": "Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;\nolder BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.",
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
@@ -26420,6 +26457,13 @@
           },
           "boosts_url": {
             "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardStep"
+            },
+            "description": "Steps embedded in the Todo response (BC5 addition). The shared\n`steps/step` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused."
           }
         },
         "required": [
@@ -26816,6 +26860,24 @@
           },
           "app_todolists_url": {
             "type": "string"
+          },
+          "todos_count": {
+            "type": "integer",
+            "description": "Total count of todos across all todolists in this todoset (BC5 addition).",
+            "format": "int32"
+          },
+          "completed_loose_todos_count": {
+            "type": "integer",
+            "description": "Count of completed loose todos at the todoset level (BC5 addition).",
+            "format": "int32"
+          },
+          "todos_url": {
+            "type": "string",
+            "description": "API URL for listing todos directly under this todoset (BC5 addition)."
+          },
+          "app_todos_url": {
+            "type": "string",
+            "description": "In-app URL for viewing the todoset's todos (BC5 addition)."
           }
         },
         "required": [

@@ -2597,6 +2597,7 @@
       "$.email_address",
       "$.title",
       "$.bio",
+      "$.tagline",
       "$.location",
       "$.avatar_url"
     ],

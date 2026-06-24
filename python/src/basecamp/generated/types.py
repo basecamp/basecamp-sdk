@@ -706,8 +706,10 @@ class GetMyAssignmentsResponseContent(TypedDict):
 
 
 class GetMyNotificationsResponseContent(TypedDict):
+    bubble_ups: NotRequired[list[Notification]]
     memories: NotRequired[list[Notification]]
     reads: NotRequired[list[Notification]]
+    scheduled_bubble_ups: NotRequired[list[Notification]]
     unreads: NotRequired[list[Notification]]
 
 
@@ -890,6 +892,8 @@ class NotFoundErrorResponseContent(TypedDict):
 class Notification(TypedDict):
     app_url: NotRequired[str]
     bookmark_url: NotRequired[str]
+    bubble_up_at: NotRequired[str]
+    bubble_up_url: NotRequired[str]
     bucket_name: NotRequired[str]
     content_excerpt: NotRequired[str]
     created_at: str
@@ -957,6 +961,7 @@ class Person(TypedDict):
     name: str
     owner: NotRequired[bool]
     personable_type: NotRequired[str]
+    tagline: NotRequired[str]
     time_zone: NotRequired[str]
     title: NotRequired[str]
     updated_at: NotRequired[str]
@@ -1351,6 +1356,7 @@ class Todo(TypedDict):
     position: NotRequired[int]
     starts_on: NotRequired[str]
     status: str
+    steps: NotRequired[list[CardStep]]
     subscription_url: NotRequired[str]
     title: str
     type: str
@@ -1431,10 +1437,12 @@ class TodolistGroup(TypedDict):
 
 class Todoset(TypedDict):
     app_todolists_url: NotRequired[str]
+    app_todos_url: NotRequired[str]
     app_url: str
     bookmark_url: NotRequired[str]
     bucket: TodoBucket
     completed: NotRequired[bool]
+    completed_loose_todos_count: NotRequired[int]
     completed_ratio: NotRequired[str]
     created_at: str
     creator: Person
@@ -1446,6 +1454,8 @@ class Todoset(TypedDict):
     title: str
     todolists_count: NotRequired[int]
     todolists_url: NotRequired[str]
+    todos_count: NotRequired[int]
+    todos_url: NotRequired[str]
     type: str
     updated_at: str
     url: str
