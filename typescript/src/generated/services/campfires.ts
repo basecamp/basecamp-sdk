@@ -74,6 +74,16 @@ export interface CreateLineCampfireRequest {
 }
 
 /**
+ * Request parameters for updateLine.
+ */
+export interface UpdateLineCampfireRequest {
+  /** Text content */
+  content: string;
+  /** Content type */
+  contentType?: string;
+}
+
+/**
  * Options for listUploads.
  */
 export interface ListUploadsCampfireOptions extends PaginationOptions {
@@ -417,6 +427,44 @@ export class CampfiresService extends BaseService {
         })
     );
     return response;
+  }
+
+  /**
+   * Update an existing campfire line
+   * @param campfireId - The campfire ID
+   * @param lineId - The line ID
+   * @param req - Campfire_line update parameters
+   * @returns void
+   * @throws {BasecampError} If the resource is not found or fields are invalid
+   *
+   * @example
+   * ```ts
+   * await client.campfires.updateLine(123, 123, { content: "Hello world" });
+   * ```
+   */
+  async updateLine(campfireId: number, lineId: number, req: UpdateLineCampfireRequest): Promise<void> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
+    await this.request(
+      {
+        service: "Campfires",
+        operation: "UpdateCampfireLine",
+        resourceType: "campfire_line",
+        isMutation: true,
+        resourceId: lineId,
+      },
+      () =>
+        this.client.PUT("/chats/{campfireId}/lines/{lineId}", {
+          params: {
+            path: { campfireId, lineId },
+          },
+          body: {
+            content: req.content,
+            content_type: req.contentType,
+          },
+        })
+    );
   }
 
   /**

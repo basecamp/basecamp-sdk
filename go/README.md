@@ -174,7 +174,7 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 | `MessageBoards()` | Get |
 | `MessageTypes()` | List, Get, Create, Update, Destroy |
 | `Comments()` | List, Get, Create, Update, Trash |
-| `Campfires()` | List, Get, ListLines, GetLine, CreateLine, DeleteLine, Chatbot CRUD |
+| `Campfires()` | List, Get, ListLines, GetLine, CreateLine, UpdateLine, DeleteLine, Chatbot CRUD |
 | `Forwards()` | List, Get |
 
 ### Scheduling

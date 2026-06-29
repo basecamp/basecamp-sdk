@@ -28,7 +28,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "Campfires" to listOf(
             "GetCampfire", "ListCampfires",
             "ListChatbots", "CreateChatbot", "GetChatbot", "UpdateChatbot", "DeleteChatbot",
-            "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "DeleteCampfireLine",
+            "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "UpdateCampfireLine", "DeleteCampfireLine",
             "ListCampfireUploads", "CreateCampfireUpload",
         ),
     ),
@@ -201,6 +201,7 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "ListCampfireLines" to "listLines",
     "CreateCampfireLine" to "createLine",
     "GetCampfireLine" to "getLine",
+    "UpdateCampfireLine" to "updateLine",
     "DeleteCampfireLine" to "deleteLine",
     "ListCampfireUploads" to "listUploads",
     "CreateCampfireUpload" to "createUpload",

@@ -134,6 +134,7 @@ service Basecamp {
     ListCampfireLines,
     GetCampfireLine,
     CreateCampfireLine,
+    UpdateCampfireLine,
     DeleteCampfireLine,
     ListCampfireUploads,
     CreateCampfireUpload,
@@ -3326,6 +3327,38 @@ structure CreateCampfireLineOutput {
 
   line: CampfireLine
 }
+
+/// Update an existing campfire line
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/chats/{campfireId}/lines/{lineId}", code: 204)
+operation UpdateCampfireLine {
+  input: UpdateCampfireLineInput
+  output: UpdateCampfireLineOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UpdateCampfireLineInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  campfireId: CampfireId
+
+  @required
+  @httpLabel
+  lineId: CampfireLineId
+
+  @required
+  content: String
+
+  content_type: String
+}
+
+structure UpdateCampfireLineOutput {}
 
 /// Delete a campfire line
 @idempotent
