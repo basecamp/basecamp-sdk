@@ -146,9 +146,19 @@ jobs:
           persist-credentials: false
 
       - name: Set up Ruby
+        if: matrix.ruby != 'head'
         uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1.302.0
         with:
           ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+          working-directory: ruby
+
+      - name: Set up Ruby head
+        if: matrix.ruby == 'head'
+        uses: ruby/setup-ruby@7372622e62b60b3cb750dcd2b9e32c247ffec26a # v1.302.0
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler: default
           bundler-cache: true
           working-directory: ruby
 
