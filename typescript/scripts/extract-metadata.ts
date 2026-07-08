@@ -30,17 +30,10 @@ interface IdempotentConfig {
   natural?: boolean;
 }
 
-interface SensitiveField {
-  field: string;
-  category: string;
-  redact: boolean;
-}
-
 interface OperationMetadata {
   retry?: RetryConfig;
   pagination?: PaginationConfig;
   idempotent?: IdempotentConfig;
-  sensitive?: SensitiveField[];
 }
 
 interface MetadataOutput {
@@ -134,17 +127,10 @@ export interface IdempotentConfig {
   natural?: boolean;
 }
 
-export interface SensitiveField {
-  field: string;
-  category: string;
-  redact: boolean;
-}
-
 export interface OperationMetadata {
   retry?: RetryConfig;
   pagination?: PaginationConfig;
   idempotent?: IdempotentConfig;
-  sensitive?: SensitiveField[];
 }
 
 export interface MetadataOutput {

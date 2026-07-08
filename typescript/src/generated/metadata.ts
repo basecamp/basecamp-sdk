@@ -21,17 +21,10 @@ export interface IdempotentConfig {
   natural?: boolean;
 }
 
-export interface SensitiveField {
-  field: string;
-  category: string;
-  redact: boolean;
-}
-
 export interface OperationMetadata {
   retry?: RetryConfig;
   pagination?: PaginationConfig;
   idempotent?: IdempotentConfig;
-  sensitive?: SensitiveField[];
 }
 
 export interface MetadataOutput {
@@ -44,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-08T12:00:56.602Z",
+  "generated": "2026-07-08T12:24:57.272Z",
   "operations": {
     "GetAccount": {
       "retry": {
