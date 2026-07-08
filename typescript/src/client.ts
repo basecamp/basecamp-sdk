@@ -7,19 +7,15 @@
  */
 
 import createClient, { type Middleware } from "openapi-fetch";
-import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
+import metadata from "./generated/metadata.js";
 import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
-import type { BasecampHooks, OperationInfo, RequestInfo, RequestResult } from "./hooks.js";
+import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
-
-// Use createRequire for JSON import (Node 18+ compatible)
-const require = createRequire(import.meta.url);
-const metadata = require("./generated/metadata.json") as OperationMetadata;
 
 // ============================================================================
 // Services - Generated from OpenAPI spec (spec-driven, not hand-written)
@@ -671,16 +667,6 @@ function getCacheKey(url: string, tokenHash: string): string {
 // =============================================================================
 // Retry Middleware
 // =============================================================================
-
-/**
- * Type for the metadata.json file structure.
- */
-interface OperationMetadata {
-  operations: Record<string, {
-    retry?: RetryConfig;
-    idempotent?: { natural: boolean };
-  }>;
-}
 
 /**
  * Retry configuration matching x-basecamp-retry extension schema.

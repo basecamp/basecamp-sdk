@@ -1,5 +1,5 @@
 import type { AuthStrategy } from "./auth-strategy.js";
-import type { BasecampHooks, OperationInfo, RequestInfo, RequestResult } from "./hooks.js";
+import type { BasecampHooks, OperationInfo, RequestInfo } from "./hooks.js";
 import { BasecampError, Errors, errorFromResponse } from "./errors.js";
 import { safeInvoke } from "./hooks.js";
 

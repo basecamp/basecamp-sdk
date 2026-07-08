@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Extracts x-basecamp-* extensions from OpenAPI spec into a runtime-accessible metadata file.
- * This allows the TypeScript SDK to read operation metadata at runtime for retry, pagination, etc.
+ * Extracts x-basecamp-* extensions from OpenAPI spec into a runtime-accessible metadata module.
+ * The generated ESM module keeps operation metadata in the static import graph for bundlers and serverless file tracing.
  *
- * Usage: npx tsx extract-metadata.ts ../openapi.json > src/generated/metadata.json
+ * Usage: npx tsx extract-metadata.ts ../openapi.json > src/generated/metadata.ts
  */
 
 import * as fs from "fs";
@@ -21,6 +21,7 @@ interface PaginationConfig {
   pageParam?: string;
   totalCountHeader?: string;
   maxPageSize?: number;
+  key?: string;
 }
 
 interface IdempotentConfig {
@@ -108,4 +109,52 @@ if (!fs.existsSync(resolvedPath)) {
 }
 
 const metadata = extractMetadata(resolvedPath);
-console.log(JSON.stringify(metadata, null, 2));
+
+const json = JSON.stringify(metadata, null, 2);
+console.log(`// Generated from OpenAPI x-basecamp-* extensions. Do not edit by hand.
+
+export interface RetryConfig {
+  maxAttempts: number;
+  baseDelayMs: number;
+  backoff: "exponential" | "linear" | "constant";
+  retryOn: number[];
+}
+
+export interface PaginationConfig {
+  style: "link" | "cursor" | "page";
+  pageParam?: string;
+  totalCountHeader?: string;
+  maxPageSize?: number;
+  key?: string;
+}
+
+export interface IdempotentConfig {
+  keySupported?: boolean;
+  keyHeader?: string;
+  natural?: boolean;
+}
+
+export interface SensitiveField {
+  field: string;
+  category: string;
+  redact: boolean;
+}
+
+export interface OperationMetadata {
+  retry?: RetryConfig;
+  pagination?: PaginationConfig;
+  idempotent?: IdempotentConfig;
+  sensitive?: SensitiveField[];
+}
+
+export interface MetadataOutput {
+  $schema: string;
+  version: string;
+  generated: string;
+  operations: Record<string, OperationMetadata>;
+}
+
+const metadata: MetadataOutput = ${json};
+
+export default metadata;
+`);
