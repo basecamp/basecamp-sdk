@@ -76,16 +76,16 @@ jobs:
           git fetch origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      # Node 24 bundles npm 11.16, past the 11.5.1 that OIDC trusted publishing
+      # requires. Publishing therefore uses the npm shipped in the verified Node
+      # tarball rather than installing one from the registry at release time.
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
           cache-dependency-path: typescript/package-lock.json
-
-      - name: Upgrade npm for OIDC trusted publishing
-        run: npm install -g npm@latest # zizmor: ignore[adhoc-packages] -- OIDC trusted publishing requires a newer npm than the runner ships; it publishes the release rather than building it
 
       - name: Install dependencies
         run: npm ci
