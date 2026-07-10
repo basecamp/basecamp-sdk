@@ -40,6 +40,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'simplecov', '~> 0.22'
   spec.add_development_dependency 'webmock', '~> 3.24'
   spec.add_development_dependency 'irb', '~> 1.15'
-  spec.add_development_dependency 'rdoc', '~> 7.1'
+  spec.add_development_dependency 'rdoc', '~> 8.0'
   spec.add_development_dependency 'yard', '~> 0.9'
 end
