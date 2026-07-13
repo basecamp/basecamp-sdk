@@ -95,19 +95,36 @@ internal fun isSameOrigin(url1: String, url2: String): Boolean {
 private fun extractOrigin(url: String): String? {
     val schemeEnd = url.indexOf("://")
     if (schemeEnd < 0) return null
+    // Scheme and host are case-insensitive (RFC 3986), so normalize before
+    // comparison — otherwise an uppercase-scheme URL would look cross-origin.
+    val scheme = url.substring(0, schemeEnd).lowercase()
     val afterScheme = schemeEnd + 3
     // Find end of authority (host:port) — next / or end of string
     val pathStart = url.indexOf('/', afterScheme)
-    val authority = if (pathStart < 0) url.substring(afterScheme) else url.substring(afterScheme, pathStart)
-    // Scheme and host are case-insensitive (RFC 3986), so normalize before
-    // comparison — otherwise an uppercase-scheme URL would look cross-origin.
-    return (url.substring(0, schemeEnd) + "://" + authority).lowercase()
+    var authority = (if (pathStart < 0) url.substring(afterScheme) else url.substring(afterScheme, pathStart)).lowercase()
+    // An explicit default port is the same origin as no port (https://h:443 ≡
+    // https://h), so strip it before comparing.
+    val defaultPort = when (scheme) {
+        "https" -> ":443"
+        "http" -> ":80"
+        else -> null
+    }
+    if (defaultPort != null && authority.endsWith(defaultPort)) {
+        authority = authority.dropLast(defaultPort.length)
+    }
+    return "$scheme://$authority"
 }
 
-/** Returns true if the URL points to localhost (for dev/test). */
+/** Returns true if the URL points to localhost over HTTP(S) (for dev/test). */
 internal fun isLocalhost(url: String): Boolean {
     val schemeEnd = url.indexOf("://")
     if (schemeEnd < 0) return false
+    // The carve-out is limited to HTTP(S) so the credential backstop fails
+    // closed on any other scheme (e.g. ws://localhost).
+    when (url.substring(0, schemeEnd).lowercase()) {
+        "http", "https" -> {}
+        else -> return false
+    }
     val afterScheme = schemeEnd + 3
     val host = if (afterScheme < url.length && url[afterScheme] == '[') {
         // Bracketed IPv6 literal (RFC 3986), e.g. http://[::1]:8080/ — the host

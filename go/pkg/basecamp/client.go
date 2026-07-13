@@ -829,8 +829,12 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 }
 
 func (c *Client) buildURL(path string) (string, error) {
+	// Schemes are case-insensitive (RFC 3986), so detect absolute URLs on a
+	// lowercased copy — otherwise HTTPS://... would be mis-treated as a
+	// relative path and concatenated onto the base URL.
+	lowerPath := strings.ToLower(path)
 	// Absolute URLs: enforce HTTPS and return as-is (e.g., pagination Link headers)
-	if strings.HasPrefix(path, "https://") {
+	if strings.HasPrefix(lowerPath, "https://") {
 		// Absolute URLs must target the configured origin; otherwise we would
 		// attach the bearer token to a foreign host (credential exfiltration).
 		// Localhost targets are carved out for local development and httptest
@@ -841,7 +845,7 @@ func (c *Client) buildURL(path string) (string, error) {
 		}
 		return "", fmt.Errorf("absolute URL points to a different origin than base URL: %s", path)
 	}
-	if strings.HasPrefix(path, "http://") {
+	if strings.HasPrefix(lowerPath, "http://") {
 		// Localhost may use plain HTTP for local development and httptest
 		// servers, matching the BaseURL check in NewClient and the localhost
 		// carve-out in the other SDKs.

@@ -103,6 +103,38 @@ func TestBuildURL_AcceptsLocalhostPlainHTTP(t *testing.T) {
 	}
 }
 
+// TestBuildURL_CaseInsensitiveScheme verifies schemes are matched
+// case-insensitively (RFC 3986): an uppercase-scheme absolute URL must be
+// treated as absolute — same-origin and localhost targets pass through, and a
+// foreign origin is still rejected rather than concatenated onto the base.
+func TestBuildURL_CaseInsensitiveScheme(t *testing.T) {
+	cfg := &Config{BaseURL: "https://3.basecampapi.com"}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "token"})
+
+	got, err := client.buildURL("HTTPS://3.basecampapi.com/x.json")
+	if err != nil {
+		t.Fatalf("unexpected error for uppercase-scheme same-origin URL: %v", err)
+	}
+	if got != "HTTPS://3.basecampapi.com/x.json" {
+		t.Errorf("expected passthrough, got: %q", got)
+	}
+
+	got, err = client.buildURL("HTTP://localhost:8080/x.json")
+	if err != nil {
+		t.Fatalf("unexpected error for uppercase-scheme localhost URL: %v", err)
+	}
+	if got != "HTTP://localhost:8080/x.json" {
+		t.Errorf("expected passthrough, got: %q", got)
+	}
+
+	if _, err = client.buildURL("HTTPS://evil.example/x.json"); err == nil {
+		t.Fatal("expected error for uppercase-scheme foreign-origin URL, got nil")
+	}
+	if _, err = client.buildURL("HTTP://evil.example/x.json"); err == nil {
+		t.Fatal("expected error for uppercase-scheme non-localhost HTTP URL, got nil")
+	}
+}
+
 // TestBuildURL_LocalhostBaseDoesNotTrustForeignOrigin verifies that a localhost
 // base URL does not turn the same-origin guard into a no-op: a foreign-origin
 // absolute target must still be rejected (and carry no token), while a

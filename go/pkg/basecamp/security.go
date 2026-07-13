@@ -120,7 +120,8 @@ func isLocalhost(rawURL string) bool {
 	if err != nil {
 		return false
 	}
-	host := u.Hostname()
+	// Hostnames are case-insensitive (RFC 3986).
+	host := strings.ToLower(u.Hostname())
 
 	// Exact matches for localhost and loopback IPs
 	if host == "localhost" || host == "127.0.0.1" || host == "::1" {

@@ -126,6 +126,25 @@ class PaginationTest {
     }
 
     @Test
+    fun sameOriginNormalizesDefaultPorts() {
+        // An explicit default port is the same origin as no port (RFC 3986),
+        // so e.g. a :443 pagination Link against a portless base must pass.
+        assertTrue(isSameOrigin(
+            "https://3.basecampapi.com:443/12345/projects.json",
+            "https://3.basecampapi.com",
+        ))
+        assertTrue(isSameOrigin(
+            "http://localhost:80/x",
+            "http://localhost",
+        ))
+        // A non-default port is still a different origin.
+        assertFalse(isSameOrigin(
+            "https://3.basecampapi.com:8443/x",
+            "https://3.basecampapi.com",
+        ))
+    }
+
+    @Test
     fun sameOriginIgnoresSchemeCase() {
         // Scheme is case-insensitive (RFC 3986): an uppercase-scheme URL must
         // still be recognized as same-origin, not misclassified as foreign.
@@ -167,6 +186,14 @@ class PaginationTest {
     fun isLocalhostRejectsForeignHosts() {
         assertFalse(isLocalhost("https://3.basecampapi.com/x"))
         assertFalse(isLocalhost("https://evil.example/x"))
+    }
+
+    @Test
+    fun isLocalhostLimitsCarveOutToHttpSchemes() {
+        // The credential backstop must fail closed on non-HTTP(S) schemes,
+        // even for localhost.
+        assertFalse(isLocalhost("ws://localhost:3000/x"))
+        assertFalse(isLocalhost("ftp://127.0.0.1/x"))
     }
 
     // =========================================================================
