@@ -381,4 +381,57 @@ final class GeneratedServiceTests: XCTestCase {
         let sentURL = transport.lastRequest!.request.url!.absoluteString
         XCTAssertTrue(sentURL.hasSuffix("/my/profile.json"))
     }
+
+    func testToolsServiceCreatePostsToBucketScopedPath() async throws {
+        let responseJSON: [String: Any] = [
+            "id": 800,
+            "name": "message_board",
+            "title": "Message Board (Copy)",
+            "enabled": true,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        ]
+        let data = try JSONSerialization.data(withJSONObject: responseJSON)
+        let transport = MockTransport(statusCode: 201, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let tool = try await account.tools.create(
+            bucketId: 456,
+            req: CreateToolRequest(title: "Message Board (Copy)", toolType: "Message::Board")
+        )
+
+        XCTAssertEqual(tool.id, 800)
+        XCTAssertEqual(tool.title, "Message Board (Copy)")
+
+        let request = transport.lastRequest!.request
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertTrue(request.url!.absoluteString.hasSuffix("/buckets/456/dock/tools.json"))
+
+        let sentJSON = try JSONSerialization.jsonObject(with: request.httpBody!) as! [String: Any]
+        XCTAssertEqual(sentJSON["tool_type"] as? String, "Message::Board")
+        XCTAssertEqual(sentJSON["title"] as? String, "Message Board (Copy)")
+    }
+
+    func testToolsServiceCreateOmitsTitleWhenNotProvided() async throws {
+        let responseJSON: [String: Any] = [
+            "id": 801,
+            "name": "message_board",
+            "title": "Message Board",
+            "enabled": true,
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z",
+        ]
+        let data = try JSONSerialization.data(withJSONObject: responseJSON)
+        let transport = MockTransport(statusCode: 201, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        _ = try await account.tools.create(
+            bucketId: 456,
+            req: CreateToolRequest(toolType: "Message::Board")
+        )
+
+        let sentJSON = try JSONSerialization.jsonObject(with: transport.lastRequest!.request.httpBody!) as! [String: Any]
+        XCTAssertEqual(sentJSON["tool_type"] as? String, "Message::Board")
+        XCTAssertNil(sentJSON["title"])
+    }
 }

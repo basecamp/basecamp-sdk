@@ -3,7 +3,7 @@
  *
  * Note: Generated services are spec-conformant:
  * - update() and reposition() take request objects, not bare params
- * - No client-side validation (API validates)
+ * - Request fields follow the generated OpenAPI shapes
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -86,6 +86,10 @@ describe("ToolsService", () => {
       const tool = await client.tools.create(bucketId, { toolType, title: "Message Board (Copy)" });
       expect(tool.id).toBe(333);
       expect(tool.title).toBe("Message Board (Copy)");
+    });
+
+    it("requires a tool type", async () => {
+      await expect(client.tools.create(456, { toolType: "" })).rejects.toThrow(BasecampError);
     });
   });
 
