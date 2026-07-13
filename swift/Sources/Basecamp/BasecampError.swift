@@ -198,7 +198,10 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         return String(s.prefix(maxMessageLength - 3)) + "..."
     }
 
-    private static func truncate(_ s: String) -> String {
+    /// Truncates a caller-supplied value (e.g. a URL) embedded in an error
+    /// message. Internal so guard sites elsewhere in the SDK keep their error
+    /// messages bounded too.
+    static func truncate(_ s: String) -> String {
         if s.count <= maxMessageLength { return s }
         return String(s.prefix(maxMessageLength - 3)) + "..."
     }

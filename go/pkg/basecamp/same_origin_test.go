@@ -103,6 +103,22 @@ func TestBuildURL_AcceptsLocalhostPlainHTTP(t *testing.T) {
 	}
 }
 
+// TestBuildURL_TruncatesURLInErrors verifies guard errors embed a bounded
+// form of the caller-supplied URL rather than echoing it in full.
+func TestBuildURL_TruncatesURLInErrors(t *testing.T) {
+	cfg := &Config{BaseURL: "https://3.basecampapi.com"}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "token"})
+
+	huge := "https://evil.example/" + strings.Repeat("a", 10_000)
+	_, err := client.buildURL(huge)
+	if err == nil {
+		t.Fatal("expected error for foreign-origin URL, got nil")
+	}
+	if len(err.Error()) > MaxErrorMessageBytes+100 {
+		t.Errorf("expected truncated error message, got %d bytes", len(err.Error()))
+	}
+}
+
 // TestBuildURL_CaseInsensitiveScheme verifies schemes are matched
 // case-insensitively (RFC 3986): an uppercase-scheme absolute URL must be
 // treated as absolute — same-origin and localhost targets pass through, and a

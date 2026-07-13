@@ -435,13 +435,13 @@ open class BaseService: @unchecked Sendable {
                 return path
             }
             if isHTTP {
-                throw BasecampError.usage(message: "Request URL must use HTTPS: \(path)", hint: nil)
+                throw BasecampError.usage(message: "Request URL must use HTTPS: \(BasecampError.truncate(path))", hint: nil)
             }
             if isSameOrigin(path, accountClient.baseURL) {
                 return path
             }
             throw BasecampError.usage(
-                message: "Request URL points to a different origin than the configured base URL: \(path)",
+                message: "Request URL points to a different origin than the configured base URL: \(BasecampError.truncate(path))",
                 hint: nil
             )
         }

@@ -848,6 +848,18 @@ describe("Same-origin credential attachment", () => {
     expect(isSameOriginAllowingLocalhost("ftp://localhost/x", base)).toBe(false);
   });
 
+  it("guard errors truncate the caller-supplied URL", () => {
+    const huge = "https://evil.example/" + "a".repeat(10_000);
+    let caught: unknown;
+    try {
+      requireSameOrigin(huge, base);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BasecampError);
+    expect((caught as BasecampError).message.length).toBeLessThan(700);
+  });
+
   it("requireSecureEndpoint allows HTTPS anywhere and HTTP only for localhost", () => {
     expect(() => requireSecureEndpoint("https://launchpad.37signals.com/authorization.json", "endpoint")).not.toThrow();
     expect(() => requireSecureEndpoint("http://localhost:3000/authorization.json", "endpoint")).not.toThrow();

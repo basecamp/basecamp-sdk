@@ -226,7 +226,8 @@ internal class BasecampHttpClient(
     private fun requireSameOrigin(url: String) {
         if (!isLocalhost(url) && !isSameOrigin(url, config.baseUrl)) {
             throw BasecampException.Usage(
-                "Refusing to send credentials to a different origin than base URL: $url"
+                "Refusing to send credentials to a different origin than base URL: " +
+                    BasecampException.truncateMessage(url)
             )
         }
     }

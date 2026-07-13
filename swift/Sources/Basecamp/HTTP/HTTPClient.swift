@@ -281,7 +281,7 @@ package final class HTTPClient: Sendable {
             return
         }
         throw BasecampError.usage(
-            message: "Refusing to send credentials to a different origin than the configured base URL: \(url)",
+            message: "Refusing to send credentials to a different origin than the configured base URL: \(BasecampError.truncate(url))",
             hint: nil
         )
     }

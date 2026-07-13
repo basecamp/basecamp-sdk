@@ -50,7 +50,8 @@ abstract class BaseService(
             // would attach the bearer token to a foreign host.
             if (!isLocalhost(path) && !isSameOrigin(path, accountClient.parent.config.baseUrl)) {
                 throw BasecampException.Usage(
-                    "Refusing to build a request URL for a different origin than base URL: $path"
+                    "Refusing to build a request URL for a different origin than base URL: " +
+                        BasecampException.truncateMessage(path)
                 )
             }
             return path

@@ -6,7 +6,7 @@
  */
 
 import { isSameOrigin } from "./pagination-utils.js";
-import { BasecampError } from "./errors.js";
+import { BasecampError, truncateErrorMessage } from "./errors.js";
 
 /**
  * Headers that contain sensitive values and should be redacted.
@@ -152,7 +152,7 @@ export function requireSameOrigin(target: string, base: string): void {
   if (!isSameOriginAllowingLocalhost(target, base)) {
     throw new BasecampError(
       "validation",
-      `Refusing to send credentials to a different origin than the configured base URL: ${target}`
+      `Refusing to send credentials to a different origin than the configured base URL: ${truncateErrorMessage(target)}`
     );
   }
 }
@@ -168,10 +168,10 @@ export function requireSecureEndpoint(url: string, label: string): void {
   try {
     parsed = new URL(url);
   } catch {
-    throw new BasecampError("validation", `Invalid ${label}: ${url}`);
+    throw new BasecampError("validation", `Invalid ${label}: ${truncateErrorMessage(url)}`);
   }
   const isLocalhostHttp = parsed.protocol === "http:" && isLocalhost(parsed.hostname);
   if (parsed.protocol !== "https:" && !isLocalhostHttp) {
-    throw new BasecampError("validation", `${label} must use HTTPS: ${url}`);
+    throw new BasecampError("validation", `${label} must use HTTPS: ${truncateErrorMessage(url)}`);
   }
 }

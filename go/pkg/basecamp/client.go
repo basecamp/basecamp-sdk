@@ -843,7 +843,7 @@ func (c *Client) buildURL(path string) (string, error) {
 		if isLocalhost(path) || isSameOrigin(path, c.cfg.BaseURL) {
 			return path, nil
 		}
-		return "", fmt.Errorf("absolute URL points to a different origin than base URL: %s", path)
+		return "", fmt.Errorf("absolute URL points to a different origin than base URL: %s", truncateString(path, MaxErrorMessageBytes))
 	}
 	if strings.HasPrefix(lowerPath, "http://") {
 		// Localhost may use plain HTTP for local development and httptest
@@ -852,7 +852,7 @@ func (c *Client) buildURL(path string) (string, error) {
 		if isLocalhost(path) {
 			return path, nil
 		}
-		return "", fmt.Errorf("URL must use HTTPS, got: %s", path)
+		return "", fmt.Errorf("URL must use HTTPS, got: %s", truncateString(path, MaxErrorMessageBytes))
 	}
 	// Ensure path starts with /
 	if !strings.HasPrefix(path, "/") {
@@ -873,7 +873,7 @@ func (c *Client) assertCredentialOrigin(req *http.Request) error {
 	if isLocalhost(target) || isSameOrigin(target, c.cfg.BaseURL) {
 		return nil
 	}
-	return fmt.Errorf("refusing to attach credentials to a different origin than base URL: %s", target)
+	return fmt.Errorf("refusing to attach credentials to a different origin than base URL: %s", truncateString(target, MaxErrorMessageBytes))
 }
 
 func (c *Client) backoffDelay(attempt int) time.Duration {

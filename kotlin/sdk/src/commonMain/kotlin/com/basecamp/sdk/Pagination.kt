@@ -99,8 +99,9 @@ private fun extractOrigin(url: String): String? {
     // comparison — otherwise an uppercase-scheme URL would look cross-origin.
     val scheme = url.substring(0, schemeEnd).lowercase()
     val afterScheme = schemeEnd + 3
-    // Find end of authority (host:port) — next / or end of string
-    val pathStart = url.indexOf('/', afterScheme)
+    // Find end of authority (host:port) — the next /, ?, or # (a query or
+    // fragment may directly follow the authority), or end of string.
+    val pathStart = url.indexOfAny(charArrayOf('/', '?', '#'), afterScheme)
     var authority = (if (pathStart < 0) url.substring(afterScheme) else url.substring(afterScheme, pathStart)).lowercase()
     // An explicit default port is the same origin as no port (https://h:443 ≡
     // https://h), so strip it before comparing.

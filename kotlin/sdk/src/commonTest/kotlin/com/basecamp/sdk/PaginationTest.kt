@@ -142,6 +142,16 @@ class PaginationTest {
             "https://3.basecampapi.com:8443/x",
             "https://3.basecampapi.com",
         ))
+        // A query or fragment may directly follow the authority (no path); the
+        // default port must still be normalized.
+        assertTrue(isSameOrigin(
+            "https://3.basecampapi.com:443?page=2",
+            "https://3.basecampapi.com",
+        ))
+        assertTrue(isSameOrigin(
+            "https://3.basecampapi.com:443#top",
+            "https://3.basecampapi.com",
+        ))
     }
 
     @Test
