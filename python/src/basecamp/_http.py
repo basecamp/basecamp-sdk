@@ -280,7 +280,7 @@ class HttpClient:
         if path.startswith("https://"):
             if _security.is_localhost(path) or _security.same_origin(path, self._config.base_url):
                 return path
-            raise UsageError(f"URL host does not match configured base URL: {_security.truncate(path)}")
+            raise UsageError(f"URL origin does not match configured base URL: {_security.truncate(path)}")
         if path.startswith("http://"):
             if not _security.is_localhost(path):
                 raise UsageError(f"URL must use HTTPS: {_security.truncate(path)}")

@@ -20,6 +20,7 @@ final class SameOriginGuardTests: XCTestCase {
         let svc = ProbeService(accountClient: makeTestAccountClient(transport: transport))
         do { _ = try await svc.get("https://evil.example/steal.json"); XCTFail("expected rejection") }
         catch let error as BasecampError { guard case .usage = error else { return XCTFail("got \(error)") } }
+        catch { XCTFail("expected BasecampError.usage, got \(error)") }
         XCTAssertTrue(transport.requests.isEmpty)
     }
 
@@ -53,6 +54,7 @@ final class SameOriginGuardTests: XCTestCase {
         let svc = ProbeService(accountClient: makeTestAccountClient(transport: transport))
         do { _ = try await svc.get("http://evil.example/steal.json"); XCTFail("expected rejection") }
         catch let error as BasecampError { guard case .usage = error else { return XCTFail("got \(error)") } }
+        catch { XCTFail("expected BasecampError.usage, got \(error)") }
         XCTAssertTrue(transport.requests.isEmpty)
     }
 }

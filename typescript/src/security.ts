@@ -129,7 +129,13 @@ export function isLocalhost(hostname: string): boolean {
 export function isSameOriginAllowingLocalhost(target: string, base: string): boolean {
   try {
     if (isSameOrigin(target, base)) return true;
-    return isLocalhost(new URL(target).hostname);
+    // The localhost carve-out is limited to HTTP(S) so credentials fail closed
+    // on any other scheme.
+    const parsed = new URL(target);
+    return (
+      (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+      isLocalhost(parsed.hostname)
+    );
   } catch {
     return false;
   }
@@ -152,9 +158,10 @@ export function requireSameOrigin(target: string, base: string): void {
 }
 
 /**
- * Validates that an endpoint URL is secure: HTTPS, or localhost (RFC 6761)
- * which is trusted for local development. Used to validate caller-supplied
- * authorization endpoint overrides before the bearer token is attached.
+ * Validates that an endpoint URL is secure: HTTPS everywhere, with plain HTTP
+ * permitted only for localhost (RFC 6761) during local development. Any other
+ * scheme is rejected. Used to validate caller-supplied authorization endpoint
+ * overrides before the bearer token is attached.
  */
 export function requireSecureEndpoint(url: string, label: string): void {
   let parsed: URL;
@@ -163,7 +170,8 @@ export function requireSecureEndpoint(url: string, label: string): void {
   } catch {
     throw new BasecampError("validation", `Invalid ${label}: ${url}`);
   }
-  if (parsed.protocol !== "https:" && !isLocalhost(parsed.hostname)) {
+  const isLocalhostHttp = parsed.protocol === "http:" && isLocalhost(parsed.hostname);
+  if (parsed.protocol !== "https:" && !isLocalhostHttp) {
     throw new BasecampError("validation", `${label} must use HTTPS: ${url}`);
   }
 }

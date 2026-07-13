@@ -17,7 +17,11 @@ import {
   paginateAll,
 } from "../src/client.js";
 import { BasecampError } from "../src/errors.js";
-import { requireSameOrigin, isSameOriginAllowingLocalhost } from "../src/security.js";
+import {
+  requireSameOrigin,
+  isSameOriginAllowingLocalhost,
+  requireSecureEndpoint,
+} from "../src/security.js";
 import { exchangeCode, refreshToken } from "../src/oauth/index.js";
 import { discover } from "../src/oauth/discovery.js";
 
@@ -836,6 +840,20 @@ describe("Same-origin credential attachment", () => {
   it("isSameOriginAllowingLocalhost recognizes IPv6 loopback [::1]", () => {
     // URL.hostname brackets IPv6 literals; the carve-out must still match.
     expect(isSameOriginAllowingLocalhost("http://[::1]:8080/x", base)).toBe(true);
+  });
+
+  it("isSameOriginAllowingLocalhost limits the localhost carve-out to HTTP(S)", () => {
+    // Credentials must fail closed on non-HTTP(S) schemes even for localhost.
+    expect(isSameOriginAllowingLocalhost("ws://localhost:3000/x", base)).toBe(false);
+    expect(isSameOriginAllowingLocalhost("ftp://localhost/x", base)).toBe(false);
+  });
+
+  it("requireSecureEndpoint allows HTTPS anywhere and HTTP only for localhost", () => {
+    expect(() => requireSecureEndpoint("https://launchpad.37signals.com/authorization.json", "endpoint")).not.toThrow();
+    expect(() => requireSecureEndpoint("http://localhost:3000/authorization.json", "endpoint")).not.toThrow();
+    expect(() => requireSecureEndpoint("http://evil.example/authorization.json", "endpoint")).toThrow("must use HTTPS");
+    // Non-HTTP(S) schemes are rejected even for localhost.
+    expect(() => requireSecureEndpoint("ws://localhost:3000/authorization.json", "endpoint")).toThrow("must use HTTPS");
   });
 
   it("guard fails closed before any request is sent to a foreign origin", () => {
