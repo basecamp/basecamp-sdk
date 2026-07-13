@@ -147,7 +147,7 @@ jobs:
 
       - name: Set up Ruby
         if: matrix.ruby != 'head'
-        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1.316.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
@@ -155,7 +155,7 @@ jobs:
 
       - name: Set up Ruby head
         if: matrix.ruby == 'head'
-        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1.316.0
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler: default
@@ -344,7 +344,7 @@ jobs:
           npm test
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601 # v1.315.0
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1.316.0
         with:
           ruby-version: '3.3'
           bundler-cache: true
