@@ -52,6 +52,12 @@ func TestProject_UnmarshalList(t *testing.T) {
 	if p1.Purpose != "topic" {
 		t.Errorf("expected purpose 'topic', got %q", p1.Purpose)
 	}
+	if p1.StartDate != "2022-01-01" {
+		t.Errorf("expected start_date '2022-01-01', got %q", p1.StartDate)
+	}
+	if p1.EndDate != "2022-04-01" {
+		t.Errorf("expected end_date '2022-04-01', got %q", p1.EndDate)
+	}
 	if p1.ClientCompany != nil {
 		t.Errorf("expected nil ClientCompany for first project")
 	}
@@ -97,6 +103,12 @@ func TestProject_UnmarshalGet(t *testing.T) {
 	}
 	if project.Description != "Laptop product launch." {
 		t.Errorf("expected description 'Laptop product launch.', got %q", project.Description)
+	}
+	if project.StartDate != "2022-01-01" {
+		t.Errorf("expected start_date '2022-01-01', got %q", project.StartDate)
+	}
+	if project.EndDate != "2022-04-01" {
+		t.Errorf("expected end_date '2022-04-01', got %q", project.EndDate)
 	}
 	if project.CreatedAt.IsZero() {
 		t.Error("expected non-zero CreatedAt")

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-03-23",
+    "version": "2026-07-03",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -22706,6 +22706,12 @@
             "type": "string"
           },
           "purpose": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
             "type": "string"
           },
           "clients_enabled": {
