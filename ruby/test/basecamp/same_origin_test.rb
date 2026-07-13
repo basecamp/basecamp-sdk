@@ -81,6 +81,26 @@ class SameOriginCredentialTest < Minitest::Test
     assert_not_requested(:get, "https://evil.example/steal")
   end
 
+  def test_build_url_uppercase_scheme_treated_as_absolute
+    # Schemes are case-insensitive (RFC 3986): an uppercase-scheme URL is still
+    # absolute — same-origin passes through, foreign is rejected rather than
+    # joined onto the base URL.
+    assert_equal "HTTPS://3.basecampapi.com/test.json",
+      @http.send(:build_url, "HTTPS://3.basecampapi.com/test.json")
+    assert_raises(Basecamp::UsageError) do
+      @http.send(:build_url, "HTTPS://evil.example/x.json")
+    end
+  end
+
+  def test_get_absolute_rejects_non_http_scheme_for_localhost
+    # The localhost carve-out is limited to HTTP(S): any other scheme must fail
+    # closed before credentials could be attached.
+    error = assert_raises(Basecamp::UsageError) do
+      @http.get_absolute("ws://localhost:3000/x")
+    end
+    assert_match(/HTTPS/, error.message)
+  end
+
   def test_get_absolute_rejects_foreign_authorization_shaped_url
     # The allowance keys off the exact Launchpad URL, not the path shape, so a
     # foreign host whose path merely ends in /authorization.json is still

@@ -44,6 +44,10 @@ def is_localhost(url: str) -> bool:
         host = (parsed.hostname or "").lower()
     except ValueError:
         return False
+    # The carve-out is limited to HTTP(S) so credential guards fail closed on
+    # any other scheme (e.g. ws://localhost).
+    if parsed.scheme.lower() not in ("http", "https"):
+        return False
     return host in ("localhost", "127.0.0.1", "::1") or host.endswith(".localhost")
 
 

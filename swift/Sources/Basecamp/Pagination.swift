@@ -132,8 +132,15 @@ private func defaultPort(for scheme: String?) -> Int? {
     }
 }
 
-/// Checks whether a URL points to localhost (for dev/test carve-out).
+/// Checks whether a URL points to localhost over HTTP(S) (for dev/test carve-out).
 func isLocalhost(_ urlString: String) -> Bool {
-    guard let host = URLComponents(string: urlString)?.host?.lowercased() else { return false }
+    guard let components = URLComponents(string: urlString),
+          let host = components.host?.lowercased() else { return false }
+    // The carve-out is limited to HTTP(S) so credential guards fail closed on
+    // any other scheme (e.g. ws://localhost).
+    switch components.scheme?.lowercased() {
+    case "http", "https": break
+    default: return false
+    }
     return host == "localhost" || host == "127.0.0.1" || host == "::1" || host.hasSuffix(".localhost")
 }

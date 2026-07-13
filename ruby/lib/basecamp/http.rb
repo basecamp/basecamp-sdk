@@ -476,12 +476,15 @@ module Basecamp
     end
 
     def build_url(path, allow_cross_origin: false)
-      if path.start_with?("https://")
+      # Schemes are case-insensitive (RFC 3986): detect absolute URLs on a
+      # lowercased copy so HTTPS://... is not mis-joined onto the base URL.
+      lower_path = path.downcase
+      if lower_path.start_with?("https://")
         return path if allow_cross_origin
         return path if Security.localhost?(path) || Security.same_origin?(path, @config.base_url)
 
         raise Basecamp::UsageError.new("URL origin does not match configured base URL: #{Security.truncate(path)}")
-      elsif path.start_with?("http://")
+      elsif lower_path.start_with?("http://")
         # Localhost may use plain HTTP for local development; every other host
         # must use HTTPS.
         return path if Security.localhost?(path)

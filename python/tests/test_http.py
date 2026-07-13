@@ -268,3 +268,20 @@ class TestSameOriginGuard:
         with pytest.raises(UsageError, match="different origin"):
             client.get_absolute("https://evil.example/steal")
         assert route.call_count == 0
+
+    def test_get_absolute_rejects_non_http_scheme_for_localhost(self):
+        # The localhost carve-out is limited to HTTP(S): any other scheme must
+        # fail closed before credentials could be attached.
+        client = make_client()
+        with pytest.raises(UsageError, match="HTTPS"):
+            client.get_absolute("ws://localhost:3000/x")
+
+    @respx.mock
+    def test_build_url_uppercase_scheme_treated_as_absolute(self):
+        # Schemes are case-insensitive (RFC 3986): an uppercase-scheme URL is
+        # still absolute — same-origin passes through, foreign is rejected
+        # rather than joined onto the base URL.
+        client = make_client()
+        assert client._build_url("HTTPS://3.basecampapi.com/x.json") == "HTTPS://3.basecampapi.com/x.json"
+        with pytest.raises(UsageError, match="origin"):
+            client._build_url("HTTPS://evil.example/x.json")

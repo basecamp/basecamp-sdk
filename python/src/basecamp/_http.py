@@ -277,11 +277,14 @@ class HttpClient:
         }
 
     def _build_url(self, path: str) -> str:
-        if path.startswith("https://"):
+        # Schemes are case-insensitive (RFC 3986): detect absolute URLs on a
+        # lowercased copy so HTTPS://... is not mis-joined onto the base URL.
+        lower_path = path.lower()
+        if lower_path.startswith("https://"):
             if _security.is_localhost(path) or _security.same_origin(path, self._config.base_url):
                 return path
             raise UsageError(f"URL origin does not match configured base URL: {_security.truncate(path)}")
-        if path.startswith("http://"):
+        if lower_path.startswith("http://"):
             if not _security.is_localhost(path):
                 raise UsageError(f"URL must use HTTPS: {_security.truncate(path)}")
             return path

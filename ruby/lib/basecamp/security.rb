@@ -69,6 +69,9 @@ module Basecamp
       uri = URI.parse(url.to_s)
       host = uri.host&.downcase
       return false if host.nil?
+      # The carve-out is limited to HTTP(S) so credential guards fail closed
+      # on any other scheme (e.g. ws://localhost).
+      return false unless %w[http https].include?(uri.scheme&.downcase)
 
       host == "localhost" ||
         host == "127.0.0.1" ||

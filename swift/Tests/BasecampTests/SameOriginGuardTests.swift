@@ -47,6 +47,29 @@ final class SameOriginGuardTests: XCTestCase {
         XCTAssertEqual(transport.requests.count, 1)
     }
 
+    func testLocalhostCarveOutRequiresHttpScheme() {
+        // The carve-out is limited to HTTP(S) so credential guards fail closed
+        // on any other scheme.
+        XCTAssertFalse(isLocalhost("ws://localhost:3000/x"))
+        XCTAssertFalse(isLocalhost("ftp://127.0.0.1/x"))
+        XCTAssertTrue(isLocalhost("HTTPS://localhost:3000/x"))
+    }
+
+    func testRedirectSanitizationStripsAuthorizationCrossOrigin() throws {
+        // A cross-origin redirect must not carry the bearer token to the
+        // foreign Location target; a same-origin redirect keeps it.
+        let original = URL(string: "https://3.basecampapi.com/999/projects.json")!
+        var foreign = URLRequest(url: URL(string: "https://evil.example/steal")!)
+        foreign.setValue("Bearer test-token", forHTTPHeaderField: "Authorization")
+        let stripped = sanitizedRedirectRequest(foreign, originalURL: original)
+        XCTAssertNil(stripped.value(forHTTPHeaderField: "Authorization"))
+
+        var sameOrigin = URLRequest(url: URL(string: "https://3.basecampapi.com/999/projects2.json")!)
+        sameOrigin.setValue("Bearer test-token", forHTTPHeaderField: "Authorization")
+        let kept = sanitizedRedirectRequest(sameOrigin, originalURL: original)
+        XCTAssertEqual(kept.value(forHTTPHeaderField: "Authorization"), "Bearer test-token")
+    }
+
     func testForeignOriginPlainHTTPRejectedNoEgress() async throws {
         // A non-localhost http:// target must still be rejected (HTTPS required),
         // with no token egress.
