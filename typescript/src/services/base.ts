@@ -24,9 +24,7 @@
 
 import type { BasecampHooks, OperationInfo, OperationResult } from "../hooks.js";
 import { BasecampError, errorFromResponse } from "../errors.js";
-import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const metadata = require("../generated/metadata.json") as { operations: Record<string, { retry?: { maxAttempts?: number; baseDelayMs?: number; backoff?: string; retryOn?: number[] } }> };
+import metadata from "../generated/metadata.js";
 import { ListResult, parseTotalCount, type PaginationOptions } from "../pagination.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "../pagination-utils.js";
 import type { paths } from "../generated/schema.js";

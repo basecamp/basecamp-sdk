@@ -5,7 +5,7 @@
  * Usage: npx tsx scripts/generate-path-mapping.ts
  *
  * IMPORTANT: This reads from openapi-stripped.json (same source as extract-metadata.ts)
- * to ensure operation IDs match those in metadata.json. The stripped spec has the
+ * to ensure operation IDs match those in the metadata module. The stripped spec has the
  * {accountId} prefix removed, so we add it back when generating the mapping.
  */
 
@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Use openapi-stripped.json - same source as extract-metadata.ts
-// This ensures operation IDs match those in metadata.json
+// This ensures operation IDs match those in the metadata module
 const OPENAPI_STRIPPED = resolve(__dirname, "../src/generated/openapi-stripped.json");
 const OUTPUT_PATH = resolve(__dirname, "../src/generated/path-mapping.ts");
 

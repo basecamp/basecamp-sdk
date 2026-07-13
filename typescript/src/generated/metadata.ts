@@ -1,7 +1,43 @@
-{
+// Generated from OpenAPI x-basecamp-* extensions. Do not edit by hand.
+
+export interface RetryConfig {
+  maxAttempts: number;
+  baseDelayMs: number;
+  backoff: "exponential" | "linear" | "constant";
+  retryOn: number[];
+}
+
+export interface PaginationConfig {
+  style: "link" | "cursor" | "page";
+  pageParam?: string;
+  totalCountHeader?: string;
+  maxPageSize?: number;
+  key?: string;
+}
+
+export interface IdempotentConfig {
+  keySupported?: boolean;
+  keyHeader?: string;
+  natural?: boolean;
+}
+
+export interface OperationMetadata {
+  retry?: RetryConfig;
+  pagination?: PaginationConfig;
+  idempotent?: IdempotentConfig;
+}
+
+export interface MetadataOutput {
+  $schema: string;
+  version: string;
+  generated: string;
+  operations: Record<string, OperationMetadata>;
+}
+
+const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-04-29T18:03:48.821Z",
+  "generated": "2026-07-08T12:24:57.272Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -2650,4 +2686,7 @@
       }
     }
   }
-}
+};
+
+export default metadata;
+
