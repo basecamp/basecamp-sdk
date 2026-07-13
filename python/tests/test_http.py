@@ -184,7 +184,6 @@ class TestHeaders:
         assert request.headers["authorization"] == "Bearer test-token"
 
 
-
 class TestSameOriginGuard:
     @respx.mock
     def test_foreign_origin_absolute_rejected_without_egress(self):
@@ -220,9 +219,7 @@ class TestSameOriginGuard:
 
     @respx.mock
     def test_same_origin_absolute_carries_token(self):
-        route = respx.get("https://3.basecampapi.com/page2.json").mock(
-            return_value=httpx.Response(200, json={})
-        )
+        route = respx.get("https://3.basecampapi.com/page2.json").mock(return_value=httpx.Response(200, json={}))
         client = make_client()
         resp = client.get("https://3.basecampapi.com/page2.json")
         assert resp.status_code == 200
@@ -230,9 +227,7 @@ class TestSameOriginGuard:
 
     @respx.mock
     def test_relative_path_resolves(self):
-        route = respx.get("https://3.basecampapi.com/projects.json").mock(
-            return_value=httpx.Response(200, json=[])
-        )
+        route = respx.get("https://3.basecampapi.com/projects.json").mock(return_value=httpx.Response(200, json=[]))
         client = make_client()
         resp = client.get("/projects.json")
         assert resp.status_code == 200
@@ -248,11 +243,10 @@ class TestSameOriginGuard:
             timeout=5.0,
         )
         client = HttpClient(config, BearerAuth(StaticTokenProvider("test-token")), BasecampHooks())
-        route = respx.get("https://localhost:3000/x.json").mock(
-            return_value=httpx.Response(200, json={})
-        )
+        route = respx.get("https://localhost:3000/x.json").mock(return_value=httpx.Response(200, json={}))
         resp = client.get("https://localhost:3000/x.json")
         assert resp.status_code == 200
+        assert route.call_count == 1
 
     @respx.mock
     def test_get_absolute_allows_cross_origin_launchpad(self):
@@ -269,9 +263,7 @@ class TestSameOriginGuard:
         # get_absolute must not be a blanket origin-guard bypass: only the
         # trusted Launchpad authorization endpoint may receive credentials
         # cross-origin. Any other foreign origin is rejected before egress.
-        route = respx.get("https://evil.example/steal").mock(
-            return_value=httpx.Response(200, json={})
-        )
+        route = respx.get("https://evil.example/steal").mock(return_value=httpx.Response(200, json={}))
         client = make_client()
         with pytest.raises(UsageError, match="different origin"):
             client.get_absolute("https://evil.example/steal")
