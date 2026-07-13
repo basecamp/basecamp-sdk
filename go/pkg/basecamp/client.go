@@ -842,6 +842,12 @@ func (c *Client) buildURL(path string) (string, error) {
 		return "", fmt.Errorf("absolute URL points to a different origin than base URL: %s", path)
 	}
 	if strings.HasPrefix(path, "http://") {
+		// Localhost may use plain HTTP for local development and httptest
+		// servers, matching the BaseURL check in NewClient and the localhost
+		// carve-out in the other SDKs.
+		if isLocalhost(path) {
+			return path, nil
+		}
 		return "", fmt.Errorf("URL must use HTTPS, got: %s", path)
 	}
 	// Ensure path starts with /

@@ -79,6 +79,30 @@ func TestBuildURL_AcceptsLocalhostAbsoluteURL(t *testing.T) {
 	}
 }
 
+// TestBuildURL_AcceptsLocalhostPlainHTTP verifies localhost may use plain HTTP
+// (local development and httptest servers), while non-localhost http:// targets
+// are still rejected — consistent with the other SDKs' localhost carve-out.
+func TestBuildURL_AcceptsLocalhostPlainHTTP(t *testing.T) {
+	cfg := &Config{BaseURL: "https://3.basecampapi.com"}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "token"})
+
+	got, err := client.buildURL("http://localhost:8080/x.json")
+	if err != nil {
+		t.Fatalf("unexpected error for localhost plain-HTTP URL: %v", err)
+	}
+	if got != "http://localhost:8080/x.json" {
+		t.Errorf("expected localhost URL passthrough, got: %q", got)
+	}
+
+	_, err = client.buildURL("http://evil.example/steal.json")
+	if err == nil {
+		t.Fatal("expected error for non-localhost plain-HTTP URL, got nil")
+	}
+	if !strings.Contains(err.Error(), "HTTPS") {
+		t.Errorf("expected error mentioning HTTPS, got: %v", err)
+	}
+}
+
 // TestBuildURL_LocalhostBaseDoesNotTrustForeignOrigin verifies that a localhost
 // base URL does not turn the same-origin guard into a no-op: a foreign-origin
 // absolute target must still be rejected (and carry no token), while a
