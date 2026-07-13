@@ -134,7 +134,7 @@ internal fun isLocalhost(url: String): Boolean {
         if (close < 0) return false
         url.substring(afterScheme + 1, close)
     } else {
-        val hostEnd = url.indexOfAny(charArrayOf('/', ':', '?'), afterScheme).let {
+        val hostEnd = url.indexOfAny(charArrayOf('/', ':', '?', '#'), afterScheme).let {
             if (it < 0) url.length else it
         }
         url.substring(afterScheme, hostEnd)

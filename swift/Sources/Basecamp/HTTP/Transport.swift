@@ -20,23 +20,19 @@ public protocol Transport: Sendable {
 /// Production transport that delegates to `URLSession`.
 public struct URLSessionTransport: Transport, Sendable {
     private let session: URLSession
-    /// Session used for redirect-following requests. Its delegate strips the
-    /// Authorization header when a redirect leaves the original request's
-    /// origin — swift-corelibs URLSession would otherwise forward it, leaking
-    /// the bearer token to the foreign Location target.
-    private let redirectSanitizingSession: URLSession
 
     public init(session: URLSession = .shared) {
         self.session = session
-        self.redirectSanitizingSession = URLSession(
-            configuration: session.configuration,
-            delegate: CredentialSanitizingRedirectDelegate(),
-            delegateQueue: nil
-        )
     }
 
     public func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        try await redirectSanitizingSession.data(for: request)
+        // The task-level delegate strips the Authorization header when a
+        // redirect leaves the original request's origin — URLSession would
+        // otherwise forward it, leaking the bearer token to the foreign
+        // Location target. A task delegate only shadows the session delegate
+        // for the callbacks it implements (here: redirects), so the caller's
+        // session delegate still handles auth challenges, pinning, metrics.
+        try await session.data(for: request, delegate: CredentialSanitizingRedirectDelegate())
     }
 
     public func dataNoRedirect(for request: URLRequest) async throws -> (Data, URLResponse) {

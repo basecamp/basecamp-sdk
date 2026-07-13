@@ -183,6 +183,10 @@ class PaginationTest {
         // A host that merely contains "localhost" is not localhost.
         assertFalse(isLocalhost("https://localhost.evil.example/x"))
         assertFalse(isLocalhost("https://notlocalhost/x"))
+        // The host ends at ?, or # — localhost text in a query or fragment
+        // must not make a foreign host pass the carve-out.
+        assertFalse(isLocalhost("http://evil.example#foo.localhost"))
+        assertFalse(isLocalhost("http://evil.example?x=.localhost"))
     }
 
     @Test

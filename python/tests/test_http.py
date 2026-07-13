@@ -276,7 +276,6 @@ class TestSameOriginGuard:
         with pytest.raises(UsageError, match="HTTPS"):
             client.get_absolute("ws://localhost:3000/x")
 
-    @respx.mock
     def test_build_url_uppercase_scheme_treated_as_absolute(self):
         # Schemes are case-insensitive (RFC 3986): an uppercase-scheme URL is
         # still absolute — same-origin passes through, foreign is rejected
