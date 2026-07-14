@@ -16,6 +16,8 @@
 #   - pairwiseEqual compares semantically (object key order is irrelevant).
 #   - an empty `paths` array is rejected at runtime (defense in depth behind
 #         the schema's minItems:1).
+#   - pairwiseSupersetKeys flags non-object values instead of silently
+#         skipping; null (absent) counts as the empty key set on either side.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,6 +33,18 @@ GMN_SAFE_NAME="GetMyNotifications_decodes_unreads_reads_memories_bubble_ups"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
+
+# Scenarios A–D exercise the real GetMyNotifications entry (golden filename,
+# memories waiver, missing-snapshot hard error). Filter that one entry out of
+# the real fixture so adding more pairwise-bearing tests to live-my-surface.json
+# doesn't break these scenarios with missing-snapshot errors for tests this
+# suite never writes snapshots for. The entry itself stays verbatim-real.
+GMN_TESTS="$TMP/gmn-tests.json"
+jq --arg name "$GMN_TEST_NAME" 'map(select(.name == $name))' "$REAL_TESTS" >"$GMN_TESTS"
+if [ "$(jq 'length' "$GMN_TESTS")" -ne 1 ]; then
+  echo "FATAL: expected exactly one '$GMN_TEST_NAME' entry in $REAL_TESTS" >&2
+  exit 1
+fi
 
 FAILURES=0
 pass() { printf '  ok    %s\n' "$1"; }
@@ -75,7 +89,7 @@ write_snapshot "$BC4/$GMN_SAFE_NAME.json" GetMyNotifications \
   '{"unreads":[1,2],"reads":[3],"memories":[10,11,12],"bubble_ups":[]}'
 write_snapshot "$BC5/$GMN_SAFE_NAME.json" GetMyNotifications \
   '{"unreads":[1,2],"reads":[3],"memories":[],"bubble_ups":[],"scheduled_bubble_ups":[]}'
-run_compare "$BC4" "$BC5" "$REAL_TESTS"
+run_compare "$BC4" "$BC5" "$GMN_TESTS"
 if [ "$RUN_RC" -eq 0 ] && grep -q "compared 1 operation" <<<"$RUN_OUT"; then
   pass "A: correct-named snapshot found + memories waiver applied (exit 0)"
 else
@@ -90,7 +104,7 @@ read -r BC4 BC5 <<<"$(fresh_dirs B)"
 OLD_NAME="getmynotifications-decodes-unreads-reads-memories-bubble_ups"
 write_snapshot "$BC4/$OLD_NAME.json" GetMyNotifications '{"memories":[1]}'
 write_snapshot "$BC5/$OLD_NAME.json" GetMyNotifications '{"memories":[]}'
-run_compare "$BC4" "$BC5" "$REAL_TESTS"
+run_compare "$BC4" "$BC5" "$GMN_TESTS"
 if [ "$RUN_RC" -eq 2 ] && grep -q "missing .* snapshot" <<<"$RUN_OUT"; then
   pass "B: old lowercase/hyphen filename is not found (exit 2)"
 else
@@ -104,7 +118,7 @@ fi
 read -r BC4 BC5 <<<"$(fresh_dirs C)"
 write_snapshot "$BC4/$GMN_SAFE_NAME.json" GetMyNotifications '{"memories":[1,2,3]}'
 # (no BC5 snapshot written)
-run_compare "$BC4" "$BC5" "$REAL_TESTS"
+run_compare "$BC4" "$BC5" "$GMN_TESTS"
 if [ "$RUN_RC" -eq 2 ] && grep -q "missing BC5 snapshot" <<<"$RUN_OUT"; then
   pass "C: missing BC5 snapshot hard-fails (exit 2), no silent skip"
 else
@@ -121,7 +135,7 @@ write_snapshot "$BC4/$GMN_SAFE_NAME.json" GetMyNotifications \
 # BC5 drops the top-level "unreads" key entirely (a genuine regression).
 write_snapshot "$BC5/$GMN_SAFE_NAME.json" GetMyNotifications \
   '{"reads":[2],"memories":[],"bubble_ups":[]}'
-run_compare "$BC4" "$BC5" "$REAL_TESTS"
+run_compare "$BC4" "$BC5" "$GMN_TESTS"
 if [ "$RUN_RC" -eq 1 ] && grep -q "missing keys present in BC4: unreads" <<<"$RUN_OUT"; then
   pass "D: dropped top-level key still fails (exit 1); waiver scoped to memories"
 else
@@ -185,6 +199,67 @@ if [ "$RUN_RC" -eq 2 ] && grep -q "empty 'paths' array" <<<"$RUN_OUT"; then
   pass "F: empty 'paths' array rejected at runtime (exit 2)"
 else
   fail "F: expected exit 2 with empty-paths error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test G: pairwiseSupersetKeys flags a non-object value instead of silently
+# skipping — a mis-specified path or an object → scalar shape change must not
+# hide behind a no-op rule.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs G)"
+SK_TESTS="$TMP/G/sk-tests.json"
+cat >"$SK_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Keys type test",
+    "operation": "SkOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetKeys", "paths": ["obj"], "reason": "keys rule must reject non-object shapes" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Keys_type_test.json" SkOp '{"obj":{"a":1}}'
+write_snapshot "$BC5/Keys_type_test.json" SkOp '{"obj":"not-an-object"}'
+run_compare "$BC4" "$BC5" "$SK_TESTS"
+if [ "$RUN_RC" -eq 1 ] && grep -q "expected objects" <<<"$RUN_OUT"; then
+  pass "G: non-object at a supersetKeys path fails (exit 1), no silent skip"
+else
+  fail "G: expected exit 1 with type violation; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test H: null (absent) counts as the empty key set — BC5 null where BC4 has
+# keys reports the missing keys rather than passing or erroring on type.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs H)"
+NK_TESTS="$TMP/H/nk-tests.json"
+cat >"$NK_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Keys null test",
+    "operation": "NkOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetKeys", "paths": ["obj"], "reason": "absent object on BC5 is a dropped-keys regression" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Keys_null_test.json" NkOp '{"obj":{"a":1,"b":2}}'
+write_snapshot "$BC5/Keys_null_test.json" NkOp '{}'
+run_compare "$BC4" "$BC5" "$NK_TESTS"
+if [ "$RUN_RC" -eq 1 ] && grep -q "missing keys present in BC4: a,b" <<<"$RUN_OUT"; then
+  pass "H: BC5 null where BC4 has keys reports the missing keys (exit 1)"
+else
+  fail "H: expected exit 1 with missing-keys a,b; got rc=$RUN_RC: $RUN_OUT"
 fi
 
 echo ""

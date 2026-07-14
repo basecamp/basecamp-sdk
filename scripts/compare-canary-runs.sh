@@ -253,18 +253,25 @@ for entry in "${TEST_ENTRIES[@]}"; do
           ;;
 
         pairwiseSupersetKeys)
-          # Missing on either side counts as empty set.
-          BC4_TYPE="$(jq -r 'type' <<<"$BC4_VAL")"
-          BC5_TYPE="$(jq -r 'type' <<<"$BC5_VAL")"
+          # Missing (null) on either side counts as the empty key set. Any
+          # other non-object is an invalid target for a keys rule — flag it
+          # instead of silently skipping, so a mis-specified path or a real
+          # shape change (object → array/scalar) can't hide.
+          BC4_KIND="$(jq -r 'if type == "object" then "object" elif . == null then "null" else "INVALID" end' <<<"$BC4_VAL")"
+          BC5_KIND="$(jq -r 'if type == "object" then "object" elif . == null then "null" else "INVALID" end' <<<"$BC5_VAL")"
 
-          if [ "$BC4_TYPE" = "object" ] && [ "$BC5_TYPE" != "object" ]; then
-            violation "$OPERATION  pairwiseSupersetKeys($DISPLAY): BC4 is object but BC5 is $BC5_TYPE"
-          elif [ "$BC4_TYPE" = "object" ] && [ "$BC5_TYPE" = "object" ]; then
-            MISSING="$(jq -r --argjson bc5 "$BC5_VAL" '
+          if [ "$BC4_KIND" = "INVALID" ] || [ "$BC5_KIND" = "INVALID" ]; then
+            violation "$OPERATION  pairwiseSupersetKeys($DISPLAY): expected objects (or null for absent) on both sides; BC4=$BC4_VAL BC5=$BC5_VAL"
+          else
+            BC4_OBJ="$BC4_VAL"
+            BC5_OBJ="$BC5_VAL"
+            if [ "$BC4_KIND" = "null" ]; then BC4_OBJ="{}"; fi
+            if [ "$BC5_KIND" = "null" ]; then BC5_OBJ="{}"; fi
+            MISSING="$(jq -r --argjson bc5 "$BC5_OBJ" '
               keys
               | map(select(. as $k | ($bc5 | has($k)) | not))
               | join(",")
-            ' <<<"$BC4_VAL")"
+            ' <<<"$BC4_OBJ")"
             if [ -n "$MISSING" ]; then
               violation "$OPERATION  pairwiseSupersetKeys($DISPLAY): BC5 missing keys present in BC4: $MISSING"
             fi
