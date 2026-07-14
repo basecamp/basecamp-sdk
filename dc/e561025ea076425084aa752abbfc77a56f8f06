@@ -1,0 +1,31 @@
+go.work.sum
+  s_162ea6db661501::t_b212c760f74072 11,49,66,68,70,74,78,96,131,133,135,142,161
+typescript/src/generated/metadata.ts
+  s_dded7873563c1c::t_ff3129b466f192 1-37,40,2689-2692
+typescript/src/generated/openapi-stripped.json
+  s_162ea6db661501::t_3dfdc2c2fb6d7f 5,22748-22753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "dce561025ea076425084aa752abbfc77a56f8f06",
+  "prompts": {},
+  "sessions": {
+    "s_162ea6db661501": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7686d237-a0ba-4dcb-ade4-abf6e0c0e2f1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_dded7873563c1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19e700c6-96e9-428e-ae9e-45b2a4d43bdf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
