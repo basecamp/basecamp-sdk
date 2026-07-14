@@ -108,14 +108,13 @@ sync-status:
 		"$$(jq -r '.bc3.revision // empty' spec/api-provenance.json)" \
 		"$$(jq -r '.bc3.branch // "master"' spec/api-provenance.json)" \
 		"primary"
-	@COMPAT_REV=$$(jq -r '.compatibility["bc3-master"].revision // empty' spec/api-provenance.json); \
-	if [ -n "$$COMPAT_REV" ]; then \
+	@for COMPAT_KEY in $$(jq -r '.compatibility // {} | keys[]' spec/api-provenance.json); do \
 		echo ""; \
 		./scripts/report-bc3-drift.sh \
-			"$$COMPAT_REV" \
-			"$$(jq -r '.compatibility["bc3-master"].branch // "master"' spec/api-provenance.json)" \
+			"$$(jq -r --arg k "$$COMPAT_KEY" '.compatibility[$$k].revision // empty' spec/api-provenance.json)" \
+			"$$(jq -r --arg k "$$COMPAT_KEY" '.compatibility[$$k].branch // "master"' spec/api-provenance.json)" \
 			"compat"; \
-	fi
+	done
 
 #------------------------------------------------------------------------------
 # Version management
