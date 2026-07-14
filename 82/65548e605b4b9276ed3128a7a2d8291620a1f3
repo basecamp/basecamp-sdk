@@ -1,0 +1,28 @@
+Makefile
+  02cba45918a7d653 372,384-391,397-404,426-433,439-446,712-723
+  8a25d90aac60e426 410-420,618-629,634-650,652,758-759,762-763
+.gitignore
+  02cba45918a7d653 40-41,43-44
+CONTRIBUTING.md
+  8a25d90aac60e426 242-295,366-386
+  02cba45918a7d653 296-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "8265548e605b4b9276ed3128a7a2d8291620a1f3",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 119,
+      "overriden_lines": 0
+    }
+  }
+}
