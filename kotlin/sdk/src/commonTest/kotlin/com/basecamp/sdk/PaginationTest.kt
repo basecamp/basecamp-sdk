@@ -216,6 +216,61 @@ class PaginationTest {
         assertFalse(isLocalhost("ftp://127.0.0.1/x"))
     }
 
+    @Test
+    fun guardsFailClosedOnRelativeInput() {
+        // Ktor parses a scheme-less string as a relative reference against
+        // http://localhost — the guards must reject it, not bless it.
+        assertFalse(isLocalhost("localhost"))
+        assertFalse(isLocalhost("evil.example/x"))
+        assertFalse(isSameOrigin("3.basecampapi.com", "https://3.basecampapi.com"))
+        assertFalse(isSameOrigin("https://3.basecampapi.com", "3.basecampapi.com"))
+    }
+
+    // =========================================================================
+    // Parser-differential regression
+    // =========================================================================
+
+    /**
+     * A security guard must decide with the SAME parser the transport uses to
+     * dial. For each adversarial URL: whenever the guard blesses it, the host
+     * Ktor would actually dial (parseUrl — what HttpClient.request uses) must
+     * be the host the guard thought it blessed. Near-tautological after the
+     * parseUrl rewrite — but it fails loudly if anyone reintroduces a second
+     * parser here.
+     */
+    @Test
+    fun guardDecidesWithTheTransportParser() {
+        val base = "https://3.basecampapi.com"
+        val corpus = listOf(
+            """http://evil.example\.localhost/x""",
+            "http://localhost@evil.example/x",
+            "http://evil.example#foo.localhost",
+            "http://evil.example?x=.localhost",
+            "http://localhost:80@evil.example/x",
+            "https://3.basecampapi.com:443@evil.example/x",
+            "http://[::1]/x",
+            "HTTPS://localhost/x",
+            "https://3.basecampapi.com:443/x",
+            "http://localhost.evil.example/x",
+        )
+        for (url in corpus) {
+            val dialed = parseUrl(url)?.host?.lowercase()?.removePrefix("[")?.removeSuffix("]")
+            if (isLocalhost(url)) {
+                assertTrue(
+                    dialed == "localhost" || dialed == "127.0.0.1" || dialed == "::1" ||
+                        dialed?.endsWith(".localhost") == true,
+                    "isLocalhost blessed $url but the transport dials $dialed",
+                )
+            }
+            if (isSameOrigin(url, base)) {
+                assertEquals(
+                    parseUrl(base)!!.host.lowercase(), dialed,
+                    "isSameOrigin blessed $url against $base but the transport dials $dialed",
+                )
+            }
+        }
+    }
+
     // =========================================================================
     // parseRetryAfter
     // =========================================================================
