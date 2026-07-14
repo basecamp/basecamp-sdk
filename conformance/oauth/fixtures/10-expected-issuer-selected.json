@@ -1,0 +1,29 @@
+{
+  "name": "expected-issuer-selected",
+  "description": "expectedIssuer names an advertised member (even amid multiple non-Launchpad issuers) → selected non-heuristically.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "expectedIssuer": "{{BC5_ISSUER}}",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": ["{{BC5_ISSUER}}", "https://other-as.example.com", "{{LAUNCHPAD_ORIGIN}}"]
+    }
+  },
+  "hop2": {
+    "origin": "{{BC5_ISSUER}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{BC5_ISSUER}}",
+      "authorization_endpoint": "{{BC5_ISSUER}}/oauth/authorize",
+      "token_endpoint": "{{BC5_ISSUER}}/oauth/token"
+    }
+  },
+  "expect": {
+    "outcome": "selected",
+    "selectedIssuer": "{{BC5_ISSUER}}",
+    "launchpadContacted": false
+  }
+}

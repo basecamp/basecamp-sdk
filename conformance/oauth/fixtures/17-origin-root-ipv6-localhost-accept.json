@@ -1,0 +1,11 @@
+{
+  "name": "origin-root-ipv6-localhost-accept",
+  "description": "Bracketed IPv6 localhost origin with an explicit port is accepted by the transport parser (regex parsers break here). Harness serves hop-1 at the literal origin.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "http://[::1]:3000",
+  "hop1": {
+    "status": 200,
+    "body": { "resource": "http://[::1]:3000", "authorization_servers": ["{{LAUNCHPAD_ORIGIN}}"] }
+  },
+  "expect": { "outcome": "selected", "selectedIssuer": "http://[::1]:3000" }
+}

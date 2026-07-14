@@ -1,0 +1,19 @@
+{
+  "name": "resource-mismatch",
+  "description": "Hop-1 metadata.resource differs by code-point from the requested resource origin → soft resource_discovery_failed → Launchpad.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "https://attacker.example.com",
+      "authorization_servers": ["{{BC5_ISSUER}}", "{{LAUNCHPAD_ORIGIN}}"]
+    }
+  },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "resource_discovery_failed",
+    "launchpadContacted": true
+  }
+}

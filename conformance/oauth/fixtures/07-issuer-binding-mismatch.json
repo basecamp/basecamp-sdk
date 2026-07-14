@@ -1,0 +1,32 @@
+{
+  "name": "issuer-binding-mismatch",
+  "description": "BC5 committed, but hop-2 AS metadata.issuer differs by code-point from the advertised issuer \u2192 HARD issuer_mismatch, no Launchpad request.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": [
+        "{{BC5_ISSUER}}",
+        "{{LAUNCHPAD_ORIGIN}}"
+      ]
+    }
+  },
+  "hop2": {
+    "origin": "{{BC5_ISSUER}}",
+    "status": 200,
+    "body": {
+      "issuer": "https://impostor.example.com",
+      "authorization_endpoint": "{{BC5_ISSUER}}/oauth/authorize",
+      "token_endpoint": "{{BC5_ISSUER}}/oauth/token"
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "issuer_mismatch",
+    "launchpadContacted": false,
+    "errorCategory": "api_error"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "expected-issuer-unavailable",
+  "description": "expectedIssuer provided but not in the advertised set \u2192 HARD expected_issuer_unavailable, no Launchpad request.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "expectedIssuer": "https://not-advertised.example.com",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": [
+        "{{BC5_ISSUER}}",
+        "{{LAUNCHPAD_ORIGIN}}"
+      ]
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "expected_issuer_unavailable",
+    "launchpadContacted": false,
+    "errorCategory": "api_error"
+  }
+}

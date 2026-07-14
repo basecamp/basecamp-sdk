@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basecamp.com/schemas/oauth-discovery-fixture.json",
+  "title": "OAuth Resource-First Discovery Fixture",
+  "description": "Data-only, cross-language fixture describing one resource-first OAuth discovery scenario. Placeholders {{RESOURCE_ORIGIN}}, {{ISSUER_ORIGIN}}, {{LAUNCHPAD_ORIGIN}}, {{BC5_ISSUER}} are substituted by each SDK's test harness with its own mock origins so issuer/resource binding stays code-point-exact. This schema is validated by `make oauth-fixtures-check`; the existing conformance/schema.json is operation-dispatch and unusable for OAuth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "operation", "expect"],
+  "properties": {
+    "name": { "type": "string", "description": "Kebab-case fixture identifier." },
+    "description": { "type": "string" },
+    "operation": {
+      "type": "string",
+      "enum": ["discoverFromResource", "discoverProtectedResource", "discover"],
+      "description": "Which discovery entry point the harness drives."
+    },
+    "resourceOrigin": {
+      "type": "string",
+      "description": "Caller-supplied resource origin for hop 1 / discoverProtectedResource. Usually {{RESOURCE_ORIGIN}}; may be a malformed value to exercise requireOriginRoot rejection."
+    },
+    "issuerOrigin": {
+      "type": "string",
+      "description": "Caller-supplied issuer origin for the `discover` operation (hop-2 in isolation)."
+    },
+    "expectedIssuer": {
+      "type": "string",
+      "description": "Optional explicit-identity selection parameter."
+    },
+    "bc5Committed": {
+      "type": "boolean",
+      "description": "Documentation aid: true once valid resource metadata advertised a BC5 issuer that was selected. Governs whether hop-2 failures are fatal."
+    },
+    "hop1": { "$ref": "#/$defs/exchange", "description": "Mock response at {resourceOrigin}/.well-known/oauth-protected-resource." },
+    "hop2": {
+      "allOf": [{ "$ref": "#/$defs/exchange" }],
+      "description": "Mock response at the selected issuer's /.well-known/oauth-authorization-server. `origin` names which placeholder host serves it."
+    },
+    "expect": { "$ref": "#/$defs/expect" }
+  },
+  "$defs": {
+    "exchange": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "A mocked HTTP exchange for one discovery hop. Must specify at least one field — an empty object would silently mock nothing.",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "Placeholder host that answers this hop (e.g. {{BC5_ISSUER}} or {{LAUNCHPAD_ORIGIN}})."
+        },
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "transportError": { "type": "boolean", "description": "Simulate a connection-level failure (no HTTP response)." },
+        "body": {
+          "description": "Raw JSON document the mock returns. Values may embed placeholders. `oversized: true` requests a body larger than the SSRF cap.",
+          "type": ["object", "array", "string", "null"]
+        },
+        "oversized": { "type": "boolean", "description": "Serve a body exceeding the SSRF read cap to assert bounded reads." },
+        "redirectTo": { "type": "string", "description": "Serve a 3xx to this location to assert redirects are not followed." }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "outcome": { "type": "string", "enum": ["selected", "fallback", "raise"] },
+        "selectedIssuer": { "type": "string", "description": "Placeholder for the issuer selected on `selected`." },
+        "fallbackReason": {
+          "type": "string",
+          "enum": ["resource_discovery_failed", "no_as_advertised"],
+          "description": "Soft reason on `fallback`. Only these two are ever returned; everything else raises."
+        },
+        "error": {
+          "type": "string",
+          "enum": [
+            "ambiguous_issuers",
+            "expected_issuer_unavailable",
+            "invalid_issuer_origin",
+            "as_fetch_failed",
+            "issuer_mismatch",
+            "capability_unavailable",
+            "invalid_metadata",
+            "api_error",
+            "usage"
+          ],
+          "description": "Typed selection/validation error on `raise`."
+        },
+        "launchpadContacted": {
+          "type": "boolean",
+          "description": "Assertion: whether the Launchpad host may be contacted. Hard cases require false."
+        },
+        "errorCategory": {
+          "type": "string",
+          "enum": ["usage", "validation", "api_error", "network", "auth_required"],
+          "description": "On `raise`, the coarse BasecampError category the thrown error must map to (asserted cross-SDK alongside the typed reason)."
+        }
+      }
+    }
+  }
+}

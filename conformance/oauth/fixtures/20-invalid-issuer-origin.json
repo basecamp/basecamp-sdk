@@ -1,0 +1,23 @@
+{
+  "name": "invalid-issuer-origin",
+  "description": "BC5 selected by exclusion, but the advertised issuer string is not a valid origin root (carries a path) \u2192 HARD invalid_issuer_origin, no Launchpad request.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": [
+        "https://bc5.example.com/oauth",
+        "{{LAUNCHPAD_ORIGIN}}"
+      ]
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "invalid_issuer_origin",
+    "launchpadContacted": false,
+    "errorCategory": "api_error"
+  }
+}

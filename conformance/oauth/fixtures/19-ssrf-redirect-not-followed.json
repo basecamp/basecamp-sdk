@@ -1,0 +1,16 @@
+{
+  "name": "ssrf-redirect-not-followed",
+  "description": "AS metadata endpoint answers a 3xx to a foreign host. Redirects are suppressed, so the fetch surfaces the non-2xx as api_error rather than chasing an attacker-controlled target.",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 302,
+    "redirectTo": "https://attacker.example.com/.well-known/oauth-authorization-server"
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "api_error",
+    "errorCategory": "api_error"
+  }
+}

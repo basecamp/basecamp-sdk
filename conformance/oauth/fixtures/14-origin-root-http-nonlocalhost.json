@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-http-nonlocalhost",
+  "description": "Caller-supplied resource origin is plain http on a non-localhost host \u2192 usage error before any socket opens.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "http://api.example.com",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

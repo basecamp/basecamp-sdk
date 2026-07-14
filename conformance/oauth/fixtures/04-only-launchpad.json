@@ -1,0 +1,16 @@
+{
+  "name": "only-launchpad",
+  "description": "authorization_servers lists only Launchpad → zero non-Launchpad → soft no_as_advertised → Launchpad selected.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": { "resource": "{{RESOURCE_ORIGIN}}", "authorization_servers": ["{{LAUNCHPAD_ORIGIN}}"] }
+  },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "no_as_advertised",
+    "launchpadContacted": true
+  }
+}
