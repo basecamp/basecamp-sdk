@@ -147,7 +147,19 @@ export function validateResponse(operationId: string, body: unknown): Validation
     // valid by design — no schema means no body to validate. The latter
     // is still a hard failure: the operation isn't covered by the spec.
     if (operationHasBodylessSuccessOnly(doc, operationId)) {
-      return { ok: true, errors: [], extras: [] };
+      if (body === null || body === undefined || body === "") {
+        return { ok: true, errors: [], extras: [] };
+      }
+      // A body where the spec promises none is contract drift, not a free
+      // pass — succeeding here would mask a 204-style operation growing an
+      // undocumented response payload.
+      return {
+        ok: false,
+        errors: [
+          `Operation ${operationId} declares only bodyless 2xx responses but the captured response carried a body`,
+        ],
+        extras: [],
+      };
     }
     return {
       ok: false,

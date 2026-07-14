@@ -45,6 +45,9 @@ export interface WireCaptureSession {
  * Caveats:
  * - Records every fetch made while installed — caller is responsible for
  *   draining between tests so pages don't bleed across operations.
+ * - Consecutive responses for the same URL collapse to the final attempt:
+ *   the retry middleware re-fetches the identical URL on 429/503, and only
+ *   the outcome the SDK actually returned to the caller is the logical page.
  * - Body is read from a clone, so the original Response stream remains
  *   consumable by the SDK.
  * - Non-JSON response bodies are recorded as text and `body` falls back to
@@ -73,13 +76,28 @@ export function installWireCapture(): WireCaptureSession {
       } else {
         body = null;
       }
-      pages.push({
+      const requestUrl =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url = response.url || requestUrl;
+      const page: WirePage = {
         status: response.status,
         headers,
         body,
         bodyText: text,
-        url: response.url || (typeof input === "string" ? input : ""),
-      });
+        url,
+      };
+      // Consecutive captures of the same URL are retry attempts: the SDK's
+      // retry middleware re-issues the identical request through global
+      // fetch on 429/503, so a recovered call would otherwise record the
+      // failed attempt as pages[0] — failing liveCallSucceeds and polluting
+      // pages_count/pairwise comparison. Keep only the final attempt per
+      // logical page; distinct pagination pages always have distinct URLs.
+      const last = pages[pages.length - 1];
+      if (url && last && last.url === url) {
+        pages[pages.length - 1] = page;
+      } else {
+        pages.push(page);
+      }
     } catch {
       // Capture is best-effort; never break the SDK if cloning fails.
     }

@@ -158,4 +158,18 @@ describe("validateResponse — bodyless success responses", () => {
     expect(result.ok).toBe(true);
     expect(result.errors).toEqual([]);
   });
+
+  it("treats an empty-string body as bodyless", () => {
+    const result = validateResponse("DeleteBoost", "");
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("fails when a bodyless operation's captured response carries a body", () => {
+    // A payload where the spec promises none is contract drift — returning
+    // ok here would mask a 204-style operation growing an undocumented body.
+    const result = validateResponse("DeleteBoost", { unexpected: "payload" });
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.includes("DeleteBoost"))).toBe(true);
+  });
 });
