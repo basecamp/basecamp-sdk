@@ -479,7 +479,8 @@ conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-
 #   2. Each replay runner decodes those snapshots through its SDK + walks raw JSON.
 #
 # Required env (passed through to children):
-#   BASECAMP_LIVE=1, BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BASECAMP_BACKEND, LIVE_RECORD_DIR
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BASECAMP_BACKEND, LIVE_RECORD_DIR
+# (BASECAMP_LIVE=1 is set by the conformance-typescript-live recipe itself.)
 #
 # The four replay runners run sequentially after the TS capture completes
 # (the per-language replays need the wire snapshots TS just wrote). They
@@ -491,6 +492,8 @@ conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-
 conformance-live:
 	@test -n "$$LIVE_RECORD_DIR" || (echo "LIVE_RECORD_DIR is required" >&2; exit 1)
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 1)
+	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 1)
 	@echo "==> conformance-live: capturing canonical wire snapshots (TypeScript)..."
 	$(MAKE) conformance-typescript-live
 	@echo "==> Running cross-language wire-replay against just-captured snapshots..."
@@ -519,24 +522,29 @@ conformance-live:
 # exits non-zero if any are found.
 #
 # Account state must be identical across the two runs — see CONTRIBUTING.md.
-check-bc5-compat: LIVE_RECORD_DIR ?= tmp/live-canary
-check-bc5-compat: BASECAMP_HOST ?= https://3.basecampapi.com
 check-bc5-compat:
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
 	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
 	@test -n "$$BC5_HOST" || (echo "BC5_HOST is required (BC5 backend origin, e.g. https://5.basecampapi.com)" >&2; exit 2)
-	@# Guard against a catastrophic rm -rf: refuse empty, "/", or paths with "..".
-	@case "$(LIVE_RECORD_DIR)" in \
-	  ""|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$(LIVE_RECORD_DIR)'" >&2; exit 2 ;; \
-	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$(LIVE_RECORD_DIR)'" >&2; exit 2 ;; \
-	esac
-	rm -rf "$(LIVE_RECORD_DIR)"
-	@echo "==> check-bc5-compat: BC4 pass"
-	BASECAMP_LIVE=1 BASECAMP_HOST="$(BASECAMP_HOST)" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$(LIVE_RECORD_DIR)" $(MAKE) conformance-live
-	@echo "==> check-bc5-compat: BC5 pass"
-	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$(LIVE_RECORD_DIR)" $(MAKE) conformance-live
-	@echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison"
-	./scripts/compare-canary-runs.sh "$(LIVE_RECORD_DIR)/bc4/wire" "$(LIVE_RECORD_DIR)/bc5/wire"
+	@# Defaults resolve in the recipe shell, NOT via target-specific `?=`:
+	@# make 3.81 (macOS /usr/bin/make) leaks target-specific `?=` into a
+	@# global override that clobbers the caller's environment to empty for
+	@# every OTHER target's recipe — breaking conformance-live's
+	@# required-env guards whenever this makefile is loaded.
+	@# Guard against a catastrophic rm -rf: refuse "/" or paths with "..".
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \
+	case "$$LRD" in \
+	  "/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD'" >&2; exit 2 ;; \
+	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$$LRD'" >&2; exit 2 ;; \
+	esac; \
+	rm -rf "$$LRD" && \
+	echo "==> check-bc5-compat: BC4 pass" && \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC4_HOST" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live && \
+	echo "==> check-bc5-compat: BC5 pass" && \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live && \
+	echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison" && \
+	./scripts/compare-canary-runs.sh "$$LRD/bc4/wire" "$$LRD/bc5/wire"
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets

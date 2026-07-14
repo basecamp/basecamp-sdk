@@ -277,6 +277,21 @@ else
   fail "I: expected exit 2 with parse error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test J: a tests file whose top level is an object (not an array) is also an
+# operator error — jq's `.[]` would happily iterate an object's values, so the
+# type is checked explicitly.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs J)"
+OBJ_TESTS="$TMP/J/obj-tests.json"
+printf '{"tests": []}' >"$OBJ_TESTS"
+run_compare "$BC4" "$BC5" "$OBJ_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "failed to parse tests file" <<<"$RUN_OUT"; then
+  pass "J: top-level-object tests file fails with exit 2, not a silent pass"
+else
+  fail "J: expected exit 2 for non-array top level; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

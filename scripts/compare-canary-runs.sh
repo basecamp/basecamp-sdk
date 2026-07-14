@@ -147,7 +147,7 @@ violation() {
 # substitution isn't seen by set -e, so a malformed tests file would leave
 # TEST_ENTRIES empty and the script would exit 0 ("nothing to compare"),
 # silently masking an operator error.
-if ! ENTRIES_RAW="$(jq -c '.[] | select((.pairwiseAssertions // []) | length > 0)' "$TESTS_FILE")"; then
+if ! ENTRIES_RAW="$(jq -c 'if type != "array" then error("tests file must be a top-level array") else . end | .[] | select((.pairwiseAssertions // []) | length > 0)' "$TESTS_FILE")"; then
   echo "ERROR: failed to parse tests file '$TESTS_FILE' (malformed JSON or not a top-level array)" >&2
   exit 2
 fi
