@@ -15,6 +15,10 @@ Thank you for your interest in contributing to the Basecamp SDK. This document p
 | Kotlin | JDK 17+, Kotlin 2.0+ |
 | Python | Python 3.11+, [uv](https://docs.astral.sh/uv/) |
 
+Shared tooling: `jq`, and bash >= 4.4 on `PATH` for the pairwise-canary
+scripts that `make check` runs (macOS ships bash 3.2 at `/bin/bash` —
+`brew install bash`; the scripts fail fast with this exact hint).
+
 A Basecamp account is optional (for integration testing only).
 
 ### Getting Started

@@ -609,6 +609,33 @@ else
   fail "U: expected exit 2 with unsupported-path error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# U2: a SECOND '[*]' after a valid leading 'pages[*]' is equally unsupported.
+read -r BC4 BC5 <<<"$(fresh_dirs U2)"
+UP2_TESTS="$TMP/U2/up2-tests.json"
+cat >"$UP2_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Double star test",
+    "operation": "DsOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["pages[*].body.items[*]"], "reason": "second star is unsupported" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Double_star_test.json" DsOp '{"items":[[1]]}'
+write_snapshot "$BC5/Double_star_test.json" DsOp '{"items":[[1]]}'
+run_compare "$BC4" "$BC5" "$UP2_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "only supported as the leading" <<<"$RUN_OUT"; then
+  pass "U2: second '[*]' after pages[*] fails with exit 2 as unsupported"
+else
+  fail "U2: expected exit 2 with unsupported-path error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
