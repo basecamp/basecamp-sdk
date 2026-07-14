@@ -380,6 +380,64 @@ else
   fail "M: expected exit 2 with type error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test N: a structurally invalid snapshot (valid JSON, wrong shape) is an
+# operator error — '{}' would otherwise make every read return null and
+# false-green superset rules.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs N)"
+write_snapshot "$BC4/Eq_order_test.json" EqOp '{"obj":{"a":1}}'
+printf '{}' >"$BC5/Eq_order_test.json"
+run_compare "$BC4" "$BC5" "$EQ_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "structurally invalid wire snapshot" <<<"$RUN_OUT"; then
+  pass "N: structurally invalid snapshot fails with exit 2, not a false-green"
+else
+  fail "N: expected exit 2 with structural error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test O: a trailing empty-string path ("" = body root) in a paths list is
+# preserved and evaluated — newline splitting would have dropped it and
+# exit-2'd on a count mismatch for a perfectly valid rule.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs O)"
+BR_TESTS="$TMP/O/br-tests.json"
+cat >"$BR_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Body root trailing test",
+    "operation": "BrOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseEqual", "paths": ["obj", ""], "reason": "body root listed last must still be compared" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Body_root_trailing_test.json" BrOp '{"obj":1,"k":2}'
+write_snapshot "$BC5/Body_root_trailing_test.json" BrOp '{"obj":1,"k":2}'
+run_compare "$BC4" "$BC5" "$BR_TESTS"
+if [ "$RUN_RC" -eq 0 ] && grep -q "compared 1 operation" <<<"$RUN_OUT"; then
+  pass "O: trailing body-root path is preserved and evaluated (exit 0)"
+else
+  fail "O: expected exit 0 with comparison run; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# O2: same rule must still FAIL when the body root actually differs,
+# proving the trailing "" path is evaluated rather than merely tolerated.
+read -r BC4 BC5 <<<"$(fresh_dirs O2)"
+write_snapshot "$BC4/Body_root_trailing_test.json" BrOp '{"obj":1,"k":2}'
+write_snapshot "$BC5/Body_root_trailing_test.json" BrOp '{"obj":1,"k":3}'
+run_compare "$BC4" "$BC5" "$BR_TESTS"
+if [ "$RUN_RC" -eq 1 ] && grep -q "pairwiseEqual(<body>)" <<<"$RUN_OUT"; then
+  pass "O2: trailing body-root path violation still fails (exit 1)"
+else
+  fail "O2: expected exit 1 with body-root violation; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

@@ -57,10 +57,11 @@
 # `unreads` and similar collections drift naturally and rules will false-fail.
 set -euo pipefail
 
-# mapfile (and other bash-4 features) are used below; macOS ships bash 3.2 at
-# /bin/bash, where the failure mode is an opaque "mapfile: command not found".
-if [ -z "${BASH_VERSINFO:-}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
-  echo "ERROR: bash >= 4 is required (found ${BASH_VERSION:-unknown}). On macOS: brew install bash" >&2
+# mapfile with NUL delimiters (bash 4.4+) is used below; macOS ships bash 3.2
+# at /bin/bash, where the failure mode is an opaque "mapfile: command not found".
+if [ -z "${BASH_VERSINFO:-}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ] \
+  || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 4 ]; }; then
+  echo "ERROR: bash >= 4.4 is required (found ${BASH_VERSION:-unknown}). On macOS: brew install bash" >&2
   exit 2
 fi
 
@@ -138,6 +139,24 @@ read_value() {
   fi
 }
 
+# Structural validation of a wire snapshot: valid JSON alone isn't enough —
+# `{}` or `{"pages": {}}` would make every read_value return null, silently
+# false-greening superset rules (null counts as absent/empty). Enforce the
+# TS live runner's contract: object with a non-empty pages array whose
+# length matches pages_count.
+validate_snapshot() {
+  local snap="$1"
+  if ! jq -e '
+      type == "object"
+      and ((.pages | type) == "array")
+      and ((.pages | length) > 0)
+      and (.pages_count == (.pages | length))
+    ' "$snap" >/dev/null 2>&1; then
+    echo "ERROR: structurally invalid wire snapshot '$snap' (expected an object with a non-empty pages array and matching pages_count)" >&2
+    exit 2
+  fi
+}
+
 # Path → display string for error messages.
 display_path() {
   local raw="$1"
@@ -201,6 +220,9 @@ for entry in "${TEST_ENTRIES[@]}"; do
     continue
   fi
 
+  validate_snapshot "$BC4_SNAPSHOT"
+  validate_snapshot "$BC5_SNAPSHOT"
+
   COMPARED=$((COMPARED + 1))
 
   # Allowlisted paths for this operation (skipped by the other rule types).
@@ -219,10 +241,13 @@ for entry in "${TEST_ENTRIES[@]}"; do
   ALLOW_COUNT="$(jq -r 'length' <<<"$ALLOW_JSON")"
   ALLOW_PATHS=()
   if [ "$ALLOW_COUNT" -gt 0 ]; then
-    ALLOW_RAW="$(jq -r '.[]' <<<"$ALLOW_JSON")"
-    mapfile -t ALLOW_PATHS <<<"$ALLOW_RAW"
+    # NUL-delimited extraction: newline splitting via command substitution
+    # strips trailing blank lines, silently dropping a trailing empty-string
+    # path ("" = body root). The count check backstops jq failures inside
+    # the process substitution (invisible to set -e) and non-string elements.
+    mapfile -d '' -t ALLOW_PATHS < <(jq -j '.[] + "\u0000"' <<<"$ALLOW_JSON")
     if [ "${#ALLOW_PATHS[@]}" -ne "$ALLOW_COUNT" ]; then
-      echo "ERROR: pairwiseDeltaAllowed path extraction mismatch for $OPERATION (expected $ALLOW_COUNT, got ${#ALLOW_PATHS[@]})" >&2
+      echo "ERROR: pairwiseDeltaAllowed path extraction mismatch for $OPERATION (expected $ALLOW_COUNT, got ${#ALLOW_PATHS[@]}; paths must be strings)" >&2
       exit 2
     fi
   fi
@@ -272,13 +297,13 @@ for entry in "${TEST_ENTRIES[@]}"; do
       echo "ERROR: $RULE_TYPE rule on $OPERATION has an empty 'paths' array" >&2
       exit 2
     fi
-    if ! RP_RAW="$(jq -r '.paths[]' <<<"$rule")"; then
-      echo "ERROR: failed to extract 'paths' for $RULE_TYPE rule on $OPERATION (paths must be an array of strings)" >&2
-      exit 2
-    fi
-    mapfile -t RULE_PATHS <<<"$RP_RAW"
+    # NUL-delimited extraction preserves a trailing empty-string path ("" =
+    # body root), which newline splitting would strip. The count check
+    # backstops jq failures inside the process substitution (invisible to
+    # set -e) and non-string elements.
+    mapfile -d '' -t RULE_PATHS < <(jq -j '.paths[] + "\u0000"' <<<"$rule")
     if [ "${#RULE_PATHS[@]}" -ne "$RP_COUNT" ]; then
-      echo "ERROR: 'paths' extraction mismatch for $RULE_TYPE rule on $OPERATION (expected $RP_COUNT, got ${#RULE_PATHS[@]})" >&2
+      echo "ERROR: 'paths' extraction mismatch for $RULE_TYPE rule on $OPERATION (expected $RP_COUNT, got ${#RULE_PATHS[@]}; paths must be strings)" >&2
       exit 2
     fi
 
