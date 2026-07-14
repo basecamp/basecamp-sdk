@@ -59,6 +59,18 @@ write_snapshot() {
     >"$file"
 }
 
+# write_snapshot_2p <file> <operation> <page1-body-json> <page2-body-json>
+write_snapshot_2p() {
+  local file="$1" operation="$2" body1="$3" body2="$4"
+  mkdir -p "$(dirname "$file")"
+  jq -n --arg op "$operation" --argjson b1 "$body1" --argjson b2 "$body2" \
+    '{operation: $op, pages: [
+       {status: 200, headers: {}, body: $b1, bodyText: ($b1 | tostring), url: "https://example.test?page=1"},
+       {status: 200, headers: {}, body: $b2, bodyText: ($b2 | tostring), url: "https://example.test?page=2"}
+     ], pages_count: 2}' \
+    >"$file"
+}
+
 # fresh_dirs <scenario> -> echoes "<bc4dir> <bc5dir>" (created empty)
 fresh_dirs() {
   local s="$1"
@@ -290,6 +302,51 @@ if [ "$RUN_RC" -eq 2 ] && grep -q "failed to parse tests file" <<<"$RUN_OUT"; th
   pass "J: top-level-object tests file fails with exit 2, not a silent pass"
 else
   fail "J: expected exit 2 for non-array top level; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test K: pages[*] superset arrays compare TOTAL items across pages, not the
+# page count — BC4 with items on every page vs BC5 with the field dropped on
+# every page must fail even though pages_count matches.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs K)"
+AGG_TESTS="$TMP/K/agg-tests.json"
+cat >"$AGG_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Agg pages test",
+    "operation": "AggOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["pages[*].body.items"], "reason": "items must not shrink across the full paginated collection" }
+    ]
+  }
+]
+JSON
+write_snapshot_2p "$BC4/Agg_pages_test.json" AggOp '{"items":[1,2]}' '{"items":[3]}'
+write_snapshot_2p "$BC5/Agg_pages_test.json" AggOp '{"other":true}' '{"other":true}'
+run_compare "$BC4" "$BC5" "$AGG_TESTS"
+if [ "$RUN_RC" -eq 1 ] && grep -q "BC5 length 0 < BC4 length 3" <<<"$RUN_OUT"; then
+  pass "K: pages[*] field dropped on every page fails on totals (exit 1)"
+else
+  fail "K: expected exit 1 comparing totals 0 < 3; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test L: pages[*] totals tolerate redistribution — the same items split
+# differently across pages is not a regression.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs L)"
+write_snapshot_2p "$BC4/Agg_pages_test.json" AggOp '{"items":[1,2]}' '{"items":[3]}'
+write_snapshot_2p "$BC5/Agg_pages_test.json" AggOp '{"items":[1]}' '{"items":[2,3]}'
+run_compare "$BC4" "$BC5" "$AGG_TESTS"
+if [ "$RUN_RC" -eq 0 ]; then
+  pass "L: pages[*] redistribution with total preserved passes (exit 0)"
+else
+  fail "L: expected exit 0 for preserved total; got rc=$RUN_RC: $RUN_OUT"
 fi
 
 echo ""

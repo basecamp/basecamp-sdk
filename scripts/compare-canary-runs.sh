@@ -20,7 +20,12 @@
 # Rule types
 # ----------
 # - pairwiseSupersetArray: BC5 array length at each path must be ≥ BC4's.
-#                          Catches "memories went to []".
+#                          Catches "memories went to []". For aggregated
+#                          `pages[*]` paths the comparison is the TOTAL item
+#                          count across pages (a page missing the field
+#                          contributes 0; a non-null non-array page value is
+#                          invalid) — never the page count itself, which
+#                          would false-green a field dropped on every page.
 # - pairwiseSupersetKeys:  BC5 object's keys at each path must be ⊇ BC4's.
 #                          Catches "field disappeared from BC5".
 # - pairwiseEqual:         BC5 value at each path must equal BC4's. Use sparingly.
@@ -51,6 +56,13 @@
 # CONTRIBUTING.md "Live canary" section documents this — without it,
 # `unreads` and similar collections drift naturally and rules will false-fail.
 set -euo pipefail
+
+# mapfile (and other bash-4 features) are used below; macOS ships bash 3.2 at
+# /bin/bash, where the failure mode is an opaque "mapfile: command not found".
+if [ -z "${BASH_VERSINFO:-}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+  echo "ERROR: bash >= 4 is required (found ${BASH_VERSION:-unknown}). On macOS: brew install bash" >&2
+  exit 2
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -251,8 +263,21 @@ for entry in "${TEST_ENTRIES[@]}"; do
           # null at a path means "field absent on this backend". A BC4 array
           # of N items vs BC5 null is a regression; treat null as length 0
           # only when there's nothing on either side.
-          BC4_LEN="$(jq -r 'if type == "array" then length else (if . == null then 0 else "INVALID" end) end' <<<"$BC4_VAL")"
-          BC5_LEN="$(jq -r 'if type == "array" then length else (if . == null then 0 else "INVALID" end) end' <<<"$BC5_VAL")"
+          #
+          # Aggregated `pages[*]` paths wrap one value per page, so comparing
+          # the outer length would just compare page counts — a field dropped
+          # on every page would false-green. Compare the total item count
+          # across pages instead: an absent (null) page value contributes 0,
+          # any non-null non-array page value poisons the total as INVALID.
+          if [[ "$upath" == *"[*]"* ]]; then
+            AGG_LEN='[ .[] | if . == null then 0 elif type == "array" then length else "INVALID" end ]
+                     | if any(.[]; . == "INVALID") then "INVALID" else (add // 0) end'
+            BC4_LEN="$(jq -r "$AGG_LEN" <<<"$BC4_VAL")"
+            BC5_LEN="$(jq -r "$AGG_LEN" <<<"$BC5_VAL")"
+          else
+            BC4_LEN="$(jq -r 'if type == "array" then length else (if . == null then 0 else "INVALID" end) end' <<<"$BC4_VAL")"
+            BC5_LEN="$(jq -r 'if type == "array" then length else (if . == null then 0 else "INVALID" end) end' <<<"$BC5_VAL")"
+          fi
 
           if [ "$BC4_LEN" = "INVALID" ] || [ "$BC5_LEN" = "INVALID" ]; then
             violation "$OPERATION  pairwiseSupersetArray($DISPLAY): expected arrays on both sides; BC4=$BC4_VAL BC5=$BC5_VAL"
