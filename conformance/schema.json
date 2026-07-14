@@ -232,7 +232,10 @@
         "allOf": [
           {
             "if": { "properties": { "type": { "const": "pairwiseDeltaAllowed" } } },
-            "then": { "required": ["reason"] }
+            "then": {
+              "required": ["reason"],
+              "properties": { "reason": { "minLength": 1 } }
+            }
           }
         ]
       }

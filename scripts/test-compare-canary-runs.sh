@@ -526,6 +526,21 @@ else
   fail "R: expected exit 2 with reason requirement; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test S: a snapshot whose recorded operation doesn't match the test's is an
+# operator error — a stale/overwritten file with the right name must not be
+# compared as this test's capture.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs S)"
+write_snapshot "$BC4/Eq_order_test.json" EqOp '{"obj":{"a":1}}'
+write_snapshot "$BC5/Eq_order_test.json" SomeOtherOp '{"obj":{"a":1}}'
+run_compare "$BC4" "$BC5" "$EQ_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "stale or overwritten snapshot" <<<"$RUN_OUT"; then
+  pass "S: snapshot/test operation mismatch fails with exit 2"
+else
+  fail "S: expected exit 2 with operation mismatch; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

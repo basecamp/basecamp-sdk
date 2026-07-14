@@ -227,6 +227,17 @@ for entry in "${TEST_ENTRIES[@]}"; do
   validate_snapshot "$BC4_SNAPSHOT"
   validate_snapshot "$BC5_SNAPSHOT"
 
+  # Snapshot ↔ test integrity: a stale or overwritten snapshot (matching
+  # filename, different operation) must not be compared as if it were this
+  # test's capture.
+  for snap in "$BC4_SNAPSHOT" "$BC5_SNAPSHOT"; do
+    SNAP_OP="$(jq -r '.operation // ""' "$snap")"
+    if [ "$SNAP_OP" != "$OPERATION" ]; then
+      echo "ERROR: snapshot '$snap' records operation '$SNAP_OP' but test '$NAME' expects '$OPERATION' (stale or overwritten snapshot?)" >&2
+      exit 2
+    fi
+  done
+
   COMPARED=$((COMPARED + 1))
 
   # Allowlisted paths for this operation (skipped by the other rule types).
