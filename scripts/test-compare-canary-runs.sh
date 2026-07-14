@@ -473,7 +473,7 @@ JSON
 write_snapshot "$BC4/Waiver_type_test.json" WvOp '{"memories":[1,2,3]}'
 write_snapshot "$BC5/Waiver_type_test.json" WvOp '{"memories":[]}'
 run_compare "$BC4" "$BC5" "$WV_TESTS"
-if [ "$RUN_RC" -eq 2 ] && grep -q "must be an array of strings" <<<"$RUN_OUT"; then
+if [ "$RUN_RC" -eq 2 ] && grep -q "array of strings" <<<"$RUN_OUT"; then
   pass "P: bare-string waiver paths fails with exit 2, no silent suppression"
 else
   fail "P: expected exit 2 with waiver type error; got rc=$RUN_RC: $RUN_OUT"
@@ -491,6 +491,39 @@ if [ "$RUN_RC" -eq 2 ] && grep -q "structurally invalid wire snapshot" <<<"$RUN_
   pass "Q: page missing documented keys fails with exit 2"
 else
   fail "Q: expected exit 2 for body-less page; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test R: a waiver without a reason is rejected at runtime — schema.json
+# requires reasons for accepted divergences, and this script also runs
+# standalone (check-bc5-compat, scheduled workflow) with no schema step,
+# so an unaudited waiver must not suppress enforcement.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs R)"
+NR_TESTS="$TMP/R/nr-tests.json"
+cat >"$NR_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Waiver reason test",
+    "operation": "WrOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["memories"], "reason": "no shrink" },
+      { "type": "pairwiseDeltaAllowed", "paths": ["memories"] }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Waiver_reason_test.json" WrOp '{"memories":[1,2,3]}'
+write_snapshot "$BC5/Waiver_reason_test.json" WrOp '{"memories":[]}'
+run_compare "$BC4" "$BC5" "$NR_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "non-empty 'reason'" <<<"$RUN_OUT"; then
+  pass "R: reason-less waiver fails with exit 2, no unaudited suppression"
+else
+  fail "R: expected exit 2 with reason requirement; got rc=$RUN_RC: $RUN_OUT"
 fi
 
 echo ""

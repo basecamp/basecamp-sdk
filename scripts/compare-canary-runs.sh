@@ -235,13 +235,17 @@ for entry in "${TEST_ENTRIES[@]}"; do
   # empty-string path ("" = body root) isn't confused with no paths at all.
   if ! ALLOW_JSON="$(jq -c '
       (.pairwiseAssertions // [])
-      | map(select(.type == "pairwiseDeltaAllowed") | (.paths // []))
+      | map(select(.type == "pairwiseDeltaAllowed"))
+      | if all(.[]; (.reason | type == "string" and length > 0)) then .
+        else error("pairwiseDeltaAllowed requires a non-empty reason")
+        end
+      | map(.paths // [])
       | if all(.[]; type == "array" and all(.[]; type == "string"))
         then flatten
         else error("pairwiseDeltaAllowed paths must be arrays of strings")
         end
     ' <<<"$entry")"; then
-    echo "ERROR: failed to extract pairwiseDeltaAllowed paths for $OPERATION (each waiver'\''s 'paths' must be an array of strings — a bare-string paths would silently suppress enforcement)" >&2
+    echo "ERROR: invalid pairwiseDeltaAllowed waiver on $OPERATION — each waiver needs a non-empty 'reason' (accepted divergences must be audited) and 'paths' as an array of strings (a bare-string paths would silently suppress enforcement)" >&2
     exit 2
   fi
   ALLOW_COUNT="$(jq -r 'length' <<<"$ALLOW_JSON")"
