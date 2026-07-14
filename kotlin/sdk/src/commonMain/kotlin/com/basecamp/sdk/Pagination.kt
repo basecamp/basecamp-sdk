@@ -127,17 +127,23 @@ internal fun isLocalhost(url: String): Boolean {
         else -> return false
     }
     val afterScheme = schemeEnd + 3
-    val host = if (afterScheme < url.length && url[afterScheme] == '[') {
+    // The authority ends at /, ?, or # (RFC 3986).
+    val authorityEnd = url.indexOfAny(charArrayOf('/', '?', '#'), afterScheme).let {
+        if (it < 0) url.length else it
+    }
+    var authority = url.substring(afterScheme, authorityEnd)
+    // Strip userinfo: the host is what follows the last '@', otherwise
+    // http://localhost@evil.example would read its host as "localhost".
+    val userinfoEnd = authority.lastIndexOf('@')
+    if (userinfoEnd >= 0) authority = authority.substring(userinfoEnd + 1)
+    val host = if (authority.startsWith("[")) {
         // Bracketed IPv6 literal (RFC 3986), e.g. http://[::1]:8080/ — the host
         // is everything between the brackets.
-        val close = url.indexOf(']', afterScheme)
+        val close = authority.indexOf(']')
         if (close < 0) return false
-        url.substring(afterScheme + 1, close)
+        authority.substring(1, close)
     } else {
-        val hostEnd = url.indexOfAny(charArrayOf('/', ':', '?', '#'), afterScheme).let {
-            if (it < 0) url.length else it
-        }
-        url.substring(afterScheme, hostEnd)
+        authority.substringBefore(':')
     }
     // Hostnames are case-insensitive (RFC 3986).
     val normalizedHost = host.lowercase()

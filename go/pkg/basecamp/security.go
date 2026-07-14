@@ -120,6 +120,13 @@ func isLocalhost(rawURL string) bool {
 	if err != nil {
 		return false
 	}
+	// The carve-out is limited to HTTP(S) so credential guards and
+	// RequireSecureEndpoint fail closed on any other scheme (e.g.
+	// ws://localhost), matching the other SDKs.
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return false
+	}
 	// Hostnames are case-insensitive (RFC 3986).
 	host := strings.ToLower(u.Hostname())
 

@@ -187,6 +187,12 @@ class PaginationTest {
         // must not make a foreign host pass the carve-out.
         assertFalse(isLocalhost("http://evil.example#foo.localhost"))
         assertFalse(isLocalhost("http://evil.example?x=.localhost"))
+        // Userinfo is not the host: localhost text before '@' must not make a
+        // foreign host pass the carve-out.
+        assertFalse(isLocalhost("http://localhost:80@evil.example/path"))
+        assertFalse(isLocalhost("http://localhost@evil.example/path"))
+        // A genuine localhost URL with userinfo still qualifies.
+        assertTrue(isLocalhost("http://user:secret@localhost:3000/x"))
     }
 
     @Test
