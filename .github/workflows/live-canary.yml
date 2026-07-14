@@ -118,8 +118,10 @@ jobs:
         env:
           BASECAMP_TOKEN: ${{ secrets.BASECAMP_TOKEN }}
           BASECAMP_ACCOUNT_ID: ${{ secrets.BASECAMP_ACCOUNT_ID }}
-          # Default the BC4 origin here: an unset optional secret expands to ''
-          # and, exported, would override the Makefile's BASECAMP_HOST ?= default.
+          # Default the BC4 origin here: an unset optional secret expands to ''.
+          # The Makefile's recipe-shell ${BASECAMP_HOST:-...} default would also
+          # catch the empty string, but defaulting explicitly keeps the workflow
+          # self-describing about which BC4 origin a run used.
           BASECAMP_HOST: ${{ secrets.BASECAMP_HOST || 'https://3.basecampapi.com' }}
           BC5_HOST: ${{ secrets.BC5_HOST }}
           LIVE_RECORD_DIR: tmp/live-canary
