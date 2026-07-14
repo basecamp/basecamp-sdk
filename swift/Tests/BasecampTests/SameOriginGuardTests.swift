@@ -80,4 +80,85 @@ final class SameOriginGuardTests: XCTestCase {
         catch { XCTFail("expected BasecampError.usage, got \(error)") }
         XCTAssertTrue(transport.requests.isEmpty)
     }
+
+    // MARK: - Parser-differential regression
+
+    /// URLs crafted so that two URL parsers may disagree about the host
+    /// (backslash, userinfo, fragment, query, default-port tricks). Shared
+    /// shape with the Kotlin and Python SDK test suites.
+    private static let adversarialURLs = [
+        "http://evil.example\\.localhost/x",
+        "http://localhost@evil.example/x",
+        "http://evil.example#foo.localhost",
+        "http://evil.example?x=.localhost",
+        "http://localhost:80@evil.example/x",
+        "https://3.basecampapi.com:443@evil.example/x",
+        "http://[::1]/x",
+        "HTTPS://localhost/x",
+        "https://3.basecampapi.com:443/x",
+        "http://localhost.evil.example/x",
+    ]
+
+    private func isLoopbackHost(_ host: String) -> Bool {
+        var h = host.lowercased()
+        if h.hasPrefix("["), h.hasSuffix("]") { h = String(h.dropFirst().dropLast()) }
+        return h == "localhost" || h == "127.0.0.1" || h == "::1" || h.hasSuffix(".localhost")
+    }
+
+    /// Hosts the token may legitimately reach: the configured base origin plus
+    /// the localhost carve-out.
+    private func tokenMayReach(_ host: String) -> Bool {
+        host.lowercased() == "3.basecampapi.com" || isLoopbackHost(host)
+    }
+
+    /// A security guard must decide with the SAME parser the transport uses to
+    /// dial (`URL(string:)`, see HTTPClient). Whenever the guard blesses a URL,
+    /// the host the transport would actually dial must be the host the guard
+    /// thought it blessed. Fails loudly if anyone reintroduces a second parser
+    /// (e.g. URLComponents) into the guards.
+    func testGuardDecidesWithTheTransportParser() {
+        let base = "https://3.basecampapi.com"
+        for url in Self.adversarialURLs {
+            let dialed = URL(string: url)?.host?.lowercased()
+            if isLocalhost(url) {
+                XCTAssertNotNil(dialed, "isLocalhost blessed unparseable \(url)")
+                XCTAssertTrue(
+                    isLoopbackHost(dialed ?? ""),
+                    "isLocalhost blessed \(url) but the transport dials \(dialed ?? "nil")")
+            }
+            if isSameOrigin(url, base) {
+                XCTAssertEqual(
+                    dialed, URL(string: base)?.host?.lowercased(),
+                    "isSameOrigin blessed \(url) against \(base) but the transport dials \(dialed ?? "nil")")
+            }
+        }
+    }
+
+    /// End-to-end parser-differential regression: every adversarial URL, driven
+    /// through the real token-attach path, must either be rejected by the guard
+    /// or egress only to a host the token may reach — NEVER to a foreign host
+    /// carrying Authorization.
+    func testAdversarialURLsNeverEgressTokenToForeignHost() async {
+        let transport = MockTransport(statusCode: 200, data: Data("[]".utf8))
+        let svc = ProbeService(accountClient: makeTestAccountClient(transport: transport))
+        for url in Self.adversarialURLs {
+            // Rejection before egress is a passing outcome.
+            do { _ = try await svc.get(url) } catch {}
+        }
+        for recorded in transport.requests {
+            let host = recorded.request.url?.host?.lowercased() ?? ""
+            let auth = recorded.request.value(forHTTPHeaderField: "Authorization")
+            XCTAssertTrue(
+                tokenMayReach(host) || auth == nil,
+                "Bearer token egressed to foreign host \(host)")
+        }
+    }
+
+    func testGuardsFailClosedOnRelativeInput() {
+        // A scheme-less string is not an absolute URL: neither guard may bless it.
+        XCTAssertFalse(isLocalhost("localhost"))
+        XCTAssertFalse(isLocalhost("evil.example/x"))
+        XCTAssertFalse(isSameOrigin("3.basecampapi.com", "https://3.basecampapi.com"))
+        XCTAssertFalse(isSameOrigin("https://3.basecampapi.com", "3.basecampapi.com"))
+    }
 }
