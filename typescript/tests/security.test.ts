@@ -882,3 +882,42 @@ describe("Same-origin credential attachment", () => {
     }
   });
 });
+
+// =============================================================================
+// Cross-Origin Redirect Authorization Stripping
+// =============================================================================
+
+describe("cross-origin redirect Authorization stripping", () => {
+  it("fetch drops the bearer token when a redirect leaves the origin", async () => {
+    // The SDK relies on the WHATWG fetch spec (undici) to strip Authorization
+    // when following a cross-origin redirect, rather than stripping it
+    // explicitly. This test pins that platform guarantee: if a runtime or
+    // dependency bump ever regresses it, the token would silently leak to the
+    // Location target — this turns that into a CI failure.
+    let evilHit = false;
+    let evilAuth: string | null = "unset";
+
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        return new HttpResponse(null, {
+          status: 302,
+          headers: { Location: "https://evil.example/stolen" },
+        });
+      }),
+      http.get("https://evil.example/stolen", ({ request }) => {
+        evilHit = true;
+        evilAuth = request.headers.get("Authorization");
+        return HttpResponse.json([]);
+      })
+    );
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+    await client.GET("/projects.json");
+
+    expect(evilHit).toBe(true);
+    expect(evilAuth).toBeNull();
+  });
+});
