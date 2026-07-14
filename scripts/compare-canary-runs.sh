@@ -333,6 +333,17 @@ for entry in "${TEST_ENTRIES[@]}"; do
         continue
       fi
 
+      # '[*]' is only documented (and only handled) as the leading
+      # 'pages[*]' segment. Any other use — items[*].foo, a second star —
+      # would silently stream through jq with undefined comparison
+      # semantics; reject it as a fixture mistake instead.
+      if [[ "$upath" == *"[*]"* ]]; then
+        if [[ "$upath" != "pages[*]"* ]] || [[ "${upath#pages\[\*\]}" == *"[*]"* ]]; then
+          echo "ERROR: unsupported path '$upath' on $OPERATION — '[*]' is only supported as the leading 'pages[*]' segment" >&2
+          exit 2
+        fi
+      fi
+
       DISPLAY="$(display_path "$upath")"
       BC4_VAL="$(read_value "$BC4_SNAPSHOT" "$upath")"
       BC5_VAL="$(read_value "$BC5_SNAPSHOT" "$upath")"

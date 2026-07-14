@@ -578,6 +578,37 @@ else
   fail "T: expected exit 2 with non-empty-paths error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test U: '[*]' anywhere other than the leading 'pages[*]' segment is an
+# unsupported path — reject as a fixture mistake rather than streaming
+# through jq with undefined comparison semantics.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs U)"
+UP_TESTS="$TMP/U/up-tests.json"
+cat >"$UP_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Unsupported star test",
+    "operation": "UsOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["items[*].foo"], "reason": "undocumented star form" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Unsupported_star_test.json" UsOp '{"items":[{"foo":[1]}]}'
+write_snapshot "$BC5/Unsupported_star_test.json" UsOp '{"items":[{"foo":[1]}]}'
+run_compare "$BC4" "$BC5" "$UP_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "only supported as the leading" <<<"$RUN_OUT"; then
+  pass "U: non-pages '[*]' path fails with exit 2 as unsupported"
+else
+  fail "U: expected exit 2 with unsupported-path error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
