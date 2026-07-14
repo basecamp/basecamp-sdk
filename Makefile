@@ -531,19 +531,27 @@ check-bc5-compat:
 	@# global override that clobbers the caller's environment to empty for
 	@# every OTHER target's recipe — breaking conformance-live's
 	@# required-env guards whenever this makefile is loaded.
+	@#
+	@# The rm -rf lives on its own recipe line, separate from the $(MAKE)
+	@# invocations: under `make -n`, lines containing $(MAKE) are still
+	@# executed (with -n propagated to the sub-make), so folding the rm into
+	@# that line would delete snapshots during a dry-run.
 	@# Guard against a catastrophic rm -rf: refuse "/" or paths with "..".
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \
 	case "$$LRD" in \
 	  "/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD'" >&2; exit 2 ;; \
 	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$$LRD'" >&2; exit 2 ;; \
 	esac; \
-	rm -rf "$$LRD" && \
-	echo "==> check-bc5-compat: BC4 pass" && \
-	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC4_HOST" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live && \
-	echo "==> check-bc5-compat: BC5 pass" && \
-	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live && \
-	echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison" && \
+	rm -rf "$$LRD"
+	@echo "==> check-bc5-compat: BC4 pass"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC4_HOST" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: BC5 pass"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
 	./scripts/compare-canary-runs.sh "$$LRD/bc4/wire" "$$LRD/bc5/wire"
 
 #------------------------------------------------------------------------------

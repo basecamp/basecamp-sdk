@@ -204,15 +204,28 @@ for entry in "${TEST_ENTRIES[@]}"; do
   COMPARED=$((COMPARED + 1))
 
   # Allowlisted paths for this operation (skipped by the other rule types).
-  mapfile -t ALLOW_PATHS < <(
-    jq -r '
+  # Materialize jq output before mapfile (a process substitution's failure is
+  # invisible to set -e), and drive emptiness off jq's own length so a lone
+  # empty-string path ("" = body root) isn't confused with no paths at all.
+  if ! ALLOW_JSON="$(jq -c '
       (.pairwiseAssertions // [])
       | map(select(.type == "pairwiseDeltaAllowed"))
       | map(.paths // [])
       | flatten
-      | .[]
-    ' <<<"$entry"
-  )
+    ' <<<"$entry")"; then
+    echo "ERROR: failed to extract pairwiseDeltaAllowed paths for $OPERATION" >&2
+    exit 2
+  fi
+  ALLOW_COUNT="$(jq -r 'length' <<<"$ALLOW_JSON")"
+  ALLOW_PATHS=()
+  if [ "$ALLOW_COUNT" -gt 0 ]; then
+    ALLOW_RAW="$(jq -r '.[]' <<<"$ALLOW_JSON")"
+    mapfile -t ALLOW_PATHS <<<"$ALLOW_RAW"
+    if [ "${#ALLOW_PATHS[@]}" -ne "$ALLOW_COUNT" ]; then
+      echo "ERROR: pairwiseDeltaAllowed path extraction mismatch for $OPERATION (expected $ALLOW_COUNT, got ${#ALLOW_PATHS[@]})" >&2
+      exit 2
+    fi
+  fi
   is_allowed() {
     local p="$1"
     local ap
@@ -229,23 +242,36 @@ for entry in "${TEST_ENTRIES[@]}"; do
   }
 
   # Iterate over the enforcing rules (everything except pairwiseDeltaAllowed).
-  mapfile -t ENFORCED_RULES < <(
-    jq -c '
+  # Same materialize-before-mapfile treatment as ALLOW_PATHS above.
+  if ! RULES_RAW="$(jq -c '
       (.pairwiseAssertions // [])
       | map(select(.type != "pairwiseDeltaAllowed"))
       | .[]
-    ' <<<"$entry"
-  )
+    ' <<<"$entry")"; then
+    echo "ERROR: failed to extract pairwise rules for $OPERATION" >&2
+    exit 2
+  fi
+  mapfile -t ENFORCED_RULES <<<"$RULES_RAW"
+  if [ "${#ENFORCED_RULES[@]}" -eq 1 ] && [ -z "${ENFORCED_RULES[0]}" ]; then
+    ENFORCED_RULES=()
+  fi
 
   for rule in "${ENFORCED_RULES[@]}"; do
     RULE_TYPE="$(jq -r '.type' <<<"$rule")"
-    mapfile -t RULE_PATHS < <(jq -r '.paths[]' <<<"$rule")
 
-    # Guard the empty-array case explicitly: "${RULE_PATHS[@]:-}" would expand
-    # an empty `paths` to a single empty string and run the rule against the
-    # body root. schema.json enforces minItems:1, so this is defense in depth.
-    if [ "${#RULE_PATHS[@]}" -eq 0 ]; then
+    # Guard the empty-array case off jq's own length, BEFORE splitting into
+    # lines: an empty `paths` must not run the rule against the body root
+    # (schema.json enforces minItems:1; this is defense in depth), and a lone
+    # empty-string path ("" = body root) must not be mistaken for empty.
+    RP_COUNT="$(jq -r '(.paths // []) | length' <<<"$rule")"
+    if [ "$RP_COUNT" -eq 0 ]; then
       echo "ERROR: $RULE_TYPE rule on $OPERATION has an empty 'paths' array" >&2
+      exit 2
+    fi
+    RP_RAW="$(jq -r '.paths[]' <<<"$rule")"
+    mapfile -t RULE_PATHS <<<"$RP_RAW"
+    if [ "${#RULE_PATHS[@]}" -ne "$RP_COUNT" ]; then
+      echo "ERROR: 'paths' extraction mismatch for $RULE_TYPE rule on $OPERATION (expected $RP_COUNT, got ${#RULE_PATHS[@]})" >&2
       exit 2
     fi
 
