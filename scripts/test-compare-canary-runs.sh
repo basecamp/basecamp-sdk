@@ -29,6 +29,11 @@ if [ -z "${BASH_VERSINFO:-}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ] \
   exit 2
 fi
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required" >&2
+  exit 2
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPARE="$SCRIPT_DIR/compare-canary-runs.sh"
 REAL_TESTS="$SCRIPT_DIR/../conformance/tests/live-my-surface.json"

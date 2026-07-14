@@ -544,12 +544,14 @@ check-bc5-compat:
 	@# that line would delete snapshots during a dry-run.
 	@# Guard against a catastrophic rm -rf: strip ALL trailing slashes (a
 	@# single strip would let '///' through as '//' ≈ root), then refuse
-	@# "", ".", "/" (repo checkout / filesystem root) and paths with "..".
+	@# "", ".", "/" (repo checkout / filesystem root) and any '..' PATH
+	@# SEGMENT (leading, trailing, interior, or the whole path). A '..'
+	@# inside a segment (tmp/live-canary..pr308) is benign and allowed.
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; LRD_ORIG="$$LRD"; \
 	while [ "$${LRD%/}" != "$$LRD" ]; do LRD="$${LRD%/}"; done; \
 	case "$$LRD" in \
 	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD_ORIG'" >&2; exit 2 ;; \
-	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$$LRD_ORIG'" >&2; exit 2 ;; \
+	  ".."|"../"*|*"/.."|*"/../"*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR with a '..' path segment: '$$LRD_ORIG'" >&2; exit 2 ;; \
 	esac; \
 	rm -rf -- "$$LRD"
 	@echo "==> check-bc5-compat: BC4 pass"

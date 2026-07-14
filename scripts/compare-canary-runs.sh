@@ -119,7 +119,7 @@ to_jq_path() {
 # errors, not pairwise violations. Remap jq's exit status (often 4 or 5) to
 # the documented exit code 2 so the 0/1/2 contract holds under `set -e`.
 snapshot_read_error() {
-  echo "ERROR: failed to read snapshot '$1' at path '$2' (malformed JSON?)" >&2
+  echo "ERROR: failed to read snapshot '$1' at path '$2' (malformed snapshot JSON, or the rule's path doesn't form a valid jq expression)" >&2
   exit 2
 }
 
