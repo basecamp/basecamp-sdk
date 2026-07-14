@@ -143,9 +143,18 @@ violation() {
 }
 
 # Collect comparable operations: tests that have pairwiseAssertions.
-mapfile -t TEST_ENTRIES < <(
-  jq -c '.[] | select((.pairwiseAssertions // []) | length > 0)' "$TESTS_FILE"
-)
+# Materialize the jq output before mapfile: a jq failure inside a process
+# substitution isn't seen by set -e, so a malformed tests file would leave
+# TEST_ENTRIES empty and the script would exit 0 ("nothing to compare"),
+# silently masking an operator error.
+if ! ENTRIES_RAW="$(jq -c '.[] | select((.pairwiseAssertions // []) | length > 0)' "$TESTS_FILE")"; then
+  echo "ERROR: failed to parse tests file '$TESTS_FILE' (malformed JSON or not a top-level array)" >&2
+  exit 2
+fi
+mapfile -t TEST_ENTRIES <<<"$ENTRIES_RAW"
+if [ "${#TEST_ENTRIES[@]}" -eq 1 ] && [ -z "${TEST_ENTRIES[0]}" ]; then
+  TEST_ENTRIES=()
+fi
 
 if [ "${#TEST_ENTRIES[@]}" -eq 0 ]; then
   echo "==> Pairwise canary: no tests carry pairwiseAssertions; nothing to compare"

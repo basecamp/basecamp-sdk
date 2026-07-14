@@ -262,6 +262,21 @@ else
   fail "H: expected exit 1 with missing-keys a,b; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test I: a malformed tests file is an operator error (exit 2), not a silent
+# "nothing to compare" pass — jq's failure must not vanish into the mapfile
+# process substitution.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs I)"
+BAD_TESTS="$TMP/I/bad-tests.json"
+printf '{ this is not json' >"$BAD_TESTS"
+run_compare "$BC4" "$BC5" "$BAD_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "failed to parse tests file" <<<"$RUN_OUT"; then
+  pass "I: malformed tests file fails with exit 2, not a silent pass"
+else
+  fail "I: expected exit 2 with parse error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
