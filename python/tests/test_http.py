@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 import httpx
 import pytest
 import respx
@@ -284,3 +286,42 @@ class TestSameOriginGuard:
         assert client._build_url("HTTPS://3.basecampapi.com/x.json") == "HTTPS://3.basecampapi.com/x.json"
         with pytest.raises(UsageError, match="origin"):
             client._build_url("HTTPS://evil.example/x.json")
+
+
+class TestParserDifferentialEgress:
+    """End-to-end parser-differential regression: every adversarial URL, driven
+    through the real token-attach path, must either be rejected by the guard or
+    egress only to a host the token may reach — NEVER to a foreign host
+    carrying Authorization. Guards against the class of bug where the guard
+    extracts the host with one parser while httpx dials with another."""
+
+    ADVERSARIAL_URLS = [
+        "http://evil.example\\.localhost/x",
+        "http://localhost@evil.example/x",
+        "http://evil.example#foo.localhost",
+        "http://evil.example?x=.localhost",
+        "http://localhost:80@evil.example/x",
+        "https://3.basecampapi.com:443@evil.example/x",
+        "http://[::1]/x",
+        "HTTPS://localhost/x",
+        "https://3.basecampapi.com:443/x",
+        "http://localhost.evil.example/x",
+    ]
+
+    @staticmethod
+    def _token_may_reach(host: str) -> bool:
+        # The configured base origin plus the localhost carve-out.
+        return host in ("3.basecampapi.com", "localhost", "127.0.0.1", "::1") or host.endswith(".localhost")
+
+    @respx.mock
+    def test_adversarial_urls_never_egress_token_to_foreign_host(self):
+        respx.route().mock(return_value=httpx.Response(200, json={}))
+        client = make_client(max_retries=1)
+        for url in self.ADVERSARIAL_URLS:
+            # Rejection before egress is a passing outcome.
+            with contextlib.suppress(UsageError, httpx.InvalidURL):
+                client.get(url)
+        for call in respx.calls:
+            host = call.request.url.host.lower()
+            auth = call.request.headers.get("authorization")
+            assert self._token_may_reach(host) or auth is None, f"Bearer token egressed to foreign host {host!r}"

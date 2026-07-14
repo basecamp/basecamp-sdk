@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from basecamp._security import (
@@ -11,6 +12,22 @@ from basecamp._security import (
     truncate,
 )
 from basecamp.errors import ApiError, UsageError
+
+# URLs crafted so that two URL parsers may disagree about the host (backslash,
+# userinfo, fragment, query, default-port tricks). Shared shape with the
+# Kotlin and Swift SDK test suites.
+ADVERSARIAL_URLS = [
+    "http://evil.example\\.localhost/x",
+    "http://localhost@evil.example/x",
+    "http://evil.example#foo.localhost",
+    "http://evil.example?x=.localhost",
+    "http://localhost:80@evil.example/x",
+    "https://3.basecampapi.com:443@evil.example/x",
+    "http://[::1]/x",
+    "HTTPS://localhost/x",
+    "https://3.basecampapi.com:443/x",
+    "http://localhost.evil.example/x",
+]
 
 
 class TestSameOrigin:
@@ -71,10 +88,44 @@ class TestIsLocalhost:
             "https://example.com",
             "https://notlocalhost.com",
             "https://api.basecamp.com",
+            # Localhost text in userinfo, fragment, or query must not make a
+            # foreign host pass the carve-out.
+            "http://localhost@evil.example/x",
+            "http://localhost:80@evil.example/x",
+            "http://evil.example#foo.localhost",
+            "http://evil.example?x=.localhost",
+            "http://localhost.evil.example/x",
+            # A scheme-less string is not an absolute localhost URL.
+            "localhost",
         ],
     )
     def test_non_localhost_false(self, url):
         assert is_localhost(url) is False
+
+
+class TestParserDifferential:
+    """A security guard must decide with the SAME parser the transport uses to
+    dial (httpx.URL). Whenever the guard blesses a URL, the host httpx would
+    actually dial must be the host the guard thought it blessed. Fails loudly
+    if anyone reintroduces a second parser into _security.py."""
+
+    BASE = "https://3.basecampapi.com"
+
+    @pytest.mark.parametrize("url", ADVERSARIAL_URLS)
+    def test_guard_decides_with_transport_parser(self, url):
+        try:
+            dialed = httpx.URL(url).host.lower()
+        except httpx.InvalidURL:
+            dialed = None
+        if is_localhost(url):
+            assert dialed is not None, f"is_localhost blessed unparseable {url!r}"
+            assert dialed in ("localhost", "127.0.0.1", "::1") or dialed.endswith(".localhost"), (
+                f"is_localhost blessed {url!r} but the transport dials {dialed!r}"
+            )
+        if same_origin(url, self.BASE):
+            assert dialed == httpx.URL(self.BASE).host.lower(), (
+                f"same_origin blessed {url!r} against {self.BASE} but the transport dials {dialed!r}"
+            )
 
 
 class TestTruncate:
