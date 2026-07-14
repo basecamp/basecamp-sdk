@@ -263,12 +263,19 @@ for entry in "${TEST_ENTRIES[@]}"; do
     # lines: an empty `paths` must not run the rule against the body root
     # (schema.json enforces minItems:1; this is defense in depth), and a lone
     # empty-string path ("" = body root) must not be mistaken for empty.
-    RP_COUNT="$(jq -r '(.paths // []) | length' <<<"$rule")"
+    RP_COUNT="$(jq -r '(.paths // []) | if type == "array" then length else "INVALID" end' <<<"$rule")"
+    if [ "$RP_COUNT" = "INVALID" ]; then
+      echo "ERROR: 'paths' for $RULE_TYPE rule on $OPERATION must be an array of strings" >&2
+      exit 2
+    fi
     if [ "$RP_COUNT" -eq 0 ]; then
       echo "ERROR: $RULE_TYPE rule on $OPERATION has an empty 'paths' array" >&2
       exit 2
     fi
-    RP_RAW="$(jq -r '.paths[]' <<<"$rule")"
+    if ! RP_RAW="$(jq -r '.paths[]' <<<"$rule")"; then
+      echo "ERROR: failed to extract 'paths' for $RULE_TYPE rule on $OPERATION (paths must be an array of strings)" >&2
+      exit 2
+    fi
     mapfile -t RULE_PATHS <<<"$RP_RAW"
     if [ "${#RULE_PATHS[@]}" -ne "$RP_COUNT" ]; then
       echo "ERROR: 'paths' extraction mismatch for $RULE_TYPE rule on $OPERATION (expected $RP_COUNT, got ${#RULE_PATHS[@]})" >&2

@@ -536,10 +536,11 @@ check-bc5-compat:
 	@# invocations: under `make -n`, lines containing $(MAKE) are still
 	@# executed (with -n propagated to the sub-make), so folding the rm into
 	@# that line would delete snapshots during a dry-run.
-	@# Guard against a catastrophic rm -rf: refuse "/" or paths with "..".
+	@# Guard against a catastrophic rm -rf: refuse "/", "." (the repo
+	@# checkout), trailing-slash variants of both, and paths with "..".
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	case "$$LRD" in \
-	  "/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD'" >&2; exit 2 ;; \
+	case "$${LRD%/}" in \
+	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD'" >&2; exit 2 ;; \
 	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$$LRD'" >&2; exit 2 ;; \
 	esac; \
 	rm -rf "$$LRD"

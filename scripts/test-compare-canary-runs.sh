@@ -349,6 +349,37 @@ else
   fail "L: expected exit 0 for preserved total; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test M: a non-array `paths` (string/object) is an operator error (exit 2)
+# with an explicit message — not jq's raw exit status and not a silent
+# misinterpretation (an object's values would otherwise iterate as paths).
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs M)"
+STR_TESTS="$TMP/M/str-tests.json"
+cat >"$STR_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "String paths test",
+    "operation": "SpOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseEqual", "paths": "obj" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/String_paths_test.json" SpOp '{"obj":1}'
+write_snapshot "$BC5/String_paths_test.json" SpOp '{"obj":1}'
+run_compare "$BC4" "$BC5" "$STR_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "must be an array of strings" <<<"$RUN_OUT"; then
+  pass "M: non-array 'paths' fails with exit 2 and explicit message"
+else
+  fail "M: expected exit 2 with type error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
