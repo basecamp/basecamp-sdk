@@ -745,6 +745,9 @@ validate-api-gaps:
 # Network-free regression tests for the pairwise compare script (filename
 # scheme, missing-snapshot hard-fail, memories waiver scoping, pairwiseEqual
 # key-order, empty-paths guard).
+#
+# Requires bash >= 4.4 on PATH (`env bash`): both scripts guard for it and
+# fail with a clear message; macOS ships 3.2 at /bin/bash — brew install bash.
 check-compare-canary:
 	@./scripts/test-compare-canary-runs.sh
 
