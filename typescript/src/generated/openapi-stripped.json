@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-05-01",
+    "version": "2026-07-17",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -16291,16 +16291,17 @@
         }
       },
       "put": {
-        "description": "Update an existing todo",
-        "operationId": "UpdateTodo",
+        "description": "Replace a todo with a new complete representation.\nThe request body is the todo's full writable state: any writable field\nomitted from the request is cleared server-side (empty/missing\nassignee_ids clears assignees, missing description clears it, and so\non). content is required — a request without it is rejected.\nTo set some fields while preserving the rest, use the SDK's merge-safe\nupdate or edit methods, which GET the current todo and PUT the full\nrepresentation back. Those read-modify-write helpers are not atomic:\na concurrent write between the GET and PUT is overwritten (last write\nwins for the whole representation; the window is one round-trip).",
+        "operationId": "ReplaceTodo",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTodoRequestContent"
+                "$ref": "#/components/schemas/ReplaceTodoRequestContent"
               }
             }
-          }
+          },
+          "required": true
         },
         "parameters": [
           {
@@ -16315,11 +16316,11 @@
         ],
         "responses": {
           "200": {
-            "description": "UpdateTodo 200 response",
+            "description": "ReplaceTodo 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UpdateTodoResponseContent"
+                  "$ref": "#/components/schemas/ReplaceTodoResponseContent"
                 }
               }
             }
@@ -16389,6 +16390,10 @@
             429,
             503
           ]
+        },
+        "x-basecamp-write-semantics": {
+          "mode": "replace",
+          "clearsOmitted": true
         }
       }
     },
@@ -22745,6 +22750,12 @@
           "purpose": {
             "type": "string"
           },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
           "clients_enabled": {
             "type": "boolean"
           },
@@ -23360,6 +23371,57 @@
           "type",
           "url"
         ]
+      },
+      "ReplaceTodoRequestContent": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "completion_subscriber_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "notify": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "due_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "starts_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "ReplaceTodoResponseContent": {
+        "$ref": "#/components/schemas/Todo"
       },
       "RepositionCardStepRequestContent": {
         "type": "object",
@@ -25129,54 +25191,6 @@
       },
       "UpdateTimesheetEntryResponseContent": {
         "$ref": "#/components/schemas/TimesheetEntry"
-      },
-      "UpdateTodoRequestContent": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "assignee_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          "completion_subscriber_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "due_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          }
-        }
-      },
-      "UpdateTodoResponseContent": {
-        "$ref": "#/components/schemas/Todo"
       },
       "UpdateTodolistOrGroupRequestContent": {
         "type": "object",
