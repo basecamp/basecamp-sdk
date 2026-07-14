@@ -38,8 +38,9 @@ remain **open** — an earlier draft of this file framed them as pending a
    Filed as
    [`spec/api-gaps/memories-emptied-regression.md`](spec/api-gaps/memories-emptied-regression.md).
    The fix is **already written but unmerged**: BC3 #10947 (open, head
-   `9dc63e2e`) carries `json.memories @bubble_ups`. So this awaits #10947's
-   merge, not a decision. PR #308's live canary encodes the intended invariant
+   `589b1970`, verified 2026-07-13) carries `json.memories @bubble_ups`. So
+   this awaits #10947's merge, not a decision. PR #308's live canary encodes
+   the intended invariant
    (`pairwiseSupersetArray: ["memories"]` on `GetMyNotifications`) and
    temporarily waives it via `pairwiseDeltaAllowed` until #10947 merges; that
    canary surface lives on #308's branch

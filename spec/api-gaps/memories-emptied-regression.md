@@ -48,10 +48,10 @@ checks are necessary but not sufficient.
 ## Suggested API shape
 
 No new shape is needed, and the SDK proposes none: BC3 has already chosen the
-fix. Open PR **#10947** (head `9dc63e2e`) changes the jbuilder to
-`json.memories @bubble_ups`, repopulating the top-level collection from the
-Bubble Up successor so BC4 readers keep receiving a populated array. This entry
-records that as the fix-in-flight rather than re-proposing a shape.
+fix. Open PR **#10947** (head `589b1970`, verified 2026-07-13) changes the
+jbuilder to `json.memories @bubble_ups`, repopulating the top-level collection
+from the Bubble Up successor so BC4 readers keep receiving a populated array.
+This entry records that as the fix-in-flight rather than re-proposing a shape.
 
 ## Implementation notes for BC3
 
