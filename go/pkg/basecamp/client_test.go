@@ -3,11 +3,24 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+type contentTypeAuthStrategy struct {
+	contentType string
+}
+
+func (s contentTypeAuthStrategy) Authenticate(_ context.Context, req *http.Request) error {
+	if req.Header.Get("Content-Type") != "" {
+		return errors.New("expected Content-Type to be empty before auth strategy sets it")
+	}
+	req.Header.Set("Content-Type", s.contentType)
+	return nil
+}
 
 func TestSingleRequest_204ReturnsValidJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -122,6 +135,87 @@ func TestSingleRequest_200WithBody(t *testing.T) {
 	}
 	if result.Name != "Test" {
 		t.Errorf("expected Name %q, got %q", "Test", result.Name)
+	}
+}
+
+func TestSingleRequest_GETDoesNotSetContentType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+			http.Error(w, "wrong method", http.StatusBadRequest)
+			return
+		}
+		if got := r.Header.Get("Content-Type"); got != "" {
+			t.Errorf("expected no Content-Type for bodyless GET, got %q", got)
+		}
+		if got := r.Header.Get("Accept"); got != "application/json" {
+			t.Errorf("expected Accept application/json, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	if _, err := client.Get(context.Background(), "/test.json"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSingleRequest_POSTSetsContentTypeForJSONBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+			http.Error(w, "wrong method", http.StatusBadRequest)
+			return
+		}
+		if got := r.Header.Get("Content-Type"); got != "application/json" {
+			t.Errorf("expected Content-Type application/json, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	if _, err := client.Post(context.Background(), "/test.json", map[string]any{"ok": true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSingleRequest_POSTPreservesExistingContentType(t *testing.T) {
+	const customContentType = "application/merge-patch+json"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+			http.Error(w, "wrong method", http.StatusBadRequest)
+			return
+		}
+		if got := r.Header.Get("Content-Type"); got != customContentType {
+			t.Errorf("expected Content-Type %q, got %q", customContentType, got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(
+		cfg,
+		&StaticTokenProvider{Token: "test-token"},
+		WithAuthStrategy(contentTypeAuthStrategy{contentType: customContentType}),
+	)
+
+	if _, err := client.Post(context.Background(), "/test.json", map[string]any{"ok": true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

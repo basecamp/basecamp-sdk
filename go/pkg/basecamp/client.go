@@ -369,8 +369,9 @@ func (c *Client) initGeneratedClient() {
 				return err
 			}
 			req.Header.Set("User-Agent", c.userAgent)
-			// Only set Content-Type if not already set (preserves binary upload content types)
-			if req.Header.Get("Content-Type") == "" {
+			// Content-Type describes a request body, so set the JSON default only
+			// when a body is present and the caller has not already set one.
+			if requestHasBody(req) && req.Header.Get("Content-Type") == "" {
 				req.Header.Set("Content-Type", "application/json")
 			}
 			req.Header.Set("Accept", "application/json")
@@ -384,6 +385,10 @@ func (c *Client) initGeneratedClient() {
 		}
 		c.gen = gen
 	})
+}
+
+func requestHasBody(req *http.Request) bool {
+	return req != nil && req.Body != nil && req.Body != http.NoBody
 }
 
 // discardHandler is a slog.Handler that discards all log records.
@@ -692,7 +697,9 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		return nil, err
 	}
 	req.Header.Set("User-Agent", c.userAgent)
-	req.Header.Set("Content-Type", "application/json")
+	if requestHasBody(req) && req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("Accept", "application/json")
 
 	// Add ETag for cached GET requests. Derive cache key from the Authorization
