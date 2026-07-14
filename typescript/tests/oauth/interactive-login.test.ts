@@ -143,6 +143,8 @@ describe("performInteractiveLogin", () => {
         "https://custom.example.com/.well-known/oauth-authorization-server",
         () => HttpResponse.json({
           ...mockDiscoveryResponse,
+          // Issuer must bind to the host the metadata was fetched from (RFC 8414).
+          issuer: "https://custom.example.com",
           authorization_endpoint: "https://custom.example.com/authorize",
           token_endpoint: "https://custom.example.com/token",
         })
@@ -279,5 +281,95 @@ describe("performInteractiveLogin", () => {
       store,
       openBrowser,
     });
+  });
+});
+
+describe("performInteractiveLogin — resource-first fatal-after-selection", () => {
+  const RESOURCE = "https://api.basecamp-test.example";
+  const BC5 = "https://bc5.basecamp-test.example";
+  const LAUNCHPAD = "https://launchpad.37signals.com";
+
+  let launchpadContacted = false;
+
+  beforeEach(() => {
+    launchpadContacted = false;
+    server.use(
+      mswHttp.get(`${LAUNCHPAD}/.well-known/oauth-authorization-server`, () => {
+        launchpadContacted = true;
+        return HttpResponse.json({
+          issuer: LAUNCHPAD,
+          authorization_endpoint: `${LAUNCHPAD}/authorization/new`,
+          token_endpoint: `${LAUNCHPAD}/authorization/token`,
+        });
+      }),
+    );
+  });
+
+  function advertiseBc5() {
+    server.use(
+      mswHttp.get(`${RESOURCE}/.well-known/oauth-protected-resource`, () =>
+        HttpResponse.json({ resource: RESOURCE, authorization_servers: [BC5, LAUNCHPAD] }),
+      ),
+    );
+  }
+
+  it("rejects and never contacts Launchpad when the committed AS returns 500", async () => {
+    advertiseBc5();
+    server.use(
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ error: "boom" }, { status: 500 }),
+      ),
+    );
+
+    const openBrowser = vi.fn(async () => {});
+    await expect(
+      performInteractiveLogin({
+        clientId: "basecamp-cli",
+        store: createMockStore(),
+        resourceBaseUrl: RESOURCE,
+        openBrowser,
+      }),
+    ).rejects.toMatchObject({ code: "api_error" });
+
+    expect(openBrowser).not.toHaveBeenCalled();
+    expect(launchpadContacted).toBe(false);
+  });
+
+  it("rejects and never contacts Launchpad on an issuer-binding mismatch", async () => {
+    advertiseBc5();
+    server.use(
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({
+          issuer: "https://impostor.example.com",
+          authorization_endpoint: `${BC5}/oauth/authorize`,
+          token_endpoint: `${BC5}/oauth/token`,
+        }),
+      ),
+    );
+
+    const openBrowser = vi.fn(async () => {});
+    await expect(
+      performInteractiveLogin({
+        clientId: "basecamp-cli",
+        store: createMockStore(),
+        resourceBaseUrl: RESOURCE,
+        openBrowser,
+      }),
+    ).rejects.toMatchObject({ code: "api_error" });
+
+    expect(openBrowser).not.toHaveBeenCalled();
+    expect(launchpadContacted).toBe(false);
+  });
+
+  it("rejects when baseUrl and resourceBaseUrl are both supplied", async () => {
+    await expect(
+      performInteractiveLogin({
+        clientId: "basecamp-cli",
+        store: createMockStore(),
+        baseUrl: LAUNCHPAD,
+        resourceBaseUrl: RESOURCE,
+        openBrowser: vi.fn(async () => {}),
+      }),
+    ).rejects.toMatchObject({ code: "usage" });
   });
 });

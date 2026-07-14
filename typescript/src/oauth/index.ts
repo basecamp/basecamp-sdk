@@ -46,14 +46,23 @@ export type {
   RefreshRequest,
   RawTokenResponse,
   OAuthErrorResponse,
+  ProtectedResourceMetadata,
+  FallbackReason,
+  DiscoverySelectionErrorReason,
+  DiscoverFromResourceResult,
 } from "./types.js";
 
 // Discovery
 export {
   discover,
+  discoverProtectedResource,
+  discoverFromResource,
   discoverLaunchpad,
+  requireOriginRoot,
+  DiscoverySelectionError,
   LAUNCHPAD_BASE_URL,
   type DiscoverOptions,
+  type DiscoverFromResourceOptions,
 } from "./discovery.js";
 
 // Token exchange

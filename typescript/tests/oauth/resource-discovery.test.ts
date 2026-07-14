@@ -1,0 +1,324 @@
+/**
+ * Resource-first OAuth discovery tests.
+ *
+ * Drives the shared, data-only fixtures in conformance/oauth/fixtures with this
+ * harness's mock origins substituted for the {{...}} placeholders, so issuer /
+ * resource binding stays code-point-exact against the mocked hosts.
+ */
+
+import { describe, it, expect, beforeEach } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { http as mswHttp, HttpResponse } from "msw";
+import { server } from "../setup.js";
+import {
+  discover,
+  discoverProtectedResource,
+  discoverFromResource,
+  requireOriginRoot,
+  DiscoverySelectionError,
+} from "../../src/oauth/index.js";
+import { BasecampError } from "../../src/errors.js";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const FIXTURE_DIR = join(HERE, "../../../conformance/oauth/fixtures");
+
+// Mock origins substituted for fixture placeholders. LAUNCHPAD must be the real
+// origin because discoverLaunchpad() targets it.
+const ORIGINS = {
+  "{{RESOURCE_ORIGIN}}": "https://api.basecamp-test.example",
+  "{{ISSUER_ORIGIN}}": "https://issuer.basecamp-test.example",
+  "{{LAUNCHPAD_ORIGIN}}": "https://launchpad.37signals.com",
+  "{{BC5_ISSUER}}": "https://bc5.basecamp-test.example",
+};
+
+function substitute<T>(value: T): T {
+  let json = JSON.stringify(value);
+  for (const [ph, origin] of Object.entries(ORIGINS)) {
+    json = json.split(ph).join(origin);
+  }
+  return JSON.parse(json) as T;
+}
+
+interface Exchange {
+  origin?: string;
+  status?: number;
+  transportError?: boolean;
+  body?: unknown;
+  oversized?: boolean;
+  redirectTo?: string;
+}
+
+interface Fixture {
+  name: string;
+  operation: "discoverFromResource" | "discoverProtectedResource" | "discover";
+  resourceOrigin?: string;
+  issuerOrigin?: string;
+  expectedIssuer?: string;
+  hop1?: Exchange;
+  hop2?: Exchange;
+  expect: {
+    outcome: "selected" | "fallback" | "raise";
+    selectedIssuer?: string;
+    fallbackReason?: string;
+    error?: string;
+    errorCategory?: string;
+    launchpadContacted?: boolean;
+  };
+}
+
+function loadFixtures(): Fixture[] {
+  return readdirSync(FIXTURE_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .map((f) => JSON.parse(readFileSync(join(FIXTURE_DIR, f), "utf8")) as Fixture);
+}
+
+const WELL_KNOWN = {
+  resource: "/.well-known/oauth-protected-resource",
+  as: "/.well-known/oauth-authorization-server",
+};
+
+/** Registers an MSW handler for one mocked hop. */
+function handlerFor(url: string, ex: Exchange) {
+  return mswHttp.get(url, () => {
+    if (ex.transportError) return HttpResponse.error();
+    if (ex.redirectTo) {
+      return new HttpResponse(null, { status: ex.status ?? 302, headers: { Location: ex.redirectTo } });
+    }
+    const status = ex.status ?? 200;
+    if (ex.body === undefined) return new HttpResponse(null, { status });
+    return HttpResponse.json(ex.body as object, { status });
+  });
+}
+
+describe("resource-first discovery fixtures", () => {
+  let launchpadContacted = false;
+
+  beforeEach(() => {
+    launchpadContacted = false;
+    // Track any request to the Launchpad well-known endpoints. The orchestrator
+    // itself never contacts Launchpad; hard cases must never reach here.
+    server.use(
+      mswHttp.get(`${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}${WELL_KNOWN.as}`, () => {
+        launchpadContacted = true;
+        return HttpResponse.json({
+          issuer: ORIGINS["{{LAUNCHPAD_ORIGIN}}"],
+          authorization_endpoint: `${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}/authorization/new`,
+          token_endpoint: `${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}/authorization/token`,
+        });
+      })
+    );
+  });
+
+  for (const raw of loadFixtures()) {
+    // Oversized streaming is exercised by a dedicated test below (MSW cannot
+    // easily stream a body larger than the cap through json()).
+    if (raw.hop2?.oversized || raw.hop1?.oversized) continue;
+
+    it(`${raw.name}`, async () => {
+      const fx = substitute(raw);
+
+      // Bracketed IPv6 origins can't be pattern-matched by MSW's path parser, so
+      // the IPv6 origin-root accept case is verified at the parser boundary (the
+      // point of the fixture: the transport parser accepts it where a regex fails).
+      if (fx.resourceOrigin?.includes("[") && fx.expect.outcome === "selected") {
+        expect(requireOriginRoot(fx.resourceOrigin)).toBe(fx.expect.selectedIssuer);
+        return;
+      }
+
+      if (fx.hop1) {
+        const resourceOrigin = fx.resourceOrigin!;
+        server.use(handlerFor(`${resourceOrigin}${WELL_KNOWN.resource}`, fx.hop1));
+      }
+      if (fx.hop2) {
+        const issuerOrigin = fx.hop2.origin ?? fx.issuerOrigin!;
+        server.use(handlerFor(`${issuerOrigin}${WELL_KNOWN.as}`, fx.hop2));
+      }
+
+      const run = async () => {
+        switch (fx.operation) {
+          case "discoverFromResource":
+            return discoverFromResource(fx.resourceOrigin!, { expectedIssuer: fx.expectedIssuer });
+          case "discoverProtectedResource":
+            return discoverProtectedResource(fx.resourceOrigin!);
+          case "discover":
+            return discover(fx.issuerOrigin!);
+        }
+      };
+
+      if (fx.expect.outcome === "raise") {
+        let thrown: unknown;
+        try {
+          await run();
+          expect.fail("expected a throw");
+        } catch (err) {
+          thrown = err;
+        }
+        expect(thrown).toBeInstanceOf(BasecampError);
+        if (fx.expect.error === "usage") {
+          expect((thrown as BasecampError).code).toBe("usage");
+        } else if (fx.operation === "discoverFromResource") {
+          expect(thrown).toBeInstanceOf(DiscoverySelectionError);
+          expect((thrown as DiscoverySelectionError).reason).toBe(fx.expect.error);
+        } else {
+          // discover / discoverProtectedResource hard failures are api_error.
+          expect((thrown as BasecampError).code).toBe("api_error");
+        }
+        // Cross-SDK coarse-category assertion.
+        if (fx.expect.errorCategory) {
+          expect((thrown as BasecampError).code).toBe(fx.expect.errorCategory);
+        }
+      } else if (fx.expect.outcome === "fallback") {
+        const result = (await run()) as { kind: string; reason?: string };
+        expect(result.kind).toBe("fallback");
+        expect(result.reason).toBe(fx.expect.fallbackReason);
+      } else {
+        // selected
+        const result = await run();
+        if (fx.operation === "discoverFromResource") {
+          const r = result as { kind: string; issuer: string };
+          expect(r.kind).toBe("selected");
+          if (fx.expect.selectedIssuer) expect(r.issuer).toBe(fx.expect.selectedIssuer);
+        }
+        // discover / discoverProtectedResource: absence of a throw is success.
+      }
+
+      if (fx.expect.launchpadContacted === false) {
+        expect(launchpadContacted).toBe(false);
+      }
+    });
+  }
+
+  it("device-only AS omits authorization_endpoint but carries device capability", async () => {
+    const issuer = ORIGINS["{{ISSUER_ORIGIN}}"];
+    server.use(
+      mswHttp.get(`${issuer}${WELL_KNOWN.as}`, () =>
+        HttpResponse.json({
+          issuer,
+          token_endpoint: `${issuer}/oauth/token`,
+          device_authorization_endpoint: `${issuer}/oauth/device`,
+          grant_types_supported: ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"],
+        })
+      )
+    );
+    const config = await discover(issuer);
+    expect(config.authorizationEndpoint).toBeUndefined();
+    expect(config.deviceAuthorizationEndpoint).toBe(`${issuer}/oauth/device`);
+    expect(config.grantTypesSupported).toContain("urn:ietf:params:oauth:grant-type:device_code");
+  });
+});
+
+describe("issuer-binding classification (structural marker, not message text)", () => {
+  const RESOURCE = "https://api.marker-test.example";
+  const BC5 = "https://bc5.marker-test.example";
+
+  function mountResource(servers: string[]) {
+    server.use(
+      mswHttp.get(`${RESOURCE}/.well-known/oauth-protected-resource`, () =>
+        HttpResponse.json({ resource: RESOURCE, authorization_servers: servers })
+      )
+    );
+  }
+
+  it("classifies a committed-issuer binding mismatch as issuer_mismatch", async () => {
+    mountResource([BC5]);
+    server.use(
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ issuer: "https://impostor.example", token_endpoint: `${BC5}/t` })
+      )
+    );
+    const err = await discoverFromResource(RESOURCE).catch((e) => e);
+    expect(err).toBeInstanceOf(DiscoverySelectionError);
+    expect((err as DiscoverySelectionError).reason).toBe("issuer_mismatch");
+  });
+
+  it("classifies a non-mismatch committed-AS fault as as_fetch_failed", async () => {
+    // Missing token_endpoint yields an api_error whose message says nothing
+    // about a mismatch. Message-based classification would misroute it; the
+    // structural marker keeps it as as_fetch_failed.
+    mountResource([BC5]);
+    server.use(
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ issuer: BC5 })
+      )
+    );
+    const err = await discoverFromResource(RESOURCE).catch((e) => e);
+    expect(err).toBeInstanceOf(DiscoverySelectionError);
+    expect((err as DiscoverySelectionError).reason).toBe("as_fetch_failed");
+  });
+
+  it("does not leak the marker through the public discover() surface", async () => {
+    server.use(
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ issuer: "https://impostor.example", token_endpoint: `${BC5}/t` })
+      )
+    );
+    const err = await discover(BC5).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err).not.toBeInstanceOf(DiscoverySelectionError);
+    expect((err as BasecampError).code).toBe("api_error");
+  });
+});
+
+describe("SSRF hardening", () => {
+  it("rejects an over-cap discovery body via the bounded read (not a post-hoc check)", async () => {
+    const issuer = "https://issuer.ssrf-test.example";
+    // A well-formed but oversized document: valid JSON padded far past the cap.
+    const oversized = `{"issuer":"${issuer}","token_endpoint":"${issuer}/t","pad":"${"x".repeat(256 * 1024)}"}`;
+
+    server.use(
+      mswHttp.get(`${issuer}${WELL_KNOWN.as}`, () =>
+        new HttpResponse(oversized, { status: 200, headers: { "Content-Type": "application/json" } })
+      )
+    );
+
+    // Cap at 8 KiB: the streaming reader cancels once the accumulated bytes
+    // exceed the cap, so the full 256 KiB body is never buffered.
+    await expect(discover(issuer, { maxBodyBytes: 8 * 1024 })).rejects.toMatchObject({
+      code: "api_error",
+    });
+  });
+
+  it("ignores Infinity/NaN/negative maxBodyBytes and applies the default cap", async () => {
+    const issuer = "https://issuer.badcap-test.example";
+    // Padded well past the 1 MiB default cap. A caller-supplied Infinity/NaN/
+    // negative must NOT disable the bound — it falls back to the default so the
+    // oversized body is still rejected.
+    const oversized =
+      `{"issuer":"${issuer}","token_endpoint":"${issuer}/t","pad":"${"x".repeat(2 * 1024 * 1024)}"}`;
+
+    server.use(
+      mswHttp.get(`${issuer}${WELL_KNOWN.as}`, () =>
+        new HttpResponse(oversized, { status: 200, headers: { "Content-Type": "application/json" } })
+      )
+    );
+
+    for (const bad of [Infinity, Number.NaN, -1]) {
+      await expect(
+        discover(issuer, { maxBodyBytes: bad })
+      ).rejects.toMatchObject({ code: "api_error" });
+    }
+  });
+
+  it("does not follow a redirect on a discovery fetch", async () => {
+    const issuer = "https://issuer.redirect-test.example";
+    let attackerContacted = false;
+    server.use(
+      mswHttp.get(`${issuer}${WELL_KNOWN.as}`, () =>
+        new HttpResponse(null, {
+          status: 302,
+          headers: { Location: "https://attacker.example.com/.well-known/oauth-authorization-server" },
+        })
+      ),
+      mswHttp.get("https://attacker.example.com/.well-known/oauth-authorization-server", () => {
+        attackerContacted = true;
+        return HttpResponse.json({ issuer: "https://attacker.example.com", token_endpoint: "x" });
+      })
+    );
+
+    await expect(discover(issuer)).rejects.toMatchObject({ code: "api_error" });
+    expect(attackerContacted).toBe(false);
+  });
+});
