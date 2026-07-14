@@ -10,6 +10,11 @@ module Basecamp
     MAX_RESPONSE_BODY_BYTES = 50 * 1024 * 1024 # 50 MB
     MAX_ERROR_BODY_BYTES = 1 * 1024 * 1024      # 1 MB
 
+    # The Launchpad authorization endpoint is on a different origin than the
+    # configured API base URL, so it is the one sanctioned destination for a
+    # credentialed cross-origin request. Every other foreign origin is rejected.
+    LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
+
     def self.truncate(str, max = MAX_ERROR_MESSAGE_BYTES)
       return str if str.nil? || str.bytesize <= max
 
@@ -64,6 +69,9 @@ module Basecamp
       uri = URI.parse(url.to_s)
       host = uri.host&.downcase
       return false if host.nil?
+      # The carve-out is limited to HTTP(S) so credential guards fail closed
+      # on any other scheme (e.g. ws://localhost).
+      return false unless %w[http https].include?(uri.scheme&.downcase)
 
       host == "localhost" ||
         host == "127.0.0.1" ||

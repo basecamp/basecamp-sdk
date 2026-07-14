@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from urllib.parse import urljoin, urlparse
 
+import httpx
+
 from basecamp.errors import ApiError, UsageError
 
 MAX_ERROR_MESSAGE_BYTES = 500
@@ -9,6 +11,11 @@ MAX_RESPONSE_BODY_BYTES = 50 * 1024 * 1024  # 50 MB
 MAX_ERROR_BODY_BYTES = 1 * 1024 * 1024  # 1 MB
 
 SENSITIVE_HEADERS = frozenset({"authorization", "cookie", "set-cookie", "x-csrf-token"})
+
+# The Launchpad authorization endpoint lives on a different origin than the
+# configured API base URL, so it is the one sanctioned destination for a
+# credentialed cross-origin request. Any other foreign origin must be rejected.
+LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
 
 
 def truncate(s: str | None, max_bytes: int = MAX_ERROR_MESSAGE_BYTES) -> str:
@@ -34,19 +41,28 @@ def require_https(url: str, label: str = "URL") -> None:
 
 
 def is_localhost(url: str) -> bool:
+    # Decide with the SAME parser the transport dials with (httpx.URL, see
+    # _http.py) so the guard can never disagree with the client about which
+    # host a URL targets. A guard that extracts the host with a different
+    # parser than the transport invites parser-differential bypasses.
     try:
-        parsed = urlparse(url)
-        host = (parsed.hostname or "").lower()
-    except ValueError:
+        parsed = httpx.URL(url)
+    except httpx.InvalidURL:
         return False
+    # The carve-out is limited to HTTP(S) so credential guards fail closed on
+    # any other scheme (e.g. ws://localhost).
+    if parsed.scheme.lower() not in ("http", "https"):
+        return False
+    host = parsed.host.lower()
     return host in ("localhost", "127.0.0.1", "::1") or host.endswith(".localhost")
 
 
 def same_origin(a: str, b: str) -> bool:
+    # Same parser as the transport (httpx.URL) — see is_localhost.
     try:
-        ua = urlparse(a)
-        ub = urlparse(b)
-    except ValueError:
+        ua = httpx.URL(a)
+        ub = httpx.URL(b)
+    except httpx.InvalidURL:
         return False
     if not ua.scheme or not ub.scheme:
         return False
@@ -74,12 +90,11 @@ def redact_headers(headers: dict[str, str]) -> dict[str, str]:
     return {k: "[REDACTED]" if k.lower() in SENSITIVE_HEADERS else v for k, v in headers.items()}
 
 
-def _normalize_host(parsed) -> str:
-    host = (parsed.hostname or "").lower()
-    try:
-        port = parsed.port
-    except ValueError:
-        return host
+def _normalize_host(parsed: httpx.URL) -> str:
+    host = parsed.host.lower()
+    # httpx already drops an explicit default port (:443/:80) at parse time;
+    # keep the normalization anyway so this cannot silently regress.
+    port = parsed.port
     if port is None:
         return host
     if parsed.scheme.lower() == "https" and port == 443:

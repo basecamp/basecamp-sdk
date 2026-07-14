@@ -26,7 +26,13 @@ public struct URLSessionTransport: Transport, Sendable {
     }
 
     public func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        // The task-level delegate strips the Authorization header when a
+        // redirect leaves the original request's origin — URLSession would
+        // otherwise forward it, leaking the bearer token to the foreign
+        // Location target. A task delegate only shadows the session delegate
+        // for the callbacks it implements (here: redirects), so the caller's
+        // session delegate still handles auth challenges, pinning, metrics.
+        try await session.data(for: request, delegate: CredentialSanitizingRedirectDelegate())
     }
 
     public func dataNoRedirect(for request: URLRequest) async throws -> (Data, URLResponse) {
@@ -42,6 +48,35 @@ public struct URLSessionTransport: Transport, Sendable {
         )
         defer { noRedirectSession.finishTasksAndInvalidate() }
         return try await noRedirectSession.data(for: request)
+    }
+}
+
+/// Strips credentials from a redirect request when it leaves the origin of the
+/// original request, mirroring the Go SDK's redirect policy. Factored out of
+/// the delegate so the policy is unit-testable without a live URLSession.
+func sanitizedRedirectRequest(_ request: URLRequest, originalURL: URL?) -> URLRequest {
+    guard let target = request.url?.absoluteString,
+          let original = originalURL?.absoluteString,
+          isSameOrigin(target, original) else {
+        var stripped = request
+        stripped.setValue(nil, forHTTPHeaderField: "Authorization")
+        return stripped
+    }
+    return request
+}
+
+/// URLSession delegate that follows redirects but strips the Authorization
+/// header when the redirect target is a different origin than the original
+/// request, so the bearer token never travels to a foreign host.
+private final class CredentialSanitizingRedirectDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(sanitizedRedirectRequest(request, originalURL: task.originalRequest?.url))
     }
 }
 

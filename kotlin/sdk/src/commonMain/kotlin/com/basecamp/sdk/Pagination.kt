@@ -1,5 +1,8 @@
 package com.basecamp.sdk
 
+import io.ktor.http.Url
+import io.ktor.http.parseUrl
+
 /**
  * Metadata about a paginated list response.
  */
@@ -86,20 +89,48 @@ internal fun parseNextLink(linkHeader: String?): String? {
  * Used to prevent SSRF via poisoned Link headers.
  */
 internal fun isSameOrigin(url1: String, url2: String): Boolean {
-    val origin1 = extractOrigin(url1) ?: return false
-    val origin2 = extractOrigin(url2) ?: return false
-    return origin1 == origin2
+    val a = parseAbsoluteUrl(url1) ?: return false
+    val b = parseAbsoluteUrl(url2) ?: return false
+    // Url.port falls back to the protocol default, so an explicit default port
+    // is the same origin as no port (https://h:443 ≡ https://h).
+    return a.protocol.name == b.protocol.name &&
+        a.host.lowercase() == b.host.lowercase() &&
+        a.port == b.port
 }
 
-/** Extracts scheme://host:port from a URL string. */
-private fun extractOrigin(url: String): String? {
-    val schemeEnd = url.indexOf("://")
-    if (schemeEnd < 0) return null
-    val afterScheme = schemeEnd + 3
-    // Find end of authority (host:port) — next / or end of string
-    val pathStart = url.indexOf('/', afterScheme)
-    val authority = if (pathStart < 0) url.substring(afterScheme) else url.substring(afterScheme, pathStart)
-    return url.substring(0, schemeEnd) + "://" + authority
+/**
+ * Parses an absolute URL with Ktor's own parser — the SAME parser the
+ * transport uses to dial — so the guard can never disagree with the client
+ * about which host a URL targets. A hand-rolled parser here previously let
+ * `http://evil.example\.localhost/x` pass the localhost carve-out while Ktor
+ * treats `\` as a path separator and dials `evil.example`.
+ *
+ * Returns null (fail closed) when the input is malformed or not absolute:
+ * Ktor parses a scheme-less string as a relative reference against
+ * `http://localhost`, which must never be blessed as localhost/same-origin.
+ */
+private fun parseAbsoluteUrl(url: String): Url? {
+    val parsed = parseUrl(url) ?: return null
+    if (!url.startsWith("${parsed.protocol.name}://", ignoreCase = true)) return null
+    return parsed
+}
+
+/** Returns true if the URL points to localhost over HTTP(S) (for dev/test). */
+internal fun isLocalhost(url: String): Boolean {
+    val parsed = parseAbsoluteUrl(url) ?: return false
+    // The carve-out is limited to HTTP(S) so the credential backstop fails
+    // closed on any other scheme (e.g. ws://localhost).
+    when (parsed.protocol.name) {
+        "http", "https" -> {}
+        else -> return false
+    }
+    // Hostnames are case-insensitive (RFC 3986). Ktor's Url.host excludes
+    // userinfo and port; strip IPv6 brackets in case the engine retains them.
+    val host = parsed.host.lowercase().removePrefix("[").removeSuffix("]")
+    return host == "localhost" ||
+        host == "127.0.0.1" ||
+        host == "::1" ||
+        host.endsWith(".localhost") // RFC 6761 .localhost TLD
 }
 
 /**

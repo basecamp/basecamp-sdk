@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
+from basecamp._security import LAUNCHPAD_AUTHORIZATION_URL
+
+__all__ = ["AuthorizationService", "AsyncAuthorizationService", "LAUNCHPAD_AUTHORIZATION_URL"]
 
 
 class AuthorizationService:

@@ -102,11 +102,10 @@ public final class BasecampClient: Sendable {
         let effectiveTransport = transport ?? URLSessionTransport()
         let cache = config.enableCache ? ETagCache() : nil
 
-        // Validate base URL uses HTTPS (skip for localhost in tests)
+        // Validate base URL uses HTTPS, with the shared localhost carve-out
+        // (loopback, *.localhost per RFC 6761, HTTP(S)-only) for dev/test.
         if let url = URL(string: effectiveConfig.baseURL) {
-            let host = url.host ?? ""
-            let isLocalhost = host == "localhost" || host == "127.0.0.1" || host == "::1"
-            if url.scheme != "https" && !isLocalhost {
+            if url.scheme?.lowercased() != "https" && !isLocalhost(effectiveConfig.baseURL) {
                 preconditionFailure("Base URL must use HTTPS: \(effectiveConfig.baseURL)")
             }
         }

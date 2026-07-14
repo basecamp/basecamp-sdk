@@ -17,6 +17,11 @@ import {
   paginateAll,
 } from "../src/client.js";
 import { BasecampError } from "../src/errors.js";
+import {
+  requireSameOrigin,
+  isSameOriginAllowingLocalhost,
+  requireSecureEndpoint,
+} from "../src/security.js";
 import { exchangeCode, refreshToken } from "../src/oauth/index.js";
 import { discover } from "../src/oauth/discovery.js";
 
@@ -713,6 +718,18 @@ describe("isLocalhost", () => {
     expect(isLocalhost("::1")).toBe(true);
   });
 
+  it("returns true for bracketed IPv6 loopback '[::1]' (as URL.hostname returns it)", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("[::1]")).toBe(true);
+    // URL.hostname brackets IPv6 literals, so this is the value real callers pass.
+    expect(isLocalhost(new URL("http://[::1]:8080/path").hostname)).toBe(true);
+  });
+
+  it("returns false for non-loopback bracketed IPv6", async () => {
+    const { isLocalhost } = await import("../src/security.js");
+    expect(isLocalhost("[2001:db8::1]")).toBe(false);
+  });
+
   it("returns true for .localhost TLD (RFC 6761)", async () => {
     const { isLocalhost } = await import("../src/security.js");
     expect(isLocalhost("myapp.localhost")).toBe(true);
@@ -774,5 +791,133 @@ describe("Header redaction", () => {
     expect(redacted.Authorization).toBe("[REDACTED]");
     expect(redacted.Cookie).toBe("[REDACTED]");
     expect(redacted["Content-Type"]).toBe("application/json");
+  });
+});
+
+
+// =============================================================================
+// Same-Origin Credential Attachment (initial, caller-influenced request)
+// =============================================================================
+
+describe("Same-origin credential attachment", () => {
+  const base = "https://3.basecampapi.com/12345";
+
+  it("requireSameOrigin accepts a same-origin URL", () => {
+    expect(() =>
+      requireSameOrigin("https://3.basecampapi.com/12345/projects.json", base)
+    ).not.toThrow();
+  });
+
+  it("requireSameOrigin accepts a localhost URL (dev carve-out)", () => {
+    expect(() =>
+      requireSameOrigin("http://localhost:3000/projects.json", base)
+    ).not.toThrow();
+  });
+
+  it("requireSameOrigin rejects a foreign-origin URL", () => {
+    expect(() =>
+      requireSameOrigin("https://evil.example/steal.json", base)
+    ).toThrow("different origin than the configured base URL");
+  });
+
+  it("requireSameOrigin throws a validation BasecampError", () => {
+    let caught: unknown;
+    try {
+      requireSameOrigin("https://evil.example/steal.json", base);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BasecampError);
+    expect((caught as BasecampError).code).toBe("validation");
+  });
+
+  it("isSameOriginAllowingLocalhost honors the localhost carve-out", () => {
+    expect(isSameOriginAllowingLocalhost("https://3.basecampapi.com/x", base)).toBe(true);
+    expect(isSameOriginAllowingLocalhost("http://127.0.0.1:9999/x", base)).toBe(true);
+    expect(isSameOriginAllowingLocalhost("https://evil.example/x", base)).toBe(false);
+  });
+
+  it("isSameOriginAllowingLocalhost recognizes IPv6 loopback [::1]", () => {
+    // URL.hostname brackets IPv6 literals; the carve-out must still match.
+    expect(isSameOriginAllowingLocalhost("http://[::1]:8080/x", base)).toBe(true);
+  });
+
+  it("isSameOriginAllowingLocalhost limits the localhost carve-out to HTTP(S)", () => {
+    // Credentials must fail closed on non-HTTP(S) schemes even for localhost.
+    expect(isSameOriginAllowingLocalhost("ws://localhost:3000/x", base)).toBe(false);
+    expect(isSameOriginAllowingLocalhost("ftp://localhost/x", base)).toBe(false);
+  });
+
+  it("guard errors truncate the caller-supplied URL", () => {
+    const huge = "https://evil.example/" + "a".repeat(10_000);
+    let caught: unknown;
+    try {
+      requireSameOrigin(huge, base);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BasecampError);
+    expect((caught as BasecampError).message.length).toBeLessThan(700);
+  });
+
+  it("requireSecureEndpoint allows HTTPS anywhere and HTTP only for localhost", () => {
+    expect(() => requireSecureEndpoint("https://launchpad.37signals.com/authorization.json", "endpoint")).not.toThrow();
+    expect(() => requireSecureEndpoint("http://localhost:3000/authorization.json", "endpoint")).not.toThrow();
+    expect(() => requireSecureEndpoint("http://evil.example/authorization.json", "endpoint")).toThrow("must use HTTPS");
+    // Non-HTTP(S) schemes are rejected even for localhost.
+    expect(() => requireSecureEndpoint("ws://localhost:3000/authorization.json", "endpoint")).toThrow("must use HTTPS");
+  });
+
+  it("guard fails closed before any request is sent to a foreign origin", () => {
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy as unknown as typeof globalThis.fetch;
+    try {
+      expect(() =>
+        requireSameOrigin("https://evil.example/steal.json", base)
+      ).toThrow();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+// =============================================================================
+// Cross-Origin Redirect Authorization Stripping
+// =============================================================================
+
+describe("cross-origin redirect Authorization stripping", () => {
+  it("fetch drops the bearer token when a redirect leaves the origin", async () => {
+    // The SDK relies on the WHATWG fetch spec (undici) to strip Authorization
+    // when following a cross-origin redirect, rather than stripping it
+    // explicitly. This test pins that platform guarantee: if a runtime or
+    // dependency bump ever regresses it, the token would silently leak to the
+    // Location target — this turns that into a CI failure.
+    let evilHit = false;
+    let evilAuth: string | null = "unset";
+
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        return new HttpResponse(null, {
+          status: 302,
+          headers: { Location: "https://evil.example/stolen" },
+        });
+      }),
+      http.get("https://evil.example/stolen", ({ request }) => {
+        evilHit = true;
+        evilAuth = request.headers.get("Authorization");
+        return HttpResponse.json([]);
+      })
+    );
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+    await client.GET("/projects.json");
+
+    expect(evilHit).toBe(true);
+    expect(evilAuth).toBeNull();
   });
 });

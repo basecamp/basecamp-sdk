@@ -1,7 +1,7 @@
 /**
  * Tests for the AuthorizationService
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
@@ -86,6 +86,36 @@ describe("AuthorizationService", () => {
       );
 
       await expect(client.authorization.getInfo()).rejects.toThrow(BasecampError);
+    });
+  });
+
+  describe("getInfo endpoint validation", () => {
+    it("rejects a non-HTTPS custom endpoint without sending the token", async () => {
+      const originalFetch = globalThis.fetch;
+      const fetchSpy = vi.fn();
+      globalThis.fetch = fetchSpy as unknown as typeof globalThis.fetch;
+      try {
+        await expect(
+          client.authorization.getInfo({ endpoint: "http://evil.example/authorization.json" })
+        ).rejects.toThrow("HTTPS");
+        expect(fetchSpy).not.toHaveBeenCalled();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("allows an HTTPS custom endpoint override", async () => {
+      const customUrl = "https://custom.example.com/authorization.json";
+      server.use(http.get(customUrl, () => HttpResponse.json(sampleAuthResponse())));
+      const info = await client.authorization.getInfo({ endpoint: customUrl });
+      expect(info.identity.id).toBe(100);
+    });
+
+    it("allows a localhost custom endpoint override", async () => {
+      const localUrl = "http://localhost:3000/authorization.json";
+      server.use(http.get(localUrl, () => HttpResponse.json(sampleAuthResponse())));
+      const info = await client.authorization.getInfo({ endpoint: localUrl });
+      expect(info.identity.id).toBe(100);
     });
   });
 });

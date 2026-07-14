@@ -125,6 +125,152 @@ class PaginationTest {
         ))
     }
 
+    @Test
+    fun sameOriginNormalizesDefaultPorts() {
+        // An explicit default port is the same origin as no port (RFC 3986),
+        // so e.g. a :443 pagination Link against a portless base must pass.
+        assertTrue(isSameOrigin(
+            "https://3.basecampapi.com:443/12345/projects.json",
+            "https://3.basecampapi.com",
+        ))
+        assertTrue(isSameOrigin(
+            "http://localhost:80/x",
+            "http://localhost",
+        ))
+        // A non-default port is still a different origin.
+        assertFalse(isSameOrigin(
+            "https://3.basecampapi.com:8443/x",
+            "https://3.basecampapi.com",
+        ))
+        // A query or fragment may directly follow the authority (no path); the
+        // default port must still be normalized.
+        assertTrue(isSameOrigin(
+            "https://3.basecampapi.com:443?page=2",
+            "https://3.basecampapi.com",
+        ))
+        assertTrue(isSameOrigin(
+            "https://3.basecampapi.com:443#top",
+            "https://3.basecampapi.com",
+        ))
+    }
+
+    @Test
+    fun sameOriginIgnoresSchemeCase() {
+        // Scheme is case-insensitive (RFC 3986): an uppercase-scheme URL must
+        // still be recognized as same-origin, not misclassified as foreign.
+        assertTrue(isSameOrigin(
+            "HTTPS://3.basecampapi.com/12345/projects.json",
+            "https://3.basecampapi.com",
+        ))
+    }
+
+    // =========================================================================
+    // isLocalhost
+    // =========================================================================
+
+    @Test
+    fun isLocalhostRecognizesLoopback() {
+        assertTrue(isLocalhost("https://localhost:3000/x.json"))
+        assertTrue(isLocalhost("http://127.0.0.1:8080/x"))
+        // Hostnames are case-insensitive (RFC 3986).
+        assertTrue(isLocalhost("https://LOCALHOST/x.json"))
+        // RFC 6761 .localhost TLD.
+        assertTrue(isLocalhost("https://myapp.localhost/x.json"))
+    }
+
+    @Test
+    fun isLocalhostRejectsLocalhostLookalikes() {
+        // A host that merely contains "localhost" is not localhost.
+        assertFalse(isLocalhost("https://localhost.evil.example/x"))
+        assertFalse(isLocalhost("https://notlocalhost/x"))
+        // The host ends at ?, or # — localhost text in a query or fragment
+        // must not make a foreign host pass the carve-out.
+        assertFalse(isLocalhost("http://evil.example#foo.localhost"))
+        assertFalse(isLocalhost("http://evil.example?x=.localhost"))
+        // Userinfo is not the host: localhost text before '@' must not make a
+        // foreign host pass the carve-out.
+        assertFalse(isLocalhost("http://localhost:80@evil.example/path"))
+        assertFalse(isLocalhost("http://localhost@evil.example/path"))
+        // A genuine localhost URL with userinfo still qualifies.
+        assertTrue(isLocalhost("http://user:secret@localhost:3000/x"))
+    }
+
+    @Test
+    fun isLocalhostRecognizesBracketedIpv6Loopback() {
+        // RFC 3986 requires IPv6 literals in URLs to be bracketed, e.g. [::1].
+        assertTrue(isLocalhost("http://[::1]:8080/path"))
+        assertTrue(isLocalhost("https://[::1]/x.json"))
+    }
+
+    @Test
+    fun isLocalhostRejectsForeignHosts() {
+        assertFalse(isLocalhost("https://3.basecampapi.com/x"))
+        assertFalse(isLocalhost("https://evil.example/x"))
+    }
+
+    @Test
+    fun isLocalhostLimitsCarveOutToHttpSchemes() {
+        // The credential backstop must fail closed on non-HTTP(S) schemes,
+        // even for localhost.
+        assertFalse(isLocalhost("ws://localhost:3000/x"))
+        assertFalse(isLocalhost("ftp://127.0.0.1/x"))
+    }
+
+    @Test
+    fun guardsFailClosedOnRelativeInput() {
+        // Ktor parses a scheme-less string as a relative reference against
+        // http://localhost — the guards must reject it, not bless it.
+        assertFalse(isLocalhost("localhost"))
+        assertFalse(isLocalhost("evil.example/x"))
+        assertFalse(isSameOrigin("3.basecampapi.com", "https://3.basecampapi.com"))
+        assertFalse(isSameOrigin("https://3.basecampapi.com", "3.basecampapi.com"))
+    }
+
+    // =========================================================================
+    // Parser-differential regression
+    // =========================================================================
+
+    /**
+     * A security guard must decide with the SAME parser the transport uses to
+     * dial. For each adversarial URL: whenever the guard blesses it, the host
+     * Ktor would actually dial (parseUrl — what HttpClient.request uses) must
+     * be the host the guard thought it blessed. Near-tautological after the
+     * parseUrl rewrite — but it fails loudly if anyone reintroduces a second
+     * parser here.
+     */
+    @Test
+    fun guardDecidesWithTheTransportParser() {
+        val base = "https://3.basecampapi.com"
+        val corpus = listOf(
+            """http://evil.example\.localhost/x""",
+            "http://localhost@evil.example/x",
+            "http://evil.example#foo.localhost",
+            "http://evil.example?x=.localhost",
+            "http://localhost:80@evil.example/x",
+            "https://3.basecampapi.com:443@evil.example/x",
+            "http://[::1]/x",
+            "HTTPS://localhost/x",
+            "https://3.basecampapi.com:443/x",
+            "http://localhost.evil.example/x",
+        )
+        for (url in corpus) {
+            val dialed = parseUrl(url)?.host?.lowercase()?.removePrefix("[")?.removeSuffix("]")
+            if (isLocalhost(url)) {
+                assertTrue(
+                    dialed == "localhost" || dialed == "127.0.0.1" || dialed == "::1" ||
+                        dialed?.endsWith(".localhost") == true,
+                    "isLocalhost blessed $url but the transport dials $dialed",
+                )
+            }
+            if (isSameOrigin(url, base)) {
+                assertEquals(
+                    parseUrl(base)!!.host.lowercase(), dialed,
+                    "isSameOrigin blessed $url against $base but the transport dials $dialed",
+                )
+            }
+        }
+    }
+
     // =========================================================================
     // parseRetryAfter
     // =========================================================================

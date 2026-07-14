@@ -12,7 +12,7 @@ import metadata from "./generated/metadata.js";
 import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
 import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
-import { isLocalhost } from "./security.js";
+import { isLocalhost, requireSameOrigin } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
@@ -281,7 +281,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   const client = createClient<paths>({ baseUrl });
 
   // Apply middleware in order: auth first, then hooks, then cache, then retry
-  client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs));
+  client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs, baseUrl));
 
   if (hooks) {
     client.use(createHooksMiddleware(hooks));
@@ -310,6 +310,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   // Create fetchPage closure for pagination — uses same auth & User-Agent as main client
   const fetchPage = async (url: string): Promise<Response> => {
+    requireSameOrigin(url, baseUrl);
     const headers = new Headers({
       "User-Agent": userAgent,
       Accept: "application/json",
@@ -320,6 +321,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   // Authenticated fetch for multipart uploads — adds auth + User-Agent, caller controls body/method
   const authenticatedFetch = async (url: string, init: RequestInit): Promise<Response> => {
+    requireSameOrigin(url, baseUrl);
     const headers = new Headers(init.headers);
     headers.set("User-Agent", userAgent);
     await authStrategy.authenticate(headers);
@@ -417,9 +419,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 // Auth Middleware
 // =============================================================================
 
-function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, requestTimeoutMs: number): Middleware {
+function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, requestTimeoutMs: number, baseUrl: string): Middleware {
   return {
     async onRequest({ request }) {
+      // Backstop: never attach credentials to a foreign origin.
+      requireSameOrigin(request.url, baseUrl);
       await authStrategy.authenticate(request.headers);
       request.headers.set("User-Agent", userAgent);
       // Only set Content-Type if not already set (preserves binary uploads, etc.)

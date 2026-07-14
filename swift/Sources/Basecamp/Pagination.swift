@@ -103,14 +103,25 @@ func resolveURL(base: String, target: String) -> String {
 }
 
 /// Checks whether two absolute URLs share the same origin (scheme + host + port).
+///
+/// Parses with `URL(string:)` — the SAME parser `HTTPClient` uses to dial —
+/// so the guard can never disagree with the transport about which host a URL
+/// targets. `URLComponents(string:)` is a distinct Foundation parser that can
+/// diverge on malformed input (a parser-differential bypass).
 func isSameOrigin(_ a: String, _ b: String) -> Bool {
-    guard let urlA = URLComponents(string: a),
-          let urlB = URLComponents(string: b)
+    guard let urlA = URL(string: a),
+          let urlB = URL(string: b),
+          // Fail closed on scheme-less/host-less (relative) input.
+          let schemeA = urlA.scheme?.lowercased(),
+          let schemeB = urlB.scheme?.lowercased(),
+          let hostA = urlA.host?.lowercased(),
+          let hostB = urlB.host?.lowercased()
     else { return false }
 
-    return urlA.scheme == urlB.scheme
-        && urlA.host == urlB.host
-        && (urlA.port ?? defaultPort(for: urlA.scheme)) == (urlB.port ?? defaultPort(for: urlB.scheme))
+    // Scheme and host are case-insensitive (RFC 3986); normalize before comparing.
+    return schemeA == schemeB
+        && hostA == hostB
+        && (urlA.port ?? defaultPort(for: schemeA)) == (urlB.port ?? defaultPort(for: schemeB))
 }
 
 /// Parses the `X-Total-Count` header from a URL response.
@@ -127,4 +138,24 @@ private func defaultPort(for scheme: String?) -> Int? {
     case "http": 80
     default: nil
     }
+}
+
+/// Checks whether a URL points to localhost over HTTP(S) (for dev/test carve-out).
+///
+/// Parses with `URL(string:)` — the SAME parser `HTTPClient` uses to dial —
+/// see `isSameOrigin` for why the guard must not use a second parser.
+func isLocalhost(_ urlString: String) -> Bool {
+    guard let url = URL(string: urlString),
+          var host = url.host?.lowercased() else { return false }
+    // The carve-out is limited to HTTP(S) so credential guards fail closed on
+    // any other scheme (e.g. ws://localhost).
+    switch url.scheme?.lowercased() {
+    case "http", "https": break
+    default: return false
+    }
+    // Strip IPv6 brackets if the platform's URL.host retains them.
+    if host.hasPrefix("["), host.hasSuffix("]") {
+        host = String(host.dropFirst().dropLast())
+    }
+    return host == "localhost" || host == "127.0.0.1" || host == "::1" || host.hasSuffix(".localhost")
 }
