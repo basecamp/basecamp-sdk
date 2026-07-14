@@ -151,8 +151,12 @@ validate_snapshot() {
       and ((.pages | type) == "array")
       and ((.pages | length) > 0)
       and (.pages_count == (.pages | length))
+      and all(.pages[];
+            type == "object"
+            and has("status") and has("headers") and has("body")
+            and has("bodyText") and has("url"))
     ' "$snap" >/dev/null 2>&1; then
-    echo "ERROR: structurally invalid wire snapshot '$snap' (expected an object with a non-empty pages array and matching pages_count)" >&2
+    echo "ERROR: structurally invalid wire snapshot '$snap' (expected an object with a non-empty pages array, matching pages_count, and {status, headers, body, bodyText, url} on every page)" >&2
     exit 2
   fi
 }
@@ -231,11 +235,13 @@ for entry in "${TEST_ENTRIES[@]}"; do
   # empty-string path ("" = body root) isn't confused with no paths at all.
   if ! ALLOW_JSON="$(jq -c '
       (.pairwiseAssertions // [])
-      | map(select(.type == "pairwiseDeltaAllowed"))
-      | map(.paths // [])
-      | flatten
+      | map(select(.type == "pairwiseDeltaAllowed") | (.paths // []))
+      | if all(.[]; type == "array" and all(.[]; type == "string"))
+        then flatten
+        else error("pairwiseDeltaAllowed paths must be arrays of strings")
+        end
     ' <<<"$entry")"; then
-    echo "ERROR: failed to extract pairwiseDeltaAllowed paths for $OPERATION" >&2
+    echo "ERROR: failed to extract pairwiseDeltaAllowed paths for $OPERATION (each waiver'\''s 'paths' must be an array of strings — a bare-string paths would silently suppress enforcement)" >&2
     exit 2
   fi
   ALLOW_COUNT="$(jq -r 'length' <<<"$ALLOW_JSON")"

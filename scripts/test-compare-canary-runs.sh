@@ -20,6 +20,15 @@
 #         skipping; null (absent) counts as the empty key set on either side.
 set -euo pipefail
 
+# Fail fast with one clear message rather than sixteen confusing scenario
+# failures: compare-canary-runs.sh requires bash >= 4.4 (mapfile -d), and on
+# macOS `/usr/bin/env bash` may resolve to the system 3.2.
+if [ -z "${BASH_VERSINFO:-}" ] || [ "${BASH_VERSINFO[0]}" -lt 4 ] \
+  || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 4 ]; }; then
+  echo "ERROR: bash >= 4.4 is required (found ${BASH_VERSION:-unknown}). On macOS: brew install bash" >&2
+  exit 2
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPARE="$SCRIPT_DIR/compare-canary-runs.sh"
 REAL_TESTS="$SCRIPT_DIR/../conformance/tests/live-my-surface.json"
@@ -436,6 +445,52 @@ if [ "$RUN_RC" -eq 1 ] && grep -q "pairwiseEqual(<body>)" <<<"$RUN_OUT"; then
   pass "O2: trailing body-root path violation still fails (exit 1)"
 else
   fail "O2: expected exit 1 with body-root violation; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test P: a waiver whose `paths` is a bare string (not an array) is an
+# operator error — flatten would otherwise accept the string as one allowed
+# path and silently suppress the enforcing rule (false-green, not a typo).
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs P)"
+WV_TESTS="$TMP/P/wv-tests.json"
+cat >"$WV_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Waiver type test",
+    "operation": "WvOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["memories"], "reason": "no shrink" },
+      { "type": "pairwiseDeltaAllowed", "paths": "memories", "reason": "typo: bare string, must be rejected" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Waiver_type_test.json" WvOp '{"memories":[1,2,3]}'
+write_snapshot "$BC5/Waiver_type_test.json" WvOp '{"memories":[]}'
+run_compare "$BC4" "$BC5" "$WV_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "must be an array of strings" <<<"$RUN_OUT"; then
+  pass "P: bare-string waiver paths fails with exit 2, no silent suppression"
+else
+  fail "P: expected exit 2 with waiver type error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test Q: a page object missing the documented keys (e.g. no body) is a
+# structurally invalid snapshot — reads would return null and false-green.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs Q)"
+write_snapshot "$BC4/Eq_order_test.json" EqOp '{"obj":{"a":1}}'
+printf '{"operation":"EqOp","pages":[{"status":200}],"pages_count":1}' >"$BC5/Eq_order_test.json"
+run_compare "$BC4" "$BC5" "$EQ_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "structurally invalid wire snapshot" <<<"$RUN_OUT"; then
+  pass "Q: page missing documented keys fails with exit 2"
+else
+  fail "Q: expected exit 2 for body-less page; got rc=$RUN_RC: $RUN_OUT"
 fi
 
 echo ""

@@ -494,13 +494,19 @@ conformance-live:
 	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 1)
 	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 1)
-	@echo "==> conformance-live: capturing canonical wire snapshots (TypeScript)..."
-	$(MAKE) conformance-typescript-live
-	@echo "==> Running cross-language wire-replay against just-captured snapshots..."
-	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-ruby-replay
-	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-python-replay
-	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-go-replay
-	WIRE_REPLAY_DIR="$$LIVE_RECORD_DIR" $(MAKE) conformance-kotlin-replay
+	@# Canonicalize LIVE_RECORD_DIR before fanning out: the capture and
+	@# replay recipes each `cd` into their runner directory, so a relative
+	@# path (e.g. the documented tmp/live-canary) would scatter snapshots
+	@# under conformance/runner/*/ while the pairwise compare reads from
+	@# the repo root — missing-snapshot errors instead of a comparison.
+	@LRD="$$LIVE_RECORD_DIR"; case "$$LRD" in /*) ;; *) LRD="$$(pwd)/$$LRD" ;; esac; \
+	echo "==> conformance-live: capturing canonical wire snapshots (TypeScript)..." && \
+	LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-typescript-live && \
+	echo "==> Running cross-language wire-replay against just-captured snapshots..." && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-ruby-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-python-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-go-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-kotlin-replay
 	@echo "==> conformance-live: capture + replay complete for backend $$BASECAMP_BACKEND"
 
 # Top-level orchestrator: full canary against BC4 then BC5, then pairwise comparison.
