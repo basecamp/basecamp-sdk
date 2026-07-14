@@ -45,7 +45,9 @@ REAL_TESTS="$SCRIPT_DIR/../conformance/tests/live-my-surface.json"
 GMN_TEST_NAME="GetMyNotifications decodes unreads/reads/memories/bubble_ups"
 GMN_SAFE_NAME="GetMyNotifications_decodes_unreads_reads_memories_bubble_ups"
 
-TMP="$(mktemp -d)"
+# Template form for portability: current macOS mktemp accepts a bare -d,
+# but older BSD variants insist on a template — and the template costs nothing.
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/compare-canary-tests.XXXXXX")"
 trap 'rm -rf -- "$TMP"' EXIT
 
 # Scenarios A–D exercise the real GetMyNotifications entry (golden filename,

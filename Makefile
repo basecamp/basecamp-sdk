@@ -553,6 +553,9 @@ check-bc5-compat:
 	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD_ORIG'" >&2; exit 2 ;; \
 	  ".."|"../"*|*"/.."|*"/../"*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR with a '..' path segment: '$$LRD_ORIG'" >&2; exit 2 ;; \
 	esac; \
+	case "$$(pwd)/" in \
+	  "$$LRD"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
+	esac; \
 	rm -rf -- "$$LRD"
 	@echo "==> check-bc5-compat: BC4 pass"
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
