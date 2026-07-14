@@ -389,13 +389,15 @@ Path syntax (dotted identifiers, evaluated against each snapshot):
 - `foo.bar` is shorthand for `pages[0].body.foo.bar` — single-page bodies.
 - `pages[N].body.X` addresses a specific page in multi-page snapshots.
 - `pages[*].body.X` aggregates across pages into a list (each page's value
-  becomes one element of the result). `pairwiseEqual` and
-  `pairwiseSupersetKeys` see that list as a single value;
-  `pairwiseSupersetArray` compares the **total item count across pages**
-  (a page missing the field contributes 0; any non-null non-array page
-  value is invalid), so a field dropped on every page fails even when
-  page counts match, and redistribution across page boundaries with the
-  total preserved passes.
+  becomes one element of the result). `pairwiseEqual` compares that list as
+  a single value. `pairwiseSupersetArray` compares the **total item count
+  across pages** (a page missing the field contributes 0; any non-null
+  non-array page value is invalid), so a field dropped on every page fails
+  even when page counts match, and redistribution across page boundaries
+  with the total preserved passes. `pairwiseSupersetKeys` does **not**
+  support `pages[*]` — the aggregate is a list, not an object, and the rule
+  flags it as an invalid target; address a specific page
+  (`pages[N].body.X`) for keys checks on paginated endpoints.
 
 Example — the canonical `memories` canary on `GetMyNotifications`:
 
