@@ -541,6 +541,38 @@ else
   fail "S: expected exit 2 with operation mismatch; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# ---------------------------------------------------------------------------
+# Test T: a waiver with an empty (or missing) `paths` array is an operator
+# error at runtime — schema.json's minItems:1 doesn't apply when the compare
+# script runs standalone, and an empty waiver is always a fixture mistake.
+# ---------------------------------------------------------------------------
+read -r BC4 BC5 <<<"$(fresh_dirs T)"
+EW_TESTS="$TMP/T/ew-tests.json"
+cat >"$EW_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Waiver empty paths test",
+    "operation": "EwOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseEqual", "paths": ["obj"], "reason": "must match" },
+      { "type": "pairwiseDeltaAllowed", "paths": [], "reason": "empty waiver is a fixture mistake" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Waiver_empty_paths_test.json" EwOp '{"obj":1}'
+write_snapshot "$BC5/Waiver_empty_paths_test.json" EwOp '{"obj":1}'
+run_compare "$BC4" "$BC5" "$EW_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "non-empty array" <<<"$RUN_OUT"; then
+  pass "T: empty waiver paths fails with exit 2 at runtime"
+else
+  fail "T: expected exit 2 with non-empty-paths error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
