@@ -551,7 +551,7 @@ check-bc5-compat:
 	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD_ORIG'" >&2; exit 2 ;; \
 	  *..*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR containing '..': '$$LRD_ORIG'" >&2; exit 2 ;; \
 	esac; \
-	rm -rf "$$LRD"
+	rm -rf -- "$$LRD"
 	@echo "==> check-bc5-compat: BC4 pass"
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
 	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \

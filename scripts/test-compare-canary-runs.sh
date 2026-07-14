@@ -41,7 +41,7 @@ GMN_TEST_NAME="GetMyNotifications decodes unreads/reads/memories/bubble_ups"
 GMN_SAFE_NAME="GetMyNotifications_decodes_unreads_reads_memories_bubble_ups"
 
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf -- "$TMP"' EXIT
 
 # Scenarios A–D exercise the real GetMyNotifications entry (golden filename,
 # memories waiver, missing-snapshot hard error). Filter that one entry out of
