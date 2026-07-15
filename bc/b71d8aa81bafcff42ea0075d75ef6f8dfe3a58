@@ -1,0 +1,97 @@
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_01508c86ed26db 4-12,17-23,25,27-30,33,37-50,59-60,64-110,112-113,115,117-123,125-150,152-170,172,175-220,226,228,230-232,235-237,239,245-251,254,276-280,282-283,287-288,291-497
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_f6934ad68208de 1-75
+conformance/oauth/fixtures/13-device-only-as.json
+  s_b250506ef28983::t_106dc00a5bda72 1-20
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_42f67cae215cf1 1-62
+conformance/oauth/fixtures/08-as-metadata-500.json
+  s_b250506ef28983::t_7ddd8a8b67a572 1-30
+conformance/oauth/fixtures/07-issuer-binding-mismatch.json
+  s_b250506ef28983::t_e66f1fa1aa53f8 1-32
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_101ff76d1d6f9e 1-118
+conformance/oauth/fixtures/04-only-launchpad.json
+  s_b250506ef28983::t_704af4e1c0ed40 1-16
+typescript/tests/oauth/resource-discovery.test.ts
+  s_b250506ef28983::t_cd0f617b346d54 1-251
+python/tests/oauth/test_resource_discovery.py
+  s_b250506ef28983::t_c113a7560e171a 1-205
+conformance/oauth/fixtures/22-grant-types-not-array.json
+  s_b250506ef28983::t_7300181750eaf4 1-20
+ruby/lib/basecamp/http.rb
+  s_b250506ef28983::t_21db5f5a5287ef 64-65,68-72,74,77-82
+conformance/oauth/README.md
+  s_b250506ef28983::t_e5cc5b0c296687 1-38
+conformance/oauth/fixtures/02-no-as-advertised-absent.json
+  s_b250506ef28983::t_892516f597a84f 1-16
+conformance/oauth/fixtures/15-origin-root-malformed-port.json
+  s_b250506ef28983::t_adb9f06943abe4 1-12
+conformance/oauth/fixtures/01-two-hop-happy-path.json
+  s_b250506ef28983::t_c73358083d2483 1-30
+conformance/oauth/fixtures/06-hop1-transport-failure.json
+  s_b250506ef28983::t_4e18af72766860 1-13
+go/pkg/basecamp/oauth/discovery.go
+  s_b250506ef28983::t_5eaad0ca5279a2 6,10,12-32,36-40,54-84,86-111,113-229,233,235,239-304,307-316,318-492,494-496
+conformance/oauth/fixtures/11-expected-issuer-unavailable.json
+  s_b250506ef28983::t_7a83ed2de7c1b1 1-24
+conformance/oauth/fixtures/21-authorization-servers-not-array.json
+  s_b250506ef28983::t_aa39243ca0bdc5 1-19
+conformance/oauth/fixtures/05-resource-mismatch.json
+  s_b250506ef28983::t_654b112b185e1e 1-19
+go/pkg/basecamp/oauth/types.go
+  s_b250506ef28983::t_d3270b2847041d 4-6,8-11,13-170
+conformance/oauth/fixtures/20-invalid-issuer-origin.json
+  s_b250506ef28983::t_8d93c48e79d000 1-23
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_b250506ef28983::t_8b29de6bdd5471 1-172
+conformance/oauth/fixtures/16-origin-root-path-rejected.json
+  s_b250506ef28983::t_c58a9c9a92f370 1-12
+conformance/oauth/fixtures/17-origin-root-ipv6-localhost-accept.json
+  s_b250506ef28983::t_15f673aae25e52 1-11
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_b250506ef28983::t_d0c17a8a1eeeea 8-11,16-19,29-30,35-36,39-47,51-52,55-63,68-69,71-125
+conformance/oauth/fixtures/12-empty-string-endpoint.json
+  s_b250506ef28983::t_3aabee3d6ddc3f 1-20
+python/src/basecamp/oauth/discovery.py
+  s_b250506ef28983::t_3a006eab3e8ea8 1-14,17-19,22-30,36-37,40-43,45-46,48-52,54-71,77-79,82-83,87,89-103,105-111,115-147,150,152-153,156-157,161-167,169-172,174-188,191,193-301
+conformance/oauth/fixtures/03-no-as-advertised-empty-array.json
+  s_b250506ef28983::t_8907e736ec091c 1-16
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_3e98e05c1380d1 5-7,9-15,18-22,24-27,30-31,33-37,39,41-48,50-56,58-61,63-64,66-75,77-82,84-87,90-95,97-103
+conformance/oauth/fixtures/14-origin-root-http-nonlocalhost.json
+  s_b250506ef28983::t_383ba9093fcba7 1-12
+conformance/oauth/fixtures/09-ambiguous-issuers.json
+  s_b250506ef28983::t_d9efcc28f36810 1-24
+conformance/oauth/schema.json
+  s_b250506ef28983::t_23c3add08d4f45 1-98
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_0cfa7d861de860 1-116
+conformance/oauth/fixtures/19-ssrf-redirect-not-followed.json
+  s_b250506ef28983::t_80079a4da3cd21 1-16
+go/pkg/basecamp/oauth/resource_discovery_test.go
+  s_b250506ef28983::t_2b74c869550529 1-455
+conformance/oauth/fixtures/10-expected-issuer-selected.json
+  s_b250506ef28983::t_ddacd5f52513b6 1-29
+conformance/oauth/fixtures/18-ssrf-oversized-body.json
+  s_b250506ef28983::t_521087df290bc3 1-20
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_d144ee2fa26376 1-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bcb71d8aa81bafcff42ea0075d75ef6f8dfe3a58",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
