@@ -14,29 +14,25 @@ import (
 func TestDiscoverer_Discover(t *testing.T) {
 	tests := []struct {
 		name       string
-		response   any
 		statusCode int
+		// bindIssuer serves metadata whose issuer equals the server origin so
+		// the RFC 8414 issuer binding passes.
+		bindIssuer bool
 		wantErr    bool
 	}{
 		{
-			name: "successful discovery",
-			response: Config{
-				Issuer:                "https://example.com",
-				AuthorizationEndpoint: "https://example.com/authorize",
-				TokenEndpoint:         "https://example.com/token",
-			},
+			name:       "successful discovery",
 			statusCode: http.StatusOK,
+			bindIssuer: true,
 			wantErr:    false,
 		},
 		{
 			name:       "server error",
-			response:   "Internal Server Error",
 			statusCode: http.StatusInternalServerError,
 			wantErr:    true,
 		},
 		{
 			name:       "not found",
-			response:   "Not Found",
 			statusCode: http.StatusNotFound,
 			wantErr:    true,
 		},
@@ -44,18 +40,21 @@ func TestDiscoverer_Discover(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var origin string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/.well-known/oauth-authorization-server" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
 				}
 				w.WriteHeader(tt.statusCode)
-				if tt.statusCode == http.StatusOK {
-					_ = json.NewEncoder(w).Encode(tt.response)
+				if tt.bindIssuer {
+					_, _ = fmt.Fprintf(w, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q}`,
+						origin, origin+"/authorize", origin+"/token")
 				} else {
-					_, _ = w.Write([]byte(tt.response.(string)))
+					_, _ = w.Write([]byte("error body"))
 				}
 			}))
 			defer server.Close()
+			origin = server.URL
 
 			d := NewDiscoverer(server.Client())
 			cfg, err := d.Discover(context.Background(), server.URL)
@@ -64,31 +63,39 @@ func TestDiscoverer_Discover(t *testing.T) {
 				t.Errorf("Discover() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
-			if !tt.wantErr && cfg == nil {
-				t.Error("Discover() returned nil config")
+			if !tt.wantErr {
+				if cfg == nil {
+					t.Fatal("Discover() returned nil config")
+				}
+				if cfg.Issuer != origin {
+					t.Errorf("Discover() issuer = %q, want %q", cfg.Issuer, origin)
+				}
 			}
 		})
 	}
 }
 
-func TestDiscoverer_Discover_URLNormalization(t *testing.T) {
+// TestDiscoverer_Discover_TrailingSlash verifies the origin-root profile accepts
+// a trailing "/" (path exactly "/") and still binds the issuer to the origin.
+func TestDiscoverer_Discover_TrailingSlash(t *testing.T) {
+	var origin string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/oauth-authorization-server" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		_ = json.NewEncoder(w).Encode(Config{
-			TokenEndpoint: "https://example.com/token",
-		})
+		_, _ = fmt.Fprintf(w, `{"issuer":%q,"token_endpoint":%q}`, origin, origin+"/token")
 	}))
 	defer server.Close()
+	origin = server.URL
 
 	d := NewDiscoverer(server.Client())
 
-	// Test with trailing slash
-	_, err := d.Discover(context.Background(), server.URL+"/")
+	cfg, err := d.Discover(context.Background(), server.URL+"/")
 	if err != nil {
-		t.Errorf("Discover() with trailing slash failed: %v", err)
+		t.Fatalf("Discover() with trailing slash failed: %v", err)
+	}
+	if cfg.Issuer != origin {
+		t.Errorf("Discover() issuer = %q, want %q", cfg.Issuer, origin)
 	}
 }
 
