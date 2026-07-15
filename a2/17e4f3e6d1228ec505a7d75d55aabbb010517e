@@ -1,0 +1,73 @@
+conformance/oauth/fixtures/12-empty-string-endpoint.json
+  s_b250506ef28983::t_379416d67672f8 1-20
+SPEC.md
+  s_b250506ef28983::t_51e6e1352420dd 915-941,944-953,957-1069
+  s_b250506ef28983::t_473a1a8e679729 1070
+conformance/oauth/fixtures/07-issuer-binding-mismatch.json
+  s_b250506ef28983::t_7b989d0e4b2bd8 1-32
+conformance/oauth/fixtures/03-no-as-advertised-empty-array.json
+  s_b250506ef28983::t_cff4fdface2dc4 1-16
+conformance/oauth/fixtures/04-only-launchpad.json
+  s_b250506ef28983::t_39e9b05519d7fc 1-16
+conformance/oauth/README.md
+  s_b250506ef28983::t_f8dab554e5c069 1-38
+conformance/oauth/fixtures/08-as-metadata-500.json
+  s_b250506ef28983::t_bf5f1041bc3d08 1-30
+conformance/oauth/fixtures/14-origin-root-http-nonlocalhost.json
+  s_b250506ef28983::t_770622eba16197 1-12
+conformance/oauth/fixtures/15-origin-root-malformed-port.json
+  s_b250506ef28983::t_934e4a4264b653 1-12
+conformance/oauth/fixtures/18-ssrf-oversized-body.json
+  s_b250506ef28983::t_83505fa0399c2c 1-20
+conformance/oauth/fixtures/17-origin-root-ipv6-localhost-accept.json
+  s_b250506ef28983::t_c3fc4e52d88aaa 1-11
+conformance/oauth/fixtures/11-expected-issuer-unavailable.json
+  s_b250506ef28983::t_5f7a58a27db702 1-24
+conformance/oauth/fixtures/19-ssrf-redirect-not-followed.json
+  s_b250506ef28983::t_25e090e2b8ef8d 1-16
+conformance/oauth/fixtures/01-two-hop-happy-path.json
+  s_b250506ef28983::t_30aa26d79c208d 1-30
+conformance/oauth/fixtures/06-hop1-transport-failure.json
+  s_b250506ef28983::t_167dbed1ab6b72 1-13
+Makefile
+  s_b250506ef28983::t_1de3ce88cd2931 376-387
+  s_b250506ef28983::t_d4f7a361df0dc9 420
+  s_b250506ef28983::t_c66d51385561ba 658
+conformance/oauth/fixtures/02-no-as-advertised-absent.json
+  s_b250506ef28983::t_0b7bb4d5e6b4ce 1-16
+conformance/oauth/fixtures/20-invalid-issuer-origin.json
+  s_b250506ef28983::t_ace9a8b825accf 1-23
+conformance/oauth/fixtures/09-ambiguous-issuers.json
+  s_b250506ef28983::t_9994e4abee467f 1-24
+conformance/oauth/schema.json
+  s_b250506ef28983::t_fb47e5dff222dc 81
+  s_b250506ef28983::t_7efa40531f0636 1-80,82-98
+conformance/oauth/fixtures/05-resource-mismatch.json
+  s_b250506ef28983::t_f1b53a2289fbad 1-19
+conformance/oauth/fixtures/16-origin-root-path-rejected.json
+  s_b250506ef28983::t_ce540b8c41867c 1-12
+conformance/oauth/fixtures/13-device-only-as.json
+  s_b250506ef28983::t_5b63213c88d837 1-20
+conformance/oauth/fixtures/10-expected-issuer-selected.json
+  s_b250506ef28983::t_064952da0aaf29 1-29
+conformance/oauth/fixtures/21-authorization-servers-not-array.json
+  s_b250506ef28983::t_0146c1430eb084 1-19
+conformance/oauth/fixtures/22-grant-types-not-array.json
+  s_b250506ef28983::t_351b8caca9ca8c 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a217e4f3e6d1228ec505a7d75d55aabbb010517e",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
