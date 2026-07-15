@@ -1,0 +1,39 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Urls.kt
+  s_b250506ef28983::t_c341262e72fee6 1-114
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ErrorTest.kt
+  s_b250506ef28983::t_0f3404036869b5 156,171
+kotlin/README.md
+  s_b250506ef28983::t_7afcd042be02ad 110-141
+  s_b250506ef28983::t_c68157b2f3a03f 155-158,160
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Exchange.kt
+  s_b250506ef28983::t_ac3dff4230dc26 152-154
+  s_b250506ef28983::t_d772ee2dcd8719 12
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_b250506ef28983::t_75e32a7a1a1734 118-142
+  s_b250506ef28983::t_2d040fbccd2682 20
+  s_b250506ef28983::t_9341073cec039d 143
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_b250506ef28983::t_1f0267fe633500 98-100
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_028744dd3cc234 3-13,15,20-40,45,47,50-62,65-89,92-97,100-119,121-126,130,133-137,140-141,143-150,152-187,189,191-297,299-301,303,305-327,329-330,334,338-424
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_d7978588f1d57f 1-21,23-30,32-513
+  s_b250506ef28983::t_e9ec0b3087ec5c 22
+  s_b250506ef28983::t_d5e376dbea6968 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "b0121732bb733dbdf9da01cc5f3bbd15bdcdbd22",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
