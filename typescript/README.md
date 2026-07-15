@@ -227,6 +227,58 @@ Hard cases throw `DiscoverySelectionError` (with a `.reason`); soft cases return
 > discovery hops are SSRF-hardened (HTTPS-only origins, suppressed redirects,
 > bounded body reads).
 
+### Device flow (RFC 8628)
+
+For CLIs and headless/remote environments, use the device authorization grant
+with the public `basecamp-cli` client (no secret). `performDeviceLogin` takes an
+already-selected config, guards the device capability, shows the user code via a
+display hook, and polls for the token:
+
+The device authorization endpoint lives on the **first-party** authorization
+server, not Launchpad — so select a first-party issuer with `discoverFromResource`
+and hand its config to `performDeviceLogin`. (Launchpad advertises no device
+endpoint, so `performDeviceLogin`'s capability guard rejects it with
+`DeviceFlowError("unavailable")`.)
+
+```ts
+import { discoverFromResource, performDeviceLogin, DeviceFlowError } from "@37signals/basecamp";
+
+// 1. Select the first-party AS config (device endpoint + device_code grant).
+const result = await discoverFromResource("https://3.basecampapi.com");
+if (result.kind !== "selected") {
+  // "resource_discovery_failed" | "no_as_advertised" → Launchpad has no device
+  // flow; use the interactive (authorization-code) login instead.
+  throw new Error(`Device flow unavailable: ${result.reason}`);
+}
+
+// 2. Run the device grant against the selected config.
+const abortController = new AbortController();
+try {
+  const token = await performDeviceLogin({
+    config: result.config,
+    clientId: "basecamp-cli",
+    // scope omitted → server default (read)
+    display: ({ userCode, verificationUri }) => {
+      console.log(`Visit ${verificationUri} and enter code: ${userCode}`);
+    },
+    signal: abortController.signal, // optional: cancel the poll
+  });
+  console.log(token.accessToken);
+} catch (err) {
+  if (err instanceof DeviceFlowError) {
+    // err.reason: "access_denied" | "expired" | "transport" | "unavailable" | "cancelled"
+    // err.code (parent category) is derived from the reason:
+    //   access_denied/expired → auth_required, transport → network,
+    //   unavailable → validation, cancelled → usage
+  }
+}
+```
+
+The poll loop honors `interval`, sustains `slow_down` (+5s), backs off
+exponentially on connection timeouts, and enforces a monotonic expiry deadline.
+`requestDeviceAuthorization` and `pollDeviceToken` are exported for lower-level
+use; the polling clock is injectable for testing.
+
 ## Services
 
 The SDK provides typed services for the complete Basecamp API:

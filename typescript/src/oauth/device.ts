@@ -1,0 +1,447 @@
+/**
+ * RFC 8628 device authorization grant — request + poll.
+ *
+ * `requestDeviceAuthorization` obtains a device/user code pair;
+ * `pollDeviceToken` runs the §3.5 polling loop against the token endpoint. Both
+ * are TLS-guarded. The polling clock is monotonic and injectable for tests.
+ */
+
+import { BasecampError } from "../errors.js";
+import { requireSecureEndpoint } from "../security.js";
+import { readBodyBounded } from "./discovery.js";
+import { DeviceFlowError } from "./device-errors.js";
+import type { DeviceAuthorization, OAuthToken, RawTokenResponse, OAuthErrorResponse } from "./types.js";
+
+/** URN grant type for the device authorization grant. */
+export const DEVICE_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:device_code";
+
+/** Default polling interval when the server omits `interval` (RFC 8628 §3.2). */
+const DEFAULT_INTERVAL_SECONDS = 5;
+
+/**
+ * Upper bound (seconds) for `expires_in` / `interval`: 2_147_483 s (~24.8 days),
+ * the largest whole-second duration whose millisecond form (2_147_483_000 ms)
+ * fits a 32-bit signed timer. Beyond it a `setTimeout` silently clamps an
+ * out-of-range delay to 1 ms (hot poll loop) and deadline arithmetic can
+ * overflow. Far above any real device-code lifetime. Shared across all five SDKs
+ * (SPEC.md §16).
+ */
+const MAX_DEVICE_SECONDS = 2_147_483;
+
+/** slow_down bumps the interval by this many seconds, sustained (RFC 8628 §3.5). */
+const SLOW_DOWN_INCREMENT_SECONDS = 5;
+
+/** Cap on exponential backoff after connection timeouts. */
+const MAX_BACKOFF_SECONDS = 60;
+
+/** Cap on a device-auth / token response body (1 MiB) — these docs are tiny. */
+const MAX_DEVICE_BODY_BYTES = 1 * 1024 * 1024;
+
+/** Monotonic clock in milliseconds. Injectable so tests can advance time. */
+export type MonotonicClock = () => number;
+
+/** Default monotonic clock (ms): `performance.now()` when present, else `Date.now()`. */
+export const defaultClock: MonotonicClock = () =>
+  typeof performance !== "undefined" ? performance.now() : Date.now();
+
+/** Raw RFC 8628 device authorization response. */
+interface RawDeviceAuthorization {
+  device_code?: string;
+  user_code?: string;
+  verification_uri?: string;
+  verification_uri_complete?: string;
+  expires_in?: number;
+  interval?: number;
+}
+
+/**
+ * Parameters for {@link requestDeviceAuthorization}.
+ */
+export interface RequestDeviceAuthorizationParams {
+  /** The device_authorization_endpoint from discovery. */
+  deviceAuthorizationEndpoint: string;
+  /** The public client id (e.g. "basecamp-cli"). */
+  clientId: string;
+  /** Requested scope. Omitted from the request entirely when unset → server default `read`. */
+  scope?: string;
+  /** Custom fetch (testing). */
+  fetch?: typeof globalThis.fetch;
+  /** Request timeout in milliseconds (default: 30000). */
+  timeoutMs?: number;
+}
+
+/**
+ * Requests a device/user code pair (RFC 8628 §3.1–3.2).
+ *
+ * @throws DeviceFlowError("transport") on a network failure; BasecampError on
+ *   validation / non-2xx.
+ */
+export async function requestDeviceAuthorization(
+  params: RequestDeviceAuthorizationParams
+): Promise<DeviceAuthorization> {
+  const { deviceAuthorizationEndpoint, clientId, scope, fetch: customFetch = globalThis.fetch, timeoutMs = 30000 } = params;
+
+  requireSecureEndpoint(deviceAuthorizationEndpoint, "device authorization endpoint");
+  if (!clientId) {
+    throw new BasecampError("validation", "Client ID is required for device authorization");
+  }
+
+  const body = new URLSearchParams();
+  body.set("client_id", clientId);
+  // Omit scope entirely when unset so the server applies its default (`read`).
+  if (scope) body.set("scope", scope);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+  try {
+    response = await customFetch(deviceAuthorizationEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      body: body.toString(),
+      signal: controller.signal,
+      // Never chase an attacker-influenced Location: a 3xx surfaces below as a
+      // non-2xx api_error rather than a followed request.
+      redirect: "manual",
+    });
+  } catch (err) {
+    throw new DeviceFlowError("transport", `Device authorization request failed: ${errMessage(err)}`, {
+      cause: err instanceof Error ? err : undefined,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  // Bounded/streaming read: an oversized body aborts before it is fully buffered.
+  const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device authorization");
+  // Reject any non-2xx (including a suppressed 3xx) before parsing.
+  if (response.status < 200 || response.status >= 300) {
+    throw new BasecampError("api_error", `Device authorization failed with status ${response.status}`, {
+      httpStatus: response.status,
+    });
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new BasecampError("api_error", "Failed to parse device authorization response", {
+      httpStatus: response.status,
+    });
+  }
+  // A valid-JSON-but-non-object body (null, array, number, string) is malformed —
+  // fail as api_error before any property deref, never a raw TypeError.
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    throw new BasecampError("api_error", "Device authorization response is not a JSON object", {
+      httpStatus: response.status,
+    });
+  }
+
+  return validateDeviceAuthorization(data as RawDeviceAuthorization);
+}
+
+/**
+ * True iff `value` is a positive integer. Rejects fractional numbers, booleans
+ * (`typeof true === "boolean"`), NaN, Infinity, and undefined — narrowing to
+ * `number` so validated fields carry a definite type downstream.
+ */
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+/** True iff `value` is a non-empty string. Rejects numbers/booleans/null so a
+ * malformed server response can't smuggle a non-string code/URI past validation. */
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthorization {
+  // Type-check, not just truthiness: a JSON number is truthy but is not a usable
+  // code/URI, so it must fail as api_error rather than flow into the poll loop.
+  if (
+    !isNonEmptyString(data.device_code) ||
+    !isNonEmptyString(data.user_code) ||
+    !isNonEmptyString(data.verification_uri)
+  ) {
+    throw new BasecampError("api_error", "Invalid device authorization response: missing or non-string required fields");
+  }
+  // expires_in drives a monotonic deadline; interval drives poll delays. Both
+  // must be positive integers within MAX_DEVICE_SECONDS — a fractional value
+  // (0.5) yields a sub-second delay and a huge value overflows the ms timer
+  // (Node clamps an out-of-range setTimeout to 1 ms → hot poll loop). Booleans
+  // and non-int-valued numbers are likewise rejected.
+  if (!isPositiveInteger(data.expires_in) || data.expires_in > MAX_DEVICE_SECONDS) {
+    throw new BasecampError(
+      "api_error",
+      `Invalid device authorization response: expires_in must be a positive integer no greater than ${MAX_DEVICE_SECONDS}`
+    );
+  }
+  let interval = DEFAULT_INTERVAL_SECONDS;
+  if (data.interval !== undefined) {
+    if (!isPositiveInteger(data.interval) || data.interval > MAX_DEVICE_SECONDS) {
+      throw new BasecampError(
+        "api_error",
+        `Invalid device authorization response: interval must be a positive integer no greater than ${MAX_DEVICE_SECONDS}`
+      );
+    }
+    interval = data.interval;
+  }
+  // Optional, but when present it must be a string — a non-string (number/array)
+  // would return a malformed DeviceAuthorization shape to callers.
+  if (data.verification_uri_complete !== undefined && typeof data.verification_uri_complete !== "string") {
+    throw new BasecampError("api_error", "Invalid device authorization response: verification_uri_complete must be a string");
+  }
+  return {
+    deviceCode: data.device_code,
+    userCode: data.user_code,
+    verificationUri: data.verification_uri,
+    verificationUriComplete: data.verification_uri_complete,
+    expiresIn: data.expires_in,
+    interval,
+  };
+}
+
+/**
+ * Parameters for {@link pollDeviceToken}.
+ */
+export interface PollDeviceTokenParams {
+  /** The token_endpoint from discovery. */
+  tokenEndpoint: string;
+  /** The public client id. */
+  clientId: string;
+  /** The device_code from {@link requestDeviceAuthorization}. */
+  deviceCode: string;
+  /** Polling interval in seconds. */
+  interval: number;
+  /** Code lifetime in seconds (monotonic deadline). */
+  expiresIn: number;
+  /** Cancellation signal — aborting rejects with DeviceFlowError("cancelled"). */
+  signal?: AbortSignal;
+  /** Injectable monotonic clock (ms). Default performance.now(). */
+  clock?: MonotonicClock;
+  /** Custom fetch (testing). */
+  fetch?: typeof globalThis.fetch;
+  /** Per-request timeout in milliseconds (default: 30000). */
+  timeoutMs?: number;
+  /**
+   * Injectable sleep (testing). Receives the wait in ms and the cancellation
+   * signal; defaults to a real, abortable timer. Lets tests assert the interval
+   * schedule (slow_down, backoff) without real delays.
+   */
+  sleepFn?: (ms: number, signal?: AbortSignal) => Promise<void>;
+}
+
+/**
+ * Polls the token endpoint until the user approves, denies, or the codes expire
+ * (RFC 8628 §3.4–3.5). Handles authorization_pending, sustained slow_down (+5s),
+ * a monotonic expiry deadline, exponential backoff on connection timeouts, and
+ * cooperative cancellation.
+ */
+export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OAuthToken> {
+  const {
+    tokenEndpoint,
+    clientId,
+    deviceCode,
+    expiresIn,
+    signal,
+    clock = defaultClock,
+    fetch: customFetch = globalThis.fetch,
+    timeoutMs = 30000,
+    sleepFn = sleep,
+  } = params;
+
+  requireSecureEndpoint(tokenEndpoint, "token endpoint");
+
+  let intervalSeconds = params.interval > 0 ? params.interval : DEFAULT_INTERVAL_SECONDS;
+  let backoffSeconds = intervalSeconds;
+  const deadline = clock() + expiresIn * 1000;
+
+  const body = new URLSearchParams();
+  body.set("grant_type", DEVICE_CODE_GRANT_TYPE);
+  body.set("device_code", deviceCode);
+  body.set("client_id", clientId);
+
+  for (;;) {
+    throwIfAborted(signal);
+
+    // Read the clock ONCE per iteration and reuse it for both the deadline check
+    // and the remaining-lifetime clamp: two separate reads could straddle the
+    // deadline and yield a negative wait for the (possibly injected) sleep seam.
+    const now = clock();
+    // Check the deadline before sleeping so a long display hook, a stalled prior
+    // request, or a long backoff cannot carry us past expiry undetected.
+    if (now >= deadline) {
+      throw new DeviceFlowError("expired", "Device code expired before authorization completed");
+    }
+    // Clamp the wait to the remaining lifetime (guaranteed > 0 here) so the
+    // backoff/interval never overshoots the monotonic deadline.
+    const remainingMs = deadline - now;
+    const waitMs = Math.min(intervalSeconds * 1000, remainingMs);
+    try {
+      await sleepFn(waitMs, signal);
+    } catch (err) {
+      // The caller aborted the signal mid-wait: surface the contractual
+      // cancellation, never let a raw AbortError/DOMException escape.
+      if (isAbort(err)) {
+        throw new DeviceFlowError("cancelled", "Device flow cancelled");
+      }
+      throw err;
+    }
+
+    if (clock() >= deadline) {
+      throw new DeviceFlowError("expired", "Device code expired before authorization completed");
+    }
+
+    let result: TokenPollResult;
+    try {
+      result = await postDeviceToken(tokenEndpoint, body, customFetch, timeoutMs, signal);
+    } catch (err) {
+      if (isAbort(err) && signal?.aborted) {
+        throw new DeviceFlowError("cancelled", "Device flow cancelled");
+      }
+      if (isAbort(err)) {
+        // Our own per-request timeout fired → connection timeout: back off and retry.
+        backoffSeconds = Math.min(backoffSeconds * 2, MAX_BACKOFF_SECONDS);
+        intervalSeconds = Math.max(intervalSeconds, backoffSeconds);
+        continue;
+      }
+      // An already-typed BasecampError (e.g. a malformed 2xx token response, an
+      // oversized body, or a redirect) is a server/API fault — propagate it
+      // unchanged rather than mislabeling it a retryable transport failure.
+      if (err instanceof BasecampError) throw err;
+      // Any other transport failure ends the flow.
+      throw new DeviceFlowError("transport", `Device token poll failed: ${errMessage(err)}`, {
+        cause: err instanceof Error ? err : undefined,
+      });
+    }
+
+    // A successful HTTP round-trip resets the timeout backoff.
+    backoffSeconds = intervalSeconds;
+
+    if (result.kind === "token") return result.token;
+
+    switch (result.error) {
+      case "authorization_pending":
+        continue;
+      case "slow_down":
+        intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS;
+        continue;
+      case "access_denied":
+        throw new DeviceFlowError("access_denied", "The authorization request was denied");
+      case "expired_token":
+        throw new DeviceFlowError("expired", "Device code expired before authorization completed");
+      default:
+        throw new BasecampError("api_error", `Device token request failed: ${result.error}`, {
+          httpStatus: result.status,
+        });
+    }
+  }
+}
+
+type TokenPollResult =
+  | { kind: "token"; token: OAuthToken }
+  | { kind: "error"; error: string; status: number };
+
+async function postDeviceToken(
+  tokenEndpoint: string,
+  body: URLSearchParams,
+  customFetch: typeof globalThis.fetch,
+  timeoutMs: number,
+  signal: AbortSignal | undefined
+): Promise<TokenPollResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
+  try {
+    const response = await customFetch(tokenEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+      body: body.toString(),
+      signal: controller.signal,
+      // Never chase a Location: a redirected token poll is treated as an
+      // api_error below rather than followed.
+      redirect: "manual",
+    });
+    // Bounded/streaming read: an oversized body aborts before it is fully buffered.
+    const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device token");
+    // A suppressed 3xx is never a valid OAuth response — fail as api_error.
+    if (response.status >= 300 && response.status < 400) {
+      throw new BasecampError("api_error", `Device token endpoint returned redirect status ${response.status}`, {
+        httpStatus: response.status,
+      });
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new BasecampError("api_error", "Failed to parse device token response", {
+        httpStatus: response.status,
+      });
+    }
+    // A valid-JSON-but-non-object body (null, array, number, string) is a
+    // malformed OAuth response — fail as api_error before any property deref,
+    // never a raw crash on `data.access_token`/`data.error`.
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      throw new BasecampError("api_error", "Device token response is not a JSON object", {
+        httpStatus: response.status,
+      });
+    }
+    const data = parsed as RawTokenResponse | OAuthErrorResponse;
+    if (response.ok) {
+      const token = data as RawTokenResponse;
+      // Non-empty string, not merely truthy: a numeric access_token is not a
+      // usable credential and must fail as api_error, not be returned downstream.
+      if (!isNonEmptyString(token.access_token)) {
+        throw new BasecampError("api_error", "Device token response missing or non-string access_token");
+      }
+      return {
+        kind: "token",
+        token: {
+          accessToken: token.access_token,
+          refreshToken: token.refresh_token,
+          tokenType: token.token_type || "Bearer",
+          expiresIn: token.expires_in,
+          expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : undefined,
+          scope: token.scope,
+        },
+      };
+    }
+    const error = (data as OAuthErrorResponse).error || `http_${response.status}`;
+    return { kind: "error", error, status: response.status };
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new DeviceFlowError("cancelled", "Device flow cancelled");
+  }
+}
+
+function isAbort(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError";
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}

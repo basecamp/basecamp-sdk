@@ -81,6 +81,24 @@ export type DiscoverFromResourceResult =
   | { kind: "fallback"; reason: FallbackReason };
 
 /**
+ * RFC 8628 device authorization response.
+ */
+export interface DeviceAuthorization {
+  /** The device verification code. */
+  deviceCode: string;
+  /** The end-user code shown to the user. */
+  userCode: string;
+  /** The end-user verification URI. */
+  verificationUri: string;
+  /** The verification URI with the user code embedded (optional). */
+  verificationUriComplete?: string;
+  /** Lifetime of the device/user codes in seconds. */
+  expiresIn: number;
+  /** Minimum polling interval in seconds (defaults to 5 when the server omits it). */
+  interval: number;
+}
+
+/**
  * OAuth 2.0 access token response.
  */
 export interface OAuthToken {
