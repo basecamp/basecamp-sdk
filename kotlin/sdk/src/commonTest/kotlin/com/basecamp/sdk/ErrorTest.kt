@@ -154,6 +154,7 @@ class ErrorTest {
             BasecampException.Validation("invalid"),
             BasecampException.Usage("bad arg"),
             BasecampException.DiscoverySelection("ambiguous_issuers", "ambiguous"),
+            BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED),
         )
 
         for (e in errors) {
@@ -169,6 +170,7 @@ class ErrorTest {
                 is BasecampException.Validation -> "validation"
                 is BasecampException.Usage -> "usage"
                 is BasecampException.DiscoverySelection -> "discovery_selection"
+                is BasecampException.DeviceFlow -> "device_flow"
             }
             assertTrue(code.isNotEmpty())
         }

@@ -111,24 +111,21 @@ suspend fun refreshToken(
     tokenEndpoint: String,
     refreshToken: String,
     clientId: String,
-    clientSecret: String,
+    // Nullable: the public `basecamp-cli` client is a public OAuth client
+    // (`token_endpoint_auth_method: none`) and sends no secret.
+    clientSecret: String? = null,
     useLegacyFormat: Boolean = false,
     client: HttpClient? = null,
 ): OAuthToken {
-    val params = if (useLegacyFormat) {
-        parametersOf(
-            "type" to listOf("refresh"),
-            "refresh_token" to listOf(refreshToken),
-            "client_id" to listOf(clientId),
-            "client_secret" to listOf(clientSecret),
-        )
-    } else {
-        parametersOf(
-            "grant_type" to listOf("refresh_token"),
-            "refresh_token" to listOf(refreshToken),
-            "client_id" to listOf(clientId),
-            "client_secret" to listOf(clientSecret),
-        )
+    val params = Parameters.build {
+        if (useLegacyFormat) {
+            append("type", "refresh")
+        } else {
+            append("grant_type", "refresh_token")
+        }
+        append("refresh_token", refreshToken)
+        append("client_id", clientId)
+        if (!clientSecret.isNullOrEmpty()) append("client_secret", clientSecret)
     }
 
     return postTokenRequest(tokenEndpoint, params, client)
