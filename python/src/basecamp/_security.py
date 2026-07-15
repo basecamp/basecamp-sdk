@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit
 
 import httpx
 
@@ -38,6 +38,65 @@ def require_https(url: str, label: str = "URL") -> None:
         raise UsageError(f"{label} must use HTTPS: {url}")
     if not parsed.hostname:
         raise UsageError(f"{label} must include a hostname: {url}")
+
+
+def _is_localhost_host(host: str) -> bool:
+    h = host.lower()
+    return h in ("localhost", "127.0.0.1", "::1") or h.endswith(".localhost")
+
+
+def require_origin_root(raw: str, label: str = "origin") -> str:
+    """Parse and enforce the origin-root profile, returning the normalized origin.
+
+    Accepts iff scheme is https (or http on localhost), a host is present, any
+    port is valid, the path is empty or exactly ``/``, and there is no query,
+    fragment, or userinfo. Parsing uses ``urllib.parse`` — the transport parser,
+    never a regex — so bracketed IPv6 (``http://[::1]:3000``) and ports agree
+    with the host the client actually dials.
+
+    Raises :class:`~basecamp.errors.UsageError` on any violation: a bad
+    caller-supplied origin is a usage error. Callers validating an *advertised*
+    origin catch and reclassify (e.g. ``invalid_issuer_origin``).
+
+    Returns the normalized origin (``scheme://host[:port]``, no trailing slash,
+    default port dropped).
+    """
+    try:
+        parts = urlsplit(raw)
+    except ValueError as exc:
+        raise UsageError(f"Invalid {label}: not a valid absolute URL: {raw}") from exc
+
+    scheme = parts.scheme.lower()
+    host = parts.hostname
+    if not scheme or not host:
+        raise UsageError(f"Invalid {label}: not a valid absolute URL: {raw}")
+
+    is_localhost_http = scheme == "http" and _is_localhost_host(host)
+    if scheme != "https" and not is_localhost_http:
+        raise UsageError(f"{label} must use HTTPS (or http on localhost): {raw}")
+    # Reject on the *presence* of userinfo, not its truthiness: urlsplit reports
+    # an empty (but non-None) username for authorities like "@host" or ":@host",
+    # so a truthiness test would let empty-credential forms slip through. An "@"
+    # in the netloc is a userinfo delimiter regardless of what surrounds it.
+    if parts.username is not None or parts.password is not None or "@" in parts.netloc:
+        raise UsageError(f"{label} must not contain userinfo: {raw}")
+    if parts.query or parts.fragment:
+        raise UsageError(f"{label} must not contain a query or fragment: {raw}")
+    if parts.path not in ("", "/"):
+        raise UsageError(f"{label} must be an origin root (no path): {raw}")
+
+    # Accessing .port validates it (urlsplit defers port parsing); a non-numeric
+    # or out-of-range port raises ValueError here.
+    try:
+        port = parts.port
+    except ValueError as exc:
+        raise UsageError(f"{label} has an invalid port: {raw}") from exc
+
+    host_part = f"[{host}]" if ":" in host else host
+    default_port = 443 if scheme == "https" else 80
+    if port is None or port == default_port:
+        return f"{scheme}://{host_part}"
+    return f"{scheme}://{host_part}:{port}"
 
 
 def is_localhost(url: str) -> bool:
