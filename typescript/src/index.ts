@@ -483,9 +483,10 @@ export type {
   FallbackReason,
   DiscoverySelectionErrorReason,
   DiscoverFromResourceResult,
+  DeviceAuthorization,
 } from "./oauth/types.js";
 
-// OAuth functions
+// OAuth discovery (single-hop RFC 8414 + resource-first RFC 9728)
 export {
   discover,
   discoverProtectedResource,
@@ -497,6 +498,30 @@ export {
   type DiscoverOptions,
   type DiscoverFromResourceOptions,
 } from "./oauth/discovery.js";
+
+// Device authorization grant (RFC 8628)
+export {
+  requestDeviceAuthorization,
+  pollDeviceToken,
+  DEVICE_CODE_GRANT_TYPE,
+  type RequestDeviceAuthorizationParams,
+  type PollDeviceTokenParams,
+  type MonotonicClock,
+} from "./oauth/device.js";
+export {
+  performDeviceLogin,
+  type DeviceLoginOptions,
+} from "./oauth/device-login.js";
+export {
+  DeviceFlowError,
+  type DeviceFlowReason,
+} from "./oauth/device-errors.js";
+
+// Interactive login (authorization-code flow orchestrator)
+export {
+  performInteractiveLogin,
+  type InteractiveLoginOptions,
+} from "./oauth/interactive-login.js";
 
 export {
   exchangeCode,
