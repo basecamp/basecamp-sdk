@@ -1,0 +1,44 @@
+typescript/src/oauth/interactive-login.ts
+  s_b250506ef28983::t_8d2165ae9d1c80 185
+  s_b250506ef28983::t_d38d19a7454117 197-241
+  s_b250506ef28983::t_d62b80d2f0c79f 96-98,105-111,114-130
+  s_b250506ef28983::t_5661d726d78244 27-30,32-47
+  s_b250506ef28983::t_4e9e4a62039bd2 8
+typescript/tests/oauth/interactive-login.test.ts
+  s_b250506ef28983::t_7469296dac9e7a 146-147
+  s_b250506ef28983::t_09dd3720480680 286-375
+typescript/src/oauth/index.ts
+  s_b250506ef28983::t_d9c7d0c48604e3 49-52,58-59,61-62,65
+typescript/src/oauth/types.ts
+  s_b250506ef28983::t_257435aa08b223 14-21,24-25,30-31,36-77
+  s_b250506ef28983::t_bdbe818e721ad5 78
+typescript/README.md
+  s_b250506ef28983::t_edb12e87b6315b 171-229
+typescript/tests/oauth/resource-discovery.test.ts
+  s_b250506ef28983::t_396d504ca66afe 1-18,20-121,130-208,210,213-214,218-219,222-246
+  s_b250506ef28983::t_a1d37e5b212fc7 122-129
+  s_b250506ef28983::t_c698d91564089e 209,211-212,215-217,220-221
+  s_b250506ef28983::t_fd8f123201c0e4 19
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_2c73ff6322e337 173-181,183,185-190
+  s_b250506ef28983::t_1c81a7ab63df54 4-12,17-23,25,27-30,33,37-45,54-55,59-105,107-108,110,112-118,120-145,147-165,167,170-172,182,184,191,193-215,221,223,225-227,230-232,234,240-246,249,271-275,277-278,282-283,286-471
+  s_b250506ef28983::t_bb7a4a74772a1e 192
+typescript/tests/oauth/oauth.test.ts
+  s_b250506ef28983::t_ec6b7b76073795 109-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2feb13b2f6687889608e9a312d579a03e21828c5",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
