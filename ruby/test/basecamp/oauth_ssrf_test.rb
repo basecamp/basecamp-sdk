@@ -126,6 +126,33 @@ class OAuthSsrfTest < Minitest::Test
     # The read aborted mid-stream: fewer bytes were delivered than the full body.
     assert_operator meter[:delivered], :<, body.bytesize
   end
+  def test_device_over_cap_body_aborts_before_buffering_whole_body
+    endpoint = "https://issuer.ssrf-test.example/oauth/device"
+    # A well-formed device-auth doc padded far past the cap.
+    oversized = {
+      "device_code" => "d", "user_code" => "u", "verification_uri" => "https://x",
+      "expires_in" => 900, "pad" => "x" * (256 * 1024)
+    }.to_json
+
+    meter = { delivered: 0 }
+    connection = Faraday.new do |conn|
+      conn.adapter StreamingAdapter, body: oversized, chunk_size: 4096, meter: meter
+    end
+
+    cap = 8 * 1024
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: endpoint, client_id: "basecamp-cli",
+        http_client: connection, max_body_bytes: cap
+      )
+    end
+    assert_equal "api_error", error.type
+
+    # The device response read is bounded exactly like discovery: it aborts once
+    # the accumulated bytes exceed the cap, never buffering the whole 256 KiB body.
+    assert_operator meter[:delivered], :<=, cap + 4096
+    assert_operator meter[:delivered], :<, oversized.bytesize
+  end
 
   # A middleware whose name matches the redirect detector. Standing in for
   # faraday-follow_redirects without taking the dependency.
@@ -133,6 +160,32 @@ class OAuthSsrfTest < Minitest::Test
     def call(env)
       @app.call(env)
     end
+  end
+
+  def test_device_injected_client_carrying_redirect_middleware_is_rejected
+    connection = Faraday.new do |conn|
+      conn.use RedirectFollowingMiddleware
+      conn.adapter Faraday.default_adapter
+    end
+
+    # Device flow applies the same redirect-suppression guard as discovery, so an
+    # injected redirect-following client is refused before any request is issued.
+    auth_error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: "https://issuer.ssrf-test.example/oauth/device",
+        client_id: "basecamp-cli", http_client: connection
+      )
+    end
+    assert_equal "validation", auth_error.type
+
+    poll_error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.poll_device_token(
+        token_endpoint: "https://issuer.ssrf-test.example/oauth/token",
+        client_id: "basecamp-cli", device_code: "d", interval: 5, expires_in: 900,
+        http_client: connection
+      )
+    end
+    assert_equal "validation", poll_error.type
   end
 
   def test_injected_client_carrying_redirect_middleware_is_rejected

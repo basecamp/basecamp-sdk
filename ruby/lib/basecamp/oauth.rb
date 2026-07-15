@@ -147,6 +147,49 @@ module Basecamp
       token.expired?(buffer_seconds)
     end
 
+    # Requests an RFC 8628 device/user code pair. Thin delegator to
+    # {DeviceFlow.request_device_authorization}.
+    #
+    # @return [DeviceAuthorization]
+    def self.request_device_authorization(device_authorization_endpoint:, client_id:, scope: nil, timeout: 30)
+      DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: device_authorization_endpoint,
+        client_id: client_id, scope: scope, timeout: timeout
+      )
+    end
+
+    # Polls the token endpoint for a device grant (RFC 8628 §3.5). Thin delegator
+    # to {DeviceFlow.poll_device_token}; +clock+, +sleeper+, and +cancelled+ are
+    # injectable for tests.
+    #
+    # @return [Token]
+    def self.poll_device_token(
+      token_endpoint:, client_id:, device_code:, interval:, expires_in:,
+      clock: DeviceFlow::DEFAULT_CLOCK, sleeper: DeviceFlow::DEFAULT_SLEEPER,
+      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: 30
+    )
+      DeviceFlow.poll_device_token(
+        token_endpoint: token_endpoint, client_id: client_id,
+        device_code: device_code, interval: interval, expires_in: expires_in,
+        clock: clock, sleeper: sleeper, cancelled: cancelled, timeout: timeout
+      )
+    end
+
+    # Runs the full device authorization grant against an already-selected
+    # {Config} (RFC 8628). Thin delegator to {DeviceFlow.perform_device_login}.
+    #
+    # @return [Token]
+    def self.perform_device_login(
+      config:, client_id:, display:, scope: nil,
+      clock: DeviceFlow::DEFAULT_CLOCK, sleeper: DeviceFlow::DEFAULT_SLEEPER,
+      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: 30
+    )
+      DeviceFlow.perform_device_login(
+        config: config, client_id: client_id, display: display, scope: scope,
+        clock: clock, sleeper: sleeper, cancelled: cancelled, timeout: timeout
+      )
+    end
+
     # Selects an issuer from the advertised set and — once a BC5 issuer is
     # committed — binds its AS metadata. From this point on, every failure is
     # fatal: no Launchpad request may be issued.
