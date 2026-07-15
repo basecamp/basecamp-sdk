@@ -169,6 +169,74 @@ Notes:
   timeouts are bounded, and bodies are read under a bounded cap. Non-2xx on
   either hop surfaces as an `api_error`.
 
+### OAuth device authorization grant (RFC 8628)
+
+For CLIs and other input-constrained clients, the `oauth` package implements the
+RFC 8628 device authorization grant. `PerformDeviceLogin` accepts an
+already-selected `*oauth.Config` (from discovery), guards the device capability,
+shows the user a code, and polls the token endpoint until they approve. Each
+configured endpoint is required to use HTTPS (localhost exempt) and redirects are
+suppressed.
+
+```go
+import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
+
+// The device grant lives on BC5's authorization server, not Launchpad, so the
+// config must be the selected first-party result of resource-first discovery. A
+// Launchpad fallback advertises no device endpoint, and PerformDeviceLogin would
+// return DeviceFlowError{Reason: DeviceFlowUnavailable}.
+d := oauth.NewDiscoverer(http.DefaultClient)
+result, err := d.DiscoverFromResource(ctx, "https://3.basecampapi.com")
+if err != nil || result.IsFallback() {
+    return err // hard failure, or a Launchpad fallback with no device endpoint
+}
+
+token, err := oauth.PerformDeviceLogin(ctx, result.Config, "basecamp-cli",
+    func(auth oauth.DeviceAuthorization) {
+        fmt.Printf("Visit %s and enter code: %s\n", auth.VerificationURI, auth.UserCode)
+    },
+    // Optional: oauth.WithDeviceScope("read"), oauth.WithDeviceHTTPClient(hc).
+)
+if err != nil {
+    var dfe *oauth.DeviceFlowError
+    if errors.As(err, &dfe) {
+        switch dfe.Reason {
+        case oauth.DeviceFlowAccessDenied: // user declined  → auth_required
+        case oauth.DeviceFlowExpired:      // code expired    → auth_required
+        case oauth.DeviceFlowTransport:    // network failure → network (retryable)
+        case oauth.DeviceFlowUnavailable:  // AS lacks device flow → validation
+        case oauth.DeviceFlowCancelled:    // ctx cancelled   → wraps ctx.Err()
+        }
+    }
+    return err
+}
+use(token) // *oauth.Token
+```
+
+The capability guard requires BOTH `cfg.DeviceAuthorizationEndpoint != nil` AND
+`cfg.GrantTypesSupported` advertising `oauth.DeviceCodeGrantType`; otherwise it
+returns `DeviceFlowError{Reason: DeviceFlowUnavailable}` before any request.
+
+`DeviceFlowError` derives its parent error category from `Reason` (call `.Code()`
+for the `basecamp` taxonomy code, `.Retryable()` for retryability). A cancelled
+flow wraps the context error, so `errors.Is(err, context.Canceled)` matches.
+
+The two lower-level steps are exported for callers that drive the flow directly:
+
+```go
+auth, err := oauth.RequestDeviceAuthorization(ctx, deviceAuthEndpoint, "basecamp-cli")
+token, err := oauth.PollDeviceToken(ctx, tokenEndpoint, "basecamp-cli",
+    auth.DeviceCode, auth.Interval, auth.ExpiresIn)
+```
+
+`PollDeviceToken` runs the §3.5 loop: it waits at least `interval` seconds
+between polls, enforces a monotonic expiry deadline, sustains `slow_down` bumps
+(+5s), backs off exponentially on connection timeouts, and honors context
+cancellation. The clock (`oauth.WithDeviceClock`) and inter-poll wait
+(`oauth.WithDeviceSleep`) are injectable for deterministic tests; scope is
+omitted from the authorization request unless set with `oauth.WithDeviceScope`,
+so the server applies its default (`read`).
+
 ## Configuration
 
 ### Environment Variables
