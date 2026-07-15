@@ -1,0 +1,32 @@
+python/src/basecamp/oauth/__init__.py
+  s_b250506ef28983::t_d9efd85c8c6a4d 49-54
+  s_b250506ef28983::t_e8dac1db7aee6e 11-17,25
+python/src/basecamp/oauth/device_authorization.py
+  s_b250506ef28983::t_fc89cfbe1cae65 1-21
+python/README.md
+  s_b250506ef28983::t_098ee0fdbebaff 280-337
+python/src/basecamp/oauth/errors.py
+  s_b250506ef28983::t_7f1351988c40eb 78-92
+  s_b250506ef28983::t_5cba716fce1255 12-34
+python/tests/oauth/test_device.py
+  s_b250506ef28983::t_51ae05da297239 1-109,111-308
+  s_b250506ef28983::t_ade87f8fde6efd 110
+python/src/basecamp/oauth/device.py
+  s_b250506ef28983::t_0917997f178ddc 1-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "65285503c2263274695b082bc0f68921cb9f38e8",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
