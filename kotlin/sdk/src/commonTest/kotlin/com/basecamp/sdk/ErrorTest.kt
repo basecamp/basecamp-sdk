@@ -153,6 +153,7 @@ class ErrorTest {
             BasecampException.Ambiguous("project"),
             BasecampException.Validation("invalid"),
             BasecampException.Usage("bad arg"),
+            BasecampException.DiscoverySelection("ambiguous_issuers", "ambiguous"),
         )
 
         for (e in errors) {
@@ -167,6 +168,7 @@ class ErrorTest {
                 is BasecampException.Ambiguous -> "ambiguous"
                 is BasecampException.Validation -> "validation"
                 is BasecampException.Usage -> "usage"
+                is BasecampException.DiscoverySelection -> "discovery_selection"
             }
             assertTrue(code.isNotEmpty())
         }

@@ -17,6 +17,7 @@ package com.basecamp.sdk
  *         is BasecampException.Network -> println("Network error")
  *         is BasecampException.Api -> println("Server error: ${e.httpStatus}")
  *         is BasecampException.Usage -> println("Bad arguments: ${e.message}")
+ *         is BasecampException.DiscoverySelection -> println("OAuth discovery: ${e.reason}")
  *     }
  * }
  * ```
@@ -113,6 +114,32 @@ sealed class BasecampException(
         message: String,
         hint: String? = null,
     ) : BasecampException(message, CODE_USAGE, hint)
+
+    /**
+     * Hard resource-first OAuth discovery selection/validation failure
+     * (SPEC.md §16). THROWN, never returned as a Launchpad fallback, so no
+     * consumer can convert it into a Launchpad request. [reason] carries the
+     * typed failure token (e.g. `ambiguous_issuers`, `issuer_mismatch`).
+     *
+     * Its [code] is `validation` for consumer/capability-shaped reasons
+     * (`capability_unavailable`) and `api_error` for advertised-metadata faults,
+     * mirroring the TypeScript reference.
+     */
+    class DiscoverySelection(
+        /** Typed selection failure token; see SPEC.md §16 fallback table. */
+        val reason: String,
+        message: String,
+        hint: String? = null,
+        cause: Throwable? = null,
+    ) : BasecampException(
+        message,
+        if (reason == "capability_unavailable") CODE_VALIDATION else CODE_API,
+        hint,
+        null,
+        false,
+        null,
+        cause,
+    )
 
     companion object {
         const val CODE_AUTH = "auth_required"
