@@ -1,0 +1,57 @@
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_b5e9b573b6cd1a 67,74-76
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_5d1b61e2ea7907 20-25,31-32,43-51
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_5860529536e5da 5-7,9-14,17-21,23-26,29-30,32-36,38,40-47,49-55,57-60,62,64-72,75-83
+ruby/README.md
+  s_b250506ef28983::t_2157114eb423aa 136-179
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_b250506ef28983::t_37838226501055 126,128,132,138,140,144,150
+  s_b250506ef28983::t_c38f01194b3dc0 1-61,63-125,127,129-131,133-137,139,141-143,145-149,151-160
+  s_b250506ef28983::t_05d472abf4cbf9 62
+ruby/lib/basecamp/oauth/protected_resource_metadata.rb
+  s_b250506ef28983::t_4f3dc4607232c3 1-22
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_a1076c3e7ec372 1-94
+ruby/test/test_helper.rb
+  s_b250506ef28983::t_5a9785eea606d7 109-110,112,116-117,119-120,123,126
+  s_b250506ef28983::t_8ac9d1e461c175 121
+ruby/lib/basecamp/oauth/config.rb
+  s_b250506ef28983::t_ad8495e5ecd39e 5-10,13,15,18,23,25-26,31-32,34-35
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_96f4c5c409c7c7 1-59
+ruby/lib/basecamp/security.rb
+  s_b250506ef28983::t_66c5f2a952f336 91-128
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_b250506ef28983::t_98b4a90a7c8506 8-11,16-19,29-30,35-36,39-44,46-47,51-52,55,57,59-63,65-70,72-73,75-108
+  s_b250506ef28983::t_8ac9d1e461c175 45,58,74
+ruby/lib/basecamp/oauth/discovery_selection_error.rb
+  s_b250506ef28983::t_79875e706c951d 1-28
+ruby/lib/basecamp/oauth/discovery_result.rb
+  s_b250506ef28983::t_5ba339378580ab 1-33
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_9a855c4517bcb0 116,148-155,162-247
+  s_b250506ef28983::t_c24ecba97d8078 156-161
+  s_b250506ef28983::t_8bf3ffcc37f7ea 49-60,69-115
+  s_b250506ef28983::t_e1ff4b0e19356c 117
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_48de1f5246256a 1-3,5-91
+  s_b250506ef28983::t_f2717e2d5d8da8 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "abc446762e07749c6f5e5b0408103b282cc4a48c",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
