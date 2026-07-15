@@ -61,18 +61,56 @@ module Basecamp
     end
 
     # Performs a GET request to an absolute URL.
-    # Used for endpoints not on the base API (e.g., Launchpad).
+    # Used for endpoints not on the base API.
+    #
+    # This is the PUBLIC, general path and it credentials cross-origin for ONE
+    # destination only: the exact Launchpad authorization URL
+    # ({Basecamp::Security::LAUNCHPAD_AUTHORIZATION_URL}). Every other foreign
+    # origin — including an endpoint-shaped URL such as
+    # +https://evil.example/authorization.json+ — trips the same-origin guard, so
+    # the bearer token only ever reaches Launchpad, the configured base URL, or
+    # localhost. There is deliberately NO raw-string trusted-origin parameter: a
+    # syntactically valid origin does not prove discovery provenance, so the ONE
+    # legitimate cross-origin discovery destination goes through the narrow
+    # {#get_authorization_document}, which derives its issuer from internal
+    # discovery of the configured base URL rather than any caller argument.
+    #
     # @param url [String] absolute URL
     # @param params [Hash] query parameters
     # @return [Response]
     def get_absolute(url, params: {})
       Security.require_https_unless_localhost!(url, "absolute URL")
-      # Cross-origin is permitted only for the trusted Launchpad authorization
-      # endpoint; any other foreign origin (including an endpoint-shaped URL such
-      # as https://evil.example/authorization.json) still trips the same-origin
-      # guard, so the bearer token never leaks off the configured host.
+
       allow_cross_origin = url == Security::LAUNCHPAD_AUTHORIZATION_URL
       request(:get, url, params: params, allow_cross_origin: allow_cross_origin)
+    end
+
+    # Fetches the credentialed authorization document (the fixed +authorization.json+
+    # path). This is the ONE sanctioned cross-origin credential path besides
+    # Launchpad, and the origin that receives the bearer token is NOT
+    # caller-supplied.
+    #
+    # The issuer is derived HERE by running resource-first discovery (SPEC.md §16)
+    # against this client's OWN configured base URL, then binding to whatever
+    # issuer discovery selects and validates (RFC 8414 issuer binding). A soft
+    # fallback fetches Launchpad's fixed URL; a hard discovery failure raises. The
+    # request URL is CONSTRUCTED from the discovered issuer origin + the fixed path
+    # (string concatenation, never URL re-parsing). Because no caller-supplied
+    # config, origin, or path reaches this method, there is no public API through
+    # which a forged issuer could redirect the credential to a foreign host —
+    # discovery provenance is structural, not a claim about a passed-in object.
+    #
+    # @return [Response]
+    # @raise [Oauth::DiscoverySelectionError] on a hard discovery failure
+    # @raise [Basecamp::UsageError] when the discovered issuer is not an origin root
+    def get_authorization_document
+      result = Oauth.discover_from_resource(@config.base_url)
+      if result.selected?
+        issuer_origin = Security.require_origin_root!(result.issuer, "selected issuer origin")
+        request(:get, "#{issuer_origin}/authorization.json", allow_cross_origin: true)
+      else
+        get_absolute(Security::LAUNCHPAD_AUTHORIZATION_URL)
+      end
     end
 
     # Performs a POST request.
@@ -498,9 +536,10 @@ module Basecamp
 
     # Attach-point backstop: refuse to attach credentials to a foreign origin
     # before the auth strategy adds the bearer token. Localhost is carved out
-    # for dev/test. allow_cross_origin is granted only by get_absolute, and only
-    # for the trusted Launchpad authorization endpoint; every other absolute URL
-    # must be same-origin with the configured base URL.
+    # for dev/test. allow_cross_origin is granted only by get_absolute (for the
+    # trusted Launchpad authorization endpoint) or get_authorization_document (for
+    # a URL constructed against an issuer that internal discovery selected and
+    # validated); every other absolute URL must be same-origin with the base URL.
     def assert_credential_origin!(url, allow_cross_origin)
       return if allow_cross_origin
       return if Security.localhost?(url) || Security.same_origin?(url, @config.base_url)

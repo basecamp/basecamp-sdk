@@ -106,23 +106,24 @@ module TestHelpers
       )
   end
 
-  # Stub OAuth discovery to fail (triggers fallback to launchpad)
+  # Stub resource-first discovery hop 1 to fail (404 on the protected-resource
+  # well-known), yielding a soft resource_discovery_failed → Launchpad fallback.
   def stub_discovery_failure
-    stub_request(:get, "#{BASE_URL}/.well-known/oauth-authorization-server")
+    stub_request(:get, "#{BASE_URL}/.well-known/oauth-protected-resource")
       .to_return(status: 404, body: "Not Found")
   end
 
-  # Stub OAuth discovery to succeed with launchpad config
+  # Stub resource-first discovery hop 1 to advertise only Launchpad, yielding a
+  # soft no_as_advertised → Launchpad fallback.
   def stub_discovery_success
-    discovery_response = {
-      issuer: LAUNCHPAD_URL,
-      authorization_endpoint: "#{LAUNCHPAD_URL}/authorization/new",
-      token_endpoint: "#{LAUNCHPAD_URL}/authorization/token"
+    resource_metadata = {
+      resource: BASE_URL,
+      authorization_servers: [ LAUNCHPAD_URL ]
     }
-    stub_request(:get, "#{BASE_URL}/.well-known/oauth-authorization-server")
+    stub_request(:get, "#{BASE_URL}/.well-known/oauth-protected-resource")
       .to_return(
         status: 200,
-        body: discovery_response.to_json,
+        body: resource_metadata.to_json,
         headers: { "Content-Type" => "application/json" }
       )
   end

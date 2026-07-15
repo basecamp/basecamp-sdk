@@ -64,14 +64,63 @@ class OAuthTest < Minitest::Test
     assert_includes error.message, "missing required fields"
   end
 
-  def test_discover_raises_on_network_error
+  def test_discover_raises_api_error_on_non_2xx
     stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
       .to_return(status: 500, body: "Internal Server Error")
 
     error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.discover_launchpad
     end
-    assert_equal "network", error.type
+    # Non-2xx is a server-side api_error, not a transport (network) error.
+    assert_equal "api_error", error.type
+    assert_equal 500, error.http_status
+  end
+
+  def test_discover_rejects_wrong_typed_endpoint
+    # A non-string endpoint is malformed metadata: reject it rather than trusting
+    # a truthy value.
+    discovery_response = {
+      "issuer" => "https://launchpad.37signals.com",
+      "token_endpoint" => "https://launchpad.37signals.com/token",
+      "device_authorization_endpoint" => 42
+    }
+    stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
+      .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.discover_launchpad
+    end
+    assert_equal "api_error", error.type
+    assert_includes error.message, "device_authorization_endpoint"
+  end
+
+  def test_discover_rejects_scopes_supported_not_array_of_strings
+    discovery_response = {
+      "issuer" => "https://launchpad.37signals.com",
+      "token_endpoint" => "https://launchpad.37signals.com/token",
+      "scopes_supported" => "read write" # a bare string, not an array
+    }
+    stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
+      .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.discover_launchpad
+    end
+    assert_equal "api_error", error.type
+    assert_includes error.message, "scopes_supported"
+  end
+
+  def test_discover_protected_resource_rejects_wrong_typed_resource
+    # A numeric resource must not be indexed/`.empty?`-probed as if it were a
+    # string; it is malformed metadata → api_error.
+    stub_request(:get, "https://api.example.com/.well-known/oauth-protected-resource")
+      .to_return(status: 200, body: { resource: 12_345 }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.discover_protected_resource("https://api.example.com")
+    end
+    assert_equal "api_error", error.type
   end
 
   def test_exchange_code
@@ -174,5 +223,33 @@ class OAuthTest < Minitest::Test
     assert_equal "https://example.com/auth", config.authorization_endpoint
     assert_equal "https://example.com/token", config.token_endpoint
     assert_equal %w[read write], config.scopes_supported
+  end
+
+  # --- Issuer-mismatch classified by CLASS, never by message text -------------
+
+  def test_as_failure_error_classifies_binding_mismatch_by_class
+    # The structured marker raised by the RFC 8414 binding check is classified
+    # as issuer_mismatch by its CLASS.
+    marker = Basecamp::Oauth::Discovery::IssuerBindingError.new(
+      "OAuth issuer mismatch: metadata issuer \"x\" does not equal \"y\""
+    )
+
+    error = Basecamp::Oauth.send(:as_failure_error, "https://bc5.example.test", marker)
+
+    assert_instance_of Basecamp::Oauth::DiscoverySelectionError, error
+    assert_equal "issuer_mismatch", error.reason
+  end
+
+  def test_as_failure_error_does_not_message_match_for_generic_failure
+    # A generic AS-fetch OauthError whose MESSAGE merely contains "issuer
+    # mismatch" must NOT be misclassified: the old substring match would have
+    # called this issuer_mismatch; class-based dispatch keeps it as_fetch_failed.
+    generic = Basecamp::Oauth::OauthError.new(
+      "api_error", "Server error mentioning issuer mismatch in passing"
+    )
+
+    error = Basecamp::Oauth.send(:as_failure_error, "https://bc5.example.test", generic)
+
+    assert_equal "as_fetch_failed", error.reason
   end
 end

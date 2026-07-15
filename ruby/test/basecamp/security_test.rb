@@ -187,6 +187,59 @@ class SecurityCheckBodySizeTest < Minitest::Test
   end
 end
 
+class SecurityRequireOriginRootTest < Minitest::Test
+  def test_accepts_https_origin_root
+    assert_equal "https://example.com",
+      Basecamp::Security.require_origin_root!("https://example.com")
+  end
+
+  def test_accepts_and_preserves_valid_port
+    assert_equal "https://example.com:8443",
+      Basecamp::Security.require_origin_root!("https://example.com:8443")
+  end
+
+  def test_accepts_bracketed_ipv6_localhost
+    # IPv6 brackets survive the URI parser (never a regex), so the localhost
+    # carve-out over plain HTTP applies.
+    assert_equal "http://[::1]:3000",
+      Basecamp::Security.require_origin_root!("http://[::1]:3000")
+  end
+
+  def test_rejects_port_above_range
+    # URI.parse accepts a numerically out-of-range port; require_origin_root!
+    # must reject anything outside 1..65535 as a usage error.
+    error = assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("https://example.com:99999")
+    end
+    assert_match(/port/, error.message)
+  end
+
+  def test_rejects_port_zero
+    error = assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("https://example.com:0")
+    end
+    assert_match(/port/, error.message)
+  end
+
+  def test_rejects_path_beyond_root
+    assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("https://example.com/foo")
+    end
+  end
+
+  def test_rejects_query_and_fragment
+    assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("https://example.com/?a=1")
+    end
+  end
+
+  def test_rejects_non_https_non_localhost
+    assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("http://example.com")
+    end
+  end
+end
+
 # =============================================================================
 # HTTP Integration Tests
 # =============================================================================

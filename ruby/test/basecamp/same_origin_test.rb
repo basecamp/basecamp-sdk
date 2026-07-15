@@ -112,12 +112,67 @@ class SameOriginCredentialTest < Minitest::Test
     assert_not_requested(:get, "https://evil.example/authorization.json")
   end
 
-  def test_launchpad_authorization_url_stays_in_lockstep
-    # get_absolute scopes its cross-origin allowance to Security's constant, while
-    # the (generated) AuthorizationService resolves the fallback to its own copy.
-    # If a regeneration ever changes the generated literal, this catches the drift
-    # before it silently breaks the legitimate Launchpad authorization call.
-    assert_equal Basecamp::Security::LAUNCHPAD_AUTHORIZATION_URL,
-      Basecamp::Services::AuthorizationService::LAUNCHPAD_AUTHORIZATION_URL
+  def test_get_absolute_no_longer_accepts_raw_trusted_origin
+    # The raw-string trusted-origin escape hatch is GONE: get_absolute takes no
+    # allow_origin parameter, so the classic attack
+    #   get_absolute("https://evil.example/authorization.json",
+    #                allow_origin: "https://evil.example")
+    # (same-origin, valid https, yet no discovery provenance) cannot even be
+    # expressed — it raises ArgumentError rather than leaking the token.
+    assert_raises(ArgumentError) do
+      @http.get_absolute(
+        "https://evil.example/authorization.json",
+        allow_origin: "https://evil.example"
+      )
+    end
+    assert_not_requested(:get, "https://evil.example/authorization.json")
+  end
+
+  def test_manually_constructed_config_cannot_egress_credentials_cross_origin
+    # Security regression. Basecamp::Oauth::Config is publicly constructible, so a
+    # caller can forge one pointing at an attacker origin. The pre-fix vector — a
+    # public method (get_from_selected_issuer) that credentialed whatever origin a
+    # caller-supplied Config named — has been REMOVED. No public API consumes a
+    # caller-supplied config/issuer/origin to authorize a credentialed request, so
+    # a forged issuer is never contacted.
+    forged = Basecamp::Oauth::Config.new(
+      issuer: "https://evil.example",
+      token_endpoint: "https://evil.example/token"
+    )
+    evil = stub_request(:get, "https://evil.example/authorization.json")
+
+    assert_not @http.respond_to?(:get_from_selected_issuer),
+      "the config-taking credentialed fetch must not exist"
+    # The sole credentialed-authorization fetch takes NO caller argument: its
+    # issuer is derived from discovery of the configured base URL, so a forged
+    # Config/origin can never reach it.
+    assert_equal 0, @http.method(:get_authorization_document).arity
+    assert_not_nil forged
+    assert_not_requested(evil)
+  end
+
+  def test_get_authorization_document_credentials_only_the_discovered_issuer
+    # The sanctioned cross-origin path: resource-first discovery of the CONFIGURED
+    # base URL selects a distinct web issuer, and ONLY that discovered-and-validated
+    # issuer is credentialed at the fixed authorization.json path. A foreign origin
+    # is never contacted, and no caller supplies the issuer or the path.
+    base = @config.base_url
+    bc5 = "https://bc5.example.test"
+    stub_request(:get, "#{base}/.well-known/oauth-protected-resource")
+      .to_return(status: 200,
+        body: { resource: base, authorization_servers: [ bc5, "https://launchpad.37signals.com" ] }.to_json,
+        headers: { "Content-Type" => "application/json" })
+    stub_request(:get, "#{bc5}/.well-known/oauth-authorization-server")
+      .to_return(status: 200,
+        body: { issuer: bc5, token_endpoint: "#{bc5}/oauth/token" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+    doc = stub_request(:get, "#{bc5}/authorization.json")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 200, body: "{}", headers: { "Content-Type" => "application/json" })
+
+    response = @http.get_authorization_document
+    assert_equal 200, response.status
+    assert_requested(doc)
+    assert_not_requested(:get, "https://evil.example/authorization.json")
   end
 end

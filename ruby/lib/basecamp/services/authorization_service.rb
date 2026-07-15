@@ -12,36 +12,28 @@ module Basecamp
     #     puts "Account: #{account["name"]} (#{account["id"]})"
     #   end
     class AuthorizationService < BaseService
-      # Fallback Launchpad endpoint for authorization
-      LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
-
       # Gets authorization information for the current user.
       #
-      # Attempts to use the authorization endpoint discovered via OAuth discovery
-      # on the configured base URL. Falls back to Launchpad if discovery fails.
+      # Delegates to {Basecamp::Http#get_authorization_document}, which resolves
+      # the issuer via resource-first OAuth discovery (SPEC.md §16) on the client's
+      # own configured base URL and fetches the fixed +authorization.json+ path.
+      # Only the two *soft* fallback outcomes (+resource_discovery_failed+,
+      # +no_as_advertised+) fall back to Launchpad; every *hard* selection failure
+      # propagates as a {Oauth::DiscoverySelectionError} — a hard failure is never
+      # silently converted into a Launchpad request. This service passes NO issuer,
+      # config, or origin to the credentialed fetch, so there is no caller-supplied
+      # path through which the bearer token could be sent to a foreign host.
       #
       # Returns the authenticated user's identity and list of accounts
       # they have access to.
       #
       # @return [Hash] authorization info with :identity and :accounts
+      # @raise [Oauth::DiscoverySelectionError] on a hard discovery failure after
+      #   a BC5 issuer was advertised and selected
       # @see https://github.com/basecamp/bc3-api/blob/master/sections/authentication.md
       def get
-        url = discover_authorization_url
-        response = http.get_absolute(url)
-        response.json
+        http.get_authorization_document.json
       end
-
-      private
-
-        def discover_authorization_url
-          # Try OAuth discovery on the configured base URL
-          config = Oauth.discover(http.base_url)
-          # Use issuer as base for authorization.json
-          "#{config.issuer.chomp("/")}/authorization.json"
-        rescue Oauth::OauthError
-          # Fall back to Launchpad
-          LAUNCHPAD_AUTHORIZATION_URL
-        end
     end
   end
 end

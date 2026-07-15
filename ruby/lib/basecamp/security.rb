@@ -11,8 +11,12 @@ module Basecamp
     MAX_ERROR_BODY_BYTES = 1 * 1024 * 1024      # 1 MB
 
     # The Launchpad authorization endpoint is on a different origin than the
-    # configured API base URL, so it is the one sanctioned destination for a
-    # credentialed cross-origin request. Every other foreign origin is rejected.
+    # configured API base URL, so it is a sanctioned destination for a
+    # credentialed cross-origin request. Resource-first discovery may also
+    # authorize one specific discovered-and-validated issuer origin (see
+    # Http#get_authorization_document, whose issuer comes from internal discovery
+    # of the configured base URL, not a caller argument); every other foreign
+    # origin is rejected.
     LAUNCHPAD_AUTHORIZATION_URL = "https://launchpad.37signals.com/authorization.json"
 
     def self.truncate(str, max = MAX_ERROR_MESSAGE_BYTES)
@@ -86,6 +90,52 @@ module Basecamp
       return if localhost?(url)
 
       require_https!(url, label)
+    end
+
+    # Parses a caller- or metadata-supplied origin and enforces the origin-root
+    # profile (SPEC.md §16): https (or http on localhost), host present, optional
+    # valid numeric port, path empty or exactly "/", and no query, fragment, or
+    # userinfo. Parsing uses Ruby's +URI+ (never a regex) so bracketed IPv6
+    # (+http://[::1]:3000+) and ports agree with the host the client dials.
+    #
+    # A bad *caller* origin is a usage error; callers validating an *advertised*
+    # origin rescue {UsageError} and reclassify.
+    #
+    # @param raw [String] the origin to validate
+    # @param label [String] a label for error messages
+    # @return [String] the normalized origin (+scheme://host[:port]+, no trailing slash)
+    # @raise [UsageError] on any profile violation or parse failure
+    def self.require_origin_root!(raw, label = "origin")
+      uri = URI.parse(raw.to_s)
+      scheme = uri.scheme&.downcase
+
+      unless scheme == "https" || (scheme == "http" && localhost?(raw))
+        raise UsageError.new("#{label} must use HTTPS (or http on localhost): #{raw}")
+      end
+      raise UsageError.new("#{label} has no host: #{raw}") if uri.host.nil? || uri.host.empty?
+      raise UsageError.new("#{label} must not contain userinfo: #{raw}") if uri.userinfo
+      raise UsageError.new("#{label} must not contain a query or fragment: #{raw}") if uri.query || uri.fragment
+      unless uri.path.nil? || uri.path.empty? || uri.path == "/"
+        raise UsageError.new("#{label} must be an origin root (no path): #{raw}")
+      end
+
+      # URI.parse rejects a non-numeric port, but it happily accepts a numeric
+      # port outside the valid TCP range (e.g. :0 or :99999). Reject anything
+      # outside 1–65535 so a structurally-parseable-but-undialable port can never
+      # be treated as a trusted origin.
+      if uri.port && !uri.port.between?(1, 65_535)
+        raise UsageError.new("#{label} has an out-of-range port: #{raw}")
+      end
+
+      # A surviving uri now has a structurally valid, in-range (or default) port.
+      # Drop the default port.
+      if uri.port && uri.port != uri.default_port
+        "#{scheme}://#{uri.host}:#{uri.port}"
+      else
+        "#{scheme}://#{uri.host}"
+      end
+    rescue URI::InvalidURIError
+      raise UsageError.new("Invalid #{label}: not a valid absolute URL: #{raw}")
     end
 
     # Headers that contain sensitive values and should be redacted.
