@@ -1,0 +1,58 @@
+typescript/tests/oauth/device.test.ts
+  s_d32e62340bb1a3::t_cd50bc529410d0 1156,1159-1160,1162
+  s_d32e62340bb1a3::t_e7d85855d56898 756-786
+typescript/src/oauth/device.ts
+  s_d32e62340bb1a3::t_ae6935e4093449 455-457
+SPEC.md
+  s_d32e62340bb1a3::t_5c362211b19f63 1140-1143
+  s_d32e62340bb1a3::t_a7d103f48f5fde 1157-1162
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_d32e62340bb1a3::t_33f2919f61b8ce 611-640
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_d32e62340bb1a3::t_deaeb4a3e3cc39 447-449
+ruby/test/basecamp/oauth_device_test.rb
+  s_d32e62340bb1a3::t_55bb4f11266a21 428
+  s_d32e62340bb1a3::t_353267bf67da98 443-444
+  s_d32e62340bb1a3::t_e3da9ca3868602 445,447-466
+  s_d32e62340bb1a3::t_e920dd7f998aaf 446
+typescript/README.md
+  s_d32e62340bb1a3::t_51c190844407c9 244-251
+  s_d32e62340bb1a3::t_8337ff5e1f504b 282-292
+go/pkg/basecamp/oauth/device.go
+  s_d32e62340bb1a3::t_bc3110130e6707 474-478,482,492-494,498,501-503
+  s_d32e62340bb1a3::t_95c8f547f6648d 302-304,306-310,570,574-577
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_d32e62340bb1a3::t_53b93296e3ed91 131-134,140
+  s_d32e62340bb1a3::t_eb34b0c59223c0 438-448,455
+go/pkg/basecamp/oauth/device_test.go
+  s_d32e62340bb1a3::t_8e6d8139888573 1066-1069
+  s_d32e62340bb1a3::t_85943a9eadf5de 593-618
+  s_d32e62340bb1a3::t_711c582c4af5f4 1095-1152
+python/src/basecamp/oauth/device.py
+  s_d32e62340bb1a3::t_724909e782eba1 328-330
+  s_d32e62340bb1a3::t_492cfd74cf2dbd 369-375
+  s_d32e62340bb1a3::t_af6543694a2958 357-367
+  s_d32e62340bb1a3::t_245cca50f16ca4 368
+typescript/src/oauth/device-errors.ts
+  s_d32e62340bb1a3::t_6214572e18d52b 42-43,45
+python/tests/oauth/test_device.py
+  s_d32e62340bb1a3::t_b2674c59776138 491-492,499-500
+  s_d32e62340bb1a3::t_a77d2d4c1c0d5e 440-463
+  s_d32e62340bb1a3::t_ac4e5e2f9f3938 480
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d77e37ced1eb1b4bd0c0bac01e30c64144efd0d5",
+  "prompts": {},
+  "sessions": {
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
