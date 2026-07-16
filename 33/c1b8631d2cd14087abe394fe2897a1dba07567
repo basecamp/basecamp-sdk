@@ -1,0 +1,24 @@
+typescript/tests/oauth/device.test.ts
+  s_b250506ef28983::t_3b122a5c854f1d 739,752-754
+typescript/README.md
+  s_b250506ef28983::t_73df33243b65a9 295-299,302-303,311
+typescript/src/oauth/device.ts
+  s_b250506ef28983::t_172e2642522d75 448-450
+  s_b250506ef28983::t_1129566b18f7ee 465-466,472-474,477-479,482-484
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "33c1b8631d2cd14087abe394fe2897a1dba07567",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
