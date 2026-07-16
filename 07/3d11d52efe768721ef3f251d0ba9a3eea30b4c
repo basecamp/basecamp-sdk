@@ -1,0 +1,32 @@
+python/tests/oauth/test_device.py
+  s_b250506ef28983::t_4a407e26e4f6fc 47
+  s_b250506ef28983::t_a5cc76bf592604 711,731,747
+go/pkg/basecamp/oauth/discovery.go
+  s_b250506ef28983::t_e1e3755024058f 270-279,281-284
+go/pkg/basecamp/oauth/oauth_test.go
+  s_b250506ef28983::t_93f7122c76c20b 6,13-14,83-119
+python/src/basecamp/oauth/config.py
+  s_b250506ef28983::t_b0cca3105b7fee 13-20
+python/tests/oauth/test_resource_discovery.py
+  s_b250506ef28983::t_0de88566a79769 336-347,351-355
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_272ce809834c26 148-153
+typescript/tests/oauth/resource-discovery.test.ts
+  s_b250506ef28983::t_2fa02057cf0ee4 325-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "073d11d52efe768721ef3f251d0ba9a3eea30b4c",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
