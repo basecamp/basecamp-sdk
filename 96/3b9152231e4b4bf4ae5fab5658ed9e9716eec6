@@ -1,0 +1,77 @@
+SPEC.md
+  s_b250506ef28983::t_7664888749b1d6 1139,1143-1154
+go/pkg/basecamp/oauth/device.go
+  s_b250506ef28983::t_10b01e9cc5c738 470-478
+  s_b250506ef28983::t_b14df91588473b 41-47
+ruby/test/basecamp/oauth_device_test.rb
+  s_b250506ef28983::t_f34a754e1ebb2e 75-88
+  s_b250506ef28983::t_d34d1b6ba3bf09 389-434
+typescript/src/oauth/device.ts
+  s_b250506ef28983::t_741ceb0f2786f3 31-42
+  s_f78d458a21dd1b::t_578a4bd83518c2 446,451,469,476-477
+  s_b250506ef28983::t_9419c58f28a3fc 447-450,452-468
+typescript/tests/oauth/device.test.ts
+  s_b250506ef28983::t_5c2c7d35c4976a 611-700
+  s_d32e62340bb1a3::t_19dd6087898d55 577-610
+kotlin/README.md
+  s_d32e62340bb1a3::t_7f9b33f7c31abb 233-235
+  s_d32e62340bb1a3::t_fd3b15142119dd 232
+go/pkg/basecamp/oauth/device_test.go
+  s_b250506ef28983::t_f608d46066b8a1 509-573
+python/tests/oauth/test_device.py
+  s_b250506ef28983::t_8d579cf99dcfbc 9-10
+  s_b250506ef28983::t_42df4518e546e4 379,387-453
+  s_b250506ef28983::t_17bf045af5ed3a 386
+  s_b250506ef28983::t_e31f1292fa0bbd 380-385
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_b250506ef28983::t_aac07dbbd756b0 36-43
+  s_b250506ef28983::t_2cce51fc7828c5 430-436,439-458,461-470,477-478,480,483-491
+  s_b250506ef28983::t_320048ff91836e 492
+python/README.md
+  s_d32e62340bb1a3::t_ee9f343ad13ca9 303
+  s_d32e62340bb1a3::t_cfba539c5e2a1a 304
+python/src/basecamp/oauth/device.py
+  s_b250506ef28983::t_b46feade0beff1 49-55
+  s_b250506ef28983::t_654a041caf8b51 409
+  s_b250506ef28983::t_06fa8ea0dc0361 17
+  s_b250506ef28983::t_7e9673cbc5cebf 323-353,355-357,359-372
+  s_b250506ef28983::t_17bf045af5ed3a 354,358
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_b250506ef28983::t_9aba48daa9867b 572-621
+  s_b250506ef28983::t_47c9e7534a2986 30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_b250506ef28983::t_d4b2f0b472bf96 70-79
+  s_b250506ef28983::t_245a8435d511c1 404-415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "963b9152231e4b4bf4ae5fab5658ed9e9716eec6",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_f78d458a21dd1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd3d7b77-ed39-49a6-99f2-a76497df7aca",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
