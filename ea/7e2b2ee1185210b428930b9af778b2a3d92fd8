@@ -1,0 +1,19 @@
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_8eb95c31504fce 17-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ea7e2b2ee1185210b428930b9af778b2a3d92fd8",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
