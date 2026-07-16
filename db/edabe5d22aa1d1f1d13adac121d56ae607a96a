@@ -1,0 +1,35 @@
+kotlin/README.md
+  s_d32e62340bb1a3::t_7f9b33f7c31abb 233-235
+  s_d32e62340bb1a3::t_fd3b15142119dd 232
+typescript/tests/oauth/device.test.ts
+  s_d32e62340bb1a3::t_19dd6087898d55 577-610
+python/README.md
+  s_d32e62340bb1a3::t_ee9f343ad13ca9 303
+  s_d32e62340bb1a3::t_cfba539c5e2a1a 304
+typescript/src/oauth/device.ts
+  s_f78d458a21dd1b::t_578a4bd83518c2 434-441,448-449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dbedabe5d22aa1d1f1d13adac121d56ae607a96a",
+  "prompts": {},
+  "sessions": {
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_f78d458a21dd1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd3d7b77-ed39-49a6-99f2-a76497df7aca",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
