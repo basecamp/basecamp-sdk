@@ -33,6 +33,14 @@ module Basecamp
       # value such as 1e100 is a malformed response, not a schedulable deadline.
       MAX_DEVICE_SECONDS = 2_147_483
 
+      # Ceiling for an OAuth token's +expires_in+ (2_147_483_647 s ~= 68 years):
+      # cross-runtime safe and vastly beyond any realistic token lifetime.
+      # Unlike +MAX_DEVICE_SECONDS+ this bounds +Time+ arithmetic rather than a
+      # timer, so a non-finite value (+1e400+ parses to +Float::INFINITY+, which
+      # would raise a raw +FloatDomainError+) or an absurd one is a malformed
+      # response — never a schedulable deadline. Shared across all five SDKs.
+      MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647
+
       # Monotonic clock (seconds). Injectable so tests can advance time.
       DEFAULT_CLOCK = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
 
@@ -419,27 +427,68 @@ module Basecamp
             end
           end
 
-          # Constructs the {Token}, validating +expires_in+ first: when present
-          # it must be a positive Numeric — {Token#initialize} performs +Time+
-          # arithmetic on it, so an unchecked string would escape as a TypeError
-          # instead of +api_error+. Absent/nil stays allowed (no expiry).
+          # Constructs the {Token}, type-checking every optional field first:
+          # {Token#initialize} performs +Time+ arithmetic on +expires_in+, so a
+          # malformed value (a String, a non-finite +Float::INFINITY+ from
+          # +1e400+, a value past {MAX_TOKEN_LIFETIME_SECONDS}) must surface as
+          # +api_error+ rather than escape as a TypeError or FloatDomainError.
+          # +token_type+/+refresh_token+/+scope+ must be Strings when present.
+          # Absent/nil +expires_in+ stays allowed (no expiry).
           def build_token(data, status)
             expires_in = data["expires_in"]
-            unless expires_in.nil? || (expires_in.is_a?(Numeric) && expires_in.positive?)
+            unless valid_token_expires_in?(expires_in)
               raise OauthError.new(
                 "api_error",
-                "Invalid device token response: expires_in must be a positive number",
+                "Invalid device token response: expires_in must be a finite positive number " \
+                  "no greater than #{MAX_TOKEN_LIFETIME_SECONDS} seconds",
+                http_status: status
+              )
+            end
+
+            token_type = data["token_type"]
+            unless token_type.nil? || (token_type.is_a?(String) && !token_type.empty?)
+              raise OauthError.new(
+                "api_error",
+                "Invalid device token response: token_type must be a non-empty string",
+                http_status: status
+              )
+            end
+
+            refresh_token = data["refresh_token"]
+            unless refresh_token.nil? || refresh_token.is_a?(String)
+              raise OauthError.new(
+                "api_error",
+                "Invalid device token response: refresh_token must be a string",
+                http_status: status
+              )
+            end
+
+            scope = data["scope"]
+            unless scope.nil? || scope.is_a?(String)
+              raise OauthError.new(
+                "api_error",
+                "Invalid device token response: scope must be a string",
                 http_status: status
               )
             end
 
             Token.new(
               access_token: data["access_token"],
-              refresh_token: data["refresh_token"],
-              token_type: data["token_type"] || "Bearer",
+              refresh_token: refresh_token,
+              token_type: token_type || "Bearer",
               expires_in: expires_in,
-              scope: data["scope"]
+              scope: scope
             )
+          end
+
+          # A token +expires_in+ is valid when absent/nil or a finite positive
+          # Numeric within {MAX_TOKEN_LIFETIME_SECONDS}. +Float::INFINITY+ (from a
+          # JSON +1e400+) is Numeric and positive but not finite, so +finite?+
+          # rejects it before it can poison the deadline arithmetic.
+          def valid_token_expires_in?(value)
+            return true if value.nil?
+
+            value.is_a?(Numeric) && value.finite? && value.positive? && value <= MAX_TOKEN_LIFETIME_SECONDS
           end
       end
     end

@@ -229,7 +229,10 @@ val token = performDeviceLogin(
     },
 )
 
-println("Access token: ${token.accessToken}")
+// Use the token to build a client — never print or log its value.
+val client = BasecampClient {
+    accessToken(token.accessToken)
+}
 ```
 
 The two building blocks are also public if you need finer control:

@@ -14,6 +14,7 @@ clock and sleep are injectable so tests can drive the interval schedule
 from __future__ import annotations
 
 import json
+import math
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -44,6 +45,13 @@ MAX_BACKOFF_SECONDS = 60
 #: Shared across all five SDKs (SPEC.md) — an unbounded value such as 1e100 is
 #: a malformed response, not a schedulable deadline.
 MAX_DEVICE_SECONDS = 2_147_483
+
+#: Ceiling for an OAuth token's ``expires_in`` (2_147_483_647 s ≈ 68 years):
+#: cross-runtime safe and vastly beyond any realistic token lifetime. Unlike
+#: :data:`MAX_DEVICE_SECONDS` this bounds ``expires_at`` arithmetic rather than a
+#: timer, so a non-finite (``1e400`` parses to ``inf``) or absurd value is a
+#: malformed response — never a schedulable deadline. Shared across all five SDKs.
+MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647
 
 _DEVICE_TIMEOUT = 30.0
 
@@ -312,6 +320,56 @@ def poll_device_token(
         )
 
 
+def _build_token(data: dict[str, Any], status: int) -> OAuthToken:
+    """Construct an :class:`OAuthToken` from a validated token response.
+
+    Every optional field is type-checked BEFORE construction: ``OAuthToken``
+    computes ``expires_at`` arithmetic from ``expires_in``, so a malformed value
+    (a string, a bool, a non-finite ``inf`` from ``1e400``, a value past the
+    :data:`MAX_TOKEN_LIFETIME_SECONDS` ceiling) must surface as ``api_error``,
+    never a ``TypeError`` or an ``inf`` deadline. ``token_type``/``refresh_token``/
+    ``scope`` must be strings when present. Absent/null ``expires_in`` stays
+    allowed — the token then carries no expiry.
+    """
+    access_token = data.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        raise OAuthError("api_error", "Device token response missing access_token", http_status=status)
+
+    expires_in = data.get("expires_in")
+    if expires_in is not None and (
+        isinstance(expires_in, bool)
+        or not isinstance(expires_in, int | float)
+        or not math.isfinite(expires_in)
+        or not (0 < expires_in <= MAX_TOKEN_LIFETIME_SECONDS)
+    ):
+        raise OAuthError(
+            "api_error",
+            "Device token response expires_in must be a finite positive number "
+            f"no greater than {MAX_TOKEN_LIFETIME_SECONDS} seconds",
+            http_status=status,
+        )
+
+    token_type = data.get("token_type", "Bearer")
+    if not isinstance(token_type, str) or not token_type:
+        raise OAuthError("api_error", "Device token response token_type must be a non-empty string", http_status=status)
+
+    refresh_token = data.get("refresh_token")
+    if refresh_token is not None and not isinstance(refresh_token, str):
+        raise OAuthError("api_error", "Device token response refresh_token must be a string", http_status=status)
+
+    scope = data.get("scope")
+    if scope is not None and not isinstance(scope, str):
+        raise OAuthError("api_error", "Device token response scope must be a string", http_status=status)
+
+    return OAuthToken(
+        access_token=access_token,
+        token_type=token_type,
+        refresh_token=refresh_token,
+        expires_in=expires_in,
+        scope=scope,
+    )
+
+
 def _post_device_token(
     token_endpoint: str,
     params: dict[str, str],
@@ -348,31 +406,7 @@ def _post_device_token(
         raise OAuthError("api_error", "Device token response is not a JSON object")
 
     if 200 <= status < 300:
-        access_token = data.get("access_token")
-        if not isinstance(access_token, str) or not access_token:
-            raise OAuthError("api_error", "Device token response missing access_token")
-        # Validate expires_in BEFORE constructing the token: OAuthToken computes
-        # expires_at arithmetic from it, so a malformed value (a string, a bool,
-        # a non-positive number) must surface as api_error, never a TypeError.
-        # Absent/null stays allowed — the token then carries no expiry.
-        expires_in = data.get("expires_in")
-        if expires_in is not None and (
-            isinstance(expires_in, bool) or not isinstance(expires_in, int | float) or expires_in <= 0
-        ):
-            raise OAuthError(
-                "api_error",
-                "Device token response expires_in must be a positive number",
-                http_status=status,
-            )
-        return _PollResult(
-            token=OAuthToken(
-                access_token=access_token,
-                token_type=data.get("token_type", "Bearer"),
-                refresh_token=data.get("refresh_token"),
-                expires_in=expires_in,
-                scope=data.get("scope"),
-            )
-        )
+        return _PollResult(token=_build_token(data, status))
 
     error = data.get("error") or f"http_{status}"
     return _PollResult(error=error, status=status)

@@ -72,6 +72,20 @@ class OAuthDeviceTest < Minitest::Test
     { status: status, body: body.to_json, headers: { "Content-Type" => "application/json" } }
   end
 
+  # Polls the already-stubbed TOKEN_ENDPOINT once and asserts the token response
+  # was rejected as api_error. Returns the raised error for further assertions.
+  def assert_poll_api_error
+    _waits, sleeper = recording_sleeper
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+    end
+    assert_equal "api_error", error.type
+    error
+  end
+
   # --- request_device_authorization -----------------------------------------
 
   def test_request_omits_scope_when_unset_and_validates_response
@@ -370,6 +384,52 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "device_access_token", token.access_token
     assert_nil token.expires_in
     assert_nil token.expires_at
+  end
+
+  def test_poll_rejects_infinite_expires_in_on_token_response
+    # A server sending expires_in: 1e400 parses to Float::INFINITY — numeric and
+    # positive, but Token's expiry arithmetic would raise a raw FloatDomainError.
+    # It must surface as api_error. Sent raw since to_json rejects Infinity.
+    raw = token_response.reject { |k, _| k == "expires_in" }.to_json.sub(/\}\z/, ', "expires_in": 1e400}')
+    stub_request(:post, TOKEN_ENDPOINT)
+      .to_return(status: 200, body: raw, headers: { "Content-Type" => "application/json" })
+
+    assert_equal 200, assert_poll_api_error.http_status
+  end
+
+  def test_poll_rejects_oversized_expires_in_on_token_response
+    # One past the 2_147_483_647 s ceiling is a malformed lifetime, not schedulable.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => 2_147_483_648)))
+
+    assert_poll_api_error
+  end
+
+  def test_poll_accepts_max_token_lifetime
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => 2_147_483_647)))
+    _waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    assert_equal 2_147_483_647, token.expires_in
+  end
+
+  def test_poll_rejects_non_positive_expires_in_on_token_response
+    [ 0, -1 ].each do |value|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => value)))
+      assert_poll_api_error
+    end
+  end
+
+  def test_poll_rejects_non_string_token_fields
+    # A numeric refresh_token/token_type/scope is malformed, not a credential
+    # field — surface api_error rather than store a non-String.
+    %w[refresh_token token_type scope].each do |field|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge(field => 123)))
+      assert_poll_api_error
+    end
   end
 
   def test_poll_treats_redirect_as_api_error_even_with_pending_body

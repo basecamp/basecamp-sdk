@@ -506,6 +506,71 @@ func TestPollDeviceToken_MalformedSuccessResponseIsAPIError(t *testing.T) {
 	}
 }
 
+// rawTokenServer serves a fixed raw 200 token-endpoint body, for cases a Go map
+// cannot express (a JSON literal like 1e400 that json.Marshal rejects).
+func rawTokenServer(t *testing.T, body string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestPollDeviceToken_RejectsMalformedTokenExpiresIn(t *testing.T) {
+	// A 2xx whose expires_in cannot be a schedulable lifetime is a server/api
+	// fault, never a token: 1e400/string/bool fail json.Unmarshal into int;
+	// a negative or past-ceiling integer would overflow ExpiresAt arithmetic.
+	for _, body := range []string{
+		`{"access_token":"a","token_type":"Bearer","expires_in":1e400}`,
+		`{"access_token":"a","token_type":"Bearer","expires_in":"3600"}`,
+		`{"access_token":"a","token_type":"Bearer","expires_in":true}`,
+		`{"access_token":"a","token_type":"Bearer","expires_in":-1}`,
+		`{"access_token":"a","token_type":"Bearer","expires_in":2147483648}`,
+	} {
+		srv := rawTokenServer(t, body)
+		sleep := &recordingSleep{}
+		_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+			WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+		assertBasecampCode(t, err, basecamp.CodeAPI)
+	}
+}
+
+func TestPollDeviceToken_AcceptsMaxTokenLifetime(t *testing.T) {
+	// The 2147483647 s ceiling itself is valid — the bound is inclusive.
+	srv := rawTokenServer(t, `{"access_token":"device_access_token","token_type":"Bearer","expires_in":2147483647}`)
+	sleep := &recordingSleep{}
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.ExpiresIn != maxTokenLifetimeSeconds {
+		t.Errorf("ExpiresIn = %d, want %d", token.ExpiresIn, maxTokenLifetimeSeconds)
+	}
+	if token.ExpiresAt.IsZero() {
+		t.Error("ExpiresAt should be set for a positive expires_in")
+	}
+}
+
+func TestPollDeviceToken_AcceptsTokenWithoutExpiresIn(t *testing.T) {
+	// Absent expires_in (RFC 6749 §5.1) is allowed — the token carries no expiry.
+	srv := rawTokenServer(t, `{"access_token":"device_access_token","token_type":"Bearer"}`)
+	sleep := &recordingSleep{}
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.ExpiresIn != 0 {
+		t.Errorf("ExpiresIn = %d, want 0 (absent)", token.ExpiresIn)
+	}
+	if !token.ExpiresAt.IsZero() {
+		t.Error("ExpiresAt should be zero when expires_in is absent")
+	}
+}
+
 func TestPollDeviceToken_CancelledViaContext(t *testing.T) {
 	srv, _ := queueTokenResponses(t, []struct {
 		status int

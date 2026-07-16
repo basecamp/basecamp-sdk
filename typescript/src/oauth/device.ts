@@ -28,6 +28,18 @@ const DEFAULT_INTERVAL_SECONDS = 5;
  */
 const MAX_DEVICE_SECONDS = 2_147_483;
 
+/**
+ * Upper bound (seconds) for an OAuth token's `expires_in`: 2_147_483_647 s
+ * (~68 years) — cross-runtime safe and vastly beyond any realistic token
+ * lifetime. Unlike {@link MAX_DEVICE_SECONDS} this bounds `expiresAt` Date
+ * arithmetic rather than a timer: a very large finite value (or a non-finite one
+ * from `1e400`) makes `new Date(Date.now() + expires_in * 1000)` an Invalid Date
+ * whose `getTime()` is NaN, so downstream expiry checks would treat the token as
+ * never expiring. A value past this ceiling is a malformed response. Shared
+ * across all five SDKs.
+ */
+const MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647;
+
 /** slow_down bumps the interval by this many seconds, sustained (RFC 8628 §3.5). */
 const SLOW_DOWN_INCREMENT_SECONDS = 5;
 
@@ -431,14 +443,38 @@ async function postDeviceToken(
       if (!isNonEmptyString(token.access_token)) {
         throw new BasecampError("api_error", "Device token response missing or non-string access_token");
       }
+      // expires_in is optional (RFC 6749 §5.1), but when present it must be a
+      // finite positive number within MAX_TOKEN_LIFETIME_SECONDS. A non-finite
+      // value (1e400 → Infinity) or a very large finite one would flow into Date
+      // arithmetic and yield an Invalid Date whose getTime() is NaN, so expiry
+      // checks downstream would treat the token as never expiring.
+      if (token.expires_in != null &&
+          (typeof token.expires_in !== "number" || !Number.isFinite(token.expires_in) ||
+            token.expires_in <= 0 || token.expires_in > MAX_TOKEN_LIFETIME_SECONDS)) {
+        throw new BasecampError(
+          "api_error",
+          `Device token response expires_in must be a finite positive number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`
+        );
+      }
+      // token_type/refresh_token/scope are optional strings — a non-string value
+      // is a malformed response, not a usable credential field.
+      if (token.token_type != null && !isNonEmptyString(token.token_type)) {
+        throw new BasecampError("api_error", "Device token response token_type must be a non-empty string");
+      }
+      if (token.refresh_token != null && typeof token.refresh_token !== "string") {
+        throw new BasecampError("api_error", "Device token response refresh_token must be a string");
+      }
+      if (token.scope != null && typeof token.scope !== "string") {
+        throw new BasecampError("api_error", "Device token response scope must be a string");
+      }
       return {
         kind: "token",
         token: {
           accessToken: token.access_token,
           refreshToken: token.refresh_token,
           tokenType: token.token_type || "Bearer",
-          expiresIn: token.expires_in,
-          expiresAt: token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : undefined,
+          expiresIn: token.expires_in ?? undefined,
+          expiresAt: token.expires_in != null ? new Date(Date.now() + token.expires_in * 1000) : undefined,
           scope: token.scope,
         },
       };

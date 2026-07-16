@@ -300,7 +300,8 @@ def show(auth):
     print(f"Visit {auth.verification_uri} and enter code: {auth.user_code}")
 
 token = perform_device_login(config, "basecamp-cli", display=show)
-print(token.access_token)
+# Use the token to build a client — never print or log its value.
+client = Client(access_token=token.access_token)
 ```
 
 The capability guard requires both `config.device_authorization_endpoint` and

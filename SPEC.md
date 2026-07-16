@@ -1152,10 +1152,22 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
        POST tokenEndpoint: grant_type=urn:ietf:params:oauth:grant-type:device_code,
                            device_code, client_id
        CASE response:
-         200 with a non-empty access_token → return Token
+         200 with a non-empty access_token → validate optional fields, return Token
          200 that is not a JSON object, or lacks a non-empty access_token
               → raise api_error (a malformed success body is NOT a usable Token,
                 and is NOT a retryable transport error)
+         200 whose optional token fields are malformed → raise api_error:
+              expires_in, when present, MUST be a finite positive number ≤
+              2147483647 s — a non-numeric value, a non-finite one (1e400 parses
+              to Infinity), a non-positive one, or one past the ceiling would make
+              expires_at arithmetic overflow/NaN so the token would appear to never
+              expire; refresh_token/token_type/scope, when present, MUST be strings.
+              Absent expires_in is allowed (the token carries no expiry).
+              The 2147483647 s (~68 year) token-lifetime ceiling is separate from
+              the 2147483 s device-duration ceiling above: it bounds expires_at
+              arithmetic (a Date/instant), not a schedulable timer, so it is the
+              cross-runtime-safe int/Date maximum rather than the 32-bit-ms timer
+              bound. Shared across all five SDKs.
          3xx (redirects are never followed)
               → raise api_error BEFORE OAuth-error body parsing (a redirect
                 carrying an authorization_pending body must not keep polling)

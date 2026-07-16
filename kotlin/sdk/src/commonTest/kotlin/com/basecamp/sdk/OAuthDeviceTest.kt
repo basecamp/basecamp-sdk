@@ -27,6 +27,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -565,6 +566,56 @@ class OAuthDeviceTest {
             pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
         }
         assertEquals("api_error", e.code)
+        client.close()
+    }
+
+    @Test
+    fun pollRejectsMalformedTokenExpiresInOn2xx() = runTest {
+        // A 2xx whose expires_in cannot be a schedulable lifetime is api_error:
+        // 1e400 overflows the Double range (deserialization fails into Long?), a
+        // negative or past-ceiling value would overflow `it * 1000` in expiresAt.
+        val bodies = listOf(
+            """{"access_token":"tok","token_type":"Bearer","expires_in":1e400}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":-1}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":0}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":2147483648}""",
+        )
+        for (body in bodies) {
+            val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+            val client = HttpClient(engine)
+            val e = assertFailsWith<BasecampException.Api>("expected api_error for $body") {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+            assertEquals("api_error", e.code)
+            client.close()
+        }
+    }
+
+    @Test
+    fun pollAcceptsMaxTokenLifetime() = runTest {
+        // The 2147483647 s ceiling itself is valid — the bound is inclusive.
+        val body = """{"access_token":"tok","token_type":"Bearer","expires_in":2147483647}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+        assertEquals(2_147_483_647L, token.expiresIn)
+        assertNotNull(token.expiresAt)
+        client.close()
+    }
+
+    @Test
+    fun pollAcceptsTokenWithoutExpiresIn() = runTest {
+        // Absent expires_in (RFC 6749 §5.1) is allowed — the token has no expiry.
+        val body = """{"access_token":"tok","token_type":"Bearer"}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+        assertNull(token.expiresIn)
+        assertNull(token.expiresAt)
         client.close()
     }
 
