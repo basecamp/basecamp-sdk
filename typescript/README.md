@@ -292,10 +292,15 @@ try {
         clientId: "basecamp-cli", // public client — no secret
         refreshToken: token.refreshToken,
       });
-      // ...persist `fresh` and rebuild the client from fresh.accessToken.
+      // A refresh response MAY omit refresh_token (the server keeps the current
+      // one). Persist the fresh access token but FALL BACK to the prior refresh
+      // token when none was returned, so the next refresh still works:
+      const nextRefresh = fresh.refreshToken ?? token.refreshToken;
+      // ...persist { ...fresh, refreshToken: nextRefresh } and rebuild the client.
     } else {
       // No refresh token was issued: refreshing is impossible, so the user must
-      // authorize again. Re-run the device login to get a new token — don't keep
+      // authorize again. Re-run the device login to get a new token — pass the
+      // SAME abort signal so Ctrl-C cancels this second poll too, and don't keep
       // using the expired one.
       const reauthed = await performDeviceLogin({
         config: result.config,
@@ -303,6 +308,7 @@ try {
         display: ({ userCode, verificationUri }) => {
           console.log(`Visit ${verificationUri} and enter code: ${userCode}`);
         },
+        signal: abortController.signal,
       });
       // ...persist `reauthed` and rebuild the client from reauthed.accessToken.
     }
