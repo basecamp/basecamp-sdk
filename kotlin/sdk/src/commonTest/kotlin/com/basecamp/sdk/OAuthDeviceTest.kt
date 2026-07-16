@@ -609,6 +609,36 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollRejectsExplicitEmptyTokenTypeOn2xx() = runTest {
+        // An explicit "token_type": "" is malformed token metadata (api_error),
+        // distinct from an absent field — uniform with Go/Python/Ruby/TS.
+        val body = """{"access_token":"tok","token_type":"","expires_in":3600}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        }
+        assertEquals("api_error", e.code)
+        client.close()
+    }
+
+    @Test
+    fun pollDefaultsAbsentTokenTypeToBearer() = runTest {
+        // Absent token_type defaults to Bearer (RFC 6749 responses from
+        // first-party servers always send it, but the default keeps the token
+        // usable) — only an explicit empty string is rejected.
+        val body = """{"access_token":"tok","expires_in":3600}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+        assertEquals("Bearer", token.tokenType)
+        client.close()
+    }
+
+    @Test
     fun pollAcceptsMaxTokenLifetime() = runTest {
         // The 2147483647 s ceiling itself is valid — the bound is inclusive.
         val body = """{"access_token":"tok","token_type":"Bearer","expires_in":2147483647}"""

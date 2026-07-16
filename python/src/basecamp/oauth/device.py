@@ -325,9 +325,9 @@ def _valid_token_expires_in(value: Any) -> bool:
     of seconds no greater than :data:`MAX_TOKEN_LIFETIME_SECONDS`.
 
     An integer-valued float (``3600.0``) is accepted; a fractional value (``1.5``)
-    is rejected — matching the device-duration rule and Go/Kotlin, where the
-    integer/Long typing already rejects a fractional token lifetime. ``bool`` is
-    an ``int`` subclass but never a lifetime.
+    is rejected — matching the device-duration rule; every SDK validates the
+    decoded numeric value explicitly to reject a fractional token lifetime.
+    ``bool`` is an ``int`` subclass but never a lifetime.
     """
     if isinstance(value, bool):
         return False
@@ -354,16 +354,25 @@ def _build_token(data: dict[str, Any], status: int) -> OAuthToken:
         raise OAuthError("api_error", "Device token response missing access_token", http_status=status)
 
     expires_in = data.get("expires_in")
-    if expires_in is not None and not _valid_token_expires_in(expires_in):
-        raise OAuthError(
-            "api_error",
-            "Device token response expires_in must be a finite positive whole number "
-            f"no greater than {MAX_TOKEN_LIFETIME_SECONDS} seconds",
-            http_status=status,
-        )
+    if expires_in is not None:
+        if not _valid_token_expires_in(expires_in):
+            raise OAuthError(
+                "api_error",
+                "Device token response expires_in must be a finite positive whole number "
+                f"no greater than {MAX_TOKEN_LIFETIME_SECONDS} seconds",
+                http_status=status,
+            )
+        # Coerce an integer-valued float (3600.0) to int: OAuthToken declares
+        # ``expires_in: int | None`` and computes expiry arithmetic from it.
+        expires_in = int(expires_in)
 
-    token_type = data.get("token_type", "Bearer")
-    if not isinstance(token_type, str) or not token_type:
+    # JSON null is treated as absent (the Go/Kotlin decoders cannot distinguish
+    # them) → Bearer default; only an explicit non-string or empty "" is
+    # malformed. Uniform across all five SDKs.
+    token_type = data.get("token_type")
+    if token_type is None:
+        token_type = "Bearer"
+    elif not isinstance(token_type, str) or not token_type:
         raise OAuthError("api_error", "Device token response token_type must be a non-empty string", http_status=status)
 
     refresh_token = data.get("refresh_token")

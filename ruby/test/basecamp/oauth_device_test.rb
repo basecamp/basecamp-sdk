@@ -425,7 +425,7 @@ class OAuthDeviceTest < Minitest::Test
 
   def test_poll_rejects_fractional_expires_in_on_token_response
     # A fractional token lifetime is malformed under the whole-second contract
-    # (Go/Kotlin reject it by int/Long typing) → api_error, uniform across SDKs.
+    # → api_error, uniform across SDKs (each validates the decoded value).
     stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => 1.5)))
 
     assert_poll_api_error
@@ -440,7 +440,30 @@ class OAuthDeviceTest < Minitest::Test
       device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
     )
 
-    assert_equal 3600.0, token.expires_in
+    assert_equal 3600, token.expires_in
+    assert_kind_of Integer, token.expires_in
+  end
+
+  def test_poll_rejects_explicit_empty_token_type
+    # An explicit "" token_type is malformed token metadata → api_error,
+    # uniform across all five SDKs.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("token_type" => "")))
+
+    assert_poll_api_error
+  end
+
+  def test_poll_defaults_null_token_type_to_bearer
+    # JSON null is treated as absent (the Go/Kotlin decoders cannot distinguish
+    # them) → Bearer default, uniform across all five SDKs.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("token_type" => nil)))
+    _waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    assert_equal "Bearer", token.token_type
   end
 
   def test_poll_rejects_non_string_token_fields

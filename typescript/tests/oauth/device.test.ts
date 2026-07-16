@@ -753,6 +753,37 @@ describe("pollDeviceToken", () => {
     }
   );
 
+  it("rejects an explicit empty token_type on a 2xx token response as api_error", async () => {
+    // An explicit "" token_type is malformed token metadata — uniform across
+    // all five SDKs (absent/null defaults to Bearer instead).
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, token_type: "" } }]);
+    const { fn } = recordingSleep();
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it("defaults a null token_type to Bearer (JSON null is treated as absent)", async () => {
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, token_type: null } }]);
+    const { fn } = recordingSleep();
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    });
+    expect(token.tokenType).toBe("Bearer");
+  });
+
   it("rejects a 2xx token response whose access_token is non-string as api_error", async () => {
     // A numeric access_token is truthy but not a usable credential — fail fast
     // as api_error rather than return an unusable token downstream.
@@ -1122,12 +1153,13 @@ describe("DeviceFlowError retryability", () => {
     }
   });
 
-  it("falls back to a usage category for an unknown reason (JS caller safety)", () => {
+  it("falls back to an api_error category for an unknown reason (JS caller safety)", () => {
     // DeviceFlowReason is an exhaustive TS union, but this is a public runtime
     // class: a JS caller can construct an unknown reason. categoryFor must not
-    // leave BasecampError with an undefined code.
+    // leave BasecampError with an undefined code; the cross-SDK default for an
+    // unknown reason is api_error (matching Go/Ruby/Python/Kotlin).
     const err = new DeviceFlowError("bogus_reason" as never, "x");
-    expect(err.code).toBe("usage");
+    expect(err.code).toBe("api_error");
     expect(err.retryable).toBe(false);
   });
 
