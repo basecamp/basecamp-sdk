@@ -555,3 +555,68 @@ func TestDiscoverFromResource_ASFetchFailurePreservesStatus(t *testing.T) {
 		t.Errorf("Code = %q, want api_error", be.Code)
 	}
 }
+
+func TestDiscoverFromResource_MixedCaseLaunchpadExcluded(t *testing.T) {
+	// A mixed-case Launchpad host must be recognized as Launchpad (hosts are
+	// case-insensitive), so it is excluded and discovery soft-falls-back with
+	// no_as_advertised rather than committing it as a distinct BC5 issuer.
+	var resourceOrigin string
+	resource := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"resource":"` + resourceOrigin + `","authorization_servers":["https://LAUNCHPAD.37signals.com"]}`))
+	}))
+	defer resource.Close()
+	resourceOrigin = resource.URL
+
+	result, err := NewDiscoverer(resource.Client()).DiscoverFromResource(context.Background(), resourceOrigin)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Config != nil || result.FallbackReason != FallbackNoASAdvertised {
+		t.Errorf("want no_as_advertised fallback, got Config=%v reason=%q", result.Config, result.FallbackReason)
+	}
+}
+
+func TestDiscoverFromResource_RejectsNullAuthorizationServers(t *testing.T) {
+	// authorization_servers: null is malformed metadata (must be an array when
+	// present), distinct from an absent key — so hop 1 fails and discovery
+	// classifies it as resource_discovery_failed, not no_as_advertised.
+	var resourceOrigin string
+	resource := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"resource":"` + resourceOrigin + `","authorization_servers":null}`))
+	}))
+	defer resource.Close()
+	resourceOrigin = resource.URL
+
+	result, err := NewDiscoverer(resource.Client()).DiscoverFromResource(context.Background(), resourceOrigin)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.FallbackReason != FallbackResourceDiscoveryFailed {
+		t.Errorf("want resource_discovery_failed, got %q", result.FallbackReason)
+	}
+}
+
+func TestParseAndBindASMetadata_RejectsNullGrantTypes(t *testing.T) {
+	// grant_types_supported: null is malformed (an array when present), not absent.
+	body := []byte(`{"issuer":"https://bc5.example","token_endpoint":"https://bc5.example/token","grant_types_supported":null}`)
+	_, err := parseAndBindASMetadata(body, "https://bc5.example")
+	var be *basecamp.Error
+	if !errors.As(err, &be) || be.Code != basecamp.CodeAPI {
+		t.Fatalf("want api_error for null grant_types_supported, got %v (%T)", err, err)
+	}
+}
+
+func TestRejectEmptyEndpoints_RejectsNonStringEndpoint(t *testing.T) {
+	// A present *_endpoint that is not a non-empty string (number, array, null) is
+	// malformed metadata, not silently absent.
+	for _, body := range []string{
+		`{"token_endpoint":"https://bc5.example/token","registration_endpoint":123}`,
+		`{"token_endpoint":"https://bc5.example/token","registration_endpoint":null}`,
+	} {
+		if err := rejectEmptyEndpoints([]byte(body)); err == nil {
+			t.Errorf("expected rejection for %s", body)
+		}
+	}
+}

@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -148,7 +149,12 @@ func requireOriginRoot(raw, label string) (string, error) {
 		}
 	}
 
-	host := u.Hostname()
+	// Lowercase the host: DNS names and schemes are case-insensitive (RFC 3986
+	// §3.1/§6.2.2.1), so a mixed-case advertised issuer like
+	// https://Launchpad.37signals.com must normalize to the same origin as its
+	// canonical form — otherwise the Launchpad exclusion misses it and it is
+	// wrongly treated as a distinct BC5 issuer.
+	host := strings.ToLower(u.Hostname())
 	origin := scheme + "://"
 	if strings.Contains(host, ":") {
 		// IPv6 literal — re-bracket (Hostname strips the brackets).
@@ -354,6 +360,9 @@ func parseAndBindASMetadata(body []byte, expectedIssuerOrigin string) (*Config, 
 	if err := rejectEmptyEndpoints(body); err != nil {
 		return nil, err
 	}
+	if err := rejectNullListFields(body, "grant_types_supported", "scopes_supported", "code_challenge_methods_supported"); err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		Issuer:                        *raw.Issuer,
@@ -370,8 +379,10 @@ func parseAndBindASMetadata(body []byte, expectedIssuerOrigin string) (*Config, 
 	return cfg, nil
 }
 
-// rejectEmptyEndpoints rejects any present-but-empty "*_endpoint" field, matching
-// the reference: a present endpoint must be non-empty.
+// rejectEmptyEndpoints rejects any present "*_endpoint" field that is not a
+// non-empty string. A present endpoint must be a non-empty string: an empty
+// string, or a non-string value (number, array, object, or JSON null), is
+// malformed metadata — not silently treated as absent.
 func rejectEmptyEndpoints(body []byte) error {
 	var m map[string]json.RawMessage
 	// The body already parsed as an object upstream; a decode failure here leaves
@@ -382,10 +393,29 @@ func rejectEmptyEndpoints(body []byte) error {
 			continue
 		}
 		var s string
-		if json.Unmarshal(v, &s) == nil && s == "" {
+		if json.Unmarshal(v, &s) != nil || s == "" {
 			return &basecamp.Error{
 				Code:    basecamp.CodeAPI,
-				Message: fmt.Sprintf("invalid OAuth discovery response: empty %s", k),
+				Message: fmt.Sprintf("invalid OAuth discovery response: %s must be a non-empty string", k),
+			}
+		}
+	}
+	return nil
+}
+
+// rejectNullListFields rejects any of the named optional list fields that is
+// present with a JSON null value. A present list field must be an array (RFC
+// 8414 / RFC 9728); a JSON null is malformed metadata, distinct from an absent
+// key (which the typed decode legitimately treats as unset).
+func rejectNullListFields(body []byte, keys ...string) error {
+	var m map[string]json.RawMessage
+	_ = json.Unmarshal(body, &m)
+	for _, k := range keys {
+		v, present := m[k]
+		if present && string(bytes.TrimSpace(v)) == "null" {
+			return &basecamp.Error{
+				Code:    basecamp.CodeAPI,
+				Message: fmt.Sprintf("invalid OAuth discovery response: %s must be an array when present, not null", k),
 			}
 		}
 	}
@@ -419,6 +449,9 @@ func (d *Discoverer) fetchProtectedResource(ctx context.Context, origin string, 
 	}
 	if raw.Resource == nil || *raw.Resource == "" {
 		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "invalid resource metadata: missing required field (resource)"}
+	}
+	if err := rejectNullListFields(body, "authorization_servers"); err != nil {
+		return nil, err
 	}
 	// Bind resource identifier to the requested origin, code-point exact.
 	if *raw.Resource != origin {

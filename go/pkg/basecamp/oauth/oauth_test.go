@@ -78,8 +78,9 @@ func TestDiscoverer_Discover(t *testing.T) {
 	}
 }
 
-// TestDiscoverer_Discover_TrailingSlash verifies the origin-root profile accepts
-// a trailing "/" (path exactly "/") and still binds the issuer to the origin.
+// TestDiscoverer_Discover_MidStreamReadFailureIsNetwork verifies that a 2xx
+// whose body dies mid-stream (peer reset, truncation) is classified as network
+// (retryable), not as the size-cap api_error.
 func TestDiscoverer_Discover_MidStreamReadFailureIsNetwork(t *testing.T) {
 	// A 2xx whose body dies mid-read (peer reset, truncation) is a transient
 	// transport fault — network, retryable — never misclassified as the
