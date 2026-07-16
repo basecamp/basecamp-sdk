@@ -1,0 +1,48 @@
+typescript/src/oauth/device-errors.ts
+  s_b250506ef28983::t_d5a3184d77512e 1-60
+typescript/src/oauth/device-login.ts
+  s_b250506ef28983::t_694a6510bc9b13 1-95
+typescript/src/oauth/types.ts
+  s_b250506ef28983::t_9562f96fc38040 83-100
+typescript/README.md
+  s_b250506ef28983::t_3c58f7ebbd657f 230-281
+typescript/src/oauth/device.ts
+  s_b250506ef28983::t_fd87aae515803a 1-150,157-187,193-265,270-447
+  s_b250506ef28983::t_273de494e8ca54 266-269
+  s_b250506ef28983::t_5a83a48036f667 188-192
+  s_b250506ef28983::t_f1ee083cdf71c0 151-156
+typescript/src/oauth/index.ts
+  s_b250506ef28983::t_bfaa5e34481b5c 53,56-73
+typescript/src/index.ts
+  s_92cd6f87f9fac1::t_c9cdbfee840bc3 442,445,457-480
+typescript/tests/oauth/device.test.ts
+  s_b250506ef28983::t_c8706abedfda3f 407-430,460-473
+  s_b250506ef28983::t_bd5cbb7d11a9a5 259-270
+  s_b250506ef28983::t_f853dacca48452 246-258
+  s_b250506ef28983::t_66bb53aa679ee3 431-459
+  s_b250506ef28983::t_d3fbffb26be59e 1-245,271-406,474-750
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cc13f732c9a7d7138131df36b89dc48a9c5d8999",
+  "prompts": {},
+  "sessions": {
+    "s_92cd6f87f9fac1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f68a5-81b2-7363-b67d-da8b394e0a98",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
