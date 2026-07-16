@@ -241,7 +241,14 @@ endpoint, so `performDeviceLogin`'s capability guard rejects it with
 `DeviceFlowError("unavailable")`.)
 
 ```ts
-import { createBasecampClient, discoverFromResource, performDeviceLogin, DeviceFlowError } from "@37signals/basecamp";
+import {
+  createBasecampClient,
+  discoverFromResource,
+  performDeviceLogin,
+  refreshToken,
+  isTokenExpired,
+  DeviceFlowError,
+} from "@37signals/basecamp";
 
 // 1. Select an AS config. Discovery can select a config WITHOUT the device
 //    endpoint or device_code grant — performDeviceLogin then rejects it with
@@ -272,9 +279,17 @@ try {
     accessToken: token.accessToken,
   });
   // A long-lived CLI should PERSIST the whole token (incl. token.refreshToken)
-  // and, once isTokenExpired(token), mint a fresh one with refreshToken({ ... })
-  // as shown above — a client built from a static accessToken stops working when
-  // the device access token expires.
+  // and mint a fresh one once it expires — a client built from a static
+  // accessToken stops working when the device access token expires. Refresh
+  // against the SAME first-party token endpoint with the standard grant
+  // (device tokens never use Launchpad's legacy `type=refresh` format):
+  if (isTokenExpired(token)) {
+    const fresh = await refreshToken({
+      tokenEndpoint: result.config.tokenEndpoint,
+      clientId: "basecamp-cli", // public client — no secret
+      refreshToken: token.refreshToken!,
+    });
+  }
 } catch (err) {
   if (err instanceof DeviceFlowError) {
     // err.reason: "access_denied" | "expired" | "transport" | "unavailable" | "cancelled"

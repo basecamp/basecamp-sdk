@@ -128,13 +128,16 @@ data class DeviceAuthorization(
  * Raw token response for the device path. `expires_in` decodes as [Double] (the
  * shared [RawTokenResponse] uses [Long], which throws on an integer-valued float
  * like 3600.0) so the cross-SDK contract — accept 3600.0, reject fractional —
- * can be enforced in validation rather than by decoder happenstance.
+ * can be enforced in validation rather than by decoder happenstance. `token_type`
+ * stays nullable (no decoder default) so an explicit `"token_type": ""` remains
+ * distinguishable from an absent field: absent defaults to Bearer, explicit empty
+ * is malformed (api_error) — matching the other SDKs.
  */
 @Serializable
 private data class RawDeviceTokenResponse(
     @SerialName("access_token") val accessToken: String,
     @SerialName("refresh_token") val refreshToken: String? = null,
-    @SerialName("token_type") val tokenType: String = "Bearer",
+    @SerialName("token_type") val tokenType: String? = null,
     @SerialName("expires_in") val expiresIn: Double? = null,
     val scope: String? = null,
 )
@@ -432,13 +435,24 @@ private suspend fun postDeviceTokenPoll(
             }
             it.toLong()
         }
+        // token_type, when present, must be non-empty — an explicit "" is
+        // malformed token metadata (api_error), while an absent field defaults
+        // to Bearer. Uniform with Go/Python/Ruby/TypeScript.
+        val tokenType = raw.tokenType?.also {
+            if (it.isEmpty()) {
+                throw BasecampException.Api(
+                    "Device token response token_type must be a non-empty string",
+                    httpStatus = status,
+                )
+            }
+        } ?: "Bearer"
         val now = currentTimeMillis()
         val expiresAt = expiresInSeconds?.let { now + it * 1000 }
         PollResult.Token(
             OAuthToken(
                 accessToken = raw.accessToken,
                 refreshToken = raw.refreshToken,
-                tokenType = raw.tokenType,
+                tokenType = tokenType,
                 expiresIn = expiresInSeconds,
                 expiresAt = expiresAt,
                 scope = raw.scope,

@@ -39,9 +39,10 @@ function categoryFor(reason: DeviceFlowReason): ErrorCode {
     default:
       // DeviceFlowReason is an exhaustive union in TS, but this is a public
       // runtime class: a JS caller can still construct new DeviceFlowError(
-      // "some_new_reason", …). Fall back to "usage" (caller misuse) rather than
+      // "some_new_reason", …). Fall back to "api_error" — the cross-SDK default
+      // for unknown reasons (Go/Ruby/Python/Kotlin do the same) — rather than
       // returning undefined, which would give BasecampError an invalid code.
-      return "usage";
+      return "api_error";
   }
 }
 

@@ -444,6 +444,9 @@ module Basecamp
                 http_status: status
               )
             end
+            # Coerce an integer-valued Float (3600.0) to Integer so {Token} always
+            # carries whole seconds, matching the other SDKs' coercion.
+            expires_in = expires_in.to_i unless expires_in.nil?
 
             token_type = data["token_type"]
             unless token_type.nil? || (token_type.is_a?(String) && !token_type.empty?)

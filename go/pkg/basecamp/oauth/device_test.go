@@ -590,6 +590,32 @@ func TestPollDeviceToken_AcceptsIntegerValuedFloatExpiresIn(t *testing.T) {
 	}
 }
 
+func TestPollDeviceToken_RejectsExplicitEmptyTokenType(t *testing.T) {
+	// An explicit "token_type":"" is malformed token metadata (api_error),
+	// distinct from an absent field — the old plain-string decode coerced both
+	// to Bearer. Uniform with Python/Ruby/TS/Kotlin.
+	srv := rawTokenServer(t, `{"access_token":"device_access_token","token_type":"","expires_in":3600}`)
+	sleep := &recordingSleep{}
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	assertBasecampCode(t, err, basecamp.CodeAPI)
+}
+
+func TestPollDeviceToken_DefaultsAbsentTokenTypeToBearer(t *testing.T) {
+	// Absent token_type defaults to Bearer — only an explicit empty string is
+	// rejected.
+	srv := rawTokenServer(t, `{"access_token":"device_access_token","expires_in":3600}`)
+	sleep := &recordingSleep{}
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.TokenType != "Bearer" {
+		t.Errorf("TokenType = %q, want Bearer", token.TokenType)
+	}
+}
+
 func TestPollDeviceToken_AcceptsTokenWithoutExpiresIn(t *testing.T) {
 	// Absent expires_in (RFC 6749 §5.1) is allowed — the token carries no expiry.
 	srv := rawTokenServer(t, `{"access_token":"device_access_token","token_type":"Bearer"}`)
@@ -1037,9 +1063,10 @@ func TestPerformDeviceLogin_ChargesDisplayTimeAgainstPollDeadline(t *testing.T) 
 	}
 
 	// Clock reads, in order: (1) issuance anchor, (2) remaining after display,
-	// (3) poll deadline anchor, (4) wait clamp, (5) deadline check. The display
-	// burns 99 of the 100s window, then the final read crosses the deadline.
-	offsets := []int{0, 99, 99, 99, 100}
+	// (3) wait clamp, (4) post-sleep deadline check. The poll loop inherits the
+	// exact issuance-anchored deadline (no re-anchor read). The display burns 99
+	// of the 100s window, then the final read crosses the deadline.
+	offsets := []int{0, 99, 99, 100}
 	idx := 0
 	clock := func() time.Time {
 		s := offsets[min(idx, len(offsets)-1)]
@@ -1063,6 +1090,64 @@ func TestPerformDeviceLogin_ChargesDisplayTimeAgainstPollDeadline(t *testing.T) 
 	if polled {
 		t.Error("must not poll: display time should have exhausted the remaining lifetime")
 	}
+}
+
+func TestPerformDeviceLogin_ExactDeadlineNoWholeSecondRounding(t *testing.T) {
+	// A sub-second remainder after display must NOT round up to a whole extra
+	// second nor re-anchor at a later clock read: the poll loop inherits the
+	// EXACT issuance-anchored deadline, so the clamped 500ms wait lands on
+	// expiry and the endpoint is never polled. The pre-fix behavior (remaining
+	// rounded up to 1s, then a fresh deadline anchored inside PollDeviceToken)
+	// would have left a full-second window and polled once.
+	polled := false
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/device" {
+			body := map[string]any{}
+			for k, v := range deviceAuthBody {
+				body[k] = v
+			}
+			body["expires_in"] = 100
+			_ = json.NewEncoder(w).Encode(body)
+			return
+		}
+		polled = true
+		_ = json.NewEncoder(w).Encode(tokenBody)
+	}))
+	defer srv.Close()
+
+	endpoint := srv.URL + "/device"
+	config := &Config{
+		Issuer:                      srv.URL,
+		TokenEndpoint:               srv.URL + "/token",
+		DeviceAuthorizationEndpoint: &endpoint,
+		GrantTypesSupported:         []string{DeviceCodeGrantType, "refresh_token"},
+	}
+
+	// Clock reads: (1) issuance anchor (deadline = 100s), (2) remaining after a
+	// display that burned 99.5s, (3) wait clamp (500ms left), (4) post-sleep
+	// deadline check exactly at expiry.
+	offsetsMs := []int64{0, 99_500, 99_500, 100_000}
+	idx := 0
+	clock := func() time.Time {
+		ms := offsetsMs[min(idx, len(offsetsMs)-1)]
+		idx++
+		return time.UnixMilli(ms)
+	}
+	sleep := &recordingSleep{}
+
+	_, err := PerformDeviceLogin(context.Background(), config, "basecamp-cli",
+		func(DeviceAuthorization) {},
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceClock(clock), WithDeviceSleep(sleep.fn))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowExpired {
+		t.Fatalf("want DeviceFlowError(expired) at the exact issuance deadline, got %v", err)
+	}
+	if polled {
+		t.Error("must not poll: the sub-second remainder ends at the exact deadline")
+	}
+	assertWaits(t, sleep.waits, []time.Duration{500 * time.Millisecond})
 }
 
 // --- helpers ---

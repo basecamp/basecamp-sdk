@@ -438,6 +438,30 @@ class TestPollDeviceToken:
         assert exc_info.value.code == "api_error"
 
     @respx.mock
+    def test_rejects_explicit_empty_token_type(self):
+        # An explicit "" token_type is malformed token metadata → api_error,
+        # uniform across all five SDKs.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "token_type": ""})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    def test_null_token_type_defaults_to_bearer(self):
+        # JSON null is treated as absent (the Go/Kotlin decoders cannot
+        # distinguish them) → Bearer default, uniform across all five SDKs.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "token_type": None})])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+        )
+
+        assert token.token_type == "Bearer"
+
+    @respx.mock
     @pytest.mark.parametrize("field", ["refresh_token", "token_type", "scope"])
     def test_rejects_non_string_token_fields(self, field):
         # A numeric refresh_token/token_type/scope is a malformed response, not a
@@ -453,7 +477,7 @@ class TestPollDeviceToken:
     @respx.mock
     def test_rejects_fractional_expires_in_in_token_response(self):
         # A fractional token lifetime is malformed under the whole-second contract
-        # (Go/Kotlin reject it by int/Long typing) → api_error, uniform across SDKs.
+        # → api_error, uniform across SDKs (each validates the decoded value).
         _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": 1.5})])
 
         with pytest.raises(OAuthError) as exc_info:
@@ -464,15 +488,16 @@ class TestPollDeviceToken:
 
     @respx.mock
     def test_accepts_integer_valued_float_expires_in_in_token_response(self):
-        # An integer-valued float (3600.0) is accepted and coerced, matching the
-        # device-duration rule.
+        # An integer-valued float (3600.0) is accepted and coerced to int,
+        # matching the device-duration rule and OAuthToken's ``int | None`` type.
         _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": 3600.0})])
 
         token = poll_device_token(
             TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
         )
 
-        assert token.expires_in == 3600.0
+        assert token.expires_in == 3600
+        assert isinstance(token.expires_in, int)
 
     @respx.mock
     def test_expires_against_injected_clock(self):

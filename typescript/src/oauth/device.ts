@@ -452,9 +452,9 @@ async function postDeviceToken(
       // non-finite value (1e400 → Infinity) or a very large finite one would flow
       // into Date arithmetic and yield an Invalid Date whose getTime() is NaN, so
       // expiry checks downstream would treat the token as never expiring. Whole
-      // seconds match the device-duration rule and Go/Kotlin (int/Long typing
-      // already rejects a fractional lifetime); an integer-valued float (3600.0)
-      // is still accepted.
+      // seconds match the device-duration rule — every SDK validates the decoded
+      // numeric value explicitly to reject a fractional lifetime; an
+      // integer-valued float (3600.0) is still accepted.
       if (token.expires_in != null &&
           (typeof token.expires_in !== "number" || !Number.isInteger(token.expires_in) ||
             token.expires_in <= 0 || token.expires_in > MAX_TOKEN_LIFETIME_SECONDS)) {

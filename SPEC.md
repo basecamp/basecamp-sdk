@@ -1153,6 +1153,10 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               # cannot carry the loop past expiry undetected
        wait = max(interval, backoff), clamped to the remaining lifetime (> 0 here)
        SLEEP wait   # abortable; a cancel mid-wait → DeviceFlowError(cancelled)
+       IF clock.now() ≥ deadline → raise DeviceFlowError(expired)
+              # re-check AFTER the wait, before POSTing: the clamp above makes the
+              # final sleep land exactly on expiry, so without this check the loop
+              # would issue one POST for a code already known to be expired
        POST tokenEndpoint: grant_type=urn:ietf:params:oauth:grant-type:device_code,
                            device_code, client_id
        CASE response:
@@ -1166,9 +1170,12 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               to Infinity), a fractional one, a non-positive one, or one past the
               ceiling would make expires_at arithmetic overflow/NaN so the token
               would appear to never expire (an integer-valued float like 3600.0 is
-              accepted; whole seconds match the device-duration rule and Go/Kotlin,
-              whose int/Long typing already rejects a fractional lifetime);
-              refresh_token/token_type/scope, when present, MUST be strings.
+              accepted and coerced to whole seconds, matching the device-duration
+              rule; every SDK decodes the numeric value and validates it
+              explicitly to reject a fractional lifetime);
+              refresh_token/token_type/scope, when present, MUST be strings —
+              token_type additionally non-empty when present (absent defaults to
+              Bearer; an explicit "" is malformed).
               Absent expires_in is allowed (the token carries no expiry).
               The 2147483647 s (~68 year) token-lifetime ceiling is separate from
               the 2147483 s device-duration ceiling above: it bounds expires_at

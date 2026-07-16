@@ -299,7 +299,15 @@ func validateDeviceAuthorization(raw rawDeviceAuthorization) (*DeviceAuthorizati
 // cancelled. Other server errors surface as a coded *basecamp.Error.
 func PollDeviceToken(ctx context.Context, tokenEndpoint, clientID, deviceCode string, interval, expiresIn int, opts ...DeviceOption) (*Token, error) {
 	cfg := newDeviceConfig(opts)
+	deadline := cfg.clock().Add(time.Duration(expiresIn) * time.Second)
+	return pollDeviceTokenUntil(ctx, cfg, tokenEndpoint, clientID, deviceCode, interval, deadline)
+}
 
+// pollDeviceTokenUntil is the polling loop against an ABSOLUTE monotonic
+// deadline. PerformDeviceLogin calls it with the exact issuance-anchored
+// deadline so no whole-second rounding or re-anchoring at a later clock read
+// can extend the code's lifetime.
+func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, clientID, deviceCode string, interval int, deadline time.Time) (*Token, error) {
 	if err := basecamp.RequireSecureEndpoint(tokenEndpoint); err != nil {
 		return nil, &basecamp.Error{
 			Code:    basecamp.CodeUsage,
@@ -313,7 +321,6 @@ func PollDeviceToken(ctx context.Context, tokenEndpoint, clientID, deviceCode st
 		intervalSeconds = defaultDeviceInterval
 	}
 	backoffSeconds := intervalSeconds
-	deadline := cfg.clock().Add(time.Duration(expiresIn) * time.Second)
 
 	form := url.Values{}
 	form.Set("grant_type", DeviceCodeGrantType)
@@ -464,12 +471,15 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		// an explicit "expires_in":0 distinguishable from an omitted field (a
 		// plain int makes 0 look absent and skip validation), and float64 accepts
 		// an integer-valued 3600.0 per the cross-SDK contract. Whole-second
-		// enforcement happens below. Non-string token_type/refresh_token/scope
-		// still fail Unmarshal here as pollInvalidResponse.
+		// enforcement happens below. token_type is *string for the same
+		// absent-vs-explicit reason: an omitted field defaults to Bearer, but an
+		// explicit "token_type":"" is malformed metadata (api_error), uniform
+		// with the other SDKs. Non-string token_type/refresh_token/scope still
+		// fail Unmarshal here as pollInvalidResponse.
 		var raw struct {
 			AccessToken  string   `json:"access_token"`
 			RefreshToken string   `json:"refresh_token"`
-			TokenType    string   `json:"token_type"`
+			TokenType    *string  `json:"token_type"`
 			ExpiresIn    *float64 `json:"expires_in"`
 			Scope        string   `json:"scope"`
 		}
@@ -479,11 +489,17 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		if raw.AccessToken == "" {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response missing access_token")}
 		}
+		if raw.TokenType != nil && *raw.TokenType == "" {
+			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response token_type must be a non-empty string")}
+		}
 		token := Token{
 			AccessToken:  raw.AccessToken,
 			RefreshToken: raw.RefreshToken,
-			TokenType:    raw.TokenType,
+			TokenType:    "Bearer",
 			Scope:        raw.Scope,
+		}
+		if raw.TokenType != nil {
+			token.TokenType = *raw.TokenType
 		}
 		// When present, expires_in must be a positive WHOLE number of seconds no
 		// greater than maxTokenLifetimeSeconds — an explicit 0, a fractional
@@ -498,9 +514,6 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			}
 			token.ExpiresIn = int(v)
 			token.ExpiresAt = cfg.clock().Add(time.Duration(token.ExpiresIn) * time.Second)
-		}
-		if token.TokenType == "" {
-			token.TokenType = "Bearer"
 		}
 		return pollResult{kind: pollToken, token: &token}
 	}
@@ -554,17 +567,14 @@ func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, di
 
 	// Charge display time against the code's lifetime. If the hook consumed the
 	// whole window, the code has expired and no token request is warranted.
-	remaining := deadline.Sub(cfg.clock())
-	if remaining <= 0 {
+	if deadline.Sub(cfg.clock()) <= 0 {
 		return nil, &DeviceFlowError{Reason: DeviceFlowExpired}
 	}
 
-	// Pass the REMAINING lifetime (not the full expires_in) so PollDeviceToken's
-	// deadline keeps counting from issuance instead of re-anchoring a fresh full
-	// window after display. Round up so a sub-second remainder still allows one
-	// poll rather than truncating to an immediate expiry.
-	remainingSeconds := int((remaining + time.Second - 1) / time.Second)
-	return PollDeviceToken(ctx, config.TokenEndpoint, clientID, auth.DeviceCode, auth.Interval, remainingSeconds, opts...)
+	// Pass the EXACT issuance-anchored deadline — never a whole-second remaining
+	// count that a re-anchoring clock read could round upward — so the poll loop
+	// terminates precisely when the code expires.
+	return pollDeviceTokenUntil(ctx, cfg, config.TokenEndpoint, clientID, auth.DeviceCode, auth.Interval, deadline)
 }
 
 // supportsDeviceGrant reports whether the advertised grant types include the
