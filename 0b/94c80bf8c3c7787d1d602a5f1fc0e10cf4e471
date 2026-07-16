@@ -1,0 +1,20 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_b250506ef28983::t_ce769120c4fe3e 26,64,92,116-123,133,235,405
+  s_b250506ef28983::t_6eda7ebed797ad 89,158,164,202-213,216,224,335-337,388,402,437,448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0b94c80bf8c3c7787d1d602a5f1fc0e10cf4e471",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
