@@ -1,0 +1,25 @@
+.github/workflows/security.yml
+  s_05336b59154d98::t_7bccbc1375cb26 207-208,226-236,238-239
+  s_05336b59154d98::t_2067abe675de02 106
+  s_05336b59154d98::t_4284e360427ee2 73-74,92-102,104-105
+  s_05336b59154d98::t_cc0a8edcae7a5f 27-28,46-56,58-59
+  s_05336b59154d98::t_b41fd50c051793 57,103,237
+  s_05336b59154d98::t_adbe1f27f89e4e 240
+  s_05336b59154d98::t_48107096fb7524 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "28023b357d06a13c265c50fb08a593a225795ba1",
+  "prompts": {},
+  "sessions": {
+    "s_05336b59154d98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d97a204-cd8e-4131-a9fc-f54e6bf932cb",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
