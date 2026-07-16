@@ -555,6 +555,21 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollAcceptsIntegerValuedFloatExpiresInOn2xx() = runTest {
+        // 3600.0 carries no fractional part — accepted per the cross-SDK contract
+        // (the shared Long? decode rejected it, unlike TS/Python/Ruby; the device
+        // path now decodes Double? and enforces whole seconds in validation).
+        val body = """{"access_token":"tok","token_type":"Bearer","expires_in":3600.0}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        assertEquals(3600L, token.expiresIn)
+        assertNotNull(token.expiresAt)
+        client.close()
+    }
+
+    @Test
     fun pollRejectsNonNumericExpiresInOn2xx() = runTest {
         // A 2xx token response whose expires_in is not a number is a malformed
         // body: SerializationException → api_error, never a token nor transport.
@@ -572,13 +587,15 @@ class OAuthDeviceTest {
     @Test
     fun pollRejectsMalformedTokenExpiresInOn2xx() = runTest {
         // A 2xx whose expires_in cannot be a schedulable lifetime is api_error:
-        // 1e400 overflows the Double range (deserialization fails into Long?), a
-        // negative or past-ceiling value would overflow `it * 1000` in expiresAt.
+        // 1e400 parses to Infinity (past the ceiling), an explicit 0 or negative
+        // value violates the positive rule, a past-ceiling value would overflow
+        // `it * 1000` in expiresAt, and 3600.5 breaks the whole-second contract.
         val bodies = listOf(
             """{"access_token":"tok","token_type":"Bearer","expires_in":1e400}""",
             """{"access_token":"tok","token_type":"Bearer","expires_in":-1}""",
             """{"access_token":"tok","token_type":"Bearer","expires_in":0}""",
             """{"access_token":"tok","token_type":"Bearer","expires_in":2147483648}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":3600.5}""",
         )
         for (body in bodies) {
             val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }

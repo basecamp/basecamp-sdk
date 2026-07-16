@@ -320,31 +320,44 @@ def poll_device_token(
         )
 
 
+def _valid_token_expires_in(value: Any) -> bool:
+    """A token ``expires_in`` is valid when it is a finite, positive, WHOLE number
+    of seconds no greater than :data:`MAX_TOKEN_LIFETIME_SECONDS`.
+
+    An integer-valued float (``3600.0``) is accepted; a fractional value (``1.5``)
+    is rejected — matching the device-duration rule and Go/Kotlin, where the
+    integer/Long typing already rejects a fractional token lifetime. ``bool`` is
+    an ``int`` subclass but never a lifetime.
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return 0 < value <= MAX_TOKEN_LIFETIME_SECONDS
+    if isinstance(value, float):
+        return math.isfinite(value) and value.is_integer() and 0 < value <= MAX_TOKEN_LIFETIME_SECONDS
+    return False
+
+
 def _build_token(data: dict[str, Any], status: int) -> OAuthToken:
     """Construct an :class:`OAuthToken` from a validated token response.
 
     Every optional field is type-checked BEFORE construction: ``OAuthToken``
     computes ``expires_at`` arithmetic from ``expires_in``, so a malformed value
-    (a string, a bool, a non-finite ``inf`` from ``1e400``, a value past the
-    :data:`MAX_TOKEN_LIFETIME_SECONDS` ceiling) must surface as ``api_error``,
-    never a ``TypeError`` or an ``inf`` deadline. ``token_type``/``refresh_token``/
-    ``scope`` must be strings when present. Absent/null ``expires_in`` stays
-    allowed — the token then carries no expiry.
+    (a string, a bool, a non-finite ``inf`` from ``1e400``, a fractional value, a
+    value past the :data:`MAX_TOKEN_LIFETIME_SECONDS` ceiling) must surface as
+    ``api_error``, never a ``TypeError`` or an ``inf`` deadline.
+    ``token_type``/``refresh_token``/``scope`` must be strings when present.
+    Absent/null ``expires_in`` stays allowed — the token then carries no expiry.
     """
     access_token = data.get("access_token")
     if not isinstance(access_token, str) or not access_token:
         raise OAuthError("api_error", "Device token response missing access_token", http_status=status)
 
     expires_in = data.get("expires_in")
-    if expires_in is not None and (
-        isinstance(expires_in, bool)
-        or not isinstance(expires_in, int | float)
-        or not math.isfinite(expires_in)
-        or not (0 < expires_in <= MAX_TOKEN_LIFETIME_SECONDS)
-    ):
+    if expires_in is not None and not _valid_token_expires_in(expires_in):
         raise OAuthError(
             "api_error",
-            "Device token response expires_in must be a finite positive number "
+            "Device token response expires_in must be a finite positive whole number "
             f"no greater than {MAX_TOKEN_LIFETIME_SECONDS} seconds",
             http_status=status,
         )

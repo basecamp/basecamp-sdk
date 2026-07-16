@@ -289,6 +289,7 @@ config MUST come from resource-first discovery. Launchpad advertises no device
 authorization endpoint, and the capability guard rejects it before any request.
 
 ```python
+from basecamp import Client
 from basecamp.oauth import discover_from_resource, perform_device_login
 
 result = discover_from_resource("https://3.basecampapi.com")

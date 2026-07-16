@@ -124,6 +124,21 @@ data class DeviceAuthorization(
     val interval: Long,
 )
 
+/**
+ * Raw token response for the device path. `expires_in` decodes as [Double] (the
+ * shared [RawTokenResponse] uses [Long], which throws on an integer-valued float
+ * like 3600.0) so the cross-SDK contract — accept 3600.0, reject fractional —
+ * can be enforced in validation rather than by decoder happenstance.
+ */
+@Serializable
+private data class RawDeviceTokenResponse(
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String? = null,
+    @SerialName("token_type") val tokenType: String = "Bearer",
+    @SerialName("expires_in") val expiresIn: Double? = null,
+    val scope: String? = null,
+)
+
 /** Raw RFC 8628 device authorization response; all fields nullable to validate. */
 @Serializable
 private data class RawDeviceAuthorization(
@@ -391,7 +406,7 @@ private suspend fun postDeviceTokenPoll(
 
     if (status in 200..299) {
         val raw = try {
-            deviceJson.decodeFromString<RawTokenResponse>(body)
+            deviceJson.decodeFromString<RawDeviceTokenResponse>(body)
         } catch (e: SerializationException) {
             // Malformed 2xx token response — api_error, NOT a retryable transport.
             throw BasecampException.Api("Failed to parse device token response", httpStatus = status, cause = e)
@@ -401,26 +416,30 @@ private suspend fun postDeviceTokenPoll(
             // (api_error), never an accepted token nor a retryable transport error.
             throw BasecampException.Api("Device token response missing access_token", httpStatus = status)
         }
-        // A non-numeric expires_in (string/bool/1e400) already fails deserialization
-        // above as api_error. What survives is a valid Long that is non-positive or
-        // so large that `it * 1000` overflows — bound it so expiresAt never wraps.
-        raw.expiresIn?.let {
-            if (it <= 0 || it > MAX_TOKEN_LIFETIME_SECONDS) {
+        // A non-numeric expires_in (string/bool) already fails deserialization
+        // above as api_error. What survives is a Double: per the cross-SDK
+        // contract it must be a positive WHOLE number of seconds no greater than
+        // the ceiling — an explicit 0, a fractional 3600.5, or an overflowing
+        // 1e400 (parses to Infinity) is malformed, while 3600.0 is accepted and
+        // converted to whole seconds. The ceiling keeps `* 1000` from wrapping.
+        val expiresInSeconds = raw.expiresIn?.let {
+            if (it <= 0.0 || it > MAX_TOKEN_LIFETIME_SECONDS.toDouble() || it % 1.0 != 0.0) {
                 throw BasecampException.Api(
-                    "Device token response expires_in must be a positive integer no greater than " +
-                        "$MAX_TOKEN_LIFETIME_SECONDS seconds",
+                    "Device token response expires_in must be a positive whole number of seconds " +
+                        "no greater than $MAX_TOKEN_LIFETIME_SECONDS",
                     httpStatus = status,
                 )
             }
+            it.toLong()
         }
         val now = currentTimeMillis()
-        val expiresAt = raw.expiresIn?.let { now + it * 1000 }
+        val expiresAt = expiresInSeconds?.let { now + it * 1000 }
         PollResult.Token(
             OAuthToken(
                 accessToken = raw.accessToken,
                 refreshToken = raw.refreshToken,
                 tokenType = raw.tokenType,
-                expiresIn = raw.expiresIn,
+                expiresIn = expiresInSeconds,
                 expiresAt = expiresAt,
                 scope = raw.scope,
             ),

@@ -271,6 +271,10 @@ try {
     accountId: process.env.BASECAMP_ACCOUNT_ID!,
     accessToken: token.accessToken,
   });
+  // A long-lived CLI should PERSIST the whole token (incl. token.refreshToken)
+  // and, once isTokenExpired(token), mint a fresh one with refreshToken({ ... })
+  // as shown above — a client built from a static accessToken stops working when
+  // the device access token expires.
 } catch (err) {
   if (err instanceof DeviceFlowError) {
     // err.reason: "access_denied" | "expired" | "transport" | "unavailable" | "cancelled"

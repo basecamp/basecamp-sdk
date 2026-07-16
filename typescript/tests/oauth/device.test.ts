@@ -522,6 +522,30 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("usage");
   });
 
+  it("does not return a token when the signal was aborted before the token POST", async () => {
+    // Regression: a signal aborted during a sleep that RESOLVES (rather than
+    // rejecting) hands postDeviceToken an already-aborted signal. Without an
+    // explicit already-aborted check the once-listener never fires, the fetch
+    // proceeds, and a 200 would return a token AFTER cancellation. It must cancel.
+    queueTokenResponses([{ status: 200, body: tokenResponse }]);
+    const controller = new AbortController();
+    const fn = (_ms: number): Promise<void> => {
+      controller.abort();
+      return Promise.resolve();
+    };
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+      signal: controller.signal,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("cancelled");
+  });
+
   it("raises cancelled when the sleep itself rejects with an AbortError", async () => {
     // The default sleep() rejects with an AbortError when the caller aborts
     // mid-wait; that rejection must surface as cancelled, never leak raw.
@@ -660,6 +684,37 @@ describe("pollDeviceToken", () => {
       sleepFn: fn,
     });
     expect(token.expiresIn).toBe(2_147_483_647);
+  });
+
+  it("rejects a fractional expires_in on a 2xx token response as api_error", async () => {
+    // Whole-second contract: Go/Kotlin reject a fractional lifetime by int/Long
+    // typing; TS/Python/Ruby reject it explicitly so all five behave uniformly.
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, expires_in: 1.5 } }]);
+    const { fn } = recordingSleep();
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it("accepts an integer-valued float expires_in on a 2xx token response (3600.0)", async () => {
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, expires_in: 3600.0 } }]);
+    const { fn } = recordingSleep();
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    });
+    expect(token.expiresIn).toBe(3600);
   });
 
   it.each([
@@ -959,6 +1014,24 @@ describe("performDeviceLogin", () => {
     expect(polled).toBe(false);
   });
 
+  it("guards capability: a string grantTypesSupported does not substring-match → unavailable", async () => {
+    // A manually-constructed config could supply grantTypesSupported as a string;
+    // String.prototype.includes would substring-match and wrongly pass the guard.
+    // The Array.isArray check rejects it (Python/Ruby defend the same way).
+    let polled = false;
+    server.use(mswHttp.post(TOKEN_ENDPOINT, () => { polled = true; return HttpResponse.json(tokenResponse); }));
+
+    const err = await performDeviceLogin({
+      config: { ...config, grantTypesSupported: DEVICE_CODE_GRANT_TYPE as unknown as string[] },
+      clientId: "basecamp-cli",
+      display: () => {},
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("unavailable");
+    expect(polled).toBe(false);
+  });
+
   it("fires the display hook then completes", async () => {
     server.use(
       mswHttp.post(DEVICE_ENDPOINT, () => HttpResponse.json(deviceAuthResponse)),
@@ -1047,6 +1120,15 @@ describe("DeviceFlowError retryability", () => {
       const err = new DeviceFlowError(reason, "x", { retryable: true });
       expect(err.retryable).toBe(false);
     }
+  });
+
+  it("falls back to a usage category for an unknown reason (JS caller safety)", () => {
+    // DeviceFlowReason is an exhaustive TS union, but this is a public runtime
+    // class: a JS caller can construct an unknown reason. categoryFor must not
+    // leave BasecampError with an undefined code.
+    const err = new DeviceFlowError("bogus_reason" as never, "x");
+    expect(err.code).toBe("usage");
+    expect(err.retryable).toBe(false);
   });
 
   it("serializes the reason via toJSON (and through JSON.stringify)", () => {

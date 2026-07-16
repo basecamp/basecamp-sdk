@@ -451,6 +451,30 @@ class TestPollDeviceToken:
         assert exc_info.value.code == "api_error"
 
     @respx.mock
+    def test_rejects_fractional_expires_in_in_token_response(self):
+        # A fractional token lifetime is malformed under the whole-second contract
+        # (Go/Kotlin reject it by int/Long typing) → api_error, uniform across SDKs.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": 1.5})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    def test_accepts_integer_valued_float_expires_in_in_token_response(self):
+        # An integer-valued float (3600.0) is accepted and coerced, matching the
+        # device-duration rule.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": 3600.0})])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+        )
+
+        assert token.expires_in == 3600.0
+
+    @respx.mock
     def test_expires_against_injected_clock(self):
         _queue_token_responses([httpx.Response(400, json={"error": "authorization_pending"})])
         # Clock: base at 0, then jumps past the 900s deadline on the first check.
