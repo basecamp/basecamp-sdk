@@ -148,13 +148,13 @@ sealed class BasecampException(
      * [exitCode]) is DERIVED from it so callers can branch on either the precise
      * [reason] or the coarse [code]:
      *
-     * | reason          | code       | retryable |
-     * |-----------------|------------|-----------|
-     * | `access_denied` | auth       | no        |
-     * | `expired`       | auth       | no        |
-     * | `transport`     | network    | yes       |
-     * | `unavailable`   | validation | no        |
-     * | `cancelled`     | usage      | no        |
+     * | reason          | code            | retryable |
+     * |-----------------|-----------------|-----------|
+     * | `access_denied` | `auth_required` | no        |
+     * | `expired`       | `auth_required` | no        |
+     * | `transport`     | `network`       | yes       |
+     * | `unavailable`   | `validation`    | no        |
+     * | `cancelled`     | `usage`         | no        |
      *
      * Native coroutine cancellation propagates as [kotlin.coroutines.cancellation.CancellationException]
      * rather than becoming `DeviceFlow(cancelled)`; the `cancelled` reason exists
