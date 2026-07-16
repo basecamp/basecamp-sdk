@@ -189,6 +189,12 @@ func TestRequestDeviceAuthorization_RejectsMissingField(t *testing.T) {
 	_, err := RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli",
 		WithDeviceHTTPClient(tlsClient(srv)))
 	assertBasecampCode(t, err, basecamp.CodeAPI)
+	// A malformed 2xx body's validation error carries the status, like the parse
+	// failure and the token-poll raises.
+	var be *basecamp.Error
+	if !errors.As(err, &be) || be.HTTPStatus != http.StatusOK {
+		t.Errorf("validation error should carry HTTPStatus=200, got %+v", err)
+	}
 }
 
 func TestRequestDeviceAuthorization_ParseFailureCarriesHTTPStatus(t *testing.T) {

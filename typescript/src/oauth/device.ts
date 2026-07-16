@@ -163,7 +163,7 @@ export async function requestDeviceAuthorization(
     });
   }
 
-  return validateDeviceAuthorization(data as RawDeviceAuthorization);
+  return validateDeviceAuthorization(data as RawDeviceAuthorization, response.status);
 }
 
 /**
@@ -181,7 +181,9 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthorization {
+function validateDeviceAuthorization(data: RawDeviceAuthorization, status: number): DeviceAuthorization {
+  // Every validation error carries the (2xx) status so a malformed success body
+  // is diagnosable as such — uniform with the token-poll raises and the other SDKs.
   // Type-check, not just truthiness: a JSON number is truthy but is not a usable
   // code/URI, so it must fail as api_error rather than flow into the poll loop.
   if (
@@ -189,7 +191,9 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthor
     !isNonEmptyString(data.user_code) ||
     !isNonEmptyString(data.verification_uri)
   ) {
-    throw new BasecampError("api_error", "Invalid device authorization response: missing or non-string required fields");
+    throw new BasecampError("api_error", "Invalid device authorization response: missing or non-string required fields", {
+      httpStatus: status,
+    });
   }
   // expires_in drives a monotonic deadline; interval drives poll delays. Both
   // must be positive integers within MAX_DEVICE_SECONDS — a fractional value
@@ -199,7 +203,8 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthor
   if (!isPositiveInteger(data.expires_in) || data.expires_in > MAX_DEVICE_SECONDS) {
     throw new BasecampError(
       "api_error",
-      `Invalid device authorization response: expires_in must be a positive integer no greater than ${MAX_DEVICE_SECONDS}`
+      `Invalid device authorization response: expires_in must be a positive integer no greater than ${MAX_DEVICE_SECONDS}`,
+      { httpStatus: status }
     );
   }
   let interval = DEFAULT_INTERVAL_SECONDS;
@@ -209,7 +214,8 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthor
     if (!isPositiveInteger(data.interval) || data.interval > MAX_DEVICE_SECONDS) {
       throw new BasecampError(
         "api_error",
-        `Invalid device authorization response: interval must be a positive integer no greater than ${MAX_DEVICE_SECONDS}`
+        `Invalid device authorization response: interval must be a positive integer no greater than ${MAX_DEVICE_SECONDS}`,
+        { httpStatus: status }
       );
     }
     interval = data.interval;
@@ -217,7 +223,9 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthor
   // Optional, but when present it must be a string — a non-string (number/array)
   // would return a malformed DeviceAuthorization shape to callers.
   if (data.verification_uri_complete !== undefined && typeof data.verification_uri_complete !== "string") {
-    throw new BasecampError("api_error", "Invalid device authorization response: verification_uri_complete must be a string");
+    throw new BasecampError("api_error", "Invalid device authorization response: verification_uri_complete must be a string", {
+      httpStatus: status,
+    });
   }
   return {
     deviceCode: data.device_code,
