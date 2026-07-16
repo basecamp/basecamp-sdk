@@ -1,0 +1,40 @@
+python/src/basecamp/oauth/errors.py
+  s_b250506ef28983::t_5f20d38ad63d21 3-4,14-25,33,37-54
+python/src/basecamp/oauth/__init__.py
+  s_b250506ef28983::t_504db923ec067d 3,5-18,25-27,32-34,41
+python/src/basecamp/oauth/config.py
+  s_b250506ef28983::t_a533b1905b1e22 4-5,10,14-18,21-57
+python/tests/oauth/test_discovery.py
+  s_b250506ef28983::t_7c2015992abc0f 44-49,51,56
+python/src/basecamp/oauth/discovery.py
+  s_b250506ef28983::t_4919dc09fcbece 1-14,17-19,22,24-30,36-38,40-42,44-51,54-56,58-65,67-84,90-92,95-96,100,102-122,124,128-165,168,170-171,174-175,179-185,187-190,192-206,209,211-290,294-320
+  s_b250506ef28983::t_f2e6bc2937f04e 23
+  s_b250506ef28983::t_74a821678d72cc 291-293
+python/src/basecamp/_security.py
+  s_b250506ef28983::t_8437ea96c08414 3
+  s_b250506ef28983::t_3959d8fa39c22f 43-76,82-101
+python/README.md
+  s_b250506ef28983::t_836e8658c3b006 12
+  s_b250506ef28983::t_8d42cb6125b6b4 216
+  s_b250506ef28983::t_a6e70e5331a351 157,161-215
+python/tests/oauth/test_resource_discovery.py
+  s_b250506ef28983::t_26d4dc46a2c183 1-17,19-168,197-221,223-234,237,246,248-250,253-255,263,271,279,281-284,286-287,293,295-298,300-301,307,309-315,317-319,325,327-328,330
+  s_b250506ef28983::t_fd3be72596e72d 222
+  s_b250506ef28983::t_24f871a94ba646 235-236,238-245,247,251-252,256-262,264-270,272-278,280,285,288-292,294,299,302-306,308,316,320-324,326,329,331-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "15fe8d02b14a74dcb771c5dbe8770b3be83081bb",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
