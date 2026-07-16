@@ -1,0 +1,60 @@
+ruby/lib/basecamp/security.rb
+  s_b250506ef28983::t_086c398423a31b 17-19
+  s_b250506ef28983::t_798725cde81e2c 14-16,95-140
+ruby/test/basecamp/same_origin_test.rb
+  s_b250506ef28983::t_93e90b371d035d 128-176
+  s_b250506ef28983::t_fc04db122b5b32 115-127
+ruby/lib/basecamp/http.rb
+  s_b250506ef28983::t_5542434ad099b7 541-542
+  s_b250506ef28983::t_e43afb60a0fffa 65,88-115
+  s_b250506ef28983::t_fd8e5968bb7e1b 75-77
+  s_b250506ef28983::t_0fcd0b4b7a1c96 64,66-74,83,539-540
+ruby/README.md
+  s_b250506ef28983::t_d081f07ae0e1a4 136-179
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_6ad669e8079d28 49-60,69-117,148-254
+ruby/lib/basecamp/oauth/config.rb
+  s_b250506ef28983::t_0adeeeb56f80ec 5-10,13,15,18,23,25-26,31-32,34-35
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_15146e31eb34f3 5-7,9-18,21-35,37-40,43-44,46-50,52,54-61,63-68,70-73,75-77,79-88,90-95,97-100,103-109,111-117
+ruby/lib/basecamp/oauth/discovery_result.rb
+  s_b250506ef28983::t_31badf7408978d 1-33
+ruby/lib/basecamp/oauth/discovery_selection_error.rb
+  s_b250506ef28983::t_c7714ba2bf21d2 1-28
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_ed026d1ad8b368 1-142
+ruby/lib/basecamp/oauth/protected_resource_metadata.rb
+  s_b250506ef28983::t_64b9f96688e4d8 1-22
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_a685d554ad29e4 1-79
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_5cb71488746c72 17-25,31-32,35
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_b250506ef28983::t_25cbbba3c1dc94 1-170
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_684c7901efc9a1 1-118
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_b3b473aef7ce49 67,74-123,227-254
+ruby/test/basecamp/security_test.rb
+  s_b250506ef28983::t_6f70a419eaea91 190-242
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_b250506ef28983::t_4117ea073500eb 8-11,16-19,29-30,35-36,39-47,51-52,55-63,68-69,71-125
+ruby/test/test_helper.rb
+  s_b250506ef28983::t_d9d650e746124d 109-110,112,116-117,119-121,123,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6a37179e6f885a084fee4335d2622ca30d251ac4",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
