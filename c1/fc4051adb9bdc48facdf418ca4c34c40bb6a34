@@ -1,0 +1,103 @@
+go/README.md
+  s_d32e62340bb1a3::t_95c7b93d76addf 190-197
+  s_d32e62340bb1a3::t_b2070fc5357059 234-236
+ruby/test/basecamp/oauth_device_test.rb
+  s_d32e62340bb1a3::t_3186fcffebbc64 318-393
+go/pkg/basecamp/oauth/device_test.go
+  s_d32e62340bb1a3::t_5cbdbfd8a40b86 671,675-676,1027-1041
+  s_d32e62340bb1a3::t_0135cd8db4f2f9 334-366,658-660,662-663
+  s_41345e1fa49acd::t_e8d767063232ca 652-657,661,664-670,672-674,677
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_d32e62340bb1a3::t_bb7b3e4bb8a49b 374,529-540,543-570
+  s_d32e62340bb1a3::t_a6348ea778d078 375-409
+  s_d32e62340bb1a3::t_f7f547c8994c93 541-542
+typescript/tests/oauth/device.test.ts
+  s_d32e62340bb1a3::t_5250facf4e7a6f 927-936
+  s_d32e62340bb1a3::t_507d3aeef173d7 260-285
+  s_d32e62340bb1a3::t_cd8abb3f242d53 356-446
+  s_d32e62340bb1a3::t_0c97a469c05a0c 681-708,731-733,735-740
+  s_d32e62340bb1a3::t_e5e0f76637e58c 709-730,734
+typescript/README.md
+  s_d32e62340bb1a3::t_9d12a9118a8595 246-248
+  s_d32e62340bb1a3::t_6213345bf3d6f4 244
+  s_d32e62340bb1a3::t_1446a55c96d8b8 268-273,280-283
+SPEC.md
+  s_d32e62340bb1a3::t_0c0406f87692e5 1186-1191
+  s_d32e62340bb1a3::t_9891ed0e9b89ba 1178,1180-1184
+  s_d32e62340bb1a3::t_74f9113fd44613 1113-1117
+  s_d32e62340bb1a3::t_4ff815913f42e2 1131-1132,1134,1143-1145,1150-1154
+  s_d32e62340bb1a3::t_a05791001a821b 1164-1171
+  s_41345e1fa49acd::t_5a5e3ec56e7b0c 1185
+go/pkg/basecamp/oauth/device.go
+  s_d32e62340bb1a3::t_41b5378ee09460 288-289
+  s_d32e62340bb1a3::t_15566d628efead 363-364
+  s_d32e62340bb1a3::t_96b862eca3103d 396-398
+  s_d32e62340bb1a3::t_533042ecd3556b 327-331
+  s_d32e62340bb1a3::t_f9c07e78b80fae 353-354
+  s_d32e62340bb1a3::t_23ff64370429b8 413-414
+  s_d32e62340bb1a3::t_fb5a3d533e2147 472-480
+typescript/src/oauth/device.ts
+  s_d32e62340bb1a3::t_9e33a43f3e62e0 352-353,363
+  s_d32e62340bb1a3::t_efebc0f6caf6e5 194-196
+  s_d32e62340bb1a3::t_44e5cb62409a7b 97,99-127
+  s_d32e62340bb1a3::t_b18b2654195823 54
+  s_d32e62340bb1a3::t_1db71b8b673ebe 271-288
+  s_d32e62340bb1a3::t_4d9050f2d3e5c0 309-311,313
+  s_d32e62340bb1a3::t_285c4ab010bcba 337-338
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_d32e62340bb1a3::t_4a2bffbe8be8fa 406-412
+  s_d32e62340bb1a3::t_0c8c8f5681df12 279,281-284
+  s_d32e62340bb1a3::t_ca236202977ff1 251-253
+  s_d32e62340bb1a3::t_c1a405b9ee2e12 304
+  s_d32e62340bb1a3::t_ca23f10d72fb9e 332-334
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_d32e62340bb1a3::t_92c804ea74ee58 164-165
+  s_d32e62340bb1a3::t_675748230816d4 154-157
+  s_d32e62340bb1a3::t_a8bf0f58c81042 390,393-405,415,422-435,440
+  s_d32e62340bb1a3::t_1e955e90252eaa 138-141,145
+python/src/basecamp/oauth/device.py
+  s_d32e62340bb1a3::t_4491d7213dd9b9 273
+  s_d32e62340bb1a3::t_3cb85698d73d7a 329-338
+  s_d32e62340bb1a3::t_67f216731aca2c 354-366,372
+  s_d32e62340bb1a3::t_ca03a9d4553fa0 249-252
+  s_d32e62340bb1a3::t_7ac6830801591c 400-404
+  s_d32e62340bb1a3::t_7ea2a861158496 290-292
+typescript/src/oauth/device-errors.ts
+  s_d32e62340bb1a3::t_8372ee231f6988 60-64
+kotlin/README.md
+  s_d32e62340bb1a3::t_9b90cc9aefc793 238-240,247-251,255,262
+python/tests/oauth/test_device.py
+  s_d32e62340bb1a3::t_1aa209e0a7a4ee 98,325-375,502,569
+  s_d32e62340bb1a3::t_2c1dd433537ff5 570-586
+  s_d32e62340bb1a3::t_532df9baa155dd 99-109
+  s_d32e62340bb1a3::t_413c0221031179 503-515
+python/README.md
+  s_d32e62340bb1a3::t_e52396eaf089a5 297
+  s_d32e62340bb1a3::t_23b88db857e5b5 314-315,326-330,337
+ruby/README.md
+  s_d32e62340bb1a3::t_2ccad89773b65f 168-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c1fc4051adb9bdc48facdf418ca4c34c40bb6a34",
+  "prompts": {},
+  "sessions": {
+    "s_41345e1fa49acd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cead95c2-262a-4a33-ae96-4a73b53d29ff",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
