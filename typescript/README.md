@@ -278,17 +278,23 @@ try {
     accountId: process.env.BASECAMP_ACCOUNT_ID!,
     accessToken: token.accessToken,
   });
-  // A long-lived CLI should PERSIST the whole token (incl. token.refreshToken)
-  // and mint a fresh one once it expires — a client built from a static
-  // accessToken stops working when the device access token expires. Refresh
-  // against the SAME first-party token endpoint with the standard grant
-  // (device tokens never use Launchpad's legacy `type=refresh` format):
+  // A long-lived CLI should PERSIST the whole token and mint a fresh one once it
+  // expires — a client built from a static accessToken stops working when the
+  // device access token expires. A device-token response MAY omit refresh_token,
+  // so GUARD it: refresh only when one was issued, otherwise re-run the device
+  // login to reauthenticate. Refresh hits the SAME first-party token endpoint
+  // with the standard grant (device tokens never use Launchpad's legacy
+  // `type=refresh` format):
   if (isTokenExpired(token)) {
-    const fresh = await refreshToken({
-      tokenEndpoint: result.config.tokenEndpoint,
-      clientId: "basecamp-cli", // public client — no secret
-      refreshToken: token.refreshToken!,
-    });
+    if (token.refreshToken) {
+      const fresh = await refreshToken({
+        tokenEndpoint: result.config.tokenEndpoint,
+        clientId: "basecamp-cli", // public client — no secret
+        refreshToken: token.refreshToken,
+      });
+    } else {
+      // No refresh token was issued — start a new device login to reauthenticate.
+    }
   }
 } catch (err) {
   if (err instanceof DeviceFlowError) {

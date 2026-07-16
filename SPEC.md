@@ -1173,9 +1173,13 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               accepted and coerced to whole seconds, matching the device-duration
               rule; every SDK decodes the numeric value and validates it
               explicitly to reject a fractional lifetime);
-              refresh_token/token_type/scope, when present, MUST be strings —
-              token_type additionally non-empty when present (absent defaults to
-              Bearer; an explicit "" is malformed).
+              refresh_token/token_type/scope, when present and non-null, MUST be
+              strings — a JSON null is treated as absent (like an omitted field),
+              consistent with the null-duration rule above. token_type is
+              additionally non-empty when present: absent or JSON null defaults to
+              Bearer, while an explicit "" is malformed (api_error). A non-object
+              or unparsable body, and every field/status error above, carries the
+              HTTP status on the raised api_error.
               Absent expires_in is allowed (the token carries no expiry).
               The 2147483647 s (~68 year) token-lifetime ceiling is separate from
               the 2147483 s device-duration ceiling above: it bounds expires_at

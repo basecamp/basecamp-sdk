@@ -261,6 +261,20 @@ class TestRequestDeviceAuthorization:
         assert exc_info.value.code == "api_error"
 
     @respx.mock
+    def test_rejects_non_object_body_with_http_status(self):
+        # A valid-JSON-but-non-object body (list/number/null) is malformed. It must
+        # fail as api_error AND carry the HTTP status for debugging parity with the
+        # other error raises — not drop it.
+        respx.post(DEVICE_ENDPOINT).mock(
+            return_value=httpx.Response(200, content="[]", headers={"Content-Type": "application/json"})
+        )
+
+        with pytest.raises(OAuthError) as exc_info:
+            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 200
+
+    @respx.mock
     def test_oversized_body_aborts(self):
         # A body past the streaming cap must abort with api_error, never buffer.
         payload = {**DEVICE_AUTH_RESPONSE, "pad": "x" * (256 * 1024)}
@@ -584,6 +598,19 @@ class TestPollDeviceToken:
             )
         assert exc_info.value.code == "api_error"
         assert not isinstance(exc_info.value, DeviceFlowError)
+
+    @respx.mock
+    def test_rejects_non_object_token_body_with_http_status(self):
+        # A valid-JSON-but-non-object token body must fail api_error AND carry the
+        # HTTP status, matching the other token-poll error raises.
+        _queue_token_responses([httpx.Response(200, content="[]", headers={"Content-Type": "application/json"})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 200
 
     @respx.mock
     def test_rejects_non_string_access_token(self):
