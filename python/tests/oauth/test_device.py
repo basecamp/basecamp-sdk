@@ -6,6 +6,8 @@ returns immediately, and the monotonic ``clock`` is injected. No real delays.
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 import respx
@@ -372,6 +374,81 @@ class TestPollDeviceToken:
         assert token.expires_in is None
         assert token.expires_at is None
         assert token.is_expired() is False
+
+    @respx.mock
+    def test_rejects_infinite_expires_in_in_token_response(self):
+        # A server sending expires_in: 1e400 (parses to inf via json.loads) is
+        # numeric and positive, but it would make expires_at inf so the token
+        # would never expire. Sent as a raw body since httpx's json= encoder
+        # rejects inf. Must surface api_error.
+        raw = json.dumps({k: v for k, v in TOKEN_RESPONSE.items() if k != "expires_in"})
+        raw = raw[:-1] + ', "expires_in": 1e400}'
+        _queue_token_responses([httpx.Response(200, content=raw, headers={"Content-Type": "application/json"})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 200
+
+    @respx.mock
+    def test_rejects_oversized_expires_in_in_token_response(self):
+        # One past the 2_147_483_647 s ceiling is a malformed lifetime, not a
+        # schedulable deadline.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": 2_147_483_648})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    def test_accepts_max_token_lifetime(self):
+        # The ceiling itself is accepted — the token carries the full lifetime.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": 2_147_483_647})])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+        )
+
+        assert token.expires_in == 2_147_483_647
+
+    @respx.mock
+    def test_rejects_bool_expires_in_in_token_response(self):
+        # True is an int subclass but never a lifetime.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": True})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    @pytest.mark.parametrize("value", [0, -1])
+    def test_rejects_non_positive_expires_in_in_token_response(self, value):
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": value})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    @pytest.mark.parametrize("field", ["refresh_token", "token_type", "scope"])
+    def test_rejects_non_string_token_fields(self, field):
+        # A numeric refresh_token/token_type/scope is a malformed response, not a
+        # usable credential field — surface api_error rather than store a non-string.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, field: 123})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
 
     @respx.mock
     def test_expires_against_injected_clock(self):

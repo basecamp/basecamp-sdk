@@ -38,6 +38,13 @@ const (
 	// time.Duration multiplication downstream can never overflow (an unbounded
 	// value like 1e100 converts to int implementation-defined).
 	maxDeviceSeconds = 2_147_483
+	// maxTokenLifetimeSeconds caps an OAuth token's expires_in at 2147483647 s
+	// (~68 years) — cross-runtime safe and vastly beyond any realistic token
+	// lifetime. Unlike maxDeviceSeconds this bounds ExpiresAt arithmetic rather
+	// than a timer: a large finite value (e.g. math.MaxInt64) would overflow
+	// time.Duration(ExpiresIn) * time.Second and yield a garbage deadline, so a
+	// value past this ceiling is a malformed response. Shared across all five SDKs.
+	maxTokenLifetimeSeconds = 2_147_483_647
 )
 
 // DeviceAuthorization is an RFC 8628 §3.2 device authorization response.
@@ -459,6 +466,15 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		}
 		if token.AccessToken == "" {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response missing access_token")}
+		}
+		// A non-numeric/non-string field (a JSON string/bool for expires_in, or a
+		// number for token_type/refresh_token/scope) already fails json.Unmarshal
+		// above as pollInvalidResponse. What survives is a syntactically valid
+		// integer that is negative or so large that time.Duration(ExpiresIn) *
+		// time.Second overflows — bound it here so ExpiresAt can never wrap.
+		if token.ExpiresIn < 0 || token.ExpiresIn > maxTokenLifetimeSeconds {
+			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
+				err: fmt.Errorf("device token response expires_in must be a positive integer no greater than %d seconds", maxTokenLifetimeSeconds)}
 		}
 		if token.TokenType == "" {
 			token.TokenType = "Bearer"

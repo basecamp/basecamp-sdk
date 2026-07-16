@@ -67,6 +67,16 @@ private const val MAX_DEVICE_BODY_BYTES = 1L * 1024 * 1024
  */
 private const val MAX_DEVICE_SECONDS = 2_147_483L
 
+/**
+ * Ceiling for an OAuth token's `expires_in` (2147483647 s ~= 68 years):
+ * cross-runtime safe and vastly beyond any realistic token lifetime. Unlike
+ * [MAX_DEVICE_SECONDS] this bounds `expiresAt` arithmetic rather than a timer —
+ * a large finite value (e.g. `Long.MAX_VALUE`) would overflow `it * 1000` and
+ * yield a garbage deadline, so a value past this ceiling is a malformed
+ * response. Shared across all five SDKs.
+ */
+private const val MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647L
+
 private val deviceJson = Json { ignoreUnknownKeys = true }
 
 /**
@@ -390,6 +400,18 @@ private suspend fun postDeviceTokenPoll(
             // A 2xx with an empty/blank access_token is a server/api fault
             // (api_error), never an accepted token nor a retryable transport error.
             throw BasecampException.Api("Device token response missing access_token", httpStatus = status)
+        }
+        // A non-numeric expires_in (string/bool/1e400) already fails deserialization
+        // above as api_error. What survives is a valid Long that is non-positive or
+        // so large that `it * 1000` overflows — bound it so expiresAt never wraps.
+        raw.expiresIn?.let {
+            if (it <= 0 || it > MAX_TOKEN_LIFETIME_SECONDS) {
+                throw BasecampException.Api(
+                    "Device token response expires_in must be a positive integer no greater than " +
+                        "$MAX_TOKEN_LIFETIME_SECONDS seconds",
+                    httpStatus = status,
+                )
+            }
         }
         val now = currentTimeMillis()
         val expiresAt = raw.expiresIn?.let { now + it * 1000 }

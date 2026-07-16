@@ -574,6 +574,130 @@ describe("pollDeviceToken", () => {
     expect(waits.every((w) => w >= 0)).toBe(true);
   });
 
+  it("rejects a 2xx token response with a non-numeric expires_in as api_error", async () => {
+    // "soon" would otherwise flow into Date arithmetic → invalid Date (NaN),
+    // making downstream expiry checks treat the token as never expiring.
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, expires_in: "soon" } }]);
+    const { fn } = recordingSleep();
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it("accepts a 2xx token response without expires_in (no expiry)", async () => {
+    const { expires_in: _omitted, ...noExpiry } = tokenResponse;
+    queueTokenResponses([{ status: 200, body: noExpiry }]);
+    const { fn } = recordingSleep();
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    });
+    expect(token.accessToken).toBe("device_access_token");
+    expect(token.expiresIn).toBeUndefined();
+    expect(token.expiresAt).toBeUndefined();
+  });
+
+  it("rejects an infinite expires_in (1e400) as api_error", async () => {
+    // JSON.parse("1e400") → Infinity. Number.isFinite rejects it before it can
+    // become new Date(Infinity) whose getTime() is NaN (token never expires).
+    // Sent as a raw body since JSON.stringify(Infinity) would emit null.
+    server.use(
+      mswHttp.post(TOKEN_ENDPOINT, () =>
+        new HttpResponse(
+          '{"access_token":"device_access_token","refresh_token":"r","token_type":"Bearer","expires_in":1e400}',
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+    );
+    const { fn } = recordingSleep();
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it("rejects an expires_in past the 2_147_483_647 s ceiling as api_error", async () => {
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, expires_in: 2_147_483_648 } }]);
+    const { fn } = recordingSleep();
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it("accepts the token-lifetime ceiling (2_147_483_647 s)", async () => {
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, expires_in: 2_147_483_647 } }]);
+    const { fn } = recordingSleep();
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    });
+    expect(token.expiresIn).toBe(2_147_483_647);
+  });
+
+  it.each([
+    ["zero", 0],
+    ["negative", -1],
+  ])("rejects a %s expires_in on a 2xx token response as api_error", async (_label, expiresIn) => {
+    queueTokenResponses([{ status: 200, body: { ...tokenResponse, expires_in: expiresIn } }]);
+    const { fn } = recordingSleep();
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it.each(["refresh_token", "token_type", "scope"])(
+    "rejects a non-string %s on a 2xx token response as api_error",
+    async (field) => {
+      queueTokenResponses([{ status: 200, body: { ...tokenResponse, [field]: 123 } }]);
+      const { fn } = recordingSleep();
+      await expect(
+        pollDeviceToken({
+          tokenEndpoint: TOKEN_ENDPOINT,
+          clientId: "basecamp-cli",
+          deviceCode: "dev-code-123",
+          interval: 5,
+          expiresIn: 900,
+          sleepFn: fn,
+        })
+      ).rejects.toMatchObject({ code: "api_error" });
+    }
+  );
+
   it("rejects a 2xx token response whose access_token is non-string as api_error", async () => {
     // A numeric access_token is truthy but not a usable credential — fail fast
     // as api_error rather than return an unusable token downstream.
