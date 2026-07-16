@@ -213,7 +213,10 @@ async function discoverEndpoints(opts: {
 }): Promise<{ config: import("./types.js").OAuthConfig; legacy: boolean }> {
   const { baseUrl, resourceBaseUrl, expectedIssuer, useLegacyFormat, onStatus } = opts;
 
-  if (resourceBaseUrl) {
+  // Check presence, not truthiness: an explicitly-supplied empty resourceBaseUrl
+  // is invalid resource-first input and must reach origin validation (which
+  // rejects it), not silently fall through to a Launchpad login.
+  if (resourceBaseUrl !== undefined) {
     const result = await discoverFromResource(resourceBaseUrl, { expectedIssuer });
     if (result.kind === "selected") {
       // Derive the token format from the selected issuer unless the caller

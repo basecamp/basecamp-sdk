@@ -451,20 +451,21 @@ export async function discoverProtectedResource(
     );
   }
 
-  // authorization_servers, when present, must be an array of strings. A bare
-  // string here previously slipped through and was iterated char-by-char during
-  // selection; reject it as malformed so the orchestrator soft-falls-back.
+  // authorization_servers, when present, MUST be an array of strings. A bare
+  // string slipped through and was iterated char-by-char during selection; a
+  // present JSON null is likewise malformed (an array is required when the key is
+  // present) — not a present-empty list. Reject every present non-array value so
+  // the orchestrator classifies it as resource_discovery_failed rather than
+  // silently taking no_as_advertised.
   let authorizationServers: string[] | undefined;
   if (Object.prototype.hasOwnProperty.call(data, "authorization_servers")) {
     const raw: unknown = (data as Record<string, unknown>).authorization_servers;
-    if (raw === null || raw === undefined) {
-      authorizationServers = []; // present-but-null → present-empty
-    } else if (isStringArray(raw)) {
+    if (isStringArray(raw)) {
       authorizationServers = raw;
     } else {
       throw new BasecampError(
         "api_error",
-        "Invalid resource metadata: authorization_servers must be an array of strings"
+        "Invalid resource metadata: authorization_servers must be an array of strings when present"
       );
     }
   }
@@ -514,7 +515,9 @@ export async function discoverFromResource(
     }
     selectedIssuer = match;
   } else {
-    const nonLaunchpad = advertised.filter((s) => !isLaunchpadIssuer(s));
+    // Deduplicate exact issuer strings first: a resource that advertises the same
+    // non-Launchpad issuer more than once denotes ONE issuer, not an ambiguous set.
+    const nonLaunchpad = [...new Set(advertised.filter((s) => !isLaunchpadIssuer(s)))];
     if (nonLaunchpad.length >= 2) {
       throw new DiscoverySelectionError(
         "ambiguous_issuers",

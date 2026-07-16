@@ -16,6 +16,7 @@ import {
   discover,
   discoverProtectedResource,
   discoverFromResource,
+  discoverLaunchpad,
   requireOriginRoot,
   DiscoverySelectionError,
 } from "../../src/oauth/index.js";
@@ -174,6 +175,13 @@ describe("resource-first discovery fixtures", () => {
         const result = (await run()) as { kind: string; reason?: string };
         expect(result.kind).toBe("fallback");
         expect(result.reason).toBe(fx.expect.fallbackReason);
+        // The orchestrator returns a soft fallback WITHOUT contacting Launchpad;
+        // the consumer performs the Launchpad login. Do that here so the
+        // launchpadContacted assertion below reflects the full flow (a
+        // regression that skipped the Launchpad request would then be caught).
+        if (fx.operation === "discoverFromResource") {
+          await discoverLaunchpad();
+        }
       } else {
         // selected
         const result = await run();
@@ -185,8 +193,11 @@ describe("resource-first discovery fixtures", () => {
         // discover / discoverProtectedResource: absence of a throw is success.
       }
 
-      if (fx.expect.launchpadContacted === false) {
-        expect(launchpadContacted).toBe(false);
+      // Assert the exact launchpadContacted expectation when a fixture states one,
+      // so a soft-fallback fixture that expects Launchpad to be contacted keeps its
+      // regression signal too — not only the `false` (never-contacted) case.
+      if (fx.expect.launchpadContacted !== undefined) {
+        expect(launchpadContacted).toBe(fx.expect.launchpadContacted);
       }
     });
   }
@@ -334,4 +345,33 @@ describe("requireOriginRoot userinfo rejection", () => {
       expect(() => requireOriginRoot(raw)).toThrow(/userinfo/);
     }
   );
+});
+
+describe("resource metadata strictness (#369 review)", () => {
+  const RESOURCE = "https://api.strict-test.example";
+  const BC5 = "https://bc5.strict-test.example";
+
+  it("rejects a present null authorization_servers as resource_discovery_failed", async () => {
+    server.use(
+      mswHttp.get(`${RESOURCE}/.well-known/oauth-protected-resource`, () =>
+        HttpResponse.json({ resource: RESOURCE, authorization_servers: null })
+      )
+    );
+    const result = await discoverFromResource(RESOURCE);
+    expect(result).toMatchObject({ kind: "fallback", reason: "resource_discovery_failed" });
+  });
+
+  it("treats duplicate advertisements of one issuer as a single issuer, not ambiguous", async () => {
+    server.use(
+      mswHttp.get(`${RESOURCE}/.well-known/oauth-protected-resource`, () =>
+        HttpResponse.json({ resource: RESOURCE, authorization_servers: [BC5, BC5] })
+      ),
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ issuer: BC5, token_endpoint: `${BC5}/token` })
+      )
+    );
+    const result = (await discoverFromResource(RESOURCE)) as { kind: string; issuer?: string };
+    expect(result.kind).toBe("selected");
+    expect(result.issuer).toBe(BC5);
+  });
 });
