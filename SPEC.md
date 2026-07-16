@@ -1147,8 +1147,12 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
      backoff = interval                    # transient timeout backoff, SEPARATE
                                            # from the server-driven interval
   3. LOOP (cancellation-aware):
-       wait = max(interval, backoff), clamped to the remaining lifetime
-       IF clock.now() ≥ deadline → raise DeviceFlowError(expired)
+       IF cancelled → raise DeviceFlowError(cancelled)
+       IF clock.now() ≥ deadline → raise DeviceFlowError(expired)   # check BEFORE waiting,
+              # so a long display hook, a stalled prior request, or a long backoff
+              # cannot carry the loop past expiry undetected
+       wait = max(interval, backoff), clamped to the remaining lifetime (> 0 here)
+       SLEEP wait   # abortable; a cancel mid-wait → DeviceFlowError(cancelled)
        POST tokenEndpoint: grant_type=urn:ietf:params:oauth:grant-type:device_code,
                            device_code, client_id
        CASE response:
@@ -1157,11 +1161,14 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               → raise api_error (a malformed success body is NOT a usable Token,
                 and is NOT a retryable transport error)
          200 whose optional token fields are malformed → raise api_error:
-              expires_in, when present, MUST be a finite positive number ≤
+              expires_in, when present, MUST be a finite positive WHOLE number ≤
               2147483647 s — a non-numeric value, a non-finite one (1e400 parses
-              to Infinity), a non-positive one, or one past the ceiling would make
-              expires_at arithmetic overflow/NaN so the token would appear to never
-              expire; refresh_token/token_type/scope, when present, MUST be strings.
+              to Infinity), a fractional one, a non-positive one, or one past the
+              ceiling would make expires_at arithmetic overflow/NaN so the token
+              would appear to never expire (an integer-valued float like 3600.0 is
+              accepted; whole seconds match the device-duration rule and Go/Kotlin,
+              whose int/Long typing already rejects a fractional lifetime);
+              refresh_token/token_type/scope, when present, MUST be strings.
               Absent expires_in is allowed (the token carries no expiry).
               The 2147483647 s (~68 year) token-lifetime ceiling is separate from
               the 2147483 s device-duration ceiling above: it bounds expires_at

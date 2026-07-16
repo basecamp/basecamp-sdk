@@ -439,7 +439,7 @@ module Basecamp
             unless valid_token_expires_in?(expires_in)
               raise OauthError.new(
                 "api_error",
-                "Invalid device token response: expires_in must be a finite positive number " \
+                "Invalid device token response: expires_in must be a finite positive whole number " \
                   "no greater than #{MAX_TOKEN_LIFETIME_SECONDS} seconds",
                 http_status: status
               )
@@ -481,14 +481,18 @@ module Basecamp
             )
           end
 
-          # A token +expires_in+ is valid when absent/nil or a finite positive
-          # Numeric within {MAX_TOKEN_LIFETIME_SECONDS}. +Float::INFINITY+ (from a
-          # JSON +1e400+) is Numeric and positive but not finite, so +finite?+
-          # rejects it before it can poison the deadline arithmetic.
+          # A token +expires_in+ is valid when absent/nil or a finite, positive,
+          # WHOLE-second Numeric within {MAX_TOKEN_LIFETIME_SECONDS}. An
+          # integer-valued float (+3600.0+) is accepted; a fractional value
+          # (+1.5+) is rejected — matching the device-duration rule and Go/Kotlin,
+          # whose integer/Long typing already rejects a fractional lifetime.
+          # +Float::INFINITY+ (from a JSON +1e400+) is Numeric and positive but not
+          # finite, so +finite?+ rejects it before it can poison deadline math.
           def valid_token_expires_in?(value)
             return true if value.nil?
 
-            value.is_a?(Numeric) && value.finite? && value.positive? && value <= MAX_TOKEN_LIFETIME_SECONDS
+            value.is_a?(Numeric) && value.finite? && value.positive? &&
+              value <= MAX_TOKEN_LIFETIME_SECONDS && (value % 1).zero?
           end
       end
     end

@@ -204,6 +204,7 @@ authorization grant. The public `basecamp-cli` client is pre-registered with
 scope defaults to `read`.
 
 ```kotlin
+import com.basecamp.sdk.BasecampClient
 import com.basecamp.sdk.oauth.*
 
 // 1. Resource-first discovery selects the authorization server. Device flow needs

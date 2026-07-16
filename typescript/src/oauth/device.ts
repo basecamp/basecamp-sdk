@@ -401,6 +401,10 @@ async function postDeviceToken(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort, { once: true });
+  // If the signal was ALREADY aborted, the "abort" event has fired and the
+  // once-listener never runs — abort the controller directly so the fetch below
+  // does not proceed (and even return a token) after cancellation.
+  if (signal?.aborted) controller.abort();
   try {
     const response = await customFetch(tokenEndpoint, {
       method: "POST",
@@ -444,16 +448,19 @@ async function postDeviceToken(
         throw new BasecampError("api_error", "Device token response missing or non-string access_token");
       }
       // expires_in is optional (RFC 6749 §5.1), but when present it must be a
-      // finite positive number within MAX_TOKEN_LIFETIME_SECONDS. A non-finite
-      // value (1e400 → Infinity) or a very large finite one would flow into Date
-      // arithmetic and yield an Invalid Date whose getTime() is NaN, so expiry
-      // checks downstream would treat the token as never expiring.
+      // finite positive WHOLE number within MAX_TOKEN_LIFETIME_SECONDS. A
+      // non-finite value (1e400 → Infinity) or a very large finite one would flow
+      // into Date arithmetic and yield an Invalid Date whose getTime() is NaN, so
+      // expiry checks downstream would treat the token as never expiring. Whole
+      // seconds match the device-duration rule and Go/Kotlin (int/Long typing
+      // already rejects a fractional lifetime); an integer-valued float (3600.0)
+      // is still accepted.
       if (token.expires_in != null &&
-          (typeof token.expires_in !== "number" || !Number.isFinite(token.expires_in) ||
+          (typeof token.expires_in !== "number" || !Number.isInteger(token.expires_in) ||
             token.expires_in <= 0 || token.expires_in > MAX_TOKEN_LIFETIME_SECONDS)) {
         throw new BasecampError(
           "api_error",
-          `Device token response expires_in must be a finite positive number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`
+          `Device token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`
         );
       }
       // token_type/refresh_token/scope are optional strings — a non-string value
@@ -493,14 +500,18 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       reject(new DOMException("Aborted", "AbortError"));
       return;
     }
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
+    // Declare the handler before the timer so neither forward-references the
+    // other's binding (avoids "used before declaration"); `timer` is assigned
+    // immediately below, before either callback can run.
+    let timer: ReturnType<typeof setTimeout>;
     const onAbort = () => {
       clearTimeout(timer);
       reject(new DOMException("Aborted", "AbortError"));
     };
+    timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
     signal?.addEventListener("abort", onAbort, { once: true });
   });
 }

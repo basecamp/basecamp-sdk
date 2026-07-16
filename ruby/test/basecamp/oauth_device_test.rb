@@ -423,6 +423,26 @@ class OAuthDeviceTest < Minitest::Test
     end
   end
 
+  def test_poll_rejects_fractional_expires_in_on_token_response
+    # A fractional token lifetime is malformed under the whole-second contract
+    # (Go/Kotlin reject it by int/Long typing) → api_error, uniform across SDKs.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => 1.5)))
+
+    assert_poll_api_error
+  end
+
+  def test_poll_accepts_integer_valued_float_expires_in_on_token_response
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => 3600.0)))
+    _waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    assert_equal 3600.0, token.expires_in
+  end
+
   def test_poll_rejects_non_string_token_fields
     # A numeric refresh_token/token_type/scope is malformed, not a credential
     # field — surface api_error rather than store a non-String.

@@ -54,7 +54,12 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
   const { config, clientId, scope, display, signal, clock = defaultClock, fetch: customFetch, sleepFn } = options;
 
   // Capability guard requires BOTH the endpoint and the advertised grant type.
-  const supportsDeviceGrant = config.grantTypesSupported?.includes(DEVICE_CODE_GRANT_TYPE) ?? false;
+  // Require a genuine array: a manually-constructed config could supply
+  // grantTypesSupported as a string, and String.prototype.includes would
+  // substring-match and wrongly pass the guard (the other SDKs defend the same
+  // way — Python/Ruby check the collection type, Go/Kotlin are statically typed).
+  const supportsDeviceGrant =
+    Array.isArray(config.grantTypesSupported) && config.grantTypesSupported.includes(DEVICE_CODE_GRANT_TYPE);
   if (!config.deviceAuthorizationEndpoint || !supportsDeviceGrant) {
     throw new DeviceFlowError(
       "unavailable",

@@ -460,27 +460,47 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		var token Token
-		if err := json.Unmarshal(body, &token); err != nil {
+		// expires_in decodes via *float64, not Token's plain int: a pointer keeps
+		// an explicit "expires_in":0 distinguishable from an omitted field (a
+		// plain int makes 0 look absent and skip validation), and float64 accepts
+		// an integer-valued 3600.0 per the cross-SDK contract. Whole-second
+		// enforcement happens below. Non-string token_type/refresh_token/scope
+		// still fail Unmarshal here as pollInvalidResponse.
+		var raw struct {
+			AccessToken  string   `json:"access_token"`
+			RefreshToken string   `json:"refresh_token"`
+			TokenType    string   `json:"token_type"`
+			ExpiresIn    *float64 `json:"expires_in"`
+			Scope        string   `json:"scope"`
+		}
+		if err := json.Unmarshal(body, &raw); err != nil {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: fmt.Errorf("parsing device token response: %w", err)}
 		}
-		if token.AccessToken == "" {
+		if raw.AccessToken == "" {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response missing access_token")}
 		}
-		// A non-numeric/non-string field (a JSON string/bool for expires_in, or a
-		// number for token_type/refresh_token/scope) already fails json.Unmarshal
-		// above as pollInvalidResponse. What survives is a syntactically valid
-		// integer that is negative or so large that time.Duration(ExpiresIn) *
-		// time.Second overflows — bound it here so ExpiresAt can never wrap.
-		if token.ExpiresIn < 0 || token.ExpiresIn > maxTokenLifetimeSeconds {
-			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
-				err: fmt.Errorf("device token response expires_in must be a positive integer no greater than %d seconds", maxTokenLifetimeSeconds)}
+		token := Token{
+			AccessToken:  raw.AccessToken,
+			RefreshToken: raw.RefreshToken,
+			TokenType:    raw.TokenType,
+			Scope:        raw.Scope,
+		}
+		// When present, expires_in must be a positive WHOLE number of seconds no
+		// greater than maxTokenLifetimeSeconds — an explicit 0, a fractional
+		// 3600.5, or an oversized value is a malformed response (api_error),
+		// while an absent field yields a token with no expiry. The ceiling keeps
+		// the time.Duration multiplication below from wrapping ExpiresAt.
+		if raw.ExpiresIn != nil {
+			v := *raw.ExpiresIn
+			if v <= 0 || v > maxTokenLifetimeSeconds || v != math.Trunc(v) {
+				return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
+					err: fmt.Errorf("device token response expires_in must be a positive whole number of seconds no greater than %d", maxTokenLifetimeSeconds)}
+			}
+			token.ExpiresIn = int(v)
+			token.ExpiresAt = cfg.clock().Add(time.Duration(token.ExpiresIn) * time.Second)
 		}
 		if token.TokenType == "" {
 			token.TokenType = "Bearer"
-		}
-		if token.ExpiresIn > 0 {
-			token.ExpiresAt = cfg.clock().Add(time.Duration(token.ExpiresIn) * time.Second)
 		}
 		return pollResult{kind: pollToken, token: &token}
 	}

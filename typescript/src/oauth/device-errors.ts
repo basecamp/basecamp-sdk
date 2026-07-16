@@ -36,6 +36,12 @@ function categoryFor(reason: DeviceFlowReason): ErrorCode {
       return "validation";
     case "cancelled":
       return "usage";
+    default:
+      // DeviceFlowReason is an exhaustive union in TS, but this is a public
+      // runtime class: a JS caller can still construct new DeviceFlowError(
+      // "some_new_reason", …). Fall back to "usage" (caller misuse) rather than
+      // returning undefined, which would give BasecampError an invalid code.
+      return "usage";
   }
 }
 

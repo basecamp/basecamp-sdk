@@ -526,6 +526,7 @@ func TestPollDeviceToken_RejectsMalformedTokenExpiresIn(t *testing.T) {
 		`{"access_token":"a","token_type":"Bearer","expires_in":1e400}`,
 		`{"access_token":"a","token_type":"Bearer","expires_in":"3600"}`,
 		`{"access_token":"a","token_type":"Bearer","expires_in":true}`,
+		`{"access_token":"a","token_type":"Bearer","expires_in":1.5}`, // fractional: whole-second contract
 		`{"access_token":"a","token_type":"Bearer","expires_in":-1}`,
 		`{"access_token":"a","token_type":"Bearer","expires_in":2147483648}`,
 	} {
@@ -548,6 +549,41 @@ func TestPollDeviceToken_AcceptsMaxTokenLifetime(t *testing.T) {
 	}
 	if token.ExpiresIn != maxTokenLifetimeSeconds {
 		t.Errorf("ExpiresIn = %d, want %d", token.ExpiresIn, maxTokenLifetimeSeconds)
+	}
+	if token.ExpiresAt.IsZero() {
+		t.Error("ExpiresAt should be set for a positive expires_in")
+	}
+}
+
+func TestPollDeviceToken_RejectsZeroAndFractionalExpiresIn(t *testing.T) {
+	// An explicit "expires_in":0 must be api_error, not silently treated as
+	// absent (the old plain-int decode made 0 indistinguishable from omitted),
+	// and a fractional lifetime is malformed per the cross-SDK whole-second rule.
+	for _, body := range []string{
+		`{"access_token":"device_access_token","token_type":"Bearer","expires_in":0}`,
+		`{"access_token":"device_access_token","token_type":"Bearer","expires_in":3600.5}`,
+	} {
+		srv := rawTokenServer(t, body)
+		sleep := &recordingSleep{}
+		_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+			WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+		assertBasecampCode(t, err, basecamp.CodeAPI)
+		srv.Close()
+	}
+}
+
+func TestPollDeviceToken_AcceptsIntegerValuedFloatExpiresIn(t *testing.T) {
+	// 3600.0 carries no fractional part — accepted per the cross-SDK contract
+	// (the old decode into a plain int rejected it, unlike TS/Python/Ruby).
+	srv := rawTokenServer(t, `{"access_token":"device_access_token","token_type":"Bearer","expires_in":3600.0}`)
+	sleep := &recordingSleep{}
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.ExpiresIn != 3600 {
+		t.Errorf("ExpiresIn = %d, want 3600", token.ExpiresIn)
 	}
 	if token.ExpiresAt.IsZero() {
 		t.Error("ExpiresAt should be set for a positive expires_in")
