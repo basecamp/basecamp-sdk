@@ -1,0 +1,23 @@
+go.work.sum
+  s_05336b59154d98::t_22403b55bdf72d 11,49,66,68,70,74,78,96,131,133,135,142,161-162,168-169,183,185-186
+go/go.mod
+  s_05336b59154d98::t_4a1d2a820f7f9d 46-50
+go/go.sum
+  s_05336b59154d98::t_38080ea48ab11a 160-161,169-170,174-175,190-191,198-199,203-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c6bb3b56a221a524562e2cfeeae9e0e23fd5d4dd",
+  "prompts": {},
+  "sessions": {
+    "s_05336b59154d98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d97a204-cd8e-4131-a9fc-f54e6bf932cb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
