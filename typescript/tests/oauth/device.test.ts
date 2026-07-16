@@ -736,7 +736,7 @@ describe("pollDeviceToken", () => {
   });
 
   it.each(["refresh_token", "token_type", "scope"])(
-    "rejects a non-string %s on a 2xx token response as api_error",
+    "rejects a non-string %s on a 2xx token response as api_error (carrying the status)",
     async (field) => {
       queueTokenResponses([{ status: 200, body: { ...tokenResponse, [field]: 123 } }]);
       const { fn } = recordingSleep();
@@ -749,7 +749,9 @@ describe("pollDeviceToken", () => {
           expiresIn: 900,
           sleepFn: fn,
         })
-      ).rejects.toMatchObject({ code: "api_error" });
+        // A malformed 2xx token field must carry the HTTP status (SPEC §16),
+        // consistent with the other token-poll raises and the other SDKs.
+      ).rejects.toMatchObject({ code: "api_error", httpStatus: 200 });
     }
   );
 

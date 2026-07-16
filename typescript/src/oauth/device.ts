@@ -445,7 +445,9 @@ async function postDeviceToken(
       // Non-empty string, not merely truthy: a numeric access_token is not a
       // usable credential and must fail as api_error, not be returned downstream.
       if (!isNonEmptyString(token.access_token)) {
-        throw new BasecampError("api_error", "Device token response missing or non-string access_token");
+        throw new BasecampError("api_error", "Device token response missing or non-string access_token", {
+          httpStatus: response.status,
+        });
       }
       // expires_in is optional (RFC 6749 §5.1), but when present it must be a
       // finite positive WHOLE number within MAX_TOKEN_LIFETIME_SECONDS. A
@@ -460,19 +462,26 @@ async function postDeviceToken(
             token.expires_in <= 0 || token.expires_in > MAX_TOKEN_LIFETIME_SECONDS)) {
         throw new BasecampError(
           "api_error",
-          `Device token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`
+          `Device token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`,
+          { httpStatus: response.status }
         );
       }
       // token_type/refresh_token/scope are optional strings — a non-string value
       // is a malformed response, not a usable credential field.
       if (token.token_type != null && !isNonEmptyString(token.token_type)) {
-        throw new BasecampError("api_error", "Device token response token_type must be a non-empty string");
+        throw new BasecampError("api_error", "Device token response token_type must be a non-empty string", {
+          httpStatus: response.status,
+        });
       }
       if (token.refresh_token != null && typeof token.refresh_token !== "string") {
-        throw new BasecampError("api_error", "Device token response refresh_token must be a string");
+        throw new BasecampError("api_error", "Device token response refresh_token must be a string", {
+          httpStatus: response.status,
+        });
       }
       if (token.scope != null && typeof token.scope !== "string") {
-        throw new BasecampError("api_error", "Device token response scope must be a string");
+        throw new BasecampError("api_error", "Device token response scope must be a string", {
+          httpStatus: response.status,
+        });
       }
       return {
         kind: "token",
