@@ -150,7 +150,7 @@ def request_device_authorization(
             http_status=status,
         )
     if not isinstance(data, dict):
-        raise OAuthError("api_error", "Device authorization response is not a JSON object")
+        raise OAuthError("api_error", "Device authorization response is not a JSON object", http_status=status)
 
     return _validate_device_authorization(data)
 
@@ -425,7 +425,7 @@ def _post_device_token(
             http_status=status,
         ) from exc
     if not isinstance(data, dict):
-        raise OAuthError("api_error", "Device token response is not a JSON object")
+        raise OAuthError("api_error", "Device token response is not a JSON object", http_status=status)
 
     if 200 <= status < 300:
         return _PollResult(token=_build_token(data, status))
