@@ -1,0 +1,27 @@
+go/pkg/basecamp/oauth/resource_discovery_test.go
+  s_b250506ef28983::t_f542bce70654f8 1-557
+go/pkg/basecamp/oauth/discovery.go
+  s_b250506ef28983::t_886095d23a46dc 6,10-11,13-33,37-41,55-99,101-115,117-251,255,257,261-354,356-382,384-391,393-514,516-518
+go/pkg/basecamp/oauth/oauth_test.go
+  s_b250506ef28983::t_f21a4a08e562c1 18-20,24,26,43,49-51,53,57,66-72,78-81,86,89,93,95-98
+go/pkg/basecamp/oauth/types.go
+  s_b250506ef28983::t_68b066a78e8445 4-6,8-11,13-185
+go/README.md
+  s_b250506ef28983::t_1e79120c86fd13 118-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9c0733a98a015f39fcdd616434bcd858b119de28",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
