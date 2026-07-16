@@ -1,0 +1,32 @@
+ruby/test/basecamp/oauth_device_test.rb
+  s_b250506ef28983::t_e3d3d60fc5bfe7 1-452
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_b250506ef28983::t_776fa03cecbc4e 1-392
+ruby/lib/basecamp/oauth/device_flow_error.rb
+  s_b250506ef28983::t_b4f38a0e9e241e 1-46
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_5941676a0da229 149-190
+  s_b250506ef28983::t_1a0da313e35da4 191
+ruby/lib/basecamp/oauth/device_authorization.rb
+  s_b250506ef28983::t_f8c5d986802875 1-37
+ruby/README.md
+  s_b250506ef28983::t_a7f34b0fff8617 136-203
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_2dc26be39aca09 73-100,109-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c7364c2ed302356413c8ab468783951af10ac61a",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
