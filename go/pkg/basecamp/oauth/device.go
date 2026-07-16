@@ -255,7 +255,9 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 
 	var raw rawDeviceAuthorization
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", Cause: err}
+		// Carry the HTTP status like the sibling non-2xx raise above (and Python)
+		// so a failed 2xx-body parse still reports which response it came from.
+		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", HTTPStatus: resp.StatusCode, Cause: err}
 	}
 	return validateDeviceAuthorization(raw)
 }

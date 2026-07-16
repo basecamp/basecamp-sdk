@@ -191,6 +191,26 @@ func TestRequestDeviceAuthorization_RejectsMissingField(t *testing.T) {
 	assertBasecampCode(t, err, basecamp.CodeAPI)
 }
 
+func TestRequestDeviceAuthorization_ParseFailureCarriesHTTPStatus(t *testing.T) {
+	// A 2xx body that is not valid JSON fails as api_error AND carries the HTTP
+	// status (like the non-2xx raise and Python), so callers keep the status.
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("not json"))
+	}))
+	defer srv.Close()
+
+	_, err := RequestDeviceAuthorization(context.Background(), srv.URL, "basecamp-cli",
+		WithDeviceHTTPClient(tlsClient(srv)))
+	var be *basecamp.Error
+	if !errors.As(err, &be) || be.Code != basecamp.CodeAPI {
+		t.Fatalf("want api_error, got %v (%T)", err, err)
+	}
+	if be.HTTPStatus != http.StatusOK {
+		t.Errorf("HTTPStatus = %d, want %d", be.HTTPStatus, http.StatusOK)
+	}
+}
+
 func TestRequestDeviceAuthorization_AcceptsIntegerValuedFloatDurations(t *testing.T) {
 	// A server sending 900.0 / 10.0 (integer-valued floats): *int decoding would
 	// reject these, but the cross-SDK contract accepts whole-second floats.

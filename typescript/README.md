@@ -292,8 +292,19 @@ try {
         clientId: "basecamp-cli", // public client — no secret
         refreshToken: token.refreshToken,
       });
+      // ...persist `fresh` and rebuild the client from fresh.accessToken.
     } else {
-      // No refresh token was issued — start a new device login to reauthenticate.
+      // No refresh token was issued: refreshing is impossible, so the user must
+      // authorize again. Re-run the device login to get a new token — don't keep
+      // using the expired one.
+      const reauthed = await performDeviceLogin({
+        config: result.config,
+        clientId: "basecamp-cli",
+        display: ({ userCode, verificationUri }) => {
+          console.log(`Visit ${verificationUri} and enter code: ${userCode}`);
+        },
+      });
+      // ...persist `reauthed` and rebuild the client from reauthed.accessToken.
     }
   }
 } catch (err) {
