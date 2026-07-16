@@ -1,0 +1,59 @@
+go/pkg/basecamp/oauth/device.go
+  s_b250506ef28983::t_6b29360b6ea2b7 212-217,358-360,403-414,472-475,479-484
+go/pkg/basecamp/oauth/device_test.go
+  s_b250506ef28983::t_283cb9bd3c7171 4,10,15,662-803,872-903
+go/pkg/basecamp/oauth/discovery.go
+  s_b250506ef28983::t_fa0619e30b9754 190-196,200-203,210
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_b250506ef28983::t_28caa755f4c213 23,233,235-237,250,400-403,405-406,423-425,427-431,440
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_7f9038d07375de 140-162,175-187,202-204,206,354-359,361-362
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_b250506ef28983::t_1ddeea5d04d68c 23-24,470-510
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_5542ac6ed3795e 500-538
+python/src/basecamp/_security.py
+  s_b250506ef28983::t_b457eae5e41ba8 77-81
+python/tests/oauth/test_resource_discovery.py
+  s_b250506ef28983::t_e6876dceb44601 18,169-196
+ruby/lib/basecamp/http.rb
+  s_b250506ef28983::t_3ba3a540ee84be 64,66-75,80,83,87-113,537-540
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_015bf5ca238dae 264-266,268-269
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_b250506ef28983::t_11c6a6b2557128 211-216,218-221,226
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_e636e7082b53ee 9-20,64
+ruby/lib/basecamp/security.rb
+  s_b250506ef28983::t_2b41f5d7b7773e 17
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_899bcafb153830 35,37-44,46,48,50-51
+ruby/test/basecamp/oauth_device_test.rb
+  s_b250506ef28983::t_e39b859ec619c4 400-451
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_bf1132b86980e5 227-254
+ruby/test/basecamp/same_origin_test.rb
+  s_b250506ef28983::t_18ed28c0851ff8 115-135,140-142,144-145,150-157,159-166,169-178
+typescript/src/oauth/device-login.ts
+  s_b250506ef28983::t_c35cf792f514ef 14,49,67-72,74-77,84
+typescript/src/oauth/device.ts
+  s_b250506ef28983::t_66e24b27293993 33-34
+typescript/tests/oauth/device.test.ts
+  s_b250506ef28983::t_ce2a8009ca420e 440-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "af9e33a5fd5cd6265642a8df1adb71b3c172f23c",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
