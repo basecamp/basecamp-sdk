@@ -315,7 +315,7 @@ module Basecamp
               )
             end
 
-            build_device_authorization(data)
+            build_device_authorization(data, status)
           end
 
           # Parse a JSON object, type-checking rather than trusting truthiness: a
@@ -332,21 +332,29 @@ module Basecamp
             raise OauthError.new("api_error", "Failed to parse #{label} response", http_status: status)
           end
 
-          def build_device_authorization(data)
+          # Every validation error carries the (2xx) status so a malformed success
+          # body is diagnosable as such — uniform with the token raises and the
+          # other SDKs.
+          def build_device_authorization(data, status)
             device_code = data["device_code"]
             user_code = data["user_code"]
             verification_uri = data["verification_uri"]
             # Type-check the required strings — don't coerce via +.to_s+, which
             # would silently accept a numeric or boolean field as a "present" code.
             unless [ device_code, user_code, verification_uri ].all? { |field| field.is_a?(String) && !field.empty? }
-              raise OauthError.new("api_error", "Invalid device authorization response: missing or malformed required fields")
+              raise OauthError.new(
+                "api_error",
+                "Invalid device authorization response: missing or malformed required fields",
+                http_status: status
+              )
             end
 
             complete = data["verification_uri_complete"]
             unless complete.nil? || complete.is_a?(String)
               raise OauthError.new(
                 "api_error",
-                "Invalid device authorization response: verification_uri_complete must be a string"
+                "Invalid device authorization response: verification_uri_complete must be a string",
+                http_status: status
               )
             end
 
@@ -355,7 +363,8 @@ module Basecamp
               raise OauthError.new(
                 "api_error",
                 "Invalid device authorization response: expires_in must be a positive integer " \
-                "no greater than #{MAX_DEVICE_SECONDS}"
+                "no greater than #{MAX_DEVICE_SECONDS}",
+                http_status: status
               )
             end
 
@@ -365,14 +374,14 @@ module Basecamp
               verification_uri: verification_uri,
               verification_uri_complete: complete,
               expires_in: expires_in,
-              interval: resolve_interval(data["interval"])
+              interval: resolve_interval(data["interval"], status)
             )
           end
 
           # Default 5 when absent; any present value must be a positive integer
           # number of seconds (RFC 8628). Integer-valued floats (5.0) are fine;
           # fractional values (2.5) are malformed and rejected for cross-SDK parity.
-          def resolve_interval(raw)
+          def resolve_interval(raw, status)
             if raw.nil?
               DEFAULT_INTERVAL_SECONDS
             elsif positive_integer_seconds?(raw)
@@ -381,7 +390,8 @@ module Basecamp
               raise OauthError.new(
                 "api_error",
                 "Invalid device authorization response: interval must be a positive integer " \
-                "no greater than #{MAX_DEVICE_SECONDS}"
+                "no greater than #{MAX_DEVICE_SECONDS}",
+                http_status: status
               )
             end
           end

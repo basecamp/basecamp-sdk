@@ -104,15 +104,17 @@ describe("requestDeviceAuthorization", () => {
     expect(auth.interval).toBe(5);
   });
 
-  it("rejects a non-positive expires_in", async () => {
+  it("rejects a non-positive expires_in (carrying the status)", async () => {
     server.use(
       mswHttp.post(DEVICE_ENDPOINT, () =>
         HttpResponse.json({ ...deviceAuthResponse, expires_in: 0 })
       )
     );
+    // A malformed 2xx device-auth field carries the HTTP status, like the
+    // token-poll raises and the other SDKs.
     await expect(
       requestDeviceAuthorization({ deviceAuthorizationEndpoint: DEVICE_ENDPOINT, clientId: "basecamp-cli" })
-    ).rejects.toMatchObject({ code: "api_error" });
+    ).rejects.toMatchObject({ code: "api_error", httpStatus: 200 });
   });
 
   it("rejects a fractional expires_in", async () => {

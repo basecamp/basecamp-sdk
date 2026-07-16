@@ -259,11 +259,16 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		// so a failed 2xx-body parse still reports which response it came from.
 		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", HTTPStatus: resp.StatusCode, Cause: err}
 	}
-	return validateDeviceAuthorization(raw)
+	return validateDeviceAuthorization(raw, resp.StatusCode)
 }
 
-func validateDeviceAuthorization(raw rawDeviceAuthorization) (*DeviceAuthorization, error) {
-	apiErr := func(msg string) error { return &basecamp.Error{Code: basecamp.CodeAPI, Message: msg} }
+func validateDeviceAuthorization(raw rawDeviceAuthorization, status int) (*DeviceAuthorization, error) {
+	// Carry the (2xx) status on every validation error so a malformed success
+	// body is diagnosable as such, uniform with the token-poll raises and the
+	// other SDKs.
+	apiErr := func(msg string) error {
+		return &basecamp.Error{Code: basecamp.CodeAPI, Message: msg, HTTPStatus: status}
+	}
 
 	if raw.DeviceCode == "" || raw.UserCode == "" || raw.VerificationURI == "" {
 		return nil, apiErr("invalid device authorization response: missing required fields")

@@ -152,22 +152,27 @@ def request_device_authorization(
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device authorization response is not a JSON object", http_status=status)
 
-    return _validate_device_authorization(data)
+    return _validate_device_authorization(data, status)
 
 
-def _validate_device_authorization(data: dict[str, Any]) -> DeviceAuthorization:
+def _validate_device_authorization(data: dict[str, Any], status: int) -> DeviceAuthorization:
+    # Every validation error carries the (2xx) status so a malformed success body
+    # is diagnosable as such — uniform with the token-poll raises and the other SDKs.
     # Validate TYPES, not just presence: a non-string (list/number/null) is
     # malformed, not merely absent. A bare truthiness check let those through.
     for field in ("device_code", "user_code", "verification_uri"):
         value = data.get(field)
         if not isinstance(value, str) or not value:
-            raise OAuthError("api_error", "Invalid device authorization response: missing required fields")
+            raise OAuthError(
+                "api_error", "Invalid device authorization response: missing required fields", http_status=status
+            )
 
     complete = data.get("verification_uri_complete")
     if complete is not None and not isinstance(complete, str):
         raise OAuthError(
             "api_error",
             "Invalid device authorization response: verification_uri_complete must be a string",
+            http_status=status,
         )
 
     expires_in = _positive_int_seconds(data.get("expires_in"))
@@ -176,6 +181,7 @@ def _validate_device_authorization(data: dict[str, Any]) -> DeviceAuthorization:
             "api_error",
             "Invalid device authorization response: expires_in must be a "
             f"positive integer no greater than {MAX_DEVICE_SECONDS}",
+            http_status=status,
         )
 
     interval = DEFAULT_INTERVAL_SECONDS
@@ -186,6 +192,7 @@ def _validate_device_authorization(data: dict[str, Any]) -> DeviceAuthorization:
                 "api_error",
                 "Invalid device authorization response: interval must be a "
                 f"positive integer no greater than {MAX_DEVICE_SECONDS}",
+                http_status=status,
             )
         interval = parsed_interval
 
