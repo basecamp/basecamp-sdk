@@ -24,13 +24,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # Full-severity SARIF for Security-tab visibility; the gate step below enforces policy.
+      # (In SARIF mode the action reports all severities unless limit-severities-for-sarif is set.)
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: './go'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
           ignore-unfixed: true
           format: 'sarif'
           output: 'trivy-go-results.sarif'
@@ -42,6 +42,21 @@ jobs:
         with:
           sarif_file: 'trivy-go-results.sarif'
           category: 'trivy-go'
+
+      # Table mode passes the severity filter through, so this gates on HIGH/CRITICAL only.
+      - name: Fail on HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './go'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
 
   trivy-typescript:
     name: Trivy (TypeScript SDK)
@@ -55,13 +70,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # Full-severity SARIF for Security-tab visibility; the gate step below enforces policy.
+      # (In SARIF mode the action reports all severities unless limit-severities-for-sarif is set.)
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: './typescript'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
           ignore-unfixed: true
           format: 'sarif'
           output: 'trivy-ts-results.sarif'
@@ -73,6 +88,21 @@ jobs:
         with:
           sarif_file: 'trivy-ts-results.sarif'
           category: 'trivy-typescript'
+
+      # Table mode passes the severity filter through, so this gates on HIGH/CRITICAL only.
+      - name: Fail on HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './typescript'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
 
   govulncheck:
     name: Go Vulnerability Check
@@ -174,13 +204,13 @@ jobs:
         with:
           persist-credentials: false
 
+      # Full-severity SARIF for Security-tab visibility; the gate step below enforces policy.
+      # (In SARIF mode the action reports all severities unless limit-severities-for-sarif is set.)
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: './ruby'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '1'
           ignore-unfixed: true
           format: 'sarif'
           output: 'trivy-ruby-results.sarif'
@@ -192,6 +222,21 @@ jobs:
         with:
           sarif_file: 'trivy-ruby-results.sarif'
           category: 'trivy-ruby'
+
+      # Table mode passes the severity filter through, so this gates on HIGH/CRITICAL only.
+      - name: Fail on HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          scan-ref: './ruby'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+          skip-setup-trivy: true
+          cache: 'false'
 
   bundler-audit:
     name: Bundler Audit (Ruby SDK)
