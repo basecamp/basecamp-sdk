@@ -1,0 +1,31 @@
+ruby/README.md
+  s_b250506ef28983::t_175a574c466a23 136-203
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_3e06a515cfde3b 149-191
+ruby/lib/basecamp/oauth/device_authorization.rb
+  s_b250506ef28983::t_409412f3ccd317 1-37
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_b250506ef28983::t_320048ff91836e 1-416
+ruby/lib/basecamp/oauth/device_flow_error.rb
+  s_b250506ef28983::t_0937d0cc97325d 1-46
+ruby/test/basecamp/oauth_device_test.rb
+  s_b250506ef28983::t_1b495c0163322e 1-546
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_b4ea6ccfc7f392 73-100,109-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "518be19d969d1e4702f3c349c53a2aae928ba9f5",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
