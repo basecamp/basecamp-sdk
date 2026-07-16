@@ -1,0 +1,32 @@
+typescript/tests/oauth/resource-discovery.test.ts
+  s_d32e62340bb1a3::t_5f8ad3098232c2 325-337
+python/src/basecamp/oauth/config.py
+  s_d32e62340bb1a3::t_6b1875c43bd022 13-20
+go/pkg/basecamp/oauth/oauth_test.go
+  s_d32e62340bb1a3::t_bdf3cea26458ac 6,13-14
+  s_d32e62340bb1a3::t_541673697771d9 83-119
+go/pkg/basecamp/oauth/discovery.go
+  s_d32e62340bb1a3::t_03fb0e3a30d99b 270-279,281-284
+typescript/src/oauth/discovery.ts
+  s_d32e62340bb1a3::t_b7a2ce30be79ec 148-151,153
+  s_d32e62340bb1a3::t_3b437ce6d75e7d 152
+python/tests/oauth/test_resource_discovery.py
+  s_d32e62340bb1a3::t_4fc6219c8670e7 336-347
+  s_d32e62340bb1a3::t_a29501799fbc5e 351-355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "2d5ba7f015779f9a01f1018ad786f37e00b4b0a0",
+  "prompts": {},
+  "sessions": {
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
