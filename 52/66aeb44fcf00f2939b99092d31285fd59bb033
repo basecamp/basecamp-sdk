@@ -1,0 +1,24 @@
+.github/workflows/security.yml
+  s_05336b59154d98::t_4284e360427ee2 72-73,91-103
+  s_05336b59154d98::t_7bccbc1375cb26 205-206,224-236
+  s_05336b59154d98::t_cc0a8edcae7a5f 27-28,46-58
+  s_05336b59154d98::t_48107096fb7524 59
+  s_05336b59154d98::t_2067abe675de02 104
+  s_05336b59154d98::t_adbe1f27f89e4e 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5266aeb44fcf00f2939b99092d31285fd59bb033",
+  "prompts": {},
+  "sessions": {
+    "s_05336b59154d98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d97a204-cd8e-4131-a9fc-f54e6bf932cb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
