@@ -1,0 +1,53 @@
+SPEC.md
+  s_d32e62340bb1a3::t_3c8c756c1dc1a1 1113-1119
+typescript/src/oauth/device.ts
+  s_b250506ef28983::t_ffe5aac56fac9d 21,28,30
+  s_b250506ef28983::t_11c8cfbe89dfc9 123,131-137,139
+  s_b250506ef28983::t_8a870a54e1a372 22-27,29
+  s_b250506ef28983::t_cccd751af60d7a 168-176,180-184
+typescript/tests/oauth/device.test.ts
+  s_d32e62340bb1a3::t_d5f328208b838e 140-200
+go/pkg/basecamp/oauth/device.go
+  s_d32e62340bb1a3::t_6d70fa4294f31a 34-40
+  s_d32e62340bb1a3::t_3b69895bf082ea 182-184
+  s_d32e62340bb1a3::t_7873512e704fa8 181,186
+  s_d32e62340bb1a3::t_0bef508bfee4f0 264,270
+ruby/test/basecamp/oauth_device_test.rb
+  s_d32e62340bb1a3::t_ce3afa502b9ac5 143-189
+go/pkg/basecamp/oauth/device_test.go
+  s_d32e62340bb1a3::t_44541f5f7440d3 229-267
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_d32e62340bb1a3::t_5c7a82e95fc618 192-225
+python/tests/oauth/test_device.py
+  s_d32e62340bb1a3::t_25d91099afdebb 138-183
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_d32e62340bb1a3::t_fd43abbb232b39 62-69,133-135,138,223,230
+python/src/basecamp/oauth/device.py
+  s_d32e62340bb1a3::t_2de9f4967c1dc7 42-47,108-109,167-170,176-179,199-200,205-206
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_d32e62340bb1a3::t_024b5a51ad68bb 30-35,342-346,368-372,377-378,380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "feac0956a9d9987045260a2fcd72a54700b1ed68",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d32e62340bb1a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f4b5f9-808e-4d60-8f6e-5939f9b39469",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
