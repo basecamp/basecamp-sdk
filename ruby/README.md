@@ -165,7 +165,10 @@ client = Basecamp.client(access_token: token.access_token)
 ```
 
 The capability guard requires BOTH `config.device_authorization_endpoint` AND the
-device_code grant in `config.grant_types_supported`; otherwise it raises
+exact grant-type URN `urn:ietf:params:oauth:grant-type:device_code` in
+`config.grant_types_supported` — servers advertise the full URN, so checking for
+a bare `device_code` entry would wrongly conclude the flow is unavailable;
+otherwise it raises
 `Basecamp::Oauth::DeviceFlowError` with `reason: :unavailable` before any request
 is issued. The two lower-level steps are also exposed directly:
 

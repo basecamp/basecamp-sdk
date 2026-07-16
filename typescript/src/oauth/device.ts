@@ -51,7 +51,7 @@ interface RawDeviceAuthorization {
   verification_uri?: string;
   verification_uri_complete?: string;
   expires_in?: number;
-  interval?: number;
+  interval?: number | null;
 }
 
 /**
@@ -94,26 +94,41 @@ export async function requestDeviceAuthorization(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   let response: Response;
+  let text: string;
   try {
-    response = await customFetch(deviceAuthorizationEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-      body: body.toString(),
-      signal: controller.signal,
-      // Never chase an attacker-influenced Location: a 3xx surfaces below as a
-      // non-2xx api_error rather than a followed request.
-      redirect: "manual",
-    });
-  } catch (err) {
-    throw new DeviceFlowError("transport", `Device authorization request failed: ${errMessage(err)}`, {
-      cause: err instanceof Error ? err : undefined,
-    });
+    try {
+      response = await customFetch(deviceAuthorizationEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+        body: body.toString(),
+        signal: controller.signal,
+        // Never chase an attacker-influenced Location: a 3xx surfaces below as a
+        // non-2xx api_error rather than a followed request.
+        redirect: "manual",
+      });
+    } catch (err) {
+      throw new DeviceFlowError("transport", `Device authorization request failed: ${errMessage(err)}`, {
+        cause: err instanceof Error ? err : undefined,
+      });
+    }
+    // Bounded/streaming read: an oversized body aborts before it is fully
+    // buffered. The abort timer stays armed until the read completes, so a
+    // stalled response STREAM times out just like a stalled request; an
+    // oversized body is already api_error, and any other stream failure
+    // (including the timeout's AbortError) maps to transport rather than
+    // escaping raw.
+    try {
+      text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device authorization");
+    } catch (err) {
+      if (err instanceof BasecampError) throw err;
+      throw new DeviceFlowError("transport", `Device authorization response read failed: ${errMessage(err)}`, {
+        cause: err instanceof Error ? err : undefined,
+      });
+    }
   } finally {
     clearTimeout(timeoutId);
   }
 
-  // Bounded/streaming read: an oversized body aborts before it is fully buffered.
-  const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device authorization");
   // Reject any non-2xx (including a suppressed 3xx) before parsing.
   if (response.status < 200 || response.status >= 300) {
     throw new BasecampError("api_error", `Device authorization failed with status ${response.status}`, {
@@ -176,7 +191,9 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization): DeviceAuthor
     );
   }
   let interval = DEFAULT_INTERVAL_SECONDS;
-  if (data.interval !== undefined) {
+  // A JSON `null` interval is treated as ABSENT (cross-SDK contract: the Go and
+  // Kotlin decoders cannot distinguish null from absent), so it takes the default.
+  if (data.interval !== undefined && data.interval !== null) {
     if (!isPositiveInteger(data.interval) || data.interval > MAX_DEVICE_SECONDS) {
       throw new BasecampError(
         "api_error",
@@ -251,7 +268,24 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
 
   requireSecureEndpoint(tokenEndpoint, "token endpoint");
 
-  let intervalSeconds = params.interval > 0 ? params.interval : DEFAULT_INTERVAL_SECONDS;
+  // Caller-input sanity (usage, not the RFC response validation): a non-finite
+  // or oversized duration builds a broken deadline or an unschedulable wait.
+  // Fractional values are ACCEPTED — performDeviceLogin legitimately passes a
+  // fractional remaining lifetime after deducting display-hook time; whole-second
+  // enforcement applies only to raw server responses (validateDeviceAuthorization).
+  for (const [name, value] of [["expiresIn", expiresIn], ["interval", params.interval]] as const) {
+    if (!Number.isFinite(value) || value <= 0 || value > MAX_DEVICE_SECONDS) {
+      throw new BasecampError(
+        "usage",
+        `pollDeviceToken: ${name} must be a positive number of seconds no greater than ${MAX_DEVICE_SECONDS}`
+      );
+    }
+  }
+
+  // Server-driven poll interval (initial + sustained slow_down bumps), tracked
+  // SEPARATELY from the transient-timeout backoff: the wait is the larger of the
+  // two, so intermittent timeouts never permanently inflate the poll cadence.
+  let intervalSeconds = params.interval;
   let backoffSeconds = intervalSeconds;
   const deadline = clock() + expiresIn * 1000;
 
@@ -272,10 +306,11 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     if (now >= deadline) {
       throw new DeviceFlowError("expired", "Device code expired before authorization completed");
     }
-    // Clamp the wait to the remaining lifetime (guaranteed > 0 here) so the
-    // backoff/interval never overshoots the monotonic deadline.
+    // Wait the larger of the server interval and the timeout backoff, clamped
+    // to the remaining lifetime (guaranteed > 0 here) so the wait never
+    // overshoots the monotonic deadline.
     const remainingMs = deadline - now;
-    const waitMs = Math.min(intervalSeconds * 1000, remainingMs);
+    const waitMs = Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs);
     try {
       await sleepFn(waitMs, signal);
     } catch (err) {
@@ -299,9 +334,9 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
         throw new DeviceFlowError("cancelled", "Device flow cancelled");
       }
       if (isAbort(err)) {
-        // Our own per-request timeout fired → connection timeout: back off and retry.
+        // Our own per-request timeout fired → connection timeout: back off and
+        // retry. The server interval is left untouched so recovery is instant.
         backoffSeconds = Math.min(backoffSeconds * 2, MAX_BACKOFF_SECONDS);
-        intervalSeconds = Math.max(intervalSeconds, backoffSeconds);
         continue;
       }
       // An already-typed BasecampError (e.g. a malformed 2xx token response, an
@@ -314,7 +349,8 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
       });
     }
 
-    // A successful HTTP round-trip resets the timeout backoff.
+    // ANY completed HTTP round-trip (token, authorization_pending, slow_down,
+    // other OAuth error) resets the timeout backoff to the server interval.
     backoffSeconds = intervalSeconds;
 
     if (result.kind === "token") return result.token;
@@ -324,6 +360,7 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
         continue;
       case "slow_down":
         intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS;
+        backoffSeconds = intervalSeconds;
         continue;
       case "access_denied":
         throw new DeviceFlowError("access_denied", "The authorization request was denied");

@@ -235,22 +235,31 @@ println("Access token: ${token.accessToken}")
 The two building blocks are also public if you need finer control:
 
 ```kotlin
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
+
 // deviceAuthorizationEndpoint is optional (device-only servers advertise it,
 // others omit it), so assert its presence rather than dereferencing with `!!`.
 val deviceEndpoint = config.deviceAuthorizationEndpoint
     ?: error("Selected authorization server does not offer device flow")
 
 val auth = requestDeviceAuthorization(deviceEndpoint, "basecamp-cli")
+
+// Anchor the expiry deadline at code issuance, BEFORE showing the code, so time
+// the user spends reading it counts against the code's lifetime rather than
+// resetting the clock. (performDeviceLogin does this for you.)
+val issuedAt = TimeSource.Monotonic.markNow()
 println("Enter ${auth.userCode} at ${auth.verificationUri}")
 
 // Polls until approval, denial, or expiry. The wait honours the server interval,
-// a sustained slow_down (+5s), and a monotonic expiry deadline.
+// a sustained slow_down (+5s), and the monotonic expiry deadline.
 val token = pollDeviceToken(
     tokenEndpoint = config.tokenEndpoint,
     clientId = "basecamp-cli",
     deviceCode = auth.deviceCode,
     interval = auth.interval,
     expiresIn = auth.expiresIn,
+    deadline = issuedAt + auth.expiresIn.seconds,
 )
 ```
 

@@ -241,9 +241,11 @@ endpoint, so `performDeviceLogin`'s capability guard rejects it with
 `DeviceFlowError("unavailable")`.)
 
 ```ts
-import { discoverFromResource, performDeviceLogin, DeviceFlowError } from "@37signals/basecamp";
+import { createBasecampClient, discoverFromResource, performDeviceLogin, DeviceFlowError } from "@37signals/basecamp";
 
-// 1. Select the first-party AS config (device endpoint + device_code grant).
+// 1. Select an AS config. Discovery can select a config WITHOUT the device
+//    endpoint or device_code grant — performDeviceLogin then rejects it with
+//    DeviceFlowError("unavailable").
 const result = await discoverFromResource("https://3.basecampapi.com");
 if (result.kind !== "selected") {
   // "resource_discovery_failed" | "no_as_advertised" → Launchpad has no device
@@ -263,13 +265,22 @@ try {
     },
     signal: abortController.signal, // optional: cancel the poll
   });
-  console.log(token.accessToken);
+  // Use the token — hand it to a client or persist it via your token store.
+  // Never print the token value itself.
+  const client = createBasecampClient({
+    accountId: process.env.BASECAMP_ACCOUNT_ID!,
+    accessToken: token.accessToken,
+  });
 } catch (err) {
   if (err instanceof DeviceFlowError) {
     // err.reason: "access_denied" | "expired" | "transport" | "unavailable" | "cancelled"
     // err.code (parent category) is derived from the reason:
     //   access_denied/expired → auth_required, transport → network,
     //   unavailable → validation, cancelled → usage
+  } else {
+    // performDeviceLogin can also reject with BasecampError (e.g. a malformed
+    // or non-2xx server response) — don't swallow those.
+    throw err;
   }
 }
 ```

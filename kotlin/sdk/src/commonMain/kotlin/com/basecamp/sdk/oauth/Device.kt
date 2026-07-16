@@ -248,7 +248,9 @@ private fun validateDeviceAuthorization(raw: RawDeviceAuthorization, status: Int
  * The loop waits at least [interval] seconds between polls (via [delay]), honours
  * a sustained `slow_down` (+5s for this and every subsequent poll), enforces a
  * monotonic expiry [deadline][TimeSource] computed from [timeSource], and backs
- * off exponentially on connection timeouts. Coroutine cancellation propagates as
+ * off exponentially on connection timeouts — the backoff is transient, reset to
+ * the server-driven interval by the next completed round-trip, so intermittent
+ * timeouts never permanently inflate the cadence. Coroutine cancellation propagates as
  * a [CancellationException] — it is never converted to a
  * [BasecampException.DeviceFlow].
  *
@@ -274,7 +276,12 @@ suspend fun pollDeviceToken(
 ): OAuthToken {
     requireSecureEndpoint(tokenEndpoint, "token endpoint")
 
+    // Server-driven cadence: the initial interval plus sustained slow_down bumps.
     var intervalSeconds = if (interval > 0) interval else DEFAULT_INTERVAL_SECONDS
+    // Transient timeout backoff, tracked SEPARATELY from the server-driven
+    // interval so intermittent timeouts can never permanently inflate the
+    // cadence: each wait is max(interval, backoff), a timeout doubles the
+    // backoff (capped), and any completed round-trip resets it to the interval.
     var backoffSeconds = intervalSeconds
 
     val params = parametersOf(
@@ -294,7 +301,7 @@ suspend fun pollDeviceToken(
             // Clamp the wait to the time remaining so a long interval or an
             // exponential backoff can never overshoot the monotonic deadline.
             val remaining = -deadline.elapsedNow()
-            val wait = minOf(intervalSeconds.seconds, remaining)
+            val wait = minOf(maxOf(intervalSeconds, backoffSeconds).seconds, remaining)
             delay(if (wait > Duration.ZERO) wait else Duration.ZERO)
 
             if (deadline.hasPassedNow()) {
@@ -312,7 +319,6 @@ suspend fun pollDeviceToken(
                 if (isConnectionTimeout(e)) {
                     // Our own connection timeout → back off and keep polling.
                     backoffSeconds = minOf(backoffSeconds * 2, MAX_BACKOFF_SECONDS)
-                    intervalSeconds = maxOf(intervalSeconds, backoffSeconds)
                     continue
                 }
                 // Any other transport failure ends the flow.
@@ -323,7 +329,9 @@ suspend fun pollDeviceToken(
                 )
             }
 
-            // A successful HTTP round-trip resets the timeout backoff.
+            // Any completed HTTP round-trip — token, authorization_pending,
+            // slow_down, or another OAuth error — resets the timeout backoff to
+            // the current server-driven interval.
             backoffSeconds = intervalSeconds
 
             when (result) {
@@ -395,6 +403,13 @@ private suspend fun postDeviceTokenPoll(
                 scope = raw.scope,
             ),
         )
+    } else if (status in 300..399) {
+        // Redirects are suppressed (followRedirects = false), so a 3xx here is a
+        // misdirected or attacker-influenced endpoint — an API fault, never an
+        // OAuth poll state. Classified BEFORE body parsing so a redirect whose
+        // body parrots {"error":"authorization_pending"} cannot keep the loop
+        // polling.
+        PollResult.Other("http_$status", status)
     } else {
         val error = try {
             deviceJson.decodeFromString<OAuthErrorResponse>(body).error

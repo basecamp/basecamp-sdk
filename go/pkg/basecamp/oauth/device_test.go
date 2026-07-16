@@ -331,6 +331,39 @@ func TestPollDeviceToken_DoublesIntervalAfterTimeout(t *testing.T) {
 	}
 }
 
+func TestPollDeviceToken_BackoffResetsAfterCompletedRoundTrip(t *testing.T) {
+	// Two connection timeouts inflate the transient backoff (5→10→20); the next
+	// completed round-trip (authorization_pending) must reset it to the
+	// server-driven interval, so later waits return to 5s — not the inflated
+	// 20s/40s a merged interval+backoff would produce.
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{
+		{http.StatusBadRequest, map[string]any{"error": "authorization_pending"}},
+		{http.StatusBadRequest, map[string]any{"error": "authorization_pending"}},
+		{http.StatusOK, tokenBody},
+	})
+	sleep := &recordingSleep{}
+
+	// The first two attempts return network timeouts; the rest hit the server.
+	base := tlsClient(srv)
+	client := &http.Client{Transport: &timeoutNTransport{next: base.Transport, n: 2}}
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(client), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.AccessToken != "device_access_token" {
+		t.Errorf("AccessToken = %q", token.AccessToken)
+	}
+	// Waits: 5s, then timeout-doubled 10s and 20s, then back to the server
+	// interval (5s) once round-trips complete.
+	want := []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 5 * time.Second, 5 * time.Second}
+	assertWaits(t, sleep.waits, want)
+}
+
 func TestPollDeviceToken_ExpiresAgainstInjectedClock(t *testing.T) {
 	srv, calls := queueTokenResponses(t, []struct {
 		status int
@@ -613,6 +646,32 @@ func TestPollDeviceToken_TokenEndpointDoesNotFollowRedirect(t *testing.T) {
 	var be *basecamp.Error
 	if !errors.As(err, &be) || be.Code != basecamp.CodeAPI {
 		t.Fatalf("want api_error for the unfollowed 302, got %v (%T)", err, err)
+	}
+}
+
+func TestPollDeviceToken_RedirectWithPendingBodyIsAPIError(t *testing.T) {
+	// Redirects are suppressed, so a 3xx reaches the classifier with its body
+	// intact. A crafted {"error":"authorization_pending"} on a 302 must surface
+	// as an api_error — not be mistaken for a pending poll that keeps the loop
+	// running.
+	srv, calls := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{
+		{http.StatusFound, map[string]any{"error": "authorization_pending"}},
+	})
+	sleep := &recordingSleep{}
+
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+
+	var dfe *DeviceFlowError
+	if errors.As(err, &dfe) {
+		t.Fatalf("want a plain api_error, got DeviceFlowError(%q)", dfe.Reason)
+	}
+	assertBasecampCode(t, err, basecamp.CodeAPI)
+	if *calls != 1 {
+		t.Errorf("expected polling to stop after the redirect, got %d polls", *calls)
 	}
 }
 
@@ -960,6 +1019,21 @@ type timeoutOnceTransport struct {
 func (t *timeoutOnceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if !t.fired {
 		t.fired = true
+		return nil, &url.Error{Op: "Post", URL: req.URL.String(), Err: timeoutError{}}
+	}
+	return t.next.RoundTrip(req)
+}
+
+// timeoutNTransport returns a net timeout on the first n RoundTrips, then
+// delegates to next. It drives repeated-timeout backoff paths deterministically.
+type timeoutNTransport struct {
+	next http.RoundTripper
+	n    int
+}
+
+func (t *timeoutNTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.n > 0 {
+		t.n--
 		return nil, &url.Error{Op: "Post", URL: req.URL.String(), Err: timeoutError{}}
 	}
 	return t.next.RoundTrip(req)
