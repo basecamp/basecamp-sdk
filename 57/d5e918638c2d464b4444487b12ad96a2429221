@@ -1,0 +1,55 @@
+ruby/README.md
+  s_b250506ef28983::t_8dd06019a5cbc3 136-179
+ruby/lib/basecamp/http.rb
+  s_b250506ef28983::t_1fced044bb1d71 64-76,82,87-113,537-540
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_5532e9ffc1f4b2 49-60,69-117,148-250
+ruby/lib/basecamp/oauth/config.rb
+  s_b250506ef28983::t_f0f09c2d6bd21c 5-10,13,15,18,23,25-26,31-32,34-35
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_7784275fa28397 5-7,9-18,21-34,36-39,42-43,45-49,51,53-60,62-67,69-72,74-76,78-87,89-94,96-99,102-108,110-116
+ruby/lib/basecamp/oauth/discovery_result.rb
+  s_b250506ef28983::t_c3b267560e6d80 1-33
+ruby/lib/basecamp/oauth/discovery_selection_error.rb
+  s_b250506ef28983::t_c7d2222f36e479 1-28
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_47084eacb99b3c 1-132
+ruby/lib/basecamp/oauth/protected_resource_metadata.rb
+  s_b250506ef28983::t_a42e607d3ae9b0 1-22
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_529b1a6c939b2a 1-78
+ruby/lib/basecamp/security.rb
+  s_b250506ef28983::t_ac383aad310d88 14-17,93-138
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_3fc65e3bbd1563 20-25,31-32,35-49
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_b250506ef28983::t_c0dff3f4968ee2 1-172
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_ef2cb7f214eb84 1-118
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_0d7a4d2da07b4c 67,74-123,227-254
+ruby/test/basecamp/same_origin_test.rb
+  s_b250506ef28983::t_81be9f20cc45c4 115-181
+ruby/test/basecamp/security_test.rb
+  s_b250506ef28983::t_c8b249981c1182 190-242
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_b250506ef28983::t_a005d7ebf57484 8-11,16-19,29-30,35-36,39-47,51-52,55-63,68-69,71-125
+ruby/test/test_helper.rb
+  s_b250506ef28983::t_14b5b9d2021d87 109-110,112,116-117,119-121,123,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "57d5e918638c2d464b4444487b12ad96a2429221",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
