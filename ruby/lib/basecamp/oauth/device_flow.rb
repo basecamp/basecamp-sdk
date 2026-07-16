@@ -106,7 +106,9 @@ module Basecamp
         # @param client_id [String] the public client id
         # @param device_code [String] the device code from {request_device_authorization}
         # @param interval [Integer] polling interval in seconds
-        # @param expires_in [Integer] code lifetime in seconds (monotonic deadline)
+        # @param expires_in [Numeric] code lifetime in seconds until the monotonic
+        #   deadline; may be fractional (perform_device_login passes the remaining
+        #   lifetime after deducting display-hook time)
         # @param clock [#call] monotonic clock returning seconds
         # @param sleeper [#call] receives the wait in seconds
         # @param cancelled [#call] cancellation probe; a truthy result ends the flow
