@@ -1,0 +1,65 @@
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_c24ecba97d8078 156-161
+  s_b250506ef28983::t_e1ff4b0e19356c 117
+  s_b250506ef28983::t_8bf3ffcc37f7ea 49-60,69-115
+  s_b250506ef28983::t_9a855c4517bcb0 116,148-155,162-220,224,227-250
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_a1076c3e7ec372 1-132
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_b5e9b573b6cd1a 67,74-76,93,109,123
+  s_b250506ef28983::t_80a3f4412c7411 77-92,94-108,110-122
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_5860529536e5da 5-7,21-27,30-34,36-39,42-43,45-49,51,53-60,62-63,65-67,69-72,74-76,78-87,89-94,96-99,102-108,110-116
+ruby/lib/basecamp/oauth/discovery_result.rb
+  s_b250506ef28983::t_5ba339378580ab 1-33
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_b250506ef28983::t_c38f01194b3dc0 1-61,63-125,127,129-131,133-139,141,143-145,147-161,163-172
+  s_b250506ef28983::t_05d472abf4cbf9 62
+  s_b250506ef28983::t_37838226501055 126,128,132,140,142,146,162
+ruby/test/test_helper.rb
+  s_b250506ef28983::t_5a9785eea606d7 109-110,112,116-117,119-120,123,126
+  s_b250506ef28983::t_8ac9d1e461c175 121
+ruby/lib/basecamp/oauth/discovery_selection_error.rb
+  s_b250506ef28983::t_79875e706c951d 1-28
+ruby/README.md
+  s_b250506ef28983::t_2157114eb423aa 136-179
+ruby/lib/basecamp/oauth/protected_resource_metadata.rb
+  s_b250506ef28983::t_4f3dc4607232c3 1-22
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_b250506ef28983::t_98b4a90a7c8506 8-11,16-19,29-30,35-36,39-44,46-47,51-52,55-63,68-69,71-74,76-90,92-125
+  s_b250506ef28983::t_8ac9d1e461c175 45,75,91
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_48de1f5246256a 1-3,5-118
+  s_b250506ef28983::t_f2717e2d5d8da8 4
+ruby/lib/basecamp/services/authorization_service.rb
+  s_b250506ef28983::t_5d1b61e2ea7907 20-25,31-32,45,47,49
+ruby/lib/basecamp/http.rb
+  s_b250506ef28983::t_ba01687b24c9e3 65,76,82
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_96f4c5c409c7c7 1-78
+ruby/lib/basecamp/security.rb
+  s_b250506ef28983::t_4165c404dd0f40 14-16
+  s_b250506ef28983::t_66c5f2a952f336 93-138
+ruby/lib/basecamp/oauth/config.rb
+  s_b250506ef28983::t_ad8495e5ecd39e 5-10,13,15,18,23,25-26,31-32,34-35
+ruby/test/basecamp/same_origin_test.rb
+  s_b250506ef28983::t_e15721c71b1ae8 136-139,143,146-149,158,167-168,179,180-181
+ruby/test/basecamp/security_test.rb
+  s_b250506ef28983::t_aa8e75997a4d18 190-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "cde0be5f7bf05f7d4d7685dc3fb86637df736d44",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
