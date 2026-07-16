@@ -333,10 +333,26 @@ def test_protected_resource_rejects_non_string_resource() -> None:
     assert exc_info.value.code == "api_error"
 
 
+def test_oauth_config_preserves_positional_field_order() -> None:
+    # dataclasses generate a positional __init__ in field order — the pre-BC5
+    # public order (issuer, authorization_endpoint, token_endpoint) must hold
+    # so existing positional callers don't silently swap endpoints.
+    from basecamp.oauth import OAuthConfig
+
+    config = OAuthConfig("https://iss.example", "https://iss.example/auth", "https://iss.example/token")
+
+    assert config.authorization_endpoint == "https://iss.example/auth"
+    assert config.token_endpoint == "https://iss.example/token"
+
+
 def test_selected_config_narrows_on_selected_result() -> None:
     from basecamp.oauth import DiscoveryResult, OAuthConfig
 
-    config = OAuthConfig(issuer="https://bc5.example", token_endpoint="https://bc5.example/oauth/token")
+    config = OAuthConfig(
+        issuer="https://bc5.example",
+        authorization_endpoint=None,
+        token_endpoint="https://bc5.example/oauth/token",
+    )
     result = DiscoveryResult(kind="selected", config=config, issuer=config.issuer)
 
     # Narrows OAuthConfig | None → OAuthConfig for typed callers.

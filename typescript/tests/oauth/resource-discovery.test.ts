@@ -322,3 +322,16 @@ describe("SSRF hardening", () => {
     expect(attackerContacted).toBe(false);
   });
 });
+
+describe("requireOriginRoot userinfo rejection", () => {
+  // Rejection keys off the PRESENCE of userinfo, not its truthiness: the
+  // WHATWG URL parser normalizes delimiter-only userinfo ("https://@host") to
+  // empty username/password and drops it from href, so a field-only check
+  // would silently accept — and normalize away — a malformed caller origin.
+  it.each(["https://user@host", "https://@example.com", "https://:@host"])(
+    "rejects %s",
+    (raw) => {
+      expect(() => requireOriginRoot(raw)).toThrow(/userinfo/);
+    }
+  );
+});

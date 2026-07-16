@@ -10,11 +10,15 @@ class OAuthConfig:
     """OAuth 2 server configuration from discovery endpoint (RFC 8414)."""
 
     issuer: str
+    # Optional (``None``) as of BC5 resource-first discovery: device-only
+    # authorization servers omit it. Authorization-code consumers MUST assert
+    # its presence before use. Absent (``None``) and present-empty are
+    # preserved distinctly. Kept in its ORIGINAL positional slot (before
+    # token_endpoint) with no default: dataclasses generate a positional
+    # __init__, so reordering or defaulting this field would silently break
+    # existing ``OAuthConfig("iss", "auth", "token")`` callers.
+    authorization_endpoint: str | None
     token_endpoint: str
-    # Optional as of BC5 resource-first discovery: device-only authorization
-    # servers omit it. Authorization-code consumers MUST assert its presence
-    # before use. Absent (``None``) and present-empty are preserved distinctly.
-    authorization_endpoint: str | None = None
     device_authorization_endpoint: str | None = None
     registration_endpoint: str | None = None
     scopes_supported: list[str] | None = None

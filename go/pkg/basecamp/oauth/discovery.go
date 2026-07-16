@@ -267,10 +267,21 @@ func (d *Discoverer) fetchDiscoveryDocument(ctx context.Context, rawURL string, 
 
 	body, err := readBoundedBody(resp.Body, cfg.maxBodyBytes)
 	if err != nil {
+		if errors.Is(err, errBodyTooLarge) {
+			return nil, &basecamp.Error{
+				Code:    basecamp.CodeAPI,
+				Message: fmt.Sprintf("OAuth discovery response too large: %v", err),
+				Cause:   err,
+			}
+		}
+		// A mid-stream read failure (peer reset, timeout) on a 2xx is a
+		// transient transport fault, not malformed AS metadata — only the
+		// size-cap overflow above is an api_error.
 		return nil, &basecamp.Error{
-			Code:    basecamp.CodeAPI,
-			Message: fmt.Sprintf("OAuth discovery response too large: %v", err),
-			Cause:   err,
+			Code:      basecamp.CodeNetwork,
+			Message:   fmt.Sprintf("reading OAuth discovery response: %v", err),
+			Retryable: true,
+			Cause:     err,
 		}
 	}
 	return body, nil

@@ -3,12 +3,15 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 func TestDiscoverer_Discover(t *testing.T) {
@@ -77,6 +80,43 @@ func TestDiscoverer_Discover(t *testing.T) {
 
 // TestDiscoverer_Discover_TrailingSlash verifies the origin-root profile accepts
 // a trailing "/" (path exactly "/") and still binds the issuer to the origin.
+func TestDiscoverer_Discover_MidStreamReadFailureIsNetwork(t *testing.T) {
+	// A 2xx whose body dies mid-read (peer reset, truncation) is a transient
+	// transport fault — network, retryable — never misclassified as the
+	// size-cap api_error, which is reserved for errBodyTooLarge.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Fatal("server does not support hijacking")
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Fatalf("hijack: %v", err)
+		}
+		// Declare more bytes than are sent, then close the connection: the
+		// client's body read fails mid-stream with an unexpected EOF.
+		_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 4096\r\n\r\n{\"issuer\":")
+		_ = buf.Flush()
+		_ = conn.Close()
+	}))
+	defer srv.Close()
+
+	d := NewDiscoverer(srv.Client())
+	_, err := d.Discover(context.Background(), srv.URL)
+
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("want *basecamp.Error, got %v", err)
+	}
+	if bcErr.Code != basecamp.CodeNetwork {
+		t.Errorf("Code = %q, want %q (mid-stream read failure is transport, not malformed metadata)",
+			bcErr.Code, basecamp.CodeNetwork)
+	}
+	if !bcErr.Retryable {
+		t.Error("mid-stream read failure must be retryable")
+	}
+}
+
 func TestDiscoverer_Discover_TrailingSlash(t *testing.T) {
 	var origin string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

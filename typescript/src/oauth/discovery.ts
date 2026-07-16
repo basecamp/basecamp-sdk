@@ -145,7 +145,12 @@ export function requireOriginRoot(raw: string, label = "origin"): string {
   if (!url.hostname) {
     throw new BasecampError("usage", `${label} has no host: ${raw}`);
   }
-  if (url.username || url.password) {
+  // The WHATWG URL parser normalizes delimiter-only userinfo ("https://@host",
+  // "https://:@host") to EMPTY username/password and drops it from href, so the
+  // parsed fields alone cannot catch it — also inspect the raw authority (the
+  // scheme check above guarantees raw starts with http(s)://).
+  const rawAuthority = raw.slice(raw.indexOf("//") + 2).split(/[/?#]/, 1)[0] ?? "";
+  if (url.username || url.password || rawAuthority.includes("@")) {
     throw new BasecampError("usage", `${label} must not contain userinfo: ${raw}`);
   }
   if (url.search || url.hash) {
