@@ -16,6 +16,14 @@ python/src/basecamp/oauth/config.py
   s_b250506ef28983::t_a432d6234f7d34 4-5,10,14-18,21-69
 python/README.md
   s_b250506ef28983::t_e907bb4caa8488 12,157,161-216
+ruby/lib/basecamp/http.rb
+  s_b250506ef28983::t_e43afb60a0fffa 88-113
+  s_b250506ef28983::t_fd8e5968bb7e1b 75-76
+  s_b250506ef28983::t_5542434ad099b7 540
+ruby/test/basecamp/same_origin_test.rb
+  s_b250506ef28983::t_93e90b371d035d 128,131-176
+ruby/lib/basecamp/security.rb
+  s_b250506ef28983::t_086c398423a31b 17
 ---
 {
   "schema_version": "authorship/3.0.0",
