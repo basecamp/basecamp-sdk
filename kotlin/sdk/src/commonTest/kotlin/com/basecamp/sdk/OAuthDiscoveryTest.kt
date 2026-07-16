@@ -531,6 +531,32 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `25 mixed-case launchpad host excluded`() = runScenario(
+        Scenario(
+            name = "mixed-case-launchpad-excluded",
+            op = Op.FROM_RESOURCE,
+            resourceOrigin = RESOURCE,
+            // Hosts are case-insensitive, so a mixed-case Launchpad host must be
+            // recognized as Launchpad and excluded — zero non-Launchpad issuers →
+            // no_as_advertised, not committed as a distinct BC5 issuer.
+            hop1 = Hop(body = resourceBody(RESOURCE, listOf("https://LAUNCHPAD.37signals.com"))),
+            fallbackReason = "no_as_advertised",
+        )
+    )
+
+    @Test fun `26 origin-root bare query rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-bare-query-rejected",
+            op = Op.PROTECTED_RESOURCE,
+            // A bare '?' is a query-bearing origin (empty query) and must be rejected
+            // like any other query, not normalized away.
+            resourceOrigin = "https://api.example.com?",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS

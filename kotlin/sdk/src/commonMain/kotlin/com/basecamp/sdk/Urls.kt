@@ -103,7 +103,9 @@ internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
     if (authority.contains('@') || !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty()) {
         throw BasecampException.Usage("$label must not contain userinfo: ${BasecampException.truncateMessage(raw)}")
     }
-    if (url.encodedQuery.isNotEmpty() || url.encodedFragment.isNotEmpty()) {
+    // trailingQuery catches a bare '?' with an empty query (e.g. `https://host?`),
+    // whose encodedQuery is empty but which is still a query-bearing origin.
+    if (url.encodedQuery.isNotEmpty() || url.trailingQuery || url.encodedFragment.isNotEmpty()) {
         throw BasecampException.Usage("$label must not contain a query or fragment: ${BasecampException.truncateMessage(raw)}")
     }
     val path = url.encodedPath
@@ -114,7 +116,11 @@ internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
     // parseAbsoluteUrl fails closed on a malformed port, so a surviving url has a
     // structurally valid (possibly default) port. Rebuild the origin explicitly,
     // re-bracketing IPv6 literals and dropping a default port.
-    val host = url.host
+    // Lowercase the host: DNS names and schemes are case-insensitive (RFC 3986
+    // §3.1/§6.2.2.1), so a mixed-case advertised issuer such as
+    // https://Launchpad.37signals.com normalizes to the same origin as its
+    // canonical form — otherwise the Launchpad exclusion misses it.
+    val host = url.host.lowercase()
     val hostForOrigin = if (host.contains(':') && !host.startsWith("[")) "[$host]" else host
     val portPart = if (url.port != url.protocol.defaultPort) ":${url.port}" else ""
     return "$scheme://$hostForOrigin$portPart"
