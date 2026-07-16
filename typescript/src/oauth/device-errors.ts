@@ -57,4 +57,9 @@ export class DeviceFlowError extends BasecampError {
     this.name = "DeviceFlowError";
     this.reason = reason;
   }
+
+  /** Serializes like BasecampError, plus the precise device-flow reason. */
+  toJSON(): Record<string, unknown> {
+    return { ...super.toJSON(), reason: this.reason };
+  }
 }

@@ -135,11 +135,14 @@ module Basecamp
             # Check the monotonic deadline BEFORE waiting, then clamp the wait so a
             # long interval or timeout backoff can never overshoot expiry. The
             # per-request timeout (set on every request in +post_form+) bounds a
-            # stalled socket, so nothing here blows past the deadline.
+            # stalled socket, so nothing here blows past the deadline. The wait is
+            # the LARGER of the server-driven interval and the transient timeout
+            # backoff — the two schedules stay separate so a backoff can drain
+            # back down to the server interval once round-trips resume.
             now = clock.call
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if now >= deadline
 
-            sleeper.call([ interval_seconds, deadline - now ].min)
+            sleeper.call([ [ interval_seconds, backoff_seconds ].max, deadline - now ].min)
 
             raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if clock.call >= deadline
@@ -148,16 +151,18 @@ module Basecamp
               post_device_token(client, token_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
             rescue Faraday::TimeoutError
               # A connection timeout is transient: back off exponentially and
-              # keep polling rather than ending the flow. The next wait is still
-              # clamped to the deadline at the top of the loop.
+              # keep polling rather than ending the flow. Only the backoff grows —
+              # the server-driven interval is left untouched so it can govern
+              # again once a round-trip completes. The next wait is still clamped
+              # to the deadline at the top of the loop.
               backoff_seconds = [ backoff_seconds * 2, MAX_BACKOFF_SECONDS ].min
-              interval_seconds = [ interval_seconds, backoff_seconds ].max
               next
             rescue Faraday::Error => e
               raise DeviceFlowError.new(:transport, "Device token poll failed: #{e.message}")
             end
 
-            # A successful HTTP round-trip resets the timeout backoff.
+            # ANY completed HTTP round-trip resets the timeout backoff to the
+            # current server-driven interval.
             backoff_seconds = interval_seconds
 
             kind, value, status = outcome
@@ -382,9 +387,22 @@ module Basecamp
 
           # Returns +[:token, Token, status]+ on success or +[:error, code, status]+
           # when the server reports an OAuth error. Raises +api_error+ on a
-          # malformed or 2xx-but-tokenless response.
+          # malformed, redirecting, or 2xx-but-tokenless response.
           def post_device_token(client, token_endpoint, params, timeout:, max_body_bytes:)
             status, body = post_form(client, token_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
+
+            # A redirect is never a valid token-endpoint outcome: it is not
+            # followed (redirect-following clients are rejected up front), and
+            # its body must not be classified as an OAuth error — a 3xx carrying
+            # {"error":"authorization_pending"} would otherwise poll forever.
+            if (300..399).cover?(status)
+              raise OauthError.new(
+                "api_error",
+                "Device token request failed: unexpected redirect (status #{status})",
+                http_status: status
+              )
+            end
+
             data = parse_json_object(body, status, "device token")
 
             if (200..299).cover?(status)
@@ -394,19 +412,32 @@ module Basecamp
                 raise OauthError.new("api_error", "Device token response missing access_token", http_status: status)
               end
 
-              [ :token, build_token(data), status ]
+              [ :token, build_token(data, status), status ]
             else
               error = data["error"]
               [ :error, error.is_a?(String) && !error.empty? ? error : "http_#{status}", status ]
             end
           end
 
-          def build_token(data)
+          # Constructs the {Token}, validating +expires_in+ first: when present
+          # it must be a positive Numeric — {Token#initialize} performs +Time+
+          # arithmetic on it, so an unchecked string would escape as a TypeError
+          # instead of +api_error+. Absent/nil stays allowed (no expiry).
+          def build_token(data, status)
+            expires_in = data["expires_in"]
+            unless expires_in.nil? || (expires_in.is_a?(Numeric) && expires_in.positive?)
+              raise OauthError.new(
+                "api_error",
+                "Invalid device token response: expires_in must be a positive number",
+                http_status: status
+              )
+            end
+
             Token.new(
               access_token: data["access_token"],
               refresh_token: data["refresh_token"],
               token_type: data["token_type"] || "Bearer",
-              expires_in: data["expires_in"],
+              expires_in: expires_in,
               scope: data["scope"]
             )
           end

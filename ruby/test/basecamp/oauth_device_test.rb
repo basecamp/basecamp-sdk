@@ -315,6 +315,82 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal 10, waits[1]
   end
 
+  def test_poll_backoff_resets_to_server_interval_after_completed_round_trip
+    # Contract: the server-driven interval and the transient timeout backoff are
+    # SEPARATE schedules. Two timeouts double the backoff (10s, 20s) without
+    # touching the 5s server interval; the first completed round-trip (a plain
+    # authorization_pending) resets the backoff, so waits return to 5s.
+    client = SequencedHttpClient.new([
+      Faraday::TimeoutError.new("timed out"),
+      Faraday::TimeoutError.new("timed out"),
+      { status: 400, body: { "error" => "authorization_pending" }.to_json },
+      { status: 400, body: { "error" => "authorization_pending" }.to_json },
+      { status: 200, body: token_response.to_json }
+    ])
+    waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth::DeviceFlow.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900,
+      sleeper: sleeper, http_client: client
+    )
+
+    assert_equal "device_access_token", token.access_token
+    assert_equal [ 5, 10, 20, 5, 5 ], waits
+  end
+
+  def test_poll_rejects_non_numeric_expires_in_on_token_response
+    # A 2xx with a valid access_token but expires_in "3600" (string) is
+    # malformed: it must surface as api_error, not escape as a TypeError from
+    # Token's expiry arithmetic.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("expires_in" => "3600")))
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+    end
+    assert_equal "api_error", error.type
+    assert_equal 200, error.http_status
+  end
+
+  def test_poll_accepts_token_response_without_expires_in
+    # expires_in is optional (RFC 6749 §5.1): absent means no known expiry, so
+    # the Token carries nil expires_in/expires_at rather than raising.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.tap { |body| body.delete("expires_in") }))
+    _waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    assert_equal "device_access_token", token.access_token
+    assert_nil token.expires_in
+    assert_nil token.expires_at
+  end
+
+  def test_poll_treats_redirect_as_api_error_even_with_pending_body
+    # A 3xx is never a valid token-endpoint outcome. Redirects are not followed,
+    # and a redirect whose body smuggles {"error":"authorization_pending"} must
+    # end the flow as api_error — not keep the loop polling forever.
+    stub_request(:post, TOKEN_ENDPOINT)
+      .to_return(json({ "error" => "authorization_pending" }, status: 302))
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+    end
+    assert_equal "api_error", error.type
+    assert_equal 302, error.http_status
+    assert_requested(:post, TOKEN_ENDPOINT, times: 1)
+  end
+
   def test_poll_expires_against_injected_monotonic_clock
     times = [ 0, 1_000_000 ]
     i = 0

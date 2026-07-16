@@ -372,6 +372,42 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollResetsTimeoutBackoffAfterCompletedRoundTrip() = runTest {
+        // The timeout backoff is transient: two timeouts inflate the wait to
+        // 10s then 20s, but the first completed round-trip (even a mere
+        // authorization_pending) resets it to the server interval — later polls
+        // must return to the 5s cadence, never stay permanently inflated.
+        val pollTimes = mutableListOf<Long>()
+        var i = 0
+        val engine = MockEngine {
+            pollTimes.add(testScheduler.currentTime)
+            i += 1
+            when (i) {
+                1, 2 -> throw SimulatedConnectTimeoutException()
+                3, 4 -> respond(errorJson("authorization_pending"), HttpStatusCode.BadRequest, jsonHeaders)
+                else -> respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
+            }
+        }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(
+            tokenEndpoint = tokenEndpoint,
+            clientId = "basecamp-cli",
+            deviceCode = "dev-code-123",
+            interval = 5,
+            expiresIn = 900,
+            timeSource = testTimeSource,
+            client = client,
+        )
+
+        assertEquals("device_access_token", token.accessToken)
+        // Waits: 5s, then backoff 10s and 20s after the timeouts, then back to
+        // the 5s server interval once a round-trip completes.
+        assertEquals(listOf(5_000L, 15_000L, 35_000L, 40_000L, 45_000L), pollTimes)
+        client.close()
+    }
+
+    @Test
     fun pollExpiresAgainstInjectedMonotonicClock() = runTest {
         // interval (5s) exceeds the code lifetime (3s): the first wait pushes
         // virtual time past the deadline before any poll is issued.
@@ -487,6 +523,48 @@ class OAuthDeviceTest {
         }
         assertEquals("api_error", e.code)
         assertFalse(attackerContacted, "token poll must not follow the redirect")
+        client.close()
+    }
+
+    @Test
+    fun pollTreatsRedirectWithPendingBodyAsApiError() = runTest {
+        // A suppressed 3xx is an API fault even when its body parrots a valid
+        // OAuth poll state: {"error":"authorization_pending"} in a 302 must NOT
+        // keep the loop polling toward an attacker-influenced Location.
+        var polls = 0
+        val engine = MockEngine {
+            polls += 1
+            respond(
+                content = ByteReadChannel(errorJson("authorization_pending")),
+                status = HttpStatusCode.Found,
+                headers = headersOf(
+                    HttpHeaders.Location to listOf("https://attacker.example.com/oauth/token"),
+                    HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                ),
+            )
+        }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        }
+        assertEquals(302, e.httpStatus, "suppressed 3xx surfaces as api_error before body parsing")
+        assertEquals(1, polls, "the loop must stop at the first redirect, not keep polling")
+        client.close()
+    }
+
+    @Test
+    fun pollRejectsNonNumericExpiresInOn2xx() = runTest {
+        // A 2xx token response whose expires_in is not a number is a malformed
+        // body: SerializationException → api_error, never a token nor transport.
+        val body = """{"access_token":"tok","token_type":"Bearer","expires_in":"soon"}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        }
+        assertEquals("api_error", e.code)
         client.close()
     }
 

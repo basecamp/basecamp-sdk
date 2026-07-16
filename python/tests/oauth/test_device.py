@@ -96,6 +96,18 @@ class TestRequestDeviceAuthorization:
         assert auth.interval == 5
 
     @respx.mock
+    def test_treats_null_interval_as_absent(self):
+        # `"interval": null` is the cross-SDK contract for absent (Go/Kotlin
+        # decoders cannot distinguish null from a missing key) → default 5.
+        respx.post(DEVICE_ENDPOINT).mock(
+            return_value=httpx.Response(200, json={**DEVICE_AUTH_RESPONSE, "interval": None})
+        )
+
+        auth = request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
+
+        assert auth.interval == 5
+
+    @respx.mock
     def test_rejects_non_positive_expires_in(self):
         respx.post(DEVICE_ENDPOINT).mock(
             return_value=httpx.Response(200, json={**DEVICE_AUTH_RESPONSE, "expires_in": 0})
@@ -311,6 +323,57 @@ class TestPollDeviceToken:
         assert sleep.waits[1] == 10
 
     @respx.mock
+    def test_backoff_resets_to_server_interval_after_completed_round_trip(self):
+        # Timeout backoff is transient: it doubles per timeout, but ANY completed
+        # round-trip (here authorization_pending) snaps the wait back to the
+        # server interval — intermittent timeouts must not inflate later polls.
+        _queue_token_responses(
+            [
+                httpx.TimeoutException("timed out"),
+                httpx.TimeoutException("timed out"),
+                httpx.Response(400, json={"error": "authorization_pending"}),
+                httpx.Response(400, json={"error": "authorization_pending"}),
+                httpx.Response(200, json=TOKEN_RESPONSE),
+            ]
+        )
+        sleep = RecordingSleep()
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
+        )
+
+        assert token.access_token == "device_access_token"  # gitleaks:allow
+        # 5s, timeout → 10s, timeout → 20s, pending → back to 5s, pending → 5s.
+        assert sleep.waits == [5, 10, 20, 5, 5]
+
+    @respx.mock
+    def test_rejects_string_expires_in_in_token_response(self):
+        # A 2xx with a valid access_token but expires_in "3600" (a string) must
+        # surface as api_error, never escape as a TypeError from expires_at math.
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "expires_in": "3600"})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 200
+
+    @respx.mock
+    def test_accepts_token_without_expires_in(self):
+        # An absent expires_in is allowed — the token simply carries no expiry.
+        payload = {k: v for k, v in TOKEN_RESPONSE.items() if k != "expires_in"}
+        _queue_token_responses([httpx.Response(200, json=payload)])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+        )
+
+        assert token.expires_in is None
+        assert token.expires_at is None
+        assert token.is_expired() is False
+
+    @respx.mock
     def test_expires_against_injected_clock(self):
         _queue_token_responses([httpx.Response(400, json={"error": "authorization_pending"})])
         # Clock: base at 0, then jumps past the 900s deadline on the first check.
@@ -437,6 +500,20 @@ class TestPollDeviceToken:
         assert not target.called  # redirect suppressed — attacker origin never dialed
 
     @respx.mock
+    def test_redirect_with_pending_body_is_api_error(self):
+        # A 3xx must never be interpreted as an OAuth outcome: a redirect body
+        # carrying {"error": "authorization_pending"} must not keep the poll
+        # loop alive — it surfaces as api_error.
+        _queue_token_responses([httpx.Response(302, json={"error": "authorization_pending"})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 302
+
+    @respx.mock
     def test_deadline_clamps_backoff_wait(self):
         # Every poll times out, so the backoff interval doubles unbounded (5 → 10
         # → 20…). A clock advanced by each recorded sleep proves the final wait is
@@ -488,6 +565,24 @@ class TestPerformDeviceLogin:
         assert exc_info.value.reason == "unavailable"
         assert exc_info.value.code == "validation"
         assert not token_route.called
+
+    @respx.mock
+    def test_capability_guard_rejects_string_grant_types(self):
+        # A malformed config carrying the URN as a plain str would substring-match
+        # a bare `in` — the guard requires a real list, so this is unavailable.
+        device_route = respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+        config = OAuthConfig(
+            issuer=ORIGIN,
+            token_endpoint=TOKEN_ENDPOINT,
+            device_authorization_endpoint=DEVICE_ENDPOINT,
+            grant_types_supported=DEVICE_CODE_GRANT_TYPE,  # type: ignore[arg-type]
+        )
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(config, "basecamp-cli", display=lambda _auth: None)
+
+        assert exc_info.value.reason == "unavailable"
+        assert not device_route.called
 
     @respx.mock
     def test_capability_guard_missing_endpoint_is_unavailable(self):

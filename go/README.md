@@ -187,8 +187,14 @@ import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
 // return DeviceFlowError{Reason: DeviceFlowUnavailable}.
 d := oauth.NewDiscoverer(http.DefaultClient)
 result, err := d.DiscoverFromResource(ctx, "https://3.basecampapi.com")
-if err != nil || result.IsFallback() {
-    return err // hard failure, or a Launchpad fallback with no device endpoint
+if err != nil {
+    return err // hard failure
+}
+if result.IsFallback() {
+    // Launchpad fallback: no device endpoint. Surface it explicitly (or switch
+    // to the authorization-code flow) — never return nil here, or the caller
+    // treats the fallback as a successful device login with no token.
+    return fmt.Errorf("device flow unavailable: fell back to Launchpad (%s)", result.FallbackReason)
 }
 
 token, err := oauth.PerformDeviceLogin(ctx, result.Config, "basecamp-cli",
@@ -225,6 +231,9 @@ The two lower-level steps are exported for callers that drive the flow directly:
 
 ```go
 auth, err := oauth.RequestDeviceAuthorization(ctx, deviceAuthEndpoint, "basecamp-cli")
+if err != nil {
+    return err
+}
 token, err := oauth.PollDeviceToken(ctx, tokenEndpoint, "basecamp-cli",
     auth.DeviceCode, auth.Interval, auth.ExpiresIn)
 ```

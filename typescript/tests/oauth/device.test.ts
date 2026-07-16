@@ -257,6 +257,32 @@ describe("requestDeviceAuthorization", () => {
     ).rejects.toMatchObject({ code: "api_error" });
   });
 
+  it("treats a JSON null interval as absent → default 5 (cross-SDK contract)", async () => {
+    // Go and Kotlin decoders cannot distinguish null from absent, so a null
+    // duration is treated as absent everywhere.
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () =>
+        HttpResponse.json({ ...deviceAuthResponse, interval: null })
+      )
+    );
+    const auth = await requestDeviceAuthorization({
+      deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+      clientId: "basecamp-cli",
+    });
+    expect(auth.interval).toBe(5);
+  });
+
+  it("still rejects a JSON null expires_in (required, no default)", async () => {
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () =>
+        HttpResponse.json({ ...deviceAuthResponse, expires_in: null })
+      )
+    );
+    await expect(
+      requestDeviceAuthorization({ deviceAuthorizationEndpoint: DEVICE_ENDPOINT, clientId: "basecamp-cli" })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
   it("rejects a non-string verification_uri_complete", async () => {
     // Optional, but a non-string value would return a malformed shape to callers.
     server.use(
@@ -325,6 +351,97 @@ describe("pollDeviceToken", () => {
     // First wait 5s, timeout → backoff doubles to 10s for the next wait.
     expect(waits[0]).toBe(5000);
     expect(waits[1]).toBe(10000);
+  });
+
+  it("resets the timeout backoff after any completed round-trip (waits return to the server interval)", async () => {
+    // timeout, timeout, pending, pending → token. The two timeouts double the
+    // backoff (10s, 20s); the first completed round-trip (the pending) resets
+    // it to the server interval, so later waits return to 5s — never staying
+    // inflated by earlier transient timeouts.
+    queueTokenResponses([
+      { status: 400, body: { error: "authorization_pending" } },
+      { status: 400, body: { error: "authorization_pending" } },
+      { status: 200, body: tokenResponse },
+    ]);
+    const { waits, fn } = recordingSleep();
+    let attempts = 0;
+    const fakeFetch: typeof globalThis.fetch = async (input, init) => {
+      attempts += 1;
+      if (attempts <= 2) {
+        const e = new Error("timed out");
+        e.name = "AbortError";
+        throw e;
+      }
+      return globalThis.fetch(input, init);
+    };
+
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+      fetch: fakeFetch,
+    });
+
+    expect(token.accessToken).toBe("device_access_token");
+    expect(waits).toEqual([5000, 10000, 20000, 5000, 5000]);
+  });
+
+  it.each([
+    ["NaN", NaN],
+    ["Infinity", Infinity],
+    ["zero", 0],
+    ["negative", -1],
+    ["oversized", 1e100],
+  ])("rejects a nonsense caller expiresIn (%s) as usage before any request", async (_label, expiresIn) => {
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+  });
+
+  it.each([
+    ["NaN", NaN],
+    ["Infinity", Infinity],
+    ["zero", 0],
+    ["negative", -1],
+    ["oversized", 1e100],
+  ])("rejects a nonsense caller interval (%s) as usage before any request", async (_label, interval) => {
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval,
+      expiresIn: 900,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+  });
+
+  it("accepts fractional caller durations (remaining-lifetime deduction produces them)", async () => {
+    // performDeviceLogin passes a fractional remaining lifetime after deducting
+    // display-hook time — caller sanity here must not impose whole seconds.
+    queueTokenResponses([{ status: 200, body: tokenResponse }]);
+    const { waits, fn } = recordingSleep();
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 2.5,
+      expiresIn: 42.5,
+      sleepFn: fn,
+    });
+    expect(token.accessToken).toBe("device_access_token");
+    expect(waits).toEqual([2500]);
   });
 
   it("expires against the injected monotonic clock (parent category auth)", async () => {
@@ -561,6 +678,66 @@ describe("device transport hardening", () => {
     ).rejects.toMatchObject({ code: "api_error" });
   });
 
+  it("maps a body stream failure on the device authorization read to transport, not a raw error", async () => {
+    // Headers arrive fine, then the body stream errors mid-read (connection
+    // reset). The failure must surface as DeviceFlowError("transport"), never
+    // escape as the raw stream error.
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () => {
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"device_code":"d'));
+            controller.error(new Error("connection reset mid-body"));
+          },
+        });
+        return new HttpResponse(stream, { status: 200, headers: { "Content-Type": "application/json" } });
+      })
+    );
+    const err = await requestDeviceAuthorization({
+      deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+      clientId: "basecamp-cli",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("transport");
+    expect(err.code).toBe("network");
+  });
+
+  it("times out a stalled device authorization body stream (abort timer covers the read)", async () => {
+    // Headers arrive, one chunk arrives, then the stream stalls forever. The
+    // request timeout must stay armed through the body read: its abort errors
+    // the read, mapping to transport instead of hanging indefinitely.
+    //
+    // msw's interceptor does not propagate a signal abort into an in-flight
+    // body stream, so this uses a custom fetch that wires the abort the way a
+    // real runtime (undici) does: aborting the signal errors the reader. With
+    // the pre-fix code (timer cleared before the read) the abort never fires
+    // and this test hangs.
+    const stalledFetch: typeof globalThis.fetch = async (_input, init) => {
+      const signal = init?.signal ?? undefined;
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"device_code":"d'));
+          // Never close, never enqueue again — a stalled stream that only
+          // ends when the request signal aborts.
+          signal?.addEventListener(
+            "abort",
+            () => controller.error(new DOMException("Aborted", "AbortError")),
+            { once: true }
+          );
+        },
+      });
+      return new Response(stream, { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+    const err = await requestDeviceAuthorization({
+      deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+      clientId: "basecamp-cli",
+      fetch: stalledFetch,
+      timeoutMs: 50,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("transport");
+  }, 2000);
+
   it("does not follow a redirect on the device authorization POST", async () => {
     let attackerContacted = false;
     server.use(
@@ -746,5 +923,15 @@ describe("DeviceFlowError retryability", () => {
       const err = new DeviceFlowError(reason, "x", { retryable: true });
       expect(err.retryable).toBe(false);
     }
+  });
+
+  it("serializes the reason via toJSON (and through JSON.stringify)", () => {
+    const err = new DeviceFlowError("access_denied", "denied");
+    const json = err.toJSON();
+    expect(json.reason).toBe("access_denied");
+    expect(json.name).toBe("DeviceFlowError");
+    expect(json.code).toBe("auth_required");
+    expect(json.message).toBe("denied");
+    expect(JSON.parse(JSON.stringify(err)).reason).toBe("access_denied");
   });
 });

@@ -246,6 +246,10 @@ def poll_device_token(
     if not is_localhost(token_endpoint):
         require_https(token_endpoint, "token endpoint")
 
+    # The server-driven interval (initial value + sustained slow_down bumps) is
+    # tracked SEPARATELY from the transient timeout backoff: each wait is
+    # max(interval, backoff), and any completed round-trip snaps the backoff
+    # back to the current server interval, so an inflated backoff never sticks.
     interval_seconds = interval if interval > 0 else DEFAULT_INTERVAL_SECONDS
     backoff_seconds = interval_seconds
     deadline = clock() + expires_in
@@ -266,7 +270,7 @@ def poll_device_token(
         remaining = deadline - clock()
         if remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
-        sleep(min(interval_seconds, remaining))
+        sleep(min(max(interval_seconds, backoff_seconds), remaining))
 
         if should_cancel is not None and should_cancel():
             raise DeviceFlowError("cancelled", "Device flow cancelled")
@@ -279,12 +283,13 @@ def poll_device_token(
         except httpx.TimeoutException:
             # A connection timeout → back off exponentially and keep polling.
             backoff_seconds = min(backoff_seconds * 2, MAX_BACKOFF_SECONDS)
-            interval_seconds = max(interval_seconds, backoff_seconds)
             continue
         except httpx.HTTPError as exc:
             raise DeviceFlowError("transport", f"Device token poll failed: {exc}") from exc
 
-        # A successful HTTP round-trip resets the timeout backoff.
+        # ANY completed HTTP round-trip — a token, authorization_pending,
+        # slow_down, or another OAuth error — resets the transient timeout
+        # backoff to the current server interval.
         backoff_seconds = interval_seconds
 
         if result.token is not None:
@@ -321,6 +326,16 @@ def _post_device_token(
     """
     status, body = _post_form_bounded(token_endpoint, params, timeout, max_body_bytes)
 
+    # A redirect is never a token-endpoint outcome. Classify it before parsing
+    # so a 3xx body carrying {"error": "authorization_pending"} cannot keep the
+    # poll loop alive — redirects are suppressed, not interpreted.
+    if 300 <= status < 400:
+        raise OAuthError(
+            "api_error",
+            f"Device token request failed with redirect status {status}",
+            http_status=status,
+        )
+
     try:
         data = json.loads(body)
     except ValueError as exc:
@@ -336,12 +351,25 @@ def _post_device_token(
         access_token = data.get("access_token")
         if not isinstance(access_token, str) or not access_token:
             raise OAuthError("api_error", "Device token response missing access_token")
+        # Validate expires_in BEFORE constructing the token: OAuthToken computes
+        # expires_at arithmetic from it, so a malformed value (a string, a bool,
+        # a non-positive number) must surface as api_error, never a TypeError.
+        # Absent/null stays allowed — the token then carries no expiry.
+        expires_in = data.get("expires_in")
+        if expires_in is not None and (
+            isinstance(expires_in, bool) or not isinstance(expires_in, int | float) or expires_in <= 0
+        ):
+            raise OAuthError(
+                "api_error",
+                "Device token response expires_in must be a positive number",
+                http_status=status,
+            )
         return _PollResult(
             token=OAuthToken(
                 access_token=access_token,
                 token_type=data.get("token_type", "Bearer"),
                 refresh_token=data.get("refresh_token"),
-                expires_in=data.get("expires_in"),
+                expires_in=expires_in,
                 scope=data.get("scope"),
             )
         )
@@ -369,7 +397,11 @@ def perform_device_login(
     :class:`DeviceFlowError` (``unavailable``) before any request. Then requests
     a device code, surfaces it through ``display``, and polls for the token.
     """
-    supports_device_grant = DEVICE_CODE_GRANT_TYPE in (config.grant_types_supported or [])
+    # Require a real list before the membership test: a malformed config
+    # carrying the URN as a plain str would substring-match `in` and pass the
+    # guard. A non-list grant_types_supported fails the capability check.
+    grant_types = config.grant_types_supported
+    supports_device_grant = isinstance(grant_types, list) and DEVICE_CODE_GRANT_TYPE in grant_types
     if not config.device_authorization_endpoint or not supports_device_grant:
         raise DeviceFlowError(
             "unavailable",

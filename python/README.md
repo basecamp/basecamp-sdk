@@ -294,7 +294,7 @@ from basecamp.oauth import discover_from_resource, perform_device_login
 result = discover_from_resource("https://3.basecampapi.com")
 if result.kind != "selected":
     raise RuntimeError(f"device flow requires a discovered AS (got fallback: {result.reason})")
-config = result.config
+config = result.selected_config()  # enforces the selected-result invariant, typed OAuthConfig
 
 def show(auth):
     print(f"Visit {auth.verification_uri} and enter code: {auth.user_code}")
@@ -311,6 +311,8 @@ An omitted `scope` lets the server apply its default (`read`).
 The two building blocks compose directly when you want finer control:
 
 ```python
+import time
+
 from basecamp.oauth import request_device_authorization, poll_device_token
 
 # `device_authorization_endpoint` is optional on a discovered config (device-only
@@ -321,13 +323,18 @@ if endpoint is None:
     raise RuntimeError("selected AS advertises no device_authorization_endpoint")
 
 auth = request_device_authorization(endpoint, "basecamp-cli")
+
+# The code's lifetime starts at issuance, not after display: anchor before the
+# display hook and poll with the remaining lifetime, so a slow display eats into
+# the deadline instead of extending it. (`perform_device_login` does this for you.)
+issued_at = time.monotonic()
 show(auth)
 token = poll_device_token(
     config.token_endpoint,
     "basecamp-cli",
     auth.device_code,
     auth.interval,
-    auth.expires_in,
+    auth.expires_in - (time.monotonic() - issued_at),
 )
 ```
 

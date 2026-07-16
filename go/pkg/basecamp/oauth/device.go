@@ -285,7 +285,8 @@ func validateDeviceAuthorization(raw rawDeviceAuthorization) (*DeviceAuthorizati
 // endpoint until the user approves, denies, or the code expires. It waits at
 // least interval seconds between polls, enforces a monotonic expiry deadline via
 // the injectable clock, sustains slow_down bumps (+5s), backs off exponentially
-// on connection timeouts, and honors context cancellation.
+// on connection timeouts (resetting once a round-trip completes), and honors
+// context cancellation.
 //
 // Terminal DeviceFlowError reasons: access_denied, expired, transport,
 // cancelled. Other server errors surface as a coded *basecamp.Error.
@@ -323,10 +324,11 @@ func PollDeviceToken(ctx context.Context, tokenEndpoint, clientID, deviceCode st
 		if remaining <= 0 {
 			return nil, &DeviceFlowError{Reason: DeviceFlowExpired}
 		}
-		// Clamp the wait (interval + any connection-timeout backoff) to the time
-		// left before the deadline so a long backoff never overshoots expiry;
-		// the deadline check below then terminates the flow promptly.
-		wait := time.Duration(intervalSeconds) * time.Second
+		// Each wait is the server-driven interval or the transient timeout
+		// backoff, whichever is larger, clamped to the time left before the
+		// deadline so a long backoff never overshoots expiry; the deadline
+		// check below then terminates the flow promptly.
+		wait := time.Duration(max(intervalSeconds, backoffSeconds)) * time.Second
 		if remaining < wait {
 			wait = remaining
 		}
@@ -348,8 +350,9 @@ func PollDeviceToken(ctx context.Context, tokenEndpoint, clientID, deviceCode st
 			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: result.err}
 		case pollTimeout:
 			// Connection timeout — back off and keep polling (RFC 8628 §3.5).
+			// The server-driven interval is untouched so the backoff decays
+			// fully once a round-trip completes.
 			backoffSeconds = min(backoffSeconds*2, maxBackoffSeconds)
-			intervalSeconds = max(intervalSeconds, backoffSeconds)
 			continue
 		case pollTransport:
 			return nil, &DeviceFlowError{Reason: DeviceFlowTransport, Err: result.err}
@@ -357,7 +360,8 @@ func PollDeviceToken(ctx context.Context, tokenEndpoint, clientID, deviceCode st
 			// Malformed 2xx token response — api_error, not a retryable transport.
 			return nil, basecamp.ErrAPI(result.status, result.err.Error())
 		case pollOAuthError:
-			// A successful round-trip resets the timeout backoff.
+			// Any completed round-trip resets the timeout backoff to the
+			// server-driven interval.
 			backoffSeconds = intervalSeconds
 			switch result.oauthError {
 			case "authorization_pending":
@@ -389,8 +393,9 @@ const (
 	pollTransport
 	pollCancelled
 	// pollInvalidResponse is a server/api fault (api_error), NOT a retryable
-	// transport: a 2xx whose body is unparseable or missing the access token, or
-	// any response whose body exceeds the size cap.
+	// transport: a 2xx whose body is unparseable or missing the access token, a
+	// 3xx (redirects are suppressed, never a valid token response), or any
+	// response whose body exceeds the size cap.
 	pollInvalidResponse
 )
 
@@ -405,8 +410,8 @@ type pollResult struct {
 // postDeviceToken performs one token-endpoint poll and classifies the outcome.
 // A parent-context cancellation is pollCancelled; a per-request timeout (or any
 // net timeout) is pollTimeout (→ backoff); any other transport failure is
-// pollTransport. A 2xx yields a Token; a non-2xx with an OAuth error body yields
-// pollOAuthError.
+// pollTransport. A 2xx yields a Token; a 3xx is pollInvalidResponse; any other
+// non-2xx with an OAuth error body yields pollOAuthError.
 func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string, form url.Values) pollResult {
 	reqCtx, cancel := context.WithTimeout(ctx, cfg.timeout)
 	defer cancel()
@@ -462,6 +467,15 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			token.ExpiresAt = cfg.clock().Add(time.Duration(token.ExpiresIn) * time.Second)
 		}
 		return pollResult{kind: pollToken, token: &token}
+	}
+
+	// Redirects are suppressed (http.ErrUseLastResponse), so a 3xx lands here
+	// as-is. A redirect is never a valid token response — classify it as an api
+	// fault BEFORE the OAuth-error body parse so a crafted
+	// authorization_pending body on a 3xx cannot keep the loop polling.
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
+			err: fmt.Errorf("device token endpoint returned redirect status %d", resp.StatusCode)}
 	}
 
 	var errResp struct {
