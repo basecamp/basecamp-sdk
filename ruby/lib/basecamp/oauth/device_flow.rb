@@ -198,6 +198,10 @@ module Basecamp
               next
             when "slow_down"
               interval_seconds += SLOW_DOWN_INCREMENT_SECONDS
+              # Re-sync the backoff to the GROWN interval (the reset above used the
+              # pre-increment value) so a later timeout doubles from the new
+              # interval, not the stale one.
+              backoff_seconds = interval_seconds
             when "access_denied"
               raise DeviceFlowError.new(:access_denied, "The authorization request was denied")
             when "expired_token"
