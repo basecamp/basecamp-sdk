@@ -403,6 +403,11 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 				continue
 			case "slow_down":
 				intervalSeconds += slowDownIncrementSeconds
+				// Re-sync the backoff to the GROWN interval: the reset above used
+				// the pre-increment value, so a subsequent timeout must double from
+				// the new interval, not the stale one (else the client polls too
+				// aggressively under combined throttling + network timeouts).
+				backoffSeconds = intervalSeconds
 				continue
 			case "access_denied":
 				return nil, &DeviceFlowError{Reason: DeviceFlowAccessDenied}
