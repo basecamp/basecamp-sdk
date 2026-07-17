@@ -310,6 +310,12 @@ class OAuthSsrfTest < Minitest::Test
     assert_equal 30, Basecamp::Oauth::Fetcher.normalize_timeout(Float::INFINITY, default: 30)
     # A valid value is preserved regardless of the default.
     assert_equal 5, Basecamp::Oauth::Fetcher.normalize_timeout(5, default: 30)
+    # An INVALID default must not disable the bounds either: fall back to the
+    # finite constant rather than returning the bad default.
+    assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT,
+      Basecamp::Oauth::Fetcher.normalize_timeout(nil, default: Float::INFINITY)
+    assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT,
+      Basecamp::Oauth::Fetcher.normalize_timeout("bad", default: nil)
   end
 
   def test_redirect_is_not_followed

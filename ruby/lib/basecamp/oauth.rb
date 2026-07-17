@@ -151,7 +151,7 @@ module Basecamp
     # {DeviceFlow.request_device_authorization}.
     #
     # @return [DeviceAuthorization]
-    def self.request_device_authorization(device_authorization_endpoint:, client_id:, scope: nil, timeout: 30)
+    def self.request_device_authorization(device_authorization_endpoint:, client_id:, scope: nil, timeout: DeviceFlow::DEVICE_REQUEST_TIMEOUT)
       DeviceFlow.request_device_authorization(
         device_authorization_endpoint: device_authorization_endpoint,
         client_id: client_id, scope: scope, timeout: timeout
@@ -166,7 +166,7 @@ module Basecamp
     def self.poll_device_token(
       token_endpoint:, client_id:, device_code:, interval:, expires_in:,
       clock: DeviceFlow::DEFAULT_CLOCK, sleeper: DeviceFlow::DEFAULT_SLEEPER,
-      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: 30
+      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: DeviceFlow::DEVICE_REQUEST_TIMEOUT
     )
       DeviceFlow.poll_device_token(
         token_endpoint: token_endpoint, client_id: client_id,
@@ -182,7 +182,7 @@ module Basecamp
     def self.perform_device_login(
       config:, client_id:, display:, scope: nil,
       clock: DeviceFlow::DEFAULT_CLOCK, sleeper: DeviceFlow::DEFAULT_SLEEPER,
-      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: 30
+      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: DeviceFlow::DEVICE_REQUEST_TIMEOUT
     )
       DeviceFlow.perform_device_login(
         config: config, client_id: client_id, display: display, scope: scope,
