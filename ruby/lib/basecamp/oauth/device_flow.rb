@@ -29,6 +29,9 @@ module Basecamp
       # invalid value can't silently borrow discovery's shorter budget.
       DEVICE_REQUEST_TIMEOUT = 30
 
+      # Granularity (seconds) for polling the +cancelled+ probe while waiting.
+      CANCEL_POLL_INTERVAL_SECONDS = 0.1
+
       # Cap on exponential backoff after connection timeouts.
       MAX_BACKOFF_SECONDS = 60
 
@@ -164,7 +167,7 @@ module Basecamp
             now = clock.call
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if now >= deadline
 
-            sleeper.call([ [ interval_seconds, backoff_seconds ].max, deadline - now ].min)
+            wait_cancellable([ [ interval_seconds, backoff_seconds ].max, deadline - now ].min, cancelled, sleeper)
 
             raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if clock.call >= deadline
@@ -292,6 +295,28 @@ module Basecamp
           # so a stalled socket can't hang the poll. A real adapter streams to
           # +on_data+ (leaving +response.body+ empty); a test double that ignores
           # the block falls back to the buffered body, still size-capped.
+          # Waits +seconds+ while observing cancellation DURING the wait. A plain
+          # +sleep+ is not interruptible, so a cancellation set mid-wait would not be
+          # noticed until the whole (possibly grown +slow_down+) interval elapses.
+          # With the default no-op probe a single sleep preserves the exact wait
+          # schedule; only a real probe needs the finer-grained interrupt polling —
+          # matching the ctx/AbortSignal/coroutine cancellation Go/TS/Kotlin waits have.
+          def wait_cancellable(seconds, cancelled, sleeper)
+            if cancelled.equal?(DEFAULT_CANCELLED)
+              sleeper.call(seconds)
+              return
+            end
+
+            remaining = seconds
+            while remaining.positive?
+              raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
+
+              step = [ remaining, CANCEL_POLL_INTERVAL_SECONDS ].min
+              sleeper.call(step)
+              remaining -= step
+            end
+          end
+
           def post_form(client, url, params, timeout:, max_body_bytes:)
             # +timeout+ is already normalized by the caller (request/poll entry). The
             # wall-clock deadline bounds the WHOLE read: req.options.timeout below

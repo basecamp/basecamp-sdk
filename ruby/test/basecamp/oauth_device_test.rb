@@ -615,6 +615,28 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "usage", error.type
   end
 
+  def test_poll_cancellation_during_wait_is_prompt
+    # A long interval must not delay cancellation: the wait polls the cancelled
+    # probe in small chunks, so a cancel set mid-wait raises without sleeping the
+    # whole interval at once (a plain sleep is not interruptible).
+    recorded = []
+    sleeper = ->(seconds) { recorded << seconds }
+    cancelled = -> { recorded.length >= 3 } # cancel after the 3rd chunk
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        sleeper: sleeper, cancelled: cancelled
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+    # Chunked into small waits, never one sleeper.call(5).
+    assert recorded.any?
+    assert(recorded.all? { |s| s <= Basecamp::Oauth::DeviceFlow::CANCEL_POLL_INTERVAL_SECONDS })
+  end
+
   # --- perform_device_login --------------------------------------------------
 
   def test_perform_guards_capability_endpoint_present_but_no_device_grant
