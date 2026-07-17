@@ -1,0 +1,49 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Urls.kt
+  s_b250506ef28983::t_8486f2855f6da2 106-121
+conformance/oauth/fixtures/31-resource-trailing-slash-binds.json
+  s_b250506ef28983::t_ab519514c53c7c 1-17
+python/src/basecamp/oauth/discovery.py
+  s_b250506ef28983::t_1be561e5140ab5 249-253,256
+python/tests/oauth/test_resource_discovery.py
+  s_b250506ef28983::t_c9741b84de3f06 315-318,320-323
+  s_b250506ef28983::t_4019f5014bff8f 319
+  s_b250506ef28983::t_75826e3dae215d 111-119
+  s_b250506ef28983::t_dd00c80abed2d3 314
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_721e32181a8b8e 488-492,495
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_b250506ef28983::t_47741cc5c1fba1 80-84
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_f882eb3d149675 181-192
+typescript/tests/oauth/resource-discovery.test.ts
+  s_b250506ef28983::t_5a48127d7ee920 133-136
+  s_b250506ef28983::t_79ebdf1ff2df01 421-432
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_85446f1dda740a 326-330,332
+go/pkg/basecamp/oauth/discovery.go
+  s_b250506ef28983::t_2c9c0209727e00 484-486,489
+  s_b250506ef28983::t_a4701d6db2fe9d 518-519
+  s_b250506ef28983::t_6eba79e289414f 456,459-465
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_ea2b955e33c720 49-53,56
+conformance/oauth/fixtures/30-origin-root-port-zero.json
+  s_b250506ef28983::t_ea6f69e8950cd4 1-12
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_4efb0a5b33d31d 643-682
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ed83fe5053e109a61fb6fd306f3cd2a9125ab037",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
