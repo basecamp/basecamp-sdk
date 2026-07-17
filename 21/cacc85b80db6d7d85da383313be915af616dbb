@@ -1,0 +1,24 @@
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_b250506ef28983::t_9a422b88230772 73-125
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_36b1f4ff294e02 141-145
+  s_b250506ef28983::t_3930621f2cf580 36-39,48-55,57,59,63-66
+  s_b250506ef28983::t_5765e24c02ae51 174-175
+  s_b250506ef28983::t_b22ce3bd6ca28f 16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "21cacc85b80db6d7d85da383313be915af616dbb",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
