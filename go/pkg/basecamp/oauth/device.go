@@ -234,6 +234,13 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 
 	resp, err := cfg.httpClient.Do(req) // #nosec G704 -- SDK HTTP client: caller-supplied discovery endpoint
 	if err != nil {
+		// A caller cancelling (or its deadline expiring) during the POST must
+		// surface as DeviceFlowCancelled, not a retryable transport failure. The
+		// parent ctx.Err() is non-nil only for a caller abort — the SDK's own
+		// per-request timeout is the child reqCtx, whose expiry stays transport.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+		}
 		return nil, &DeviceFlowError{Reason: DeviceFlowTransport, Err: fmt.Errorf("device authorization request failed: %w", err)}
 	}
 	defer func() { _ = resp.Body.Close() }()
