@@ -130,7 +130,10 @@ describe("resource-first discovery fixtures", () => {
       }
 
       if (fx.hop1) {
-        const resourceOrigin = fx.resourceOrigin!;
+        // Register the mock at the NORMALIZED origin: the SDK builds the well-known
+        // URL from the normalized origin even when the caller's spelling differs
+        // (e.g. a trailing slash or explicit :443), so the raw string wouldn't match.
+        const resourceOrigin = requireOriginRoot(fx.resourceOrigin!);
         server.use(handlerFor(`${resourceOrigin}${WELL_KNOWN.resource}`, fx.hop1));
       }
       if (fx.hop2) {
@@ -413,6 +416,18 @@ describe("resource metadata strictness (#369 review)", () => {
     const result = (await discoverFromResource(RESOURCE)) as { kind: string; issuer?: string };
     expect(result.kind).toBe("selected");
     expect(result.issuer).toBe(advertised);
+  });
+
+  it("binds the resource identifier against the raw caller string (default port)", async () => {
+    // ":443" normalizes away for the fetch URL, but the metadata resource is bound
+    // code-point-exact against the ORIGINAL caller identifier (RFC 9728 §3.3).
+    server.use(
+      mswHttp.get(`${RESOURCE}/.well-known/oauth-protected-resource`, () =>
+        HttpResponse.json({ resource: `${RESOURCE}:443` })
+      )
+    );
+    const meta = await discoverProtectedResource(`${RESOURCE}:443`);
+    expect(meta.resource).toBe(`${RESOURCE}:443`);
   });
 
   it("rejects scopes_supported that is not an array of strings", async () => {

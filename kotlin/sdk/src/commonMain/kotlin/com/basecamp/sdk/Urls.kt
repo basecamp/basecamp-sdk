@@ -103,11 +103,22 @@ internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
     if (authority.contains('@') || !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty()) {
         throw BasecampException.Usage("$label must not contain userinfo: ${BasecampException.truncateMessage(raw)}")
     }
-    // A dangling ":" ("https://host:") parses to the default-port origin under
-    // Ktor, silently accepting a malformed authority. IPv6 authorities end with
-    // "]" (e.g. "[::1]"), so only a trailing ":" is a dangling port.
-    if (authority.endsWith(':')) {
-        throw BasecampException.Usage("$label has an invalid port: ${BasecampException.truncateMessage(raw)}")
+    // Ktor's url.port is the EFFECTIVE port: an explicit ":0" and an absent port
+    // both normalize to the default, and a dangling ":" is dropped — so url.port
+    // can't distinguish them. Inspect the RAW authority instead. IPv6 authorities
+    // are bracketed ("[::1]"), so a port (if any) follows "]:"; otherwise it
+    // follows the sole ":". A present-but-invalid port token (empty for a dangling
+    // ":", "0", or out of 1–65535) is rejected.
+    val portToken = when {
+        authority.contains("]:") -> authority.substringAfterLast("]:")
+        !authority.contains(']') && authority.contains(':') -> authority.substringAfterLast(':')
+        else -> null
+    }
+    if (portToken != null) {
+        val port = portToken.toIntOrNull()
+        if (port == null || port < 1 || port > 65535) {
+            throw BasecampException.Usage("$label has an invalid port: ${BasecampException.truncateMessage(raw)}")
+        }
     }
     // trailingQuery catches a bare '?' with an empty query (e.g. `https://host?`),
     // whose encodedQuery is empty but which is still a query-bearing origin. Ktor

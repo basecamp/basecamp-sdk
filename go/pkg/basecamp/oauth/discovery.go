@@ -453,10 +453,16 @@ func (d *Discoverer) DiscoverProtectedResource(ctx context.Context, resourceOrig
 	if err != nil {
 		return nil, err
 	}
-	return d.fetchProtectedResource(ctx, origin, newDiscoverConfig(opts))
+	return d.fetchProtectedResource(ctx, origin, resourceOrigin, newDiscoverConfig(opts))
 }
 
-func (d *Discoverer) fetchProtectedResource(ctx context.Context, origin string, cfg discoverConfig) (*ProtectedResourceMetadata, error) {
+// fetchProtectedResource fetches from origin's well-known URL but binds the
+// metadata resource against bindResource by code-point. Routing and binding are
+// distinct (RFC 9728 §3.1/§3.3): the well-known URL is built from the normalized
+// origin, but doc.resource must be identical to the resource identifier the
+// caller supplied — with NO normalization (SPEC.md §16). DiscoverProtectedResource
+// and DiscoverFromResource pass the raw resourceOrigin.
+func (d *Discoverer) fetchProtectedResource(ctx context.Context, origin, bindResource string, cfg discoverConfig) (*ProtectedResourceMetadata, error) {
 	body, err := d.fetchDiscoveryDocument(ctx, origin+wellKnownResource, cfg)
 	if err != nil {
 		return nil, err
@@ -475,11 +481,12 @@ func (d *Discoverer) fetchProtectedResource(ctx context.Context, origin string, 
 	if err := rejectNullListFields(body, "authorization_servers"); err != nil {
 		return nil, err
 	}
-	// Bind resource identifier to the requested origin, code-point exact.
-	if *raw.Resource != origin {
+	// Bind the resource identifier to the requested identifier (the raw caller
+	// origin), code-point exact, NO normalization (RFC 9728 §3.3, SPEC.md §16).
+	if *raw.Resource != bindResource {
 		return nil, &basecamp.Error{
 			Code:    basecamp.CodeAPI,
-			Message: fmt.Sprintf("resource identifier mismatch: metadata resource %q does not equal %q", *raw.Resource, origin),
+			Message: fmt.Sprintf("resource identifier mismatch: metadata resource %q does not equal %q", *raw.Resource, bindResource),
 		}
 	}
 
@@ -508,7 +515,8 @@ func (d *Discoverer) DiscoverFromResource(ctx context.Context, resourceOrigin st
 	}
 
 	// --- Hop 1: resource metadata. Failure here is soft (before selection). ---
-	resource, err := d.fetchProtectedResource(ctx, origin, cfg)
+	// Fetch from the normalized origin, bind against the raw caller identifier.
+	resource, err := d.fetchProtectedResource(ctx, origin, resourceOrigin, cfg)
 	if err != nil {
 		var be *basecamp.Error
 		if errors.As(err, &be) && be.Code == basecamp.CodeUsage {

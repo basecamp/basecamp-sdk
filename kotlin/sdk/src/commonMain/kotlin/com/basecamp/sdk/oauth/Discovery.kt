@@ -323,10 +323,13 @@ suspend fun discoverProtectedResource(
             httpStatus = 200,
         )
     }
-    // Bind resource identifier to the requested origin, code-point exact.
-    if (resource != origin) {
+    // Bind the resource identifier to the requested identifier (the raw caller
+    // origin), code-point exact, NO normalization (RFC 9728 §3.3, SPEC.md §16): the
+    // well-known URL is built from the normalized origin, but the metadata resource
+    // must be identical to what the caller supplied.
+    if (resource != resourceOrigin) {
         throw BasecampException.Api(
-            "Resource identifier mismatch: metadata resource \"$resource\" does not equal \"$origin\"",
+            "Resource identifier mismatch: metadata resource \"$resource\" does not equal \"$resourceOrigin\"",
             httpStatus = 200,
         )
     }

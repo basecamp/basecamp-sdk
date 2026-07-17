@@ -640,6 +640,46 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `30 origin-root port zero rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-port-zero",
+            op = Op.PROTECTED_RESOURCE,
+            // Ktor's url.port is the EFFECTIVE port, so ":0" looks like the default;
+            // the raw authority's port token (0) must be rejected as out of range.
+            resourceOrigin = "https://api.example.com:0",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
+    @Test fun `31 resource trailing slash binds`() = runScenario(
+        Scenario(
+            name = "resource-trailing-slash-binds",
+            op = Op.PROTECTED_RESOURCE,
+            // The caller's identifier carries a trailing slash that normalizes away
+            // for the fetch URL; binding is code-point-exact against the ORIGINAL
+            // caller identifier, so a resource echoing the trailing slash binds.
+            resourceOrigin = "$RESOURCE/",
+            hop1 = Hop(body = "{\"resource\":\"$RESOURCE/\"}"),
+            selectedIssuer = "$RESOURCE/",
+            launchpadMustBeSilent = true,
+        )
+    )
+
+    @Test fun `resource default port binds against the raw caller identifier`() = runScenario(
+        Scenario(
+            name = "resource-default-port-binds",
+            op = Op.PROTECTED_RESOURCE,
+            // Default-port variant of the raw-identifier bind: ":443" normalizes
+            // away for the fetch URL but the resource must echo it by code-point.
+            resourceOrigin = "$RESOURCE:443",
+            hop1 = Hop(body = "{\"resource\":\"$RESOURCE:443\"}"),
+            selectedIssuer = "$RESOURCE:443",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS

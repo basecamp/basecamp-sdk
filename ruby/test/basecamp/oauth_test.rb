@@ -178,6 +178,18 @@ class OAuthTest < Minitest::Test
     assert_equal "api_error", error.type
   end
 
+  def test_resource_binds_against_raw_caller_default_port
+    # ":443" normalizes away for the fetch URL, but the metadata resource is bound
+    # code-point-exact against the ORIGINAL caller identifier (RFC 9728 §3.3).
+    res = "https://api.example.com"
+    stub_request(:get, "#{res}/.well-known/oauth-protected-resource")
+      .to_return(status: 200, body: { resource: "#{res}:443" }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    meta = Basecamp::Oauth.discover_protected_resource("#{res}:443")
+    assert_equal "#{res}:443", meta.resource
+  end
+
   def test_present_null_authorization_servers_is_malformed_not_empty
     # A present JSON null authorization_servers is MALFORMED metadata, not
     # "present but empty": it must fail hop-1 (soft resource_discovery_failed),

@@ -77,7 +77,11 @@ class OAuthResourceDiscoveryTest < Minitest::Test
 
     def stub_hops(fixture)
       if (hop1 = fixture["hop1"])
-        stub_exchange("#{fixture["resourceOrigin"]}#{WELL_KNOWN_RESOURCE}", hop1)
+        # Register the mock at the NORMALIZED origin: the SDK builds the well-known
+        # URL from the normalized origin even when the caller's spelling differs
+        # (trailing slash, explicit :443), so the raw string would not match.
+        origin = Basecamp::Security.require_origin_root!(fixture["resourceOrigin"])
+        stub_exchange("#{origin}#{WELL_KNOWN_RESOURCE}", hop1)
       end
 
       if (hop2 = fixture["hop2"])

@@ -108,7 +108,15 @@ def test_resource_discovery_fixture(raw: dict[str, Any]) -> None:
         router.get(f"{ORIGINS['{{LAUNCHPAD_ORIGIN}}']}{WELL_KNOWN_AS}").mock(side_effect=_track)
 
         if fx.get("hop1"):
-            _add_route(router, f"{fx['resourceOrigin']}{WELL_KNOWN_RESOURCE}", fx["hop1"])
+            # Register the mock at the NORMALIZED origin: the SDK builds the
+            # well-known URL from the normalized origin even when the caller's
+            # spelling differs (trailing slash, explicit :443), so the raw string
+            # would not match the actual request.
+            _add_route(
+                router,
+                f"{require_origin_root(fx['resourceOrigin'])}{WELL_KNOWN_RESOURCE}",
+                fx["hop1"],
+            )
         if fx.get("hop2"):
             issuer_origin = fx["hop2"].get("origin") or fx.get("issuerOrigin")
             _add_route(router, f"{issuer_origin}{WELL_KNOWN_AS}", fx["hop2"])
@@ -301,6 +309,16 @@ def test_duplicate_advertised_issuer_is_one_candidate_not_ambiguous() -> None:
 
     assert result.kind == "selected"
     assert result.issuer == bc5
+
+
+@respx.mock
+def test_resource_binds_against_raw_caller_default_port() -> None:
+    # ":443" normalizes away for the fetch URL, but the metadata resource is bound
+    # code-point-exact against the ORIGINAL caller identifier (RFC 9728 §3.3).
+    res = "https://api.basecamp-test.example"
+    respx.get(f"{res}{WELL_KNOWN_RESOURCE}").mock(return_value=httpx.Response(200, json={"resource": f"{res}:443"}))
+    meta = discover_protected_resource(f"{res}:443")
+    assert meta.resource == f"{res}:443"
 
 
 @respx.mock

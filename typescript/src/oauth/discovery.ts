@@ -485,11 +485,14 @@ export async function discoverProtectedResource(
   if (typeof data.resource !== "string" || !data.resource) {
     throw new BasecampError("api_error", "Invalid resource metadata: missing required field (resource)");
   }
-  // Bind resource identifier to the requested origin, code-point exact.
-  if (data.resource !== origin) {
+  // Bind the resource identifier to the requested identifier (the raw caller
+  // origin), code-point exact, NO normalization (RFC 9728 §3.3, SPEC.md §16): the
+  // well-known URL is built from the normalized origin, but doc.resource must be
+  // identical to what the caller supplied.
+  if (data.resource !== resourceOrigin) {
     throw new BasecampError(
       "api_error",
-      `Resource identifier mismatch: metadata resource "${data.resource}" does not equal "${origin}"`
+      `Resource identifier mismatch: metadata resource "${data.resource}" does not equal "${resourceOrigin}"`
     );
   }
 

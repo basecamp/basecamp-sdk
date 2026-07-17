@@ -246,11 +246,14 @@ def discover_protected_resource(
     resource = data.get("resource")
     if not isinstance(resource, str) or not resource:
         raise OAuthError("api_error", "Invalid resource metadata: missing required field: resource")
-    # Bind the resource identifier to the requested origin, code-point exact.
-    if resource != origin:
+    # Bind the resource identifier to the requested identifier (the raw caller
+    # origin), code-point exact, NO normalization (RFC 9728 §3.3, SPEC.md §16): the
+    # well-known URL is built from the normalized origin, but the metadata resource
+    # must be identical to what the caller supplied.
+    if resource != resource_origin:
         raise OAuthError(
             "api_error",
-            f'Resource identifier mismatch: metadata resource "{resource}" does not equal "{origin}"',
+            f'Resource identifier mismatch: metadata resource "{resource}" does not equal "{resource_origin}"',
         )
 
     # Preserve absent (None) vs present-empty ([]). When present it must be a list

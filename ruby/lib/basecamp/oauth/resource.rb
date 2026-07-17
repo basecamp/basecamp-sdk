@@ -46,11 +46,14 @@ module Basecamp
           raise OauthError.new("api_error", "Invalid resource metadata: missing required field: resource")
         end
 
-        # Bind the resource identifier to the requested origin, code-point exact.
-        unless resource == origin
+        # Bind the resource identifier to the requested identifier (the raw caller
+        # origin), code-point exact, NO normalization (RFC 9728 §3.3, SPEC.md §16):
+        # the well-known URL is built from the normalized +origin+, but the metadata
+        # +resource+ must be identical to what the caller supplied.
+        unless resource == resource_origin
           raise OauthError.new(
             "api_error",
-            "Resource identifier mismatch: metadata resource #{resource.inspect} does not equal #{origin.inspect}"
+            "Resource identifier mismatch: metadata resource #{resource.inspect} does not equal #{resource_origin.inspect}"
           )
         end
 
