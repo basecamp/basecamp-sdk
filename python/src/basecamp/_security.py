@@ -50,9 +50,10 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
 
     Accepts iff scheme is https (or http on localhost), a host is present, any
     port is valid, the path is empty or exactly ``/``, and there is no query,
-    fragment, or userinfo. Parsing uses ``urllib.parse`` — the transport parser,
-    never a regex — so bracketed IPv6 (``http://[::1]:3000``) and ports agree
-    with the host the client actually dials.
+    fragment, or userinfo. Parsing uses ``httpx.URL`` — the SAME transport parser
+    the client dials with, never a regex or a divergent parser like ``urllib`` —
+    so bracketed IPv6 (``http://[::1]:3000``), ports, and IDNA/IPvFuture handling
+    agree with the host the client actually dials (no parser-differential bypass).
 
     Raises :class:`~basecamp.errors.UsageError` on any violation: a bad
     caller-supplied origin is a usage error. Callers validating an *advertised*

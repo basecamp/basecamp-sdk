@@ -182,8 +182,12 @@ def _parse_and_bind_as_metadata(data: dict[str, Any], expected_issuer_origin: st
         "scopes_supported",
         "code_challenge_methods_supported",
     ):
-        value = data.get(list_field)
-        if value is not None and not _is_str_list(value):
+        # Distinguish absent (valid) from present (must be an array of strings):
+        # a present JSON null is malformed metadata, not the same as omitted. Using
+        # ``.get()`` alone would collapse present-null into absent and accept it.
+        if list_field not in data:
+            continue
+        if not _is_str_list(data[list_field]):
             raise OAuthError(
                 "api_error",
                 f"Invalid OAuth discovery response: {list_field} must be an array of strings",
@@ -241,17 +245,17 @@ def discover_protected_resource(
     authorization_servers: list[str] | None
     if "authorization_servers" not in data:
         authorization_servers = None
+    elif _is_str_list(data["authorization_servers"]):
+        # Present-and-empty ([]) is preserved distinctly from absent (None).
+        authorization_servers = data["authorization_servers"]
     else:
-        servers = data.get("authorization_servers")
-        if servers is None:
-            authorization_servers = []
-        elif _is_str_list(servers):
-            authorization_servers = servers
-        else:
-            raise OAuthError(
-                "api_error",
-                "Invalid resource metadata: authorization_servers must be an array of strings",
-            )
+        # A present JSON null (or any non-array-of-strings) is MALFORMED metadata,
+        # not "present but empty": it must fail hop-1 (→ soft resource_discovery_failed
+        # in the orchestrator), never be normalized to [] and read as no_as_advertised.
+        raise OAuthError(
+            "api_error",
+            "Invalid resource metadata: authorization_servers must be an array of strings",
+        )
 
     return ProtectedResourceMetadata(resource=resource, authorization_servers=authorization_servers)
 

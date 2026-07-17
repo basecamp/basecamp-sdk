@@ -304,6 +304,34 @@ def test_protected_resource_present_empty_array() -> None:
 
 
 @respx.mock
+def test_present_null_authorization_servers_is_malformed_not_empty() -> None:
+    # A present JSON null authorization_servers is MALFORMED metadata, not
+    # "present but empty": it must fail hop-1 (soft resource_discovery_failed),
+    # never be normalized to [] and read as no_as_advertised.
+    origin = ORIGINS["{{RESOURCE_ORIGIN}}"]
+    respx.get(f"{origin}{WELL_KNOWN_RESOURCE}").mock(
+        return_value=httpx.Response(200, json={"resource": origin, "authorization_servers": None})
+    )
+    result = discover_from_resource(origin)
+    assert result.kind == "fallback"
+    assert result.reason == "resource_discovery_failed"
+
+
+@respx.mock
+def test_present_null_grant_types_is_rejected_not_absent() -> None:
+    # A present JSON null list field is malformed, distinct from an absent key.
+    issuer = ORIGINS["{{ISSUER_ORIGIN}}"]
+    respx.get(f"{issuer}{WELL_KNOWN_AS}").mock(
+        return_value=httpx.Response(
+            200,
+            json={"issuer": issuer, "token_endpoint": f"{issuer}/token", "grant_types_supported": None},
+        )
+    )
+    with pytest.raises(OAuthError, match="grant_types_supported must be an array of strings"):
+        discover(issuer)
+
+
+@respx.mock
 def test_issuer_mismatch_classified_via_marker() -> None:
     # Committed to a BC5 issuer, the AS document returns a non-matching issuer.
     # The classification must come from the structured _IssuerBindingError marker

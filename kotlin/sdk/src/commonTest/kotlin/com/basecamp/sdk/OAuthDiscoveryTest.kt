@@ -557,6 +557,50 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `24 duplicate issuer deduped`() = runScenario(
+        Scenario(
+            name = "duplicate-issuer-deduped",
+            op = Op.FROM_RESOURCE,
+            // The same non-Launchpad issuer advertised twice is ONE candidate: the
+            // exclusion heuristic dedupes by code-point rather than raising ambiguous.
+            resourceOrigin = RESOURCE,
+            hop1 = Hop(body = resourceBody(RESOURCE, listOf(BC5, BC5, LAUNCHPAD))),
+            hop2 = Hop(body = "{\"issuer\":\"$BC5\",\"token_endpoint\":\"$BC5/oauth/token\"}"),
+            selectedIssuer = BC5,
+            launchpadMustBeSilent = true,
+        )
+    )
+
+    @Test fun `25 origin-root bare fragment rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-bare-fragment",
+            op = Op.PROTECTED_RESOURCE,
+            // A bare '#' is a fragment-bearing origin (empty fragment) and must be
+            // rejected — Ktor has no trailingQuery equivalent for '#', so the raw
+            // input is scanned.
+            resourceOrigin = "https://api.example.com#",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
+    @Test fun `26 advertised issuer trailing slash binds`() = runScenario(
+        Scenario(
+            name = "advertised-issuer-trailing-slash-binds",
+            op = Op.FROM_RESOURCE,
+            // The advertised issuer carries a trailing slash that normalizes away for
+            // routing. Binding is code-point-exact against the ADVERTISED string, so
+            // an AS echoing the trailing-slash issuer binds (no false issuer_mismatch)
+            // and the selected issuer is the advertised spelling.
+            resourceOrigin = RESOURCE,
+            hop1 = Hop(body = resourceBody(RESOURCE, listOf("$BC5/"))),
+            hop2 = Hop(body = "{\"issuer\":\"$BC5/\",\"token_endpoint\":\"$BC5/oauth/token\"}"),
+            selectedIssuer = "$BC5/",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS

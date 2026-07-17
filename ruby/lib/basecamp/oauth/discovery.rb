@@ -56,23 +56,32 @@ module Basecamp
         discover_and_bind(issuer_origin, issuer_origin)
       end
 
-      # Internal: fetch AS metadata from +issuer_origin+ (already an origin root)
-      # but bind the returned +issuer+ against +bind_issuer+ by code-point. Routing
-      # and binding are distinct — resource-first discovery fetches from the
-      # normalized origin yet binds against the exact advertised issuer string
-      # (which may spell a trailing slash or explicit default port), so an AS whose
-      # issuer matches what the resource advertised binds instead of being
-      # normalized away into a false +issuer_mismatch+. Not part of the public
-      # discovery API — {Oauth.discover} exposes no binding override.
+      # Resource-first entry: validate +advertised_issuer+ as an origin root, then
+      # fetch from the normalized origin and bind the AS metadata +issuer+ against
+      # the RAW advertised string by code-point. Routing and binding are distinct —
+      # an AS whose issuer matches what the resource advertised (e.g. a trailing
+      # slash or explicit default port) binds instead of being normalized away into
+      # a false +issuer_mismatch+. Validation happens HERE so there is NO public
+      # unvalidated-fetch entry point: the SSRF origin policy is always enforced.
       #
-      # @api private
-      def discover_and_bind(issuer_origin, bind_issuer)
-        discovery_url = "#{issuer_origin}/.well-known/oauth-authorization-server"
-        data = Fetcher.fetch_json(@http_client, discovery_url, timeout: @timeout, max_body_bytes: @max_body_bytes)
-        parse_and_bind(data, bind_issuer)
+      # @param advertised_issuer [String] the raw issuer string a resource advertised
+      # @raise [Basecamp::UsageError] on a malformed advertised origin
+      def discover_advertised(advertised_issuer)
+        issuer_origin = Basecamp::Security.require_origin_root!(advertised_issuer, "advertised issuer")
+        discover_and_bind(issuer_origin, advertised_issuer)
       end
 
       private
+
+        # Fetch AS metadata from +issuer_origin+ (an ALREADY-VALIDATED origin root)
+        # but bind the returned +issuer+ against +bind_issuer+ by code-point. Kept
+        # private: it does no origin validation of its own, so exposing it would be
+        # an unvalidated-fetch entry point that defeats the SSRF origin policy.
+        def discover_and_bind(issuer_origin, bind_issuer)
+          discovery_url = "#{issuer_origin}/.well-known/oauth-authorization-server"
+          data = Fetcher.fetch_json(@http_client, discovery_url, timeout: @timeout, max_body_bytes: @max_body_bytes)
+          parse_and_bind(data, bind_issuer)
+        end
 
         # Universal validation only: +issuer+ + +token_endpoint+ present and
         # non-empty, issuer identical by code-point, and any present +*_endpoint+

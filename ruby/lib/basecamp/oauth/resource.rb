@@ -71,8 +71,10 @@ module Basecamp
           return nil unless data.key?("authorization_servers")
 
           servers = data["authorization_servers"]
-          return [] if servers.nil?
-
+          # A present JSON null (or any non-array-of-strings) is MALFORMED metadata,
+          # not "present but empty": it must fail hop-1 (→ soft resource_discovery_failed
+          # in the orchestrator), never be normalized to [] and read as no_as_advertised.
+          # An empty array is a valid "present but empty" value and is preserved.
           unless servers.is_a?(Array) && servers.all?(String)
             raise OauthError.new(
               "api_error",

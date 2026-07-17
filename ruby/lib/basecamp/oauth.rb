@@ -202,24 +202,21 @@ module Basecamp
     # BC5 is committed: validate the advertised issuer origin then fetch + bind
     # its AS metadata. Every failure here is a hard {DiscoverySelectionError}.
     def self.bind_issuer(selected_issuer, timeout)
-      issuer_origin = begin
-        Basecamp::Security.require_origin_root!(selected_issuer, "advertised issuer")
+      config = begin
+        # discover_advertised validates the advertised issuer as an origin root,
+        # then fetches from the normalized origin and binds the AS metadata issuer
+        # against the RAW advertised string by code-point — so an AS whose issuer
+        # equals what the resource advertised is not rejected merely because
+        # normalization dropped a trailing slash / default port before the bind.
+        # It exposes no unvalidated-fetch entry point (the SSRF origin policy holds).
+        Discovery.new(timeout: timeout).discover_advertised(selected_issuer)
       rescue Basecamp::UsageError => e
         raise DiscoverySelectionError.new(
           "invalid_issuer_origin",
           "Advertised issuer #{selected_issuer.inspect} is not a valid origin root: #{e.message}"
         )
-      end
-
-      config = begin
-        # Fetch from the normalized origin, but bind the AS metadata issuer to the
-        # RAW advertised issuer by code-point: an AS whose issuer equals what the
-        # resource advertised must not be rejected merely because normalization
-        # dropped a trailing slash / default port before the bind. Uses the
-        # internal binding path so the public Oauth.discover exposes no override.
-        Discovery.new(timeout: timeout).discover_and_bind(issuer_origin, selected_issuer)
       rescue OauthError => e
-        raise as_failure_error(issuer_origin, e)
+        raise as_failure_error(selected_issuer, e)
       end
 
       DiscoveryResult.selected(config)

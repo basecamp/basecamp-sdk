@@ -178,6 +178,20 @@ class OAuthTest < Minitest::Test
     assert_equal "api_error", error.type
   end
 
+  def test_present_null_authorization_servers_is_malformed_not_empty
+    # A present JSON null authorization_servers is MALFORMED metadata, not
+    # "present but empty": it must fail hop-1 (soft resource_discovery_failed),
+    # never be normalized to [] and read as no_as_advertised.
+    stub_request(:get, "https://api.example.com/.well-known/oauth-protected-resource")
+      .to_return(status: 200,
+        body: { resource: "https://api.example.com", authorization_servers: nil }.to_json,
+        headers: { "Content-Type" => "application/json" })
+
+    result = Basecamp::Oauth.discover_from_resource("https://api.example.com")
+    assert result.fallback?
+    assert_equal "resource_discovery_failed", result.reason
+  end
+
   def test_exchange_code
     token_response = {
       "access_token" => "access_token_123",
