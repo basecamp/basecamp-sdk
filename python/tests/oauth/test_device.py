@@ -240,6 +240,30 @@ class TestRequestDeviceAuthorization:
         assert exc_info.value.reason == "transport"
 
     @respx.mock
+    def test_slow_drip_read_aborts_on_wall_clock_deadline(self, monkeypatch):
+        # httpx's timeout resets on every received chunk, so a slow-drip peer would
+        # hang the request without a whole-read deadline. Advance the monotonic clock
+        # past the deadline mid-stream (each call jumps 100s > the 30s timeout, so the
+        # first in-loop check trips regardless of when the deadline was computed) and
+        # assert it surfaces as a retryable transport timeout, not a hang.
+        import basecamp.oauth.device as device_mod
+
+        elapsed = {"v": 0.0}
+
+        def fake_monotonic() -> float:
+            v = elapsed["v"]
+            elapsed["v"] += 100.0
+            return v
+
+        monkeypatch.setattr(device_mod.time, "monotonic", fake_monotonic)
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
+        assert exc_info.value.reason == "transport"
+        assert exc_info.value.retryable
+
+    @respx.mock
     def test_rejects_non_string_field_types(self):
         # A non-string field is malformed, not merely absent — a truthiness
         # check would let 12345 / a list slip through.

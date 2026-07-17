@@ -50,7 +50,7 @@ DiscoverySelectionReason = Literal[
 class OAuthError(BasecampError):
     """OAuth-specific error with a type classifier.
 
-    Types: "validation", "auth", "network", "api_error"
+    Types: "validation", "auth", "network", "api_error", "usage"
     """
 
     def __init__(self, oauth_type: str, message: str, **kwargs: Any):

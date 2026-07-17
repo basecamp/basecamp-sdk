@@ -25,6 +25,7 @@ import httpx
 from basecamp._security import is_localhost, require_https
 from basecamp.oauth.config import OAuthConfig
 from basecamp.oauth.device_authorization import DeviceAuthorization
+from basecamp.oauth.discovery import _normalize_timeout
 from basecamp.oauth.errors import DeviceFlowError, OAuthError
 from basecamp.oauth.token import OAuthToken
 
@@ -80,6 +81,13 @@ def _post_form_bounded(
     :class:`httpx.TimeoutException`) so callers classify them; an oversized body
     raises :class:`OAuthError` (``api_error``).
     """
+    # Normalize first (a non-finite/non-positive timeout would disable both httpx's
+    # bound and the wall-clock deadline below), then bound the WHOLE streamed
+    # response: httpx's timeout is per-received-chunk and resets each iteration, so
+    # a slow-drip peer could otherwise hang a device request past the timeout and
+    # the device-code deadline while staying under ``max_body_bytes``. Mirrors
+    # :func:`basecamp.oauth.discovery._fetch_discovery_document`.
+    timeout = _normalize_timeout(timeout)
     with httpx.stream(
         "POST",
         url,
@@ -88,9 +96,15 @@ def _post_form_bounded(
         timeout=timeout,
         follow_redirects=False,
     ) as response:
+        deadline = time.monotonic() + timeout
         chunks: list[bytes] = []
         total = 0
         for chunk in response.iter_bytes():
+            if time.monotonic() > deadline:
+                # Surface as a read timeout so the caller's existing
+                # httpx.TimeoutException / HTTPError handling classifies it as the
+                # transport/timeout path (poll → backoff, request → transport).
+                raise httpx.ReadTimeout("Device flow read exceeded the timeout deadline")
             total += len(chunk)
             if total > max_body_bytes:
                 # Abort the stream — leaving the ``with`` closes the connection,
