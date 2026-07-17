@@ -55,8 +55,9 @@ type DeviceAuthorization struct {
 	UserCode string
 	// VerificationURI is where the user enters the user code.
 	VerificationURI string
-	// VerificationURIComplete embeds the user code in the URI (optional).
-	VerificationURIComplete string
+	// VerificationURIComplete embeds the user code in the URI (optional; nil when
+	// absent, matching the other SDKs' nullable/optional modeling of this field).
+	VerificationURIComplete *string
 	// ExpiresIn is the device/user code lifetime in seconds.
 	ExpiresIn int
 	// Interval is the minimum polling interval in seconds (default 5).
@@ -179,7 +180,7 @@ type rawDeviceAuthorization struct {
 	DeviceCode              string   `json:"device_code"`
 	UserCode                string   `json:"user_code"`
 	VerificationURI         string   `json:"verification_uri"`
-	VerificationURIComplete string   `json:"verification_uri_complete"`
+	VerificationURIComplete *string  `json:"verification_uri_complete"`
 	ExpiresIn               *float64 `json:"expires_in"`
 	Interval                *float64 `json:"interval"`
 }

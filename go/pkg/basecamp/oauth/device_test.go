@@ -116,6 +116,45 @@ func TestRequestDeviceAuthorization_OmitsScopeAndValidates(t *testing.T) {
 	}
 }
 
+func TestRequestDeviceAuthorization_VerificationURICompleteOptional(t *testing.T) {
+	// Present → a non-nil pointer to the value; absent → nil (not ""), preserving
+	// the optional distinction the cross-SDK contract requires.
+	present := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(deviceAuthBody)
+	}))
+	defer present.Close()
+	auth, err := RequestDeviceAuthorization(context.Background(), present.URL, "basecamp-cli", WithDeviceHTTPClient(tlsClient(present)))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if auth.VerificationURIComplete == nil {
+		t.Fatal("VerificationURIComplete = nil, want non-nil when present")
+	}
+	if *auth.VerificationURIComplete != "https://issuer.example/device?user_code=WDJB-MJHT" {
+		t.Errorf("*VerificationURIComplete = %q", *auth.VerificationURIComplete)
+	}
+
+	body := map[string]any{}
+	for k, v := range deviceAuthBody {
+		if k != "verification_uri_complete" {
+			body[k] = v
+		}
+	}
+	absent := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+	defer absent.Close()
+	auth2, err := RequestDeviceAuthorization(context.Background(), absent.URL, "basecamp-cli", WithDeviceHTTPClient(tlsClient(absent)))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if auth2.VerificationURIComplete != nil {
+		t.Errorf("VerificationURIComplete = %v, want nil when absent", auth2.VerificationURIComplete)
+	}
+}
+
 func TestRequestDeviceAuthorization_CallerCancellationIsCancelled(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
