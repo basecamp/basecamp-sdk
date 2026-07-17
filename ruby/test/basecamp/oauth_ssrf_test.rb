@@ -208,7 +208,9 @@ class OAuthSsrfTest < Minitest::Test
     # socket timeout and the wall-clock deadline (now + inf never trips), letting a
     # slow-drip peer hang the fetch. Both Discovery and Resource must normalize it.
     default = Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT
-    [ Float::INFINITY, Float::NAN, nil, 0, -1, "10" ].each do |bad|
+    # Complex is a Numeric but defines neither positive? nor an ordering — it must
+    # normalize to the default, not raise NoMethodError during construction.
+    [ Float::INFINITY, Float::NAN, nil, 0, -1, "10", Complex(1, 2) ].each do |bad|
       [ Basecamp::Oauth::Discovery, Basecamp::Oauth::Resource ].each do |klass|
         instance = klass.new(timeout: bad)
         assert_equal default, instance.instance_variable_get(:@timeout),

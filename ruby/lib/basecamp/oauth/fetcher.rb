@@ -42,7 +42,10 @@ module Basecamp
       # @param timeout [Object] caller-supplied timeout
       # @return [Numeric] a finite, positive timeout in seconds
       def self.normalize_timeout(timeout)
-        return timeout if timeout.is_a?(Numeric) && timeout.finite? && timeout.positive?
+        # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
+        # not define — calling them would raise NoMethodError). Integer, Float, and
+        # Rational are all real and answer both.
+        return timeout if timeout.is_a?(Numeric) && timeout.real? && timeout.finite? && timeout.positive?
 
         DEFAULT_TIMEOUT
       end
