@@ -231,6 +231,10 @@ def test_timeout_normalizes_to_operation_specific_default() -> None:
     # discovery constant rather than returning the bad default.
     assert _normalize_timeout(None, float("inf")) == _DISCOVERY_TIMEOUT
     assert _normalize_timeout("bad", None) == _DISCOVERY_TIMEOUT  # type: ignore[arg-type]
+    # A finite value ABOVE the maximum (which would overflow the wall-clock wait
+    # primitive) falls back to the default; within the maximum it is preserved.
+    assert _normalize_timeout(1e300, 30.0, maximum=3600.0) == 30.0
+    assert _normalize_timeout(60.0, 30.0, maximum=3600.0) == 60.0
 
 
 @pytest.mark.parametrize("raw", ["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])

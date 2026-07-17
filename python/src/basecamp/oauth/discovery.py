@@ -71,7 +71,7 @@ def _normalize_body_cap(max_body_bytes: object) -> int:
     return max_body_bytes
 
 
-def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT) -> float:
+def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT, maximum: float | None = None) -> float:
     """Coerce the public timeout to a finite, positive float.
 
     ``timeout`` is *typed* ``float``, but a caller can pass ``None``, a non-number,
@@ -88,12 +88,14 @@ def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT) -> 
     back to that operation's own budget rather than a foreign one.
     """
     value = _finite_positive_timeout(timeout)
-    if value is not None:
+    if value is not None and (maximum is None or value <= maximum):
         return value
-    # Validate the fallback too: a caller passing an invalid ``default`` must not be
-    # able to disable both bounds. Fall back to the discovery constant if it is bad.
+    # Validate the fallback too: a caller passing an invalid (or over-max) ``default``
+    # must not be able to disable the bound. Fall back to the discovery constant.
     fallback = _finite_positive_timeout(default)
-    return fallback if fallback is not None else _DISCOVERY_TIMEOUT
+    if fallback is not None and (maximum is None or fallback <= maximum):
+        return fallback
+    return _DISCOVERY_TIMEOUT
 
 
 def _finite_positive_timeout(value: object) -> float | None:

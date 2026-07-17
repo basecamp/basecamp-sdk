@@ -642,6 +642,36 @@ class TestPollDeviceToken:
         assert exc_info.value.code == "usage"
 
     @respx.mock
+    def test_cancellation_during_wait_is_prompt(self):
+        # A long interval must not delay cancellation: the wait polls should_cancel
+        # in small chunks, so a cancel set mid-wait raises without sleeping the whole
+        # interval at once (a plain time.sleep is not interruptible).
+        from basecamp.oauth.device import _CANCEL_POLL_INTERVAL
+
+        _queue_token_responses([httpx.Response(400, json={"error": "authorization_pending"})])
+        recorded: list[float] = []
+
+        def sleep(seconds: float) -> None:
+            recorded.append(seconds)
+
+        def should_cancel() -> bool:
+            return len(recorded) >= 3  # cancel after the 3rd chunk
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                sleep=sleep,
+                should_cancel=should_cancel,
+            )
+        assert exc_info.value.reason == "cancelled"
+        # Chunked into small waits, never one sleep(5).
+        assert recorded and all(s <= _CANCEL_POLL_INTERVAL for s in recorded)
+
+    @respx.mock
     def test_unknown_error_maps_to_api_error(self):
         _queue_token_responses([httpx.Response(400, json={"error": "invalid_request"})])
 

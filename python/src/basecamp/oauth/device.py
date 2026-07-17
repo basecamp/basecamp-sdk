@@ -13,9 +13,9 @@ clock and sleep are injectable so tests can drive the interval schedule
 
 from __future__ import annotations
 
+import asyncio
 import json
 import math
-import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -57,6 +57,14 @@ MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647
 
 _DEVICE_TIMEOUT = 30.0
 
+#: Upper bound (seconds) on a device request timeout. A per-request timeout beyond
+#: this is nonsensical, and a huge finite value would overflow the wall-clock wait
+#: primitive (asyncio.wait_for / thread join); clamp to the default above it.
+_MAX_DEVICE_REQUEST_TIMEOUT = 3600.0
+
+#: Granularity (seconds) for polling ``should_cancel`` while waiting between polls.
+_CANCEL_POLL_INTERVAL = 0.1
+
 # Cap on a device-flow response body (1 MiB) — these responses are tiny; a
 # larger one is a fault, so abort rather than buffer it. Mirrors discovery.
 MAX_DEVICE_BODY_BYTES = 1 * 1024 * 1024
@@ -82,48 +90,36 @@ def _post_form_bounded(
     :class:`httpx.TimeoutException`) so callers classify them; an oversized body
     raises :class:`OAuthError` (``api_error``).
     """
-    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT)
-    client = httpx.Client(timeout=timeout, follow_redirects=False)
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_DEVICE_REQUEST_TIMEOUT)
 
-    result: list[tuple[int, bytes]] = []
-    error: list[Exception] = []
+    async def _do() -> tuple[int, bytes]:
+        async with (
+            httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
+            client.stream("POST", url, data=params, headers=_FORM_HEADERS) as response,
+        ):
+            chunks: list[bytes] = []
+            total = 0
+            async for chunk in response.aiter_bytes():
+                total += len(chunk)
+                if total > max_body_bytes:
+                    # An oversized body is api_error, not a timeout — abort the
+                    # stream so it is never fully buffered.
+                    raise OAuthError("api_error", "Device flow response exceeds size cap")
+                chunks.append(chunk)
+            return response.status_code, b"".join(chunks)
 
-    def _worker() -> None:
-        try:
-            with client.stream("POST", url, data=params, headers=_FORM_HEADERS) as response:
-                chunks: list[bytes] = []
-                total = 0
-                for chunk in response.iter_bytes():
-                    total += len(chunk)
-                    if total > max_body_bytes:
-                        # An oversized body is api_error, not a timeout — abort the
-                        # stream so it is never fully buffered.
-                        raise OAuthError("api_error", "Device flow response exceeds size cap")
-                    chunks.append(chunk)
-                result.append((response.status_code, b"".join(chunks)))
-        except Exception as exc:  # re-raised on the caller thread below
-            error.append(exc)
-
-    # httpx's timeout is per-read — it resets on every received chunk — so it does
-    # NOT bound the WHOLE exchange against a peer that slow-drips header or body
-    # bytes just under that interval, and httpx has no total-request timeout
-    # (https://www.python-httpx.org/advanced/timeouts/). Closing the client from a
-    # watchdog does not interrupt a blocked read either. So run the request on a
-    # daemon worker and enforce a HARD wall-clock bound on the caller with
-    # join(timeout): a stalled/slow-drip request returns within `timeout` as a read
-    # timeout. The abandoned daemon worker never blocks interpreter exit and dies on
-    # its own per-read timeout; client.close() below is a best-effort unblock.
-    worker = threading.Thread(target=_worker, daemon=True)
-    worker.start()
-    worker.join(timeout)
+    # httpx's timeout is per-read (it resets on every received chunk) and httpx has
+    # NO total-request timeout, so a peer slow-dripping header or body bytes just
+    # under that interval could otherwise hold the POST open indefinitely (verified);
+    # closing a sync client from a watchdog does not interrupt a blocked read either.
+    # Run the request as a coroutine under asyncio.wait_for, which CANCELS it (and
+    # closes the socket) at the deadline: the caller is bounded AND the work is
+    # actually terminated — no leaked worker, unlike a sync thread that cannot be
+    # killed. See https://www.python-httpx.org/advanced/timeouts/.
     try:
-        if worker.is_alive():
-            raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline")
-        if error:
-            raise error[0]
-        return result[0]
-    finally:
-        client.close()
+        return asyncio.run(asyncio.wait_for(_do(), timeout))
+    except TimeoutError as exc:
+        raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline") from exc
 
 
 def request_device_authorization(
@@ -265,6 +261,32 @@ class _PollResult:
     status: int = 0
 
 
+def _wait_cancellable(
+    seconds: float,
+    should_cancel: Callable[[], bool] | None,
+    sleep: Callable[[float], Any],
+) -> None:
+    """Wait ``seconds``, observing cancellation DURING the wait.
+
+    ``time.sleep`` is not interruptible, so a plain ``sleep(interval)`` would not
+    notice a cancellation until the whole interval (possibly a grown ``slow_down``
+    interval) elapses. When a ``should_cancel`` probe is supplied, poll it every
+    :data:`_CANCEL_POLL_INTERVAL` and raise promptly. With no probe (the common
+    case) a single ``sleep`` preserves the exact wait schedule — matching the
+    ctx/AbortSignal/coroutine cancellation the Go/TS/Kotlin waits already have.
+    """
+    if should_cancel is None:
+        sleep(seconds)
+        return
+    remaining = seconds
+    while remaining > 0:
+        if should_cancel():
+            raise DeviceFlowError("cancelled", "Device flow cancelled")
+        step = min(remaining, _CANCEL_POLL_INTERVAL)
+        sleep(step)
+        remaining -= step
+
+
 def poll_device_token(
     token_endpoint: str,
     client_id: str,
@@ -316,7 +338,7 @@ def poll_device_token(
         remaining = deadline - clock()
         if remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
-        sleep(min(max(interval_seconds, backoff_seconds), remaining))
+        _wait_cancellable(min(max(interval_seconds, backoff_seconds), remaining), should_cancel, sleep)
 
         if should_cancel is not None and should_cancel():
             raise DeviceFlowError("cancelled", "Device flow cancelled")
