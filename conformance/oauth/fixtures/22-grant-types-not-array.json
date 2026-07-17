@@ -1,0 +1,20 @@
+{
+  "name": "grant-types-not-array",
+  "description": "AS metadata grant_types_supported is a JSON string, not an array. Structural validation must reject it as invalid metadata (never substring-match it, which would falsely enable device flow) → api_error.",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{ISSUER_ORIGIN}}",
+      "token_endpoint": "{{ISSUER_ORIGIN}}/oauth/token",
+      "grant_types_supported": "urn:ietf:params:oauth:grant-type:device_code"
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "invalid_metadata",
+    "errorCategory": "api_error"
+  }
+}

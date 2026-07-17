@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-malformed-port",
+  "description": "Resource origin with a non-numeric port is rejected by the transport parser \u2192 usage error.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://api.example.com:notaport",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

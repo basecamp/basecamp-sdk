@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-port-zero",
+  "description": "Resource origin with an explicit port 0 ('https://host:0') is malformed. Some parsers report an effective default port for :0, so each SDK inspects the raw authority's port token and rejects anything outside 1-65535.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://api.example.com:0",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

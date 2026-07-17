@@ -373,7 +373,18 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-build
+.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-build oauth-fixtures-check
+
+# Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
+# version is reproducible without a global install; the schema is separate from
+# the operation-dispatch conformance/schema.json (unusable for OAuth data).
+CHECK_JSONSCHEMA_VERSION := 0.35.0
+
+# Validate OAuth resource-first discovery fixtures against their JSON Schema.
+oauth-fixtures-check:
+	@echo "==> Validating OAuth discovery fixtures..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--schemafile conformance/oauth/schema.json conformance/oauth/fixtures/*.json
 
 # Build conformance test runner
 conformance-build:
@@ -406,7 +417,7 @@ conformance-python:
 	cd conformance/runner/python && uv sync && uv run python runner.py
 
 # Run all conformance tests
-conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
+conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
 
 #------------------------------------------------------------------------------
@@ -644,6 +655,7 @@ help:
 	@echo "  conformance-ruby       Run Ruby conformance tests"
 	@echo "  conformance-python     Run Python conformance tests"
 	@echo "  conformance-build      Build Go conformance test runner"
+	@echo "  oauth-fixtures-check   Validate OAuth discovery fixtures against their schema"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"

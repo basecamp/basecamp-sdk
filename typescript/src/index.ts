@@ -435,14 +435,23 @@ export type {
   RefreshRequest,
   RawTokenResponse,
   OAuthErrorResponse,
+  ProtectedResourceMetadata,
+  FallbackReason,
+  DiscoverySelectionErrorReason,
+  DiscoverFromResourceResult,
 } from "./oauth/types.js";
 
 // OAuth functions
 export {
   discover,
+  discoverProtectedResource,
+  discoverFromResource,
   discoverLaunchpad,
+  requireOriginRoot,
+  DiscoverySelectionError,
   LAUNCHPAD_BASE_URL,
   type DiscoverOptions,
+  type DiscoverFromResourceOptions,
 } from "./oauth/discovery.js";
 
 export {

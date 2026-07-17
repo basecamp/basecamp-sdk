@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-dot-segment-path",
+  "description": "A caller origin with a dot-segment path ('https://api.example.com/a/..') is malformed. WHATWG-style parsers resolve the path away to '/', so the normalized path check passes; each SDK scans the RAW path and rejects any path beyond '/'.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://api.example.com/a/..",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

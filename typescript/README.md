@@ -168,6 +168,65 @@ if (isTokenExpired(token)) {
 }
 ```
 
+### Resource-first discovery (BC5)
+
+BC5 serves its Authorization Server metadata only at its canonical issuer (the
+web host), so discovery starts from the **resource** (RFC 9728) and composes with
+AS discovery (RFC 8414):
+
+```ts
+import { discoverFromResource, DiscoverySelectionError } from "@37signals/basecamp";
+
+const result = await discoverFromResource("https://3.basecampapi.com");
+if (result.kind === "selected") {
+  // result.config is bound + validated for result.issuer
+} else {
+  // result.reason is "resource_discovery_failed" | "no_as_advertised"
+  // → fall back to Launchpad (discoverLaunchpad())
+}
+```
+
+`performInteractiveLogin` supports this via `resourceBaseUrl` (mutually exclusive
+with the legacy `baseUrl`; supplying both is a `usage` error):
+
+```ts
+await performInteractiveLogin({
+  clientId: "basecamp-cli",
+  store: myTokenStore,
+  resourceBaseUrl: "https://3.basecampapi.com",
+  expectedIssuer, // optional: authoritative, non-heuristic selection
+  openBrowser: (url) => open(url),
+});
+```
+
+**Selection.** With `expectedIssuer`, the advertised member equal by code-point is
+selected (else a hard `expected_issuer_unavailable`). Without it, the SDK uses a
+documented Basecamp-profile heuristic: exactly one non-Launchpad issuer → selected;
+≥2 → hard `ambiguous_issuers` (never guesses); zero → Launchpad.
+
+**Fallback is allowed only before a first-party issuer is committed.** Once valid
+resource metadata advertises it and it is selected, every later failure is fatal —
+the SDK **never** silently falls back to Launchpad:
+
+| Failure | Result |
+|---|---|
+| Hop-1 fetch/parse fails, or `resource` mismatch | soft `resource_discovery_failed` → Launchpad |
+| Valid metadata omits the first-party issuer | soft `no_as_advertised` → Launchpad |
+| ≥2 non-Launchpad issuers (no `expectedIssuer`) | throws `ambiguous_issuers` |
+| `expectedIssuer` not advertised | throws `expected_issuer_unavailable` |
+| Committed issuer origin invalid | throws `invalid_issuer_origin` |
+| Committed AS metadata fetch fails | throws `as_fetch_failed` |
+| Committed issuer binding mismatch | throws `issuer_mismatch` |
+
+Hard cases throw `DiscoverySelectionError` (with a `.reason`); soft cases return a
+`{ kind: "fallback", reason }`.
+
+> **Breaking-ish:** `OAuthConfig.authorizationEndpoint` is now **optional** —
+> device-only servers omit it. Authorization-code consumers must assert it before
+> use (`performInteractiveLogin` does this and errors if it is missing). Both
+> discovery hops are SSRF-hardened (HTTPS-only origins, suppressed redirects,
+> bounded body reads).
+
 ## Services
 
 The SDK provides typed services for the complete Basecamp API:

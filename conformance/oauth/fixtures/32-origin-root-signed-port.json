@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-signed-port",
+  "description": "Resource origin with a signed port token ('https://host:+1') is malformed. Some parsers coerce '+1' to 1, so each SDK restricts the raw authority's port token to ASCII digits and rejects a sign.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://api.example.com:+1",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

@@ -107,6 +107,38 @@ val client = BasecampClient {
 
 The SDK includes full OAuth 2.0 support with PKCE for Basecamp's Launchpad identity provider.
 
+### Discovery
+
+Three composable operations follow the resource-first model (RFC 9728 + RFC 8414):
+
+```kotlin
+import com.basecamp.sdk.oauth.*
+
+// Direct RFC 8414 Authorization Server metadata (issuer bound by code-point).
+val config = discover("https://launchpad.37signals.com")
+
+// Resource-first discovery: start from the API/resource host, select the
+// advertised authorization server, and fall back to Launchpad when appropriate.
+when (val result = discoverFromResource("https://3.basecampapi.com")) {
+    is DiscoveryResult.Selected -> useConfig(result.config)          // a BC5 AS was committed
+    is DiscoveryResult.FallBack -> useConfig(discoverLaunchpad())    // reason: resource_discovery_failed | no_as_advertised
+}
+```
+
+`discoverFromResource` returns a `DiscoveryResult` for the two soft outcomes and
+**throws** `BasecampException.DiscoverySelection` for every hard failure (e.g.
+`ambiguous_issuers`, `issuer_mismatch`, `as_fetch_failed`) once a BC5 issuer is
+committed — a hard failure is never converted into a Launchpad request. Pass an
+`expectedIssuer` to select authoritatively instead of by exclusion.
+
+All discovery fetches are SSRF-hardened: HTTPS-only origins (localhost exempt),
+origin validated with the transport URL parser before any socket opens, redirects
+suppressed, timeouts bounded, and response bodies read under a bounded cap.
+
+`OAuthConfig.authorizationEndpoint` is **nullable** (`String?`): device-only
+authorization servers omit it, so authorization-code consumers must assert its
+presence before use (`token_endpoint` is always present).
+
 ### Authorization Flow
 
 ```kotlin
@@ -120,9 +152,12 @@ val pkce = generatePkce()
 val state = generateState()
 // Store pkce.verifier and state in session
 
-// 3. Build authorization URL
+// 3. Build authorization URL (authorizationEndpoint is nullable; assert presence)
+val authorizationEndpoint = requireNotNull(config.authorizationEndpoint) {
+    "Authorization server does not support the authorization-code flow"
+}
 val authUrl = buildString {
-    append(config.authorizationEndpoint)
+    append(authorizationEndpoint)
     append("?type=web_server")
     append("&client_id=$CLIENT_ID")
     append("&redirect_uri=$REDIRECT_URI")

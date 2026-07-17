@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-bare-fragment",
+  "description": "Resource origin with a bare trailing '#' (empty fragment) must be rejected as a query/fragment-bearing origin, not normalized to a clean origin. Some parsers expose an empty fragment as absent, so each SDK scans the raw input.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://api.example.com#",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

@@ -9,7 +9,7 @@ Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 ## Features
 
 - **Full API coverage** — 40 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
-- **OAuth 2.0 authentication** — PKCE support, token refresh, Launchpad discovery
+- **OAuth 2.0 authentication** — PKCE support, token refresh, resource-first (RFC 9728 + RFC 8414) discovery
 - **Static token authentication** — Simple setup for personal integrations
 - **Automatic retry with backoff** — Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination handling** — Automatic Link header-based pagination with `ListResult`
@@ -154,9 +154,65 @@ The SDK provides helpers for the full OAuth 2.0 authorization code flow with PKC
 from basecamp.oauth import discover_launchpad
 
 config = discover_launchpad()
-# config.authorization_endpoint
+# config.authorization_endpoint  # Optional[str] — may be None (see below)
 # config.token_endpoint
 ```
+
+`config.authorization_endpoint` is now **optional** (`str | None`): device-only
+authorization servers omit it, so authorization-code consumers MUST assert its
+presence before use. `token_endpoint` stays required.
+
+#### Resource-first discovery (RFC 9728 + RFC 8414)
+
+BC5's Authorization Server metadata lives only at its canonical issuer (the web
+host), not the API host. Discovery therefore starts from the **resource** and
+composes with AS discovery. Two composable operations plus an orchestrator:
+
+```python
+from basecamp.oauth import (
+    discover,                      # RFC 8414 AS metadata + issuer binding
+    discover_protected_resource,   # RFC 9728 resource metadata (hop 1)
+    discover_from_resource,        # orchestrator: selection + fallback
+)
+
+result = discover_from_resource("https://3.basecampapi.com")
+if result.kind == "selected":
+    config = result.config         # bound OAuthConfig from the selected issuer
+else:  # result.kind == "fallback"
+    config = discover_launchpad()  # result.reason explains why
+```
+
+**Selection.** Pass `expected_issuer="https://3.basecamp.com"` for an explicit,
+authoritative choice (raises `expected_issuer_unavailable` if it is not
+advertised — never a silent fallback). Without it, the SDK identifies BC5 by
+exclusion: exactly one non-Launchpad issuer is selected; two or more raise
+`ambiguous_issuers`; zero falls back to Launchpad.
+
+**Stage-sensitive fallback.** `discover_from_resource` returns a
+`DiscoveryResult` that is either `selected` or a soft `fallback` whose `reason`
+is one of **only** two `FallbackReason` values. Every hard case raises
+`DiscoverySelectionError` (carrying a `.reason`) — no consumer may convert a
+raise into a Launchpad request.
+
+| Stage / failure | Outcome |
+|---|---|
+| Hop-1 fetch/parse fails, or `resource` mismatch | soft `resource_discovery_failed` → Launchpad |
+| Valid metadata omits BC5 (absent / `[]` / only-Launchpad) | soft `no_as_advertised` → Launchpad |
+| ≥2 non-Launchpad issuers, no `expected_issuer` | **raise** `ambiguous_issuers` |
+| `expected_issuer` not advertised | **raise** `expected_issuer_unavailable` |
+| BC5 committed → invalid issuer origin | **raise** `invalid_issuer_origin` |
+| BC5 committed → AS-metadata fetch fails (5xx / network) | **raise** `as_fetch_failed` |
+| BC5 committed → issuer binding mismatch | **raise** `issuer_mismatch` |
+| BC5 committed → missing per-grant endpoint (consumer-asserted) | **raise** `capability_unavailable` |
+
+`discover_protected_resource` preserves `authorization_servers` absent (`None`)
+vs present-but-empty (`[]`) distinctly.
+
+**SSRF hardening.** Both hops require HTTPS (localhost exempt), validate the
+origin-root with the transport URL parser before any socket opens, suppress
+redirects, bound the timeout, and read the body under a genuine streaming cap
+that aborts before an oversized body is buffered. Non-2xx on either hop maps to
+`api_error`.
 
 ### PKCE and Authorization URL
 

@@ -3,40 +3,39 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
 
 func TestDiscoverer_Discover(t *testing.T) {
 	tests := []struct {
 		name       string
-		response   any
 		statusCode int
+		// bindIssuer serves metadata whose issuer equals the server origin so
+		// the RFC 8414 issuer binding passes.
+		bindIssuer bool
 		wantErr    bool
 	}{
 		{
-			name: "successful discovery",
-			response: Config{
-				Issuer:                "https://example.com",
-				AuthorizationEndpoint: "https://example.com/authorize",
-				TokenEndpoint:         "https://example.com/token",
-			},
+			name:       "successful discovery",
 			statusCode: http.StatusOK,
+			bindIssuer: true,
 			wantErr:    false,
 		},
 		{
 			name:       "server error",
-			response:   "Internal Server Error",
 			statusCode: http.StatusInternalServerError,
 			wantErr:    true,
 		},
 		{
 			name:       "not found",
-			response:   "Not Found",
 			statusCode: http.StatusNotFound,
 			wantErr:    true,
 		},
@@ -44,18 +43,21 @@ func TestDiscoverer_Discover(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var origin string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/.well-known/oauth-authorization-server" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
 				}
 				w.WriteHeader(tt.statusCode)
-				if tt.statusCode == http.StatusOK {
-					_ = json.NewEncoder(w).Encode(tt.response)
+				if tt.bindIssuer {
+					_, _ = fmt.Fprintf(w, `{"issuer":%q,"authorization_endpoint":%q,"token_endpoint":%q}`,
+						origin, origin+"/authorize", origin+"/token")
 				} else {
-					_, _ = w.Write([]byte(tt.response.(string)))
+					_, _ = w.Write([]byte("error body"))
 				}
 			}))
 			defer server.Close()
+			origin = server.URL
 
 			d := NewDiscoverer(server.Client())
 			cfg, err := d.Discover(context.Background(), server.URL)
@@ -64,31 +66,80 @@ func TestDiscoverer_Discover(t *testing.T) {
 				t.Errorf("Discover() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
-			if !tt.wantErr && cfg == nil {
-				t.Error("Discover() returned nil config")
+			if !tt.wantErr {
+				if cfg == nil {
+					t.Fatal("Discover() returned nil config")
+				}
+				if cfg.Issuer != origin {
+					t.Errorf("Discover() issuer = %q, want %q", cfg.Issuer, origin)
+				}
 			}
 		})
 	}
 }
 
-func TestDiscoverer_Discover_URLNormalization(t *testing.T) {
+// TestDiscoverer_Discover_MidStreamReadFailureIsNetwork verifies that a 2xx
+// whose body dies mid-stream (peer reset, truncation) is classified as network
+// (retryable), not as the size-cap api_error.
+func TestDiscoverer_Discover_MidStreamReadFailureIsNetwork(t *testing.T) {
+	// A 2xx whose body dies mid-read (peer reset, truncation) is a transient
+	// transport fault — network, retryable — never misclassified as the
+	// size-cap api_error, which is reserved for errBodyTooLarge.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			t.Fatal("server does not support hijacking")
+		}
+		conn, buf, err := hj.Hijack()
+		if err != nil {
+			t.Fatalf("hijack: %v", err)
+		}
+		// Declare more bytes than are sent, then close the connection: the
+		// client's body read fails mid-stream with an unexpected EOF.
+		_, _ = buf.WriteString("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 4096\r\n\r\n{\"issuer\":")
+		_ = buf.Flush()
+		_ = conn.Close()
+	}))
+	defer srv.Close()
+
+	d := NewDiscoverer(srv.Client())
+	_, err := d.Discover(context.Background(), srv.URL)
+
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) {
+		t.Fatalf("want *basecamp.Error, got %v", err)
+	}
+	if bcErr.Code != basecamp.CodeNetwork {
+		t.Errorf("Code = %q, want %q (mid-stream read failure is transport, not malformed metadata)",
+			bcErr.Code, basecamp.CodeNetwork)
+	}
+	if !bcErr.Retryable {
+		t.Error("mid-stream read failure must be retryable")
+	}
+}
+
+func TestDiscoverer_Discover_TrailingSlash(t *testing.T) {
+	// A trailing slash is normalized away for the fetch URL (routing), but issuer
+	// binding is code-point-exact against the caller's RAW baseURL (RFC 8414 §3.3,
+	// SPEC.md §16), so the AS must echo the trailing-slash issuer to bind.
+	var caller string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/oauth-authorization-server" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		_ = json.NewEncoder(w).Encode(Config{
-			TokenEndpoint: "https://example.com/token",
-		})
+		_, _ = fmt.Fprintf(w, `{"issuer":%q,"token_endpoint":%q}`, caller, caller+"token")
 	}))
 	defer server.Close()
+	caller = server.URL + "/"
 
 	d := NewDiscoverer(server.Client())
 
-	// Test with trailing slash
-	_, err := d.Discover(context.Background(), server.URL+"/")
+	cfg, err := d.Discover(context.Background(), caller)
 	if err != nil {
-		t.Errorf("Discover() with trailing slash failed: %v", err)
+		t.Fatalf("Discover() with trailing slash failed: %v", err)
+	}
+	if cfg.Issuer != caller {
+		t.Errorf("Discover() issuer = %q, want %q", cfg.Issuer, caller)
 	}
 }
 

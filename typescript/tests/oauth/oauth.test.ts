@@ -67,6 +67,40 @@ describe("OAuth Discovery", () => {
       expect(config.codeChallengeMethodsSupported).toEqual(["S256"]);
     });
 
+    it("rejects a non-array code_challenge_methods_supported as api_error", async () => {
+      // A bare string would be substring-matched during PKCE negotiation and
+      // could falsely appear to advertise "S256"; it must be rejected.
+      server.use(
+        http.get(
+          "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+          () => HttpResponse.json({
+            ...mockDiscoveryResponse,
+            code_challenge_methods_supported: "S256",
+          })
+        )
+      );
+
+      await expect(discover("https://launchpad.37signals.com")).rejects.toMatchObject({
+        code: "api_error",
+      });
+    });
+
+    it("rejects code_challenge_methods_supported with a non-string element", async () => {
+      server.use(
+        http.get(
+          "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+          () => HttpResponse.json({
+            ...mockDiscoveryResponse,
+            code_challenge_methods_supported: ["S256", 256],
+          })
+        )
+      );
+
+      await expect(discover("https://launchpad.37signals.com")).rejects.toMatchObject({
+        code: "api_error",
+      });
+    });
+
     it("leaves codeChallengeMethodsSupported undefined when not in response", async () => {
       server.use(
         http.get(
@@ -80,17 +114,20 @@ describe("OAuth Discovery", () => {
       expect(config.codeChallengeMethodsSupported).toBeUndefined();
     });
 
-    it("normalizes trailing slash in base URL", async () => {
+    it("normalizes a trailing slash for the fetch URL but binds against the raw issuer", async () => {
+      // The trailing slash is dropped only for the well-known fetch (routing);
+      // issuer binding is code-point-exact against the caller's raw string (RFC
+      // 8414 §3.3, SPEC.md §16), so the AS must echo the trailing-slash issuer.
       server.use(
         http.get(
           "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
-          () => HttpResponse.json(mockDiscoveryResponse)
+          () => HttpResponse.json({ ...mockDiscoveryResponse, issuer: "https://launchpad.37signals.com/" })
         )
       );
 
       const config = await discover("https://launchpad.37signals.com/");
 
-      expect(config.issuer).toBe("https://launchpad.37signals.com");
+      expect(config.issuer).toBe("https://launchpad.37signals.com/");
     });
 
     it("throws BasecampError on HTTP error", async () => {
@@ -106,8 +143,32 @@ describe("OAuth Discovery", () => {
         expect.fail("Should have thrown");
       } catch (err) {
         expect(err).toBeInstanceOf(BasecampError);
-        expect((err as BasecampError).code).toBe("network");
+        // Non-2xx discovery responses are api_error (standardized), not network.
+        expect((err as BasecampError).code).toBe("api_error");
         expect((err as BasecampError).httpStatus).toBe(404);
+      }
+    });
+
+    it("truncates a large non-2xx body in the error message", async () => {
+      const hugeBody = "x".repeat(200_000);
+      server.use(
+        http.get(
+          "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+          () => HttpResponse.text(hugeBody, { status: 502 })
+        )
+      );
+
+      try {
+        await discover("https://launchpad.37signals.com");
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BasecampError);
+        // The body is capped at 500 chars (matching Go/Python/Ruby), so the message
+        // never grows with the response body — no log spam / memory pressure.
+        const msg = (err as BasecampError).message;
+        expect(msg.length).toBeLessThan(600);
+        expect(msg).toContain("...");
+        expect(msg).not.toContain(hugeBody);
       }
     });
 

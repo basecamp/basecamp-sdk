@@ -1,0 +1,24 @@
+{
+  "name": "ambiguous-issuers",
+  "description": "Two non-Launchpad issuers advertised, no expectedIssuer \u2192 HARD ambiguous_issuers; the SDK never guesses by exclusion.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": [
+        "{{BC5_ISSUER}}",
+        "https://other-as.example.com",
+        "{{LAUNCHPAD_ORIGIN}}"
+      ]
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "ambiguous_issuers",
+    "launchpadContacted": false,
+    "errorCategory": "api_error"
+  }
+}

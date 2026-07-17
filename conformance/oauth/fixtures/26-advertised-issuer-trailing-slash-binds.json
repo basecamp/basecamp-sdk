@@ -1,0 +1,27 @@
+{
+  "name": "advertised-issuer-trailing-slash-binds",
+  "description": "The advertised issuer carries a trailing slash that normalizes away for routing. Binding is code-point-exact against the ADVERTISED string, so an AS echoing the trailing-slash issuer binds (not a false issuer_mismatch), and the selected issuer is the advertised spelling.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": ["{{BC5_ISSUER}}/"]
+    }
+  },
+  "hop2": {
+    "origin": "{{BC5_ISSUER}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{BC5_ISSUER}}/",
+      "token_endpoint": "{{BC5_ISSUER}}/oauth/token"
+    }
+  },
+  "expect": {
+    "outcome": "selected",
+    "selectedIssuer": "{{BC5_ISSUER}}/",
+    "launchpadContacted": false
+  }
+}

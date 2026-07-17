@@ -1,0 +1,23 @@
+{
+  "name": "launchpad-lookalike-with-path",
+  "description": "A Launchpad look-alike carrying a path (…/path) is NOT the Launchpad issuer under the origin-root profile, so the selection heuristic must not exclude it as Launchpad. With BC5 also advertised there are two non-Launchpad candidates → HARD ambiguous_issuers; the SDK never silently drops the malformed value nor guesses BC5. Guards the origin-normalization bug where comparing only URL.origin/same_origin would misclassify the look-alike as Launchpad.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": [
+        "{{LAUNCHPAD_ORIGIN}}/path",
+        "{{BC5_ISSUER}}"
+      ]
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "ambiguous_issuers",
+    "launchpadContacted": false,
+    "errorCategory": "api_error"
+  }
+}

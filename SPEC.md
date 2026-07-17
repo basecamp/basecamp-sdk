@@ -912,16 +912,161 @@ FUNCTION generateState() → String
 END
 ```
 
-### RFC 8414 Discovery
+### Resource-First Discovery `[conformance]`
+
+*Rubric-critical: BC5 OAuth go-live (communique §2/§3).*
+
+BC5's Authorization Server (AS) metadata lives **only** at the canonical issuer
+(the web host, e.g. `https://3.basecamp.com`). Probing the API host
+(`3.basecampapi.com/.well-known/oauth-authorization-server`) 404s permanently
+because RFC 8414 §3.3 requires `issuer` to equal the URL the metadata was
+derived from, and BC5's issuer is the web host. Discovery therefore starts from
+the **resource** (RFC 9728) and composes with AS discovery (RFC 8414).
+
+**Two composable operations, never merged:**
+
+1. `discover(issuerURL)` — RFC 8414 AS metadata (unchanged public op).
+2. `discoverProtectedResource(resourceOrigin)` — RFC 9728 resource metadata.
+
+A third orchestrator, `discoverFromResource(resourceOrigin, expectedIssuer?)`,
+composes them and encodes selection + the stage-sensitive fallback below.
+
+#### Origin-root profile `[conformance]`
+
+Both hops derive a well-known path from a caller- or metadata-supplied origin.
+The origin MUST be parsed with the SDK's **own transport URL parser** (Go
+`net/url`, JS `URL`, Python `urllib`, Ruby `URI`, Kotlin the extracted Ktor
+`parseAbsoluteUrl`) — never a hand-rolled regex, because bracketed IPv6
+(`http://[::1]:3000`) and ports break naive regexes and can disagree with the
+host the client actually dials.
 
 ```
-FUNCTION discoverOAuthEndpoints(issuer: String) → OAuthEndpoints
-  1. Fetch issuer + "/.well-known/oauth-authorization-server". (Basecamp's Launchpad issuer is at the origin root; RFC 8414 path-segment rules do not apply.)
-  2. Parse JSON response.
-  3. Extract authorization_endpoint, token_endpoint.
-  4. → OAuthEndpoints
+FUNCTION requireOriginRoot(raw: String) → Origin | raise usage
+  1. parsed = transportParser.parse(raw)          # fail-closed on parse error
+  2. REQUIRE scheme ∈ {https} OR (scheme == http AND isLocalhost(host))
+  3. REQUIRE host present
+  4. REQUIRE port absent OR a valid numeric port
+  5. REQUIRE path is empty OR exactly "/"
+  6. REQUIRE no query, no fragment, no userinfo
+  7. → origin = scheme "://" host [":" port]
+  # A bad caller-supplied origin is a usage error; a bad *advertised* issuer
+  # origin is a discovery-classification failure (see fallback table).
 END
 ```
+
+Accept `http://[::1]:3000`; reject `http://[::1]:notaport`, any path beyond `/`,
+and any query/fragment/userinfo.
+
+#### Hop 1 — RFC 9728 resource metadata `[conformance]`
+
+```
+FUNCTION discoverProtectedResource(resourceOrigin: String) → ProtectedResourceMetadata
+  1. origin = requireOriginRoot(resourceOrigin)
+  2. doc = fetchJSON(origin + "/.well-known/oauth-protected-resource")   # SSRF-hardened
+  3. REQUIRE doc.resource present and non-empty
+  4. REQUIRE doc.resource IDENTICAL BY CODE-POINT to the resource identifier used
+            (the requested resourceOrigin); NO normalization
+  5. authorization_servers is OPTIONAL; preserve absent vs [] DISTINCTLY
+  6. → ProtectedResourceMetadata{ resource, authorizationServers? }
+END
+```
+
+`ProtectedResourceMetadata` models `authorization_servers` as a nullable list so
+"key absent" (BC5 omits it while dark) and "present but empty `[]`" stay
+distinguishable at the type level, even though both select Launchpad.
+
+#### Hop 2 — RFC 8414 AS metadata with issuer binding `[conformance]`
+
+```
+FUNCTION discover(issuerURL: String) → OAuthConfig
+  1. origin = requireOriginRoot(issuerURL)
+  2. doc = fetchJSON(origin + "/.well-known/oauth-authorization-server")  # SSRF-hardened
+  3. REQUIRE doc.issuer present, non-empty, and IDENTICAL BY CODE-POINT to
+            issuerURL (the advertised issuer string); NO normalization  # RFC 8414 §3.3/§4
+  4. Universal endpoint validation: token_endpoint present + non-empty;
+     any endpoint field that IS present must be non-empty (reject "").
+  5. authorization_endpoint is OPTIONAL (device-only AS omit it).
+  6. → OAuthConfig{ issuer, tokenEndpoint, authorizationEndpoint?, ... }
+END
+```
+
+**Per-grant endpoint validation is the consumer's, not `discover`'s.** `discover`
+no longer requires `authorization_endpoint`. Each consumer asserts the endpoints
+its grant needs:
+- authorization-code: `authorization_endpoint` + `token_endpoint`.
+- device flow: `device_authorization_endpoint` + `token_endpoint`.
+
+#### `authorization_endpoint` is now OPTIONAL `[static]`
+
+Previously required in every SDK model; now optional/nullable, preserving absent
+vs present-empty (Go `*string`, TS `authorizationEndpoint?`, Python `str | None`,
+Ruby kw default `nil`, Kotlin `String? = null`). `token_endpoint` stays required.
+**Public-compatibility impact:** a previously-always-present field becomes
+optional — authorization-code consumers MUST assert presence before use.
+
+#### Selection — one name, one rule `[conformance]`
+
+`expectedIssuer` is the single selection parameter (`preferredIssuer` is dropped).
+
+```
+FUNCTION selectIssuer(advertised: [String], expectedIssuer?: String)
+  IF expectedIssuer provided:                       # explicit, authoritative
+    IF ∃ m ∈ advertised with m == expectedIssuer (code-point): SELECT m
+    ELSE raise expected_issuer_unavailable          # HARD
+  ELSE:                                              # Basecamp-profile heuristic
+    nonLaunchpad = advertised \ {Launchpad}          #   (identification by exclusion)
+    IF |nonLaunchpad| == 1: SELECT that member       # documented heuristic
+    IF |nonLaunchpad| ≥ 2: raise ambiguous_issuers   # HARD — never guess
+    IF |nonLaunchpad| == 0: soft no_as_advertised → Launchpad
+END
+```
+
+The SDK does not know BC5's canonical issuer a priori; during migration the
+advertised set is {BC5 canonical, Launchpad}, so exactly-one-non-Launchpad
+identifies BC5 by exclusion. Callers wanting no heuristic pass `expectedIssuer`.
+
+#### Stage-sensitive fallback state machine `[conformance]`
+
+Launchpad fallback is allowed **only before BC5 is committed**. Once valid
+resource metadata advertises BC5 and it is selected, every later failure is
+**fatal — no Launchpad request may be issued.**
+
+| Stage / failure | Outcome |
+|---|---|
+| Hop-1 fetch/parse fails, or `resource` mismatch | **soft** `resource_discovery_failed` → Launchpad |
+| Valid resource metadata omits BC5 (absent / `[]` / only-Launchpad) | **soft** `no_as_advertised` → select Launchpad |
+| ≥2 non-Launchpad issuers advertised (no `expectedIssuer`) | **hard** `ambiguous_issuers` |
+| `expectedIssuer` provided but not advertised | **hard** `expected_issuer_unavailable` |
+| BC5 committed → invalid BC5 issuer origin | **hard** `invalid_issuer_origin` |
+| BC5 committed → AS-metadata fetch fails (5xx / network) | **hard** `as_fetch_failed` |
+| BC5 committed → issuer binding mismatch | **hard** `issuer_mismatch` |
+| BC5 committed → missing per-grant endpoint/capability | **hard** `capability_unavailable` (consumer-asserted) |
+
+`discoverFromResource` returns `Selected(config)` **or** `FallBack(reason)` where
+`reason ∈ {resource_discovery_failed, no_as_advertised}` ONLY, and **raises** a
+typed selection error for every hard case. **No consumer may convert a raise into
+a Launchpad request.** ("BC5 committed" = valid resource metadata advertised a
+BC5 issuer that was then selected.)
+
+#### SSRF hardening — both hops, all five SDKs `[conformance]`
+
+RFC 9728 §7.7 flags SSRF via attacker-influenced metadata; advertised AS URLs are
+untrusted input. Every `fetchJSON` above MUST:
+
+1. **Require HTTPS** (localhost exempt) — validated by `requireOriginRoot` before
+   any socket is opened.
+2. **Bound the timeout.**
+3. **Suppress redirects** — fetch `redirect:"error"` (TS) / `CheckRedirect:
+   ErrUseLastResponse` (Go) / `followRedirects=false` (Ktor) /
+   `follow_redirects=False` (httpx) / no redirect middleware (Faraday) — or
+   re-validate each target against the origin-root profile.
+4. **Read the body under a genuine, bounded/streaming cap that aborts once the
+   limit is exceeded** — NOT a post-hoc size check on an already-buffered body.
+   Python (`httpx.stream()`) and Ruby (Faraday `on_data`/capped read) must switch
+   from buffered reads to bounded streaming reads; Go/Kotlin/TS gain bounded reads
+   they lack today.
+
+Non-2xx on either hop → `api_error` (not `network`).
 
 ### Launchpad Legacy Format
 

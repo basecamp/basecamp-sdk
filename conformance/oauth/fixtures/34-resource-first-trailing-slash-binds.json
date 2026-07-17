@@ -1,0 +1,27 @@
+{
+  "name": "resource-first-trailing-slash-binds",
+  "description": "The orchestrator (discoverFromResource) is called with a resource identifier carrying a trailing slash. It must pass the RAW identifier through to hop-1 binding (not the normalized origin), so a resource document echoing the trailing-slash identifier binds and selection proceeds instead of a false resource_discovery_failed.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}/",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}/",
+      "authorization_servers": ["{{BC5_ISSUER}}", "{{LAUNCHPAD_ORIGIN}}"]
+    }
+  },
+  "hop2": {
+    "origin": "{{BC5_ISSUER}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{BC5_ISSUER}}",
+      "token_endpoint": "{{BC5_ISSUER}}/oauth/token"
+    }
+  },
+  "expect": {
+    "outcome": "selected",
+    "selectedIssuer": "{{BC5_ISSUER}}",
+    "launchpadContacted": false
+  }
+}
