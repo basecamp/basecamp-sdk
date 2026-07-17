@@ -287,14 +287,6 @@ module Basecamp
             end
           end
 
-          # POSTs a form body and reads the response under the same bounded/
-          # streaming cap as discovery (SPEC.md §9): the +on_data+ proc aborts the
-          # read the moment the accumulated size exceeds the cap, so an oversized
-          # response is never fully buffered. Returns +[status, body]+. The
-          # per-request timeout is always set here — even on an injected client —
-          # so a stalled socket can't hang the poll. A real adapter streams to
-          # +on_data+ (leaving +response.body+ empty); a test double that ignores
-          # the block falls back to the buffered body, still size-capped.
           # Waits +seconds+ while observing cancellation DURING the wait. A plain
           # +sleep+ is not interruptible, so a cancellation set mid-wait would not be
           # noticed until the whole (possibly grown +slow_down+) interval elapses.
@@ -317,6 +309,14 @@ module Basecamp
             end
           end
 
+          # POSTs a form body and reads the response under the same bounded/
+          # streaming cap as discovery (SPEC.md §9): the +on_data+ proc aborts the
+          # read the moment the accumulated size exceeds the cap, so an oversized
+          # response is never fully buffered. Returns +[status, body]+. The
+          # per-request timeout is always set here — even on an injected client —
+          # so a stalled socket can't hang the poll. A real adapter streams to
+          # +on_data+ (leaving +response.body+ empty); a test double that ignores
+          # the block falls back to the buffered body, still size-capped.
           def post_form(client, url, params, timeout:, max_body_bytes:)
             # +timeout+ is already normalized by the caller (request/poll entry). The
             # wall-clock deadline bounds the WHOLE read: req.options.timeout below
