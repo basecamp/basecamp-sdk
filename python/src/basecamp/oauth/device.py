@@ -154,6 +154,17 @@ def request_device_authorization(
     except httpx.HTTPError as exc:
         raise DeviceFlowError("transport", f"Device authorization request failed: {exc}") from exc
 
+    # Check status BEFORE parsing (as discovery does): a non-2xx here is a hard
+    # failure with no OAuth error semantics, so a non-JSON error body must surface
+    # as "failed with status …", not a misleading parse error. (The token poll is
+    # different — it MUST parse non-2xx bodies to read authorization_pending etc.)
+    if not 200 <= status < 300:
+        raise OAuthError(
+            "api_error",
+            f"Device authorization failed with status {status}",
+            http_status=status,
+        )
+
     try:
         data = json.loads(body)
     except ValueError as exc:
@@ -163,12 +174,6 @@ def request_device_authorization(
             http_status=status,
         ) from exc
 
-    if not 200 <= status < 300:
-        raise OAuthError(
-            "api_error",
-            f"Device authorization failed with status {status}",
-            http_status=status,
-        )
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device authorization response is not a JSON object", http_status=status)
 

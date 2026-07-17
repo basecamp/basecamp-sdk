@@ -308,6 +308,18 @@ class TestRequestDeviceAuthorization:
         assert exc_info.value.code == "api_error"
 
     @respx.mock
+    def test_non_2xx_with_non_json_body_reports_status_not_parse_error(self):
+        # Status is checked BEFORE parsing (as discovery does): a non-2xx with a
+        # non-JSON body must surface as "failed with status", not a parse error.
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(503, content=b"<html>Service Unavailable</html>"))
+
+        with pytest.raises(OAuthError) as exc_info:
+            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 503
+        assert "status" in str(exc_info.value).lower()
+
+    @respx.mock
     def test_rejects_non_object_body_with_http_status(self):
         # A valid-JSON-but-non-object body (list/number/null) is malformed. It must
         # fail as api_error AND carry the HTTP status for debugging parity with the
