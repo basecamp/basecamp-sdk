@@ -9,6 +9,7 @@ import { http as mswHttp, HttpResponse, passthrough } from "msw";
 import { server } from "../setup.js";
 import { performInteractiveLogin } from "../../src/oauth/interactive-login.js";
 import { DiscoverySelectionError } from "../../src/oauth/discovery.js";
+import { BasecampError } from "../../src/errors.js";
 import type { TokenStore } from "../../src/oauth/token-store.js";
 import type { OAuthToken } from "../../src/oauth/types.js";
 
@@ -167,6 +168,39 @@ describe("performInteractiveLogin", () => {
     }
     expect(caught).toBeInstanceOf(DiscoverySelectionError);
     expect((caught as DiscoverySelectionError).reason).toBe("capability_unavailable");
+  });
+
+  it("rejects an explicitly-empty baseUrl as usage, not a silent Launchpad fallback", async () => {
+    // Presence, not truthiness: baseUrl "" is provided-but-invalid; it must reach
+    // origin validation and raise usage, never fall back to Launchpad.
+    const store = createMockStore();
+    let caught: unknown;
+    try {
+      await performInteractiveLogin({ clientId: "c", store, baseUrl: "", openBrowser: vi.fn() });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BasecampError);
+    expect((caught as BasecampError).code).toBe("usage");
+  });
+
+  it("rejects baseUrl and resourceBaseUrl both supplied (even empty) as mutually exclusive", async () => {
+    const store = createMockStore();
+    let caught: unknown;
+    try {
+      await performInteractiveLogin({
+        clientId: "c",
+        store,
+        baseUrl: "",
+        resourceBaseUrl: "",
+        openBrowser: vi.fn(),
+      });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(BasecampError);
+    expect((caught as BasecampError).code).toBe("usage");
+    expect((caught as BasecampError).message).toMatch(/mutually exclusive/);
   });
 
   it("uses custom baseUrl for discovery", async () => {

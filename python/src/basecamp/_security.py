@@ -106,8 +106,15 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
     if url.path not in ("", "/"):
         raise UsageError(f"{label} must be an origin root (no path): {raw}")
 
+    # A dangling port delimiter ("https://host:") normalizes to port None under
+    # httpx, silently accepting a malformed authority. Reject a trailing ":" on the
+    # raw authority explicitly. IPv6 authorities legitimately end with "]" (e.g.
+    # "[::1]"), so only a trailing ":" is a dangling port.
+    if authority.endswith(":"):
+        raise UsageError(f"{label} has an invalid port: {raw}")
+
     # httpx does not range-check the port (it accepts :99999), so enforce 1–65535
-    # explicitly. httpx already drops an absent/default/dangling port to None.
+    # explicitly. httpx already drops an absent/default port to None.
     port = url.port
     if port is not None and not (1 <= port <= 65535):
         raise UsageError(f"{label} has an invalid port: {raw}")

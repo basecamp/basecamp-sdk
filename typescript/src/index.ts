@@ -447,6 +447,7 @@ export {
   discoverProtectedResource,
   discoverFromResource,
   discoverLaunchpad,
+  requireOriginRoot,
   DiscoverySelectionError,
   LAUNCHPAD_BASE_URL,
   type DiscoverOptions,

@@ -108,7 +108,10 @@ export async function performInteractiveLogin(
     onStatus,
   } = options;
 
-  if (baseUrl && resourceBaseUrl) {
+  // Presence, not truthiness: an explicitly-supplied empty string is "provided"
+  // (and invalid) — it must trip this guard, then reach origin validation below,
+  // never be silently treated as absent.
+  if (baseUrl !== undefined && resourceBaseUrl !== undefined) {
     throw new BasecampError(
       "usage",
       "baseUrl and resourceBaseUrl are mutually exclusive discovery modes; supply only one"
@@ -239,7 +242,9 @@ async function discoverEndpoints(opts: {
     return { config, legacy: useLegacyFormat ?? true };
   }
 
-  const config = baseUrl ? await discover(baseUrl) : await discoverLaunchpad();
+  // Presence, not truthiness: an explicitly-supplied empty baseUrl must reach
+  // origin validation and raise a usage error, not silently fall back to Launchpad.
+  const config = baseUrl !== undefined ? await discover(baseUrl) : await discoverLaunchpad();
   // Legacy single-hop path keeps its historical default of legacy=true.
   return { config, legacy: useLegacyFormat ?? true };
 }

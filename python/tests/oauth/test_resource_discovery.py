@@ -183,6 +183,13 @@ def test_origin_root_rejects_bare_query_or_fragment(raw: str) -> None:
         require_origin_root(raw)
 
 
+def test_origin_root_rejects_dangling_port() -> None:
+    # A dangling ":" normalizes to port None under httpx (looks like no port); the
+    # raw-authority check must still reject the malformed authority.
+    with pytest.raises(UsageError, match="invalid port"):
+        require_origin_root("https://bc5.example:")
+
+
 @pytest.mark.parametrize(
     "raw",
     [
