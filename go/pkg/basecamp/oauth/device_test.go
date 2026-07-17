@@ -139,6 +139,24 @@ func TestRequestDeviceAuthorization_CallerCancellationIsCancelled(t *testing.T) 
 	}
 }
 
+func TestRequestDeviceAuthorization_CancellationDuringBodyReadIsCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// The body cancels ctx on its first read then errors, so the abort lands during
+	// readBoundedBody (not at Do). The outcome must still be DeviceFlowCancelled.
+	client := &http.Client{Transport: cancelOnReadTransport{cancel: cancel}}
+	_, err := RequestDeviceAuthorization(ctx, "https://device.example.com/oauth/device", "basecamp-cli",
+		WithDeviceHTTPClient(client))
+	var dfErr *DeviceFlowError
+	if !errors.As(err, &dfErr) {
+		t.Fatalf("expected *DeviceFlowError, got %T: %v", err, err)
+	}
+	if dfErr.Reason != DeviceFlowCancelled {
+		t.Errorf("Reason = %v, want DeviceFlowCancelled", dfErr.Reason)
+	}
+}
+
 func TestRequestDeviceAuthorization_SendsScopeWhenSet(t *testing.T) {
 	var sentScope string
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1295,6 +1313,29 @@ func (t largeBodyTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		Request:    req,
 	}, nil
 }
+
+// cancelOnReadTransport returns a 200 whose body cancels the caller's context on
+// its first read and then fails — simulating a caller abort landing after headers
+// arrive but while the body is still streaming. Do returns the response normally
+// (ctx is live at Do time); the abort surfaces only during readBoundedBody.
+type cancelOnReadTransport struct{ cancel context.CancelFunc }
+
+func (t cancelOnReadTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       cancelOnReadBody{cancel: t.cancel},
+		Request:    req,
+	}, nil
+}
+
+type cancelOnReadBody struct{ cancel context.CancelFunc }
+
+func (b cancelOnReadBody) Read([]byte) (int, error) {
+	b.cancel()
+	return 0, errors.New("read aborted")
+}
+func (b cancelOnReadBody) Close() error { return nil }
 
 // errBodyTransport returns a 200 response whose body read fails with err before
 // any cap is reached, driving the genuine-I/O-failure path.
