@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from urllib.parse import urljoin, urlparse, urlsplit
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -61,40 +61,46 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
     Returns the normalized origin (``scheme://host[:port]``, no trailing slash,
     default port dropped).
     """
+    # Parse with httpx.URL — the SAME transport parser the client dials with (see
+    # is_localhost below and _http.py) — so validation can never disagree with the
+    # request about scheme/host/port. urllib and httpx diverge on IDNA labels and
+    # IPvFuture authorities: validating with urllib let a malformed value pass here
+    # yet be rewritten or rejected at request time (a parser differential). httpx
+    # rejects an invalid IDNA A-label (IDNAError, a UnicodeError) and an IPvFuture
+    # authority like "https://[v1.foo]" (InvalidURL) rather than converting them.
     try:
-        parts = urlsplit(raw)
-    except ValueError as exc:
+        url = httpx.URL(raw)
+        scheme = url.scheme
+        host = url.host
+    except (httpx.InvalidURL, ValueError) as exc:
         raise UsageError(f"Invalid {label}: not a valid absolute URL: {raw}") from exc
 
-    scheme = parts.scheme.lower()
-    host = parts.hostname
     if not scheme or not host:
         raise UsageError(f"Invalid {label}: not a valid absolute URL: {raw}")
 
     is_localhost_http = scheme == "http" and _is_localhost_host(host)
     if scheme != "https" and not is_localhost_http:
         raise UsageError(f"{label} must use HTTPS (or http on localhost): {raw}")
-    # Reject on the *presence* of userinfo, not its truthiness: urlsplit reports
-    # an empty (but non-None) username for authorities like "@host" or ":@host",
-    # so a truthiness test would let empty-credential forms slip through. An "@"
-    # in the netloc is a userinfo delimiter regardless of what surrounds it.
-    if parts.username is not None or parts.password is not None or "@" in parts.netloc:
+    # Reject on the *presence* of userinfo, not its truthiness: httpx drops an
+    # empty userinfo (authorities like "@host" report userinfo == b""), so also
+    # inspect the raw authority for an "@" delimiter regardless of what surrounds
+    # it — an "@" there is always a userinfo delimiter (a host cannot contain one).
+    authority = raw.split("://", 1)[-1].split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
+    if url.userinfo or "@" in authority:
         raise UsageError(f"{label} must not contain userinfo: {raw}")
-    if parts.query or parts.fragment:
+    if url.query or url.fragment:
         raise UsageError(f"{label} must not contain a query or fragment: {raw}")
-    if parts.path not in ("", "/"):
+    if url.path not in ("", "/"):
         raise UsageError(f"{label} must be an origin root (no path): {raw}")
 
-    # Accessing .port validates it (urlsplit defers port parsing); a non-numeric
-    # or out-of-range port raises ValueError here.
-    try:
-        port = parts.port
-    except ValueError as exc:
-        raise UsageError(f"{label} has an invalid port: {raw}") from exc
+    # httpx does not range-check the port (it accepts :99999), so enforce 1–65535
+    # explicitly. httpx already drops an absent/default/dangling port to None.
+    port = url.port
+    if port is not None and not (1 <= port <= 65535):
+        raise UsageError(f"{label} has an invalid port: {raw}")
 
     host_part = f"[{host}]" if ":" in host else host
-    default_port = 443 if scheme == "https" else 80
-    if port is None or port == default_port:
+    if port is None:
         return f"{scheme}://{host_part}"
     return f"{scheme}://{host_part}:{port}"
 

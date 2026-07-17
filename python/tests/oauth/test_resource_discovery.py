@@ -17,7 +17,9 @@ import respx
 
 from basecamp.errors import BasecampError, UsageError
 from basecamp.oauth import (
+    DiscoveryResult,
     DiscoverySelectionError,
+    OAuthConfig,
     OAuthError,
     discover,
     discover_from_resource,
@@ -192,6 +194,39 @@ def test_origin_root_rejects_userinfo(raw: str) -> None:
 )
 def test_origin_root_accepts_legitimate_origins(raw: str, expected: str) -> None:
     assert require_origin_root(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "https://[v1.foo]",  # IPvFuture: urllib would strip brackets → https://v1.foo
+        "https://xn--invalid-.example",  # invalid IDNA A-label (ends with a hyphen)
+        "https://example.com:99999",  # out-of-range port (httpx accepts; we range-check)
+    ],
+)
+def test_origin_root_rejects_transport_unrepresentable(raw: str) -> None:
+    # Validate with the SAME parser the transport dials with (httpx.URL): a value
+    # httpx cannot represent must be rejected here, not silently converted by a
+    # different parser and then rewritten/rejected at request time.
+    with pytest.raises(UsageError):
+        require_origin_root(raw)
+
+
+def test_oauthconfig_positional_registration_endpoint_slot() -> None:
+    # device_authorization_endpoint is APPENDED, so a legacy 4-positional-arg
+    # caller still lands its 4th value in registration_endpoint, not the new field.
+    cfg = OAuthConfig("https://iss", "https://iss/auth", "https://iss/token", "https://iss/register")
+    assert cfg.registration_endpoint == "https://iss/register"
+    assert cfg.device_authorization_endpoint is None
+
+
+def test_discovery_result_enforces_per_kind_invariant() -> None:
+    with pytest.raises(ValueError):
+        DiscoveryResult(kind="selected", config=None, issuer=None)  # missing config/issuer
+    with pytest.raises(ValueError):
+        DiscoveryResult(kind="fallback", reason=None)  # missing reason
+    with pytest.raises(ValueError):
+        DiscoveryResult(kind="fallback", reason="no_as_advertised", issuer="https://iss")  # stray issuer
 
 
 @respx.mock

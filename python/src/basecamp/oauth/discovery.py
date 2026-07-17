@@ -15,6 +15,7 @@ genuine streaming cap that aborts before the whole oversized body is buffered.
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 import httpx
@@ -71,9 +72,17 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
             timeout=timeout,
             follow_redirects=False,
         ) as response:
+            # httpx's timeout is per-operation and RESETS after each received
+            # chunk, so a peer dripping one byte at a time never trips the read
+            # timeout and can hold the caller arbitrarily long. Bound the WHOLE
+            # response with a wall-clock deadline so a slow-drip stream is aborted
+            # as a retryable network timeout regardless of chunk cadence.
+            deadline = time.monotonic() + timeout
             chunks: list[bytes] = []
             total = 0
             for chunk in response.iter_bytes():
+                if time.monotonic() > deadline:
+                    raise OAuthError("network", "OAuth discovery timed out", retryable=True)
                 total += len(chunk)
                 if total > max_body_bytes:
                     # Abort the stream — leaving the ``with`` closes the

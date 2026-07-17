@@ -19,11 +19,16 @@ class OAuthConfig:
     # existing ``OAuthConfig("iss", "auth", "token")`` callers.
     authorization_endpoint: str | None
     token_endpoint: str
-    device_authorization_endpoint: str | None = None
     registration_endpoint: str | None = None
     scopes_supported: list[str] | None = None
     grant_types_supported: list[str] | None = None
     code_challenge_methods_supported: list[str] | None = None
+    # APPENDED after the pre-existing optional fields, not inserted mid-list: the
+    # dataclass generates a positional __init__, so placing this new field ahead
+    # of registration_endpoint would shift every positional arg after it and
+    # silently misassign existing OAuthConfig("iss", "auth", "token", "reg", ...)
+    # callers. Keyword construction is unaffected either way.
+    device_authorization_endpoint: str | None = None
 
 
 @dataclass(frozen=True)
@@ -71,6 +76,20 @@ class DiscoveryResult:
     config: OAuthConfig | None = None
     issuer: str | None = None
     reason: FallbackReason | None = None
+
+    def __post_init__(self) -> None:
+        # Enforce the documented per-kind invariant that the ``| None`` types
+        # cannot: a public value that claims one shape but carries the other's
+        # fields would violate the contract callers rely on after branching on
+        # ``kind``.
+        if self.kind == "selected":
+            if self.config is None or self.issuer is None or self.reason is not None:
+                raise ValueError("selected DiscoveryResult requires config and issuer, and no reason")
+        elif self.kind == "fallback":
+            if self.reason is None or self.config is not None or self.issuer is not None:
+                raise ValueError("fallback DiscoveryResult requires a reason, and no config or issuer")
+        else:  # pragma: no cover - Literal type already constrains this
+            raise ValueError(f"DiscoveryResult.kind must be 'selected' or 'fallback', got {self.kind!r}")
 
     def selected_config(self) -> OAuthConfig:
         """Return the selected :class:`OAuthConfig`, narrowing away ``None`` for
