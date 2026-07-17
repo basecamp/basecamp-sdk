@@ -85,15 +85,19 @@ class OAuthSsrfTest < Minitest::Test
 
     def call(env)
       on_data = env.request.on_data
-      sent = 0
-      while sent < @body.bytesize
-        piece = @body.byteslice(sent, @chunk_size)
-        sent += piece.bytesize
-        @meter[:delivered] = sent
-        sleep @pause # simulate a peer trickling data below the read timeout
-        on_data.call(piece, sent)
+      if on_data
+        sent = 0
+        while sent < @body.bytesize
+          piece = @body.byteslice(sent, @chunk_size)
+          sent += piece.bytesize
+          @meter[:delivered] = sent
+          sleep @pause # simulate a peer trickling data below the read timeout
+          on_data.call(piece, sent)
+        end
+        save_response(env, 200, "", { "Content-Type" => "application/json" })
+      else
+        save_response(env, 200, @body, { "Content-Type" => "application/json" })
       end
-      save_response(env, 200, "", { "Content-Type" => "application/json" })
       @app.call(env)
     end
   end
