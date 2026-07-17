@@ -311,6 +311,19 @@ describe("requestDeviceAuthorization", () => {
     });
     expect(auth.verificationUriComplete).toBeUndefined();
   });
+
+  it("normalizes an invalid timeoutMs instead of aborting immediately", async () => {
+    // Infinity would clamp setTimeout to ~1ms → an immediate abort masquerading
+    // as a transport failure. The resolver falls back to the default, so the
+    // request completes normally.
+    server.use(mswHttp.post(DEVICE_ENDPOINT, () => HttpResponse.json(deviceAuthResponse)));
+    const auth = await requestDeviceAuthorization({
+      deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+      clientId: "basecamp-cli",
+      timeoutMs: Infinity,
+    });
+    expect(auth.deviceCode).toBe("dev-code-123");
+  });
 });
 
 describe("pollDeviceToken", () => {
