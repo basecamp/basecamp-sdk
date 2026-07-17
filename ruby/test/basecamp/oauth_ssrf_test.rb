@@ -70,6 +70,59 @@ class OAuthSsrfTest < Minitest::Test
     assert_operator meter[:delivered], :<, oversized.bytesize
   end
 
+  # Streams tiny chunks with a real pause between each, staying well under the
+  # byte cap forever — a slow-drip peer. Records how many bytes were delivered so
+  # the test can prove the read aborted on the wall-clock deadline rather than
+  # running to completion.
+  class SlowDripAdapter < Faraday::Adapter
+    def initialize(app = nil, body:, chunk_size:, pause:, meter:)
+      super(app)
+      @body = body
+      @chunk_size = chunk_size
+      @pause = pause
+      @meter = meter
+    end
+
+    def call(env)
+      on_data = env.request.on_data
+      sent = 0
+      while sent < @body.bytesize
+        piece = @body.byteslice(sent, @chunk_size)
+        sent += piece.bytesize
+        @meter[:delivered] = sent
+        sleep @pause # simulate a peer trickling data below the read timeout
+        on_data.call(piece, sent)
+      end
+      save_response(env, 200, "", { "Content-Type" => "application/json" })
+      @app.call(env)
+    end
+  end
+
+  def test_slow_drip_stream_aborts_on_wall_clock_deadline
+    issuer = "https://issuer.ssrf-test.example"
+    # A modest, in-cap body dripped one byte at a time: the per-read timeout never
+    # trips (each chunk resets it), so only the whole-read deadline can stop it.
+    body = { "issuer" => issuer, "token_endpoint" => "#{issuer}/t", "pad" => "x" * 200 }.to_json
+
+    meter = { delivered: 0 }
+    connection = Faraday.new do |conn|
+      conn.adapter SlowDripAdapter, body: body, chunk_size: 1, pause: 0.02, meter: meter
+    end
+
+    # 1 MiB cap (never reached) + a 0.1s wall-clock deadline; ~5 chunks (0.1s) in.
+    discovery = Basecamp::Oauth::Discovery.new(http_client: connection, timeout: 0.1)
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      discovery.discover(issuer)
+    end
+    # A slow-drip timeout is a retryable transport failure, not an api_error.
+    assert_equal "network", error.type
+    assert error.retryable, "wall-clock timeout must be retryable"
+
+    # The read aborted mid-stream: fewer bytes were delivered than the full body.
+    assert_operator meter[:delivered], :<, body.bytesize
+  end
+
   # A middleware whose name matches the redirect detector. Standing in for
   # faraday-follow_redirects without taking the dependency.
   class RedirectFollowingMiddleware < Faraday::Middleware

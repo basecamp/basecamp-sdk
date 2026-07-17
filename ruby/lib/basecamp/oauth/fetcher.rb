@@ -13,7 +13,9 @@ module Basecamp
     #
     # 1. requires HTTPS (localhost exempt) — enforced by the origin-root profile
     #    ({Basecamp::Security.require_origin_root!}) before this is called;
-    # 2. bounds the timeout (set on the injected connection);
+    # 2. bounds the timeout — both a per-read socket timeout AND a monotonic
+    #    wall-clock deadline over the whole streaming read (a per-read timeout
+    #    alone resets on every chunk, so a slow-drip peer could hang the fetch);
     # 3. suppresses redirects — the default Faraday connection carries no redirect
     #    middleware, so an attacker-controlled 3xx +Location+ is surfaced as a
     #    non-2xx +api_error+ rather than chased;
@@ -31,6 +33,10 @@ module Basecamp
       # Never escapes this module — it is mapped to an OauthError.
       class BodyTooLarge < StandardError; end
 
+      # Raised internally when a streaming read exceeds its wall-clock deadline.
+      # Never escapes this module — it is mapped to a retryable +network+ OauthError.
+      class ReadDeadlineExceeded < StandardError; end
+
       # Builds a +[chunks, on_data]+ pair for a genuine bounded/streaming read.
       # Assign +on_data+ to a request's +req.options.on_data+; after the request
       # returns, +chunks.join+ is the accumulated body. The proc raises
@@ -39,12 +45,25 @@ module Basecamp
       # {BodyTooLarge} and map it to their own error. Shared by both discovery
       # hops and the device flow so every OAuth response reads under the same cap.
       #
+      # +req.options.timeout+ only bounds each individual socket read, and every
+      # +on_data+ chunk resets it — so a peer dripping one byte before each read
+      # timeout can hold the connection open arbitrarily long without ever tripping
+      # the cap. When a monotonic +deadline+ is supplied, the proc raises
+      # {ReadDeadlineExceeded} the moment the WHOLE read outlives it, matching the
+      # wall-clock bound the other SDKs enforce (Python's monotonic deadline, Go's
+      # context, TS's abort timer, Kotlin's requestTimeoutMillis).
+      #
       # @param max_body_bytes [Integer] bounded read cap in bytes
+      # @param deadline [Float, nil] monotonic clock deadline (CLOCK_MONOTONIC seconds)
       # @return [Array(Array<String>, Proc)] the chunk buffer and the +on_data+ proc
-      def self.bounded_reader(max_body_bytes)
+      def self.bounded_reader(max_body_bytes, deadline: nil)
         chunks = []
         total = 0
         reader = proc do |chunk, _received|
+          if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+            raise ReadDeadlineExceeded
+          end
+
           total += chunk.bytesize
           raise BodyTooLarge if total > max_body_bytes
 
@@ -119,7 +138,11 @@ module Basecamp
       # @raise [OauthError] +api_error+ on non-2xx, oversized body, non-object
       #   JSON, or parse failure; +network+ on transport failure
       def self.fetch_json(http_client, url, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES)
-        chunks, on_data = bounded_reader(max_body_bytes)
+        # Wall-clock deadline over the WHOLE read: req.options.timeout below bounds
+        # only each socket read and resets on every chunk, so a slow-drip peer could
+        # otherwise hang the fetch indefinitely while staying under max_body_bytes.
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        chunks, on_data = bounded_reader(max_body_bytes, deadline: deadline)
 
         response = http_client.get(url) do |req|
           req.headers["Accept"] = "application/json"
@@ -148,6 +171,8 @@ module Basecamp
         data
       rescue BodyTooLarge
         raise OauthError.new("api_error", "OAuth discovery response exceeds size cap")
+      rescue ReadDeadlineExceeded
+        raise OauthError.new("network", "OAuth discovery timed out", retryable: true)
       rescue Faraday::Error => e
         raise OauthError.new("network", "OAuth discovery failed: #{e.message}", retryable: true)
       rescue JSON::ParserError => e
