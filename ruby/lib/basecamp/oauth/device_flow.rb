@@ -281,7 +281,12 @@ module Basecamp
           # +on_data+ (leaving +response.body+ empty); a test double that ignores
           # the block falls back to the buffered body, still size-capped.
           def post_form(client, url, params, timeout:, max_body_bytes:)
-            chunks, on_data = Fetcher.bounded_reader(max_body_bytes)
+            # Wall-clock deadline over the WHOLE read, exactly as Fetcher.fetch_json:
+            # req.options.timeout below bounds only each socket read and resets on
+            # every on_data chunk, so a slow-drip peer could otherwise hang a device
+            # request long past the timeout / code expiry while staying under the cap.
+            deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + Fetcher.normalize_timeout(timeout)
+            chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline)
             response = client.post(url) do |req|
               req.headers["Content-Type"] = "application/x-www-form-urlencoded"
               req.headers["Accept"] = "application/json"
@@ -304,6 +309,11 @@ module Basecamp
             [ response.status, body.dup.force_encoding(Encoding::UTF_8) ]
           rescue Fetcher::BodyTooLarge
             raise OauthError.new("api_error", "Device flow response exceeds size cap")
+          rescue Fetcher::ReadDeadlineExceeded
+            # Surface as a Faraday timeout so the caller's existing transport/timeout
+            # rescues classify it (request → :transport, poll → backoff) — a slow-drip
+            # read is a transport timeout, not an api_error.
+            raise Faraday::TimeoutError, "Device flow read exceeded the timeout deadline"
           end
 
           def parse_device_authorization(status, body)
