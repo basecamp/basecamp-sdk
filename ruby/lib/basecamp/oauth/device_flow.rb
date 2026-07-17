@@ -88,6 +88,10 @@ module Basecamp
           # default (read) — Ruby treats "" as truthy, so guard on emptiness too.
           params["scope"] = scope unless scope.nil? || scope.empty?
 
+          # Normalize ONCE at operation entry and thread the SAME value to both the
+          # client construction and the request, so a non-finite/non-positive input
+          # cannot leave the socket timeout unbounded on the default-built client.
+          timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
           client = http_client || build_client(timeout)
           status, body = begin
             post_form(client, device_authorization_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
@@ -137,6 +141,9 @@ module Basecamp
           backoff_seconds = interval_seconds
           deadline = clock.call + expires_in
 
+          # Normalize ONCE, outside the polling loop, and reuse for the client and
+          # every per-poll request (see request_device_authorization).
+          timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
           client = http_client || build_client(timeout)
           params = {
             "grant_type" => DEVICE_CODE_GRANT_TYPE,
@@ -286,13 +293,11 @@ module Basecamp
           # +on_data+ (leaving +response.body+ empty); a test double that ignores
           # the block falls back to the buffered body, still size-capped.
           def post_form(client, url, params, timeout:, max_body_bytes:)
-            # Normalize ONCE and reuse for BOTH the wall-clock deadline and the
-            # Faraday socket timeout: req.options.timeout bounds only each socket
-            # read and resets on every on_data chunk, so a slow-drip peer could
-            # otherwise hang a device request past the timeout / code expiry while
-            # staying under the cap. Falling back to the device budget (not
-            # discovery's) keeps an invalid input from silently shrinking it.
-            timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
+            # +timeout+ is already normalized by the caller (request/poll entry). The
+            # wall-clock deadline bounds the WHOLE read: req.options.timeout below
+            # bounds only each socket read and resets on every on_data chunk, so a
+            # slow-drip peer could otherwise hang a device request past the timeout /
+            # code expiry while staying under the cap.
             deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
             chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline)
             response = client.post(url) do |req|
@@ -325,8 +330,11 @@ module Basecamp
           end
 
           def parse_device_authorization(status, body)
-            data = parse_json_object(body, status, "device authorization")
-
+            # Check status BEFORE parsing (as discovery does): a non-2xx here is a
+            # hard failure with no OAuth error semantics, so a non-JSON error body
+            # (common for 500/502) must surface as "failed with status …", not a
+            # misleading parse error. The token poll is different — it parses non-2xx
+            # bodies to read authorization_pending / slow_down.
             unless (200..299).cover?(status)
               raise OauthError.new(
                 "api_error",
@@ -335,6 +343,7 @@ module Basecamp
               )
             end
 
+            data = parse_json_object(body, status, "device authorization")
             build_device_authorization(data, status)
           end
 
