@@ -345,6 +345,16 @@ describe("requireOriginRoot userinfo rejection", () => {
       expect(() => requireOriginRoot(raw)).toThrow(/userinfo/);
     }
   );
+
+  // A bare trailing "?"/"#" is normalized to empty search/hash by WHATWG URL, so
+  // the parsed fields miss it — the raw scan must still reject it, or a malformed
+  // caller origin (or a Launchpad look-alike) slips through as a clean origin.
+  it.each(["https://launchpad.37signals.com?", "https://launchpad.37signals.com#"])(
+    "rejects bare query/fragment delimiter %s",
+    (raw) => {
+      expect(() => requireOriginRoot(raw)).toThrow(/query or fragment/);
+    }
+  );
 });
 
 describe("resource metadata strictness (#369 review)", () => {
@@ -373,5 +383,32 @@ describe("resource metadata strictness (#369 review)", () => {
     const result = (await discoverFromResource(RESOURCE)) as { kind: string; issuer?: string };
     expect(result.kind).toBe("selected");
     expect(result.issuer).toBe(BC5);
+  });
+
+  it("binds AS metadata against the advertised issuer string, not the normalized origin", async () => {
+    // The advertised issuer carries a trailing slash, which normalizes away for
+    // routing. Binding must still be code-point-exact against the ADVERTISED
+    // string: AS metadata echoing "https://bc5…/" must bind, not mismatch.
+    const advertised = `${BC5}/`;
+    server.use(
+      mswHttp.get(`${RESOURCE}/.well-known/oauth-protected-resource`, () =>
+        HttpResponse.json({ resource: RESOURCE, authorization_servers: [advertised] })
+      ),
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ issuer: advertised, token_endpoint: `${BC5}/token` })
+      )
+    );
+    const result = (await discoverFromResource(RESOURCE)) as { kind: string; issuer?: string };
+    expect(result.kind).toBe("selected");
+    expect(result.issuer).toBe(advertised);
+  });
+
+  it("rejects scopes_supported that is not an array of strings", async () => {
+    server.use(
+      mswHttp.get(`${BC5}/.well-known/oauth-authorization-server`, () =>
+        HttpResponse.json({ issuer: BC5, token_endpoint: `${BC5}/token`, scopes_supported: "read write" })
+      )
+    );
+    await expect(discover(BC5)).rejects.toThrow(/scopes_supported must be an array of strings/);
   });
 });

@@ -71,7 +71,15 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
     try:
         url = httpx.URL(raw)
         scheme = url.scheme
-        host = url.host
+        # Force IDNA validation: `.host` decodes the A-label and raises IDNAError
+        # (a UnicodeError) on an invalid one (e.g. a trailing-hyphen label httpx
+        # cannot represent), matching what the transport would reject at dial time.
+        _ = url.host
+        # Bind against the ASCII host the transport actually dials (raw_host is
+        # the IDNA A-label form), NOT the decoded Unicode `.host`: an AS that
+        # correctly echoes its ASCII issuer/resource URI must still match by
+        # code-point. `.host` would rewrite "xn--..." to Unicode and break that.
+        host = url.raw_host.decode("ascii")
     except (httpx.InvalidURL, ValueError) as exc:
         raise UsageError(f"Invalid {label}: not a valid absolute URL: {raw}") from exc
 
@@ -88,7 +96,11 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
     authority = raw.split("://", 1)[-1].split("/", 1)[0].split("?", 1)[0].split("#", 1)[0]
     if url.userinfo or "@" in authority:
         raise UsageError(f"{label} must not contain userinfo: {raw}")
-    if url.query or url.fragment:
+    # httpx collapses a bare trailing "?" to an empty query (b"") and a bare "#"
+    # to an empty fragment (""), both falsy, so the parsed fields can't tell a
+    # bare delimiter from none. Scan the raw input too: any "?"/"#" past the
+    # scheme is a delimiter here (host/port carry neither; path is ""/"/" below).
+    if url.query or url.fragment or "?" in raw or "#" in raw:
         raise UsageError(f"{label} must not contain a query or fragment: {raw}")
     if url.path not in ("", "/"):
         raise UsageError(f"{label} must be an origin root (no path): {raw}")

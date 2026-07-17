@@ -80,8 +80,18 @@ module Basecamp
       # @param client [Faraday::Connection]
       # @raise [OauthError] +validation+ when non-adapter middleware is present
       def self.ensure_redirects_suppressed!(client)
-        handlers = client.respond_to?(:builder) ? Array(client.builder.handlers) : []
-        offending = handlers.find do |h|
+        return unless client.respond_to?(:builder)
+
+        builder = client.builder
+        handlers = Array(builder.handlers)
+        # Faraday keeps the TERMINAL adapter handler OUTSIDE builder.handlers, so
+        # a redirect-follower smuggled into the adapter slot (+conn.adapter Follower+,
+        # not validated to be a Faraday::Adapter subclass) would evade a
+        # handlers-only scan and run as the terminal app. Fold the adapter into
+        # the same policy check: a genuine adapter (<= Faraday::Adapter) passes;
+        # any non-adapter class in that slot is refused.
+        handlers += [ builder.adapter ] if builder.respond_to?(:adapter)
+        offending = handlers.compact.find do |h|
           h.respond_to?(:klass) && h.klass.is_a?(Class) && !(h.klass <= Faraday::Adapter)
         end
         return unless offending

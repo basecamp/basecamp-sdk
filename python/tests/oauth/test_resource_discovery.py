@@ -168,6 +168,21 @@ def test_origin_root_drops_default_port() -> None:
     assert require_origin_root("https://api.example.com:443") == "https://api.example.com"
 
 
+def test_origin_root_preserves_idna_a_label_ascii() -> None:
+    # An ASCII A-label origin must round-trip as ASCII (raw_host), not be
+    # rewritten to httpx's IDNA-decoded Unicode form: an AS echoing its ASCII
+    # issuer/resource URI must still bind by code-point.
+    assert require_origin_root("https://xn--e1afmkfd.example") == "https://xn--e1afmkfd.example"
+
+
+@pytest.mark.parametrize("raw", ["https://api.example.com?", "https://api.example.com#"])
+def test_origin_root_rejects_bare_query_or_fragment(raw: str) -> None:
+    # httpx collapses a bare "?"/"#" to an empty (falsy) query/fragment, so the
+    # parsed fields miss it; the raw scan must still reject the delimiter.
+    with pytest.raises(UsageError, match="query or fragment"):
+        require_origin_root(raw)
+
+
 @pytest.mark.parametrize(
     "raw",
     [
@@ -249,6 +264,27 @@ def test_device_only_as_omits_authorization_endpoint() -> None:
     assert config.authorization_endpoint is None
     assert config.device_authorization_endpoint == f"{issuer}/oauth/device"
     assert "urn:ietf:params:oauth:grant-type:device_code" in (config.grant_types_supported or [])
+
+
+@respx.mock
+def test_duplicate_advertised_issuer_is_one_candidate_not_ambiguous() -> None:
+    # The same non-Launchpad issuer advertised twice is ONE candidate: the
+    # exclusion heuristic dedupes by code-point rather than raising ambiguous.
+    resource_origin = ORIGINS["{{RESOURCE_ORIGIN}}"]
+    bc5 = ORIGINS["{{BC5_ISSUER}}"]
+    respx.get(f"{resource_origin}{WELL_KNOWN_RESOURCE}").mock(
+        return_value=httpx.Response(
+            200, json={"resource": resource_origin, "authorization_servers": [bc5, bc5]}
+        )
+    )
+    respx.get(f"{bc5}{WELL_KNOWN_AS}").mock(
+        return_value=httpx.Response(200, json={"issuer": bc5, "token_endpoint": f"{bc5}/token"})
+    )
+
+    result = discover_from_resource(resource_origin)
+
+    assert result.kind == "selected"
+    assert result.issuer == bc5
 
 
 @respx.mock
@@ -402,3 +438,12 @@ def test_selected_config_raises_on_fallback_result() -> None:
 
     with pytest.raises(ValueError):
         result.selected_config()
+
+
+def test_fallback_result_rejects_non_fallbackreason() -> None:
+    from basecamp.oauth import DiscoveryResult
+
+    # A fallback must carry a real FallbackReason member; an arbitrary string is
+    # an invalid public result and must be refused at construction.
+    with pytest.raises(ValueError, match="FallbackReason"):
+        DiscoveryResult(kind="fallback", reason="made_up_reason")  # type: ignore[arg-type]

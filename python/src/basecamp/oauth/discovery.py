@@ -294,7 +294,9 @@ def discover_from_resource(
                 f'Expected issuer "{expected_issuer}" is not advertised by the resource',
             )
     else:
-        non_launchpad = [s for s in advertised if not _is_launchpad_issuer(s)]
+        # Dedupe by code-point (order-preserving): the same non-Launchpad issuer
+        # advertised more than once is ONE candidate, not an ambiguity.
+        non_launchpad = list(dict.fromkeys(s for s in advertised if not _is_launchpad_issuer(s)))
         if len(non_launchpad) >= 2:
             raise DiscoverySelectionError(
                 "ambiguous_issuers",

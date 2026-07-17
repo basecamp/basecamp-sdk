@@ -86,8 +86,11 @@ class DiscoveryResult:
             if self.config is None or self.issuer is None or self.reason is not None:
                 raise ValueError("selected DiscoveryResult requires config and issuer, and no reason")
         elif self.kind == "fallback":
-            if self.reason is None or self.config is not None or self.issuer is not None:
-                raise ValueError("fallback DiscoveryResult requires a reason, and no config or issuer")
+            # The reason must be a real FallbackReason member, not merely non-None:
+            # a public fallback result carrying an arbitrary string would let a
+            # caller branching on the two documented soft outcomes see an invalid one.
+            if not isinstance(self.reason, FallbackReason) or self.config is not None or self.issuer is not None:
+                raise ValueError("fallback DiscoveryResult requires a valid FallbackReason, and no config or issuer")
         else:  # pragma: no cover - Literal type already constrains this
             raise ValueError(f"DiscoveryResult.kind must be 'selected' or 'fallback', got {self.kind!r}")
 

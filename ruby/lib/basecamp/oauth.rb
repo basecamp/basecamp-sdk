@@ -57,6 +57,11 @@ module Basecamp
     #
     # @param base_url [String] the OAuth server's issuer origin
     # @param timeout [Integer] request timeout in seconds
+    # @param expected_issuer [String, nil] optional exact identifier the AS
+    #   metadata's +issuer+ must equal by code-point (RFC 8414 §3.3/§4). When
+    #   +nil+, +issuer+ binds to +base_url+'s normalized origin. Pass the raw
+    #   advertised issuer to bind against a form that normalizes differently
+    #   (e.g. a trailing slash) while still fetching from the normalized origin.
     # @return [Config]
     def self.discover(base_url, timeout: 10, expected_issuer: nil)
       Discovery.new(timeout: timeout).discover(base_url, expected_issuer: expected_issuer)
@@ -186,7 +191,9 @@ module Basecamp
     # non-Launchpad issuer selects it; two or more is a hard +ambiguous_issuers+
     # (never guess); zero returns +nil+ (caller yields the soft fallback).
     def self.select_by_exclusion(advertised)
-      non_launchpad = advertised.reject { |server| launchpad_issuer?(server) }
+      # Dedupe by code-point: the same non-Launchpad issuer advertised twice
+      # (e.g. [BC5, BC5, Launchpad]) is ONE candidate, not an ambiguity.
+      non_launchpad = advertised.reject { |server| launchpad_issuer?(server) }.uniq
       if non_launchpad.length >= 2
         raise DiscoverySelectionError.new(
           "ambiguous_issuers",

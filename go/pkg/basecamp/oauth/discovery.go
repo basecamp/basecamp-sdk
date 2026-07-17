@@ -511,11 +511,19 @@ func (d *Discoverer) DiscoverFromResource(ctx context.Context, resourceOrigin st
 				fmt.Sprintf("expected issuer %q is not advertised by the resource", cfg.expectedIssuer), nil)
 		}
 	} else {
+		// Dedupe by code-point: the same non-Launchpad issuer advertised more than
+		// once is ONE candidate, not an ambiguity.
 		nonLaunchpad := make([]string, 0, len(advertised))
+		seen := make(map[string]struct{}, len(advertised))
 		for _, s := range advertised {
-			if !isLaunchpadIssuer(s) {
-				nonLaunchpad = append(nonLaunchpad, s)
+			if isLaunchpadIssuer(s) {
+				continue
 			}
+			if _, ok := seen[s]; ok {
+				continue
+			}
+			seen[s] = struct{}{}
+			nonLaunchpad = append(nonLaunchpad, s)
 		}
 		switch {
 		case len(nonLaunchpad) >= 2:

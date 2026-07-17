@@ -360,7 +360,9 @@ suspend fun discoverFromResource(
                 "Expected issuer \"$expectedIssuer\" is not advertised by the resource",
             )
     } else {
-        val nonLaunchpad = advertised.filterNot { isLaunchpadIssuer(it) }
+        // Dedupe by code-point: the same non-Launchpad issuer advertised more
+        // than once is ONE candidate, not an ambiguity.
+        val nonLaunchpad = advertised.filterNot { isLaunchpadIssuer(it) }.distinct()
         when {
             nonLaunchpad.size >= 2 -> throw BasecampException.DiscoverySelection(
                 "ambiguous_issuers",

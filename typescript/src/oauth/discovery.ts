@@ -74,6 +74,16 @@ export interface DiscoverOptions {
    * the default cap applies (the bound cannot be disabled).
    */
   maxBodyBytes?: number;
+  /**
+   * Internal: the exact issuer string the AS metadata's `issuer` must equal by
+   * code-point (RFC 8414 §3.3/§4). `discoverFromResource` passes the advertised
+   * issuer here so binding stays code-point-exact even when it differs from the
+   * normalized fetch origin (e.g. a trailing slash or explicit `:443`). Defaults
+   * to the normalized origin when omitted.
+   *
+   * @internal
+   */
+  bindIssuer?: string;
 }
 
 /**
@@ -153,7 +163,12 @@ export function requireOriginRoot(raw: string, label = "origin"): string {
   if (url.username || url.password || rawAuthority.includes("@")) {
     throw new BasecampError("usage", `${label} must not contain userinfo: ${raw}`);
   }
-  if (url.search || url.hash) {
+  // WHATWG `URL` exposes a bare trailing "?" or "#" (e.g. "https://host?") as an
+  // EMPTY search/hash and normalizes it away from `origin`, so the parsed fields
+  // alone miss the delimiter. Also scan the raw input: any "?"/"#" past the
+  // scheme is a query/fragment delimiter here (host/port carry neither, and the
+  // path is constrained to ""/"/" below).
+  if (url.search || url.hash || raw.includes("?") || raw.includes("#")) {
     throw new BasecampError("usage", `${label} must not contain a query or fragment: ${raw}`);
   }
   if (url.pathname !== "" && url.pathname !== "/") {
@@ -336,7 +351,9 @@ export async function discover(
     throw new BasecampError("api_error", "OAuth discovery response is not a JSON object");
   }
 
-  return parseAndBindAsMetadata(data, issuerOrigin);
+  // Fetch from the normalized origin, but bind `issuer` against the caller's
+  // exact advertised string when supplied (routing vs binding are distinct).
+  return parseAndBindAsMetadata(data, options.bindIssuer ?? issuerOrigin);
 }
 
 /**
@@ -405,6 +422,15 @@ function parseAndBindAsMetadata(
     throw new BasecampError(
       "api_error",
       "Invalid OAuth discovery response: code_challenge_methods_supported must be an array of strings"
+    );
+  }
+  // scopes_supported, when present, must be an array of strings — a bare string
+  // ("read write") or null would otherwise reach callers typed as an array and
+  // yield substring/null behavior instead of an api_error.
+  if (data.scopes_supported !== undefined && !isStringArray(data.scopes_supported)) {
+    throw new BasecampError(
+      "api_error",
+      "Invalid OAuth discovery response: scopes_supported must be an array of strings"
     );
   }
 
@@ -545,7 +571,7 @@ export async function discoverFromResource(
 
   let config: OAuthConfig;
   try {
-    config = await discover(issuerOrigin, discoverOptions);
+    config = await discover(issuerOrigin, { ...discoverOptions, bindIssuer: selectedIssuer });
   } catch (err) {
     // Distinguish issuer-binding mismatch from a generic fetch failure via the
     // structural marker (never the message text).

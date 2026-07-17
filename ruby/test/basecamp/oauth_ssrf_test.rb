@@ -119,6 +119,33 @@ class OAuthSsrfTest < Minitest::Test
     assert_equal "validation", error.type
   end
 
+  def test_injected_client_with_follower_in_adapter_slot_is_rejected
+    # Faraday keeps the terminal adapter handler OUTSIDE +builder.handlers+, so a
+    # non-adapter follower smuggled into the adapter slot (+conn.adapter Follower+)
+    # would evade a handlers-only scan yet run as the terminal app. The policy
+    # check must fold the adapter in and refuse it.
+    connection = Faraday.new do |conn|
+      conn.adapter SneakyLocationFollower
+    end
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Discovery.new(http_client: connection)
+    end
+    assert_equal "validation", error.type
+  end
+
+  def test_discovery_normalizes_non_integer_body_cap_to_default
+    # A nil/float/Float::INFINITY cap would disable the streaming memory bound
+    # (an infinite/undefined cap never trips), reintroducing an SSRF/OOM risk.
+    # Discovery must normalize it to the finite default, as Resource does.
+    default = Basecamp::Oauth::Fetcher::DEFAULT_MAX_BODY_BYTES
+    [ Float::INFINITY, nil, 1.5, -1, "big" ].each do |bad|
+      discovery = Basecamp::Oauth::Discovery.new(max_body_bytes: bad)
+      assert_equal default, discovery.instance_variable_get(:@max_body_bytes),
+        "expected #{bad.inspect} to normalize to the default cap"
+    end
+  end
+
   def test_redirect_is_not_followed
     issuer = "https://issuer.redirect-test.example"
     attacker = "https://attacker.example.com"
