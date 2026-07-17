@@ -1,0 +1,39 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_833a29d902c75f 722-734
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_5f0db7dc93667c 134-138
+  s_b250506ef28983::t_e228e7cbecea71 146-152
+typescript/tests/oauth/resource-discovery.test.ts
+  s_b250506ef28983::t_7f2a0b63f9b56c 102-104,113-116
+  s_b250506ef28983::t_44e5b4c58f8dfd 387-395
+conformance/oauth/fixtures/36-origin-root-missing-authority.json
+  s_b250506ef28983::t_d82f0063c9391d 1-12
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_2f8a9c7c4fbd3d 45-49,58
+ruby/lib/basecamp/oauth/config.rb
+  s_853befaa88238e::t_0d9a2e25805c4f 19-22,29-30,38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "eb7a0bd680842e1d63510dddc5c06add8844c857",
+  "prompts": {},
+  "sessions": {
+    "s_853befaa88238e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c108bb06-cc59-4c9a-aa02-f37b0a2992eb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
