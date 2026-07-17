@@ -1,0 +1,21 @@
+{
+  "name": "unmodeled-endpoint-empty",
+  "description": "AS metadata carries an endpoint this SDK does not model (revocation_endpoint) present with an empty string. §16 requires ANY present *_endpoint to be a non-empty string, so it must be rejected — not silently dropped as an unknown key. Guards against whitelist-only validators (Kotlin historically checked only its four modeled fields).",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{ISSUER_ORIGIN}}",
+      "authorization_endpoint": "{{ISSUER_ORIGIN}}/oauth/authorize",
+      "token_endpoint": "{{ISSUER_ORIGIN}}/oauth/token",
+      "revocation_endpoint": ""
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "invalid_metadata",
+    "errorCategory": "api_error"
+  }
+}

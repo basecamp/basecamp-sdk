@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * OAuth 2.0 discovery for the Basecamp SDK.
@@ -177,15 +178,17 @@ private suspend fun fetchAndBindAsMetadata(
     val url = "$issuerOrigin/.well-known/oauth-authorization-server"
 
     val body = fetchDiscoveryDocument(url, client)
-    // Inspect the raw JSON before decoding so an endpoint key present with an
-    // explicit JSON `null` is rejected as invalid metadata rather than collapsed to
-    // the same absent-key state a nullable Kotlin field cannot distinguish.
+    // Inspect the raw JSON before decoding so every `*_endpoint` key — including
+    // ones this SDK does not model — is validated. `ignoreUnknownKeys` silently
+    // drops an unmodeled key like `revocation_endpoint`, so a whitelist over the
+    // four modeled fields would let `revocation_endpoint: null`/`""` through in
+    // violation of §16 (any present `*_endpoint` must be a non-empty string).
     val obj = try {
         discoveryJson.parseToJsonElement(body) as? JsonObject
     } catch (e: SerializationException) {
         throw BasecampException.Api("Failed to parse OAuth discovery response", httpStatus = 200, cause = e)
     } ?: throw BasecampException.Api("Failed to parse OAuth discovery response", httpStatus = 200)
-    rejectExplicitNullEndpoints(obj)
+    rejectInvalidEndpoints(obj)
     val raw = try {
         discoveryJson.decodeFromString<RawDiscoveryResponse>(body)
     } catch (e: SerializationException) {
@@ -199,22 +202,23 @@ private suspend fun fetchAndBindAsMetadata(
 }
 
 /**
- * Rejects any `*_endpoint` key present with an explicit JSON `null`. A nullable
- * Kotlin field collapses "key omitted" (valid: endpoint absent) and "key present
- * but `null`" (invalid metadata) to the same `null`, so the distinction is
- * enforced at the JSON layer. Present-but-empty strings are rejected downstream in
- * [bindAsMetadata]; non-string values fail the structural decode.
+ * Enforces §16 over EVERY `*_endpoint` key in the raw document (mirrors Go's
+ * `rejectEmptyEndpoints`, TS/Python/Ruby's generic `_endpoint` loops): any present
+ * endpoint must be a non-empty JSON string. This runs on the parsed [JsonObject]
+ * rather than the decoded `RawDiscoveryResponse` because `ignoreUnknownKeys` drops
+ * unmodeled keys during decode, and because a nullable Kotlin field collapses "key
+ * omitted" (valid: absent) with "key present but `null`" (invalid) to the same
+ * `null`. Rejecting at the JSON layer catches an explicit `null`, an empty string,
+ * and a non-string value (number/array/object) uniformly, for modeled and
+ * unmodeled endpoints alike (e.g. `revocation_endpoint`, `introspection_endpoint`).
  */
-private fun rejectExplicitNullEndpoints(obj: JsonObject) {
-    for (key in listOf(
-        "authorization_endpoint",
-        "token_endpoint",
-        "device_authorization_endpoint",
-        "registration_endpoint",
-    )) {
-        if (obj[key] is JsonNull) {
+private fun rejectInvalidEndpoints(obj: JsonObject) {
+    for ((key, value) in obj) {
+        if (!key.endsWith("_endpoint")) continue
+        val prim = value as? JsonPrimitive
+        if (prim == null || !prim.isString || prim.content.isEmpty()) {
             throw BasecampException.Api(
-                "Invalid OAuth discovery response: $key must not be null",
+                "Invalid OAuth discovery response: $key must be a non-empty string",
                 httpStatus = 200,
             )
         }
@@ -263,16 +267,8 @@ private fun bindAsMetadata(raw: RawDiscoveryResponse, expectedIssuerOrigin: Stri
             httpStatus = 200,
         )
     }
-    // Reject present-but-empty endpoint strings.
-    for ((name, value) in listOf(
-        "authorization_endpoint" to raw.authorizationEndpoint,
-        "device_authorization_endpoint" to raw.deviceAuthorizationEndpoint,
-        "registration_endpoint" to raw.registrationEndpoint,
-    )) {
-        if (value != null && value.isEmpty()) {
-            throw BasecampException.Api("Invalid OAuth discovery response: empty $name", httpStatus = 200)
-        }
-    }
+    // Present-but-empty endpoint strings (modeled and unmodeled alike) are already
+    // rejected at the JSON layer by rejectInvalidEndpoints before decode.
 
     return OAuthConfig(
         issuer = issuer,

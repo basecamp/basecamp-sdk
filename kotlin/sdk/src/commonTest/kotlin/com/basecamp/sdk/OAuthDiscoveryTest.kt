@@ -760,6 +760,37 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `38 unmodeled endpoint present-but-empty rejected`() = runScenario(
+        Scenario(
+            name = "unmodeled-endpoint-empty",
+            op = Op.DISCOVER,
+            issuerOrigin = ISSUER,
+            // revocation_endpoint is not modeled by OAuthConfig; ignoreUnknownKeys
+            // would drop it during decode, so validation must run over the raw JSON
+            // to enforce §16 (any present *_endpoint is a non-empty string).
+            hop2 = Hop(
+                body = "{\"issuer\":\"$ISSUER\",\"authorization_endpoint\":\"$ISSUER/oauth/authorize\"," +
+                    "\"token_endpoint\":\"$ISSUER/oauth/token\",\"revocation_endpoint\":\"\"}"
+            ),
+            raiseApiError = true,
+            errorCategory = "api_error",
+        )
+    )
+
+    @Test fun `unmodeled endpoint present-but-null rejected`() = runScenario(
+        Scenario(
+            name = "unmodeled-endpoint-null",
+            op = Op.DISCOVER,
+            issuerOrigin = ISSUER,
+            hop2 = Hop(
+                body = "{\"issuer\":\"$ISSUER\",\"token_endpoint\":\"$ISSUER/oauth/token\"," +
+                    "\"revocation_endpoint\":null}"
+            ),
+            raiseApiError = true,
+            errorCategory = "api_error",
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS
