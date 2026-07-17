@@ -239,51 +239,45 @@ class TestRequestDeviceAuthorization:
             request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
         assert exc_info.value.reason == "transport"
 
-    @respx.mock
-    def test_slow_drip_read_aborts_on_wall_clock_deadline(self, monkeypatch):
-        # httpx's timeout resets on every received chunk, so a slow-drip peer would
-        # hang the request without a whole-read deadline. Advance the monotonic clock
-        # past the deadline mid-stream (each call jumps 100s > the 30s timeout, so the
-        # first in-loop check trips regardless of when the deadline was computed) and
-        # assert it surfaces as a retryable transport timeout, not a hang.
-        import basecamp.oauth.device as device_mod
+    def test_slow_drip_request_is_bounded_by_the_wall_clock_timeout(self):
+        # httpx's read timeout resets on every received chunk, so a peer dripping a
+        # VALID response byte-by-byte (each read under the timeout) would otherwise
+        # hold the request open far past it — httpx has no total timeout. The
+        # daemon-worker + join(timeout) bound must return WITHIN the timeout as a
+        # retryable transport failure, not run for the whole drip. A real socket is
+        # used because respx serves a complete response instantly (no drip).
+        import socket
+        import threading
+        import time as _time
 
-        elapsed = {"v": 0.0}
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+        port = srv.getsockname()[1]
+        # ~60 bytes dripped at 0.2s each ≈ 12s total; the 0.5s timeout must win.
+        valid = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Type: application/json\r\n\r\n{}"
 
-        def fake_monotonic() -> float:
-            v = elapsed["v"]
-            elapsed["v"] += 100.0
-            return v
+        def drip() -> None:
+            conn, _ = srv.accept()
+            conn.recv(4096)
+            try:
+                for byte in valid:
+                    conn.sendall(bytes([byte]))
+                    _time.sleep(0.2)
+            except OSError:
+                pass
 
-        monkeypatch.setattr(device_mod.time, "monotonic", fake_monotonic)
-        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
-
-        with pytest.raises(DeviceFlowError) as exc_info:
-            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
-        assert exc_info.value.reason == "transport"
-        assert exc_info.value.retryable
-
-    @respx.mock
-    def test_final_read_past_deadline_is_rejected(self, monkeypatch):
-        # The in-loop check runs BEFORE each chunk, so it cannot catch the final
-        # read / EOF landing past the deadline. Drive an empty body (zero in-loop
-        # iterations) with the clock advanced past the deadline so ONLY the
-        # post-loop check can fire — proving the whole-read bound holds at EOF.
-        import basecamp.oauth.device as device_mod
-
-        elapsed = {"v": 0.0}
-
-        def fake_monotonic() -> float:
-            v = elapsed["v"]
-            elapsed["v"] += 100.0
-            return v
-
-        monkeypatch.setattr(device_mod.time, "monotonic", fake_monotonic)
-        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, content=b""))
-
-        with pytest.raises(DeviceFlowError) as exc_info:
-            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
-        assert exc_info.value.reason == "transport"
+        threading.Thread(target=drip, daemon=True).start()
+        try:
+            start = _time.monotonic()
+            with pytest.raises(DeviceFlowError) as exc_info:
+                request_device_authorization(f"http://127.0.0.1:{port}/device", "basecamp-cli", timeout=0.5)
+            elapsed = _time.monotonic() - start
+            assert exc_info.value.reason == "transport"
+            assert exc_info.value.retryable
+            assert elapsed < 4, f"request not bounded by the timeout: took {elapsed:.2f}s"
+        finally:
+            srv.close()
 
     @respx.mock
     def test_rejects_non_string_field_types(self):

@@ -227,6 +227,10 @@ def test_timeout_normalizes_to_operation_specific_default() -> None:
     assert _normalize_timeout(float("inf"), 30.0) == 30.0
     # A valid value is preserved regardless of the default.
     assert _normalize_timeout(5.0, 30.0) == 5.0
+    # An INVALID default must not disable the bounds either: fall back to the
+    # discovery constant rather than returning the bad default.
+    assert _normalize_timeout(None, float("inf")) == _DISCOVERY_TIMEOUT
+    assert _normalize_timeout("bad", None) == _DISCOVERY_TIMEOUT  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("raw", ["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])
