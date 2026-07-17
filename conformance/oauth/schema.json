@@ -94,7 +94,19 @@
           "enum": ["usage", "validation", "api_error", "network", "auth_required"],
           "description": "On `raise`, the coarse BasecampError category the thrown error must map to (asserted cross-SDK alongside the typed reason)."
         }
-      }
+      },
+      "allOf": [
+        {
+          "description": "A raise fixture must state the typed error it expects.",
+          "if": { "required": ["outcome"], "properties": { "outcome": { "const": "raise" } } },
+          "then": { "required": ["error"] }
+        },
+        {
+          "description": "A fallback fixture must state the soft reason it expects.",
+          "if": { "required": ["outcome"], "properties": { "outcome": { "const": "fallback" } } },
+          "then": { "required": ["fallbackReason"] }
+        }
+      ]
     }
   }
 }
