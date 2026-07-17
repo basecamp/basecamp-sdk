@@ -24,6 +24,11 @@ module Basecamp
       # +slow_down+ bumps the interval by this many seconds, sustained (§3.5).
       SLOW_DOWN_INCREMENT_SECONDS = 5
 
+      # Default per-request timeout for every device-flow HTTP round-trip. Also the
+      # fallback Fetcher.normalize_timeout uses for an invalid device timeout, so an
+      # invalid value can't silently borrow discovery's shorter budget.
+      DEVICE_REQUEST_TIMEOUT = 30
+
       # Cap on exponential backoff after connection timeouts.
       MAX_BACKOFF_SECONDS = 60
 
@@ -70,7 +75,7 @@ module Basecamp
         # @raise [DeviceFlowError] +:transport+ on a network failure
         def request_device_authorization(
           device_authorization_endpoint:, client_id:, scope: nil,
-          http_client: nil, timeout: 30, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
+          http_client: nil, timeout: DEVICE_REQUEST_TIMEOUT, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
         )
           Basecamp::Security.require_https_unless_localhost!(device_authorization_endpoint, "device authorization endpoint")
           raise OauthError.new("validation", "Client ID is required for device authorization") if client_id.to_s.empty?
@@ -123,7 +128,7 @@ module Basecamp
         def poll_device_token(
           token_endpoint:, client_id:, device_code:, interval:, expires_in:,
           clock: DEFAULT_CLOCK, sleeper: DEFAULT_SLEEPER, cancelled: DEFAULT_CANCELLED,
-          http_client: nil, timeout: 30, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
+          http_client: nil, timeout: DEVICE_REQUEST_TIMEOUT, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
         )
           Basecamp::Security.require_https_unless_localhost!(token_endpoint, "token endpoint")
           Fetcher.ensure_redirects_suppressed!(http_client) if http_client
@@ -215,7 +220,7 @@ module Basecamp
         def perform_device_login(
           config:, client_id:, display:, scope: nil,
           clock: DEFAULT_CLOCK, sleeper: DEFAULT_SLEEPER, cancelled: DEFAULT_CANCELLED,
-          http_client: nil, timeout: 30, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
+          http_client: nil, timeout: DEVICE_REQUEST_TIMEOUT, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
         )
           unless device_grant_available?(config)
             raise DeviceFlowError.new(
@@ -281,11 +286,14 @@ module Basecamp
           # +on_data+ (leaving +response.body+ empty); a test double that ignores
           # the block falls back to the buffered body, still size-capped.
           def post_form(client, url, params, timeout:, max_body_bytes:)
-            # Wall-clock deadline over the WHOLE read, exactly as Fetcher.fetch_json:
-            # req.options.timeout below bounds only each socket read and resets on
-            # every on_data chunk, so a slow-drip peer could otherwise hang a device
-            # request long past the timeout / code expiry while staying under the cap.
-            deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + Fetcher.normalize_timeout(timeout)
+            # Normalize ONCE and reuse for BOTH the wall-clock deadline and the
+            # Faraday socket timeout: req.options.timeout bounds only each socket
+            # read and resets on every on_data chunk, so a slow-drip peer could
+            # otherwise hang a device request past the timeout / code expiry while
+            # staying under the cap. Falling back to the device budget (not
+            # discovery's) keeps an invalid input from silently shrinking it.
+            timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
+            deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
             chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline)
             response = client.post(url) do |req|
               req.headers["Content-Type"] = "application/x-www-form-urlencoded"

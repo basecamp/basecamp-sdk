@@ -302,6 +302,16 @@ class OAuthSsrfTest < Minitest::Test
     assert_equal 2.5, Basecamp::Oauth::Discovery.new(timeout: 2.5).instance_variable_get(:@timeout)
   end
 
+  def test_normalize_timeout_honors_operation_default
+    # An invalid timeout falls back to the caller-supplied default, so device flow
+    # (30s) does not silently borrow discovery's shorter 10s budget.
+    assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT, Basecamp::Oauth::Fetcher.normalize_timeout(nil)
+    assert_equal 30, Basecamp::Oauth::Fetcher.normalize_timeout(nil, default: 30)
+    assert_equal 30, Basecamp::Oauth::Fetcher.normalize_timeout(Float::INFINITY, default: 30)
+    # A valid value is preserved regardless of the default.
+    assert_equal 5, Basecamp::Oauth::Fetcher.normalize_timeout(5, default: 30)
+  end
+
   def test_redirect_is_not_followed
     issuer = "https://issuer.redirect-test.example"
     attacker = "https://attacker.example.com"
