@@ -680,6 +680,47 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `32 origin-root signed port rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-signed-port",
+            op = Op.PROTECTED_RESOURCE,
+            // "+1" would coerce to port 1 via toIntOrNull; the port token must be
+            // restricted to ASCII digits so a sign is rejected.
+            resourceOrigin = "https://api.example.com:+1",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
+    @Test fun `33 discover issuer trailing slash binds`() = runScenario(
+        Scenario(
+            name = "discover-issuer-trailing-slash-binds",
+            op = Op.DISCOVER,
+            // Public discover() binds against the caller's RAW issuer spelling: the
+            // trailing slash normalizes away for the fetch URL but the AS issuer
+            // must echo it by code-point (RFC 8414 §3.3).
+            issuerOrigin = "$ISSUER/",
+            hop2 = Hop(body = "{\"issuer\":\"$ISSUER/\",\"token_endpoint\":\"$ISSUER/oauth/token\"}"),
+            selectedIssuer = "$ISSUER/",
+        )
+    )
+
+    @Test fun `34 resource-first trailing slash binds`() = runScenario(
+        Scenario(
+            name = "resource-first-trailing-slash-binds",
+            op = Op.FROM_RESOURCE,
+            // The orchestrator passes the RAW resource identifier through to hop-1
+            // binding, so a resource echoing the trailing-slash identifier binds and
+            // selection proceeds (not a false resource_discovery_failed).
+            resourceOrigin = "$RESOURCE/",
+            hop1 = Hop(body = resourceBody("$RESOURCE/", listOf(BC5, LAUNCHPAD))),
+            hop2 = Hop(body = "{\"issuer\":\"$BC5\",\"token_endpoint\":\"$BC5/oauth/token\"}"),
+            selectedIssuer = BC5,
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS

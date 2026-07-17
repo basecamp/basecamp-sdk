@@ -143,7 +143,9 @@ def discover(
     :class:`OAuthError` (``api_error``) on invalid metadata.
     """
     issuer_origin = require_origin_root(base_url, "OAuth discovery base URL")
-    return _discover_and_bind(issuer_origin, issuer_origin, timeout=timeout, max_body_bytes=max_body_bytes)
+    # Bind against the caller's raw base_url (RFC 8414 §3.3, SPEC.md §16 "NO
+    # normalization"); the normalized origin is only for the fetch URL.
+    return _discover_and_bind(issuer_origin, base_url, timeout=timeout, max_body_bytes=max_body_bytes)
 
 
 def _discover_and_bind(
@@ -311,13 +313,12 @@ def discover_from_resource(
     :class:`DiscoverySelectionError`; callers MUST NOT convert a raise into a
     Launchpad request.
     """
-    # Origin-root validation of the *caller's* input is a usage error — let it
-    # propagate as-is (never a soft fallback).
-    origin = require_origin_root(resource_origin, "resource origin")
-
     # --- Hop 1: resource metadata. Failure here is soft (before selection). ---
+    # Pass the RAW resource_origin so binding is code-point-exact against the caller's
+    # identifier (SPEC.md §16); discover_protected_resource normalizes only its fetch
+    # URL. A malformed caller origin raises UsageError (not caught here → propagates).
     try:
-        resource = discover_protected_resource(origin, timeout=timeout, max_body_bytes=max_body_bytes)
+        resource = discover_protected_resource(resource_origin, timeout=timeout, max_body_bytes=max_body_bytes)
     except OAuthError:
         return DiscoveryResult(kind="fallback", reason=FallbackReason.RESOURCE_DISCOVERY_FAILED)
 

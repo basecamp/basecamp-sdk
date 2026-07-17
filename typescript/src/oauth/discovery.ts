@@ -346,7 +346,9 @@ export async function discover(
   options: DiscoverOptions = {}
 ): Promise<OAuthConfig> {
   const issuerOrigin = requireOriginRoot(baseUrl, "OAuth discovery base URL");
-  return discoverAndBind(issuerOrigin, issuerOrigin, options);
+  // Bind against the caller's raw baseUrl (RFC 8414 §3.3, SPEC.md §16 "NO
+  // normalization"); the normalized origin is only for the fetch URL.
+  return discoverAndBind(issuerOrigin, baseUrl, options);
 }
 
 /**
@@ -533,14 +535,13 @@ export async function discoverFromResource(
 ): Promise<DiscoverFromResourceResult> {
   const { expectedIssuer, ...discoverOptions } = options;
 
-  // Origin-root validation of the *caller's* input is a usage error — let it
-  // propagate as-is (not a soft fallback).
-  const origin = requireOriginRoot(resourceOrigin, "resource origin");
-
   // --- Hop 1: resource metadata. Failure here is soft (before selection). ---
+  // Pass the RAW resourceOrigin so binding is code-point-exact against the caller's
+  // identifier (SPEC.md §16); discoverProtectedResource normalizes only its fetch
+  // URL. A malformed caller origin surfaces as usage (re-raised below), not a fallback.
   let resource: ProtectedResourceMetadata;
   try {
-    resource = await discoverProtectedResource(origin, discoverOptions);
+    resource = await discoverProtectedResource(resourceOrigin, discoverOptions);
   } catch (err) {
     if (err instanceof BasecampError && err.code === "usage") throw err;
     return { kind: "fallback", reason: "resource_discovery_failed" };

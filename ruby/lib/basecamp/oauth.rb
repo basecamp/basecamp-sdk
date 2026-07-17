@@ -97,11 +97,12 @@ module Basecamp
     def self.discover_from_resource(resource_origin, expected_issuer: nil, timeout: 10)
       # Origin-root validation of the *caller's* input is a usage error — let it
       # propagate as-is (not a soft fallback).
-      origin = Basecamp::Security.require_origin_root!(resource_origin, "resource origin")
-
       # Hop 1: resource metadata. Any failure here is soft (before selection).
+      # Pass the RAW resource_origin so binding is code-point-exact against the
+      # caller's identifier (SPEC.md §16); discover_protected_resource normalizes
+      # only its fetch URL. A malformed caller origin raises UsageError → re-raised.
       resource = begin
-        discover_protected_resource(origin, timeout: timeout)
+        discover_protected_resource(resource_origin, timeout: timeout)
       rescue Basecamp::UsageError
         raise
       rescue OauthError

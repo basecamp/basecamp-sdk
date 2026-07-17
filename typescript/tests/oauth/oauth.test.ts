@@ -114,17 +114,20 @@ describe("OAuth Discovery", () => {
       expect(config.codeChallengeMethodsSupported).toBeUndefined();
     });
 
-    it("normalizes trailing slash in base URL", async () => {
+    it("normalizes a trailing slash for the fetch URL but binds against the raw issuer", async () => {
+      // The trailing slash is dropped only for the well-known fetch (routing);
+      // issuer binding is code-point-exact against the caller's raw string (RFC
+      // 8414 §3.3, SPEC.md §16), so the AS must echo the trailing-slash issuer.
       server.use(
         http.get(
           "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
-          () => HttpResponse.json(mockDiscoveryResponse)
+          () => HttpResponse.json({ ...mockDiscoveryResponse, issuer: "https://launchpad.37signals.com/" })
         )
       );
 
       const config = await discover("https://launchpad.37signals.com/");
 
-      expect(config.issuer).toBe("https://launchpad.37signals.com");
+      expect(config.issuer).toBe("https://launchpad.37signals.com/");
     });
 
     it("throws BasecampError on HTTP error", async () => {

@@ -230,6 +230,13 @@ class SecurityRequireOriginRootTest < Minitest::Test
     assert_match(/port/, error.message)
   end
 
+  def test_preserves_bracketed_ipv6_literal
+    # URI#host preserves the brackets for an IPv6 literal (returns "[::1]", not
+    # "::1"), so the rebuilt origin round-trips without double- or un-bracketing.
+    assert_equal "http://[::1]:3000", Basecamp::Security.require_origin_root!("http://[::1]:3000")
+    assert_equal "https://[2001:db8::1]", Basecamp::Security.require_origin_root!("https://[2001:db8::1]")
+  end
+
   def test_rejects_empty_userinfo
     # URI reports delimiter-only userinfo ("https://@example.com") as an empty
     # (falsy) string, so rejection must key on the raw authority's "@" presence.

@@ -119,24 +119,27 @@ func TestDiscoverer_Discover_MidStreamReadFailureIsNetwork(t *testing.T) {
 }
 
 func TestDiscoverer_Discover_TrailingSlash(t *testing.T) {
-	var origin string
+	// A trailing slash is normalized away for the fetch URL (routing), but issuer
+	// binding is code-point-exact against the caller's RAW baseURL (RFC 8414 §3.3,
+	// SPEC.md §16), so the AS must echo the trailing-slash issuer to bind.
+	var caller string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/.well-known/oauth-authorization-server" {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
-		_, _ = fmt.Fprintf(w, `{"issuer":%q,"token_endpoint":%q}`, origin, origin+"/token")
+		_, _ = fmt.Fprintf(w, `{"issuer":%q,"token_endpoint":%q}`, caller, caller+"token")
 	}))
 	defer server.Close()
-	origin = server.URL
+	caller = server.URL + "/"
 
 	d := NewDiscoverer(server.Client())
 
-	cfg, err := d.Discover(context.Background(), server.URL+"/")
+	cfg, err := d.Discover(context.Background(), caller)
 	if err != nil {
 		t.Fatalf("Discover() with trailing slash failed: %v", err)
 	}
-	if cfg.Issuer != origin {
-		t.Errorf("Discover() issuer = %q, want %q", cfg.Issuer, origin)
+	if cfg.Issuer != caller {
+		t.Errorf("Discover() issuer = %q, want %q", cfg.Issuer, caller)
 	}
 }
 

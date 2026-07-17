@@ -141,7 +141,9 @@ private data class RawResourceResponse(
  */
 suspend fun discover(baseUrl: String, client: HttpClient? = null): OAuthConfig =
     try {
-        fetchAndBindAsMetadata(baseUrl, client)
+        // Bind against the caller's raw baseUrl (RFC 8414 §3.3, SPEC.md §16 "NO
+        // normalization"); the normalized origin is only for the fetch URL.
+        fetchAndBindAsMetadata(baseUrl, client, bindIssuer = baseUrl)
     } catch (marker: IssuerBindingException) {
         // The binding failure is signalled internally by a module-private marker
         // so discoverFromResource can classify it by type. To external callers it
@@ -361,13 +363,12 @@ suspend fun discoverFromResource(
     expectedIssuer: String? = null,
     client: HttpClient? = null,
 ): DiscoveryResult {
-    // Origin-root validation of the *caller's* input is a usage error — let it
-    // propagate as-is (not a soft fallback).
-    val origin = requireOriginRoot(resourceOrigin, "resource origin")
-
     // --- Hop 1: resource metadata. Failure here is soft (before selection). ---
+    // Pass the RAW resourceOrigin so binding is code-point-exact against the caller's
+    // identifier (SPEC.md §16); discoverProtectedResource normalizes only its fetch
+    // URL. A malformed caller origin surfaces as usage (re-thrown below), not a fallback.
     val resource: ProtectedResourceMetadata = try {
-        discoverProtectedResource(origin, client)
+        discoverProtectedResource(resourceOrigin, client)
     } catch (e: BasecampException.Usage) {
         throw e
     } catch (e: BasecampException) {

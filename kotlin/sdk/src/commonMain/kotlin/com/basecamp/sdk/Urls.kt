@@ -115,7 +115,9 @@ internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
         else -> null
     }
     if (portToken != null) {
-        val port = portToken.toIntOrNull()
+        // Restrict to ASCII digits before parsing: toIntOrNull accepts a signed
+        // token ("+1", "-1"), which is not a valid port authority.
+        val port = portToken.takeIf { token -> token.isNotEmpty() && token.all { it in '0'..'9' } }?.toIntOrNull()
         if (port == null || port < 1 || port > 65535) {
             throw BasecampException.Usage("$label has an invalid port: ${BasecampException.truncateMessage(raw)}")
         }

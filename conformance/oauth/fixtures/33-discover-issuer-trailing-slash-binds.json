@@ -1,0 +1,18 @@
+{
+  "name": "discover-issuer-trailing-slash-binds",
+  "description": "The public discover() caller supplies an issuer spelling with a trailing slash that normalizes away for the fetch URL. Issuer binding is code-point-exact against the ORIGINAL caller string (RFC 8414 §3.3, SPEC.md §16, no normalization), so an AS echoing the trailing-slash issuer binds instead of a false mismatch.",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}/",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{ISSUER_ORIGIN}}/",
+      "token_endpoint": "{{ISSUER_ORIGIN}}/oauth/token"
+    }
+  },
+  "expect": {
+    "outcome": "selected",
+    "selectedIssuer": "{{ISSUER_ORIGIN}}/"
+  }
+}

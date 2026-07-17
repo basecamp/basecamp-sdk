@@ -322,7 +322,9 @@ func (d *Discoverer) Discover(ctx context.Context, baseURL string, opts ...Disco
 	if err != nil {
 		return nil, err
 	}
-	return d.fetchASMetadata(ctx, origin, origin, newDiscoverConfig(opts))
+	// Bind against the caller's raw baseURL (RFC 8414 §3.3, SPEC.md §16 "NO
+	// normalization"); the normalized origin is only for the fetch URL.
+	return d.fetchASMetadata(ctx, origin, baseURL, newDiscoverConfig(opts))
 }
 
 // rawDiscoveryResponse mirrors an RFC 8414 metadata document. Endpoint fields

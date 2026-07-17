@@ -107,10 +107,18 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
         raise UsageError(f"{label} must be an origin root (no path): {raw}")
 
     # A dangling port delimiter ("https://host:") normalizes to port None under
-    # httpx, silently accepting a malformed authority. Reject a trailing ":" on the
-    # raw authority explicitly. IPv6 authorities legitimately end with "]" (e.g.
-    # "[::1]"), so only a trailing ":" is a dangling port.
-    if authority.endswith(":"):
+    # httpx, silently accepting a malformed authority. Also reject a signed port
+    # token ("+1"/"-1"): httpx parses "+1" to 1, which would pass the range check.
+    # Inspect the raw authority's port segment — IPv6 is bracketed ("[::1]"), so a
+    # port follows "]:"; otherwise it follows the sole ":".
+    if "]:" in authority:
+        port_token: str | None = authority.rsplit("]:", 1)[1]
+    elif "]" not in authority and ":" in authority:
+        port_token = authority.rsplit(":", 1)[1]
+    else:
+        port_token = None
+    if port_token is not None and not (port_token.isascii() and port_token.isdigit()):
+        # Empty (dangling ":") or non-digit ("+1") port token — malformed authority.
         raise UsageError(f"{label} has an invalid port: {raw}")
 
     # httpx does not range-check the port (it accepts :99999), so enforce 1–65535

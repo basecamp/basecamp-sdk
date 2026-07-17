@@ -53,7 +53,9 @@ module Basecamp
       #   config.token_endpoint # => "https://launchpad.37signals.com/authorization/token"
       def discover(base_url)
         issuer_origin = Basecamp::Security.require_origin_root!(base_url, "OAuth discovery base URL")
-        discover_and_bind(issuer_origin, issuer_origin)
+        # Bind against the caller's raw +base_url+ (RFC 8414 §3.3, SPEC.md §16 "NO
+        # normalization"); the normalized origin is only for the fetch URL.
+        discover_and_bind(issuer_origin, base_url)
       end
 
       # Resource-first entry: validate +advertised_issuer+ as an origin root, then

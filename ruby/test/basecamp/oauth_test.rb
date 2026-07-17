@@ -36,8 +36,11 @@ class OAuthTest < Minitest::Test
   end
 
   def test_discover_handles_trailing_slash
+    # A trailing slash is normalized away for the well-known fetch (routing), but
+    # issuer binding is code-point-exact against the caller's RAW base_url (RFC
+    # 8414 §3.3, SPEC.md §16), so the AS must echo the trailing-slash issuer.
     discovery_response = {
-      "issuer" => "https://launchpad.37signals.com",
+      "issuer" => "https://launchpad.37signals.com/",
       "authorization_endpoint" => "https://launchpad.37signals.com/authorization/new",
       "token_endpoint" => "https://launchpad.37signals.com/authorization/token"
     }
@@ -46,7 +49,7 @@ class OAuthTest < Minitest::Test
       .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
 
     config = Basecamp::Oauth.discover("https://launchpad.37signals.com/")
-    assert_equal "https://launchpad.37signals.com", config.issuer
+    assert_equal "https://launchpad.37signals.com/", config.issuer
   end
 
   def test_discover_raises_on_missing_fields
