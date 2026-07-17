@@ -1,0 +1,31 @@
+conformance/oauth/fixtures/27-authorization-servers-present-null.json
+  s_b250506ef28983::t_39ad8a492c243f 1-19
+typescript/tests/oauth/resource-discovery.test.ts
+  s_b250506ef28983::t_0e6762d1bc7c33 358-363
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_651f59105afef2 167-175
+ruby/lib/basecamp/oauth/resource.rb
+  s_b250506ef28983::t_21702d7769427b 65-69
+python/src/basecamp/oauth/discovery.py
+  s_b250506ef28983::t_1cb8c49428f261 244
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_456e6480961d24 298-312
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_e66bee3a3a7fe1 604-616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d7978866ed57c693ff9760f265986e5b39807955",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
