@@ -354,10 +354,10 @@ export async function discover(
 /**
  * Fetch AS metadata from `issuerOrigin`'s well-known URL but bind the returned
  * `issuer` against `bindIssuer` by code-point. Routing and binding are distinct:
- * the resource-first flow fetches from the normalized origin yet binds against
- * the exact advertised issuer string (which may spell a trailing slash or
- * explicit default port). Not exported — public `discover` passes the same value
- * for both, so it never exposes a binding override.
+ * fetch from the normalized origin, bind against the caller's raw identifier
+ * (which may spell a trailing slash or explicit default port). Public `discover`
+ * passes its raw `baseUrl` as `bindIssuer`; `discoverFromResource` passes the
+ * advertised issuer. Not exported — no public binding override.
  */
 async function discoverAndBind(
   issuerOrigin: string,

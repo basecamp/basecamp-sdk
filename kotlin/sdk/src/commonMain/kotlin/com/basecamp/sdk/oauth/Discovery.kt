@@ -187,8 +187,9 @@ private suspend fun fetchAndBindAsMetadata(
         throw BasecampException.Api("Failed to parse OAuth discovery response", httpStatus = 200, cause = e)
     }
     // Fetch from the normalized origin, but bind the metadata issuer against the
-    // exact advertised string when supplied (routing vs binding are distinct);
-    // the public discover passes none, so it binds to its own normalized origin.
+    // caller's raw identifier (routing vs binding are distinct): public discover
+    // passes its raw baseUrl, discoverFromResource passes the advertised issuer.
+    // The `?: issuerOrigin` fallback only applies if a caller omits bindIssuer.
     return bindAsMetadata(raw, bindIssuer ?: issuerOrigin)
 }
 
