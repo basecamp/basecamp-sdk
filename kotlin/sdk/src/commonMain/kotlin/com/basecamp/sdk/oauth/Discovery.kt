@@ -295,6 +295,21 @@ suspend fun discoverProtectedResource(
     val url = "$origin/.well-known/oauth-protected-resource"
 
     val body = fetchDiscoveryDocument(url, client)
+    // A present `authorization_servers: null` is MALFORMED metadata, not absent: a
+    // nullable Kotlin field collapses present-null and omitted to the same null, so
+    // reject present-null at the JSON layer (→ soft resource_discovery_failed in the
+    // orchestrator, never a silent no_as_advertised). Present-[] stays valid/empty.
+    val obj = try {
+        discoveryJson.parseToJsonElement(body) as? JsonObject
+    } catch (e: SerializationException) {
+        throw BasecampException.Api("Failed to parse resource metadata response", httpStatus = 200, cause = e)
+    } ?: throw BasecampException.Api("Failed to parse resource metadata response", httpStatus = 200)
+    if (obj["authorization_servers"] is JsonNull) {
+        throw BasecampException.Api(
+            "Invalid resource metadata: authorization_servers must be an array of strings",
+            httpStatus = 200,
+        )
+    }
     val raw = try {
         discoveryJson.decodeFromString<RawResourceResponse>(body)
     } catch (e: SerializationException) {

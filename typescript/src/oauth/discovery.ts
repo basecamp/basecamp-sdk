@@ -164,9 +164,15 @@ export function requireOriginRoot(raw: string, label = "origin"): string {
   if (url.pathname !== "" && url.pathname !== "/") {
     throw new BasecampError("usage", `${label} must be an origin root (no path): ${raw}`);
   }
-  // Note: `new URL("https://h:notaport")` throws above, so a surviving url has a
-  // structurally valid (possibly default) port. url.origin drops a default port
-  // and any trailing slash — exactly the normalized origin we want.
+  // `new URL("https://h:notaport")` throws above and WHATWG rejects ports > 65535,
+  // but it ACCEPTS port 0 and keeps it in the origin. The origin-root profile (like
+  // the other SDKs) rejects any port outside 1–65535, so a caller/advertised issuer
+  // using `:0` fails as usage / invalid_issuer_origin rather than proceeding to a fetch.
+  if (url.port !== "" && (Number(url.port) < 1 || Number(url.port) > 65535)) {
+    throw new BasecampError("usage", `${label} has an invalid port: ${raw}`);
+  }
+  // Note: a surviving url has a structurally valid (possibly default) port. url.origin
+  // drops a default port and any trailing slash — exactly the normalized origin we want.
   return url.origin;
 }
 

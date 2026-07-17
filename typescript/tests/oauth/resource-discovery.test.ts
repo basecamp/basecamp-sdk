@@ -355,6 +355,12 @@ describe("requireOriginRoot userinfo rejection", () => {
       expect(() => requireOriginRoot(raw)).toThrow(/query or fragment/);
     }
   );
+
+  // WHATWG accepts port 0 and keeps it in the origin; the origin-root profile
+  // rejects any port outside 1–65535, matching the other SDKs.
+  it("rejects port 0", () => {
+    expect(() => requireOriginRoot("https://host:0")).toThrow(/invalid port/);
+  });
 });
 
 describe("resource metadata strictness (#369 review)", () => {

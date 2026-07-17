@@ -241,7 +241,7 @@ def discover_protected_resource(
     # Preserve absent (None) vs present-empty ([]). When present it must be a list
     # of strings — a bare string previously slipped through and was iterated
     # char-by-char during selection; reject it as malformed so the orchestrator
-    # soft-falls-back. A present-but-null value normalizes to [].
+    # soft-falls-back. A present JSON null is malformed too (NOT normalized to []).
     authorization_servers: list[str] | None
     if "authorization_servers" not in data:
         authorization_servers = None

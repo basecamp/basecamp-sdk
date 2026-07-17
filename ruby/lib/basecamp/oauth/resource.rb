@@ -62,11 +62,11 @@ module Basecamp
 
       private
 
-        # Preserve absent (+nil+) vs present-empty (+[]+); a present +null+ is
-        # normalized to +[]+ to match the "present but empty" posture. A present
-        # value that is not an array of strings is malformed metadata and must be
-        # rejected — never iterated (a bare string would otherwise be treated as a
-        # sequence of single-character issuers during selection).
+        # Preserve absent (+nil+) vs present-empty (+[]+). A present value that is
+        # not an array of strings — including a JSON +null+ — is malformed metadata
+        # and is rejected (→ soft resource_discovery_failed in the orchestrator),
+        # never iterated (a bare string would otherwise be treated as a sequence of
+        # single-character issuers during selection) and never normalized to +[]+.
         def extract_authorization_servers(data)
           return nil unless data.key?("authorization_servers")
 

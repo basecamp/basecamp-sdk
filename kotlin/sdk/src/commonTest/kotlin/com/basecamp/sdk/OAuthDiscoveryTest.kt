@@ -601,6 +601,19 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `27 authorization_servers present null`() = runScenario(
+        Scenario(
+            name = "authorization-servers-present-null",
+            op = Op.FROM_RESOURCE,
+            // A present authorization_servers: null is MALFORMED (not absent, not
+            // empty): the nullable field must not collapse it to absent. It fails
+            // hop-1 → soft resource_discovery_failed, never a silent no_as_advertised.
+            resourceOrigin = RESOURCE,
+            hop1 = Hop(body = "{\"resource\":\"$RESOURCE\",\"authorization_servers\":null}"),
+            fallbackReason = "resource_discovery_failed",
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS
