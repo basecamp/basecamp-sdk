@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import math
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -81,51 +82,48 @@ def _post_form_bounded(
     :class:`httpx.TimeoutException`) so callers classify them; an oversized body
     raises :class:`OAuthError` (``api_error``).
     """
-    # Normalize first (a non-finite/non-positive timeout would disable both httpx's
-    # bound and the wall-clock deadline below), then bound the WHOLE streamed
-    # response: httpx's timeout is per-received-chunk and resets each iteration, so
-    # a slow-drip peer could otherwise hang a device request past the timeout and
-    # the device-code deadline while staying under ``max_body_bytes``. Mirrors
-    # :func:`basecamp.oauth.discovery._fetch_discovery_document`.
     timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT)
-    # Start the deadline BEFORE httpx.stream so it also bounds the header phase:
-    # httpx's read timeout is per-read and resets each time, so a peer trickling
-    # header bytes could otherwise hold the POST open past the timeout before the
-    # body loop is ever reached.
-    deadline = time.monotonic() + timeout
-    with httpx.stream(
-        "POST",
-        url,
-        data=params,
-        headers=_FORM_HEADERS,
-        timeout=timeout,
-        follow_redirects=False,
-    ) as response:
-        # Headers are now in. If reading them already outlived the deadline (a
-        # slow-drip header phase), abort before touching the body.
-        if time.monotonic() > deadline:
-            raise httpx.ReadTimeout("Device flow read exceeded the timeout deadline")
-        chunks: list[bytes] = []
-        total = 0
-        for chunk in response.iter_bytes():
-            if time.monotonic() > deadline:
-                # Surface as a read timeout so the caller's existing
-                # httpx.TimeoutException / HTTPError handling classifies it as the
-                # transport/timeout path (poll → backoff, request → transport).
-                raise httpx.ReadTimeout("Device flow read exceeded the timeout deadline")
-            total += len(chunk)
-            if total > max_body_bytes:
-                # Abort the stream — leaving the ``with`` closes the connection,
-                # so the oversized body is never fully buffered.
-                raise OAuthError("api_error", "Device flow response exceeds size cap")
-            chunks.append(chunk)
-        # The in-loop check runs BEFORE each chunk, so it can't catch the final
-        # read: EOF (or the last chunk) may land just after the deadline while
-        # staying within httpx's per-chunk timeout. Re-check after the stream ends
-        # so a slow-drip response can't extend the whole read past the deadline.
-        if time.monotonic() > deadline:
-            raise httpx.ReadTimeout("Device flow read exceeded the timeout deadline")
-        return response.status_code, b"".join(chunks)
+    client = httpx.Client(timeout=timeout, follow_redirects=False)
+
+    result: list[tuple[int, bytes]] = []
+    error: list[Exception] = []
+
+    def _worker() -> None:
+        try:
+            with client.stream("POST", url, data=params, headers=_FORM_HEADERS) as response:
+                chunks: list[bytes] = []
+                total = 0
+                for chunk in response.iter_bytes():
+                    total += len(chunk)
+                    if total > max_body_bytes:
+                        # An oversized body is api_error, not a timeout — abort the
+                        # stream so it is never fully buffered.
+                        raise OAuthError("api_error", "Device flow response exceeds size cap")
+                    chunks.append(chunk)
+                result.append((response.status_code, b"".join(chunks)))
+        except Exception as exc:  # re-raised on the caller thread below
+            error.append(exc)
+
+    # httpx's timeout is per-read — it resets on every received chunk — so it does
+    # NOT bound the WHOLE exchange against a peer that slow-drips header or body
+    # bytes just under that interval, and httpx has no total-request timeout
+    # (https://www.python-httpx.org/advanced/timeouts/). Closing the client from a
+    # watchdog does not interrupt a blocked read either. So run the request on a
+    # daemon worker and enforce a HARD wall-clock bound on the caller with
+    # join(timeout): a stalled/slow-drip request returns within `timeout` as a read
+    # timeout. The abandoned daemon worker never blocks interpreter exit and dies on
+    # its own per-read timeout; client.close() below is a best-effort unblock.
+    worker = threading.Thread(target=_worker, daemon=True)
+    worker.start()
+    worker.join(timeout)
+    try:
+        if worker.is_alive():
+            raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline")
+        if error:
+            raise error[0]
+        return result[0]
+    finally:
+        client.close()
 
 
 def request_device_authorization(

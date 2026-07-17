@@ -87,17 +87,31 @@ def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT) -> 
     device flow passes ``_DEVICE_TIMEOUT`` (30s), so an invalid runtime value falls
     back to that operation's own budget rather than a foreign one.
     """
-    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
-        return default
+    value = _finite_positive_timeout(timeout)
+    if value is not None:
+        return value
+    # Validate the fallback too: a caller passing an invalid ``default`` must not be
+    # able to disable both bounds. Fall back to the discovery constant if it is bad.
+    fallback = _finite_positive_timeout(default)
+    return fallback if fallback is not None else _DISCOVERY_TIMEOUT
+
+
+def _finite_positive_timeout(value: object) -> float | None:
+    """Return ``value`` as a finite, positive float, or None if it is not one.
+
+    ``bool`` is excluded (an ``int`` subclass, but a nonsensical timeout); an int
+    too large to convert to float (``10**400``) is rejected rather than letting
+    ``math.isfinite``/``float`` raise.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
     try:
-        value = float(timeout)
+        f = float(value)
     except OverflowError:
-        # An int too large to convert to float (e.g. 10**400) — treat as invalid
-        # rather than letting math.isfinite/float raise out of the normalizer.
-        return default
-    if not math.isfinite(value) or value <= 0:
-        return default
-    return value
+        return None
+    if not math.isfinite(f) or f <= 0:
+        return None
+    return f
 
 
 def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> Any:
