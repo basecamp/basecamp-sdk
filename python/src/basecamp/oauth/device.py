@@ -66,6 +66,10 @@ _MAX_DEVICE_REQUEST_TIMEOUT = 3600.0
 #: Granularity (seconds) for polling ``should_cancel`` while waiting between polls.
 _CANCEL_POLL_INTERVAL = 0.1
 
+#: Extra time (seconds) to let a timed-out request's async cancellation/cleanup
+#: unwind before the caller abandons the (daemon) worker and returns a timeout.
+_WORKER_JOIN_GRACE = 5.0
+
 # Cap on a device-flow response body (1 MiB) — these responses are tiny; a
 # larger one is a fault, so abort rather than buffer it. Mirrors discovery.
 MAX_DEVICE_BODY_BYTES = 1 * 1024 * 1024
@@ -130,9 +134,16 @@ def _post_form_bounded(
         except Exception as exc:  # captured and re-raised on the caller thread
             error.append(exc)
 
-    worker = threading.Thread(target=_runner)
+    worker = threading.Thread(target=_runner, daemon=True)
     worker.start()
-    worker.join()
+    # asyncio.wait_for cancels the request at `timeout`, so the worker normally
+    # finishes well within it. Join with a small grace for the cancellation/cleanup
+    # to unwind; if even that stalls (a pathological async cleanup hang), return a
+    # timeout rather than block the caller — the daemon worker never blocks
+    # interpreter exit. This is bounded AND non-leaking in every non-pathological case.
+    worker.join(timeout + _WORKER_JOIN_GRACE)
+    if worker.is_alive():
+        raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline")
     if error:
         exc = error[0]
         if isinstance(exc, TimeoutError):
@@ -387,6 +398,10 @@ def poll_device_token(
             continue
         if error == "slow_down":
             interval_seconds += SLOW_DOWN_INCREMENT_SECONDS
+            # Re-sync the backoff to the GROWN interval (the reset above used the
+            # pre-increment value) so a later timeout doubles from the new interval,
+            # not the stale one.
+            backoff_seconds = interval_seconds
             continue
         if error == "access_denied":
             raise DeviceFlowError("access_denied", "The authorization request was denied")
