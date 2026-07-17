@@ -1324,7 +1324,7 @@ func (t cancelOnReadTransport) RoundTrip(req *http.Request) (*http.Response, err
 	return &http.Response{
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": {"application/json"}},
-		Body:       cancelOnReadBody{cancel: t.cancel},
+		Body:       cancelOnReadBody(t),
 		Request:    req,
 	}, nil
 }
