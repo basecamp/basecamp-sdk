@@ -252,6 +252,12 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		if errors.Is(err, errBodyTooLarge) {
 			return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: fmt.Sprintf("device authorization response too large: %v", err), Cause: err}
 		}
+		// A caller abort while the body is still streaming must surface as
+		// cancellation too, not transport — same parent-ctx.Err() guard as the Do()
+		// error above and the token poll's body read.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+		}
 		return nil, &DeviceFlowError{Reason: DeviceFlowTransport, Err: fmt.Errorf("reading device authorization response: %w", err)}
 	}
 
