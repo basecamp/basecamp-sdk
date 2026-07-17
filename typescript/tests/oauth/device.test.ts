@@ -296,6 +296,21 @@ describe("requestDeviceAuthorization", () => {
       requestDeviceAuthorization({ deviceAuthorizationEndpoint: DEVICE_ENDPOINT, clientId: "basecamp-cli" })
     ).rejects.toMatchObject({ code: "api_error" });
   });
+
+  it("treats a JSON null verification_uri_complete as absent → undefined (cross-SDK contract)", async () => {
+    // Go/Kotlin decoders cannot distinguish null from absent for optional strings,
+    // so null must be accepted as absent here, not rejected — and normalized to undefined.
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () =>
+        HttpResponse.json({ ...deviceAuthResponse, verification_uri_complete: null })
+      )
+    );
+    const auth = await requestDeviceAuthorization({
+      deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+      clientId: "basecamp-cli",
+    });
+    expect(auth.verificationUriComplete).toBeUndefined();
+  });
 });
 
 describe("pollDeviceToken", () => {

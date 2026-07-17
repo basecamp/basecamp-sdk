@@ -220,9 +220,15 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization, status: numbe
     }
     interval = data.interval;
   }
-  // Optional, but when present it must be a string — a non-string (number/array)
-  // would return a malformed DeviceAuthorization shape to callers.
-  if (data.verification_uri_complete !== undefined && typeof data.verification_uri_complete !== "string") {
+  // Optional; when present it must be a string. A JSON `null` is treated as
+  // ABSENT (cross-SDK contract: the Go and Kotlin decoders cannot distinguish
+  // null from absent) and normalized to undefined below — a non-string value
+  // (number/array) is still rejected as a malformed shape.
+  if (
+    data.verification_uri_complete !== undefined &&
+    data.verification_uri_complete !== null &&
+    typeof data.verification_uri_complete !== "string"
+  ) {
     throw new BasecampError("api_error", "Invalid device authorization response: verification_uri_complete must be a string", {
       httpStatus: status,
     });
@@ -231,7 +237,7 @@ function validateDeviceAuthorization(data: RawDeviceAuthorization, status: numbe
     deviceCode: data.device_code,
     userCode: data.user_code,
     verificationUri: data.verification_uri,
-    verificationUriComplete: data.verification_uri_complete,
+    verificationUriComplete: data.verification_uri_complete ?? undefined,
     expiresIn: data.expires_in,
     interval,
   };
@@ -511,10 +517,20 @@ async function postDeviceToken(
   }
 }
 
+// A plain Error tagged "AbortError" rather than `new DOMException(...)`:
+// DOMException is not guaranteed in every JS runtime that can run this SDK
+// (referencing it there throws ReferenceError). isAbort() matches on
+// `name === "AbortError"`, so cancellation stays runtime-agnostic.
+function abortError(): Error {
+  const err = new Error("Aborted");
+  err.name = "AbortError";
+  return err;
+}
+
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
-      reject(new DOMException("Aborted", "AbortError"));
+      reject(abortError());
       return;
     }
     // Declare the handler before the timer so neither forward-references the
@@ -523,13 +539,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     let timer: ReturnType<typeof setTimeout>;
     const onAbort = () => {
       clearTimeout(timer);
-      // A plain Error tagged "AbortError" rather than `new DOMException(...)`:
-      // DOMException is not guaranteed in every JS runtime that can run this SDK
-      // (referencing it there throws ReferenceError). isAbort() matches on
-      // `name === "AbortError"`, so this stays runtime-agnostic.
-      const abortError = new Error("Aborted");
-      abortError.name = "AbortError";
-      reject(abortError);
+      reject(abortError());
     };
     timer = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
