@@ -152,12 +152,19 @@ func requireOriginRoot(raw, label string) (string, error) {
 	}
 
 	// url.Parse rejects a non-numeric port but accepts a numeric-but-out-of-range
-	// one (e.g. ":99999"), so range-check it explicitly against 1–65535.
+	// one (e.g. ":99999"), so range-check it explicitly against 1–65535. Keep the
+	// parsed int and render it canonically below: net/url's Port() is the RAW token,
+	// so a leading-zero spelling of the default (":000443") would otherwise slip past
+	// the string default-port drop and leave a non-canonical ":000443" origin —
+	// breaking isLaunchpadIssuer's origin-equality (a Launchpad advertisement with
+	// that spelling would be misread as a distinct BC5 issuer).
+	portNum := 0
 	if port := u.Port(); port != "" {
 		n, err := strconv.Atoi(port)
 		if err != nil || n < 1 || n > 65535 {
 			return "", usage(fmt.Sprintf("%s has an invalid port: %s", label, raw))
 		}
+		portNum = n
 	}
 
 	// net/url reports an empty Port() for a dangling ":" ("https://host:"), so
@@ -187,14 +194,14 @@ func requireOriginRoot(raw, label string) (string, error) {
 	} else {
 		origin += host
 	}
-	if port := u.Port(); port != "" && !isDefaultPort(scheme, port) {
-		origin += ":" + port
+	if portNum != 0 && !isDefaultPort(scheme, portNum) {
+		origin += ":" + strconv.Itoa(portNum)
 	}
 	return origin, nil
 }
 
-func isDefaultPort(scheme, port string) bool {
-	return (scheme == "https" && port == "443") || (scheme == "http" && port == "80")
+func isDefaultPort(scheme string, port int) bool {
+	return (scheme == "https" && port == 443) || (scheme == "http" && port == 80)
 }
 
 // isLaunchpadIssuer reports whether an advertised issuer denotes Launchpad.
@@ -404,9 +411,7 @@ func parseAndBindASMetadata(body []byte, expectedIssuerOrigin string) (*Config, 
 		GrantTypesSupported:           raw.GrantTypesSupported,
 		ScopesSupported:               raw.ScopesSupported,
 		CodeChallengeMethodsSupported: raw.CodeChallengeMethodsSupported,
-	}
-	if raw.RegistrationEndpoint != nil {
-		cfg.RegistrationEndpoint = *raw.RegistrationEndpoint
+		RegistrationEndpoint:          raw.RegistrationEndpoint,
 	}
 	return cfg, nil
 }

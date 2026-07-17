@@ -30,8 +30,8 @@ type Config struct {
 	DeviceAuthorizationEndpoint *string `json:"device_authorization_endpoint,omitempty"`
 
 	// RegistrationEndpoint is the URL of the dynamic client registration
-	// endpoint (optional).
-	RegistrationEndpoint string `json:"registration_endpoint,omitempty"`
+	// endpoint (optional; nil when absent, matching the other optional endpoints).
+	RegistrationEndpoint *string `json:"registration_endpoint,omitempty"`
 
 	// GrantTypesSupported lists the OAuth 2.0 grant types the server supports.
 	GrantTypesSupported []string `json:"grant_types_supported,omitempty"`

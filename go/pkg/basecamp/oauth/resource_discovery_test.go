@@ -337,6 +337,12 @@ func TestRequireOriginRoot(t *testing.T) {
 		{"https://api.example.com:8443", "https://api.example.com:8443"},
 		{"https://api.example.com:443", "https://api.example.com"}, // default port dropped
 		{"https://h:443", "https://h"},                             // in-range port accepted
+		// net/url's Port() is the RAW token; the normalized origin must use the
+		// canonical integer so a leading-zero default drops and a leading-zero
+		// non-default renders without zeros (else origin-equality / Launchpad
+		// exclusion breaks). The other SDKs' parsers return an int port for free.
+		{"https://api.example.com:000443", "https://api.example.com"},  // leading-zero default dropped
+		{"https://api.example.com:0080", "https://api.example.com:80"}, // leading-zero non-default canonicalized
 		{"http://localhost:3000", "http://localhost:3000"},
 		{"http://[::1]:3000", "http://[::1]:3000"},
 		{"http://127.0.0.1:9999", "http://127.0.0.1:9999"},
