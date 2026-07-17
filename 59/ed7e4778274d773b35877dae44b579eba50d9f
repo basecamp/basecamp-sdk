@@ -1,0 +1,26 @@
+conformance/oauth/fixtures/38-unmodeled-endpoint-empty.json
+  s_b250506ef28983::t_d1d5eae3404a37 1-21
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_aa9c717b920b4b 21
+  s_b250506ef28983::t_f9df161b7e3da0 181-185,191
+  s_b250506ef28983::t_85f8d06e041e20 270-271
+  s_b250506ef28983::t_5acd6150de7522 205-213,215-219,221
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_931d2bd88acde6 763-793
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "59ed7e4778274d773b35877dae44b579eba50d9f",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
