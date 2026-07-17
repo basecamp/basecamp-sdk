@@ -99,8 +99,9 @@ describe("resource-first discovery fixtures", () => {
 
   beforeEach(() => {
     launchpadContacted = false;
-    // Track any request to the Launchpad well-known endpoints. The orchestrator
-    // itself never contacts Launchpad; hard cases must never reach here.
+    // Track ANY request to a Launchpad well-known endpoint — both the AS metadata
+    // and the protected-resource metadata — so a hard case that wrongly hit either
+    // Launchpad endpoint is caught. The orchestrator itself never contacts Launchpad.
     server.use(
       mswHttp.get(`${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}${WELL_KNOWN.as}`, () => {
         launchpadContacted = true;
@@ -109,6 +110,10 @@ describe("resource-first discovery fixtures", () => {
           authorization_endpoint: `${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}/authorization/new`,
           token_endpoint: `${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}/authorization/token`,
         });
+      }),
+      mswHttp.get(`${ORIGINS["{{LAUNCHPAD_ORIGIN}}"]}${WELL_KNOWN.resource}`, () => {
+        launchpadContacted = true;
+        return HttpResponse.json({ resource: ORIGINS["{{LAUNCHPAD_ORIGIN}}"] });
       })
     );
   });
@@ -377,6 +382,15 @@ describe("requireOriginRoot userinfo rejection", () => {
     "rejects a WHATWG-normalized spelling %j",
     (raw) => {
       expect(() => requireOriginRoot(raw)).toThrow(/invalid characters/);
+    }
+  );
+
+  // WHATWG recovers a missing/extra-slash authority into a clean origin; require
+  // an explicit "://" + non-empty authority.
+  it.each(["https:host", "https:///host"])(
+    "rejects a missing-authority spelling %j",
+    (raw) => {
+      expect(() => requireOriginRoot(raw)).toThrow(/origin root/);
     }
   );
 });

@@ -42,15 +42,20 @@ import kotlinx.serialization.json.JsonObject
  * device-only authorization servers omit it, so authorization-code consumers
  * MUST assert its presence before use. [tokenEndpoint] remains required.
  */
+// NOTE: deviceAuthorizationEndpoint is APPENDED after the pre-existing fields.
+// A data class constructor is a positional public API, so inserting a new field
+// mid-list would shift positional callers (e.g. OAuthConfig("iss","auth","token",
+// "reg") would fill the wrong field). Keep new fields last. JSON is by @SerialName,
+// so declaration order does not affect (de)serialization.
 @Serializable
 data class OAuthConfig(
     val issuer: String,
     @SerialName("authorization_endpoint") val authorizationEndpoint: String? = null,
     @SerialName("token_endpoint") val tokenEndpoint: String,
-    @SerialName("device_authorization_endpoint") val deviceAuthorizationEndpoint: String? = null,
     @SerialName("registration_endpoint") val registrationEndpoint: String? = null,
     @SerialName("scopes_supported") val scopesSupported: List<String> = emptyList(),
     @SerialName("grant_types_supported") val grantTypesSupported: List<String> = emptyList(),
+    @SerialName("device_authorization_endpoint") val deviceAuthorizationEndpoint: String? = null,
 )
 
 /**

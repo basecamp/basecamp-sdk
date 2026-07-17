@@ -719,6 +719,19 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `36 origin-root missing authority rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-missing-authority",
+            op = Op.PROTECTED_RESOURCE,
+            // No explicit "//" authority; WHATWG-style parsers recover it into a
+            // clean origin, so it must be rejected as malformed.
+            resourceOrigin = "https:api.example.com",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `34 resource-first trailing slash binds`() = runScenario(
         Scenario(
             name = "resource-first-trailing-slash-binds",

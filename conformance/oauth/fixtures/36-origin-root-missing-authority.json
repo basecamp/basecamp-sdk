@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-missing-authority",
+  "description": "A caller origin without an explicit '//' authority ('https:api.example.com') is malformed. WHATWG-style parsers recover it into a clean origin; each SDK requires an explicit non-empty authority delimiter and rejects it.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https:api.example.com",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}
