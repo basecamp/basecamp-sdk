@@ -567,6 +567,14 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       resolve();
     }, ms);
     signal?.addEventListener("abort", onAbort, { once: true });
+    // Race: the signal can abort between the `signal?.aborted` check above and
+    // attaching this listener. With { once }, that abort event is already spent, so
+    // the listener would never fire and the promise would only settle at the full
+    // timeout. Re-check and handle it manually, dropping the now-dead listener.
+    if (signal?.aborted) {
+      signal.removeEventListener("abort", onAbort);
+      onAbort();
+    }
   });
 }
 
