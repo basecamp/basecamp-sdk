@@ -144,6 +144,15 @@ export async function requestDeviceAuthorization(
         cause: err instanceof Error ? err : undefined,
       });
     }
+    // A non-2xx (including a suppressed 3xx) is a hard failure whose body is
+    // unused, so surface it by status BEFORE draining the body. Otherwise a
+    // slow/never-ending error body could time out mid-read and be misclassified
+    // as a retryable transport failure instead of the api_error it is.
+    if (response.status < 200 || response.status >= 300) {
+      throw new BasecampError("api_error", `Device authorization failed with status ${response.status}`, {
+        httpStatus: response.status,
+      });
+    }
     // Bounded/streaming read: an oversized body aborts before it is fully
     // buffered. The abort timer stays armed until the read completes, so a
     // stalled response STREAM times out just like a stalled request; an
@@ -162,12 +171,6 @@ export async function requestDeviceAuthorization(
     clearTimeout(timeoutId);
   }
 
-  // Reject any non-2xx (including a suppressed 3xx) before parsing.
-  if (response.status < 200 || response.status >= 300) {
-    throw new BasecampError("api_error", `Device authorization failed with status ${response.status}`, {
-      httpStatus: response.status,
-    });
-  }
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -450,14 +453,20 @@ async function postDeviceToken(
       // api_error below rather than followed.
       redirect: "manual",
     });
-    // Bounded/streaming read: an oversized body aborts before it is fully buffered.
-    const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device token");
-    // A suppressed 3xx is never a valid OAuth response — fail as api_error.
+    // A suppressed 3xx is never a valid OAuth response and its body is unused —
+    // fail by status BEFORE draining the body. Otherwise a redirect that slowly
+    // streams its body could time out mid-read and be misclassified as a
+    // connection timeout, which the poll loop would back off and retry (until the
+    // device code expires) instead of surfacing the api_error now.
     if (response.status >= 300 && response.status < 400) {
       throw new BasecampError("api_error", `Device token endpoint returned redirect status ${response.status}`, {
         httpStatus: response.status,
       });
     }
+    // Bounded/streaming read: an oversized body aborts before it is fully buffered.
+    // A 4xx still reads the body — that is how authorization_pending/slow_down and
+    // other OAuth errors are carried.
+    const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device token");
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
@@ -530,7 +539,11 @@ async function postDeviceToken(
         },
       };
     }
-    const error = (data as OAuthErrorResponse).error || `http_${response.status}`;
+    // Validate `error` as a non-empty string: a non-string (e.g. `{"error": 123}`)
+    // must not be treated as an OAuth error code — fall back to http_<status>,
+    // matching the other SDKs (Ruby String-checks, Kotlin falls back on decode).
+    const rawError = (data as { error?: unknown }).error;
+    const error = typeof rawError === "string" && rawError !== "" ? rawError : `http_${response.status}`;
     return { kind: "error", error, status: response.status };
   } finally {
     clearTimeout(timeoutId);

@@ -1023,6 +1023,48 @@ describe("device transport hardening", () => {
     expect(attackerContacted).toBe(false);
   });
 
+  it("treats a non-string token error as http_<status> (cross-SDK parity)", async () => {
+    queueTokenResponses([{ status: 400, body: { error: 123 } }]);
+    const { fn } = recordingSleep();
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("api_error");
+    // 123 is not a valid error code → falls back to http_400, never surfaced as-is.
+    expect(err.message).toContain("http_400");
+  });
+
+  it("fails a redirecting token poll by status without draining a huge body", async () => {
+    // A 3xx must surface as api_error by STATUS before the body is read — else a
+    // slow or oversized redirect body could time out (retried) or trip the size cap.
+    server.use(
+      mswHttp.post(
+        TOKEN_ENDPOINT,
+        () => new HttpResponse("x".repeat(2 * 1024 * 1024), { status: 302, headers: { Location: "https://x/" } })
+      )
+    );
+    const { fn } = recordingSleep();
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("api_error");
+    expect(err.message).toContain("redirect"); // by status, not "too large"
+  });
+
   it("clamps the backoff wait to the monotonic deadline (never overshoots expiry)", async () => {
     // Every poll times out (connection timeout), forcing sustained backoff.
     const fakeFetch: typeof globalThis.fetch = async () => {
