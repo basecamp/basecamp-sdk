@@ -183,6 +183,17 @@ def test_origin_root_rejects_bare_query_or_fragment(raw: str) -> None:
         require_origin_root(raw)
 
 
+def test_body_cap_normalizes_non_finite_to_default() -> None:
+    from basecamp.oauth.discovery import MAX_DISCOVERY_BODY_BYTES, _normalize_body_cap
+
+    # None/float/inf/negative would disable the streaming memory bound; each must
+    # fall back to the finite default so the SSRF cap can never be turned off.
+    for bad in (None, float("inf"), 1.5, -1, True, "big"):
+        assert _normalize_body_cap(bad) == MAX_DISCOVERY_BODY_BYTES
+    # A valid non-negative int is preserved.
+    assert _normalize_body_cap(4096) == 4096
+
+
 def test_origin_root_rejects_dangling_port() -> None:
     # A dangling ":" normalizes to port None under httpx (looks like no port); the
     # raw-authority check must still reject the malformed authority.

@@ -56,6 +56,20 @@ class _IssuerBindingError(OAuthError):
         super().__init__("api_error", message, **kwargs)
 
 
+def _normalize_body_cap(max_body_bytes: object) -> int:
+    """Coerce the public cap to a finite, non-negative int.
+
+    ``max_body_bytes`` is *typed* ``int``, but callers can pass ``None``, a float,
+    or ``float("inf")`` at runtime; any of those would disable the streaming memory
+    bound (``total > inf`` never trips), defeating the SSRF guarantee. Fall back to
+    the default so the bound can never be turned off. ``bool`` is excluded (a
+    subclass of ``int``, but a nonsensical cap).
+    """
+    if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0:
+        return MAX_DISCOVERY_BODY_BYTES
+    return max_body_bytes
+
+
 def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> Any:
     """SSRF-hardened GET of a discovery document.
 
@@ -64,6 +78,7 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
     streaming cap that aborts once ``max_body_bytes`` is exceeded, and maps any
     non-2xx status to ``api_error`` (not ``network``).
     """
+    max_body_bytes = _normalize_body_cap(max_body_bytes)
     try:
         with httpx.stream(
             "GET",
