@@ -599,6 +599,13 @@ func (d *Discoverer) DiscoverFromResource(ctx context.Context, resourceOrigin st
 		if errors.Is(err, errIssuerBindingMismatch) {
 			return nil, newSelectionError(ErrIssuerMismatch, err.Error(), err)
 		}
+		// A caller cancelling (or its deadline expiring) during the committed AS
+		// fetch must surface as cancellation, not a misclassified as_fetch_failed
+		// api_error. As on the hop-1 path, the parent ctx.Err() is non-nil only for
+		// a caller abort — the SDK's own per-fetch timeout is a child context.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		return nil, newSelectionError(ErrASFetchFailed,
 			fmt.Sprintf("authorization server metadata fetch failed for committed issuer %q: %v", issuerOrigin, err), err)
 	}

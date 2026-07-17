@@ -618,6 +618,48 @@ func TestDiscoverFromResource_OwnTimeoutStillSoftFallsBack(t *testing.T) {
 	}
 }
 
+// TestDiscoverFromResource_ASStageCancellationPropagates is the hop-2 companion:
+// a caller cancelling during the committed-issuer AS metadata fetch must see the
+// cancellation, not a misclassified ErrASFetchFailed/api_error.
+func TestDiscoverFromResource_ASStageCancellationPropagates(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	started := make(chan struct{})
+	bc5 := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done() // block the AS fetch until the caller cancels
+	}))
+	defer bc5.Close()
+
+	var resourceOrigin string
+	resource := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"resource":"` + resourceOrigin + `","authorization_servers":["` + bc5.URL + `"]}`))
+	}))
+	defer resource.Close()
+	resourceOrigin = resource.URL
+
+	go func() {
+		<-started
+		cancel()
+	}()
+
+	result, err := NewDiscoverer(resource.Client()).DiscoverFromResource(ctx, resourceOrigin)
+	if err == nil {
+		t.Fatalf("expected cancellation error, got result: %+v", result)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("errors.Is(err, context.Canceled) = false; err = %v", err)
+	}
+	if errors.Is(err, ErrASFetchFailed) {
+		t.Errorf("caller cancellation must not be misclassified as ErrASFetchFailed; err = %v", err)
+	}
+	if result != nil {
+		t.Errorf("expected nil result on cancellation, got %+v", result)
+	}
+}
+
 func TestDiscoverFromResource_MixedCaseLaunchpadExcluded(t *testing.T) {
 	// A mixed-case Launchpad host must be recognized as Launchpad (hosts are
 	// case-insensitive), so it is excluded and discovery soft-falls-back with
