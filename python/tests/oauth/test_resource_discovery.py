@@ -235,6 +235,10 @@ def test_timeout_normalizes_to_operation_specific_default() -> None:
     # primitive) falls back to the default; within the maximum it is preserved.
     assert _normalize_timeout(1e300, 30.0, maximum=3600.0) == 30.0
     assert _normalize_timeout(60.0, 30.0, maximum=3600.0) == 60.0
+    # The maximum is inclusive (`value <= maximum`): a value exactly at it is kept.
+    assert _normalize_timeout(3600.0, 30.0, maximum=3600.0) == 3600.0
+    # And an impossible maximum (below the discovery constant) is itself honored.
+    assert _normalize_timeout(None, None, maximum=2.0) == 2.0  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("raw", ["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])
