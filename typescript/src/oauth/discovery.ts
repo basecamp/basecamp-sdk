@@ -12,7 +12,7 @@
  * bounded cap that aborts before the whole oversized body is buffered.
  */
 
-import { BasecampError } from "../errors.js";
+import { BasecampError, truncateErrorMessage } from "../errors.js";
 import { isLocalhost } from "../security.js";
 import type {
   OAuthConfig,
@@ -313,11 +313,15 @@ async function fetchDiscoveryDocument(
     });
 
     if (!response.ok || (response.status >= 300 && response.status < 400)) {
-      // Drain-and-cap defensively; body is unused on the error path.
+      // Drain-and-cap defensively; body is unused on the error path. Truncate
+      // before embedding: the bounded read still permits up to maxBodyBytes (1 MiB
+      // default), and interpolating that whole body into the error string risks log
+      // spam / memory pressure and could echo sensitive server content. Cap it to
+      // 500 chars to match Go/Python/Ruby's truncated discovery error messages.
       const body = await readBodyBounded(response, maxBodyBytes).catch(() => "");
       throw new BasecampError(
         "api_error",
-        `OAuth discovery failed with status ${response.status}: ${body}`,
+        `OAuth discovery failed with status ${response.status}: ${truncateErrorMessage(body)}`,
         { httpStatus: response.status }
       );
     }

@@ -149,6 +149,29 @@ describe("OAuth Discovery", () => {
       }
     });
 
+    it("truncates a large non-2xx body in the error message", async () => {
+      const hugeBody = "x".repeat(200_000);
+      server.use(
+        http.get(
+          "https://launchpad.37signals.com/.well-known/oauth-authorization-server",
+          () => HttpResponse.text(hugeBody, { status: 502 })
+        )
+      );
+
+      try {
+        await discover("https://launchpad.37signals.com");
+        expect.fail("Should have thrown");
+      } catch (err) {
+        expect(err).toBeInstanceOf(BasecampError);
+        // The body is capped at 500 chars (matching Go/Python/Ruby), so the message
+        // never grows with the response body — no log spam / memory pressure.
+        const msg = (err as BasecampError).message;
+        expect(msg.length).toBeLessThan(600);
+        expect(msg).toContain("...");
+        expect(msg).not.toContain(hugeBody);
+      }
+    });
+
     it("throws BasecampError on invalid JSON response", async () => {
       server.use(
         http.get(
