@@ -45,12 +45,19 @@ module Basecamp
       # (10s), device flow passes its own 30s budget, so an invalid runtime value
       # falls back to that operation's own timeout rather than a foreign one.
       def self.normalize_timeout(timeout, default: DEFAULT_TIMEOUT)
-        # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
-        # not define — calling them would raise NoMethodError). Integer, Float, and
-        # Rational are all real and answer both.
-        return timeout if timeout.is_a?(Numeric) && timeout.real? && timeout.finite? && timeout.positive?
+        return timeout if valid_timeout?(timeout)
+        # Validate the fallback too: a caller passing an invalid +default+ must not
+        # be able to disable both timeout bounds. Fall back to the finite constant.
+        return default if valid_timeout?(default)
 
-        default
+        DEFAULT_TIMEOUT
+      end
+
+      # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
+      # not define — calling them would raise NoMethodError). Integer, Float, and
+      # Rational are all real and answer both.
+      def self.valid_timeout?(value)
+        value.is_a?(Numeric) && value.real? && value.finite? && value.positive?
       end
 
       # Raised internally to abort a streaming read once the cap is exceeded.
