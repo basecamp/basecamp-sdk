@@ -95,6 +95,10 @@ def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT, max
     fallback = _finite_positive_timeout(default)
     if fallback is not None and (maximum is None or fallback <= maximum):
         return fallback
+    # The final constant fallback must also honor the bound: if maximum is smaller
+    # than _DISCOVERY_TIMEOUT, return maximum rather than exceed the contract.
+    if maximum is not None and 0 < maximum < _DISCOVERY_TIMEOUT:
+        return maximum
     return _DISCOVERY_TIMEOUT
 
 

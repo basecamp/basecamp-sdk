@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -112,14 +113,32 @@ def _post_form_bounded(
     # NO total-request timeout, so a peer slow-dripping header or body bytes just
     # under that interval could otherwise hold the POST open indefinitely (verified);
     # closing a sync client from a watchdog does not interrupt a blocked read either.
-    # Run the request as a coroutine under asyncio.wait_for, which CANCELS it (and
-    # closes the socket) at the deadline: the caller is bounded AND the work is
-    # actually terminated — no leaked worker, unlike a sync thread that cannot be
-    # killed. See https://www.python-httpx.org/advanced/timeouts/.
-    try:
-        return asyncio.run(asyncio.wait_for(_do(), timeout))
-    except TimeoutError as exc:
-        raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline") from exc
+    # asyncio.wait_for CANCELS the request (and closes the socket) at the deadline —
+    # the caller is bounded AND the work is actually terminated, no leaked worker.
+    #
+    # Run it in a DEDICATED thread with its own event loop rather than calling
+    # asyncio.run() here: this sync helper may be invoked from code that already has
+    # a running loop (Jupyter/FastAPI/async CLI), where asyncio.run() raises
+    # RuntimeError before any request is made. The thread always completes within
+    # ~timeout (wait_for bounds it), so joining it never blocks.
+    result: list[tuple[int, bytes]] = []
+    error: list[Exception] = []
+
+    def _runner() -> None:
+        try:
+            result.append(asyncio.run(asyncio.wait_for(_do(), timeout)))
+        except Exception as exc:  # captured and re-raised on the caller thread
+            error.append(exc)
+
+    worker = threading.Thread(target=_runner)
+    worker.start()
+    worker.join()
+    if error:
+        exc = error[0]
+        if isinstance(exc, TimeoutError):
+            raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline") from exc
+        raise exc
+    return result[0]
 
 
 def request_device_authorization(
