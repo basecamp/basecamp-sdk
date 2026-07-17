@@ -392,6 +392,26 @@ class TestPollDeviceToken:
         assert sleep.waits[1] == 10
 
     @respx.mock
+    def test_backoff_tracks_grown_interval_after_slow_down(self):
+        # slow_down grows the interval 5→10; a following timeout must double from
+        # the GROWN interval (10→20), not the stale pre-slow_down 5 (which gave 10).
+        _queue_token_responses(
+            [
+                httpx.Response(400, json={"error": "slow_down"}),
+                httpx.TimeoutException("timed out"),
+                httpx.Response(200, json=TOKEN_RESPONSE),
+            ]
+        )
+        sleep = RecordingSleep()
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
+        )
+
+        assert token.access_token == "device_access_token"  # gitleaks:allow
+        assert sleep.waits == [5, 10, 20]
+
+    @respx.mock
     def test_backoff_resets_to_server_interval_after_completed_round_trip(self):
         # Timeout backoff is transient: it doubles per timeout, but ANY completed
         # round-trip (here authorization_pending) snaps the wait back to the
