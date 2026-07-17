@@ -106,6 +106,13 @@ module Basecamp
     # @return [String] the normalized origin (+scheme://host[:port]+, no trailing slash)
     # @raise [UsageError] on any profile violation or parse failure
     def self.require_origin_root!(raw, label = "origin")
+      # Reject C0 controls, space, and backslash up front: URL parsers variously
+      # strip tabs/newlines/surrounding spaces or convert backslashes, so a
+      # malformed spelling could be cleaned and accepted. None is legitimate here.
+      if raw.to_s.match?(/[\x00-\x20\\]/)
+        raise UsageError.new("#{label} contains invalid characters: #{raw}")
+      end
+
       uri = URI.parse(raw.to_s)
       scheme = uri.scheme&.downcase
 

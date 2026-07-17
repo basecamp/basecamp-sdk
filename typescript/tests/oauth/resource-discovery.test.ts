@@ -370,6 +370,15 @@ describe("requireOriginRoot userinfo rejection", () => {
   it("rejects a dangling port delimiter", () => {
     expect(() => requireOriginRoot("https://host:")).toThrow(/invalid port/);
   });
+
+  // WHATWG strips C0 controls / surrounding whitespace and converts backslashes;
+  // the up-front raw scan must reject these spellings before they are cleaned.
+  it.each(["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])(
+    "rejects a WHATWG-normalized spelling %j",
+    (raw) => {
+      expect(() => requireOriginRoot(raw)).toThrow(/invalid characters/);
+    }
+  );
 });
 
 describe("resource metadata strictness (#369 review)", () => {

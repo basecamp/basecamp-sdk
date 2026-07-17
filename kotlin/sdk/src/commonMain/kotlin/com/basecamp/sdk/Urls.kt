@@ -82,6 +82,12 @@ internal fun requireSecureEndpoint(url: String, label: String) {
  * @return the normalized origin (scheme://host[:port], no trailing slash).
  */
 internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
+    // Reject C0 controls, space, and backslash up front: URL parsers variously
+    // strip tabs/newlines/surrounding spaces or convert backslashes, so a malformed
+    // spelling could be cleaned and accepted. None is legitimate in an origin root.
+    if (raw.any { it <= ' ' || it == '\\' }) {
+        throw BasecampException.Usage("$label contains invalid characters: ${BasecampException.truncateMessage(raw)}")
+    }
     val url = parseAbsoluteUrl(raw)
         ?: throw BasecampException.Usage("Invalid $label: not a valid absolute URL: ${BasecampException.truncateMessage(raw)}")
 

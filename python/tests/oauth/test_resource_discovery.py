@@ -202,6 +202,14 @@ def test_body_cap_normalizes_non_finite_to_default() -> None:
     assert _normalize_body_cap(4096) == 4096
 
 
+@pytest.mark.parametrize("raw", ["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])
+def test_origin_root_rejects_normalized_spellings(raw: str) -> None:
+    # Parsers strip C0 controls / whitespace or percent-encode a space into the
+    # host; the up-front raw scan must reject these before they are cleaned.
+    with pytest.raises(UsageError, match="invalid characters"):
+        require_origin_root(raw)
+
+
 def test_origin_root_rejects_dangling_port() -> None:
     # A dangling ":" normalizes to port None under httpx (looks like no port); the
     # raw-authority check must still reject the malformed authority.

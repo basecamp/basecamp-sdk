@@ -62,6 +62,13 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
     Returns the normalized origin (``scheme://host[:port]``, no trailing slash,
     default port dropped).
     """
+    # Reject C0 controls, space, and backslash up front: URL parsers variously
+    # strip tabs/newlines/surrounding spaces or percent-encode a space into the
+    # host (httpx turns "https://host " into "https://host%20"), so a malformed
+    # spelling could be cleaned and accepted. None is legitimate in an origin root.
+    if any(c <= " " or c == "\\" for c in raw):
+        raise UsageError(f"{label} contains invalid characters: {raw}")
+
     # Parse with httpx.URL — the SAME transport parser the client dials with (see
     # is_localhost below and _http.py) — so validation can never disagree with the
     # request about scheme/host/port. urllib and httpx diverge on IDNA labels and

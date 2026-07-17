@@ -131,6 +131,13 @@ export const LAUNCHPAD_BASE_URL = "https://launchpad.37signals.com";
  * @returns the normalized origin (scheme://host[:port], no trailing slash)
  */
 export function requireOriginRoot(raw: string, label = "origin"): string {
+  // Reject C0 controls, space, and backslash up front: WHATWG URL silently strips
+  // tabs/newlines/surrounding spaces and converts backslashes to forward slashes
+  // for special schemes, so a malformed spelling ("https:\\host", "https://host\n")
+  // would be cleaned and accepted. None is legitimate in an origin root.
+  if (/[\u0000-\u0020\\]/.test(raw)) {
+    throw new BasecampError("usage", `${label} contains invalid characters: ${raw}`);
+  }
   let url: URL;
   try {
     url = new URL(raw);

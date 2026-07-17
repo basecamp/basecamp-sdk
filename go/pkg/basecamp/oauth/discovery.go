@@ -113,6 +113,14 @@ func requireOriginRoot(raw, label string) (string, error) {
 		return &basecamp.Error{Code: basecamp.CodeUsage, Message: msg}
 	}
 
+	// Reject C0 controls, space, and backslash up front: URL parsers variously
+	// strip tabs/newlines/surrounding spaces or convert backslashes to slashes,
+	// so a malformed spelling ("https:\\host", "https://host\n") could be cleaned
+	// and accepted. None of these code points is legitimate in an origin root.
+	if strings.IndexFunc(raw, func(r rune) bool { return r <= 0x20 || r == '\\' }) >= 0 {
+		return "", usage(fmt.Sprintf("%s contains invalid characters: %s", label, raw))
+	}
+
 	u, err := url.Parse(raw)
 	if err != nil {
 		return "", usage(fmt.Sprintf("invalid %s: not a valid absolute URL: %s", label, raw))

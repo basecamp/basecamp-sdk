@@ -706,6 +706,19 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `35 origin-root invalid characters rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-invalid-characters",
+            op = Op.PROTECTED_RESOURCE,
+            // A backslash (or C0 control / space) is stripped or converted by WHATWG-
+            // style parsers; the raw input must be rejected before parsing.
+            resourceOrigin = "https:\\\\api.example.com",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `34 resource-first trailing slash binds`() = runScenario(
         Scenario(
             name = "resource-first-trailing-slash-binds",
