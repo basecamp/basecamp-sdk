@@ -614,6 +614,32 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `28 origin-root dangling port rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-dangling-port",
+            op = Op.PROTECTED_RESOURCE,
+            // A dangling ":" ("https://host:") normalizes the port away; the raw
+            // authority's trailing ":" must still be rejected.
+            resourceOrigin = "https://api.example.com:",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
+    @Test fun `29 origin-root empty userinfo rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-empty-userinfo",
+            op = Op.PROTECTED_RESOURCE,
+            // Delimiter-only userinfo ("https://@host") reports an empty (falsy)
+            // userinfo; the raw authority's "@" must be rejected on presence.
+            resourceOrigin = "https://@api.example.com",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `discover surfaces issuer mismatch as api_error to external callers`() = runTest {
         // The module-private binding marker must NOT leak: an external discover()
         // caller sees an ordinary api_error, identical to any other invalid AS

@@ -230,6 +230,15 @@ class SecurityRequireOriginRootTest < Minitest::Test
     assert_match(/port/, error.message)
   end
 
+  def test_rejects_empty_userinfo
+    # URI reports delimiter-only userinfo ("https://@example.com") as an empty
+    # (falsy) string, so rejection must key on the raw authority's "@" presence.
+    error = assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("https://@example.com")
+    end
+    assert_match(/userinfo/, error.message)
+  end
+
   def test_rejects_path_beyond_root
     assert_raises(Basecamp::UsageError) do
       Basecamp::Security.require_origin_root!("https://example.com/foo")

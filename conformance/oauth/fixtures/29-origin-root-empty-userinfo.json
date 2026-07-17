@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-empty-userinfo",
+  "description": "Resource origin with delimiter-only userinfo ('https://@host') is malformed: parsers report an empty (falsy) userinfo, so each SDK scans the raw authority for an '@' delimiter and rejects it on presence.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://@api.example.com",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

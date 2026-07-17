@@ -361,6 +361,12 @@ describe("requireOriginRoot userinfo rejection", () => {
   it("rejects port 0", () => {
     expect(() => requireOriginRoot("https://host:0")).toThrow(/invalid port/);
   });
+
+  // WHATWG normalizes a dangling ":" away (url.port === ""); the raw-authority
+  // scan must still reject it.
+  it("rejects a dangling port delimiter", () => {
+    expect(() => requireOriginRoot("https://host:")).toThrow(/invalid port/);
+  });
 });
 
 describe("resource metadata strictness (#369 review)", () => {

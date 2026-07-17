@@ -171,6 +171,12 @@ export function requireOriginRoot(raw: string, label = "origin"): string {
   if (url.port !== "" && (Number(url.port) < 1 || Number(url.port) > 65535)) {
     throw new BasecampError("usage", `${label} has an invalid port: ${raw}`);
   }
+  // WHATWG normalizes a dangling port ("https://host:") to url.port === "", so the
+  // check above misses it; scan the raw authority for a trailing ":" (an IPv6
+  // authority ends with "]", so only a trailing ":" is a dangling port).
+  if (rawAuthority.endsWith(":")) {
+    throw new BasecampError("usage", `${label} has an invalid port: ${raw}`);
+  }
   // Note: a surviving url has a structurally valid (possibly default) port. url.origin
   // drops a default port and any trailing slash — exactly the normalized origin we want.
   return url.origin;

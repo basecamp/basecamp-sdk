@@ -113,17 +113,26 @@ module Basecamp
         raise UsageError.new("#{label} must use HTTPS (or http on localhost): #{raw}")
       end
       raise UsageError.new("#{label} has no host: #{raw}") if uri.host.nil? || uri.host.empty?
-      raise UsageError.new("#{label} must not contain userinfo: #{raw}") if uri.userinfo
+
+      # The raw authority (between "://" and the first "/?#") backs the presence
+      # checks the parsed fields miss: URI reports delimiter-only userinfo
+      # ("https://@example.com") as an empty (falsy) string, and normalizes a
+      # dangling port ("https://example.com:") to the default-port origin.
+      authority = raw.to_s.split("://", 2)[1].to_s.split(%r{[/?#]}, 2)[0].to_s
+
+      # Reject on the PRESENCE of userinfo, not truthiness: an "@" in the authority
+      # is always a userinfo delimiter (a host cannot contain one).
+      if uri.userinfo || authority.include?("@")
+        raise UsageError.new("#{label} must not contain userinfo: #{raw}")
+      end
       raise UsageError.new("#{label} must not contain a query or fragment: #{raw}") if uri.query || uri.fragment
       unless uri.path.nil? || uri.path.empty? || uri.path == "/"
         raise UsageError.new("#{label} must be an origin root (no path): #{raw}")
       end
 
-      # A dangling port delimiter ("https://example.com:") parses to the
-      # default-port origin under URI, silently accepting a malformed authority.
-      # Reject the empty port explicitly. IPv6 authorities legitimately end with
-      # "]" (e.g. "[::1]"), so only a trailing ":" is a dangling port.
-      authority = raw.to_s.split("://", 2)[1].to_s.split(%r{[/?#]}, 2)[0].to_s
+      # A dangling port delimiter ("https://example.com:") silently accepts a
+      # malformed authority. IPv6 authorities legitimately end with "]" (e.g.
+      # "[::1]"), so only a trailing ":" is a dangling port.
       if authority.end_with?(":")
         raise UsageError.new("#{label} has an invalid port: #{raw}")
       end

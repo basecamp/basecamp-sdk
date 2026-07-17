@@ -103,6 +103,12 @@ internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
     if (authority.contains('@') || !url.user.isNullOrEmpty() || !url.password.isNullOrEmpty()) {
         throw BasecampException.Usage("$label must not contain userinfo: ${BasecampException.truncateMessage(raw)}")
     }
+    // A dangling ":" ("https://host:") parses to the default-port origin under
+    // Ktor, silently accepting a malformed authority. IPv6 authorities end with
+    // "]" (e.g. "[::1]"), so only a trailing ":" is a dangling port.
+    if (authority.endsWith(':')) {
+        throw BasecampException.Usage("$label has an invalid port: ${BasecampException.truncateMessage(raw)}")
+    }
     // trailingQuery catches a bare '?' with an empty query (e.g. `https://host?`),
     // whose encodedQuery is empty but which is still a query-bearing origin. Ktor
     // has no trailingQuery equivalent for a bare '#' (encodedFragment is empty for

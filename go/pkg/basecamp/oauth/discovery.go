@@ -152,6 +152,20 @@ func requireOriginRoot(raw, label string) (string, error) {
 		}
 	}
 
+	// net/url reports an empty Port() for a dangling ":" ("https://host:"), so
+	// scan the raw authority for a trailing ":" (an IPv6 authority ends with "]",
+	// so only a trailing ":" is a dangling port).
+	authority := raw
+	if i := strings.Index(authority, "://"); i >= 0 {
+		authority = authority[i+3:]
+	}
+	if j := strings.IndexAny(authority, "/?#"); j >= 0 {
+		authority = authority[:j]
+	}
+	if strings.HasSuffix(authority, ":") {
+		return "", usage(fmt.Sprintf("%s has an invalid port: %s", label, raw))
+	}
+
 	// Lowercase the host: DNS names and schemes are case-insensitive (RFC 3986
 	// §3.1/§6.2.2.1), so a mixed-case advertised issuer like
 	// https://Launchpad.37signals.com must normalize to the same origin as its
