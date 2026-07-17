@@ -367,6 +367,10 @@ suspend fun pollDeviceToken(
                 PollResult.Pending -> continue
                 PollResult.SlowDown -> {
                     intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS
+                    // Re-sync the backoff to the GROWN interval (the reset above used
+                    // the pre-increment value) so a later timeout doubles from the new
+                    // interval, not the stale one.
+                    backoffSeconds = intervalSeconds
                     continue
                 }
                 PollResult.AccessDenied -> throw BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED)
