@@ -15,6 +15,7 @@ genuine streaming cap that aborts before the whole oversized body is buffered.
 from __future__ import annotations
 
 import json
+import math
 import time
 from typing import Any
 
@@ -70,6 +71,25 @@ def _normalize_body_cap(max_body_bytes: object) -> int:
     return max_body_bytes
 
 
+def _normalize_timeout(timeout: object) -> float:
+    """Coerce the public timeout to a finite, positive float.
+
+    ``timeout`` is *typed* ``float``, but a caller can pass ``None``, a non-number,
+    a non-positive value, or ``float("inf")``/``nan`` at runtime. An infinite or
+    non-positive timeout would disable BOTH httpx's bound and the wall-clock
+    deadline below (``time.monotonic() > inf`` never trips), letting a slow-drip
+    endpoint hold the SSRF-hardened fetch open indefinitely. Fall back to the
+    default so the bound can never be turned off — the same discipline as
+    :func:`_normalize_body_cap`. ``bool`` is excluded (a subclass of ``int``, but
+    a nonsensical timeout).
+    """
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+        return _DISCOVERY_TIMEOUT
+    if not math.isfinite(timeout) or timeout <= 0:
+        return _DISCOVERY_TIMEOUT
+    return float(timeout)
+
+
 def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> Any:
     """SSRF-hardened GET of a discovery document.
 
@@ -79,6 +99,9 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
     non-2xx status to ``api_error`` (not ``network``).
     """
     max_body_bytes = _normalize_body_cap(max_body_bytes)
+    # Normalize BEFORE httpx and before the deadline: a non-finite/non-positive
+    # timeout must not disable either bound (see _normalize_timeout).
+    timeout = _normalize_timeout(timeout)
     try:
         with httpx.stream(
             "GET",

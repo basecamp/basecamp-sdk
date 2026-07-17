@@ -202,6 +202,19 @@ def test_body_cap_normalizes_non_finite_to_default() -> None:
     assert _normalize_body_cap(4096) == 4096
 
 
+def test_timeout_normalizes_non_finite_to_default() -> None:
+    from basecamp.oauth.discovery import _DISCOVERY_TIMEOUT, _normalize_timeout
+
+    # None/inf/nan/non-positive/non-numeric would disable BOTH httpx's bound and
+    # the wall-clock deadline (monotonic > inf never trips), letting a slow-drip
+    # endpoint hang the fetch; each must fall back to the finite default.
+    for bad in (None, float("inf"), float("nan"), 0, -1, True, "10"):
+        assert _normalize_timeout(bad) == _DISCOVERY_TIMEOUT
+    # A valid positive value is preserved (as a float).
+    assert _normalize_timeout(2.5) == 2.5
+    assert _normalize_timeout(30) == 30.0
+
+
 @pytest.mark.parametrize("raw", ["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])
 def test_origin_root_rejects_normalized_spellings(raw: str) -> None:
     # Parsers strip C0 controls / whitespace or percent-encode a space into the

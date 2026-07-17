@@ -43,9 +43,10 @@ class DiscoverySelectionError(OAuthError):
     Launchpad request. The ``reason`` attribute distinguishes the specific hard
     case (see :data:`DiscoverySelectionReason`).
 
-    ``capability_unavailable`` and ``expected_issuer_unavailable`` are
-    consumer/usage-shaped; the remaining reasons are AS-metadata faults surfaced
-    as ``api_error``.
+    Only ``capability_unavailable`` is consumer/usage-shaped (``validation``).
+    Every other reason — including ``expected_issuer_unavailable`` — is an
+    AS-metadata fault surfaced as ``api_error``, matching the other four SDKs (an
+    issuer the resource does not advertise is a metadata fault, not caller usage).
     """
 
     def __init__(self, reason: DiscoverySelectionReason, message: str, **kwargs: Any):
