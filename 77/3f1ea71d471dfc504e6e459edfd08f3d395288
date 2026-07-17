@@ -1,0 +1,53 @@
+ruby/lib/basecamp/oauth/discovery.rb
+  s_b250506ef28983::t_c563e72636f011 56-58
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_383687f1ae437e 683-723
+conformance/oauth/fixtures/33-discover-issuer-trailing-slash-binds.json
+  s_b250506ef28983::t_bafc5757abad96 1-18
+ruby/lib/basecamp/oauth.rb
+  s_b250506ef28983::t_e63f9c763ff9a6 101-103,105
+typescript/tests/oauth/oauth.test.ts
+  s_b250506ef28983::t_5bf03d061495a3 117-120,124,130
+go/pkg/basecamp/oauth/discovery.go
+  s_b250506ef28983::t_0745242afc3754 325-327
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_438606600ae7a0 367-369,371
+  s_b250506ef28983::t_b86168e4e7471b 144-146
+conformance/oauth/fixtures/34-resource-first-trailing-slash-binds.json
+  s_b250506ef28983::t_bea72ea3870fed 1-27
+ruby/test/basecamp/security_test.rb
+  s_b250506ef28983::t_35934af9a3a050 233-239
+python/src/basecamp/_security.py
+  s_b250506ef28983::t_dd2bf73e173a22 110-121
+python/src/basecamp/oauth/discovery.py
+  s_b250506ef28983::t_8d2011e2470fa4 321
+  s_b250506ef28983::t_1d032903d6a240 146-148
+  s_b250506ef28983::t_503c6bc7eadb40 317-319
+ruby/test/basecamp/oauth_test.rb
+  s_b250506ef28983::t_92dd75c0d7eebc 39-41,43,52
+go/pkg/basecamp/oauth/oauth_test.go
+  s_b250506ef28983::t_0e931c7a8e30d4 122-125,130,133,137,141-142
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_bd577ea53b5fd5 349-351
+  s_b250506ef28983::t_8d97426e75aa63 539-541,544
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Urls.kt
+  s_b250506ef28983::t_e31fdb855829ab 118-120
+conformance/oauth/fixtures/32-origin-root-signed-port.json
+  s_b250506ef28983::t_e6fe319c061687 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "773f1ea71d471dfc504e6e459edfd08f3d395288",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
