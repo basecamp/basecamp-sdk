@@ -210,6 +210,14 @@ def test_origin_root_rejects_normalized_spellings(raw: str) -> None:
         require_origin_root(raw)
 
 
+@pytest.mark.parametrize("raw", ["https://api.example/a/..", "https://api.example/%2e%2e"])
+def test_origin_root_rejects_dot_segment_path(raw: str) -> None:
+    # httpx resolves "/a/.." to "/", so the normalized-path check misses it; the
+    # raw-path scan must reject any path beyond "/".
+    with pytest.raises(UsageError, match="no path"):
+        require_origin_root(raw)
+
+
 def test_origin_root_rejects_dangling_port() -> None:
     # A dangling ":" normalizes to port None under httpx (looks like no port); the
     # raw-authority check must still reject the malformed authority.

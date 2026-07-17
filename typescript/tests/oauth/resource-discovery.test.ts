@@ -393,6 +393,14 @@ describe("requireOriginRoot userinfo rejection", () => {
       expect(() => requireOriginRoot(raw)).toThrow(/origin root/);
     }
   );
+
+  // WHATWG resolves dot-segments to "/", so the raw path must be scanned.
+  it.each(["https://api.example/a/..", "https://api.example/%2e%2e"])(
+    "rejects a dot-segment path %j",
+    (raw) => {
+      expect(() => requireOriginRoot(raw)).toThrow(/origin root \(no path\)/);
+    }
+  );
 });
 
 describe("resource metadata strictness (#369 review)", () => {

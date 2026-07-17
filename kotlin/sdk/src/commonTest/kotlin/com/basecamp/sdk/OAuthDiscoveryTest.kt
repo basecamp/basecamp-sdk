@@ -719,6 +719,19 @@ class OAuthDiscoveryTest {
         )
     )
 
+    @Test fun `37 origin-root dot-segment path rejected`() = runScenario(
+        Scenario(
+            name = "origin-root-dot-segment-path",
+            op = Op.PROTECTED_RESOURCE,
+            // WHATWG-style parsers resolve "/a/.." to "/", so the normalized path
+            // check passes; the raw path must be scanned and rejected.
+            resourceOrigin = "https://api.example.com/a/..",
+            raiseUsage = true,
+            errorCategory = "usage",
+            launchpadMustBeSilent = true,
+        )
+    )
+
     @Test fun `36 origin-root missing authority rejected`() = runScenario(
         Scenario(
             name = "origin-root-missing-authority",

@@ -183,6 +183,14 @@ export function requireOriginRoot(raw: string, label = "origin"): string {
   if (url.pathname !== "" && url.pathname !== "/") {
     throw new BasecampError("usage", `${label} must be an origin root (no path): ${raw}`);
   }
+  // WHATWG resolves dot-segments ("/a/..", "/%2e%2e") to "/", so url.pathname above
+  // misses a path that was present in the raw input. Scan the raw path (everything
+  // from the first "/" after the authority — "?"/"#" are already rejected above).
+  const afterAuthority = raw.slice(raw.indexOf("://") + 3);
+  const rawPathStart = afterAuthority.indexOf("/");
+  if (rawPathStart >= 0 && afterAuthority.slice(rawPathStart) !== "/") {
+    throw new BasecampError("usage", `${label} must be an origin root (no path): ${raw}`);
+  }
   // `new URL("https://h:notaport")` throws above and WHATWG rejects ports > 65535,
   // but it ACCEPTS port 0 and keeps it in the origin. The origin-root profile (like
   // the other SDKs) rejects any port outside 1–65535, so a caller/advertised issuer

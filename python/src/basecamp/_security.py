@@ -112,6 +112,13 @@ def require_origin_root(raw: str, label: str = "origin") -> str:
         raise UsageError(f"{label} must not contain a query or fragment: {raw}")
     if url.path not in ("", "/"):
         raise UsageError(f"{label} must be an origin root (no path): {raw}")
+    # httpx resolves dot-segments ("/a/.." -> "/"), so url.path above misses a path
+    # present in the raw input. Scan the raw path (from the first "/" after the
+    # authority — "?"/"#" are already rejected above).
+    after_authority = raw.split("://", 1)[1] if "://" in raw else raw
+    slash = after_authority.find("/")
+    if slash >= 0 and after_authority[slash:] != "/":
+        raise UsageError(f"{label} must be an origin root (no path): {raw}")
 
     # A dangling port delimiter ("https://host:") normalizes to port None under
     # httpx, silently accepting a malformed authority. Also reject a signed port
