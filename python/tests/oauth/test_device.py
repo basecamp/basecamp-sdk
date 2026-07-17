@@ -44,6 +44,7 @@ TOKEN_RESPONSE = {
 
 CONFIG = OAuthConfig(
     issuer=ORIGIN,
+    authorization_endpoint=None,
     token_endpoint=TOKEN_ENDPOINT,
     device_authorization_endpoint=DEVICE_ENDPOINT,
     grant_types_supported=[DEVICE_CODE_GRANT_TYPE, "refresh_token"],
@@ -707,6 +708,7 @@ class TestPerformDeviceLogin:
         token_route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
         config = OAuthConfig(
             issuer=ORIGIN,
+            authorization_endpoint=None,
             token_endpoint=TOKEN_ENDPOINT,
             device_authorization_endpoint=DEVICE_ENDPOINT,
             grant_types_supported=["refresh_token"],  # no device_code grant
@@ -726,6 +728,7 @@ class TestPerformDeviceLogin:
         device_route = respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
         config = OAuthConfig(
             issuer=ORIGIN,
+            authorization_endpoint=None,
             token_endpoint=TOKEN_ENDPOINT,
             device_authorization_endpoint=DEVICE_ENDPOINT,
             grant_types_supported=DEVICE_CODE_GRANT_TYPE,  # type: ignore[arg-type]
@@ -741,6 +744,7 @@ class TestPerformDeviceLogin:
     def test_capability_guard_missing_endpoint_is_unavailable(self):
         config = OAuthConfig(
             issuer=ORIGIN,
+            authorization_endpoint=None,
             token_endpoint=TOKEN_ENDPOINT,
             device_authorization_endpoint=None,
             grant_types_supported=[DEVICE_CODE_GRANT_TYPE],
