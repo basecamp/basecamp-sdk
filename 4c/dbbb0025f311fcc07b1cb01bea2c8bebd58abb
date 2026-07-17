@@ -1,0 +1,19 @@
+python/tests/oauth/test_device.py
+  s_b250506ef28983::t_a42af50d9fa529 47,711,731,747
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4cdbbb0025f311fcc07b1cb01bea2c8bebd58abb",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
