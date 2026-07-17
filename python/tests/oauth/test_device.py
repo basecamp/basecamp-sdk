@@ -703,6 +703,19 @@ class TestPollDeviceToken:
         assert not isinstance(exc_info.value, DeviceFlowError)
 
     @respx.mock
+    def test_non_string_token_error_falls_back_to_http_status(self):
+        # A non-string `error` (e.g. 123) must not be treated as an OAuth error
+        # code — it falls back to http_<status>, matching the other SDKs.
+        _queue_token_responses([httpx.Response(400, json={"error": 123})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert "http_400" in str(exc_info.value)
+
+    @respx.mock
     def test_rejects_non_object_token_body_with_http_status(self):
         # A valid-JSON-but-non-object token body must fail api_error AND carry the
         # HTTP status, matching the other token-poll error raises.

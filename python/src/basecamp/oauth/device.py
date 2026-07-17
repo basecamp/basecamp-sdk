@@ -524,7 +524,11 @@ def _post_device_token(
     if 200 <= status < 300:
         return _PollResult(token=_build_token(data, status))
 
-    error = data.get("error") or f"http_{status}"
+    # Validate ``error`` as a non-empty string: a non-string (e.g. ``{"error": 123}``)
+    # must not be treated as an OAuth error code — fall back to ``http_<status>``,
+    # matching the other SDKs.
+    raw_error = data.get("error")
+    error = raw_error if isinstance(raw_error, str) and raw_error else f"http_{status}"
     return _PollResult(error=error, status=status)
 
 
