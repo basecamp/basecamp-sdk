@@ -85,9 +85,15 @@ def _normalize_timeout(timeout: object) -> float:
     """
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
         return _DISCOVERY_TIMEOUT
-    if not math.isfinite(timeout) or timeout <= 0:
+    try:
+        value = float(timeout)
+    except OverflowError:
+        # An int too large to convert to float (e.g. 10**400) — treat as invalid
+        # rather than letting math.isfinite/float raise out of the normalizer.
         return _DISCOVERY_TIMEOUT
-    return float(timeout)
+    if not math.isfinite(value) or value <= 0:
+        return _DISCOVERY_TIMEOUT
+    return value
 
 
 def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> Any:

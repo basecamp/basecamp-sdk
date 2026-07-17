@@ -208,7 +208,9 @@ def test_timeout_normalizes_non_finite_to_default() -> None:
     # None/inf/nan/non-positive/non-numeric would disable BOTH httpx's bound and
     # the wall-clock deadline (monotonic > inf never trips), letting a slow-drip
     # endpoint hang the fetch; each must fall back to the finite default.
-    for bad in (None, float("inf"), float("nan"), 0, -1, True, "10"):
+    # 10**400 is an int too large to convert to float — must fall back, not raise
+    # OverflowError out of the normalizer.
+    for bad in (None, float("inf"), float("nan"), 0, -1, True, "10", 10**400):
         assert _normalize_timeout(bad) == _DISCOVERY_TIMEOUT
     # A valid positive value is preserved (as a float).
     assert _normalize_timeout(2.5) == 2.5
