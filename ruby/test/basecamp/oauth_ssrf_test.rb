@@ -154,6 +154,34 @@ class OAuthSsrfTest < Minitest::Test
     assert_operator meter[:delivered], :<, oversized.bytesize
   end
 
+  def test_device_slow_drip_aborts_on_wall_clock_deadline
+    endpoint = "https://issuer.ssrf-test.example/oauth/device"
+    # An in-cap device-auth doc dripped one byte at a time: the per-read socket
+    # timeout never trips (each chunk resets it), so only the whole-read wall-clock
+    # deadline can stop it — the device path must bound reads exactly like discovery.
+    body = {
+      "device_code" => "d", "user_code" => "u", "verification_uri" => "https://x",
+      "expires_in" => 900
+    }.to_json
+
+    meter = { delivered: 0 }
+    connection = Faraday.new do |conn|
+      conn.adapter SlowDripAdapter, body: body, chunk_size: 1, pause: 0.02, meter: meter
+    end
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: endpoint, client_id: "basecamp-cli",
+        http_client: connection, timeout: 0.1
+      )
+    end
+    # A slow-drip timeout is a transport failure (retryable), not an api_error.
+    assert_equal :transport, error.reason
+
+    # The read aborted mid-stream: fewer bytes delivered than the full body.
+    assert_operator meter[:delivered], :<, body.bytesize
+  end
+
   # A middleware whose name matches the redirect detector. Standing in for
   # faraday-follow_redirects without taking the dependency.
   class RedirectFollowingMiddleware < Faraday::Middleware
