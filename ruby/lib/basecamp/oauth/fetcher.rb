@@ -41,13 +41,16 @@ module Basecamp
       #
       # @param timeout [Object] caller-supplied timeout
       # @return [Numeric] a finite, positive timeout in seconds
-      def self.normalize_timeout(timeout)
+      # +default+ is operation-specific: discovery falls back to +DEFAULT_TIMEOUT+
+      # (10s), device flow passes its own 30s budget, so an invalid runtime value
+      # falls back to that operation's own timeout rather than a foreign one.
+      def self.normalize_timeout(timeout, default: DEFAULT_TIMEOUT)
         # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
         # not define — calling them would raise NoMethodError). Integer, Float, and
         # Rational are all real and answer both.
         return timeout if timeout.is_a?(Numeric) && timeout.real? && timeout.finite? && timeout.positive?
 
-        DEFAULT_TIMEOUT
+        default
       end
 
       # Raised internally to abort a streaming read once the cap is exceeded.
