@@ -116,6 +116,29 @@ func TestRequestDeviceAuthorization_OmitsScopeAndValidates(t *testing.T) {
 	}
 }
 
+func TestRequestDeviceAuthorization_CallerCancellationIsCancelled(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(deviceAuthBody)
+	}))
+	defer srv.Close()
+
+	// A context already cancelled before the request: Do returns context.Canceled
+	// without contacting the server, so the outcome must be DeviceFlowCancelled —
+	// never a retryable transport failure (the SDK's own timeout stays transport).
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := RequestDeviceAuthorization(ctx, srv.URL, "basecamp-cli", WithDeviceHTTPClient(tlsClient(srv)))
+	var dfErr *DeviceFlowError
+	if !errors.As(err, &dfErr) {
+		t.Fatalf("expected *DeviceFlowError, got %T: %v", err, err)
+	}
+	if dfErr.Reason != DeviceFlowCancelled {
+		t.Errorf("Reason = %v, want DeviceFlowCancelled", dfErr.Reason)
+	}
+}
+
 func TestRequestDeviceAuthorization_SendsScopeWhenSet(t *testing.T) {
 	var sentScope string
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
