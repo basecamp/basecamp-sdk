@@ -470,6 +470,36 @@ func TestPollDeviceToken_BackoffResetsAfterCompletedRoundTrip(t *testing.T) {
 	assertWaits(t, sleep.waits, want)
 }
 
+func TestPollDeviceToken_BackoffTracksGrownIntervalAfterSlowDown(t *testing.T) {
+	// slow_down grows the interval 5→10; a following network timeout must double
+	// from the GROWN interval (10→20), not the stale pre-slow_down 5 (which would
+	// give 10 and poll too aggressively under combined throttling + timeouts).
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{
+		{http.StatusBadRequest, map[string]any{"error": "slow_down"}},
+		{http.StatusOK, tokenBody},
+	})
+	sleep := &recordingSleep{}
+	base := tlsClient(srv)
+	// Time out only the 2nd attempt — the poll right after slow_down.
+	client := &http.Client{Transport: &timeoutOnAttemptTransport{next: base.Transport, attempt: 2}}
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(client), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.AccessToken != "device_access_token" {
+		t.Errorf("AccessToken = %q", token.AccessToken)
+	}
+	// 5 (initial) → slow_down grows the interval to 10 → wait 10 → timeout doubles
+	// the backoff from 10 to 20 → wait 20 → token. The stale-backoff bug gave 10.
+	want := []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second}
+	assertWaits(t, sleep.waits, want)
+}
+
 func TestPollDeviceToken_ExpiresAgainstInjectedClock(t *testing.T) {
 	srv, calls := queueTokenResponses(t, []struct {
 		status int
@@ -1326,6 +1356,23 @@ type timeoutNTransport struct {
 func (t *timeoutNTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.n > 0 {
 		t.n--
+		return nil, &url.Error{Op: "Post", URL: req.URL.String(), Err: timeoutError{}}
+	}
+	return t.next.RoundTrip(req)
+}
+
+// timeoutOnAttemptTransport returns a net timeout on the Nth RoundTrip only,
+// delegating every other attempt — for a timeout at a specific point in the poll
+// sequence (e.g. immediately after a slow_down).
+type timeoutOnAttemptTransport struct {
+	next    http.RoundTripper
+	attempt int
+	count   int
+}
+
+func (t *timeoutOnAttemptTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.count++
+	if t.count == t.attempt {
 		return nil, &url.Error{Op: "Post", URL: req.URL.String(), Err: timeoutError{}}
 	}
 	return t.next.RoundTrip(req)
