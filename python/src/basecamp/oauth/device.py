@@ -88,6 +88,11 @@ def _post_form_bounded(
     # the device-code deadline while staying under ``max_body_bytes``. Mirrors
     # :func:`basecamp.oauth.discovery._fetch_discovery_document`.
     timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT)
+    # Start the deadline BEFORE httpx.stream so it also bounds the header phase:
+    # httpx's read timeout is per-read and resets each time, so a peer trickling
+    # header bytes could otherwise hold the POST open past the timeout before the
+    # body loop is ever reached.
+    deadline = time.monotonic() + timeout
     with httpx.stream(
         "POST",
         url,
@@ -96,7 +101,10 @@ def _post_form_bounded(
         timeout=timeout,
         follow_redirects=False,
     ) as response:
-        deadline = time.monotonic() + timeout
+        # Headers are now in. If reading them already outlived the deadline (a
+        # slow-drip header phase), abort before touching the body.
+        if time.monotonic() > deadline:
+            raise httpx.ReadTimeout("Device flow read exceeded the timeout deadline")
         chunks: list[bytes] = []
         total = 0
         for chunk in response.iter_bytes():
