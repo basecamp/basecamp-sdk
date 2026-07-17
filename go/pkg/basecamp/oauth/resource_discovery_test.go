@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
 )
@@ -553,6 +554,67 @@ func TestDiscoverFromResource_ASFetchFailurePreservesStatus(t *testing.T) {
 	}
 	if be.Code != basecamp.CodeAPI {
 		t.Errorf("Code = %q, want api_error", be.Code)
+	}
+}
+
+// TestDiscoverFromResource_CallerCancellationPropagates asserts that a caller
+// cancelling the context during hop 1 sees the cancellation, NOT a soft
+// resource_discovery_failed fallback. A fallback would silently steer the caller
+// on to a credentialed Launchpad request after they explicitly aborted.
+func TestDiscoverFromResource_CallerCancellationPropagates(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	started := make(chan struct{})
+	resource := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done() // block until the caller-cancelled context aborts the request
+	}))
+	defer resource.Close()
+
+	go func() {
+		<-started
+		cancel() // caller aborts mid-flight
+	}()
+
+	launchpadHits := 0
+	client := &http.Client{Transport: &countingTransport{base: resource.Client().Transport, count: &launchpadHits}}
+
+	result, err := NewDiscoverer(client).DiscoverFromResource(ctx, resource.URL)
+	if err == nil {
+		t.Fatalf("expected cancellation error, got soft fallback result: %+v", result)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("errors.Is(err, context.Canceled) = false; err = %v", err)
+	}
+	if result != nil {
+		t.Errorf("expected nil result on cancellation, got %+v", result)
+	}
+	if launchpadHits != 0 {
+		t.Errorf("Launchpad was contacted %d time(s); a cancelled discovery must not touch Launchpad", launchpadHits)
+	}
+}
+
+// TestDiscoverFromResource_OwnTimeoutStillSoftFallsBack is the companion to the
+// cancellation test: the SDK's OWN per-fetch timeout (a child context) firing on
+// an unresponsive resource host must remain a soft resource_discovery_failed
+// fallback — the parent context is untouched, so the ctx.Err() guard must not
+// convert a legitimate fallback into a hard error.
+func TestDiscoverFromResource_OwnTimeoutStillSoftFallsBack(t *testing.T) {
+	block := make(chan struct{})
+	resource := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		<-block // never respond within the SDK timeout
+	}))
+	defer resource.Close()
+	defer close(block)
+
+	result, err := NewDiscoverer(resource.Client()).
+		DiscoverFromResource(context.Background(), resource.URL, WithTimeout(50*time.Millisecond))
+	if err != nil {
+		t.Fatalf("SDK-timeout should soft-fall-back, got error: %v", err)
+	}
+	if result == nil || result.Config != nil || result.FallbackReason != FallbackResourceDiscoveryFailed {
+		t.Errorf("want resource_discovery_failed fallback, got %+v", result)
 	}
 }
 

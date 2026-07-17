@@ -532,6 +532,14 @@ func (d *Discoverer) DiscoverFromResource(ctx context.Context, resourceOrigin st
 		if errors.As(err, &be) && be.Code == basecamp.CodeUsage {
 			return nil, err
 		}
+		// A caller cancelling the context (or its deadline expiring) must see that
+		// cancellation, never a soft fallback that silently proceeds to Launchpad.
+		// fetchDiscoveryDocument derives its own per-fetch timeout as a CHILD
+		// context, so a non-nil parent ctx.Err() means the CALLER aborted — not the
+		// SDK's internal timeout, which leaves the parent's Err() nil and stays soft.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
 		return &DiscoveryResult{FallbackReason: FallbackResourceDiscoveryFailed}, nil
 	}
 
