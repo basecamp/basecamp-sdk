@@ -264,6 +264,28 @@ class TestRequestDeviceAuthorization:
         assert exc_info.value.retryable
 
     @respx.mock
+    def test_final_read_past_deadline_is_rejected(self, monkeypatch):
+        # The in-loop check runs BEFORE each chunk, so it cannot catch the final
+        # read / EOF landing past the deadline. Drive an empty body (zero in-loop
+        # iterations) with the clock advanced past the deadline so ONLY the
+        # post-loop check can fire — proving the whole-read bound holds at EOF.
+        import basecamp.oauth.device as device_mod
+
+        elapsed = {"v": 0.0}
+
+        def fake_monotonic() -> float:
+            v = elapsed["v"]
+            elapsed["v"] += 100.0
+            return v
+
+        monkeypatch.setattr(device_mod.time, "monotonic", fake_monotonic)
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, content=b""))
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            request_device_authorization(DEVICE_ENDPOINT, "basecamp-cli")
+        assert exc_info.value.reason == "transport"
+
+    @respx.mock
     def test_rejects_non_string_field_types(self):
         # A non-string field is malformed, not merely absent — a truthiness
         # check would let 12345 / a list slip through.

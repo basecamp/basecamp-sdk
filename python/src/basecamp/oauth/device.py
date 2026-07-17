@@ -87,7 +87,7 @@ def _post_form_bounded(
     # a slow-drip peer could otherwise hang a device request past the timeout and
     # the device-code deadline while staying under ``max_body_bytes``. Mirrors
     # :func:`basecamp.oauth.discovery._fetch_discovery_document`.
-    timeout = _normalize_timeout(timeout)
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT)
     with httpx.stream(
         "POST",
         url,
@@ -111,6 +111,12 @@ def _post_form_bounded(
                 # so the oversized body is never fully buffered.
                 raise OAuthError("api_error", "Device flow response exceeds size cap")
             chunks.append(chunk)
+        # The in-loop check runs BEFORE each chunk, so it can't catch the final
+        # read: EOF (or the last chunk) may land just after the deadline while
+        # staying within httpx's per-chunk timeout. Re-check after the stream ends
+        # so a slow-drip response can't extend the whole read past the deadline.
+        if time.monotonic() > deadline:
+            raise httpx.ReadTimeout("Device flow read exceeded the timeout deadline")
         return response.status_code, b"".join(chunks)
 
 
