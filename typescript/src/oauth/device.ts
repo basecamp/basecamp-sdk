@@ -28,6 +28,25 @@ const DEFAULT_INTERVAL_SECONDS = 5;
  */
 const MAX_DEVICE_SECONDS = 2_147_483;
 
+/** Default per-request timeout (ms) for every device-flow HTTP round-trip. */
+const DEFAULT_DEVICE_TIMEOUT_MS = 30_000;
+
+/**
+ * Coerce a caller-supplied request timeout (ms) to a finite, positive, timer-safe
+ * value. `setTimeout` silently coerces a non-finite delay (NaN/Infinity) or one
+ * beyond its 32-bit range to ~1 ms — an immediate abort that would masquerade as a
+ * `DeviceFlowError("transport")` (and, in the poll loop, as repeated timeout
+ * backoffs). Fall back to the default instead, mirroring how Python/Ruby normalize
+ * an invalid device timeout. `MAX_DEVICE_SECONDS * 1000` stays safely under the
+ * 2^31 ms `setTimeout` ceiling.
+ */
+function resolveDeviceTimeoutMs(timeoutMs: number): number {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_DEVICE_SECONDS * 1000) {
+    return DEFAULT_DEVICE_TIMEOUT_MS;
+  }
+  return timeoutMs;
+}
+
 /**
  * Upper bound (seconds) for an OAuth token's `expires_in`: 2_147_483_647 s
  * (~68 years) — cross-runtime safe and vastly beyond any realistic token
@@ -104,7 +123,7 @@ export async function requestDeviceAuthorization(
   if (scope) body.set("scope", scope);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), resolveDeviceTimeoutMs(timeoutMs));
   let response: Response;
   let text: string;
   try {
@@ -412,7 +431,7 @@ async function postDeviceToken(
   signal: AbortSignal | undefined
 ): Promise<TokenPollResult> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = setTimeout(() => controller.abort(), resolveDeviceTimeoutMs(timeoutMs));
   const onAbort = () => controller.abort();
   signal?.addEventListener("abort", onAbort, { once: true });
   // If the signal was ALREADY aborted, the "abort" event has fired and the
