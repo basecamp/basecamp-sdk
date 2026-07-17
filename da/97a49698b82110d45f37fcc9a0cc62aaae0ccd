@@ -1,0 +1,21 @@
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_78e8e9edae4dc6 357-360
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_b250506ef28983::t_6f958e82b8cba5 190-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "da97a49698b82110d45f37fcc9a0cc62aaae0ccd",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
