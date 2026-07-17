@@ -80,7 +80,9 @@ interface RawDeviceAuthorization {
   device_code?: string;
   user_code?: string;
   verification_uri?: string;
-  verification_uri_complete?: string;
+  // May be a JSON null on the wire — treated as absent (normalized to undefined),
+  // matching the Go/Kotlin decoders that cannot distinguish null from absent.
+  verification_uri_complete?: string | null;
   expires_in?: number;
   interval?: number | null;
 }
@@ -110,7 +112,7 @@ export interface RequestDeviceAuthorizationParams {
 export async function requestDeviceAuthorization(
   params: RequestDeviceAuthorizationParams
 ): Promise<DeviceAuthorization> {
-  const { deviceAuthorizationEndpoint, clientId, scope, fetch: customFetch = globalThis.fetch, timeoutMs = 30000 } = params;
+  const { deviceAuthorizationEndpoint, clientId, scope, fetch: customFetch = globalThis.fetch, timeoutMs = DEFAULT_DEVICE_TIMEOUT_MS } = params;
 
   requireSecureEndpoint(deviceAuthorizationEndpoint, "device authorization endpoint");
   if (!clientId) {
@@ -307,7 +309,7 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     signal,
     clock = defaultClock,
     fetch: customFetch = globalThis.fetch,
-    timeoutMs = 30000,
+    timeoutMs = DEFAULT_DEVICE_TIMEOUT_MS,
     sleepFn = sleep,
   } = params;
 
