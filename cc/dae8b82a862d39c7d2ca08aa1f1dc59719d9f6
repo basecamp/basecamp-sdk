@@ -1,0 +1,37 @@
+python/tests/oauth/test_resource_discovery.py
+  s_b250506ef28983::t_a7558f0525273e 213-220
+typescript/src/oauth/discovery.ts
+  s_b250506ef28983::t_2960c36c0ec1f0 186-193
+python/src/basecamp/_security.py
+  s_b250506ef28983::t_8060fdc4af4f43 115-121
+conformance/oauth/fixtures/37-origin-root-dot-segment-path.json
+  s_b250506ef28983::t_78990e2d922f65 1-12
+typescript/tests/oauth/resource-discovery.test.ts
+  s_0406dbc89d0eef::t_7406aa6da614fa 396-403
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_b250506ef28983::t_6de8e762397a65 722-734
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "ccdae8b82a862d39c7d2ca08aa1f1dc59719d9f6",
+  "prompts": {},
+  "sessions": {
+    "s_0406dbc89d0eef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94053b7d-4690-41cd-9944-4d4c6c322e5f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
