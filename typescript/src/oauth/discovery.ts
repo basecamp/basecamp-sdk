@@ -101,8 +101,10 @@ export class DiscoverySelectionError extends BasecampError {
     message: string,
     options?: { cause?: Error; httpStatus?: number }
   ) {
-    // capability/expected-issuer are consumer/usage-shaped; the rest are AS
-    // metadata faults surfaced as api_error.
+    // Only capability_unavailable is consumer/usage-shaped (validation). Every
+    // other reason — including expected_issuer_unavailable — is an AS-metadata
+    // fault surfaced as api_error, matching the other four SDKs (an issuer the
+    // resource does not advertise is a metadata fault, not caller usage).
     const code =
       reason === "capability_unavailable"
         ? "validation"
