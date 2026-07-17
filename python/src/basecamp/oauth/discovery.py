@@ -128,13 +128,29 @@ def discover(
     :class:`OAuthError` (``api_error``) on invalid metadata.
     """
     issuer_origin = require_origin_root(base_url, "OAuth discovery base URL")
+    return _discover_and_bind(issuer_origin, issuer_origin, timeout=timeout, max_body_bytes=max_body_bytes)
+
+
+def _discover_and_bind(
+    issuer_origin: str,
+    bind_issuer: str,
+    *,
+    timeout: float,
+    max_body_bytes: int,
+) -> OAuthConfig:
+    """Fetch AS metadata from ``issuer_origin`` but bind ``issuer`` against
+    ``bind_issuer`` by code-point. Routing and binding are distinct: the
+    resource-first flow fetches from the normalized origin yet binds against the
+    exact advertised issuer string (which may spell a trailing slash or explicit
+    default port). Internal only — not a public override.
+    """
     url = f"{issuer_origin}/.well-known/oauth-authorization-server"
 
     data = _fetch_discovery_document(url, timeout, max_body_bytes)
     if not isinstance(data, dict):
         raise OAuthError("api_error", "OAuth discovery response is not a JSON object")
 
-    return _parse_and_bind_as_metadata(data, issuer_origin)
+    return _parse_and_bind_as_metadata(data, bind_issuer)
 
 
 def _parse_and_bind_as_metadata(data: dict[str, Any], expected_issuer_origin: str) -> OAuthConfig:
@@ -320,7 +336,9 @@ def discover_from_resource(
         ) from exc
 
     try:
-        config = discover(issuer_origin, timeout=timeout, max_body_bytes=max_body_bytes)
+        # Fetch from the normalized origin, but bind against the exact advertised
+        # issuer string (selected), not the normalized origin.
+        config = _discover_and_bind(issuer_origin, selected, timeout=timeout, max_body_bytes=max_body_bytes)
     except _IssuerBindingError as exc:
         # A structured marker — not a message substring — distinguishes an
         # issuer-binding mismatch from a generic fetch failure.

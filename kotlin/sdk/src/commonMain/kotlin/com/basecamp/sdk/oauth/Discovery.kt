@@ -161,7 +161,11 @@ suspend fun discover(baseUrl: String, client: HttpClient? = null): OAuthConfig =
  * [discoverFromResource] calls it directly so it can branch on the marker type
  * to classify `issuer_mismatch` vs `as_fetch_failed`.
  */
-private suspend fun fetchAndBindAsMetadata(baseUrl: String, client: HttpClient?): OAuthConfig {
+private suspend fun fetchAndBindAsMetadata(
+    baseUrl: String,
+    client: HttpClient?,
+    bindIssuer: String? = null,
+): OAuthConfig {
     val issuerOrigin = requireOriginRoot(baseUrl, "OAuth discovery base URL")
     val url = "$issuerOrigin/.well-known/oauth-authorization-server"
 
@@ -180,7 +184,10 @@ private suspend fun fetchAndBindAsMetadata(baseUrl: String, client: HttpClient?)
     } catch (e: SerializationException) {
         throw BasecampException.Api("Failed to parse OAuth discovery response", httpStatus = 200, cause = e)
     }
-    return bindAsMetadata(raw, issuerOrigin)
+    // Fetch from the normalized origin, but bind the metadata issuer against the
+    // exact advertised string when supplied (routing vs binding are distinct);
+    // the public discover passes none, so it binds to its own normalized origin.
+    return bindAsMetadata(raw, bindIssuer ?: issuerOrigin)
 }
 
 /**
@@ -389,7 +396,8 @@ suspend fun discoverFromResource(
     val config = try {
         // Call the binding path directly (not the public discover, which converts
         // the marker to api_error) so the structural marker reaches the branch.
-        fetchAndBindAsMetadata(issuerOrigin, client)
+        // Bind against the exact advertised issuer, not the normalized origin.
+        fetchAndBindAsMetadata(issuerOrigin, client, bindIssuer = selectedIssuer)
     } catch (e: IssuerBindingException) {
         // Structured marker — never the message text — decides issuer_mismatch.
         throw BasecampException.DiscoverySelection("issuer_mismatch", e.message!!, cause = e)

@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http as mswHttp, HttpResponse, passthrough } from "msw";
 import { server } from "../setup.js";
 import { performInteractiveLogin } from "../../src/oauth/interactive-login.js";
+import { DiscoverySelectionError } from "../../src/oauth/discovery.js";
 import type { TokenStore } from "../../src/oauth/token-store.js";
 import type { OAuthToken } from "../../src/oauth/types.js";
 
@@ -135,6 +136,37 @@ describe("performInteractiveLogin", () => {
         openBrowser,
       })
     ).rejects.toThrow(/Failed to open browser/);
+  });
+
+  it("throws a typed capability_unavailable when the AS omits authorization_endpoint", async () => {
+    // A device-only AS advertises no authorization_endpoint. The consumer-side
+    // per-grant check must raise the typed DiscoverySelectionError reason, not a
+    // generic validation error, so callers can distinguish it across SDKs.
+    server.use(
+      mswHttp.get(
+        "https://device-only.example.com/.well-known/oauth-authorization-server",
+        () => HttpResponse.json({
+          issuer: "https://device-only.example.com",
+          token_endpoint: "https://device-only.example.com/token",
+          device_authorization_endpoint: "https://device-only.example.com/device",
+        })
+      ),
+    );
+
+    const store = createMockStore();
+    let caught: unknown;
+    try {
+      await performInteractiveLogin({
+        clientId: "test_client_id",
+        store,
+        baseUrl: "https://device-only.example.com",
+        openBrowser: vi.fn(),
+      });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(DiscoverySelectionError);
+    expect((caught as DiscoverySelectionError).reason).toBe("capability_unavailable");
   });
 
   it("uses custom baseUrl for discovery", async () => {

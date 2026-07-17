@@ -74,16 +74,6 @@ export interface DiscoverOptions {
    * the default cap applies (the bound cannot be disabled).
    */
   maxBodyBytes?: number;
-  /**
-   * Internal: the exact issuer string the AS metadata's `issuer` must equal by
-   * code-point (RFC 8414 §3.3/§4). `discoverFromResource` passes the advertised
-   * issuer here so binding stays code-point-exact even when it differs from the
-   * normalized fetch origin (e.g. a trailing slash or explicit `:443`). Defaults
-   * to the normalized origin when omitted.
-   *
-   * @internal
-   */
-  bindIssuer?: string;
 }
 
 /**
@@ -344,6 +334,22 @@ export async function discover(
   options: DiscoverOptions = {}
 ): Promise<OAuthConfig> {
   const issuerOrigin = requireOriginRoot(baseUrl, "OAuth discovery base URL");
+  return discoverAndBind(issuerOrigin, issuerOrigin, options);
+}
+
+/**
+ * Fetch AS metadata from `issuerOrigin`'s well-known URL but bind the returned
+ * `issuer` against `bindIssuer` by code-point. Routing and binding are distinct:
+ * the resource-first flow fetches from the normalized origin yet binds against
+ * the exact advertised issuer string (which may spell a trailing slash or
+ * explicit default port). Not exported — public `discover` passes the same value
+ * for both, so it never exposes a binding override.
+ */
+async function discoverAndBind(
+  issuerOrigin: string,
+  bindIssuer: string,
+  options: DiscoverOptions
+): Promise<OAuthConfig> {
   const discoveryUrl = `${issuerOrigin}/.well-known/oauth-authorization-server`;
 
   const data = (await fetchDiscoveryDocument(discoveryUrl, options)) as RawDiscoveryResponse;
@@ -351,9 +357,7 @@ export async function discover(
     throw new BasecampError("api_error", "OAuth discovery response is not a JSON object");
   }
 
-  // Fetch from the normalized origin, but bind `issuer` against the caller's
-  // exact advertised string when supplied (routing vs binding are distinct).
-  return parseAndBindAsMetadata(data, options.bindIssuer ?? issuerOrigin);
+  return parseAndBindAsMetadata(data, bindIssuer);
 }
 
 /**
@@ -571,7 +575,9 @@ export async function discoverFromResource(
 
   let config: OAuthConfig;
   try {
-    config = await discover(issuerOrigin, { ...discoverOptions, bindIssuer: selectedIssuer });
+    // Fetch from the normalized origin, but bind against the exact advertised
+    // issuer string (selectedIssuer), not the normalized origin.
+    config = await discoverAndBind(issuerOrigin, selectedIssuer, discoverOptions);
   } catch (err) {
     // Distinguish issuer-binding mismatch from a generic fetch failure via the
     // structural marker (never the message text).

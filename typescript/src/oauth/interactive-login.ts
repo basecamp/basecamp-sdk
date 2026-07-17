@@ -5,7 +5,13 @@
  * discovery, PKCE, local callback server, browser launch, code exchange.
  */
 
-import { discover, discoverLaunchpad, discoverFromResource, isLaunchpadIssuer } from "./discovery.js";
+import {
+  discover,
+  discoverLaunchpad,
+  discoverFromResource,
+  isLaunchpadIssuer,
+  DiscoverySelectionError,
+} from "./discovery.js";
 import { generateState, generatePKCE } from "./pkce.js";
 import { buildAuthorizationUrl } from "./authorize.js";
 import { startCallbackServer } from "./callback-server.js";
@@ -121,9 +127,12 @@ export async function performInteractiveLogin(
 
   // Authorization-code flow requires an authorization endpoint. It is optional
   // in discovery now (device-only servers omit it), so assert presence here.
+  // Raise the typed hard-failure reason (capability_unavailable) the resource-
+  // first contract exposes, not a generic validation error, so consumers can
+  // distinguish a missing-capability issuer consistently across SDKs.
   if (!config.authorizationEndpoint) {
-    throw new BasecampError(
-      "validation",
+    throw new DiscoverySelectionError(
+      "capability_unavailable",
       "Selected authorization server does not advertise an authorization_endpoint; " +
         "authorization-code login is unavailable for this issuer"
     );

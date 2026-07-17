@@ -51,19 +51,25 @@ module Basecamp
       # @example
       #   config = Basecamp::Oauth::Discovery.new.discover("https://launchpad.37signals.com")
       #   config.token_endpoint # => "https://launchpad.37signals.com/authorization/token"
-      # +expected_issuer+ is the identifier the AS metadata's +issuer+ must equal
-      # by code-point (RFC 8414 §3.3). It defaults to the normalized origin for a
-      # direct discover, but resource-first discovery passes the RAW advertised
-      # issuer so an AS whose issuer matches what the resource advertised (e.g. a
-      # trailing slash or explicit default port) binds instead of being normalized
-      # away into a false +issuer_mismatch+. The fetch URL is built from the
-      # normalized origin either way (that only cleans the origin string; the
-      # well-known path is identical).
-      def discover(base_url, expected_issuer: nil)
+      def discover(base_url)
         issuer_origin = Basecamp::Security.require_origin_root!(base_url, "OAuth discovery base URL")
+        discover_and_bind(issuer_origin, issuer_origin)
+      end
+
+      # Internal: fetch AS metadata from +issuer_origin+ (already an origin root)
+      # but bind the returned +issuer+ against +bind_issuer+ by code-point. Routing
+      # and binding are distinct — resource-first discovery fetches from the
+      # normalized origin yet binds against the exact advertised issuer string
+      # (which may spell a trailing slash or explicit default port), so an AS whose
+      # issuer matches what the resource advertised binds instead of being
+      # normalized away into a false +issuer_mismatch+. Not part of the public
+      # discovery API — {Oauth.discover} exposes no binding override.
+      #
+      # @api private
+      def discover_and_bind(issuer_origin, bind_issuer)
         discovery_url = "#{issuer_origin}/.well-known/oauth-authorization-server"
         data = Fetcher.fetch_json(@http_client, discovery_url, timeout: @timeout, max_body_bytes: @max_body_bytes)
-        parse_and_bind(data, expected_issuer || issuer_origin)
+        parse_and_bind(data, bind_issuer)
       end
 
       private

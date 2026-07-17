@@ -104,8 +104,11 @@ internal fun requireOriginRoot(raw: String, label: String = "origin"): String {
         throw BasecampException.Usage("$label must not contain userinfo: ${BasecampException.truncateMessage(raw)}")
     }
     // trailingQuery catches a bare '?' with an empty query (e.g. `https://host?`),
-    // whose encodedQuery is empty but which is still a query-bearing origin.
-    if (url.encodedQuery.isNotEmpty() || url.trailingQuery || url.encodedFragment.isNotEmpty()) {
+    // whose encodedQuery is empty but which is still a query-bearing origin. Ktor
+    // has no trailingQuery equivalent for a bare '#' (encodedFragment is empty for
+    // both absent and empty), so scan the raw input too: a '#' only ever delimits
+    // a fragment here.
+    if (url.encodedQuery.isNotEmpty() || url.trailingQuery || url.encodedFragment.isNotEmpty() || raw.contains('#')) {
         throw BasecampException.Usage("$label must not contain a query or fragment: ${BasecampException.truncateMessage(raw)}")
     }
     val path = url.encodedPath

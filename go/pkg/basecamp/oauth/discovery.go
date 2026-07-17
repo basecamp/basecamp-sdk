@@ -130,7 +130,10 @@ func requireOriginRoot(raw, label string) (string, error) {
 	if u.User != nil {
 		return "", usage(fmt.Sprintf("%s must not contain userinfo: %s", label, raw))
 	}
-	if u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+	// net/url sets ForceQuery for a bare trailing "?" but has no equivalent for a
+	// bare "#" (Fragment is "" for both absent and empty), so also scan the raw
+	// input: a "#" only ever delimits a fragment here.
+	if u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(raw, "#") {
 		return "", usage(fmt.Sprintf("%s must not contain a query or fragment: %s", label, raw))
 	}
 	if u.Path != "" && u.Path != "/" {
@@ -305,7 +308,7 @@ func (d *Discoverer) Discover(ctx context.Context, baseURL string, opts ...Disco
 	if err != nil {
 		return nil, err
 	}
-	return d.fetchASMetadata(ctx, origin, newDiscoverConfig(opts))
+	return d.fetchASMetadata(ctx, origin, origin, newDiscoverConfig(opts))
 }
 
 // rawDiscoveryResponse mirrors an RFC 8414 metadata document. Endpoint fields
@@ -321,12 +324,17 @@ type rawDiscoveryResponse struct {
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 }
 
-func (d *Discoverer) fetchASMetadata(ctx context.Context, issuerOrigin string, cfg discoverConfig) (*Config, error) {
+// fetchASMetadata fetches the AS metadata from issuerOrigin's well-known URL but
+// binds the returned issuer against bindIssuer by code-point. Routing and binding
+// are distinct: the resource-first flow fetches from the normalized origin yet
+// binds against the exact advertised issuer string (which may spell a trailing
+// slash or explicit default port). Public Discover passes the same value for both.
+func (d *Discoverer) fetchASMetadata(ctx context.Context, issuerOrigin, bindIssuer string, cfg discoverConfig) (*Config, error) {
 	body, err := d.fetchDiscoveryDocument(ctx, issuerOrigin+wellKnownAS, cfg)
 	if err != nil {
 		return nil, err
 	}
-	return parseAndBindASMetadata(body, issuerOrigin)
+	return parseAndBindASMetadata(body, bindIssuer)
 }
 
 // parseAndBindASMetadata validates AS metadata and binds issuer to
@@ -544,7 +552,9 @@ func (d *Discoverer) DiscoverFromResource(ctx context.Context, resourceOrigin st
 			fmt.Sprintf("advertised issuer %q is not a valid origin root", selectedIssuer), err)
 	}
 
-	config, err := d.fetchASMetadata(ctx, issuerOrigin, cfg)
+	// Fetch from the normalized origin, but bind the metadata issuer against the
+	// exact advertised string (selectedIssuer), not the normalized origin.
+	config, err := d.fetchASMetadata(ctx, issuerOrigin, selectedIssuer, cfg)
 	if err != nil {
 		if errors.Is(err, errIssuerBindingMismatch) {
 			return nil, newSelectionError(ErrIssuerMismatch, err.Error(), err)

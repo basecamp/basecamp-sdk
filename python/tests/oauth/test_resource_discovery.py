@@ -273,9 +273,7 @@ def test_duplicate_advertised_issuer_is_one_candidate_not_ambiguous() -> None:
     resource_origin = ORIGINS["{{RESOURCE_ORIGIN}}"]
     bc5 = ORIGINS["{{BC5_ISSUER}}"]
     respx.get(f"{resource_origin}{WELL_KNOWN_RESOURCE}").mock(
-        return_value=httpx.Response(
-            200, json={"resource": resource_origin, "authorization_servers": [bc5, bc5]}
-        )
+        return_value=httpx.Response(200, json={"resource": resource_origin, "authorization_servers": [bc5, bc5]})
     )
     respx.get(f"{bc5}{WELL_KNOWN_AS}").mock(
         return_value=httpx.Response(200, json={"issuer": bc5, "token_endpoint": f"{bc5}/token"})

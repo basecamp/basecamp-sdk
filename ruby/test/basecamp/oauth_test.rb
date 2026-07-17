@@ -127,19 +127,26 @@ class OAuthTest < Minitest::Test
     assert_includes error.message, "grant_types_supported"
   end
 
-  def test_discover_binds_metadata_issuer_to_expected_issuer_code_point
-    # The RFC 8414 code-point bind is against the advertised issuer, so an AS
+  def test_resource_first_binds_metadata_issuer_to_advertised_code_point
+    # The RFC 8414 code-point bind is against the ADVERTISED issuer, so an AS
     # whose issuer matches the advertised trailing-slash form must bind rather
-    # than be normalized away into a false issuer_mismatch.
-    discovery_response = {
-      "issuer" => "https://bc5.example/",
-      "token_endpoint" => "https://bc5.example/token"
-    }
+    # than be normalized away into a false issuer_mismatch. Binding is internal
+    # (Oauth.discover exposes no override), so drive it through the resource-first
+    # orchestrator: the resource advertises the trailing-slash issuer and the AS
+    # echoes it.
+    advertised = "https://bc5.example/"
+    stub_request(:get, "https://api.example.com/.well-known/oauth-protected-resource")
+      .to_return(status: 200,
+        body: { resource: "https://api.example.com", authorization_servers: [ advertised ] }.to_json,
+        headers: { "Content-Type" => "application/json" })
     stub_request(:get, "https://bc5.example/.well-known/oauth-authorization-server")
-      .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
+      .to_return(status: 200,
+        body: { issuer: advertised, token_endpoint: "https://bc5.example/token" }.to_json,
+        headers: { "Content-Type" => "application/json" })
 
-    config = Basecamp::Oauth.discover("https://bc5.example", expected_issuer: "https://bc5.example/")
-    assert_equal "https://bc5.example/", config.issuer
+    result = Basecamp::Oauth.discover_from_resource("https://api.example.com")
+    assert result.selected?
+    assert_equal advertised, result.config.issuer
   end
 
   def test_discover_rejects_scopes_supported_not_array_of_strings
