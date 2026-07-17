@@ -463,8 +463,9 @@ private suspend fun postDeviceTokenPoll(
         // misdirected or attacker-influenced endpoint — an API fault, never an
         // OAuth poll state. Classified BEFORE body parsing so a redirect whose
         // body parrots {"error":"authorization_pending"} cannot keep the loop
-        // polling.
-        PollResult.Other("http_$status", status)
+        // polling. The message names the redirect explicitly — it is a distinct,
+        // security-relevant failure mode, not a generic non-2xx status.
+        PollResult.Other("unexpected redirect (HTTP $status)", status)
     } else {
         val error = try {
             deviceJson.decodeFromString<OAuthErrorResponse>(body).error

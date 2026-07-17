@@ -551,6 +551,10 @@ class OAuthDeviceTest {
         }
         assertEquals(302, e.httpStatus, "suppressed 3xx surfaces as api_error before body parsing")
         assertEquals(1, polls, "the loop must stop at the first redirect, not keep polling")
+        assertTrue(
+            e.message?.contains("redirect", ignoreCase = true) == true,
+            "the error must name the redirect explicitly, not a generic http_302",
+        )
         client.close()
     }
 
