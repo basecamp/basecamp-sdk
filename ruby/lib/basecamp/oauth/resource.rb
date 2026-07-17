@@ -12,7 +12,15 @@ module Basecamp
         Fetcher.ensure_redirects_suppressed!(http_client) if http_client
         @http_client = http_client || Fetcher.build_client(timeout)
         @timeout = timeout
-        @max_body_bytes = max_body_bytes
+        # Normalize the public cap to a finite non-negative Integer: a nil, float,
+        # or Float::INFINITY would otherwise disable the streaming memory bound
+        # (an infinite/undefined cap never trips), reintroducing an SSRF/OOM risk.
+        @max_body_bytes =
+          if max_body_bytes.is_a?(Integer) && max_body_bytes >= 0
+            max_body_bytes
+          else
+            Fetcher::DEFAULT_MAX_BODY_BYTES
+          end
       end
 
       # Discovers protected-resource metadata from

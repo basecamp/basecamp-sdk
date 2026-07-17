@@ -221,6 +221,15 @@ class SecurityRequireOriginRootTest < Minitest::Test
     assert_match(/port/, error.message)
   end
 
+  def test_rejects_dangling_port_delimiter
+    # "https://example.com:" parses to the default-port origin under URI, silently
+    # accepting a malformed authority; the empty port must be rejected.
+    error = assert_raises(Basecamp::UsageError) do
+      Basecamp::Security.require_origin_root!("https://example.com:")
+    end
+    assert_match(/port/, error.message)
+  end
+
   def test_rejects_path_beyond_root
     assert_raises(Basecamp::UsageError) do
       Basecamp::Security.require_origin_root!("https://example.com/foo")

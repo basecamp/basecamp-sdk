@@ -58,8 +58,8 @@ module Basecamp
     # @param base_url [String] the OAuth server's issuer origin
     # @param timeout [Integer] request timeout in seconds
     # @return [Config]
-    def self.discover(base_url, timeout: 10)
-      Discovery.new(timeout: timeout).discover(base_url)
+    def self.discover(base_url, timeout: 10, expected_issuer: nil)
+      Discovery.new(timeout: timeout).discover(base_url, expected_issuer: expected_issuer)
     end
 
     def self.discover_launchpad(timeout: 10)
@@ -210,7 +210,11 @@ module Basecamp
       end
 
       config = begin
-        discover(issuer_origin, timeout: timeout)
+        # Fetch from the normalized origin, but bind the AS metadata issuer to the
+        # RAW advertised issuer by code-point: an AS whose issuer equals what the
+        # resource advertised must not be rejected merely because normalization
+        # dropped a trailing slash / default port before the bind.
+        discover(issuer_origin, timeout: timeout, expected_issuer: selected_issuer)
       rescue OauthError => e
         raise as_failure_error(issuer_origin, e)
       end

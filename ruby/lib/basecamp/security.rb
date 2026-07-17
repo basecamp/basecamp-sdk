@@ -119,6 +119,15 @@ module Basecamp
         raise UsageError.new("#{label} must be an origin root (no path): #{raw}")
       end
 
+      # A dangling port delimiter ("https://example.com:") parses to the
+      # default-port origin under URI, silently accepting a malformed authority.
+      # Reject the empty port explicitly. IPv6 authorities legitimately end with
+      # "]" (e.g. "[::1]"), so only a trailing ":" is a dangling port.
+      authority = raw.to_s.split("://", 2)[1].to_s.split(%r{[/?#]}, 2)[0].to_s
+      if authority.end_with?(":")
+        raise UsageError.new("#{label} has an invalid port: #{raw}")
+      end
+
       # URI.parse rejects a non-numeric port, but it happily accepts a numeric
       # port outside the valid TCP range (e.g. :0 or :99999). Reject anything
       # outside 1–65535 so a structurally-parseable-but-undialable port can never

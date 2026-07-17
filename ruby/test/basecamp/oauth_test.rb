@@ -94,6 +94,54 @@ class OAuthTest < Minitest::Test
     assert_includes error.message, "device_authorization_endpoint"
   end
 
+  def test_discover_rejects_present_null_endpoint
+    # A present JSON null endpoint is malformed metadata, NOT an absent key.
+    discovery_response = {
+      "issuer" => "https://launchpad.37signals.com",
+      "token_endpoint" => "https://launchpad.37signals.com/token",
+      "registration_endpoint" => nil
+    }
+    stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
+      .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.discover_launchpad
+    end
+    assert_equal "api_error", error.type
+    assert_includes error.message, "registration_endpoint"
+  end
+
+  def test_discover_rejects_present_null_grant_types
+    discovery_response = {
+      "issuer" => "https://launchpad.37signals.com",
+      "token_endpoint" => "https://launchpad.37signals.com/token",
+      "grant_types_supported" => nil
+    }
+    stub_request(:get, "https://launchpad.37signals.com/.well-known/oauth-authorization-server")
+      .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.discover_launchpad
+    end
+    assert_equal "api_error", error.type
+    assert_includes error.message, "grant_types_supported"
+  end
+
+  def test_discover_binds_metadata_issuer_to_expected_issuer_code_point
+    # The RFC 8414 code-point bind is against the advertised issuer, so an AS
+    # whose issuer matches the advertised trailing-slash form must bind rather
+    # than be normalized away into a false issuer_mismatch.
+    discovery_response = {
+      "issuer" => "https://bc5.example/",
+      "token_endpoint" => "https://bc5.example/token"
+    }
+    stub_request(:get, "https://bc5.example/.well-known/oauth-authorization-server")
+      .to_return(status: 200, body: discovery_response.to_json, headers: { "Content-Type" => "application/json" })
+
+    config = Basecamp::Oauth.discover("https://bc5.example", expected_issuer: "https://bc5.example/")
+    assert_equal "https://bc5.example/", config.issuer
+  end
+
   def test_discover_rejects_scopes_supported_not_array_of_strings
     discovery_response = {
       "issuer" => "https://launchpad.37signals.com",

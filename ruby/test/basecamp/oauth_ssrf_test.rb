@@ -97,6 +97,28 @@ class OAuthSsrfTest < Minitest::Test
     assert_equal "validation", resource_error.type
   end
 
+  # A follower whose class name does NOT contain "redirect" — the old class-name
+  # heuristic would have missed it.
+  class SneakyLocationFollower < Faraday::Middleware
+    def call(env)
+      @app.call(env)
+    end
+  end
+
+  def test_injected_client_with_non_redirect_named_middleware_is_rejected
+    # The enforceable policy (adapter-only) refuses ANY middleware, so a redirect
+    # follower under an innocuous name can no longer bypass the check.
+    connection = Faraday.new do |conn|
+      conn.use SneakyLocationFollower
+      conn.adapter Faraday.default_adapter
+    end
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Discovery.new(http_client: connection)
+    end
+    assert_equal "validation", error.type
+  end
+
   def test_redirect_is_not_followed
     issuer = "https://issuer.redirect-test.example"
     attacker = "https://attacker.example.com"

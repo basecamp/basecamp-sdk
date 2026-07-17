@@ -66,25 +66,31 @@ module Basecamp
         end
       end
 
-      # Rejects an INJECTED connection that carries redirect-following middleware.
-      # Redirect suppression is a load-bearing SSRF control (RFC 9728 §7.7): a
-      # caller-supplied client with +FollowRedirects+ would silently chase an
-      # attacker-controlled +Location+, so we refuse it rather than harden it in
-      # place (the middleware stack of a foreign connection is not ours to
-      # rewrite). The default {build_client} connection carries no such
-      # middleware and passes.
+      # Rejects an INJECTED connection whose middleware stack we cannot verify to
+      # be redirect-free. Redirect suppression is a load-bearing SSRF control (RFC
+      # 9728 §7.7): a caller-supplied client that follows redirects would silently
+      # chase an attacker-controlled +Location+. A class-NAME heuristic (matching
+      # +/redirect/+) is bypassable by a follower whose class name does not contain
+      # "redirect", so we enforce a POLICY instead of guessing by name: an injected
+      # connection may carry ONLY adapter handlers. The default {build_client}
+      # connection (adapter only) and a test's mock adapter qualify; ANY request/
+      # response middleware — which could follow redirects under any name, or
+      # otherwise rewrite the request — is refused rather than trusted.
       #
       # @param client [Faraday::Connection]
-      # @raise [OauthError] +validation+ when redirect middleware is present
+      # @raise [OauthError] +validation+ when non-adapter middleware is present
       def self.ensure_redirects_suppressed!(client)
         handlers = client.respond_to?(:builder) ? Array(client.builder.handlers) : []
-        offending = handlers.find { |h| h.respond_to?(:klass) && h.klass.name.to_s.match?(/redirect/i) }
+        offending = handlers.find do |h|
+          h.respond_to?(:klass) && h.klass.is_a?(Class) && !(h.klass <= Faraday::Adapter)
+        end
         return unless offending
 
         raise OauthError.new(
           "validation",
-          "Injected OAuth discovery client must not follow redirects " \
-          "(found #{offending.klass.name}); redirects are suppressed for SSRF safety"
+          "Injected OAuth discovery client must carry only an adapter (no middleware); " \
+          "found #{offending.klass.name}. Redirects are suppressed for SSRF safety, so a " \
+          "connection whose middleware stack cannot be verified redirect-free is refused"
         )
       end
 

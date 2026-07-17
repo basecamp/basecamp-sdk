@@ -42,11 +42,19 @@ module Basecamp
       # @example
       #   config = Basecamp::Oauth::Discovery.new.discover("https://launchpad.37signals.com")
       #   config.token_endpoint # => "https://launchpad.37signals.com/authorization/token"
-      def discover(base_url)
+      # +expected_issuer+ is the identifier the AS metadata's +issuer+ must equal
+      # by code-point (RFC 8414 §3.3). It defaults to the normalized origin for a
+      # direct discover, but resource-first discovery passes the RAW advertised
+      # issuer so an AS whose issuer matches what the resource advertised (e.g. a
+      # trailing slash or explicit default port) binds instead of being normalized
+      # away into a false +issuer_mismatch+. The fetch URL is built from the
+      # normalized origin either way (that only cleans the origin string; the
+      # well-known path is identical).
+      def discover(base_url, expected_issuer: nil)
         issuer_origin = Basecamp::Security.require_origin_root!(base_url, "OAuth discovery base URL")
         discovery_url = "#{issuer_origin}/.well-known/oauth-authorization-server"
         data = Fetcher.fetch_json(@http_client, discovery_url, timeout: @timeout, max_body_bytes: @max_body_bytes)
-        parse_and_bind(data, issuer_origin)
+        parse_and_bind(data, expected_issuer || issuer_origin)
       end
 
       private
@@ -89,10 +97,11 @@ module Basecamp
 
         # Any endpoint field that IS present must be a non-empty String: "" is a
         # truthy value in Ruby and must be rejected, and a non-string endpoint
-        # (array/number/object) is malformed metadata.
+        # (array/number/object, or a present JSON null) is malformed metadata —
+        # a present null is NOT the same as an absent key.
         def reject_empty_endpoints!(data)
           data.each do |key, value|
-            next unless key.end_with?("_endpoint") && !value.nil?
+            next unless key.end_with?("_endpoint")
 
             unless value.is_a?(String) && !value.empty?
               raise OauthError.new("api_error", "Invalid OAuth discovery response: invalid #{key}")
@@ -105,9 +114,12 @@ module Basecamp
         # accepted: substring-matching +grant_types_supported+ could falsely enable
         # a grant such as device_code, and a non-array is malformed metadata.
         def validate_string_array!(data, key)
-          value = data[key]
-          return if value.nil?
+          # Distinguish an ABSENT key from a present JSON null: a present null is
+          # malformed (the field must be an array of strings when present), while
+          # an absent key is legitimately unset.
+          return unless data.key?(key)
 
+          value = data[key]
           unless value.is_a?(Array) && value.all?(String)
             raise OauthError.new(
               "api_error",

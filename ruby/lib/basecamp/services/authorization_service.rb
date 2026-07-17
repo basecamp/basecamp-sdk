@@ -27,12 +27,18 @@ module Basecamp
       # Returns the authenticated user's identity and list of accounts
       # they have access to.
       #
-      # @return [Hash] authorization info with :identity and :accounts
+      # @return [Hash] authorization info with string keys "identity" and
+      #   "accounts" (parsed JSON, not symbol keys)
       # @raise [Oauth::DiscoverySelectionError] on a hard discovery failure after
       #   a BC5 issuer was advertised and selected
       # @see https://github.com/basecamp/bc3-api/blob/master/sections/authentication.md
       def get
-        http.get_authorization_document.json
+        # Wrap in with_operation like every other service call so observability
+        # hooks (logging, metrics, tracing) see this credentialed request and its
+        # failures too.
+        with_operation(service: "authorization", operation: "get", is_mutation: false) do
+          http.get_authorization_document.json
+        end
       end
     end
   end
