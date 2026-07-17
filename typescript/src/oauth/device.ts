@@ -523,7 +523,13 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     let timer: ReturnType<typeof setTimeout>;
     const onAbort = () => {
       clearTimeout(timer);
-      reject(new DOMException("Aborted", "AbortError"));
+      // A plain Error tagged "AbortError" rather than `new DOMException(...)`:
+      // DOMException is not guaranteed in every JS runtime that can run this SDK
+      // (referencing it there throws ReferenceError). isAbort() matches on
+      // `name === "AbortError"`, so this stays runtime-agnostic.
+      const abortError = new Error("Aborted");
+      abortError.name = "AbortError";
+      reject(abortError);
     };
     timer = setTimeout(() => {
       signal?.removeEventListener("abort", onAbort);
