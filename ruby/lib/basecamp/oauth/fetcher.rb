@@ -29,6 +29,24 @@ module Basecamp
       # Discovery documents are tiny; cap the read at 1 MiB by default.
       DEFAULT_MAX_BODY_BYTES = 1 * 1024 * 1024
 
+      # Default request timeout in seconds when a caller supplies none or an
+      # invalid one.
+      DEFAULT_TIMEOUT = 10
+
+      # Coerce the public timeout to a finite, positive numeric. A nil, non-numeric,
+      # non-positive, or +Float::INFINITY+/+NaN+ value would otherwise disable BOTH
+      # the socket timeout and the wall-clock deadline in {fetch_json} (+now + inf+
+      # never trips), letting a slow-drip peer hold the fetch open indefinitely.
+      # Mirrors the +max_body_bytes+ normalization in the discovery initializers.
+      #
+      # @param timeout [Object] caller-supplied timeout
+      # @return [Numeric] a finite, positive timeout in seconds
+      def self.normalize_timeout(timeout)
+        return timeout if timeout.is_a?(Numeric) && timeout.finite? && timeout.positive?
+
+        DEFAULT_TIMEOUT
+      end
+
       # Raised internally to abort a streaming read once the cap is exceeded.
       # Never escapes this module — it is mapped to an OauthError.
       class BodyTooLarge < StandardError; end

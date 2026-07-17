@@ -203,6 +203,22 @@ class OAuthSsrfTest < Minitest::Test
     end
   end
 
+  def test_discovery_normalizes_non_finite_timeout_to_default
+    # A nil/non-numeric/non-positive/Float::INFINITY timeout would disable both the
+    # socket timeout and the wall-clock deadline (now + inf never trips), letting a
+    # slow-drip peer hang the fetch. Both Discovery and Resource must normalize it.
+    default = Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT
+    [ Float::INFINITY, Float::NAN, nil, 0, -1, "10" ].each do |bad|
+      [ Basecamp::Oauth::Discovery, Basecamp::Oauth::Resource ].each do |klass|
+        instance = klass.new(timeout: bad)
+        assert_equal default, instance.instance_variable_get(:@timeout),
+          "expected #{klass}#new(timeout: #{bad.inspect}) to normalize to the default"
+      end
+    end
+    # A valid positive timeout is preserved.
+    assert_equal 2.5, Basecamp::Oauth::Discovery.new(timeout: 2.5).instance_variable_get(:@timeout)
+  end
+
   def test_redirect_is_not_followed
     issuer = "https://issuer.redirect-test.example"
     attacker = "https://attacker.example.com"
