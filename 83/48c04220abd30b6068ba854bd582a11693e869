@@ -1,0 +1,21 @@
+ruby/lib/basecamp/services/todos_extensions.rb
+  s_ae5784113b5029::t_4b1f421468fe53 105-107,112-113
+ruby/test/basecamp/services/todos_service_test.rb
+  s_ae5784113b5029::t_db07e549d8b77b 188-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8348c04220abd30b6068ba854bd582a11693e869",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
