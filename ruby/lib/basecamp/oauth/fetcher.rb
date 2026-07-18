@@ -250,7 +250,12 @@ module Basecamp
         http.read_timeout = timeout
         http.max_retries = 0
 
-        request = method == :post ? Net::HTTP::Post.new(uri) : Net::HTTP::Get.new(uri)
+        request =
+          case method
+          when :post then Net::HTTP::Post.new(uri)
+          when :get then Net::HTTP::Get.new(uri)
+          else raise ArgumentError, "stream_http supports :get and :post, got #{method.inspect}"
+          end
         headers.each { |name, value| request[name] = value }
         if form
           request.body = URI.encode_www_form(form)
