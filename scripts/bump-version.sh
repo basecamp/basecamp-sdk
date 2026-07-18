@@ -67,4 +67,13 @@ echo "Syncing TypeScript lockfile..."
 echo "Syncing Ruby lockfile..."
 (cd ruby && bundle install --quiet)
 
+# Sync Python lockfile
+echo "Syncing Python lockfile..."
+(cd python && uv lock --quiet)
+
+# Sync conformance TypeScript runner lockfile (records the SDK's version
+# via its file:../../../typescript link)
+echo "Syncing conformance TypeScript runner lockfile..."
+(cd conformance/runner/typescript && npm install --package-lock-only --ignore-scripts --silent)
+
 echo "Done. Bumped 10 files to $VERSION."
