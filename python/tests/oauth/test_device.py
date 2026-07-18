@@ -703,6 +703,20 @@ class TestPollDeviceToken:
         assert not isinstance(exc_info.value, DeviceFlowError)
 
     @respx.mock
+    def test_redirect_token_poll_classified_by_status_without_draining_body(self):
+        # A 3xx must fail by STATUS before the body is read. Proof: an oversized 3xx
+        # body would trip the size cap ("exceeds size cap") if drained — the skip
+        # means it surfaces as a redirect api_error instead.
+        _queue_token_responses([httpx.Response(302, content=b"x" * (2 * 1024 * 1024))])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert "redirect" in str(exc_info.value)  # by status, not the size cap
+
+    @respx.mock
     def test_non_string_token_error_falls_back_to_http_status(self):
         # A non-string `error` (e.g. 123) must not be treated as an OAuth error
         # code — it falls back to http_<status>, matching the other SDKs.
