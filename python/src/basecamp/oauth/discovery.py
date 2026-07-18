@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from basecamp._security import require_origin_root, truncate
+from basecamp._security import require_origin_root
 from basecamp.errors import BasecampError
 from basecamp.oauth._transport import _MAX_REQUEST_TIMEOUT, request_bounded
 from basecamp.oauth.config import (
@@ -142,15 +142,20 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
     # total-request bound (see _normalize_timeout / request_bounded).
     timeout = _normalize_timeout(timeout, maximum=_MAX_REQUEST_TIMEOUT)
     try:
-        # The body is ALWAYS drained (the default read_body): unlike the device
-        # flow, a non-2xx discovery body is used — truncated into the api_error
-        # message below.
+        # STATUS DOMINATES THE BODY (SPEC.md: non-2xx on either hop → api_error,
+        # never network): skip draining a non-2xx body so a stalled/dripped error
+        # body cannot convert the required api_error into a retryable network
+        # timeout. The body text was only optional diagnostics — the other SDKs
+        # read it best-effort at most (TS swallows read failures, Go ignores the
+        # read error, Kotlin never reads it); category, retryability, and
+        # http_status are the observable contract.
         status, body = request_bounded(
             "GET",
             url,
             headers={"Accept": "application/json"},
             timeout=timeout,
             max_body_bytes=max_body_bytes,
+            read_body=lambda status_code: 200 <= status_code < 300,
             context="OAuth discovery",
         )
     except httpx.TimeoutException as exc:
@@ -163,7 +168,7 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
     if not 200 <= status < 300:
         raise OAuthError(
             "api_error",
-            f"OAuth discovery failed with status {status}: {truncate(body.decode(errors='replace'))}",
+            f"OAuth discovery failed with status {status}",
             http_status=status,
         )
 
