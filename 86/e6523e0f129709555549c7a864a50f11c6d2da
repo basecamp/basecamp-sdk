@@ -1,0 +1,24 @@
+python/src/basecamp/oauth/device.py
+  s_b250506ef28983::t_0c93d7100edd3e 194-202
+  s_b250506ef28983::t_3302e0e40ee003 518-527
+  s_b250506ef28983::t_d5854a5c5261f8 88,95-100,112-113
+python/tests/oauth/test_device.py
+  s_b250506ef28983::t_61d12a53ddb9ff 706-718
+  s_b250506ef28983::t_41b21ecb3fc438 705
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "86e6523e0f129709555549c7a864a50f11c6d2da",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
