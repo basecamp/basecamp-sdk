@@ -2,12 +2,15 @@
   "name": "conformance-runner-typescript",
   "type": "module",
   "private": true,
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "pretest": "cd ../../../typescript && npm install --prefer-offline --silent && npm run build",
     "test": "vitest run"
   },
   "devDependencies": {
-    "vitest": "^4.0.0",
+    "vitest": "^4.1.0",
     "msw": "^2.12.0"
   },
   "dependencies": {
