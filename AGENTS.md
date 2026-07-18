@@ -213,7 +213,7 @@ Or `make generate` if it cascades. Never commit a Smithy change without regenera
 1. **`openapi.json` must always reflect the current Smithy spec.** Run `make smithy-build` after any change to `spec/basecamp.smithy` or `spec/overlays/*.smithy`.
 2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, `kotlin/generator/.../Config.kt`, and `python/scripts/generate_services.py` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
 3. **Tags in `spec/overlays/tags.smithy` control service grouping.** Every new operation needs a tag or it won't appear in any generated service.
-4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`.
+4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`. One carve-out (SPEC.md §18 "Hand-Written Composite Methods"): where `omitempty` request structs cannot express always-send-empty semantics, a sanctioned composite's transport may marshal an explicit body map through the operation's generated `*WithBody` variant.
 
 ### Verification
 

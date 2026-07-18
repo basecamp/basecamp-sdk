@@ -167,6 +167,7 @@ func main() {
 // Tests where the Go SDK's behavior intentionally differs.
 var goSDKSkips = map[string]string{
 	"Mixed-case host and explicit default port stay on the mocked origin": "Go runner dials configOverrides.baseUrl directly (its httptest mock has its own origin); origin-interception normalization applies to the respx/WebMock/MSW/MockEngine runners",
+	"Bracketed IPv6 loopback origin stays on the mocked origin":           "Go runner dials configOverrides.baseUrl directly (its httptest mock has its own origin); origin-interception normalization applies to the respx/WebMock/MSW/MockEngine runners",
 }
 
 func loadTests(filename string) ([]TestCase, error) {

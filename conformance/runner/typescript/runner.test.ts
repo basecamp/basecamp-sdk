@@ -346,8 +346,14 @@ function installMockHandlers(tc: TestCase): {
     tc.configOverrides?.baseUrl ?? `http://localhost:9876/${TEST_ACCOUNT_ID}`;
   const origin = new URL(baseUrl).origin;
 
-  // Catch-all handler for all requests to the active API origin.
-  const handler = http.all(`${origin}/*`, async ({ request }) => {
+  // Catch-all handler for all requests to the active API origin. Matched as
+  // a RegExp on the request URL — a string pattern goes through MSW's
+  // path-to-regexp parsing, which trips over bracketed IPv6 origins like
+  // http://[::1]:3000.
+  const originPattern = new RegExp(
+    `^${origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/`,
+  );
+  const handler = http.all(originPattern, async ({ request }) => {
     count++;
     times.push(Date.now());
     const url = new URL(request.url);

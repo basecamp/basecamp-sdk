@@ -230,6 +230,10 @@ class TestRunner:
         # explicit-default-port baseUrl still matches the mock route.
         scheme = parsed.scheme.lower()
         host = (parsed.hostname or "").lower()
+        # urlparse's hostname strips IPv6 brackets; restore them, matching
+        # how httpx renders the request URL (http://[::1]:3000).
+        if ":" in host:
+            host = f"[{host}]"
         default_port = {"http": 80, "https": 443}.get(scheme)
         port = f":{parsed.port}" if parsed.port and parsed.port != default_port else ""
         origin = f"{scheme}://{host}{port}"
