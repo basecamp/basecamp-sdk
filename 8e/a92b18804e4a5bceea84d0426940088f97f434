@@ -1,0 +1,26 @@
+go/pkg/basecamp/todos.go
+  s_ae5784113b5029::t_377904a1ae3516 44-45
+python/tests/services/test_todos.py
+  s_ae5784113b5029::t_f875299ff74cf3 160-168
+  s_ae5784113b5029::t_41cc0896ddfc9f 12
+  s_ae5784113b5029::t_eda40f53856742 159
+python/src/basecamp/services/todos.py
+  s_ae5784113b5029::t_ddf2a4a10c8f18 17
+  s_ae5784113b5029::t_7e73d28dd40bf5 45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8ea92b18804e4a5bceea84d0426940088f97f434",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
