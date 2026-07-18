@@ -494,6 +494,33 @@ class OAuthDeviceTest < Minitest::Test
     assert_requested(:post, TOKEN_ENDPOINT, times: 1)
   end
 
+  def test_poll_rejects_out_of_range_caller_durations
+    # Caller-input sanity on the public entry point: nil/non-numeric would raise
+    # NoMethodError/TypeError deeper in, a non-finite expires_in builds a deadline
+    # that NEVER passes (an unbounded poll loop), and zero/negative/oversized
+    # values are not schedulable waits. All surface as usage before any request.
+    [
+      { interval: 5, expires_in: nil },
+      { interval: 5, expires_in: 0 },
+      { interval: 5, expires_in: -1 },
+      { interval: 5, expires_in: Float::INFINITY },
+      { interval: 5, expires_in: Float::NAN },
+      { interval: 5, expires_in: 2_147_484 },
+      { interval: nil, expires_in: 900 },
+      { interval: 0, expires_in: 900 },
+      { interval: 2_147_484, expires_in: 900 }
+    ].each do |args|
+      error = assert_raises(Basecamp::Oauth::OauthError, args.inspect) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", **args
+        )
+      end
+      assert_equal "usage", error.type, args.inspect
+    end
+    assert_not_requested(:post, TOKEN_ENDPOINT)
+  end
+
   def test_poll_expires_against_injected_monotonic_clock
     times = [ 0, 1_000_000 ]
     i = 0
@@ -646,6 +673,35 @@ class OAuthDeviceTest < Minitest::Test
 
     assert_equal "api_error", error.type
     assert_match(/redirect/i, error.message)
+  end
+
+  def test_token_poll_redirect_classified_by_status_on_buffered_adapter
+    # Faraday's built-in Test adapter buffers the whole body and IGNORES +on_data+ —
+    # exactly like any adapter on Faraday 2.0–2.4, which never passes +env+ to
+    # +on_data+. The SkipBody fast-path can never fire, so the post-request status
+    # backstop in +post_form+ must classify the redirect by its completed status
+    # BEFORE the oversized buffered body trips the size cap.
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post("https://issuer.example/token") do
+        [ 302, { "Location" => "https://x/" }, "x" * (2 * 1024 * 1024) ]
+      end
+    end
+    connection = Faraday.new { |conn| conn.adapter :test, stubs }
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.poll_device_token(
+        token_endpoint: "https://issuer.example/token", client_id: "basecamp-cli",
+        device_code: "d", interval: 5, expires_in: 900,
+        http_client: connection, clock: -> { 0.0 }, sleeper: ->(_seconds) { }
+      )
+    end
+
+    # Redirect api_error by status — NOT the size cap the 2 MiB buffered body would
+    # trip if the backstop failed to short-circuit before reading it.
+    assert_equal "api_error", error.type
+    assert_equal 302, error.http_status
+    assert_match(/redirect/i, error.message)
+    assert_no_match(/size cap/i, error.message)
   end
 
   def test_poll_cancellation_during_wait_is_prompt

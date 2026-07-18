@@ -104,9 +104,16 @@ module Basecamp
         chunks = []
         total = 0
         reader = proc do |chunk, _received, env|
-          # Faraday passes +env+ (with the response status) once headers are in; it
-          # is nil on a 2-arg call. If the caller does not use this status's body,
-          # stop before draining it — a slow such body would otherwise time out.
+          # Fast-path status-first skip: Faraday >= 2.5 passes +env+ (with the
+          # response status) to +on_data+ once headers are in, so a body the caller
+          # will not use (a non-2xx device-auth / a 3xx token redirect) is abandoned
+          # at the FIRST body chunk rather than drained. +env+ is nil on older
+          # Faraday (2.0–2.4) or a 2-arg call; every response that COMPLETES is
+          # still classified by status via the caller's post-request re-check (see
+          # +DeviceFlow#post_form+). +on_data+ is a body callback, not a headers
+          # callback, so the one unreachable case — headers arrive, then the body
+          # stalls past the read timeout — surfaces as a bounded transport timeout
+          # instead (never followed, never unbounded; see +post_form+).
           raise SkipBody.new(env.status) if skip_status && env && skip_status.call(env.status)
 
           if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
