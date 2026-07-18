@@ -407,8 +407,19 @@ private suspend fun postDeviceTokenPoll(
     setBody(FormDataContent(params))
 }.execute { response ->
     val status = response.status.value
-    // Bounded/streaming read: an oversized device-token body aborts here rather
-    // than buffering (readBoundedText throws api_error past the cap).
+    // A suppressed 3xx is an api fault whose body is unused (redirects are off, so a
+    // 3xx is a misdirected/attacker-influenced endpoint, never an OAuth poll state).
+    // Classify it by status BEFORE reading the body: otherwise a redirect that
+    // slowly streams its body could time out mid-read and be retried by the poll
+    // loop until expiry, and a body that parrots {"error":"authorization_pending"}
+    // must not keep the loop polling. The message names the redirect explicitly.
+    if (status in 300..399) {
+        return@execute PollResult.Other("unexpected redirect (HTTP $status)", status)
+    }
+
+    // Bounded/streaming read: an oversized device-token body aborts here rather than
+    // buffering (readBoundedText throws api_error past the cap). A 4xx body IS read —
+    // it carries authorization_pending/slow_down and other OAuth errors.
     val body = readBoundedText(response, MAX_DEVICE_BODY_BYTES)
 
     if (status in 200..299) {
@@ -462,15 +473,8 @@ private suspend fun postDeviceTokenPoll(
                 scope = raw.scope,
             ),
         )
-    } else if (status in 300..399) {
-        // Redirects are suppressed (followRedirects = false), so a 3xx here is a
-        // misdirected or attacker-influenced endpoint — an API fault, never an
-        // OAuth poll state. Classified BEFORE body parsing so a redirect whose
-        // body parrots {"error":"authorization_pending"} cannot keep the loop
-        // polling. The message names the redirect explicitly — it is a distinct,
-        // security-relevant failure mode, not a generic non-2xx status.
-        PollResult.Other("unexpected redirect (HTTP $status)", status)
     } else {
+        // 4xx: the OAuth error is carried in the body (3xx already returned above).
         val error = try {
             deviceJson.decodeFromString<OAuthErrorResponse>(body).error
         } catch (e: SerializationException) {
