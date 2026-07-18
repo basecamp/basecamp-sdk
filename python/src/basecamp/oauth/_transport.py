@@ -68,6 +68,11 @@ def request_bounded(
     raises :class:`OAuthError` (``api_error``). ``context`` labels both messages.
     """
 
+    if params is not None and method != "POST":
+        # A form body on a non-POST would emit e.g. a GET-with-body — commonly
+        # rejected server-side and hard to debug; fail fast on the misuse.
+        raise ValueError("request_bounded: params (a form body) is only valid with POST")
+
     async def _do() -> tuple[int, bytes]:
         async with (
             httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,

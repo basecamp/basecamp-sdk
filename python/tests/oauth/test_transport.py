@@ -74,6 +74,21 @@ def test_discovery_header_stall_is_bounded_and_leaks_no_worker() -> None:
     assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
 
 
+def test_params_with_non_post_fails_fast() -> None:
+    # A form body on a GET would emit a GET-with-body; misuse fails fast instead.
+    from basecamp.oauth._transport import request_bounded
+
+    with pytest.raises(ValueError, match="only valid with POST"):
+        request_bounded(
+            "GET",
+            "https://issuer.example/x",
+            headers={},
+            params={"a": "b"},
+            timeout=1.0,
+            max_body_bytes=1024,
+        )
+
+
 def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
     # SPEC.md: non-2xx on either discovery hop → api_error, never network —
     # status dominates even when the error body stalls forever, so the fetch

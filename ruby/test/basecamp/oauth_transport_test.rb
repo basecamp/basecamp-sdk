@@ -298,6 +298,13 @@ class OAuthTransportTest < Minitest::Test
     assert_equal 0, handshakes_completed, "the client must abort the handshake, not complete it"
   end
 
+  def test_unsupported_method_fails_fast
+    # A typo'd verb must not silently become a GET.
+    assert_raises(ArgumentError) do
+      Basecamp::Oauth::Fetcher.stream_http(:put, "https://issuer.example/x", timeout: TIMEOUT)
+    end
+  end
+
   def test_hostless_url_fails_closed_as_validation_error
     # "https:foo" passes the scheme-only HTTPS guard but parses with a nil
     # hostname; without the explicit check it surfaced as a raw ArgumentError
