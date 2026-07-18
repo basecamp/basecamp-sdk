@@ -1,0 +1,23 @@
+swift/Tests/BasecampTests/TodosServiceExtensionsTests.swift
+  s_ae5784113b5029::t_d431b0c47a91cd 1-253
+swift/Sources/Basecamp/TodosServiceExtensions.swift
+  s_ae5784113b5029::t_716ebe72bdab5f 1-130
+go/pkg/basecamp/todos_test.go
+  s_ae5784113b5029::t_f26138b9d703bf 1283,1412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "16a052a2f01c088fd7e3ffb4e641fab53b065052",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
