@@ -1,0 +1,24 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodosServiceTest.kt
+  s_ae5784113b5029::t_1109eb0c01a687 4-5
+  s_ae5784113b5029::t_595879a1a64c4f 235-437
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodosService.kt
+  s_ae5784113b5029::t_dddd6a712df265 1-121
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated-compat/UpdateTodoBody.kt
+  s_ae5784113b5029::t_56d310f7c92e38 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "03e411e95303e9577cf380feaaaf2a7510dfa86b",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
