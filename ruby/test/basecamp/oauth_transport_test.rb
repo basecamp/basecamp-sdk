@@ -49,7 +49,7 @@ class OAuthTransportTest < Minitest::Test
         @conns << conn
         while (line = conn.gets) && line != "\r\n"; end
         handler.call(conn)
-      rescue IOError, Errno::EBADF
+      rescue IOError, SystemCallError
         break # server closed in teardown
       end
     end
@@ -124,7 +124,7 @@ class OAuthTransportTest < Minitest::Test
       begin
         1_000.times { conn.write("x" * 10_000); sleep 0.005 }
         server_saw_close << false
-      rescue Errno::EPIPE, IOError, Errno::ECONNRESET
+      rescue IOError, SystemCallError
         server_saw_close << true
       end
     end
@@ -166,7 +166,7 @@ class OAuthTransportTest < Minitest::Test
       "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n".each_char do |char|
         begin
           conn.write(char)
-        rescue IOError, Errno::EPIPE
+        rescue IOError, SystemCallError
           break
         end
         sleep 0.1
@@ -216,7 +216,7 @@ class OAuthTransportTest < Minitest::Test
       loop do
         conn.write("x")
         sleep 0.1
-      rescue IOError, Errno::EPIPE
+      rescue IOError, SystemCallError
         break
       end
     end
@@ -238,7 +238,7 @@ class OAuthTransportTest < Minitest::Test
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 300000\r\n\r\n")
       begin
         30.times { conn.write("x" * 10_000) }
-      rescue IOError, Errno::EPIPE
+      rescue IOError, SystemCallError
         nil
       end
     end
@@ -282,7 +282,7 @@ class OAuthTransportTest < Minitest::Test
       loop do
         @conns << ssl_server.accept
         handshakes_completed += 1
-      rescue OpenSSL::SSL::SSLError, IOError, Errno::EBADF, Errno::ECONNRESET
+      rescue OpenSSL::SSL::SSLError, IOError, SystemCallError
         # The client rejecting the cert aborts the handshake server-side —
         # keep accepting until teardown closes the listener.
         break if tcp.closed?
