@@ -68,6 +68,19 @@ module Basecamp
       # Never escapes this module — it is mapped to a retryable +network+ OauthError.
       class ReadDeadlineExceeded < StandardError; end
 
+      # Raised from +on_data+ to STOP reading a response whose body the caller does
+      # not use (a non-2xx device-auth, a 3xx token redirect). Draining a slow such
+      # body would otherwise time out and be misclassified as a transport failure.
+      # Carries the response status so the caller can classify by it. Never escapes.
+      class SkipBody < StandardError
+        attr_reader :status
+
+        def initialize(status)
+          @status = status
+          super("device flow response body skipped for status #{status}")
+        end
+      end
+
       # Builds a +[chunks, on_data]+ pair for a genuine bounded/streaming read.
       # Assign +on_data+ to a request's +req.options.on_data+; after the request
       # returns, +chunks.join+ is the accumulated body. The proc raises
@@ -87,10 +100,15 @@ module Basecamp
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @param deadline [Float, nil] monotonic clock deadline (CLOCK_MONOTONIC seconds)
       # @return [Array(Array<String>, Proc)] the chunk buffer and the +on_data+ proc
-      def self.bounded_reader(max_body_bytes, deadline: nil)
+      def self.bounded_reader(max_body_bytes, deadline: nil, skip_status: nil)
         chunks = []
         total = 0
-        reader = proc do |chunk, _received|
+        reader = proc do |chunk, _received, env|
+          # Faraday passes +env+ (with the response status) once headers are in; it
+          # is nil on a 2-arg call. If the caller does not use this status's body,
+          # stop before draining it — a slow such body would otherwise time out.
+          raise SkipBody.new(env.status) if skip_status && env && skip_status.call(env.status)
+
           if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
             raise ReadDeadlineExceeded
           end

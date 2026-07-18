@@ -615,6 +615,39 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "usage", error.type
   end
 
+  # Streams an oversized 302 body to on_data WITH env (as the live net/http adapter
+  # does), so the status-skip path is exercised without a real socket (which WebMock
+  # blocks in the suite). If the body were drained it would trip the size cap.
+  class RedirectStreamAdapter < Faraday::Adapter
+    def call(env)
+      on_data = env.request.on_data
+      if on_data
+        env.status = 302
+        on_data.call("x" * (2 * 1024 * 1024), 2 * 1024 * 1024, env)
+      end
+      save_response(env, 302, "", { "Location" => "https://x/" })
+      @app.call(env)
+    end
+  end
+
+  def test_token_poll_redirect_classified_by_status_without_draining_body
+    # A 3xx must fail by STATUS before the body is drained — surfacing a redirect
+    # api_error, not the size cap (which draining the oversized body would trip) and
+    # not a timeout the poll loop would retry.
+    connection = Faraday.new { |conn| conn.adapter RedirectStreamAdapter }
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.poll_device_token(
+        token_endpoint: "https://issuer.example/token", client_id: "basecamp-cli",
+        device_code: "d", interval: 5, expires_in: 900,
+        http_client: connection, clock: -> { 0.0 }, sleeper: ->(_seconds) { }
+      )
+    end
+
+    assert_equal "api_error", error.type
+    assert_match(/redirect/i, error.message)
+  end
+
   def test_poll_cancellation_during_wait_is_prompt
     # A long interval must not delay cancellation: the wait polls the cancelled
     # probe in small chunks, so a cancel set mid-wait raises without sleeping the

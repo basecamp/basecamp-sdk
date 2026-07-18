@@ -97,7 +97,12 @@ module Basecamp
           timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
           client = http_client || build_client(timeout)
           status, body = begin
-            post_form(client, device_authorization_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
+            post_form(
+              client, device_authorization_endpoint, params,
+              timeout: timeout, max_body_bytes: max_body_bytes,
+              # A non-2xx device-auth response is a hard failure whose body is unused.
+              skip_status: ->(s) { !(200..299).cover?(s) }
+            )
           rescue Faraday::Error => e
             raise DeviceFlowError.new(:transport, "Device authorization request failed: #{e.message}")
           end
@@ -321,14 +326,15 @@ module Basecamp
           # so a stalled socket can't hang the poll. A real adapter streams to
           # +on_data+ (leaving +response.body+ empty); a test double that ignores
           # the block falls back to the buffered body, still size-capped.
-          def post_form(client, url, params, timeout:, max_body_bytes:)
+          def post_form(client, url, params, timeout:, max_body_bytes:, skip_status: nil)
             # +timeout+ is already normalized by the caller (request/poll entry). The
             # wall-clock deadline bounds the WHOLE read: req.options.timeout below
             # bounds only each socket read and resets on every on_data chunk, so a
             # slow-drip peer could otherwise hang a device request past the timeout /
-            # code expiry while staying under the cap.
+            # code expiry while staying under the cap. +skip_status+ stops the read
+            # for a status whose body the caller doesn't use (non-2xx / 3xx).
             deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-            chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline)
+            chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline, skip_status: skip_status)
             response = client.post(url) do |req|
               req.headers["Content-Type"] = "application/x-www-form-urlencoded"
               req.headers["Accept"] = "application/json"
@@ -349,6 +355,10 @@ module Basecamp
               end
 
             [ response.status, body.dup.force_encoding(Encoding::UTF_8) ]
+          rescue Fetcher::SkipBody => e
+            # The body was intentionally not drained (its status is unused) — return
+            # it empty and let the caller classify by status.
+            [ e.status, "" ]
           rescue Fetcher::BodyTooLarge
             raise OauthError.new("api_error", "Device flow response exceeds size cap")
           rescue Fetcher::ReadDeadlineExceeded
@@ -465,7 +475,13 @@ module Basecamp
           # when the server reports an OAuth error. Raises +api_error+ on a
           # malformed, redirecting, or 2xx-but-tokenless response.
           def post_device_token(client, token_endpoint, params, timeout:, max_body_bytes:)
-            status, body = post_form(client, token_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
+            status, body = post_form(
+              client, token_endpoint, params,
+              timeout: timeout, max_body_bytes: max_body_bytes,
+              # A 3xx token response is a redirect fault whose body is unused; a 4xx
+              # body IS read (it carries authorization_pending/slow_down).
+              skip_status: ->(s) { (300..399).cover?(s) }
+            )
 
             # A redirect is never a valid token-endpoint outcome: it is not
             # followed (redirect-following clients are rejected up front), and
