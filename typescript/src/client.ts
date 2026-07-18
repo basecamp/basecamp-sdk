@@ -21,7 +21,7 @@ import { createDownloadURL, type DownloadResult } from "./download.js";
 // Services - Generated from OpenAPI spec (spec-driven, not hand-written)
 // ============================================================================
 import { ProjectsService } from "./generated/services/projects.js";
-import { TodosService } from "./generated/services/todos.js";
+import { TodosService } from "./services/todos-extensions.js";
 import { TodolistsService } from "./generated/services/todolists.js";
 import { TodosetsService } from "./generated/services/todosets.js";
 import { HillChartsService } from "./generated/services/hill-charts.js";

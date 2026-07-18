@@ -106,10 +106,14 @@ export {
 
 export {
   TodosService,
+  type UpdateTodoRequest,
+  type TodoFields,
+} from "./services/todos-extensions.js";
+export {
   type Todo,
   type ListTodoOptions,
   type CreateTodoRequest,
-  type UpdateTodoRequest,
+  type ReplaceTodoRequest,
   type RepositionTodoRequest,
 } from "./generated/services/todos.js";
 
