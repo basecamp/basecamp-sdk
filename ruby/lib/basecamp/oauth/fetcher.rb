@@ -2,6 +2,9 @@
 
 require "faraday"
 require "json"
+require "net/http"
+require "openssl"
+require "uri"
 
 module Basecamp
   module Oauth
