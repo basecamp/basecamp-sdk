@@ -22,7 +22,11 @@ from basecamp.oauth.errors import OAuthError
 
 #: Extra time (seconds) to let a timed-out request's async cancellation/cleanup
 #: unwind before the caller abandons the (daemon) worker and returns a timeout.
-_WORKER_JOIN_GRACE = 5.0
+#: Kept SMALL so the caller's worst-case block stays ~timeout: cleanup after a
+#: wait_for cancellation is just closing a socket, and joining with no grace at
+#: all would race a request that completes right at the deadline. The daemon
+#: worker never blocks interpreter exit if even this stalls.
+_WORKER_JOIN_GRACE = 1.0
 
 #: Upper bound (seconds) on a bounded request timeout. A per-request timeout
 #: beyond this is nonsensical, and a huge finite value would overflow the
