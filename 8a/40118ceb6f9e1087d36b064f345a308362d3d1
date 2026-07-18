@@ -1,0 +1,27 @@
+ruby/lib/basecamp/services/todos_extensions.rb
+  s_ae5784113b5029::t_aec078f1a480ba 1-118
+ruby/test/basecamp/services/todos_service_test.rb
+  s_ae5784113b5029::t_c7caa337b9db91 94,152,212
+  s_ae5784113b5029::t_d91f23f4626119 249-264
+  s_ae5784113b5029::t_86d452717bbd29 62-70,72-93,95-141,143-151,153-211,213-214
+ruby/test/basecamp/zeitwerk_test.rb
+  s_ae5784113b5029::t_81a9821f26d7fd 7-16
+ruby/lib/basecamp.rb
+  s_ae5784113b5029::t_e250703b211190 7-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8a40118ceb6f9e1087d36b064f345a308362d3d1",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
