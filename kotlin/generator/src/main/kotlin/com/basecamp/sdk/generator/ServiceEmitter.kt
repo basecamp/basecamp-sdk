@@ -46,7 +46,8 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine(" *")
         sb.appendLine(" * @generated from OpenAPI spec — do not edit directly")
         sb.appendLine(" */")
-        sb.appendLine("class ${service.className}(client: AccountClient) : BaseService(client) {")
+        val classKeyword = if (service.name in EXTENSIBLE_SERVICES) "open class" else "class"
+        sb.appendLine("$classKeyword ${service.className}(client: AccountClient) : BaseService(client) {")
 
         for (op in service.operations) {
             sb.appendLine()

@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class TodosService(client: AccountClient) : BaseService(client) {
+open class TodosService(client: AccountClient) : BaseService(client) {
 
     /**
      * List todos in a todolist
@@ -87,14 +87,14 @@ class TodosService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing todo
+     * Replace a todo with a new complete representation.
      * @param todoId The todo ID
      * @param body Request body
      */
-    suspend fun update(todoId: Long, body: UpdateTodoBody): Todo {
+    suspend fun replace(todoId: Long, body: ReplaceTodoBody): Todo {
         val info = OperationInfo(
             service = "Todos",
-            operation = "UpdateTodo",
+            operation = "ReplaceTodo",
             resourceType = "todo",
             isMutation = true,
             projectId = null,
@@ -102,7 +102,7 @@ class TodosService(client: AccountClient) : BaseService(client) {
         )
         return request(info, {
             httpPut("/todos/${todoId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                body.content?.let { put("content", kotlinx.serialization.json.JsonPrimitive(it)) }
+                put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
                 body.completionSubscriberIds?.let { put("completion_subscriber_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }

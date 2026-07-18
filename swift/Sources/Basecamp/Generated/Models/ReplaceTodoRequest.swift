@@ -1,10 +1,10 @@
 // @generated from OpenAPI spec — do not edit directly
 import Foundation
 
-public struct UpdateTodoRequest: Codable, Sendable {
+public struct ReplaceTodoRequest: Codable, Sendable {
     public var assigneeIds: [Int]?
     public var completionSubscriberIds: [Int]?
-    public var content: String?
+    public let content: String
     public var description: String?
     public var dueOn: String?
     public var notify: Bool?
@@ -13,7 +13,7 @@ public struct UpdateTodoRequest: Codable, Sendable {
     public init(
         assigneeIds: [Int]? = nil,
         completionSubscriberIds: [Int]? = nil,
-        content: String? = nil,
+        content: String,
         description: String? = nil,
         dueOn: String? = nil,
         notify: Bool? = nil,

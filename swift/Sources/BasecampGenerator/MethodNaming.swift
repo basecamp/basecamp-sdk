@@ -10,6 +10,7 @@ let verbPatterns: [(prefix: String, method: String)] = [
     ("Get", "get"),
     ("Create", "create"),
     ("Update", "update"),
+    ("Replace", "replace"),
     ("Delete", "delete"),
     ("Trash", "trash"),
     ("Archive", "archive"),

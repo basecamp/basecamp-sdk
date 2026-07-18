@@ -44,9 +44,9 @@ module Basecamp
         end
       end
 
-      # Update an existing todo
+      # Replace a todo with a new complete representation.
       # @param todo_id [Integer] todo id ID
-      # @param content [String, nil] content
+      # @param content [String] content
       # @param description [String, nil] description
       # @param assignee_ids [Array, nil] assignee ids
       # @param completion_subscriber_ids [Array, nil] completion subscriber ids
@@ -54,8 +54,8 @@ module Basecamp
       # @param due_on [String, nil] due on (YYYY-MM-DD)
       # @param starts_on [String, nil] starts on (YYYY-MM-DD)
       # @return [Hash] response data
-      def update(todo_id:, content: nil, description: nil, assignee_ids: nil, completion_subscriber_ids: nil, notify: nil, due_on: nil, starts_on: nil)
-        with_operation(service: "todos", operation: "update", is_mutation: true, resource_id: todo_id) do
+      def replace(todo_id:, content:, description: nil, assignee_ids: nil, completion_subscriber_ids: nil, notify: nil, due_on: nil, starts_on: nil)
+        with_operation(service: "todos", operation: "replace", is_mutation: true, resource_id: todo_id) do
           http_put("/todos/#{todo_id}", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json
         end
       end

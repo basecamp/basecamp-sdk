@@ -48,11 +48,11 @@ export interface CreateTodoRequest {
 }
 
 /**
- * Request parameters for update.
+ * Request parameters for replace.
  */
-export interface UpdateTodoRequest {
+export interface ReplaceTodoRequest {
   /** Text content */
-  content?: string;
+  content: string;
   /** Rich text description (HTML) */
   description?: string;
   /** Person IDs to assign to */
@@ -201,18 +201,21 @@ export class TodosService extends BaseService {
   }
 
   /**
-   * Update an existing todo
+   * Replace a todo with a new complete representation.
    * @param todoId - The todo ID
-   * @param req - Todo update parameters
+   * @param req - Todo request parameters
    * @returns The Todo
-   * @throws {BasecampError} If the resource is not found or fields are invalid
+   * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.todos.update(123, { });
+   * const result = await client.todos.replace(123, { content: "Hello world" });
    * ```
    */
-  async update(todoId: number, req: UpdateTodoRequest): Promise<Todo> {
+  async replace(todoId: number, req: ReplaceTodoRequest): Promise<Todo> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
     if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
       throw Errors.validation("Due on must be in YYYY-MM-DD format");
     }
@@ -222,7 +225,7 @@ export class TodosService extends BaseService {
     const response = await this.request(
       {
         service: "Todos",
-        operation: "UpdateTodo",
+        operation: "ReplaceTodo",
         resourceType: "todo",
         isMutation: true,
         resourceId: todoId,
