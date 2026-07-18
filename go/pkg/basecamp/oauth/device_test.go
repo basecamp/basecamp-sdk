@@ -470,6 +470,26 @@ func TestPollDeviceToken_BackoffResetsAfterCompletedRoundTrip(t *testing.T) {
 	assertWaits(t, sleep.waits, want)
 }
 
+func TestPollDeviceToken_RedirectClassifiedByStatusWithoutDrainingBody(t *testing.T) {
+	// A 3xx must fail by STATUS before the body is read. An oversized 3xx body
+	// would trip the size cap if drained — the early status check surfaces it as a
+	// redirect api_error instead (and, for a slow body, avoids a timeout+retry).
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", "https://attacker.example/token")
+		w.WriteHeader(http.StatusFound)
+		_, _ = w.Write(bytes.Repeat([]byte("x"), 2*1024*1024))
+	}))
+	defer srv.Close()
+
+	sleep := &recordingSleep{}
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	assertBasecampCode(t, err, "api_error")
+	if !strings.Contains(err.Error(), "redirect") {
+		t.Errorf("want a redirect error, got %v", err)
+	}
+}
+
 func TestPollDeviceToken_BackoffTracksGrownIntervalAfterSlowDown(t *testing.T) {
 	// slow_down grows the interval 5→10; a following network timeout must double
 	// from the GROWN interval (10→20), not the stale pre-slow_down 5 (which would
