@@ -290,6 +290,11 @@ module Basecamp
         raise Faraday::TimeoutError, "OAuth request exceeded the timeout deadline" if deadline_fired
 
         raise Faraday::ConnectionFailed, e.message
+      rescue OpenSSL::SSL::SSLError => e
+        # TLS failures (an unverifiable peer certificate above all) map to
+        # Faraday::SSLError exactly as faraday-net_http maps them, so the
+        # default and injected paths classify certificate rejection alike.
+        raise Faraday::SSLError, e.message
       rescue Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
              SystemCallError, SocketError => e
         # The parse errors are direct StandardError subclasses (not IOError), so
@@ -326,16 +331,25 @@ module Basecamp
             stream_http(
               :get, url,
               headers: { "Accept" => "application/json" },
-              timeout: timeout, max_body_bytes: max_body_bytes
+              timeout: timeout, max_body_bytes: max_body_bytes,
+              # STATUS DOMINATES THE BODY (SPEC.md: non-2xx on either hop →
+              # api_error, never network): skip draining a non-2xx body so a
+              # stalled/dripped error body cannot convert the required api_error
+              # into a network timeout. The body text was only optional
+              # diagnostics — the other SDKs read it best-effort at most.
+              skip_status: ->(response_status) { !(200..299).cover?(response_status) }
             )
           else
             faraday_fetch(http_client, url, timeout: timeout, max_body_bytes: max_body_bytes)
           end
 
         unless (200..299).cover?(status)
+          # The default path skips the non-2xx body (empty here); the injected
+          # Faraday path still carries it — append it only when present.
+          detail = body.empty? ? "" : ": #{Basecamp::Security.truncate(body)}"
           raise OauthError.new(
             "api_error",
-            "OAuth discovery failed with status #{status}: #{Basecamp::Security.truncate(body)}",
+            "OAuth discovery failed with status #{status}#{detail}",
             http_status: status
           )
         end

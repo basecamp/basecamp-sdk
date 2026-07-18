@@ -17,9 +17,17 @@ class OAuthTransportTest < Minitest::Test
     # header-time semantics these tests exist to prove.
     WebMock.disable!
     @servers = []
+    @conns = []
+    @server_threads = []
   end
 
   def teardown
+    # Stop the server threads FIRST (they append to @conns), then close every
+    # accepted socket and listener — the stall handlers sleep for tens of
+    # seconds, so without the kill+join each test would leak a live thread and
+    # its socket well past the test's end.
+    @server_threads.each(&:kill).each(&:join)
+    @conns.each { |conn| conn.close rescue nil }
     @servers.each { |server| server.close rescue nil }
     WebMock.enable!
     WebMock.disable_net_connect!
@@ -27,15 +35,17 @@ class OAuthTransportTest < Minitest::Test
 
   # Starts a real TCP server; the handler receives each accepted socket after
   # the request headers have been consumed. Returns [endpoint, accepts] where
-  # +accepts+ counts connections — the zero-retry assertions read it.
+  # +accepts+ counts connections — the zero-retry assertions read it. Accepted
+  # sockets and the accept thread are tracked for teardown.
   def start_server(&handler)
     server = TCPServer.new("127.0.0.1", 0)
     @servers << server
     accepts = []
-    Thread.new do
+    @server_threads << Thread.new do
       loop do
         conn = server.accept
         accepts << conn
+        @conns << conn
         while (line = conn.gets) && line != "\r\n"; end
         handler.call(conn)
       rescue IOError, Errno::EBADF
@@ -177,6 +187,26 @@ class OAuthTransportTest < Minitest::Test
     assert_operator seconds, :<, TIMEOUT * 3, "a dripped header phase must be bounded by the watchdog"
   end
 
+  def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error
+    # SPEC.md: non-2xx on either discovery hop → api_error, never network —
+    # status dominates even when the error body stalls forever.
+    endpoint, = start_server do |conn|
+      conn.write("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 1000\r\n\r\n")
+      sleep 30
+    end
+
+    error = nil
+    seconds = elapsed do
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth::Fetcher.fetch_json(nil, "#{endpoint}/doc", timeout: TIMEOUT)
+      end
+    end
+
+    assert_equal "api_error", error.type
+    assert_equal 500, error.http_status
+    assert_operator seconds, :<, TIMEOUT, "status must classify at header time"
+  end
+
   def test_body_slow_drip_is_bounded_for_discovery
     # A wanted (2xx) body dripped forever: the read-loop deadline bounds it and
     # discovery surfaces its retryable network timeout.
@@ -220,6 +250,52 @@ class OAuthTransportTest < Minitest::Test
 
     assert_equal "api_error", error.type
     assert_match(/size cap/i, error.message)
+  end
+
+  def test_self_signed_tls_certificate_is_rejected_and_mapped
+    # The default transport moved from Faraday to direct Net::HTTP — prove peer
+    # verification survived the move: a self-signed certificate must fail the
+    # handshake and map to the same Faraday::SSLError → network classification
+    # faraday-net_http produced, never a raw OpenSSL exception (and never a
+    # completed request).
+    key = OpenSSL::PKey::RSA.new(2048)
+    name = OpenSSL::X509::Name.parse("/CN=127.0.0.1")
+    cert = OpenSSL::X509::Certificate.new
+    cert.version = 2
+    cert.serial = 1
+    cert.subject = name
+    cert.issuer = name
+    cert.public_key = key.public_key
+    cert.not_before = Time.now - 60
+    cert.not_after = Time.now + 3600
+    cert.sign(key, OpenSSL::Digest.new("SHA256"))
+
+    ssl_context = OpenSSL::SSL::SSLContext.new
+    ssl_context.cert = cert
+    ssl_context.key = key
+    tcp = TCPServer.new("127.0.0.1", 0)
+    @servers << tcp
+    ssl_server = OpenSSL::SSL::SSLServer.new(tcp, ssl_context)
+    handshakes_completed = 0
+    @server_threads << Thread.new do
+      loop do
+        @conns << ssl_server.accept
+        handshakes_completed += 1
+      rescue OpenSSL::SSL::SSLError, IOError, Errno::EBADF, Errno::ECONNRESET
+        # The client rejecting the cert aborts the handshake server-side —
+        # keep accepting until teardown closes the listener.
+        break if tcp.closed?
+      end
+    end
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.fetch_json(nil, "https://127.0.0.1:#{tcp.addr[1]}/doc", timeout: TIMEOUT)
+    end
+
+    assert_equal "network", error.type
+    assert error.retryable
+    assert_match(/certificate|SSL/i, error.message)
+    assert_equal 0, handshakes_completed, "the client must abort the handshake, not complete it"
   end
 
   def test_malformed_http_response_maps_to_transport_error
