@@ -92,6 +92,7 @@ def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
         finally:
             conn.close()
 
+    baseline = threading.active_count()
     server = threading.Thread(target=stall, daemon=True)
     server.start()
     timeout = 0.5
@@ -107,6 +108,7 @@ def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
         stop.set()
         server.join(2)
         srv.close()
+    assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
 
 
 def test_discovery_slow_drip_is_bounded_by_the_total_timeout() -> None:
