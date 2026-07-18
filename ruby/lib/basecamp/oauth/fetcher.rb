@@ -248,6 +248,7 @@ module Basecamp
         http.use_ssl = uri.scheme == "https"
         http.open_timeout = timeout
         http.read_timeout = timeout
+        http.write_timeout = timeout
         http.max_retries = 0
 
         request =
@@ -305,10 +306,13 @@ module Basecamp
         [ status, chunks.join.force_encoding(Encoding::UTF_8) ]
       rescue SkipBody => e
         [ e.status, "" ]
-      rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ETIMEDOUT => e
-        # Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT: it must map
-        # with the other timeouts (as faraday-net_http maps it) or the device
-        # poll would terminate instead of applying its transient backoff.
+      rescue Timeout::Error, Errno::ETIMEDOUT => e
+        # Timeout::Error covers Net::OpenTimeout/ReadTimeout/WriteTimeout alike
+        # (a peer that accepts the connection but stops READING trips the write
+        # timeout). Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT:
+        # both must map with the timeouts — the exact pair faraday-net_http
+        # rescues — or the device poll would terminate instead of applying its
+        # transient backoff.
         raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
       rescue IOError => e
         # The watchdog's close raises IOError in the blocked reader; only map it

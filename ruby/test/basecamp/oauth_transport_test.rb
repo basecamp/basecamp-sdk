@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "openssl"
 require "socket"
 
 # Acceptance tests for the headers-first default transport
