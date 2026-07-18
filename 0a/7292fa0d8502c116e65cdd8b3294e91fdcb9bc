@@ -1,0 +1,25 @@
+scripts/bump-version.sh
+  s_ae5784113b5029::t_24da07a20737e1 70-78
+Makefile
+  s_ae5784113b5029::t_48a98a3d410d8a 155-159
+conformance/runner/typescript/package-lock.json
+  s_ae5784113b5029::t_4ba13507d1f80a 18,24
+python/uv.lock
+  s_ae5784113b5029::t_79a5efbc5fe7e8 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0a7292fa0d8502c116e65cdd8b3294e91fdcb9bc",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
