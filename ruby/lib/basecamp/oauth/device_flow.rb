@@ -136,7 +136,8 @@ module Basecamp
         # @raise [DeviceFlowError] +:access_denied+, +:expired+, +:transport+, or
         #   +:cancelled+
         # @raise [OauthError] +api_error+ on an unrecognized token error, oversized
-        #   body, or +validation+ on a redirect-following injected client
+        #   body, or +validation+ on a redirect-following injected client; +usage+
+        #   on an out-of-range +interval+/+expires_in+
         def poll_device_token(
           token_endpoint:, client_id:, device_code:, interval:, expires_in:,
           clock: DEFAULT_CLOCK, sleeper: DEFAULT_SLEEPER, cancelled: DEFAULT_CANCELLED,
@@ -145,7 +146,25 @@ module Basecamp
           Basecamp::Security.require_https_unless_localhost!(token_endpoint, "token endpoint")
           Fetcher.ensure_redirects_suppressed!(http_client) if http_client
 
-          interval_seconds = interval.positive? ? interval : DEFAULT_INTERVAL_SECONDS
+          # Caller-input sanity for this public entry point (usage, not the RFC
+          # response validation request_device_authorization applies): a nil or
+          # non-numeric duration would raise NoMethodError/TypeError below, a
+          # non-finite expires_in builds a deadline that NEVER passes (an unbounded
+          # poll loop), and an oversized/non-positive interval is not a schedulable
+          # wait. Fractional values are accepted — perform_device_login legitimately
+          # passes a fractional remaining lifetime after deducting display-hook
+          # time. Mirrors the Go/TS/Python/Kotlin caller guards.
+          { "expires_in" => expires_in, "interval" => interval }.each do |name, value|
+            unless valid_device_seconds?(value)
+              raise OauthError.new(
+                "usage",
+                "poll_device_token: #{name} must be a positive number of seconds " \
+                "no greater than #{MAX_DEVICE_SECONDS}"
+              )
+            end
+          end
+
+          interval_seconds = interval
           backoff_seconds = interval_seconds
           deadline = clock.call + expires_in
 
@@ -288,12 +307,15 @@ module Basecamp
             has_endpoint && grants.is_a?(Array) && grants.include?(DEVICE_CODE_GRANT_TYPE)
           end
 
+          # A positive, finite, real number of seconds within the shared device
+          # ceiling. +real?+ gates out Complex before +finite?+/+positive?+ (which
+          # Complex does not define), matching {Fetcher.valid_timeout?}.
+          def valid_device_seconds?(value)
+            value.is_a?(Numeric) && value.real? && value.finite? && value.positive? && value <= MAX_DEVICE_SECONDS
+          end
+
           def build_client(timeout)
-            Faraday.new do |conn|
-              conn.options.timeout = timeout
-              conn.options.open_timeout = timeout
-              conn.adapter Faraday.default_adapter
-            end
+            Fetcher.build_client(timeout)
           end
 
           # Waits +seconds+ while observing cancellation DURING the wait. A plain
@@ -343,6 +365,25 @@ module Basecamp
               req.options.open_timeout = timeout
               req.options.on_data = on_data
             end
+
+            # Status-first backstop on the completed response. The +on_data+ SkipBody
+            # fast-path only fires when the adapter streams AND passes +env+ (Faraday
+            # >= 2.5). A buffered adapter that ignores +on_data+, an older Faraday
+            # (2.0–2.4) that omits +env+, or a header-only response reaches here with
+            # the skip-status body un-skipped — re-apply +skip_status+ to the final
+            # +response.status+ so a 3xx/non-2xx fault is classified by status for
+            # every client shape and supported Faraday version, never buffered into
+            # a size-cap error the caller must then untangle.
+            #
+            # Known residual: Faraday exposes no headers-time callback, so a response
+            # whose headers arrive but whose body then stalls PAST the read timeout
+            # never returns from +client.post+ — it surfaces as a bounded transport
+            # timeout (request path: :transport; poll path: backoff, capped by code
+            # expiry) rather than this status-first classification. That degradation
+            # is bounded and redirect-safe (3xx Locations are never followed); exact
+            # headers-first semantics for it belong to the transport primitive shared
+            # with discovery, tracked as a pre-go-live hardening follow-up.
+            return [ response.status, "" ] if skip_status && skip_status.call(response.status)
 
             body =
               if chunks.empty?
@@ -441,7 +482,9 @@ module Basecamp
               user_code: user_code,
               verification_uri: verification_uri,
               verification_uri_complete: complete,
-              expires_in: expires_in,
+              # Coerce an integer-valued Float (900.0) to Integer so the model always
+              # carries whole seconds, matching +build_token+ and the other SDKs.
+              expires_in: expires_in.to_i,
               interval: resolve_interval(data["interval"], status)
             )
           end
@@ -453,7 +496,8 @@ module Basecamp
             if raw.nil?
               DEFAULT_INTERVAL_SECONDS
             elsif positive_integer_seconds?(raw)
-              raw
+              # Coerce an integer-valued Float (5.0) to Integer for whole-second parity.
+              raw.to_i
             else
               raise OauthError.new(
                 "api_error",
