@@ -246,6 +246,15 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// A non-2xx is a hard failure whose body is unused — surface it by status
+	// BEFORE reading the body. Otherwise a slow/never-ending error body could hit
+	// the request timeout mid-read and be misclassified as a retryable transport
+	// failure instead of the api_error it is.
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, basecamp.ErrAPI(resp.StatusCode,
+			fmt.Sprintf("device authorization failed with status %d", resp.StatusCode))
+	}
+
 	body, err := readBoundedBody(resp.Body, maxTokenResponseBytes)
 	if err != nil {
 		// An oversized body is a server/api fault (api_error, not retryable); any
@@ -260,11 +269,6 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
 		}
 		return nil, &DeviceFlowError{Reason: DeviceFlowTransport, Err: fmt.Errorf("reading device authorization response: %w", err)}
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, basecamp.ErrAPI(resp.StatusCode,
-			fmt.Sprintf("device authorization failed with status %d: %s", resp.StatusCode, truncateBody(body)))
 	}
 
 	var raw rawDeviceAuthorization
@@ -476,6 +480,15 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// A suppressed 3xx is an api fault whose body is unused — classify it by status
+	// BEFORE reading the body. Otherwise a redirect that slowly streams its body
+	// could time out mid-read (→ pollTimeout → the loop backs off and retries until
+	// the device code expires) instead of failing as api_error now.
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
+			err: fmt.Errorf("device token endpoint returned redirect status %d", resp.StatusCode)}
+	}
+
 	body, err := readBoundedBody(resp.Body, maxTokenResponseBytes)
 	if err != nil {
 		switch {
@@ -548,11 +561,6 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 	// as-is. A redirect is never a valid token response — classify it as an api
 	// fault BEFORE the OAuth-error body parse so a crafted
 	// authorization_pending body on a 3xx cannot keep the loop polling.
-	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
-			err: fmt.Errorf("device token endpoint returned redirect status %d", resp.StatusCode)}
-	}
-
 	var errResp struct {
 		Error string `json:"error"`
 	}
