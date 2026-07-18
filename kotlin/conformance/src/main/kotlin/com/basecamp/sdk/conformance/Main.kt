@@ -6,6 +6,7 @@ import com.basecamp.sdk.generated.models.*
 import com.basecamp.sdk.generated.services.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.*
@@ -131,6 +132,8 @@ data class Assertion(
     val min: Double = 0.0,
     val max: Double = 0.0,
     val path: String = "",
+    /** Request index for per-request assertions (0-based; negative = from end). */
+    val index: Int = 0,
 )
 
 data class TestResult(
@@ -154,6 +157,8 @@ private fun runTest(tc: TestCase): TestResult {
     val requestCounter = AtomicInteger(0)
     val requestTimes = mutableListOf<Long>()
     val requestPaths = mutableListOf<String>()
+    val requestMethods = mutableListOf<String>()
+    val requestBodies = mutableListOf<JsonObject?>()
     val requestHeadersList = mutableListOf<Headers>()
     val requestContentTypes = mutableListOf<String?>()
     val responseIndex = AtomicInteger(0)
@@ -168,6 +173,8 @@ private fun runTest(tc: TestCase): TestResult {
             requestCounter.incrementAndGet()
             requestTimes.add(System.currentTimeMillis())
             requestPaths.add(request.url.encodedPath)
+            requestMethods.add(request.method.value.uppercase())
+            requestBodies.add(parseRequestBody(request.body))
             requestHeadersList.add(request.headers)
             requestContentTypes.add(request.body.contentType?.toString())
         }
@@ -261,6 +268,18 @@ private fun runTest(tc: TestCase): TestResult {
     // Run assertions
     val requestCount = requestCounter.get()
 
+    // Implicit method invariant: MockEngine answers any verb, so a
+    // wrong-verb request (e.g. a PUT regressing to POST) would consume a
+    // queued response silently. When the fixture declares a method and
+    // carries no explicit requestMethod assertions, the first request must
+    // use the fixture method.
+    val fixtureMethod = tc.method.uppercase()
+    if (fixtureMethod.isNotEmpty() && tc.assertions.none { it.type == "requestMethod" } &&
+        requestMethods.isNotEmpty() && requestMethods[0] != fixtureMethod
+    ) {
+        return TestResult(false, "Expected first request method $fixtureMethod, got ${requestMethods[0]}")
+    }
+
     for (assertion in tc.assertions) {
         when (assertion.type) {
             "requestCount" -> {
@@ -318,11 +337,42 @@ private fun runTest(tc: TestCase): TestResult {
             "requestPath" -> {
                 val expected = assertion.expected?.asString()
                     ?: return TestResult(false, "requestPath assertion missing expected value")
-                if (requestPaths.isEmpty()) {
-                    return TestResult(false, "Expected a request to be made, but no requests were recorded")
+                val idx = resolveRequestIndex(assertion.index, requestPaths.size)
+                    ?: return TestResult(false, "requestPath[${assertion.index}]: no request recorded at that index (${requestPaths.size} requests)")
+                if (requestPaths[idx] != expected) {
+                    return TestResult(false, "Expected request path \"$expected\" at index ${assertion.index}, got \"${requestPaths[idx]}\"")
                 }
-                if (requestPaths[0] != expected) {
-                    return TestResult(false, "Expected request path \"$expected\", got \"${requestPaths[0]}\"")
+            }
+
+            "requestMethod" -> {
+                val expected = assertion.expected?.asString()?.uppercase()
+                    ?: return TestResult(false, "requestMethod assertion missing expected value")
+                val idx = resolveRequestIndex(assertion.index, requestMethods.size)
+                    ?: return TestResult(false, "requestMethod[${assertion.index}]: no request recorded at that index (${requestMethods.size} requests)")
+                if (requestMethods[idx] != expected) {
+                    return TestResult(false, "Expected request method $expected at index ${assertion.index}, got ${requestMethods[idx]}")
+                }
+            }
+
+            "requestBody" -> {
+                val key = assertion.path
+                val idx = resolveRequestIndex(assertion.index, requestBodies.size)
+                    ?: return TestResult(false, "requestBody.$key[${assertion.index}]: no request recorded at that index (${requestBodies.size} requests)")
+                val body = requestBodies[idx]
+                    ?: return TestResult(false, "requestBody.$key[${assertion.index}]: request has no JSON body")
+                val actual = navigateJsonPath(body, key)
+                    ?: return TestResult(false, "requestBody.$key[${assertion.index}]: key not present in request body")
+                val result = compareJsonValues("requestBody.$key[${assertion.index}]", assertion.expected, actual)
+                if (result != null) return result
+            }
+
+            "requestBodyAbsent" -> {
+                val key = assertion.path
+                val idx = resolveRequestIndex(assertion.index, requestBodies.size)
+                    ?: return TestResult(false, "requestBodyAbsent.$key[${assertion.index}]: no request recorded at that index (${requestBodies.size} requests)")
+                val body = requestBodies[idx]
+                if (body != null && navigateJsonPath(body, key) != null) {
+                    return TestResult(false, "requestBodyAbsent.$key[${assertion.index}]: key unexpectedly present in request body")
                 }
             }
 
@@ -589,6 +639,54 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult(totalCount = result.meta.totalCount, truncated = result.meta.truncated)
         }
 
+        "UpdateTodo" -> {
+            val todoId = tc.pathParams.longParam("todoId")
+            val rb = tc.requestBody
+            account.todos.update(todoId, UpdateTodoBody(
+                content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                completionSubscriberIds = rb?.get("completion_subscriber_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+                dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
+                startsOn = rb?.get("starts_on")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
+        // Synthetic scenario key (not a wire operation): exercises the
+        // read-modify-write edit closure by assigning each fixture key
+        // onto the corresponding TodoFields member.
+        "EditTodo" -> {
+            val todoId = tc.pathParams.longParam("todoId")
+            val rb = tc.requestBody
+            account.todos.edit(todoId) {
+                rb?.get("content")?.jsonPrimitive?.content?.let { content = it }
+                rb?.get("description")?.jsonPrimitive?.content?.let { description = it }
+                rb?.get("assignee_ids")?.jsonArray?.let { arr -> assigneeIds = arr.map { it.jsonPrimitive.long } }
+                rb?.get("completion_subscriber_ids")?.jsonArray?.let { arr -> completionSubscriberIds = arr.map { it.jsonPrimitive.long } }
+                rb?.get("due_on")?.jsonPrimitive?.content?.let { dueOn = it }
+                rb?.get("starts_on")?.jsonPrimitive?.content?.let { startsOn = it }
+                rb?.get("notify")?.jsonPrimitive?.booleanOrNull?.let { notify = it }
+            }
+            DispatchResult()
+        }
+
+        "ReplaceTodo" -> {
+            val todoId = tc.pathParams.longParam("todoId")
+            val rb = tc.requestBody
+            account.todos.replace(todoId, ReplaceTodoBody(
+                content = tc.requestBody.stringParam("content"),
+                description = rb?.get("description")?.jsonPrimitive?.contentOrNull,
+                assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                completionSubscriberIds = rb?.get("completion_subscriber_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+                notify = rb?.get("notify")?.jsonPrimitive?.booleanOrNull,
+                dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
+                startsOn = rb?.get("starts_on")?.jsonPrimitive?.contentOrNull,
+            ))
+            DispatchResult()
+        }
+
         "CreateTodo" -> {
             val todolistId = tc.pathParams.longParam("todolistId")
             val content = tc.requestBody.stringParam("content")
@@ -701,6 +799,26 @@ private fun normalizeBody(body: JsonElement): JsonElement {
         if (value is JsonArray) return value
     }
     return body
+}
+
+/**
+ * Resolves a per-request assertion index (0-based; negative = from the end)
+ * against the number of recorded requests. Null when out of range.
+ */
+private fun resolveRequestIndex(index: Int, size: Int): Int? {
+    val resolved = if (index < 0) size + index else index
+    return if (resolved in 0 until size) resolved else null
+}
+
+/** Extracts a request's outgoing content as a parsed JSON object, or null. */
+private fun parseRequestBody(body: io.ktor.http.content.OutgoingContent): JsonObject? {
+    val text = when (body) {
+        is TextContent -> body.text
+        is OutgoingContent.ByteArrayContent -> body.bytes().decodeToString()
+        else -> null
+    }
+    return text?.takeIf { it.isNotBlank() }
+        ?.let { runCatching { Json.parseToJsonElement(it) }.getOrNull() } as? JsonObject
 }
 
 private fun JsonObject?.longParam(key: String): Long {

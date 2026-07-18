@@ -164,8 +164,8 @@ val AccountClient.todolists: TodolistsService
     get() = service("Todolists") { TodolistsService(this) }
 
 /** Todos operations. */
-val AccountClient.todos: TodosService
-    get() = service("Todos") { TodosService(this) }
+val AccountClient.todos: com.basecamp.sdk.services.TodosService
+    get() = service("Todos") { com.basecamp.sdk.services.TodosService(this) }
 
 /** Todosets operations. */
 val AccountClient.todosets: TodosetsService

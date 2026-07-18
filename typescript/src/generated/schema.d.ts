@@ -2247,8 +2247,19 @@ export interface paths {
         };
         /** @description Get a single todo by id */
         get: operations["GetTodo"];
-        /** @description Update an existing todo */
-        put: operations["UpdateTodo"];
+        /**
+         * @description Replace a todo with a new complete representation.
+         *     The request body is the todo's full writable state: any writable field
+         *     omitted from the request is cleared server-side (empty/missing
+         *     assignee_ids clears assignees, missing description clears it, and so
+         *     on). content is required — a request without it is rejected.
+         *     To set some fields while preserving the rest, use the SDK's merge-safe
+         *     update or edit methods, which GET the current todo and PUT the full
+         *     representation back. Those read-modify-write helpers are not atomic:
+         *     a concurrent write between the GET and PUT is overwritten (last write
+         *     wins for the whole representation; the window is one round-trip).
+         */
+        put: operations["ReplaceTodo"];
         post?: never;
         /** @description Trash a todo (returns 204 No Content) */
         delete: operations["TrashTodo"];
@@ -3843,6 +3854,16 @@ export interface components {
             url: string;
             app_url: string;
         };
+        ReplaceTodoRequestContent: {
+            content: string;
+            description?: string;
+            assignee_ids?: number[];
+            completion_subscriber_ids?: number[];
+            notify?: boolean;
+            due_on?: string;
+            starts_on?: string;
+        };
+        ReplaceTodoResponseContent: components["schemas"]["Todo"];
         RepositionCardStepRequestContent: {
             /** Format: int64 */
             source_id: number;
@@ -4337,16 +4358,6 @@ export interface components {
             person_id?: number;
         };
         UpdateTimesheetEntryResponseContent: components["schemas"]["TimesheetEntry"];
-        UpdateTodoRequestContent: {
-            content?: string;
-            description?: string;
-            assignee_ids?: number[];
-            completion_subscriber_ids?: number[];
-            notify?: boolean;
-            due_on?: string;
-            starts_on?: string;
-        };
-        UpdateTodoResponseContent: components["schemas"]["Todo"];
         UpdateTodolistOrGroupRequestContent: {
             /** @description Name (required for both Todolist and TodolistGroup) */
             name?: string;
@@ -15802,7 +15813,7 @@ export interface operations {
             };
         };
     };
-    UpdateTodo: {
+    ReplaceTodo: {
         parameters: {
             query?: never;
             header?: never;
@@ -15811,19 +15822,19 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateTodoRequestContent"];
+                "application/json": components["schemas"]["ReplaceTodoRequestContent"];
             };
         };
         responses: {
-            /** @description UpdateTodo 200 response */
+            /** @description ReplaceTodo 200 response */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UpdateTodoResponseContent"];
+                    "application/json": components["schemas"]["ReplaceTodoResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

@@ -1963,6 +1963,22 @@
         ]
       }
     },
+    "ReplaceTodo": {
+      "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "RepositionCardStep": {
       "retry": {
         "max": 2,
@@ -2494,18 +2510,6 @@
       }
     },
     "UpdateTimesheetEntry": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
-    "UpdateTodo": {
       "idempotent": true,
       "retry": {
         "max": 3,

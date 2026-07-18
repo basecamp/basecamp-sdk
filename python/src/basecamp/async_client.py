@@ -165,7 +165,7 @@ class AsyncAccountClient:
 
     @property
     def todos(self):
-        from basecamp.generated.services.todos import AsyncTodosService
+        from basecamp.services.todos import AsyncTodosService
 
         return self._service("todos", lambda: AsyncTodosService(self))
 

@@ -1159,6 +1159,16 @@ class RecordingParent(TypedDict):
     url: str
 
 
+class ReplaceTodoRequestContent(TypedDict):
+    assignee_ids: NotRequired[list[int]]
+    completion_subscriber_ids: NotRequired[list[int]]
+    content: str
+    description: NotRequired[str]
+    due_on: NotRequired[str]
+    notify: NotRequired[bool]
+    starts_on: NotRequired[str]
+
+
 class RepositionCardStepRequestContent(TypedDict):
     position: int
     source_id: int
@@ -1612,16 +1622,6 @@ class UpdateTimesheetEntryRequestContent(TypedDict):
     description: NotRequired[str]
     hours: NotRequired[str]
     person_id: NotRequired[int]
-
-
-class UpdateTodoRequestContent(TypedDict):
-    assignee_ids: NotRequired[list[int]]
-    completion_subscriber_ids: NotRequired[list[int]]
-    content: NotRequired[str]
-    description: NotRequired[str]
-    due_on: NotRequired[str]
-    notify: NotRequired[bool]
-    starts_on: NotRequired[str]
 
 
 class UpdateTodolistOrGroupRequestContent(TypedDict):

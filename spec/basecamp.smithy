@@ -43,6 +43,7 @@ use aws.protocols#restJson1
 use basecamp.traits#basecampRetry
 use basecamp.traits#basecampPagination
 use basecamp.traits#basecampIdempotent
+use basecamp.traits#basecampWriteSemantics
 use basecamp.traits#basecampMultipart
 use basecamp.traits#basecampSensitive
 use basecamp.traits#basecampAuthRoutableUrl
@@ -50,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-07-03"
+  version: "2026-07-17"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -63,7 +64,7 @@ service Basecamp {
     ListTodos,
     GetTodo,
     CreateTodo,
-    UpdateTodo,
+    ReplaceTodo,
     TrashTodo,
     CompleteTodo,
     UncompleteTodo,
@@ -709,18 +710,28 @@ structure CreateTodoOutput {
   todo: Todo
 }
 
-/// Update an existing todo
+/// Replace a todo with a new complete representation.
+/// The request body is the todo's full writable state: any writable field
+/// omitted from the request is cleared server-side (empty/missing
+/// assignee_ids clears assignees, missing description clears it, and so
+/// on). content is required — a request without it is rejected.
+/// To set some fields while preserving the rest, use the SDK's merge-safe
+/// update or edit methods, which GET the current todo and PUT the full
+/// representation back. Those read-modify-write helpers are not atomic:
+/// a concurrent write between the GET and PUT is overwritten (last write
+/// wins for the whole representation; the window is one round-trip).
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
 @http(method: "PUT", uri: "/{accountId}/todos/{todoId}")
-operation UpdateTodo {
-  input: UpdateTodoInput
-  output: UpdateTodoOutput
+operation ReplaceTodo {
+  input: ReplaceTodoInput
+  output: ReplaceTodoOutput
   errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
-structure UpdateTodoInput {
+structure ReplaceTodoInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -729,7 +740,9 @@ structure UpdateTodoInput {
   @httpLabel
   todoId: TodoId
 
+  @required
   content: TodoContent
+
   description: TodoDescription
   assignee_ids: PersonIdList
   completion_subscriber_ids: PersonIdList
@@ -738,7 +751,7 @@ structure UpdateTodoInput {
   starts_on: ISO8601Date
 }
 
-structure UpdateTodoOutput {
+structure ReplaceTodoOutput {
 
   todo: Todo
 }

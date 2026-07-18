@@ -21,7 +21,7 @@ import { createDownloadURL, type DownloadResult } from "./download.js";
 // Services - Generated from OpenAPI spec (spec-driven, not hand-written)
 // ============================================================================
 import { ProjectsService } from "./generated/services/projects.js";
-import { TodosService } from "./generated/services/todos.js";
+import { TodosService } from "./services/todos-extensions.js";
 import { TodolistsService } from "./generated/services/todolists.js";
 import { TodosetsService } from "./generated/services/todosets.js";
 import { HillChartsService } from "./generated/services/hill-charts.js";
@@ -219,8 +219,8 @@ export interface BasecampClientOptions {
   maxPages?: number;
 }
 
-export const VERSION = "0.7.3";
-export const API_VERSION = "2026-07-03";
+export const VERSION = "0.8.0";
+export const API_VERSION = "2026-07-17";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**

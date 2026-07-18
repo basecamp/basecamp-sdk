@@ -70,6 +70,23 @@ structure basecampIdempotent {
     natural: Boolean
 }
 
+/// Write semantics for Basecamp mutation operations.
+/// Declares how the server interprets the request body on write:
+/// mode "replace" means the request is the new complete representation
+/// of the resource. When clearsOmitted is true, any writable field
+/// omitted from the request is cleared server-side.
+/// Emits x-basecamp-write-semantics extension to OpenAPI for SDK code generators.
+@trait(selector: "operation")
+@specificationExtension(as: "x-basecamp-write-semantics")
+structure basecampWriteSemantics {
+    /// Write mode: "replace" (request body is the full representation)
+    @required
+    mode: String
+
+    /// Whether fields omitted from the request are cleared server-side
+    clearsOmitted: Boolean
+}
+
 /// Multipart file upload semantics for Basecamp API operations.
 /// Emits x-basecamp-multipart extension to OpenAPI for SDK code generators.
 /// The Smithy→OpenAPI mapper rewrites the request body from octet-stream

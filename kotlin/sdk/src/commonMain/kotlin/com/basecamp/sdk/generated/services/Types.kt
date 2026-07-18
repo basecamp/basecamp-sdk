@@ -567,9 +567,9 @@ data class CreateTodoBody(
     val startsOn: String? = null
 )
 
-/** Request body for UpdateTodo. */
-data class UpdateTodoBody(
-    val content: String? = null,
+/** Request body for ReplaceTodo. */
+data class ReplaceTodoBody(
+    val content: String,
     val description: String? = null,
     val assigneeIds: List<Long>? = null,
     val completionSubscriberIds: List<Long>? = null,

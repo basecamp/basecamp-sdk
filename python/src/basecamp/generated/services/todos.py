@@ -53,11 +53,11 @@ class TodosService(BaseService):
             f"/todos/{todo_id}",
         )
 
-    def update(
+    def replace(
         self,
         *,
         todo_id: int,
-        content: str | None = None,
+        content: str,
         description: str | None = None,
         assignee_ids: list | None = None,
         completion_subscriber_ids: list | None = None,
@@ -66,7 +66,7 @@ class TodosService(BaseService):
         starts_on: str | None = None,
     ) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="todos", operation="update", is_mutation=True, resource_id=todo_id),
+            OperationInfo(service="todos", operation="replace", is_mutation=True, resource_id=todo_id),
             "PUT",
             f"/todos/{todo_id}",
             json_body=self._compact(
@@ -78,7 +78,7 @@ class TodosService(BaseService):
                 due_on=due_on,
                 starts_on=starts_on,
             ),
-            operation="UpdateTodo",
+            operation="ReplaceTodo",
         )
 
     def trash(self, *, todo_id: int) -> None:
@@ -158,11 +158,11 @@ class AsyncTodosService(AsyncBaseService):
             f"/todos/{todo_id}",
         )
 
-    async def update(
+    async def replace(
         self,
         *,
         todo_id: int,
-        content: str | None = None,
+        content: str,
         description: str | None = None,
         assignee_ids: list | None = None,
         completion_subscriber_ids: list | None = None,
@@ -171,7 +171,7 @@ class AsyncTodosService(AsyncBaseService):
         starts_on: str | None = None,
     ) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="todos", operation="update", is_mutation=True, resource_id=todo_id),
+            OperationInfo(service="todos", operation="replace", is_mutation=True, resource_id=todo_id),
             "PUT",
             f"/todos/{todo_id}",
             json_body=self._compact(
@@ -183,7 +183,7 @@ class AsyncTodosService(AsyncBaseService):
                 due_on=due_on,
                 starts_on=starts_on,
             ),
-            operation="UpdateTodo",
+            operation="ReplaceTodo",
         )
 
     async def trash(self, *, todo_id: int) -> None:

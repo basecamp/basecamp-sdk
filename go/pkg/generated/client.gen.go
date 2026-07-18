@@ -1719,6 +1719,20 @@ type RecordingParent struct {
 	Url    string `json:"url"`
 }
 
+// ReplaceTodoRequestContent defines model for ReplaceTodoRequestContent.
+type ReplaceTodoRequestContent struct {
+	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string     `json:"content"`
+	Description             string     `json:"description,omitempty"`
+	DueOn                   types.Date `json:"due_on,omitempty"`
+	Notify                  *bool      `json:"notify,omitempty"`
+	StartsOn                types.Date `json:"starts_on,omitempty"`
+}
+
+// ReplaceTodoResponseContent defines model for ReplaceTodoResponseContent.
+type ReplaceTodoResponseContent = Todo
+
 // RepositionCardStepRequestContent defines model for RepositionCardStepRequestContent.
 type RepositionCardStepRequestContent struct {
 	// Position 0-indexed position
@@ -2329,20 +2343,6 @@ type UpdateTimesheetEntryRequestContent struct {
 // UpdateTimesheetEntryResponseContent defines model for UpdateTimesheetEntryResponseContent.
 type UpdateTimesheetEntryResponseContent = TimesheetEntry
 
-// UpdateTodoRequestContent defines model for UpdateTodoRequestContent.
-type UpdateTodoRequestContent struct {
-	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
-	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
-	Content                 string     `json:"content,omitempty"`
-	Description             string     `json:"description,omitempty"`
-	DueOn                   types.Date `json:"due_on,omitempty"`
-	Notify                  *bool      `json:"notify,omitempty"`
-	StartsOn                types.Date `json:"starts_on,omitempty"`
-}
-
-// UpdateTodoResponseContent defines model for UpdateTodoResponseContent.
-type UpdateTodoResponseContent = Todo
-
 // UpdateTodolistOrGroupRequestContent defines model for UpdateTodolistOrGroupRequestContent.
 type UpdateTodolistOrGroupRequestContent struct {
 	// Description Description (Todolist only, ignored for groups)
@@ -2908,8 +2908,8 @@ type CreateTodolistGroupJSONRequestBody = CreateTodolistGroupRequestContent
 // CreateTodoJSONRequestBody defines body for CreateTodo for application/json ContentType.
 type CreateTodoJSONRequestBody = CreateTodoRequestContent
 
-// UpdateTodoJSONRequestBody defines body for UpdateTodo for application/json ContentType.
-type UpdateTodoJSONRequestBody = UpdateTodoRequestContent
+// ReplaceTodoJSONRequestBody defines body for ReplaceTodo for application/json ContentType.
+type ReplaceTodoJSONRequestBody = ReplaceTodoRequestContent
 
 // RepositionTodoJSONRequestBody defines body for RepositionTodo for application/json ContentType.
 type RepositionTodoJSONRequestBody = RepositionTodoRequestContent
@@ -3888,10 +3888,10 @@ type ClientInterface interface {
 	// GetTodo request
 	GetTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateTodoWithBody request with any body
-	UpdateTodoWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ReplaceTodoWithBody request with any body
+	ReplaceTodoWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	UpdateTodo(ctx context.Context, accountId string, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ReplaceTodo(ctx context.Context, accountId string, todoId int64, body ReplaceTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UncompleteTodo request
 	UncompleteTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6630,21 +6630,21 @@ func (c *Client) GetTodo(ctx context.Context, accountId string, todoId int64, re
 
 }
 
-// UpdateTodoWithBody is marked as idempotent and will be retried on transient failures.
+// ReplaceTodoWithBody is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) UpdateTodoWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ReplaceTodoWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTodoRequestWithBody(c.Server, accountId, todoId, contentType, body)
-	}, true, "UpdateTodo", reqEditors...)
+		return NewReplaceTodoRequestWithBody(c.Server, accountId, todoId, contentType, body)
+	}, true, "ReplaceTodo", reqEditors...)
 
 }
 
-func (c *Client) UpdateTodo(ctx context.Context, accountId string, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) ReplaceTodo(ctx context.Context, accountId string, todoId int64, body ReplaceTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateTodoRequest(c.Server, accountId, todoId, body)
-	}, true, "UpdateTodo", reqEditors...)
+		return NewReplaceTodoRequest(c.Server, accountId, todoId, body)
+	}, true, "ReplaceTodo", reqEditors...)
 
 }
 
@@ -15765,19 +15765,19 @@ func NewGetTodoRequest(server string, accountId string, todoId int64) (*http.Req
 	return req, nil
 }
 
-// NewUpdateTodoRequest calls the generic UpdateTodo builder with application/json body
-func NewUpdateTodoRequest(server string, accountId string, todoId int64, body UpdateTodoJSONRequestBody) (*http.Request, error) {
+// NewReplaceTodoRequest calls the generic ReplaceTodo builder with application/json body
+func NewReplaceTodoRequest(server string, accountId string, todoId int64, body ReplaceTodoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewUpdateTodoRequestWithBody(server, accountId, todoId, "application/json", bodyReader)
+	return NewReplaceTodoRequestWithBody(server, accountId, todoId, "application/json", bodyReader)
 }
 
-// NewUpdateTodoRequestWithBody generates requests for UpdateTodo with any type of body
-func NewUpdateTodoRequestWithBody(server string, accountId string, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
+// NewReplaceTodoRequestWithBody generates requests for ReplaceTodo with any type of body
+func NewReplaceTodoRequestWithBody(server string, accountId string, todoId int64, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -17066,7 +17066,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateTodo":                         {Idempotent: false, HasSensitiveParams: false},
 	"TrashTodo":                          {Idempotent: true, HasSensitiveParams: false},
 	"GetTodo":                            {Idempotent: true, HasSensitiveParams: false},
-	"UpdateTodo":                         {Idempotent: true, HasSensitiveParams: false},
+	"ReplaceTodo":                        {Idempotent: true, HasSensitiveParams: false},
 	"UncompleteTodo":                     {Idempotent: true, HasSensitiveParams: false},
 	"CompleteTodo":                       {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodo":                     {Idempotent: true, HasSensitiveParams: false},
@@ -17903,12 +17903,12 @@ func (s *TodosService) Get(ctx context.Context, accountId string, todoId int64, 
 	return s.client.GetTodo(ctx, accountId, todoId, reqEditors...)
 }
 
-func (s *TodosService) UpdateWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateTodoWithBody(ctx, accountId, todoId, contentType, body, reqEditors...)
+func (s *TodosService) ReplaceWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ReplaceTodoWithBody(ctx, accountId, todoId, contentType, body, reqEditors...)
 }
 
-func (s *TodosService) Update(ctx context.Context, accountId string, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	return s.client.UpdateTodo(ctx, accountId, todoId, body, reqEditors...)
+func (s *TodosService) Replace(ctx context.Context, accountId string, todoId int64, body ReplaceTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	return s.client.ReplaceTodo(ctx, accountId, todoId, body, reqEditors...)
 }
 
 func (s *TodosService) Uncomplete(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -18684,10 +18684,10 @@ type ClientWithResponsesInterface interface {
 	// GetTodoWithResponse request
 	GetTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
 
-	// UpdateTodoWithBodyWithResponse request with any body
-	UpdateTodoWithBodyWithResponse(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+	// ReplaceTodoWithBodyWithResponse request with any body
+	ReplaceTodoWithBodyWithResponse(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceTodoResponse, error)
 
-	UpdateTodoWithResponse(ctx context.Context, accountId string, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
+	ReplaceTodoWithResponse(ctx context.Context, accountId string, todoId int64, body ReplaceTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceTodoResponse, error)
 
 	// UncompleteTodoWithResponse request
 	UncompleteTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*UncompleteTodoResponse, error)
@@ -23496,10 +23496,10 @@ func (r GetTodoResponse) StatusCode() int {
 	return 0
 }
 
-type UpdateTodoResponse struct {
+type ReplaceTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *UpdateTodoResponseContent
+	JSON200      *ReplaceTodoResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
@@ -23508,7 +23508,7 @@ type UpdateTodoResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r UpdateTodoResponse) Status() string {
+func (r ReplaceTodoResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -23516,7 +23516,7 @@ func (r UpdateTodoResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpdateTodoResponse) StatusCode() int {
+func (r ReplaceTodoResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -26202,21 +26202,21 @@ func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, accountId
 	return ParseGetTodoResponse(rsp)
 }
 
-// UpdateTodoWithBodyWithResponse request with arbitrary body returning *UpdateTodoResponse
-func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
-	rsp, err := c.UpdateTodoWithBody(ctx, accountId, todoId, contentType, body, reqEditors...)
+// ReplaceTodoWithBodyWithResponse request with arbitrary body returning *ReplaceTodoResponse
+func (c *ClientWithResponses) ReplaceTodoWithBodyWithResponse(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReplaceTodoResponse, error) {
+	rsp, err := c.ReplaceTodoWithBody(ctx, accountId, todoId, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateTodoResponse(rsp)
+	return ParseReplaceTodoResponse(rsp)
 }
 
-func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, accountId string, todoId int64, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
-	rsp, err := c.UpdateTodo(ctx, accountId, todoId, body, reqEditors...)
+func (c *ClientWithResponses) ReplaceTodoWithResponse(ctx context.Context, accountId string, todoId int64, body ReplaceTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*ReplaceTodoResponse, error) {
+	rsp, err := c.ReplaceTodo(ctx, accountId, todoId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpdateTodoResponse(rsp)
+	return ParseReplaceTodoResponse(rsp)
 }
 
 // UncompleteTodoWithResponse request returning *UncompleteTodoResponse
@@ -36503,22 +36503,22 @@ func ParseGetTodoResponse(rsp *http.Response) (*GetTodoResponse, error) {
 	return response, nil
 }
 
-// ParseUpdateTodoResponse parses an HTTP response from a UpdateTodoWithResponse call
-func ParseUpdateTodoResponse(rsp *http.Response) (*UpdateTodoResponse, error) {
+// ParseReplaceTodoResponse parses an HTTP response from a ReplaceTodoWithResponse call
+func ParseReplaceTodoResponse(rsp *http.Response) (*ReplaceTodoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpdateTodoResponse{
+	response := &ReplaceTodoResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateTodoResponseContent
+		var dest ReplaceTodoResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
