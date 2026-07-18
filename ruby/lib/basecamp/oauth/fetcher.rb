@@ -63,8 +63,8 @@ module Basecamp
       # Coerce the public body cap to a non-negative Integer. A nil, non-Integer
       # (+Float::INFINITY+ included), or negative value would disable the streaming
       # memory bound (+total > cap+ never trips), defeating the bounded-read
-      # guarantee. The ONE shared policy for Discovery, Resource, and the device
-      # flow; the +default+ is validated too, so an invalid fallback cannot
+      # guarantee. This is the one shared policy for Discovery, Resource, and the
+      # device flow; the +default+ is validated too, so an invalid fallback cannot
       # disable the bound either.
       def self.normalize_body_cap(cap, default: DEFAULT_MAX_BODY_BYTES)
         return cap if valid_body_cap?(cap)
