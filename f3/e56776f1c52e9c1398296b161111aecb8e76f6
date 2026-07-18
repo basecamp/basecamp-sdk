@@ -1,0 +1,41 @@
+ruby/lib/basecamp/version.rb
+  s_ae5784113b5029::t_422979a4a102c6 4
+python/src/basecamp/_version.py
+  s_ae5784113b5029::t_422979a4a102c6 1
+typescript/src/client.ts
+  s_ae5784113b5029::t_422979a4a102c6 222
+package.json
+  s_ae5784113b5029::t_422979a4a102c6 3
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_ae5784113b5029::t_422979a4a102c6 31
+kotlin/sdk/build.gradle.kts
+  s_ae5784113b5029::t_422979a4a102c6 8
+go/pkg/basecamp/version.go
+  s_ae5784113b5029::t_422979a4a102c6 4
+python/pyproject.toml
+  s_ae5784113b5029::t_422979a4a102c6 7
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_ae5784113b5029::t_422979a4a102c6 27
+typescript/package.json
+  s_ae5784113b5029::t_422979a4a102c6 3
+ruby/Gemfile.lock
+  s_ae5784113b5029::t_66cc11b01a9345 4,162
+typescript/package-lock.json
+  s_ae5784113b5029::t_3dafd2e2188ced 3,9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "f3e56776f1c52e9c1398296b161111aecb8e76f6",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
