@@ -27,7 +27,7 @@ import httpx
 from basecamp._security import is_localhost, require_https
 from basecamp.oauth.config import OAuthConfig
 from basecamp.oauth.device_authorization import DeviceAuthorization
-from basecamp.oauth.discovery import _normalize_timeout
+from basecamp.oauth.discovery import _normalize_body_cap, _normalize_timeout
 from basecamp.oauth.errors import DeviceFlowError, OAuthError
 from basecamp.oauth.token import OAuthToken
 
@@ -187,6 +187,11 @@ def request_device_authorization(
         require_https(device_authorization_endpoint, "device authorization endpoint")
     if not client_id:
         raise OAuthError("validation", "Client ID is required for device authorization")
+
+    # Normalize the cap at the public boundary: an invalid runtime value (None,
+    # float("inf"), a negative) would disable the streaming memory bound
+    # (``total > inf`` never trips) — same discipline as discovery.
+    max_body_bytes = _normalize_body_cap(max_body_bytes, MAX_DEVICE_BODY_BYTES)
 
     params: dict[str, str] = {"client_id": client_id}
     # Omit scope entirely when unset so the server applies its default (`read`).
@@ -375,17 +380,26 @@ def poll_device_token(
     # legitimately passes a fractional remaining lifetime after deducting
     # display-hook time. Mirrors the Go/TS/Ruby/Kotlin caller guards.
     for name, value in (("expires_in", expires_in), ("interval", interval)):
+        # Range checks run BEFORE math.isfinite: isfinite converts an int to float,
+        # so an astronomically large int (10**400) would raise OverflowError out of
+        # the guard instead of the usage error. Int/float comparisons never convert,
+        # and NaN compares False on both, falling through to the isfinite reject.
         if (
             isinstance(value, bool)
             or not isinstance(value, (int, float))
-            or not math.isfinite(value)
             or value <= 0
             or value > MAX_DEVICE_SECONDS
+            or not math.isfinite(value)
         ):
             raise OAuthError(
                 "usage",
                 f"poll_device_token: {name} must be a positive number of seconds no greater than {MAX_DEVICE_SECONDS}",
             )
+
+    # Normalize the cap at the public boundary: an invalid runtime value (None,
+    # float("inf"), a negative) would disable the streaming memory bound
+    # (``total > inf`` never trips) — same discipline as discovery.
+    max_body_bytes = _normalize_body_cap(max_body_bytes, MAX_DEVICE_BODY_BYTES)
 
     # The server-driven interval (initial value + sustained slow_down bumps) is
     # tracked SEPARATELY from the transient timeout backoff: each wait is
