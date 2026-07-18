@@ -185,6 +185,17 @@ class TodosServiceTest < Minitest::Test
     assert_raises(ArgumentError) { @account.todos.edit(todo_id: 456) }
   end
 
+  def test_edit_nil_id_list_raises_usage_error_without_put
+    captured = stub_todo_get_and_put
+
+    error = assert_raises(Basecamp::UsageError) do
+      @account.todos.edit(todo_id: 456) { |t| t.assignee_ids = nil }
+    end
+
+    assert_match(/use \[\] to clear/, error.message)
+    assert_nil captured[:body]
+  end
+
   def test_edit_hooks_observe_get_then_replace
     events = []
     account = create_account_client(account_id: "12345", hooks: TrackingHooks.new(events))

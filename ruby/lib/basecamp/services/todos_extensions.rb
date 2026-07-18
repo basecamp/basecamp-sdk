@@ -102,12 +102,15 @@ module Basecamp
       # survive); dates only when non-empty (the server clears an omitted
       # date, and +""+ is a format error); notify only when true.
       def put_fields(todo_id, fields)
+        %i[assignee_ids completion_subscriber_ids].each do |key|
+          raise UsageError, "#{key} must be an array of person IDs; use [] to clear — a full write has no nil state" if fields[key].nil?
+        end
         replace(
           todo_id: todo_id,
           content: fields.content,
           description: fields.description,
-          assignee_ids: fields.assignee_ids || [],
-          completion_subscriber_ids: fields.completion_subscriber_ids || [],
+          assignee_ids: fields.assignee_ids,
+          completion_subscriber_ids: fields.completion_subscriber_ids,
           due_on: fields.due_on.to_s.empty? ? nil : fields.due_on,
           starts_on: fields.starts_on.to_s.empty? ? nil : fields.starts_on,
           notify: fields.notify ? true : nil
