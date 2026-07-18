@@ -149,6 +149,9 @@ export async function requestDeviceAuthorization(
     // slow/never-ending error body could time out mid-read and be misclassified
     // as a retryable transport failure instead of the api_error it is.
     if (response.status < 200 || response.status >= 300) {
+      // Release the unread stream (non-blocking) so repeated failures don't retain
+      // sockets / connection-pool resources; the status error surfaces immediately.
+      void response.body?.cancel().catch(() => {});
       throw new BasecampError("api_error", `Device authorization failed with status ${response.status}`, {
         httpStatus: response.status,
       });
@@ -459,6 +462,9 @@ async function postDeviceToken(
     // connection timeout, which the poll loop would back off and retry (until the
     // device code expires) instead of surfacing the api_error now.
     if (response.status >= 300 && response.status < 400) {
+      // Release the unread stream (non-blocking) so a redirecting endpoint under a
+      // long poll can't retain sockets / connection-pool resources.
+      void response.body?.cancel().catch(() => {});
       throw new BasecampError("api_error", `Device token endpoint returned redirect status ${response.status}`, {
         httpStatus: response.status,
       });
