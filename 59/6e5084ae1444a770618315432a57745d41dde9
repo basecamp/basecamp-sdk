@@ -1,0 +1,50 @@
+behavior-model.json
+  s_ae5784113b5029::t_7ce37fc5948433 1966-1981
+ruby/lib/basecamp/version.rb
+  s_ae5784113b5029::t_7ce37fc5948433 5
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_ae5784113b5029::t_7ce37fc5948433 30
+go/pkg/basecamp/api-provenance.json
+  s_ae5784113b5029::t_37769751bbb572 3-4
+go/pkg/basecamp/version.go
+  s_ae5784113b5029::t_7ce37fc5948433 7
+scripts/generate-behavior-model
+  s_ae5784113b5029::t_a7cfb027f7c11b 70-76
+python/src/basecamp/_version.py
+  s_ae5784113b5029::t_7ce37fc5948433 2
+typescript/src/client.ts
+  s_ae5784113b5029::t_7ce37fc5948433 223
+spec/overlays/tags.smithy
+  s_ae5784113b5029::t_d18d0007170be5 17
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_ae5784113b5029::t_7ce37fc5948433 32
+go/pkg/basecamp/url-routes.json
+  s_ae5784113b5029::t_1774b7740021f4 1978
+spec/api-provenance.json
+  s_ae5784113b5029::t_9138b4ca7246ba 3-4
+spec/basecamp.smithy
+  s_ae5784113b5029::t_37769751bbb572 54
+  s_ae5784113b5029::t_0e93ac0a37037e 67
+  s_ae5784113b5029::t_217b7130e8558b 46
+  s_ae5784113b5029::t_228b98c53af36e 713-722,726,728-730,734,743,745,754
+openapi.json
+  s_ae5784113b5029::t_7ce37fc5948433 5,18365-18366,18371,18374-18375,18401,18405,18475-18478,25662-25712
+spec/basecamp-traits.smithy
+  s_ae5784113b5029::t_ec20ba238be3c6 73-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "596e5084ae1444a770618315432a57745d41dde9",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
