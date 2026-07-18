@@ -559,6 +559,45 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollRejectsOutOfRangeCallerDurations() = runTest {
+        // Caller-input sanity on the exported entry point: an oversized expiresIn
+        // saturates Duration to infinite — a deadline that never passes, an
+        // unbounded poll loop — and non-positive values are not schedulable.
+        // Rejected as usage BEFORE any request (2_147_484 = MAX_DEVICE_SECONDS + 1).
+        val engine = MockEngine { respond(tokenJson, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val cases = listOf(5L to 0L, 5L to -1L, 5L to 2_147_484L, 0L to 900L, -1L to 900L, 2_147_484L to 900L)
+        for ((interval, expiresIn) in cases) {
+            assertFailsWith<BasecampException.Usage>("interval=$interval expiresIn=$expiresIn") {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", interval, expiresIn, testTimeSource, client)
+            }
+        }
+        assertEquals(0, engine.requestHistory.size, "guard must reject before any request")
+        client.close()
+    }
+
+    @Test
+    fun pollNormalizesEmptyTokenErrorToHttpStatus() = runTest {
+        // A 4xx token body of {"error":""} decodes cleanly (error is a required
+        // non-null String, so no SerializationException fires), so it must be
+        // normalized to http_<status> rather than surfacing a dangling, empty error
+        // code — matching Go/TS/Python/Ruby, which all coerce a blank error the same way.
+        val engine = MockEngine { respond(errorJson(""), HttpStatusCode.BadRequest, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        }
+        assertEquals(400, e.httpStatus)
+        assertTrue(
+            e.message?.contains("http_400") == true,
+            "an empty error code must normalize to http_400, not a blank message: ${e.message}",
+        )
+        client.close()
+    }
+
+    @Test
     fun pollAcceptsIntegerValuedFloatExpiresInOn2xx() = runTest {
         // 3600.0 carries no fractional part — accepted per the cross-SDK contract
         // (the shared Long? decode rejected it, unlike TS/Python/Ruby; the device

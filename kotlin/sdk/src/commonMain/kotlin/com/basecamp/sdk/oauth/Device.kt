@@ -282,7 +282,7 @@ private fun validateDeviceAuthorization(raw: RawDeviceAuthorization, status: Int
  * a [CancellationException] — it is never converted to a
  * [BasecampException.DeviceFlow].
  *
- * @param interval Minimum seconds between polls (falls back to 5 if not positive).
+ * @param interval Minimum seconds between polls.
  * @param expiresIn Code lifetime in seconds; anchors the default [deadline].
  * @param timeSource Monotonic clock for the deadline; tests inject virtual time.
  * @param deadline Absolute expiry deadline. Defaults to `expiresIn` from now, but
@@ -291,6 +291,8 @@ private fun validateDeviceAuthorization(raw: RawDeviceAuthorization, status: Int
  * @throws BasecampException.DeviceFlow reason `access_denied` on denial,
  *   `expired` on expiry, `transport` on a non-timeout network failure.
  * @throws BasecampException.Api on an unrecognized error code or a parse failure.
+ * @throws BasecampException.Usage when [interval] or [expiresIn] is not a
+ *   positive number of seconds within the shared device ceiling.
  */
 suspend fun pollDeviceToken(
     tokenEndpoint: String,
@@ -304,8 +306,21 @@ suspend fun pollDeviceToken(
 ): OAuthToken {
     requireSecureEndpoint(tokenEndpoint, "token endpoint")
 
+    // Caller-input sanity for this exported entry point (usage, not RFC response
+    // validation, which performDeviceLogin's path already applies): a non-positive
+    // duration builds an already-passed deadline, and an oversized one saturates
+    // Duration to infinite so the deadline NEVER passes — an unbounded poll loop.
+    // Mirrors the Go/TS/Python/Ruby caller guards.
+    for ((name, value) in listOf("expiresIn" to expiresIn, "interval" to interval)) {
+        if (value <= 0 || value > MAX_DEVICE_SECONDS) {
+            throw BasecampException.Usage(
+                "pollDeviceToken: $name must be a positive number of seconds no greater than $MAX_DEVICE_SECONDS",
+            )
+        }
+    }
+
     // Server-driven cadence: the initial interval plus sustained slow_down bumps.
-    var intervalSeconds = if (interval > 0) interval else DEFAULT_INTERVAL_SECONDS
+    var intervalSeconds = interval
     // Transient timeout backoff, tracked SEPARATELY from the server-driven
     // interval so intermittent timeouts can never permanently inflate the
     // cadence: each wait is max(interval, backoff), a timeout doubles the
@@ -414,6 +429,9 @@ private suspend fun postDeviceTokenPoll(
     // loop until expiry, and a body that parrots {"error":"authorization_pending"}
     // must not keep the loop polling. The message names the redirect explicitly.
     if (status in 300..399) {
+        // The unread body is NOT leaked by this early return: HttpStatement.execute
+        // runs cleanup() in its finally, which completes the response job and
+        // cancels the raw content channel, releasing the connection.
         return@execute PollResult.Other("unexpected redirect (HTTP $status)", status)
     }
 
@@ -476,7 +494,11 @@ private suspend fun postDeviceTokenPoll(
     } else {
         // 4xx: the OAuth error is carried in the body (3xx already returned above).
         val error = try {
-            deviceJson.decodeFromString<OAuthErrorResponse>(body).error
+            // An explicit empty "error" decodes cleanly (the field is a required
+            // non-null String, so no SerializationException fires) — normalize it to
+            // http_<status> here so a blank error code is never surfaced as a dangling
+            // message. Matches Go/TS/Python/Ruby, which all coerce a blank error code.
+            deviceJson.decodeFromString<OAuthErrorResponse>(body).error.ifEmpty { "http_$status" }
         } catch (e: SerializationException) {
             "http_$status"
         }
