@@ -298,6 +298,19 @@ class OAuthTransportTest < Minitest::Test
     assert_equal 0, handshakes_completed, "the client must abort the handshake, not complete it"
   end
 
+  def test_hostless_url_fails_closed_as_validation_error
+    # "https:foo" passes the scheme-only HTTPS guard but parses with a nil
+    # hostname; without the explicit check it surfaced as a raw ArgumentError
+    # from inside Net::HTTP — outside the transport's error contract.
+    [ "https:foo", "https://", "http:" ].each do |url|
+      error = assert_raises(Basecamp::Oauth::OauthError, url) do
+        Basecamp::Oauth::Fetcher.stream_http(:post, url, form: { "a" => "b" }, timeout: TIMEOUT)
+      end
+      assert_equal "validation", error.type, url
+      assert_match(/no host/i, error.message)
+    end
+  end
+
   def test_malformed_http_response_maps_to_transport_error
     # A non-HTTP peer (garbage status line) raises Net::HTTPBadResponse — a bare
     # StandardError subclass that must be mapped, or it leaks raw from the
