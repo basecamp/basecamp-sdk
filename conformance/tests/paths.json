@@ -70,7 +70,7 @@
     "path": "/timesheet_entries/{entryId}",
     "pathParams": {"entryId": 999},
     "mockResponses": [
-      {"status": 200, "body": {"id": 999}}
+      {"status": 200, "body": {"id": 999, "status": "active", "visible_to_clients": false, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "title": "Timesheet entry", "inherits_status": true, "type": "Timesheet::Entry", "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999", "parent": {"id": 2, "title": "Timesheet", "type": "Timesheet", "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"}, "bucket": {"id": 456, "name": "Test", "type": "Project"}, "creator": {"id": 1, "name": "Test User"}, "date": "2024-01-01", "hours": "4.0"}}
     ],
     "assertions": [
       {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
@@ -87,7 +87,7 @@
     "pathParams": {"entryId": 999},
     "requestBody": {"hours": "4.0"},
     "mockResponses": [
-      {"status": 200, "body": {"id": 999, "hours": "4.0"}}
+      {"status": 200, "body": {"id": 999, "status": "active", "visible_to_clients": false, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "title": "Timesheet entry", "inherits_status": true, "type": "Timesheet::Entry", "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999", "parent": {"id": 2, "title": "Timesheet", "type": "Timesheet", "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"}, "bucket": {"id": 456, "name": "Test", "type": "Project"}, "creator": {"id": 1, "name": "Test User"}, "date": "2024-01-01", "hours": "4.0"}}
     ],
     "assertions": [
       {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
