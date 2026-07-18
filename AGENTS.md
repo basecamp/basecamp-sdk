@@ -12,7 +12,7 @@
 | **Kotlin SDK** | Production-ready | 38 generated services, Ktor/KMP-based |
 | **Python SDK** | Production-ready | 40 generated services, httpx-based |
 
-All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
+All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
 
 ---
 
@@ -37,8 +37,9 @@ All 175 operations across 38+ services are generated. Hand-written code is limit
 |---------|-----------|------|-------|--------|--------|
 | HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` | `sdk/.../services/BaseService.kt` | `src/basecamp/generated/services/_base.py` |
 | OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — | `sdk/.../oauth/*.kt` | `src/basecamp/services/authorization.py` |
+| Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `src/services/todos-extensions.ts` | `lib/basecamp/services/todos_extensions.rb` | `Sources/Basecamp/TodosServiceExtensions.swift` | `sdk/.../services/TodosService.kt` | `src/basecamp/services/todos.py` |
 
-Other hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.
+Hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) beyond the tables above are NOT loaded at runtime. They exist only as reference implementations.
 
 ### Smithy Spec vs Actual API Responses
 
@@ -67,7 +68,7 @@ When verifying API response shapes, check Go generated code in `go/pkg/generated
 ### Never Do These
 
 1. **NEVER edit files under `*/generated/`** — they get overwritten by generators
-2. **NEVER add hand-written service methods for API operations** — all API ops come from generators
+2. **NEVER add hand-written service methods that touch the wire** — all wire operations come from generators. The sole exception is a conformance-tested composite that only calls generated wire methods and satisfies SPEC.md §18 "Hand-Written Composite Methods"
 3. **NEVER skip running `make smithy-build` after Smithy changes** — keeps OpenAPI in sync
 4. **NEVER construct API paths manually** — use the generated client methods
 5. **NEVER bypass the SDK** — no raw `client.Get()`, string-concatenated URLs, or internal method calls

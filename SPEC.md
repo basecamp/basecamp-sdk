@@ -1187,6 +1187,18 @@ When serializing request bodies to JSON, strip keys with null/nil values. Do not
 
 The generated service method must pass its operation name to the HTTP transport layer so the retry middleware can look up the operation's idempotency flag in `behavior-model.json` for Gate 2 (§7).
 
+### Hand-Written Composite Methods `[manual]`
+
+All wire operations are generated (rubric 1A.6). One narrow exception is sanctioned: a hand-written **composite convenience method** may be added on top of a generated service when the generator cannot express a safety-critical surface. A composite is permitted only when all of the following hold:
+
+1. **No hand-written wire I/O.** Every request flows through public generated wire methods (Go: through the shared generated-client transport). No manual path construction, verb selection, or body serialization.
+2. **Composition, not substitution.** It composes existing generated operations (e.g. GET → overlay → full PUT); it never introduces a wire operation the spec lacks — fix the spec and regenerate instead.
+3. **Native hook identities.** Hooks observe the constituent wire operations under their normal per-language identities; composites never mint synthetic operation names.
+4. **Conformance-covered.** The composite's behavior is encoded in `conformance/tests/` fixtures run by every runner (with native test mirrors where a runner does not exist yet, e.g. Swift).
+5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/todos-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
+
+Current composites: Todos `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
+
 ---
 
 ## §19. Conformance Testing
@@ -1270,7 +1282,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | 6 | 2C.5 | Cross-origin pagination Link header rejected | §8 | `[conformance]` |
 | 7 | 3C.1 | HTTPS enforcement for non-localhost | §9 | `[conformance]` |
 | 8 | 1C.3 | No manual path construction | §3, §18 | `[manual]` |
-| 9 | 1A.6 | No hand-written API methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F) | §18 | `[manual]` |
+| 9 | 1A.6 | No hand-written wire methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F). Conformance-tested composites over generated operations are permitted per §18 "Hand-Written Composite Methods" | §18 | `[manual]` |
 | 10 | 4A.1 | Smithy → OpenAPI freshness check | §21 | `[static]` |
 
 ---
@@ -1363,7 +1375,7 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 |-----------|-------------|---------|
 | 1A.1 | §18, §21 | Smithy model validates |
 | 1A.2 | §18, §21 | OpenAPI derived from Smithy |
-| 1A.6 | §18 | No hand-written API methods |
+| 1A.6 | §18 | No hand-written wire methods; conformance-tested composites permitted |
 | 1B.2 | §18 | Types generated from OpenAPI schema |
 | 1B.4 | §10 | Optional fields use language optionals |
 | 1B.5 | §10 | Date fields use ISO 8601 / native types |
