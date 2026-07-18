@@ -23,13 +23,20 @@ from basecamp import Client, Config, StaticTokenProvider
 from basecamp.auth import BearerAuth
 from basecamp.errors import BasecampError
 
+# Wire keys for todo write operations; identical to the Python kwarg /
+# edit-attribute names, so fixtures map onto the SDK surface directly.
+_TODO_WRITE_FIELDS = ("content", "description", "assignee_ids", "completion_subscriber_ids", "due_on", "starts_on", "notify")
+
+# Sentinel distinguishing "key absent from the JSON body" from a present None.
+_MISSING = object()
+
 
 @dataclass
 class TestTracker:
     requests: list[dict] = field(default_factory=list)
 
-    def record_request(self, *, time: float, method: str, url: str, headers: dict) -> None:
-        self.requests.append({"time": time, "method": method, "url": url, "headers": headers})
+    def record_request(self, *, time: float, method: str, url: str, headers: dict, body: Any = None) -> None:
+        self.requests.append({"time": time, "method": method, "url": url, "headers": headers, "body": body})
 
     def reset(self) -> None:
         self.requests.clear()
@@ -87,6 +94,25 @@ class OperationMapper:
                 return self._account.todos.get(todo_id=path_params["todoId"])
             case "CreateTodo":
                 return self._account.todos.create(todolist_id=path_params["todolistId"], content=body["content"])
+            case "UpdateTodo":
+                return self._account.todos.update(
+                    todo_id=path_params["todoId"],
+                    **{k: body[k] for k in _TODO_WRITE_FIELDS if k in body},
+                )
+            case "EditTodo":
+                # Synthetic scenario key (not a wire op): drive the edit
+                # context manager, assigning each fixture requestBody key
+                # onto the same-named attribute.
+                with self._account.todos.edit(todo_id=path_params["todoId"]) as t:
+                    for key in _TODO_WRITE_FIELDS:
+                        if key in body:
+                            setattr(t, key, body[key])
+                return t.result
+            case "ReplaceTodo":
+                return self._account.todos.replace(
+                    todo_id=path_params["todoId"],
+                    **{k: body[k] for k in _TODO_WRITE_FIELDS if k in body},
+                )
             case "GetTimesheetEntry":
                 return self._account.timesheets.get(entry_id=path_params["entryId"])
             case "GetProjectTimeline":
@@ -160,21 +186,21 @@ class TestRunner:
         if not responses:
             return
 
-        path = self._test["path"]
-        for key, value in self._test.get("pathParams", {}).items():
-            path = path.replace(f"{{{key}}}", str(value))
-
-        method = (self._test.get("method") or "GET").upper()
         paginates = self._auto_paginates()
         response_queue = list(responses)
         call_count = [0]
 
         def side_effect(request: httpx.Request) -> httpx.Response:
+            try:
+                request_body = json.loads(request.content) if request.content else None
+            except ValueError:
+                request_body = None
             self._tracker.record_request(
                 time=time.time(),
                 method=str(request.method),
                 url=str(request.url),
                 headers=dict(request.headers),
+                body=request_body,
             )
             idx = call_count[0]
             call_count[0] += 1
@@ -190,19 +216,17 @@ class TestRunner:
             else:
                 return httpx.Response(500, content=b'{"error":"No more mock responses"}', headers={"Content-Type": "application/json"})
 
-        if self._test["operation"] == "DownloadURL":
-            # Catch-all on the active client's host: the SDK rewrites the synthetic
-            # download URL onto base_url, then resolves a relative Location to a
-            # second path on the same host. Constraining to the origin (derived
-            # from configOverrides.baseUrl when present) ensures a misroute to a
-            # different host fails instead of consuming a queued response.
-            overrides = self._test.get("configOverrides") or {}
-            download_base = overrides.get("baseUrl", "https://3.basecampapi.com")
-            parsed = urlparse(download_base)
-            origin = f"{parsed.scheme}://{parsed.netloc}"
-            respx.route(method=method, url__regex=rf"{re.escape(origin)}/.*").mock(side_effect=side_effect)
-        else:
-            respx.route(method=method, url__regex=f".*{re.escape(path)}.*").mock(side_effect=side_effect)
+        # A single method-agnostic queue on the active client's origin
+        # (derived from configOverrides.baseUrl when present): every hop of
+        # a scenario — reads before writes, redirects resolved onto the same
+        # host — is served in sequence, while a misroute to a different host
+        # fails instead of consuming a queued response. Path fidelity is
+        # enforced by the implicit invariants in _verify_assertions.
+        overrides = self._test.get("configOverrides") or {}
+        base_url = overrides.get("baseUrl", "https://3.basecampapi.com")
+        parsed = urlparse(base_url)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        respx.route(url__regex=rf"{re.escape(origin)}/.*").mock(side_effect=side_effect)
 
     def _auto_paginates(self) -> bool:
         return any(
@@ -210,8 +234,8 @@ class TestRunner:
             for r in self._test.get("mockResponses", [])
         )
 
-    def _request_headers_at(self, index: int) -> dict | None:
-        """Return captured headers at index (0-based; negative counts from end), or None if out of range."""
+    def _request_at(self, index: int) -> dict | None:
+        """Return the captured request at index (0-based; negative counts from end), or None if out of range."""
         requests = self._tracker.requests
         n = len(requests)
         if n == 0:
@@ -220,20 +244,33 @@ class TestRunner:
             index += n
         if index < 0 or index >= n:
             return None
-        return requests[index]["headers"]
+        return requests[index]
+
+    def _request_headers_at(self, index: int) -> dict | None:
+        """Return captured headers at index (0-based; negative counts from end), or None if out of range."""
+        request = self._request_at(index)
+        return request["headers"] if request is not None else None
 
     def _verify_assertions(self, *, result: Any, error: Exception | None) -> TestResult:
         failures: list[str] = []
 
-        # DownloadURL implicit invariant: hop 1 must hit the test case path.
-        # The mock route is origin-wide so hop 2's relative-resolved URL is
-        # served, but a regression that misroutes hop 1 to a different path
-        # on the same origin would otherwise pass silently.
+        # Implicit invariants: the mock route is origin-wide, so a misroute
+        # to a different path on the same origin would silently consume the
+        # queue. For DownloadURL, hop 1 must hit the test case path exactly;
+        # for every other operation with a path, the first request must
+        # contain the pathParams-substituted fixture path.
         if self._test["operation"] == "DownloadURL" and self._tracker.requests:
             expected_path = self._test["path"]
             actual_path = urlparse(self._tracker.requests[0]["url"]).path
             if actual_path != expected_path:
                 failures.append(f"DownloadURL hop 1 expected path {expected_path!r}, got {actual_path!r}")
+        elif self._test.get("path") and self._tracker.requests:
+            expected_path = self._test["path"]
+            for key, value in self._test.get("pathParams", {}).items():
+                expected_path = expected_path.replace(f"{{{key}}}", str(value))
+            actual_path = urlparse(self._tracker.requests[0]["url"]).path
+            if expected_path not in actual_path:
+                failures.append(f"Expected first request path to contain {expected_path!r}, got {actual_path!r}")
 
         for assertion in self._test.get("assertions", []):
             match assertion["type"]:
@@ -296,12 +333,50 @@ class TestRunner:
 
                 case "requestPath":
                     expected = assertion["expected"]
-                    if not self._tracker.requests:
-                        failures.append("Expected a request, but none recorded")
+                    idx = assertion.get("index", 0)
+                    request = self._request_at(idx)
+                    if request is None:
+                        failures.append(f"Expected request path {expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
                     else:
-                        actual_path = urlparse(self._tracker.requests[0]["url"]).path
+                        actual_path = urlparse(request["url"]).path
                         if actual_path != expected:
-                            failures.append(f"Expected request path {expected!r}, got {actual_path!r}")
+                            failures.append(f"Expected request path {expected!r} on request index {idx}, got {actual_path!r}")
+
+                case "requestMethod":
+                    expected = assertion["expected"]
+                    idx = assertion.get("index", 0)
+                    request = self._request_at(idx)
+                    if request is None:
+                        failures.append(f"Expected request method {expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
+                    elif request["method"] != expected:
+                        failures.append(f"Expected request method {expected!r} on request index {idx}, got {request['method']!r}")
+
+                case "requestBody":
+                    body_path = assertion["path"]
+                    expected = assertion["expected"]
+                    idx = assertion.get("index", 0)
+                    request = self._request_at(idx)
+                    if request is None:
+                        failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, but only {self._tracker.request_count} requests were recorded")
+                    elif request["body"] is None:
+                        failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, but the request had no JSON body")
+                    else:
+                        actual = _dig_body(request["body"], body_path)
+                        if actual is _MISSING:
+                            failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, but the key is absent")
+                        elif actual != expected:
+                            failures.append(f"Expected request body {body_path} = {expected!r} on request index {idx}, got {actual!r}")
+
+                case "requestBodyAbsent":
+                    body_path = assertion["path"]
+                    idx = assertion.get("index", 0)
+                    request = self._request_at(idx)
+                    if request is None:
+                        failures.append(f"Expected request body {body_path} absent on request index {idx}, but only {self._tracker.request_count} requests were recorded")
+                    elif request["body"] is not None:
+                        actual = _dig_body(request["body"], body_path)
+                        if actual is not _MISSING:
+                            failures.append(f"Expected request body {body_path} absent on request index {idx}, got {actual!r}")
 
                 case "errorCode":
                     expected = assertion["expected"]
@@ -410,6 +485,23 @@ def _dig_path(obj: Any, path: str) -> Any:
     return obj
 
 
+def _dig_body(obj: Any, path: str) -> Any:
+    """Dig a dot-notation path into a JSON body; _MISSING when any key is absent."""
+    for key in path.split("."):
+        if isinstance(obj, dict):
+            if key not in obj:
+                return _MISSING
+            obj = obj[key]
+        elif isinstance(obj, list):
+            try:
+                obj = obj[int(key)]
+            except (ValueError, IndexError):
+                return _MISSING
+        else:
+            return _MISSING
+    return obj
+
+
 def _get_error_field(error: Exception, field_path: str) -> Any:
     match field_path:
         case "httpStatus":
@@ -428,18 +520,15 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 class ConformanceRunner:
     _DOWNLOAD_RETRY_SKIP = "Python SDK download path uses get_no_retry; retry on 5xx / Retry-After is not implemented"
-    _MULTIHOP_SKIP = "Python runner's respx stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)"
     SKIPS: set[str] = {
         "maxItems caps results across pages",
         "DownloadURL retries on 503 at the auth'd first hop",
         "DownloadURL honors Retry-After on 429 at the auth'd first hop",
-        "UploadsDownload delegates through DownloadURL primitive",
     }
     SKIP_REASONS: dict[str, str] = {
         "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
         "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
         "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
-        "UploadsDownload delegates through DownloadURL primitive": _MULTIHOP_SKIP,
     }
 
     def __init__(self, tests_dir: str):

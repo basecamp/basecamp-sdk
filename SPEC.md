@@ -266,6 +266,22 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 
 The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 40 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
 
+### Merge-Safe Write Surface (Todos)
+
+The `PUT /{accountId}/todos/{todoId}` endpoint is **full replace, omission clears** (spec operation `ReplaceTodo`, `content` required, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). Every SDK exposes a three-method, two-state surface over it:
+
+- **`update`** — merge-safe. GET the current todo → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed; an explicitly-passed empty collection is a set (clears). Set-detection is language-native: Go zero-value guards, TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`.
+- **`edit`** — read-modify-write closure over the full writable state (`TodoFields`: content, description, assignee_ids, completion_subscriber_ids, due_on, starts_on, notify). Clear = set empty (`""`/`[]`); a closure error/throw aborts before the PUT. Python's form is a context manager (`with`/`async with`) whose `.result` holds the updated todo after clean exit (RuntimeError before completion).
+- **`replace`** — the generated wire method: verbatim sparse PUT, no GET, omission clears, content required.
+
+Full-state serialization (update/edit): content, description, and both ID lists are always sent (empties included, so clears survive); dates only when non-empty (the server clears an omitted date, and `""` is a format error); `notify` only when true (a send directive, never populated from GET).
+
+**Hook contract:** update/edit compose the public get + replace, so hooks observe the wire operations under each SDK's native identities (conceptually one GetTodo + one ReplaceTodo; one ReplaceTodo for replace) — never a synthetic composite. This keeps retry/idempotency policy keyed to the wire operation and the mutation always observable/gateable as a replace. Precedent: `uploads.download` surfaces its constituent operations the same way.
+
+**Race:** update/edit are read-modify-write, not atomic. There is no conditional-update signal on this endpoint; a concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, with a window of one round-trip. Use `replace` to overwrite deliberately.
+
+Conformance: `conformance/tests/todos_write.json` (`update-merge`, `edit-clear`, `replace-omission-clears`).
+
 ### Known Gaps (informational, not prescriptive)
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`

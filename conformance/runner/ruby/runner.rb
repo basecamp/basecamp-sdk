@@ -25,9 +25,9 @@ class TestTracker
     @mutex = Mutex.new
   end
 
-  def record_request(time:, method:, uri:, headers: {})
+  def record_request(time:, method:, uri:, headers: {}, body: nil)
     @mutex.synchronize do
-      @requests << { time: time, method: method, uri: uri.to_s, headers: headers }
+      @requests << { time: time, method: method, uri: uri.to_s, headers: headers, body: body }
     end
   end
 
@@ -150,9 +150,35 @@ class OperationMapper
       )
     when "UploadsDownload"
       @account.uploads.download(upload_id: path_params["uploadId"])
+    when "UpdateTodo"
+      @account.todos.update(
+        todo_id: path_params["todoId"],
+        **todo_write_kwargs(body)
+      )
+    when "EditTodo"
+      @account.todos.edit(todo_id: path_params["todoId"]) do |t|
+        (body || {}).each { |key, value| t.public_send("#{key}=", value) }
+      end
+    when "ReplaceTodo"
+      @account.todos.replace(
+        todo_id: path_params["todoId"],
+        **todo_write_kwargs(body)
+      )
     else
       raise "Unknown operation: #{operation}"
     end
+  end
+
+  private
+
+  # Fixture requestBody keys map 1:1 to the todo write kwargs.
+  TODO_WRITE_KEYS = %w[
+    content description assignee_ids completion_subscriber_ids due_on starts_on notify
+  ].freeze
+
+  def todo_write_kwargs(body)
+    TODO_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
   end
 end
 
@@ -176,11 +202,9 @@ RUBY_SKIPS = Set.new([
   "maxItems caps results across pages",
   "DownloadURL retries on 503 at the auth'd first hop",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop",
-  "UploadsDownload delegates through DownloadURL primitive",
 ].freeze)
 
 DOWNLOAD_RETRY_SKIP = "Ruby SDK download path uses http.get_no_retry; retry on 5xx / Retry-After is not implemented".freeze
-MULTIHOP_SKIP = "Ruby runner's WebMock stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)".freeze
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
@@ -190,7 +214,6 @@ RUBY_SKIP_REASONS = {
   "maxItems caps results across pages" => "Ruby SDK paginate doesn't support maxItems",
   "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
   "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
-  "UploadsDownload delegates through DownloadURL primitive" => MULTIHOP_SKIP,
 }.freeze
 
 # Single test case
@@ -225,12 +248,6 @@ class TestRunner
     responses = @test["mockResponses"] || []
     return if responses.empty?
 
-    # Build the URL pattern from path
-    path = @test["path"]
-    (@test["pathParams"] || {}).each do |key, value|
-      path = path.gsub("{#{key}}", value.to_s)
-    end
-
     # Queue up responses
     response_queue = responses.map do |r|
       {
@@ -240,32 +257,24 @@ class TestRunner
       }
     end
 
-    # Register the stub with a block to track requests and return queued responses
-    method = @test["method"]&.downcase&.to_sym || :get
-    url_pattern = if @test["operation"] == "DownloadURL"
-      # Catch-all on the active client's host: the SDK rewrites the synthetic
-      # download URL onto base_url, then resolves a relative Location to a
-      # second path on the same host. Constraining to the origin (derived
-      # from configOverrides.baseUrl when present) ensures a misroute to a
-      # different host fails instead of consuming a queued response.
-      overrides = @test["configOverrides"] || {}
-      download_base = overrides["baseUrl"] || "https://3.basecampapi.com"
-      download_uri = URI.parse(download_base)
-      port_part = download_uri.port && download_uri.port != download_uri.default_port \
-        ? ":#{download_uri.port}" \
-        : ""
-      download_origin = "#{download_uri.scheme}://#{download_uri.host}#{port_part}"
-      %r{\A#{Regexp.escape(download_origin)}/}
-    else
-      %r{#{Regexp.escape(path)}}
-    end
-
-    stub = WebMock.stub_request(method, url_pattern)
+    # Method-agnostic catch-all on the active client's origin (derived from
+    # configOverrides.baseUrl when present): the SDK decides method and path
+    # (including multi-hop flows like DownloadURL's relative Location
+    # resolution), while a misroute to a different host fails instead of
+    # consuming a queued response. Path correctness is enforced by the
+    # implicit first-request invariant and requestPath assertions.
+    stub = WebMock.stub_request(:any, %r{\A#{Regexp.escape(api_origin)}/})
 
     paginates = auto_paginates?
     call_count = 0
     stub.to_return do |request|
-      @tracker.record_request(time: Time.now, method: request.method, uri: request.uri, headers: request.headers)
+      @tracker.record_request(
+        time: Time.now,
+        method: request.method,
+        uri: request.uri,
+        headers: request.headers,
+        body: parse_json_body(request.body)
+      )
       if call_count < response_queue.size
         resp = response_queue[call_count]
         call_count += 1
@@ -288,12 +297,48 @@ class TestRunner
     end
   end
 
-  # Return captured headers at index (0-based; negative counts from end), or nil if out of range.
-  def request_headers_at(index)
+  # The active API origin: configOverrides.baseUrl when present, else the
+  # default runner base URL.
+  def api_origin
+    overrides = @test["configOverrides"] || {}
+    uri = URI.parse(overrides["baseUrl"] || "https://3.basecampapi.com")
+    port_part = uri.port && uri.port != uri.default_port ? ":#{uri.port}" : ""
+    "#{uri.scheme}://#{uri.host}#{port_part}"
+  end
+
+  def parse_json_body(raw)
+    raw.nil? || raw.empty? ? nil : JSON.parse(raw)
+  rescue JSON::ParserError
+    nil
+  end
+
+  # The test case path with pathParams substituted.
+  def substituted_path
+    (@test["pathParams"] || {}).reduce(@test["path"]) do |path, (key, value)|
+      path.gsub("{#{key}}", value.to_s)
+    end
+  end
+
+  # Return the captured request at index (0-based; negative counts from end), or nil if out of range.
+  def request_at(index)
     requests = @tracker.requests
     n = requests.size
     resolved = index < 0 ? index + n : index
-    resolved >= 0 && resolved < n ? requests[resolved][:headers] : nil
+    resolved >= 0 && resolved < n ? requests[resolved] : nil
+  end
+
+  # Return captured headers at index (0-based; negative counts from end), or nil if out of range.
+  def request_headers_at(index)
+    request_at(index)&.[](:headers)
+  end
+
+  # Walk a dot-notation key path into a parsed JSON body. Returns a
+  # [present, value] pair so an absent key is distinguishable from an
+  # explicit null.
+  def fetch_body_key(body, key_path)
+    key_path.split(".").reduce([true, body]) do |(present, current), key|
+      present && current.is_a?(Hash) && current.key?(key) ? [true, current[key]] : [false, nil]
+    end
   end
 
   def verify_assertions(result:, error:)
@@ -308,6 +353,18 @@ class TestRunner
       actual_path = URI.parse(@tracker.requests.first[:uri]).path
       unless actual_path == expected_path
         failures << "DownloadURL hop 1 expected path #{expected_path.inspect}, got #{actual_path.inspect}"
+      end
+    end
+
+    # Generic implicit invariant for every other operation that defines a
+    # path: the mock route is origin-wide, so the first request must target
+    # the pathParams-substituted fixture path — a misrouted request on the
+    # same origin would otherwise consume a queued response silently.
+    if @test["operation"] != "DownloadURL" && !@test["path"].to_s.empty? && @tracker.requests.any?
+      expected_path = substituted_path
+      actual_path = URI.parse(@tracker.requests.first[:uri]).path
+      unless actual_path.include?(expected_path)
+        failures << "Expected first request path to contain #{expected_path.inspect}, got #{actual_path.inspect}"
       end
     end
 
@@ -383,13 +440,58 @@ class TestRunner
 
       when "requestPath"
         expected = assertion["expected"]
-        requests = @tracker.requests
-        if requests.empty?
-          failures << "Expected a request to be made, but no requests were recorded"
+        idx = assertion["index"] || 0
+        request = request_at(idx)
+        if request.nil?
+          failures << "Expected request path #{expected.inspect} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
         else
-          actual_path = URI.parse(requests.first[:uri]).path
+          actual_path = URI.parse(request[:uri]).path
           unless actual_path == expected
-            failures << "Expected request path #{expected.inspect}, got #{actual_path.inspect}"
+            failures << "Expected request path #{expected.inspect} on request index #{idx}, got #{actual_path.inspect}"
+          end
+        end
+
+      when "requestMethod"
+        expected = assertion["expected"]
+        idx = assertion["index"] || 0
+        request = request_at(idx)
+        if request.nil?
+          failures << "Expected request method #{expected.inspect} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
+        else
+          actual = request[:method].to_s.upcase
+          unless actual == expected
+            failures << "Expected request method #{expected.inspect} on request index #{idx}, got #{actual.inspect}"
+          end
+        end
+
+      when "requestBody"
+        key_path = assertion["path"]
+        expected = assertion["expected"]
+        idx = assertion["index"] || 0
+        request = request_at(idx)
+        if request.nil?
+          failures << "Expected request body #{key_path} on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
+        elsif request[:body].nil?
+          failures << "Expected request body #{key_path} on request index #{idx}, but the request had no JSON body"
+        else
+          present, actual = fetch_body_key(request[:body], key_path)
+          if !present
+            failures << "Expected request body key #{key_path.inspect} on request index #{idx}, but it was absent"
+          elsif actual != expected
+            failures << "Expected request body #{key_path} = #{expected.inspect} on request index #{idx}, got #{actual.inspect}"
+          end
+        end
+
+      when "requestBodyAbsent"
+        key_path = assertion["path"]
+        idx = assertion["index"] || 0
+        request = request_at(idx)
+        if request.nil?
+          failures << "Expected request body key #{key_path} absent on request index #{idx}, but only #{@tracker.request_count} requests were recorded"
+        elsif request[:body]
+          present, actual = fetch_body_key(request[:body], key_path)
+          if present
+            failures << "Expected request body key #{key_path.inspect} absent on request index #{idx}, got #{actual.inspect}"
           end
         end
 

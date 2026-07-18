@@ -69,21 +69,29 @@ type Assertion struct {
 	Index *int `json:"index,omitempty"`
 }
 
-// requestHeadersAt returns the headers captured for the given request index.
-// Negative indexes count from the end (-1 = last). Returns (nil, false) when
+// resolveIndex normalizes a request index against n captured requests.
+// Negative indexes count from the end (-1 = last). Returns (0, false) when
 // the index is out of range.
-func requestHeadersAt(requestHeaders []http.Header, index int) (http.Header, bool) {
-	n := len(requestHeaders)
+func resolveIndex(index, n int) (int, bool) {
 	if n == 0 {
-		return nil, false
+		return 0, false
 	}
 	if index < 0 {
 		index += n
 	}
 	if index < 0 || index >= n {
+		return 0, false
+	}
+	return index, true
+}
+
+// requestHeadersAt returns the headers captured for the given request index.
+func requestHeadersAt(requestHeaders []http.Header, index int) (http.Header, bool) {
+	i, ok := resolveIndex(index, len(requestHeaders))
+	if !ok {
 		return nil, false
 	}
-	return requestHeaders[index], true
+	return requestHeaders[i], true
 }
 
 // assertionIndex returns the Index value, defaulting to 0 if unset.
@@ -192,6 +200,8 @@ func runTest(tc TestCase) TestResult {
 	var requestCount int
 	var requestTimes []time.Time
 	var requestPaths []string
+	var requestMethods []string
+	var requestBodies []map[string]interface{}
 	var requestHeaders []http.Header
 
 	// Detect if test uses Link next headers (SDK will auto-paginate)
@@ -206,10 +216,23 @@ func runTest(tc TestCase) TestResult {
 	// Create mock server that serves responses in sequence
 	responseIndex := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Capture the request body (decoded as JSON when possible) so
+		// requestBody / requestBodyAbsent assertions can inspect it.
+		var body map[string]interface{}
+		if r.Body != nil {
+			if raw, err := io.ReadAll(r.Body); err == nil && len(raw) > 0 {
+				dec := json.NewDecoder(bytes.NewReader(raw))
+				dec.UseNumber()
+				_ = dec.Decode(&body)
+			}
+		}
+
 		mu.Lock()
 		requestCount++
 		requestTimes = append(requestTimes, time.Now())
 		requestPaths = append(requestPaths, r.URL.Path)
+		requestMethods = append(requestMethods, r.Method)
+		requestBodies = append(requestBodies, body)
 		requestHeaders = append(requestHeaders, r.Header.Clone())
 		idx := responseIndex
 		responseIndex++
@@ -308,7 +331,7 @@ func runTest(tc TestCase) TestResult {
 
 	// Run assertions
 	for _, assertion := range tc.Assertions {
-		if result := checkAssertion(tc, assertion, opResult, requestCount, requestTimes, requestPaths, requestHeaders); result != nil {
+		if result := checkAssertion(tc, assertion, opResult, requestCount, requestTimes, requestPaths, requestMethods, requestBodies, requestHeaders); result != nil {
 			return *result
 		}
 	}
@@ -396,6 +419,73 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 			content = "Conformance Test"
 		}
 		_, err := account.Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest{Content: content})
+		return operationResult{err: err}
+
+	case "UpdateTodo":
+		todoID := getInt64Param(tc.PathParams, "todoId")
+		req := &basecamp.UpdateTodoRequest{
+			Content:     getStringParam(tc.RequestBody, "content"),
+			Description: getStringParam(tc.RequestBody, "description"),
+			DueOn:       getStringParam(tc.RequestBody, "due_on"),
+			StartsOn:    getStringParam(tc.RequestBody, "starts_on"),
+			Notify:      getBoolParam(tc.RequestBody, "notify"),
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
+			req.AssigneeIDs = ids
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "completion_subscriber_ids"); ok {
+			req.CompletionSubscriberIDs = ids
+		}
+		_, err := account.Todos().Update(ctx, todoID, req)
+		return operationResult{err: err}
+
+	case "EditTodo":
+		// Synthetic scenario key (not a wire operation): drives the SDK's
+		// edit closure, assigning each fixture requestBody key onto the
+		// corresponding TodoFields member (data-driven mutation).
+		todoID := getInt64Param(tc.PathParams, "todoId")
+		_, err := account.Todos().Edit(ctx, todoID, func(f *basecamp.TodoFields) error {
+			if _, ok := tc.RequestBody["content"]; ok {
+				f.Content = getStringParam(tc.RequestBody, "content")
+			}
+			if _, ok := tc.RequestBody["description"]; ok {
+				f.Description = getStringParam(tc.RequestBody, "description")
+			}
+			if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
+				f.AssigneeIDs = ids
+			}
+			if ids, ok := getInt64SliceParam(tc.RequestBody, "completion_subscriber_ids"); ok {
+				f.CompletionSubscriberIDs = ids
+			}
+			if _, ok := tc.RequestBody["due_on"]; ok {
+				f.DueOn = getStringParam(tc.RequestBody, "due_on")
+			}
+			if _, ok := tc.RequestBody["starts_on"]; ok {
+				f.StartsOn = getStringParam(tc.RequestBody, "starts_on")
+			}
+			if _, ok := tc.RequestBody["notify"]; ok {
+				f.Notify = getBoolParam(tc.RequestBody, "notify")
+			}
+			return nil
+		})
+		return operationResult{err: err}
+
+	case "ReplaceTodo":
+		todoID := getInt64Param(tc.PathParams, "todoId")
+		req := &basecamp.ReplaceTodoRequest{
+			Content:     getStringParam(tc.RequestBody, "content"),
+			Description: getStringParam(tc.RequestBody, "description"),
+			DueOn:       getStringParam(tc.RequestBody, "due_on"),
+			StartsOn:    getStringParam(tc.RequestBody, "starts_on"),
+			Notify:      getBoolParam(tc.RequestBody, "notify"),
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
+			req.AssigneeIDs = ids
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "completion_subscriber_ids"); ok {
+			req.CompletionSubscriberIDs = ids
+		}
+		_, err := account.Todos().Replace(ctx, todoID, req)
 		return operationResult{err: err}
 
 	case "GetTimesheetEntry":
@@ -551,6 +641,8 @@ func checkAssertion(
 	requestCount int,
 	requestTimes []time.Time,
 	requestPaths []string,
+	requestMethods []string,
+	requestBodies []map[string]interface{},
 	requestHeaders []http.Header,
 ) *TestResult {
 	sdkErr := opResult.err
@@ -652,11 +744,55 @@ func checkAssertion(
 
 	case "requestPath":
 		expected := expectedString(assertion.Expected)
-		if len(requestPaths) == 0 {
-			return fail(tc, "Expected a request to be made, but no requests were recorded")
+		idx := assertionIndex(assertion)
+		i, ok := resolveIndex(idx, len(requestPaths))
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected request path %q on request index %d, but only %d requests were recorded", expected, idx, len(requestPaths)))
 		}
-		if requestPaths[0] != expected {
-			return fail(tc, fmt.Sprintf("Expected request path %q, got %q", expected, requestPaths[0]))
+		if requestPaths[i] != expected {
+			return fail(tc, fmt.Sprintf("Expected request path %q on request index %d, got %q", expected, idx, requestPaths[i]))
+		}
+
+	case "requestMethod":
+		expected := expectedString(assertion.Expected)
+		idx := assertionIndex(assertion)
+		i, ok := resolveIndex(idx, len(requestMethods))
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected request method %q on request index %d, but only %d requests were recorded", expected, idx, len(requestMethods)))
+		}
+		if requestMethods[i] != expected {
+			return fail(tc, fmt.Sprintf("Expected request method %q on request index %d, got %q", expected, idx, requestMethods[i]))
+		}
+
+	case "requestBody":
+		fieldPath := assertion.Path
+		idx := assertionIndex(assertion)
+		i, ok := resolveIndex(idx, len(requestBodies))
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected request body field %q on request index %d, but only %d requests were recorded", fieldPath, idx, len(requestBodies)))
+		}
+		if requestBodies[i] == nil {
+			return fail(tc, fmt.Sprintf("Expected request body field %q on request index %d, but request had no JSON body", fieldPath, idx))
+		}
+		actual, present := digPath(requestBodies[i], fieldPath)
+		if !present {
+			return fail(tc, fmt.Sprintf("Expected request body field %q on request index %d, but it was absent", fieldPath, idx))
+		}
+		if !jsonEqual(assertion.Expected, actual) {
+			return fail(tc, fmt.Sprintf("Expected request body %s = %s on request index %d, got %s", fieldPath, jsonString(assertion.Expected), idx, jsonString(actual)))
+		}
+
+	case "requestBodyAbsent":
+		fieldPath := assertion.Path
+		idx := assertionIndex(assertion)
+		i, ok := resolveIndex(idx, len(requestBodies))
+		if !ok {
+			return fail(tc, fmt.Sprintf("Expected request body field %q absent on request index %d, but only %d requests were recorded", fieldPath, idx, len(requestBodies)))
+		}
+		if requestBodies[i] != nil {
+			if actual, present := digPath(requestBodies[i], fieldPath); present {
+				return fail(tc, fmt.Sprintf("Expected request body field %q absent on request index %d, got %s", fieldPath, idx, jsonString(actual)))
+			}
 		}
 
 	case "errorCode":
@@ -891,6 +1027,36 @@ func expectedString(v interface{}) string {
 	return fmt.Sprintf("%v", v)
 }
 
+// digPath walks a dot-notation path through nested maps, reporting presence.
+func digPath(obj map[string]interface{}, path string) (interface{}, bool) {
+	var current interface{} = obj
+	for _, key := range strings.Split(path, ".") {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[key]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
+}
+
+// jsonEqual compares two values by canonical JSON encoding, which handles
+// arrays, objects, json.Number vs float64, and strings uniformly.
+func jsonEqual(a, b interface{}) bool {
+	return jsonString(a) == jsonString(b)
+}
+
+func jsonString(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%v", v)
+	}
+	return string(b)
+}
+
 // getInt64Param extracts an int64 parameter from a map (JSON numbers are json.Number or float64)
 func getInt64Param(params map[string]interface{}, key string) int64 {
 	if val, ok := params[key]; ok {
@@ -913,6 +1079,41 @@ func getStringParam(params map[string]interface{}, key string) string {
 		}
 	}
 	return ""
+}
+
+// getBoolParam extracts a bool parameter from a map.
+func getBoolParam(params map[string]interface{}, key string) bool {
+	if val, ok := params[key]; ok {
+		if b, ok := val.(bool); ok {
+			return b
+		}
+	}
+	return false
+}
+
+// getInt64SliceParam extracts an []int64 parameter, reporting whether the key
+// was present: a present-but-empty array returns (non-nil empty slice, true)
+// so explicit-empty (a clear) is distinguishable from absent (untouched).
+func getInt64SliceParam(params map[string]interface{}, key string) ([]int64, bool) {
+	val, ok := params[key]
+	if !ok {
+		return nil, false
+	}
+	arr, ok := val.([]interface{})
+	if !ok {
+		return nil, false
+	}
+	result := make([]int64, 0, len(arr))
+	for _, item := range arr {
+		switch n := item.(type) {
+		case json.Number:
+			i, _ := n.Int64()
+			result = append(result, i)
+		case float64:
+			result = append(result, int64(n))
+		}
+	}
+	return result, true
 }
 
 // getStringSliceParam extracts a []string parameter from a map (JSON arrays of strings)

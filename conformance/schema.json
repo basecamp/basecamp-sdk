@@ -16,7 +16,7 @@
     },
     "operation": {
       "type": "string",
-      "description": "Operation ID from OpenAPI spec (e.g., ListProjects, GetTodo)"
+      "description": "Runner dispatch/scenario key. Usually an OpenAPI operation ID (e.g., ListProjects, GetTodo), but synthetic keys exist for SDK-surface scenarios that are not wire operations (e.g., EditTodo drives the SDK's edit closure, UpdateTodo the merge-safe update)"
     },
     "method": {
       "type": "string",
@@ -92,6 +92,9 @@
               "errorType",
               "noError",
               "requestPath",
+              "requestMethod",
+              "requestBody",
+              "requestBodyAbsent",
               "errorCode",
               "errorMessage",
               "errorField",
@@ -114,11 +117,11 @@
           },
           "path": {
             "type": "string",
-            "description": "JSONPath or dot-notation path for nested value assertions"
+            "description": "JSONPath or dot-notation path for nested value assertions. For requestBody / requestBodyAbsent, the key (dot-notation) inside the captured request body."
           },
           "index": {
             "type": "integer",
-            "description": "Request index for headerPresent / headerAbsent / headerInjected (0-based; negative values index from the end, e.g. -1 = last request). Default 0."
+            "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0."
           }
         }
       }
