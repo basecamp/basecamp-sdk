@@ -60,6 +60,22 @@ module Basecamp
         value.is_a?(Numeric) && value.real? && value.finite? && value.positive?
       end
 
+      # Coerce the public body cap to a non-negative Integer. A nil, non-Integer
+      # (+Float::INFINITY+ included), or negative value would disable the streaming
+      # memory bound (+total > cap+ never trips), defeating the bounded-read
+      # guarantee. Mirrors the discovery initializer's normalization; the +default+
+      # is validated too, so an invalid fallback cannot disable the bound either.
+      def self.normalize_body_cap(cap, default: DEFAULT_MAX_BODY_BYTES)
+        return cap if valid_body_cap?(cap)
+        return default if valid_body_cap?(default)
+
+        DEFAULT_MAX_BODY_BYTES
+      end
+
+      def self.valid_body_cap?(value)
+        value.is_a?(Integer) && value >= 0
+      end
+
       # Raised internally to abort a streaming read once the cap is exceeded.
       # Never escapes this module — it is mapped to an OauthError.
       class BodyTooLarge < StandardError; end

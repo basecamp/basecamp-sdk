@@ -94,7 +94,10 @@ module Basecamp
           # Normalize ONCE at operation entry and thread the SAME value to both the
           # client construction and the request, so a non-finite/non-positive input
           # cannot leave the socket timeout unbounded on the default-built client.
+          # The body cap gets the same discipline: an invalid value (nil, Infinity,
+          # negative) would disable the streaming memory bound entirely.
           timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
+          max_body_bytes = Fetcher.normalize_body_cap(max_body_bytes)
           client = http_client || build_client(timeout)
           status, body = begin
             post_form(
@@ -169,8 +172,10 @@ module Basecamp
           deadline = clock.call + expires_in
 
           # Normalize ONCE, outside the polling loop, and reuse for the client and
-          # every per-poll request (see request_device_authorization).
+          # every per-poll request (see request_device_authorization). The body cap
+          # gets the same discipline — an invalid value would disable the bound.
           timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
+          max_body_bytes = Fetcher.normalize_body_cap(max_body_bytes)
           client = http_client || build_client(timeout)
           params = {
             "grant_type" => DEVICE_CODE_GRANT_TYPE,

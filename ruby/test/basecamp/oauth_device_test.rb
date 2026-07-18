@@ -494,6 +494,25 @@ class OAuthDeviceTest < Minitest::Test
     assert_requested(:post, TOKEN_ENDPOINT, times: 1)
   end
 
+  def test_poll_invalid_body_cap_cannot_disable_the_bound
+    # An invalid runtime cap (Infinity here; nil/negative are the same class) must
+    # normalize to the default rather than disable the streaming/buffered bound —
+    # a 2 MiB body still aborts as the size-cap api_error, matching discovery.
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json({ "pad" => "x" * (2 * 1024 * 1024) }))
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        sleeper: sleeper, max_body_bytes: Float::INFINITY
+      )
+    end
+
+    assert_equal "api_error", error.type
+    assert_match(/size cap/i, error.message)
+  end
+
   def test_poll_rejects_out_of_range_caller_durations
     # Caller-input sanity on the public entry point: nil/non-numeric would raise
     # NoMethodError/TypeError deeper in, a non-finite expires_in builds a deadline
