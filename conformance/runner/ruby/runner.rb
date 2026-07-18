@@ -298,12 +298,14 @@ class TestRunner
   end
 
   # The active API origin: configOverrides.baseUrl when present, else the
-  # default runner base URL.
+  # default runner base URL. Normalized to WebMock's canonical request-URI
+  # form (lowercase scheme/host, default port dropped) so a mixed-case or
+  # explicit-default-port baseUrl still matches the stub.
   def api_origin
     overrides = @test["configOverrides"] || {}
     uri = URI.parse(overrides["baseUrl"] || "https://3.basecampapi.com")
     port_part = uri.port && uri.port != uri.default_port ? ":#{uri.port}" : ""
-    "#{uri.scheme}://#{uri.host}#{port_part}"
+    "#{uri.scheme.downcase}://#{uri.host.downcase}#{port_part}"
   end
 
   def parse_json_body(raw)
@@ -365,6 +367,20 @@ class TestRunner
       actual_path = URI.parse(@tracker.requests.first[:uri]).path
       unless actual_path.include?(expected_path)
         failures << "Expected first request path to contain #{expected_path.inspect}, got #{actual_path.inspect}"
+      end
+    end
+
+    # Implicit method invariant: the mock queue is method-agnostic, so a
+    # wrong-verb request (e.g. a PUT regressing to POST) would consume a
+    # queued response silently. When the fixture declares a method and
+    # carries no explicit requestMethod assertions, the first request must
+    # use the fixture method.
+    has_method_assertions = (@test["assertions"] || []).any? { |a| a["type"] == "requestMethod" }
+    if @test["method"] && !has_method_assertions && @tracker.requests.any?
+      expected_method = @test["method"].upcase
+      actual_method = @tracker.requests.first[:method].to_s.upcase
+      unless actual_method == expected_method
+        failures << "Expected first request method #{expected_method.inspect}, got #{actual_method.inspect}"
       end
     end
 

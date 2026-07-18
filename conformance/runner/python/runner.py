@@ -225,7 +225,14 @@ class TestRunner:
         overrides = self._test.get("configOverrides") or {}
         base_url = overrides.get("baseUrl", "https://3.basecampapi.com")
         parsed = urlparse(base_url)
-        origin = f"{parsed.scheme}://{parsed.netloc}"
+        # Normalize to httpx's canonical request-URL form (lowercase
+        # scheme/host, default port dropped) so a mixed-case or
+        # explicit-default-port baseUrl still matches the mock route.
+        scheme = parsed.scheme.lower()
+        host = (parsed.hostname or "").lower()
+        default_port = {"http": 80, "https": 443}.get(scheme)
+        port = f":{parsed.port}" if parsed.port and parsed.port != default_port else ""
+        origin = f"{scheme}://{host}{port}"
         respx.route(url__regex=rf"{re.escape(origin)}/.*").mock(side_effect=side_effect)
 
     def _auto_paginates(self) -> bool:
@@ -271,6 +278,18 @@ class TestRunner:
             actual_path = urlparse(self._tracker.requests[0]["url"]).path
             if expected_path not in actual_path:
                 failures.append(f"Expected first request path to contain {expected_path!r}, got {actual_path!r}")
+
+        # Implicit method invariant: the mock queue is method-agnostic, so a
+        # wrong-verb request (e.g. a PUT regressing to POST) would consume a
+        # queued response silently. When the fixture declares a method and
+        # carries no explicit requestMethod assertions, the first request
+        # must use the fixture method.
+        has_method_assertions = any(a["type"] == "requestMethod" for a in self._test.get("assertions", []))
+        if self._test.get("method") and not has_method_assertions and self._tracker.requests:
+            expected_method = self._test["method"].upper()
+            actual_method = self._tracker.requests[0]["method"].upper()
+            if actual_method != expected_method:
+                failures.append(f"Expected first request method {expected_method!r}, got {actual_method!r}")
 
         for assertion in self._test.get("assertions", []):
             match assertion["type"]:

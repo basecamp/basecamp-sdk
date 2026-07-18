@@ -268,6 +268,18 @@ private fun runTest(tc: TestCase): TestResult {
     // Run assertions
     val requestCount = requestCounter.get()
 
+    // Implicit method invariant: MockEngine answers any verb, so a
+    // wrong-verb request (e.g. a PUT regressing to POST) would consume a
+    // queued response silently. When the fixture declares a method and
+    // carries no explicit requestMethod assertions, the first request must
+    // use the fixture method.
+    val fixtureMethod = tc.method.uppercase()
+    if (fixtureMethod.isNotEmpty() && tc.assertions.none { it.type == "requestMethod" } &&
+        requestMethods.isNotEmpty() && requestMethods[0] != fixtureMethod
+    ) {
+        return TestResult(false, "Expected first request method $fixtureMethod, got ${requestMethods[0]}")
+    }
+
     for (assertion in tc.assertions) {
         when (assertion.type) {
             "requestCount" -> {
@@ -357,11 +369,10 @@ private fun runTest(tc: TestCase): TestResult {
             "requestBodyAbsent" -> {
                 val key = assertion.path
                 val idx = resolveRequestIndex(assertion.index, requestBodies.size)
-                if (idx != null) {
-                    val body = requestBodies[idx]
-                    if (body != null && navigateJsonPath(body, key) != null) {
-                        return TestResult(false, "requestBodyAbsent.$key[${assertion.index}]: key unexpectedly present in request body")
-                    }
+                    ?: return TestResult(false, "requestBodyAbsent.$key[${assertion.index}]: no request recorded at that index (${requestBodies.size} requests)")
+                val body = requestBodies[idx]
+                if (body != null && navigateJsonPath(body, key) != null) {
+                    return TestResult(false, "requestBodyAbsent.$key[${assertion.index}]: key unexpectedly present in request body")
                 }
             }
 

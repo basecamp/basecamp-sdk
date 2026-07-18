@@ -542,6 +542,19 @@ function checkAssertions(
     }
   }
 
+  // Implicit method invariant: the MSW handler is method-agnostic, so a
+  // wrong-verb request (e.g. a PUT regressing to POST) would consume a
+  // queued response silently. When the fixture declares a method and carries
+  // no explicit requestMethod assertions, the first request must use it.
+  if (tc.method && !tc.assertions.some((a) => a.type === "requestMethod")) {
+    const methods = tracker.requestMethods();
+    if (methods.length > 0 && methods[0] !== tc.method.toUpperCase()) {
+      throw new Error(
+        `[${tc.name}] expected first request method ${tc.method.toUpperCase()}, got ${methods[0]}`,
+      );
+    }
+  }
+
   for (const assertion of tc.assertions) {
     switch (assertion.type) {
       case "requestCount": {

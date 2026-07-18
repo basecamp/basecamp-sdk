@@ -165,7 +165,9 @@ func main() {
 }
 
 // Tests where the Go SDK's behavior intentionally differs.
-var goSDKSkips = map[string]string{}
+var goSDKSkips = map[string]string{
+	"Mixed-case host and explicit default port stay on the mocked origin": "Go runner dials configOverrides.baseUrl directly (its httptest mock has its own origin); origin-interception normalization applies to the respx/WebMock/MSW/MockEngine runners",
+}
 
 func loadTests(filename string) ([]TestCase, error) {
 	f, err := os.Open(filename)
@@ -328,6 +330,22 @@ func runTest(tc TestCase) TestResult {
 
 		opResult = executeOperation(context.Background(), account, tc)
 	}()
+
+	// Implicit method invariant: the mock server answers any verb, so a
+	// wrong-verb request (e.g. a PUT regressing to POST) would consume a
+	// queued response silently. When the fixture declares a method and
+	// carries no explicit requestMethod assertions, the first request must
+	// use the fixture method.
+	hasMethodAssertion := false
+	for _, a := range tc.Assertions {
+		if a.Type == "requestMethod" {
+			hasMethodAssertion = true
+		}
+	}
+	if tc.Method != "" && !hasMethodAssertion && len(requestMethods) > 0 &&
+		!strings.EqualFold(requestMethods[0], tc.Method) {
+		return *fail(tc, fmt.Sprintf("Expected first request method %q, got %q", strings.ToUpper(tc.Method), requestMethods[0]))
+	}
 
 	// Run assertions
 	for _, assertion := range tc.Assertions {
