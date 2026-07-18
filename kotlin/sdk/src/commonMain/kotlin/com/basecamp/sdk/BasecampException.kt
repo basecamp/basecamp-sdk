@@ -17,6 +17,7 @@ package com.basecamp.sdk
  *         is BasecampException.Network -> println("Network error")
  *         is BasecampException.Api -> println("Server error: ${e.httpStatus}")
  *         is BasecampException.Usage -> println("Bad arguments: ${e.message}")
+ *         is BasecampException.Ambiguous -> println("Ambiguous: ${e.message}")
  *         is BasecampException.DiscoverySelection -> println("OAuth discovery: ${e.reason}")
  *         is BasecampException.DeviceFlow -> println("Device flow: ${e.reason}")
  *     }
