@@ -41,7 +41,8 @@ type Todo struct {
 	// CompletionSubscribers distinguishes present-but-empty from absent:
 	// a non-nil zero-length slice means the server sent an empty list,
 	// nil means the property was absent from the response. Deliberately
-	// not omitempty so the distinction survives JSON round-trips.
+	// not omitempty so re-encoding keeps the field visible either way
+	// (nil marshals as null, empty as []) instead of dropping it.
 	CompletionSubscribers []Person `json:"completion_subscribers"`
 	CommentsCount         int      `json:"comments_count,omitempty"`
 	Position              int      `json:"position"`

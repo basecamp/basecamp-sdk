@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from basecamp.errors import UsageError
 from basecamp.generated.services.todos import AsyncTodosService as _GeneratedAsyncTodosService
 from basecamp.generated.services.todos import TodosService as _GeneratedTodosService
 
@@ -41,6 +42,9 @@ def _replace_kwargs(fields: dict[str, Any]) -> dict[str, Any]:
     non-empty (the server clears an omitted date, and ``""`` is a format
     error); notify is sent only when True.
     """
+    for key in ("assignee_ids", "completion_subscriber_ids"):
+        if fields[key] is None:
+            raise UsageError(f"{key} must be a list of person IDs; use [] to clear — a full write has no None state")
     return {
         "content": fields["content"],
         "description": fields["description"],

@@ -9,6 +9,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client
+from basecamp.errors import UsageError
 from basecamp.hooks import BasecampHooks, OperationInfo
 
 BASE = "https://3.basecampapi.com/12345"
@@ -152,6 +153,16 @@ class TestSyncEdit:
         with pytest.raises(RuntimeError, match="abort"), _sync_todos().edit(todo_id=42) as t:
             t.content = "never written"
             raise RuntimeError("abort")
+
+        assert not put_route.called
+
+    @respx.mock
+    def test_none_id_list_raises_usage_error_without_put(self):
+        respx.get(f"{BASE}/todos/42").mock(return_value=httpx.Response(200, json=_todo()))
+        put_route = respx.put(f"{BASE}/todos/42").mock(return_value=httpx.Response(200, json=_todo()))
+
+        with pytest.raises(UsageError, match=r"use \[\] to clear"), _sync_todos().edit(todo_id=42) as t:
+            t.assignee_ids = None
 
         assert not put_route.called
 
