@@ -530,9 +530,13 @@ internal suspend fun readBoundedText(response: HttpResponse, maxBytes: Long): St
         total += read
         if (total > maxBytes) {
             channel.cancel(null)
+            // retryable = false even on a 5xx (overriding Api's 5xx default): an
+            // oversized body is a completed API fault, not a transient transport
+            // failure — matching the non-retryable size-cap error in the other SDKs.
             throw BasecampException.Api(
                 "OAuth response exceeds size cap",
                 httpStatus = response.status.value,
+                retryable = false,
             )
         }
         chunks.add(buffer.copyOf(read))

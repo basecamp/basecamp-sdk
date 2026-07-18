@@ -127,6 +127,32 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun deviceApiFaultsAreNotRetryable() = runTest {
+        // Api's constructor defaults retryable = true for a 5xx, but in the device
+        // flow only the transport reason is retryable — a completed 5xx from the
+        // device-auth or token endpoint ends the flow non-retryably, matching the
+        // other four SDKs' non-retryable api_error.
+        val engine = MockEngine { respond("boom", HttpStatusCode.InternalServerError, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val requestError = assertFailsWith<BasecampException.Api> {
+            requestDeviceAuthorization(deviceEndpoint, "basecamp-cli", client = client)
+        }
+        assertEquals(500, requestError.httpStatus)
+        assertFalse(requestError.retryable, "a completed 5xx device-auth response is not retryable")
+        client.close()
+
+        val pollEngine = MockEngine { respond("""{"error":"boom"}""", HttpStatusCode.InternalServerError, jsonHeaders) }
+        val pollClient = HttpClient(pollEngine)
+        val pollError = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, pollClient)
+        }
+        assertEquals(500, pollError.httpStatus)
+        assertFalse(pollError.retryable, "a completed 5xx token response is not retryable")
+        pollClient.close()
+    }
+
+    @Test
     fun requestRejectsNonPositiveExpiresIn() = runTest {
         val body = """{"device_code":"d","user_code":"u","verification_uri":"$origin/device","expires_in":0}"""
         val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }

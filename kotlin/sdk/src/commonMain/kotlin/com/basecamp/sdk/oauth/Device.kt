@@ -209,9 +209,13 @@ suspend fun requestDeviceAuthorization(
             val status = response.status.value
             if (status < 200 || status >= 300) {
                 // Non-2xx (including a suppressed 3xx) is api_error, not transport.
+                // retryable = false even for a 5xx (overriding Api's 5xx default):
+                // in the device flow only the transport reason is retryable — a
+                // completed API fault ends the flow, matching the other four SDKs.
                 throw BasecampException.Api(
                     "Device authorization failed with status $status",
                     httpStatus = status,
+                    retryable = false,
                 )
             }
             val body = readBoundedText(response, MAX_DEVICE_BODY_BYTES)
@@ -390,9 +394,12 @@ suspend fun pollDeviceToken(
                 }
                 PollResult.AccessDenied -> throw BasecampException.DeviceFlow(BasecampException.DEVICE_ACCESS_DENIED)
                 PollResult.Expired -> throw BasecampException.DeviceFlow(BasecampException.DEVICE_EXPIRED)
+                // retryable = false even for a 5xx (overriding Api's 5xx default):
+                // only the transport reason is retryable in the device flow.
                 is PollResult.Other -> throw BasecampException.Api(
                     "Device token request failed: ${result.error}",
                     httpStatus = result.status,
+                    retryable = false,
                 )
             }
         }
