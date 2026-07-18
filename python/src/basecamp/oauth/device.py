@@ -85,11 +85,18 @@ def _post_form_bounded(
     params: dict[str, str],
     timeout: float,
     max_body_bytes: int,
+    read_body: Callable[[int], bool] = lambda _status: True,
 ) -> tuple[int, bytes]:
     """SSRF-hardened form POST: suppress redirects, bound the timeout, and read
     the body under a genuine streaming cap that aborts once ``max_body_bytes`` is
     exceeded (never a post-hoc check on an already-buffered body). Mirrors
     :func:`basecamp.oauth.discovery._fetch_discovery_document`.
+
+    ``read_body(status)`` decides — from the response status, known once headers
+    arrive — whether the body is drained. A caller returns ``False`` for statuses
+    whose body it does not use (a non-2xx device-auth, a 3xx token redirect), so a
+    slow/never-ending body cannot time out mid-read and be misclassified as a
+    retryable transport failure instead of the api_error the status already is.
 
     Transport failures propagate as :class:`httpx.HTTPError` (incl.
     :class:`httpx.TimeoutException`) so callers classify them; an oversized body
@@ -102,6 +109,8 @@ def _post_form_bounded(
             httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
             client.stream("POST", url, data=params, headers=_FORM_HEADERS) as response,
         ):
+            if not read_body(response.status_code):
+                return response.status_code, b""
             chunks: list[bytes] = []
             total = 0
             async for chunk in response.aiter_bytes():
@@ -182,7 +191,15 @@ def request_device_authorization(
         params["scope"] = scope
 
     try:
-        status, body = _post_form_bounded(device_authorization_endpoint, params, timeout, max_body_bytes)
+        # A non-2xx device-auth response is a hard failure whose body is unused —
+        # skip draining it so a slow error body can't time out and look like transport.
+        status, body = _post_form_bounded(
+            device_authorization_endpoint,
+            params,
+            timeout,
+            max_body_bytes,
+            read_body=lambda s: 200 <= s < 300,
+        )
     except httpx.HTTPError as exc:
         raise DeviceFlowError("transport", f"Device authorization request failed: {exc}") from exc
 
@@ -498,7 +515,16 @@ def _post_device_token(
     (see :func:`_post_form_bounded`), so an oversized or redirecting response
     aborts instead of buffering.
     """
-    status, body = _post_form_bounded(token_endpoint, params, timeout, max_body_bytes)
+    # A 3xx token response is an api fault whose body is unused — skip draining it
+    # so a slow redirect body can't time out and be retried by the poll loop until
+    # expiry. A 4xx body IS read (it carries authorization_pending/slow_down).
+    status, body = _post_form_bounded(
+        token_endpoint,
+        params,
+        timeout,
+        max_body_bytes,
+        read_body=lambda s: not (300 <= s < 400),
+    )
 
     # A redirect is never a token-endpoint outcome. Classify it before parsing
     # so a 3xx body carrying {"error": "authorization_pending"} cannot keep the
