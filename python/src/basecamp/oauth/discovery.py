@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import json
 import math
-import time
 from typing import Any
 
 import httpx
 
 from basecamp._security import require_origin_root, truncate
 from basecamp.errors import BasecampError
+from basecamp.oauth._transport import _MAX_REQUEST_TIMEOUT, request_bounded
 from basecamp.oauth.config import (
     DiscoveryResult,
     FallbackReason,
@@ -82,10 +82,11 @@ def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT, max
 
     ``timeout`` is *typed* ``float``, but a caller can pass ``None``, a non-number,
     a non-positive value, or ``float("inf")``/``nan`` at runtime. An infinite or
-    non-positive timeout would disable BOTH httpx's bound and the wall-clock
-    deadline below (``time.monotonic() > inf`` never trips), letting a slow-drip
-    endpoint hold the SSRF-hardened fetch open indefinitely. Fall back to
-    ``default`` so the bound can never be turned off — the same discipline as
+    non-positive timeout would disable BOTH httpx's per-read bound and the
+    total-request ``asyncio.wait_for`` deadline (an ``inf`` deadline never
+    fires), letting a slow-drip endpoint hold the SSRF-hardened fetch open
+    indefinitely. Fall back to ``default`` so the bound can never be turned off
+    — the same discipline as
     :func:`_normalize_body_cap`. ``bool`` is excluded (a subclass of ``int``, but
     a nonsensical timeout).
 
@@ -130,41 +131,28 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
     """SSRF-hardened GET of a discovery document.
 
     The origin must already be validated (via :func:`require_origin_root`); this
-    suppresses redirects, bounds the timeout, reads the body under a genuine
-    streaming cap that aborts once ``max_body_bytes`` is exceeded, and maps any
-    non-2xx status to ``api_error`` (not ``network``).
+    suppresses redirects, bounds the WHOLE round-trip (via
+    :func:`basecamp.oauth._transport.request_bounded`), reads the body under a
+    genuine streaming cap that aborts once ``max_body_bytes`` is exceeded, and
+    maps any non-2xx status to ``api_error`` (not ``network``).
     """
     max_body_bytes = _normalize_body_cap(max_body_bytes)
-    # Normalize BEFORE httpx and before the deadline: a non-finite/non-positive
-    # timeout must not disable either bound (see _normalize_timeout).
-    timeout = _normalize_timeout(timeout)
+    # Normalize BEFORE the transport core, which requires a finite, positive,
+    # in-range timeout: a non-finite/non-positive value must not disable the
+    # total-request bound (see _normalize_timeout / request_bounded).
+    timeout = _normalize_timeout(timeout, maximum=_MAX_REQUEST_TIMEOUT)
     try:
-        with httpx.stream(
+        # The body is ALWAYS drained (the default read_body): unlike the device
+        # flow, a non-2xx discovery body is used — truncated into the api_error
+        # message below.
+        status, body = request_bounded(
             "GET",
             url,
             headers={"Accept": "application/json"},
             timeout=timeout,
-            follow_redirects=False,
-        ) as response:
-            # httpx's timeout is per-operation and RESETS after each received
-            # chunk, so a peer dripping one byte at a time never trips the read
-            # timeout and can hold the caller arbitrarily long. Bound the WHOLE
-            # response with a wall-clock deadline so a slow-drip stream is aborted
-            # as a retryable network timeout regardless of chunk cadence.
-            deadline = time.monotonic() + timeout
-            chunks: list[bytes] = []
-            total = 0
-            for chunk in response.iter_bytes():
-                if time.monotonic() > deadline:
-                    raise OAuthError("network", "OAuth discovery timed out", retryable=True)
-                total += len(chunk)
-                if total > max_body_bytes:
-                    # Abort the stream — leaving the ``with`` closes the
-                    # connection, so the oversized body is never fully buffered.
-                    raise OAuthError("api_error", "OAuth discovery response exceeds size cap")
-                chunks.append(chunk)
-            status = response.status_code
-            body = b"".join(chunks)
+            max_body_bytes=max_body_bytes,
+            context="OAuth discovery",
+        )
     except httpx.TimeoutException as exc:
         raise OAuthError("network", "OAuth discovery timed out", retryable=True) from exc
     except httpx.HTTPError as exc:
