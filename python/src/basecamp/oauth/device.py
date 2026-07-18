@@ -132,8 +132,9 @@ def _post_form_bounded(
     # Run it in a DEDICATED thread with its own event loop rather than calling
     # asyncio.run() here: this sync helper may be invoked from code that already has
     # a running loop (Jupyter/FastAPI/async CLI), where asyncio.run() raises
-    # RuntimeError before any request is made. The thread always completes within
-    # ~timeout (wait_for bounds it), so joining it never blocks.
+    # RuntimeError before any request is made. wait_for bounds the thread's work at
+    # ~timeout, so the bounded join below normally returns almost immediately; the
+    # is_alive backstop after it covers only a pathological async-cleanup hang.
     result: list[tuple[int, bytes]] = []
     error: list[Exception] = []
 
@@ -155,6 +156,8 @@ def _post_form_bounded(
         raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline")
     if error:
         exc = error[0]
+        # On Python >= 3.11 (this package's floor) asyncio.TimeoutError IS the
+        # builtin TimeoutError, so this catches wait_for's deadline expiry.
         if isinstance(exc, TimeoutError):
             raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline") from exc
         raise exc
@@ -356,16 +359,39 @@ def poll_device_token(
     ``threading.Event.is_set`` fits directly).
 
     Raises :class:`DeviceFlowError` with a reason of ``access_denied``,
-    ``expired``, ``transport``, or ``cancelled``.
+    ``expired``, ``transport``, or ``cancelled``; :class:`OAuthError`
+    (``usage``) for out-of-range caller durations; and :class:`OAuthError`
+    (``api_error``) for a malformed, redirecting, oversized, or otherwise
+    unexpected token response.
     """
     if not is_localhost(token_endpoint):
         require_https(token_endpoint, "token endpoint")
+
+    # Caller-input sanity for this exported entry point (usage, not the RFC
+    # response validation request_device_authorization applies): a non-finite or
+    # oversized expires_in builds a deadline that NEVER passes (clock() + inf) —
+    # an unbounded poll loop — and a non-positive/oversized interval is not a
+    # schedulable wait. Fractional values are accepted: perform_device_login
+    # legitimately passes a fractional remaining lifetime after deducting
+    # display-hook time. Mirrors the Go/TS/Ruby/Kotlin caller guards.
+    for name, value in (("expires_in", expires_in), ("interval", interval)):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value <= 0
+            or value > MAX_DEVICE_SECONDS
+        ):
+            raise OAuthError(
+                "usage",
+                f"poll_device_token: {name} must be a positive number of seconds no greater than {MAX_DEVICE_SECONDS}",
+            )
 
     # The server-driven interval (initial value + sustained slow_down bumps) is
     # tracked SEPARATELY from the transient timeout backoff: each wait is
     # max(interval, backoff), and any completed round-trip snaps the backoff
     # back to the current server interval, so an inflated backoff never sticks.
-    interval_seconds = interval if interval > 0 else DEFAULT_INTERVAL_SECONDS
+    interval_seconds = interval
     backoff_seconds = interval_seconds
     deadline = clock() + expires_in
 

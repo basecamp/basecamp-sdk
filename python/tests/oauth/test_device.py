@@ -352,6 +352,29 @@ class TestRequestDeviceAuthorization:
 
 
 class TestPollDeviceToken:
+    def test_rejects_out_of_range_caller_durations(self):
+        # Caller-input sanity on the exported entry point: a non-finite expires_in
+        # builds a deadline that NEVER passes (clock() + inf → an unbounded poll
+        # loop), and zero/negative/oversized/bool durations are not schedulable.
+        # Raised as usage before any request — no mock transport needed.
+        from basecamp.oauth.device import MAX_DEVICE_SECONDS
+
+        cases = [
+            {"interval": 5, "expires_in": 0},
+            {"interval": 5, "expires_in": -1},
+            {"interval": 5, "expires_in": float("inf")},
+            {"interval": 5, "expires_in": float("nan")},
+            {"interval": 5, "expires_in": MAX_DEVICE_SECONDS + 1},
+            {"interval": 5, "expires_in": True},
+            {"interval": 0, "expires_in": 900},
+            {"interval": -1, "expires_in": 900},
+            {"interval": MAX_DEVICE_SECONDS + 1, "expires_in": 900},
+        ]
+        for kwargs in cases:
+            with pytest.raises(OAuthError) as exc_info:
+                poll_device_token(TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", **kwargs)
+            assert exc_info.value.code == "usage", kwargs
+
     @respx.mock
     def test_pending_then_slow_down_then_token_sustains_interval(self):
         _queue_token_responses(
