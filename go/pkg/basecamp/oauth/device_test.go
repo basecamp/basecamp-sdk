@@ -381,6 +381,31 @@ func TestRequestDeviceAuthorization_RequiresClientID(t *testing.T) {
 	assertBasecampCode(t, err, basecamp.CodeValidation)
 }
 
+func TestPollDeviceToken_RejectsOutOfRangeDurations(t *testing.T) {
+	// The exported entry point sanity-checks its duration inputs: a non-positive
+	// value builds a past deadline and an oversized one overflows the internal
+	// time.Duration(seconds) * time.Second math. Both surface as a usage error
+	// before any request, mirroring the TS pollDeviceToken guard.
+	cases := []struct {
+		name              string
+		interval, expires int
+	}{
+		{"expires zero", 5, 0},
+		{"expires negative", 5, -1},
+		{"expires oversized", 5, maxDeviceSeconds + 1},
+		{"interval zero", 0, 900},
+		{"interval negative", -1, 900},
+		{"interval oversized", maxDeviceSeconds + 1, 900},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := PollDeviceToken(context.Background(), "https://issuer.example/token",
+				"basecamp-cli", testDeviceCode, tc.interval, tc.expires)
+			assertBasecampCode(t, err, basecamp.CodeUsage)
+		})
+	}
+}
+
 func TestPollDeviceToken_PendingSlowDownToken(t *testing.T) {
 	srv, _ := queueTokenResponses(t, []struct {
 		status int

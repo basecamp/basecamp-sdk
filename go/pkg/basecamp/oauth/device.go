@@ -321,8 +321,27 @@ func validateDeviceAuthorization(raw rawDeviceAuthorization, status int) (*Devic
 // context cancellation.
 //
 // Terminal DeviceFlowError reasons: access_denied, expired, transport,
-// cancelled. Other server errors surface as a coded *basecamp.Error.
+// cancelled. Other server errors surface as a coded *basecamp.Error; an
+// out-of-range interval/expiresIn is rejected up front as a usage error.
 func PollDeviceToken(ctx context.Context, tokenEndpoint, clientID, deviceCode string, interval, expiresIn int, opts ...DeviceOption) (*Token, error) {
+	// Caller-input sanity for this exported entry point (usage, not RFC response
+	// validation): a non-positive duration builds a deadline in the past, and an
+	// oversized one overflows the time.Duration(seconds) * time.Second math below
+	// into a garbage (possibly negative) deadline. Reject both, mirroring the TS
+	// pollDeviceToken guard so a direct caller gets the same rejection across SDKs.
+	// PerformDeviceLogin bypasses this via pollDeviceTokenUntil with already-
+	// validated, clamped values, so this only bounds direct callers.
+	for _, field := range []struct {
+		name  string
+		value int
+	}{{"expiresIn", expiresIn}, {"interval", interval}} {
+		if field.value <= 0 || field.value > maxDeviceSeconds {
+			return nil, &basecamp.Error{
+				Code:    basecamp.CodeUsage,
+				Message: fmt.Sprintf("PollDeviceToken: %s must be a positive number of seconds no greater than %d", field.name, maxDeviceSeconds),
+			}
+		}
+	}
 	cfg := newDeviceConfig(opts)
 	deadline := cfg.clock().Add(time.Duration(expiresIn) * time.Second)
 	return pollDeviceTokenUntil(ctx, cfg, tokenEndpoint, clientID, deviceCode, interval, deadline)
