@@ -31,13 +31,8 @@ module Basecamp
         # Normalize the public cap to a finite non-negative Integer: a nil, float,
         # or Float::INFINITY would otherwise disable the streaming memory bound
         # (an infinite/undefined cap never trips +total > max_body_bytes+),
-        # reintroducing an SSRF/OOM risk. Mirrors Resource#initialize.
-        @max_body_bytes =
-          if max_body_bytes.is_a?(Integer) && max_body_bytes >= 0
-            max_body_bytes
-          else
-            Fetcher::DEFAULT_MAX_BODY_BYTES
-          end
+        # reintroducing an SSRF/OOM risk. Shared with Resource and the device flow.
+        @max_body_bytes = Fetcher.normalize_body_cap(max_body_bytes)
       end
 
       # Discovers OAuth configuration from
