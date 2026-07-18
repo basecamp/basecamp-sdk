@@ -1,0 +1,26 @@
+typescript/tests/services/todos.test.ts
+  s_ae5784113b5029::t_bd3d8ad07ad92f 111-117,119-120,123-126,128-130,134,136-354
+typescript/src/services/todos-extensions.ts
+  s_ae5784113b5029::t_c5f6c5a23b530e 84
+  s_ae5784113b5029::t_8d3be3775ab77d 1-83,85-160
+typescript/src/client.ts
+  s_ae5784113b5029::t_d66e0b17922608 24
+typescript/src/index.ts
+  s_ae5784113b5029::t_f8ca0723db753a 109-112,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "953a5692e384aeafef5cba2b96f2e29b0cb4e92b",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
