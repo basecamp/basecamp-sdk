@@ -71,7 +71,12 @@ const MAX_DEVICE_BODY_BYTES = 1 * 1024 * 1024;
 /** Monotonic clock in milliseconds. Injectable so tests can advance time. */
 export type MonotonicClock = () => number;
 
-/** Default monotonic clock (ms): `performance.now()` when present, else `Date.now()`. */
+/**
+ * Default monotonic clock (ms): `performance.now()`, which every supported
+ * Node/browser runtime provides. The `Date.now()` branch is a last resort for
+ * exotic runtimes without `performance` — wall-clock, so not strictly monotonic;
+ * inject a real monotonic clock there if NTP steps matter.
+ */
 export const defaultClock: MonotonicClock = () =>
   typeof performance !== "undefined" ? performance.now() : Date.now();
 
