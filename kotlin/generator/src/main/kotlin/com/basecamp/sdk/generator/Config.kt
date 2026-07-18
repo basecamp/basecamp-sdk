@@ -112,9 +112,6 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
 )
 
 /**
- * Verb extraction patterns for operationId → method name mapping.
- */
-/**
  * Services emitted as `open class` so a hand-written subclass in
  * com.basecamp.sdk.services can add convenience methods (e.g. Todos
  * gains merge-safe update/edit on top of the generated replace).
@@ -131,6 +128,9 @@ val HAND_WRITTEN_SERVICES = mapOf(
     "Todos" to "com.basecamp.sdk.services.TodosService",
 )
 
+/**
+ * Verb extraction patterns for operationId → method name mapping.
+ */
 val VERB_PATTERNS = listOf(
     "Subscribe" to "subscribe",
     "Unsubscribe" to "unsubscribe",
