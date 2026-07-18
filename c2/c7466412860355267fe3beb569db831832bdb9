@@ -1,0 +1,29 @@
+conformance/runner/python/runner.py
+  s_ae5784113b5029::t_a35441b0991791 233-236
+AGENTS.md
+  s_ae5784113b5029::t_8b66ff6bd15454 216
+conformance/runner/go/main.go
+  s_ae5784113b5029::t_02955ce64f5db7 170
+SPEC.md
+  s_ae5784113b5029::t_7a9df8101ff076 1194
+conformance/tests/paths.json
+  s_ae5784113b5029::t_2fb685879c3b88 195-211
+conformance/runner/typescript/runner.test.ts
+  s_ae5784113b5029::t_7ffc56975e700f 349-356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c2c7466412860355267fe3beb569db831832bdb9",
+  "prompts": {},
+  "sessions": {
+    "s_ae5784113b5029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1161e73-3fdf-41e9-9102-d403163e1f84",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
