@@ -57,18 +57,24 @@ class _IssuerBindingError(OAuthError):
         super().__init__("api_error", message, **kwargs)
 
 
-def _normalize_body_cap(max_body_bytes: object) -> int:
+def _normalize_body_cap(max_body_bytes: object, default: int = MAX_DISCOVERY_BODY_BYTES) -> int:
     """Coerce the public cap to a finite, non-negative int.
 
     ``max_body_bytes`` is *typed* ``int``, but callers can pass ``None``, a float,
     or ``float("inf")`` at runtime; any of those would disable the streaming memory
     bound (``total > inf`` never trips), defeating the SSRF guarantee. Fall back to
-    the default so the bound can never be turned off. ``bool`` is excluded (a
+    ``default`` so the bound can never be turned off. ``bool`` is excluded (a
     subclass of ``int``, but a nonsensical cap).
+
+    ``default`` is operation-specific (discovery vs device flow, mirroring
+    :func:`_normalize_timeout`) and validated too, so an invalid fallback cannot
+    disable the bound either.
     """
-    if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0:
-        return MAX_DISCOVERY_BODY_BYTES
-    return max_body_bytes
+    if not (isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0):
+        return max_body_bytes
+    if not (isinstance(default, bool) or not isinstance(default, int) or default < 0):
+        return default
+    return MAX_DISCOVERY_BODY_BYTES
 
 
 def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT, maximum: float | None = None) -> float:

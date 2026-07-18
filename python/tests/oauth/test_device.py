@@ -366,9 +366,13 @@ class TestPollDeviceToken:
             {"interval": 5, "expires_in": float("nan")},
             {"interval": 5, "expires_in": MAX_DEVICE_SECONDS + 1},
             {"interval": 5, "expires_in": True},
+            # An astronomically large int must reject as usage, not raise
+            # OverflowError out of math.isfinite (range checks run first).
+            {"interval": 5, "expires_in": 10**400},
             {"interval": 0, "expires_in": 900},
             {"interval": -1, "expires_in": 900},
             {"interval": MAX_DEVICE_SECONDS + 1, "expires_in": 900},
+            {"interval": 10**400, "expires_in": 900},
         ]
         for kwargs in cases:
             with pytest.raises(OAuthError) as exc_info:
@@ -790,6 +794,26 @@ class TestPollDeviceToken:
                 max_body_bytes=8 * 1024,
             )
         assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    def test_invalid_body_cap_cannot_disable_the_bound(self):
+        # An invalid runtime cap (inf here; None/negative are the same class) must
+        # normalize to the device default rather than disable the streaming bound —
+        # a 2 MiB body still aborts as api_error, matching discovery's discipline.
+        _queue_token_responses([httpx.Response(200, content=b"x" * (2 * 1024 * 1024))])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                sleep=RecordingSleep(),
+                max_body_bytes=float("inf"),  # type: ignore[arg-type]
+            )
+        assert exc_info.value.code == "api_error"
+        assert "size cap" in str(exc_info.value)
 
     @respx.mock
     def test_does_not_follow_redirect(self):
