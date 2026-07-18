@@ -890,6 +890,54 @@ func TestTodoFromGenerated_MultipleAssignees(t *testing.T) {
 	}
 }
 
+// TestTodoFromGenerated_CompletionSubscribers tests the nil-vs-empty contract:
+// a server-sent [] becomes a non-nil zero-length slice, an absent property
+// stays nil. Consumers doing fail-closed preservation depend on the
+// distinction.
+func TestTodoFromGenerated_CompletionSubscribers(t *testing.T) {
+	// Present but empty: non-nil zero-length slice.
+	gt := generated.Todo{
+		Id:                    12345,
+		Content:               "Content",
+		CompletionSubscribers: []generated.Person{},
+	}
+	todo := todoFromGenerated(gt)
+	if todo.CompletionSubscribers == nil {
+		t.Error("expected non-nil CompletionSubscribers for server-sent []")
+	}
+	if len(todo.CompletionSubscribers) != 0 {
+		t.Errorf("expected 0 completion subscribers, got %d", len(todo.CompletionSubscribers))
+	}
+
+	// Absent: stays nil.
+	gt = generated.Todo{Id: 12345, Content: "Content"}
+	todo = todoFromGenerated(gt)
+	if todo.CompletionSubscribers != nil {
+		t.Errorf("expected nil CompletionSubscribers for absent property, got %v", todo.CompletionSubscribers)
+	}
+
+	// Populated: mapped through personFromGenerated.
+	gt = generated.Todo{
+		Id:      12345,
+		Content: "Content",
+		CompletionSubscribers: []generated.Person{
+			{Id: types.FlexibleInt64(555), Name: "Sub"},
+		},
+	}
+	todo = todoFromGenerated(gt)
+	if len(todo.CompletionSubscribers) != 1 || todo.CompletionSubscribers[0].ID != 555 {
+		t.Errorf("expected completion subscriber 555, got %+v", todo.CompletionSubscribers)
+	}
+}
+
+func TestTodoFromGenerated_CommentsCount(t *testing.T) {
+	gt := generated.Todo{Id: 12345, Content: "Content", CommentsCount: 7}
+	todo := todoFromGenerated(gt)
+	if todo.CommentsCount != 7 {
+		t.Errorf("expected CommentsCount 7, got %d", todo.CommentsCount)
+	}
+}
+
 // TestTodoFromGenerated_PartialNestedFields tests conversion when nested structs
 // have partial data (e.g., only ID set, or only name set).
 func TestTodoFromGenerated_PartialNestedFields(t *testing.T) {
@@ -1035,25 +1083,73 @@ func TestTodosService_List_RejectsInvalidStatus(t *testing.T) {
 	}
 }
 
-func TestTodosService_Update(t *testing.T) {
-	fixture := loadTodosFixture(t, "get.json")
-	var receivedBody map[string]any
-	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" {
-			t.Errorf("expected PUT, got %s", r.Method)
+// patchTodoFixture returns the fixture JSON with the given fields replaced.
+func patchTodoFixture(t *testing.T, base []byte, patch map[string]any) []byte {
+	t.Helper()
+	var m map[string]any
+	if err := json.Unmarshal(base, &m); err != nil {
+		t.Fatalf("failed to unmarshal fixture: %v", err)
+	}
+	for k, v := range patch {
+		m[k] = v
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("failed to marshal patched fixture: %v", err)
+	}
+	return b
+}
+
+// capturedTodoRequest records one request seen by testTodosCaptureServer.
+type capturedTodoRequest struct {
+	method string
+	path   string
+	body   map[string]any
+}
+
+// testTodosCaptureServer serves getBody for GETs and putBody for PUTs while
+// recording every request's method, path, and (for PUTs) decoded body.
+// The extra hooks, when non-nil, are installed on the client.
+func testTodosCaptureServer(t *testing.T, getBody, putBody []byte, hooks Hooks) (*TodosService, *[]capturedTodoRequest) {
+	t.Helper()
+	reqs := &[]capturedTodoRequest{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cr := capturedTodoRequest{method: r.Method, path: r.URL.Path}
+		if r.Method == "PUT" {
+			cr.body = decodeRequestBody(t, r)
 		}
-		receivedBody = decodeRequestBody(t, r)
+		*reqs = append(*reqs, cr)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write(fixture)
-	})
+		if r.Method == "GET" {
+			w.Write(getBody)
+		} else {
+			w.Write(putBody)
+		}
+	}))
+	t.Cleanup(server.Close)
 
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	var opts []ClientOption
+	if hooks != nil {
+		opts = append(opts, WithHooks(hooks))
+	}
+	client := NewClient(cfg, token, opts...)
+	return client.ForAccount("99999").Todos(), reqs
+}
+
+func TestTodosService_UpdateMergesUnsetFields(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	getBody := patchTodoFixture(t, fixture, map[string]any{
+		"description": "<div>existing description</div>",
+	})
+	svc, reqs := testTodosCaptureServer(t, getBody, fixture, nil)
+
+	// Content-only update: everything else must be carried over from the GET.
 	todo, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
-		Content:     "Updated content",
-		Description: "<div>Updated description</div>",
-		AssigneeIDs: []int64{1049715920},
-		Notify:      true,
-		DueOn:       "2022-12-15",
+		Content: "new title",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -1061,35 +1157,55 @@ func TestTodosService_Update(t *testing.T) {
 	if todo.ID != 1069479520 {
 		t.Errorf("expected ID 1069479520, got %d", todo.ID)
 	}
-	if receivedBody["content"] != "Updated content" {
-		t.Errorf("expected content 'Updated content', got %v", receivedBody["content"])
+
+	if len(*reqs) != 2 {
+		t.Fatalf("expected 2 requests (GET then PUT), got %d", len(*reqs))
 	}
-	if receivedBody["description"] != "<div>Updated description</div>" {
-		t.Errorf("expected description in body, got %v", receivedBody["description"])
+	if (*reqs)[0].method != "GET" || (*reqs)[1].method != "PUT" {
+		t.Fatalf("expected GET then PUT, got %s then %s", (*reqs)[0].method, (*reqs)[1].method)
+	}
+
+	body := (*reqs)[1].body
+	if body["content"] != "new title" {
+		t.Errorf("expected content 'new title', got %v", body["content"])
+	}
+	if body["description"] != "<div>existing description</div>" {
+		t.Errorf("expected preserved description, got %v", body["description"])
+	}
+	if body["due_on"] != "2022-12-01" {
+		t.Errorf("expected preserved due_on 2022-12-01, got %v", body["due_on"])
+	}
+	// Assignees from the GET are carried over as assignee_ids (Person → id).
+	ids, ok := body["assignee_ids"].([]any)
+	if !ok || len(ids) != 1 || ids[0].(json.Number).String() != "1049715920" {
+		t.Errorf("expected preserved assignee_ids [1049715920], got %v", body["assignee_ids"])
+	}
+	// completion_subscribers is [] in the fixture — sent as an explicit empty list.
+	subs, ok := body["completion_subscriber_ids"].([]any)
+	if !ok || len(subs) != 0 {
+		t.Errorf("expected completion_subscriber_ids [], got %v", body["completion_subscriber_ids"])
+	}
+	// Notify was not requested — never carried from the GET, never sent.
+	if _, ok := body["notify"]; ok {
+		t.Errorf("expected notify to be omitted, got %v", body["notify"])
 	}
 }
 
 func TestTodosService_UpdateClearsAssignees(t *testing.T) {
 	fixture := loadTodosFixture(t, "get.json")
-	var receivedBody map[string]any
-	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		receivedBody = decodeRequestBody(t, r)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(fixture)
-	})
+	svc, reqs := testTodosCaptureServer(t, fixture, fixture, nil)
 
 	// An empty non-nil slice means "clear all assignees" — this must be sent
 	// to the API as assignee_ids:[], not omitted.
 	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
-		Content:     "keep content",
 		AssigneeIDs: []int64{},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	ids, ok := receivedBody["assignee_ids"]
+	body := (*reqs)[len(*reqs)-1].body
+	ids, ok := body["assignee_ids"]
 	if !ok {
 		t.Fatal("expected assignee_ids to be present in request body, but it was omitted")
 	}
@@ -1100,29 +1216,30 @@ func TestTodosService_UpdateClearsAssignees(t *testing.T) {
 	if len(arr) != 0 {
 		t.Errorf("expected empty assignee_ids array, got %v", arr)
 	}
+	// Content was not passed — carried over from the GET, not dropped.
+	if body["content"] != "Program Leto locator  microcontroller unit" {
+		t.Errorf("expected preserved content, got %v", body["content"])
+	}
 }
 
 func TestTodosService_UpdateClearsCompletionSubscribers(t *testing.T) {
 	fixture := loadTodosFixture(t, "get.json")
-	var receivedBody map[string]any
-	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		receivedBody = decodeRequestBody(t, r)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(fixture)
+	getBody := patchTodoFixture(t, fixture, map[string]any{
+		"completion_subscribers": []map[string]any{{"id": 555, "name": "Sub"}},
 	})
+	svc, reqs := testTodosCaptureServer(t, getBody, fixture, nil)
 
 	// An empty non-nil slice means "clear all completion subscribers" — this must
 	// be sent to the API as completion_subscriber_ids:[], not omitted.
 	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
-		Content:                 "keep content",
 		CompletionSubscriberIDs: []int64{},
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	ids, ok := receivedBody["completion_subscriber_ids"]
+	body := (*reqs)[len(*reqs)-1].body
+	ids, ok := body["completion_subscriber_ids"]
 	if !ok {
 		t.Fatal("expected completion_subscriber_ids to be present in request body, but it was omitted")
 	}
@@ -1135,33 +1252,219 @@ func TestTodosService_UpdateClearsCompletionSubscribers(t *testing.T) {
 	}
 }
 
-func TestTodosService_UpdatePartial(t *testing.T) {
+func TestTodosService_UpdateNotifyOnlyWhenTrue(t *testing.T) {
 	fixture := loadTodosFixture(t, "get.json")
-	var receivedBody map[string]any
-	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
-		receivedBody = decodeRequestBody(t, r)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		w.Write(fixture)
-	})
+	svc, reqs := testTodosCaptureServer(t, fixture, fixture, nil)
 
-	// Only set Content — all other fields should be omitted from the request body
 	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{
-		Content: "new title",
+		Content: "notify them",
+		Notify:  true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if receivedBody["content"] != "new title" {
-		t.Errorf("expected content 'new title', got %v", receivedBody["content"])
+	body := (*reqs)[len(*reqs)-1].body
+	if body["notify"] != true {
+		t.Errorf("expected notify true in body, got %v", body["notify"])
+	}
+}
+
+func TestTodosService_UpdateHooksObserveGetAndReplace(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, _ := testTodosCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Update(context.Background(), 1069479520, &UpdateTodoRequest{Content: "x"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// These fields must NOT be present in the request body
-	for _, field := range []string{"description", "assignee_ids", "completion_subscriber_ids", "notify", "due_on", "starts_on"} {
-		if _, ok := receivedBody[field]; ok {
-			t.Errorf("expected %q to be omitted from partial update, but it was present: %v", field, receivedBody[field])
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Todos.Get" || ops[1] != "Todos.Replace" {
+		t.Errorf("expected operations [Todos.Get Todos.Replace], got %v", ops)
+	}
+	if len(recorder.opEndCalls) != 2 {
+		t.Errorf("expected 2 OnOperationEnd calls, got %d", len(recorder.opEndCalls))
+	}
+}
+
+func TestTodosService_Edit(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	getBody := patchTodoFixture(t, fixture, map[string]any{
+		"description": "<div>keep me</div>",
+	})
+	svc, reqs := testTodosCaptureServer(t, getBody, fixture, nil)
+
+	todo, err := svc.Edit(context.Background(), 1069479520, func(f *TodoFields) error {
+		f.Content = "🚨 " + f.Content
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todo.ID != 1069479520 {
+		t.Errorf("expected ID 1069479520, got %d", todo.ID)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	if body["content"] != "🚨 Program Leto locator  microcontroller unit" {
+		t.Errorf("expected prefixed content, got %v", body["content"])
+	}
+	if body["description"] != "<div>keep me</div>" {
+		t.Errorf("expected preserved description, got %v", body["description"])
+	}
+}
+
+func TestTodosService_EditClearsDateByOmission(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	svc, reqs := testTodosCaptureServer(t, fixture, fixture, nil)
+
+	// Clearing a date means setting it empty; the wire encoding is omission
+	// (the server clears an omitted date, and "" would be a format error).
+	_, err := svc.Edit(context.Background(), 1069479520, func(f *TodoFields) error {
+		if f.DueOn != "2022-12-01" {
+			t.Errorf("expected DueOn from GET, got %q", f.DueOn)
 		}
+		f.DueOn = ""
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	body := (*reqs)[len(*reqs)-1].body
+	if _, ok := body["due_on"]; ok {
+		t.Errorf("expected due_on omitted from PUT body, got %v", body["due_on"])
+	}
+	// Non-date fields are still sent in full.
+	if body["content"] != "Program Leto locator  microcontroller unit" {
+		t.Errorf("expected preserved content, got %v", body["content"])
+	}
+}
+
+func TestTodosService_EditClearsDescriptionAndIDsExplicitly(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	getBody := patchTodoFixture(t, fixture, map[string]any{
+		"description": "<div>old</div>",
+	})
+	svc, reqs := testTodosCaptureServer(t, getBody, fixture, nil)
+
+	_, err := svc.Edit(context.Background(), 1069479520, func(f *TodoFields) error {
+		f.Description = ""
+		f.AssigneeIDs = nil
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Clears are present-and-empty in the PUT body — the full-state builder
+	// always emits description and both ID lists.
+	body := (*reqs)[len(*reqs)-1].body
+	desc, ok := body["description"]
+	if !ok || desc != "" {
+		t.Errorf("expected empty description present in body, got %v (present=%v)", desc, ok)
+	}
+	ids, ok := body["assignee_ids"].([]any)
+	if !ok || len(ids) != 0 {
+		t.Errorf("expected assignee_ids [] present in body, got %v", body["assignee_ids"])
+	}
+	subs, ok := body["completion_subscriber_ids"].([]any)
+	if !ok || len(subs) != 0 {
+		t.Errorf("expected completion_subscriber_ids [] present in body, got %v", body["completion_subscriber_ids"])
+	}
+}
+
+func TestTodosService_EditClosureErrorAbortsWithoutPUT(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	svc, reqs := testTodosCaptureServer(t, fixture, fixture, nil)
+
+	wantErr := errors.New("nope")
+	_, err := svc.Edit(context.Background(), 1069479520, func(f *TodoFields) error {
+		f.Content = "should never be written"
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("expected closure error, got %v", err)
+	}
+
+	for _, r := range *reqs {
+		if r.method == "PUT" {
+			t.Fatal("expected no PUT after closure error")
+		}
+	}
+}
+
+func TestTodosService_EditHooksObserveGetAndReplace(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, _ := testTodosCaptureServer(t, fixture, fixture, recorder)
+
+	_, err := svc.Edit(context.Background(), 1069479520, func(f *TodoFields) error { return nil })
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ops := make([]string, 0, len(recorder.opStartCalls))
+	for _, op := range recorder.opStartCalls {
+		ops = append(ops, op.Service+"."+op.Operation)
+	}
+	if len(ops) != 2 || ops[0] != "Todos.Get" || ops[1] != "Todos.Replace" {
+		t.Errorf("expected operations [Todos.Get Todos.Replace], got %v", ops)
+	}
+}
+
+func TestTodosService_ReplaceSendsSparseVerbatim(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	recorder := &recordingHooks{}
+	svc, reqs := testTodosCaptureServer(t, fixture, fixture, recorder)
+
+	todo, err := svc.Replace(context.Background(), 1069479520, &ReplaceTodoRequest{
+		Content: "the whole new todo",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todo.ID != 1069479520 {
+		t.Errorf("expected ID 1069479520, got %d", todo.ID)
+	}
+
+	// No GET: replace is the server-native verbatim PUT.
+	if len(*reqs) != 1 || (*reqs)[0].method != "PUT" {
+		t.Fatalf("expected exactly one PUT, got %+v", *reqs)
+	}
+	body := (*reqs)[0].body
+	if body["content"] != "the whole new todo" {
+		t.Errorf("expected content in body, got %v", body["content"])
+	}
+	// Unset fields are omitted — the server clears them.
+	for _, field := range []string{"description", "assignee_ids", "completion_subscriber_ids", "notify", "due_on", "starts_on"} {
+		if _, ok := body[field]; ok {
+			t.Errorf("expected %q omitted from sparse replace, got %v", field, body[field])
+		}
+	}
+
+	// Hooks observe a single Todos.Replace operation.
+	if len(recorder.opStartCalls) != 1 ||
+		recorder.opStartCalls[0].Service != "Todos" || recorder.opStartCalls[0].Operation != "Replace" {
+		t.Errorf("expected single Todos.Replace operation, got %+v", recorder.opStartCalls)
+	}
+}
+
+func TestTodosService_ReplaceRequiresContent(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	svc, reqs := testTodosCaptureServer(t, fixture, fixture, nil)
+
+	_, err := svc.Replace(context.Background(), 1069479520, &ReplaceTodoRequest{})
+	if err == nil {
+		t.Fatal("expected usage error for missing content")
+	}
+	if len(*reqs) != 0 {
+		t.Fatalf("expected no requests, got %+v", *reqs)
 	}
 }
 
