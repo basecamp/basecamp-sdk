@@ -237,7 +237,11 @@ module Basecamp
 
         request = method == :post ? Net::HTTP::Post.new(uri) : Net::HTTP::Get.new(uri)
         headers.each { |name, value| request[name] = value }
-        request.body = URI.encode_www_form(form) if form
+        if form
+          request.body = URI.encode_www_form(form)
+          # A form body implies the form content type; explicit headers win.
+          request["Content-Type"] ||= "application/x-www-form-urlencoded"
+        end
 
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         deadline_fired = false
@@ -281,7 +285,10 @@ module Basecamp
         [ status, chunks.join.force_encoding(Encoding::UTF_8) ]
       rescue SkipBody => e
         [ e.status, "" ]
-      rescue Net::OpenTimeout, Net::ReadTimeout => e
+      rescue Net::OpenTimeout, Net::ReadTimeout, Errno::ETIMEDOUT => e
+        # Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT: it must map
+        # with the other timeouts (as faraday-net_http maps it) or the device
+        # poll would terminate instead of applying its transient backoff.
         raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
       rescue IOError => e
         # The watchdog's close raises IOError in the blocked reader; only map it
@@ -344,12 +351,13 @@ module Basecamp
           end
 
         unless (200..299).cover?(status)
-          # The default path skips the non-2xx body (empty here); the injected
-          # Faraday path still carries it — append it only when present.
-          detail = body.empty? ? "" : ": #{Basecamp::Security.truncate(body)}"
+          # Status-only, on BOTH paths: the error category, retryability, and
+          # http_status are the observable contract; embedding response body
+          # text would put attacker-influenced content in exception messages
+          # and diverge from the (body-less) default transport and Python.
           raise OauthError.new(
             "api_error",
-            "OAuth discovery failed with status #{status}#{detail}",
+            "OAuth discovery failed with status #{status}",
             http_status: status
           )
         end
