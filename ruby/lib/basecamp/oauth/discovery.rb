@@ -27,7 +27,10 @@ module Basecamp
         # wall-clock deadline: a non-finite/non-positive timeout must not disable
         # either bound (see Fetcher.normalize_timeout).
         @timeout = Fetcher.normalize_timeout(timeout)
-        @http_client = http_client || Fetcher.build_client(@timeout)
+        # nil selects the headers-first {Fetcher.stream_http} transport (total
+        # wall-clock bound incl. the header phase); an injected connection keeps
+        # the Faraday path, verified redirect-free above.
+        @http_client = http_client
         # Normalize the public cap to a finite non-negative Integer: a nil, float,
         # or Float::INFINITY would otherwise disable the streaming memory bound
         # (an infinite/undefined cap never trips +total > max_body_bytes+),
