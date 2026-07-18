@@ -31,7 +31,11 @@ export interface DeviceLoginOptions {
    * after the device code is obtained and before polling begins.
    */
   display: (auth: DeviceAuthorization) => void | Promise<void>;
-  /** Cancellation signal for the polling loop. */
+  /**
+   * Cancellation signal for the polling loop — deliberately scoped to the only
+   * long-lived phase. The initial device-code request is bounded by its own
+   * 30s timeout, and the display hook is the caller's code.
+   */
   signal?: AbortSignal;
   /** Injectable monotonic clock (ms) for the polling deadline. */
   clock?: MonotonicClock;
