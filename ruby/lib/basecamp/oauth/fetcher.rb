@@ -226,7 +226,19 @@ module Basecamp
       # @param skip_status [Proc, nil] statuses whose body is never read
       # @return [Array(Integer, String)] status and (possibly empty) body
       def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil)
-        uri = URI.parse(url)
+        uri = begin
+          URI.parse(url)
+        rescue URI::InvalidURIError
+          nil
+        end
+        # Fail closed on an unparsable or hostless URL ("https:foo" parses with a
+        # nil hostname): require_https checks only the scheme, and a nil host
+        # would otherwise surface as a raw ArgumentError from inside Net::HTTP —
+        # outside the transport's Faraday-error contract.
+        if uri.nil? || uri.hostname.nil? || uri.hostname.empty?
+          raise OauthError.new("validation", "OAuth endpoint URL has no host: #{url.inspect}")
+        end
+
         # URI#hostname strips IPv6 brackets ("[::1]" -> "::1"), which is the form
         # Net::HTTP.new expects. ENV proxy handling matches faraday-net_http.
         http = Net::HTTP.new(uri.hostname, uri.port)
