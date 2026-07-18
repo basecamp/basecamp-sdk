@@ -145,29 +145,16 @@ module Basecamp
         [ chunks, reader ]
       end
 
-      # Builds the default SSRF-hardened Faraday connection. No redirect
-      # middleware is registered, so redirects are not followed.
-      #
-      # @param timeout [Integer] request + connect timeout in seconds
-      # @return [Faraday::Connection]
-      def self.build_client(timeout)
-        Faraday.new do |conn|
-          conn.options.timeout = timeout
-          conn.options.open_timeout = timeout
-          conn.adapter Faraday.default_adapter
-        end
-      end
-
       # Rejects an INJECTED connection whose middleware stack we cannot verify to
       # be redirect-free. Redirect suppression is a load-bearing SSRF control (RFC
       # 9728 §7.7): a caller-supplied client that follows redirects would silently
       # chase an attacker-controlled +Location+. A class-NAME heuristic (matching
       # +/redirect/+) is bypassable by a follower whose class name does not contain
       # "redirect", so we enforce a POLICY instead of guessing by name: an injected
-      # connection may carry ONLY adapter handlers. The default {build_client}
-      # connection (adapter only) and a test's mock adapter qualify; ANY request/
-      # response middleware — which could follow redirects under any name, or
-      # otherwise rewrite the request — is refused rather than trusted.
+      # connection may carry ONLY adapter handlers (an adapter-only connection or
+      # a test's mock adapter qualifies); ANY request/response middleware — which
+      # could follow redirects under any name, or otherwise rewrite the request —
+      # is refused rather than trusted.
       #
       # @param client [Faraday::Connection]
       # @raise [OauthError] +validation+ when non-adapter middleware is present
@@ -219,17 +206,22 @@ module Basecamp
       # The body streams under the same cap + deadline as the Faraday path, and
       # redirects are structurally never followed (+Net::HTTP#request+ has no
       # follow logic). Transport failures surface as Faraday errors
-      # (+TimeoutError+ for timeout/deadline, +ConnectionFailed+ otherwise) so
-      # both transport paths classify through the same caller rescues.
+      # (+TimeoutError+ for timeouts, +ConnectionFailed+ for connection and
+      # protocol-parse failures) so both transport paths classify through the
+      # same caller rescues. Bounded-read violations keep raising the shared
+      # {BodyTooLarge} / {ReadDeadlineExceeded} markers — deliberately NOT
+      # Faraday errors, so each caller maps them to its own operation-specific
+      # error message, exactly as on the Faraday path.
       #
       # @param method [Symbol] +:get+ or +:post+
       # @param url [String] fully-qualified URL (already origin-validated)
       # @param headers [Hash] request headers
       # @param form [Hash, nil] form params; www-form-encoded into the POST body
       # @param timeout [Numeric] total request bound in seconds (already
-      #   normalized by the caller); connect is separately bounded by the same
-      #   value, so the absolute worst case is ~2x timeout when the deadline
-      #   fires mid-connect
+      #   normalized by the caller). The deadline is anchored BEFORE connect and
+      #   open_timeout carries the same value, so the total wall time is
+      #   ~timeout regardless of which phase stalls (the watchdog closes the
+      #   session the moment it exists if the deadline fired mid-connect)
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @param skip_status [Proc, nil] statuses whose body is never read
       # @return [Array(Integer, String)] status and (possibly empty) body
@@ -298,7 +290,11 @@ module Basecamp
         raise Faraday::TimeoutError, "OAuth request exceeded the timeout deadline" if deadline_fired
 
         raise Faraday::ConnectionFailed, e.message
-      rescue SystemCallError, SocketError => e
+      rescue Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
+             SystemCallError, SocketError => e
+        # The parse errors are direct StandardError subclasses (not IOError), so
+        # a malformed status line / header must be mapped here explicitly or it
+        # would leak raw from the public discovery/device APIs.
         raise Faraday::ConnectionFailed, e.message
       ensure
         watchdog&.kill

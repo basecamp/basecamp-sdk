@@ -222,6 +222,23 @@ class OAuthTransportTest < Minitest::Test
     assert_match(/size cap/i, error.message)
   end
 
+  def test_malformed_http_response_maps_to_transport_error
+    # A non-HTTP peer (garbage status line) raises Net::HTTPBadResponse — a bare
+    # StandardError subclass that must be mapped, or it leaks raw from the
+    # public discovery/device APIs instead of the documented network error.
+    endpoint, = start_server do |conn|
+      conn.write("NOT-HTTP GARBAGE\r\n\r\n")
+      conn.close
+    end
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.fetch_json(nil, "#{endpoint}/doc", timeout: TIMEOUT)
+    end
+
+    assert_equal "network", error.type
+    assert error.retryable
+  end
+
   def test_watchdog_threads_do_not_leak
     endpoint, = start_server do |conn|
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
