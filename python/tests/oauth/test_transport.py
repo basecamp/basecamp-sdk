@@ -74,6 +74,41 @@ def test_discovery_header_stall_is_bounded_and_leaks_no_worker() -> None:
     assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
 
 
+def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
+    # SPEC.md: non-2xx on either discovery hop → api_error, never network —
+    # status dominates even when the error body stalls forever, so the fetch
+    # classifies at header time instead of timing the body out.
+    srv, port = _serve_on_localhost()
+    stop = threading.Event()
+
+    def stall() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 1000\r\n\r\n")
+            stop.wait()
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=stall, daemon=True)
+    server.start()
+    timeout = 0.5
+    try:
+        start = time.monotonic()
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=timeout)
+        elapsed = time.monotonic() - start
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 500
+        assert elapsed < timeout, f"status must classify at header time, not after a body timeout: {elapsed:.2f}s"
+    finally:
+        stop.set()
+        server.join(2)
+        srv.close()
+
+
 def test_discovery_slow_drip_is_bounded_by_the_total_timeout() -> None:
     # httpx's read timeout resets on every received chunk, so a peer dripping a
     # VALID discovery document byte-by-byte (each read under the timeout) would
