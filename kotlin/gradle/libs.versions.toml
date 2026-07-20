@@ -1,11 +1,11 @@
 [versions]
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 ktor = "3.5.1"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 
 # Testing
-junit = "6.1.1"
+junit = "6.1.2"
 
 [libraries]
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
