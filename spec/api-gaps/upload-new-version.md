@@ -97,6 +97,6 @@ reflect the new blob (`byte_size`, `content_type`, `filename`, `download_url`).
 - Add a canary fixture exercising a real file replacement and confirm the
   version list grows, against a live account, before the CLI (basecamp-cli#404)
   exposes an "upload new version" command.
-- Replace the contract-guard test
-  (`TestUploadsService_Update_IgnoresAttachableSGID`) with a positive
+- Replace the reflection guard
+  (`TestUpdateUploadRequest_HasNoFileReplacementField`) with a positive
   assertion that the field is now sent.

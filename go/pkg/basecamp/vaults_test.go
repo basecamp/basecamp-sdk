@@ -627,10 +627,12 @@ func TestUpdateUploadRequest_HasNoFileReplacementField(t *testing.T) {
 // two documented mutable payload fields onto a PUT.
 func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 	var receivedMethod string
+	var receivedPath string
 	var receivedBody []byte
 
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedMethod = r.Method
+		receivedPath = r.URL.Path
 		receivedBody, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -657,6 +659,9 @@ func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 
 	if receivedMethod != http.MethodPut {
 		t.Errorf("expected PUT, got %s", receivedMethod)
+	}
+	if receivedPath != "/12345/uploads/1069479400" {
+		t.Errorf("expected path /12345/uploads/1069479400, got %s", receivedPath)
 	}
 
 	var body map[string]any
