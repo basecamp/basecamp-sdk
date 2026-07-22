@@ -1,0 +1,19 @@
+go/pkg/basecamp/vaults_test.go
+  s_772bc0b5c957e8::t_9f091149954fd3 617-619,621
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f378ac2dedf29e3842e1c69c7fd7c9d7a101aaad",
+  "prompts": {},
+  "sessions": {
+    "s_772bc0b5c957e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f9329b0-953a-4e20-94cc-42280ec2bca7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
