@@ -598,6 +598,62 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 	}
 }
 
+// TestUploadsService_Update_IgnoresAttachableSGID guards the confirmed server
+// contract: PUT /uploads/{id}.json mutates only description and base_name. The
+// bc3 update action drops attachable_sgid entirely (verified against
+// basecamp/bc3 @ ba105ba7 — see /API-GAP-404.md), so the SDK must never send it
+// on an upload update. If a future change adds an attachable_sgid field to
+// UpdateUploadRequest and maps it here without a verified server contract, this
+// test fails at the wire.
+func TestUploadsService_Update_IgnoresAttachableSGID(t *testing.T) {
+	var receivedMethod string
+	var receivedBody []byte
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedBody, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":       1069479400,
+			"title":    "logo.png",
+			"filename": "logo.png",
+		})
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	ac := client.ForAccount("12345")
+
+	_, err := ac.Uploads().Update(context.Background(), 1069479400, &UpdateUploadRequest{
+		Description: "Updated description",
+		BaseName:    "renamed",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedMethod != http.MethodPut {
+		t.Errorf("expected PUT, got %s", receivedMethod)
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(receivedBody, &body); err != nil {
+		t.Fatalf("failed to parse request body: %v", err)
+	}
+	if _, present := body["attachable_sgid"]; present {
+		t.Errorf("attachable_sgid must not be sent on upload update (server ignores it); body: %s", receivedBody)
+	}
+	if body["description"] != "Updated description" {
+		t.Errorf("expected description to be sent, got %v", body["description"])
+	}
+	if body["base_name"] != "renamed" {
+		t.Errorf("expected base_name to be sent, got %v", body["base_name"])
+	}
+}
+
 // TestCreateUploadRequest_Subscriptions tests that Subscriptions
 // field serializes correctly with specific person IDs.
 func TestCreateUploadRequest_Subscriptions(t *testing.T) {

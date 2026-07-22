@@ -52,6 +52,7 @@ making the absorption journey publicly auditable.
 | [todoset-direct-todo-create](todoset-direct-todo-create.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [dock-tool-create-contract](dock-tool-create-contract.md) | absorbed-in-sdk | launch | medium |
+| [upload-new-version](upload-new-version.md) | no-json-contract | post-train | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
