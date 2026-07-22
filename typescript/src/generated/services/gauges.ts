@@ -169,7 +169,7 @@ export class GaugesService extends BaseService {
    *
    * @example
    * ```ts
-   * await client.gauges.toggleGauge(123, { gauge: "example" });
+   * await client.gauges.toggleGauge(123, { gauge: { enabled: true } });
    * ```
    */
   async toggleGauge(projectId: number, req: ToggleGaugeGaugeRequest): Promise<void> {
@@ -235,7 +235,7 @@ export class GaugesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.gauges.createGaugeNeedle(123, { gaugeNeedle: "example" });
+   * const result = await client.gauges.createGaugeNeedle(123, { gaugeNeedle: { position: 1 } });
    * ```
    */
   async createGaugeNeedle(projectId: number, req: CreateGaugeNeedleGaugeRequest): Promise<components["schemas"]["CreateGaugeNeedleResponseContent"]> {

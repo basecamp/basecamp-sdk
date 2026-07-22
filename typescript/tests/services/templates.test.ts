@@ -169,16 +169,16 @@ describe("TemplatesService", () => {
         http.post(
           `${BASE_URL}/templates/${templateId}/project_constructions.json`,
           async ({ request }) => {
-            const body = await request.json() as { name: string; description?: string };
-            expect(body.name).toBe("Q1 Campaign");
+            const body = await request.json() as { project: { name: string; description?: string } };
+            expect(body.project.name).toBe("Q1 Campaign");
+            expect(body.project.description).toBe("Q1 marketing campaign");
             return HttpResponse.json(mockConstruction);
           }
         )
       );
 
       const construction = await client.templates.createProject(templateId, {
-        name: "Q1 Campaign",
-        description: "Q1 marketing campaign",
+        project: { name: "Q1 Campaign", description: "Q1 marketing campaign" },
       });
       expect(construction.id).toBe(789);
       expect(construction.status).toBe("pending");

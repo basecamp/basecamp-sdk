@@ -20269,15 +20269,12 @@
       "CreateProjectFromTemplateRequestContent": {
         "type": "object",
         "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
+          "project": {
+            "$ref": "#/components/schemas/ProjectConstructionAttributes"
           }
         },
         "required": [
-          "name"
+          "project"
         ]
       },
       "CreateProjectFromTemplateResponseContent": {
@@ -22968,6 +22965,20 @@
         "required": [
           "id",
           "status"
+        ]
+      },
+      "ProjectConstructionAttributes": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "Question": {
