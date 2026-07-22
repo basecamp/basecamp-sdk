@@ -1,0 +1,21 @@
+go/pkg/basecamp/campfires_test.go
+  s_18853c09ab9fc6::t_d857c9ca0b540f 685-693
+typescript/tests/services/campfires.test.ts
+  s_18853c09ab9fc6::t_3c70e4949f6d78 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5f2abf5af09be9dba83098380c6ea76fe0572454",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
