@@ -1,0 +1,21 @@
+go/pkg/basecamp/subscriptions.go
+  s_83c0f2fdc30030::t_928483dbb7e839 183
+go/pkg/basecamp/wrapper_propagation_test.go
+  s_83c0f2fdc30030::t_54e7dfb9a262f7 125-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2f22b45e77412f7d265aabee3cb044a63a016a86",
+  "prompts": {},
+  "sessions": {
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
