@@ -32,6 +32,7 @@ spec/overlays/tags.smithy
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 87
 ruby/lib/basecamp/generated/metadata.json
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 579-590
+  s_18853c09ab9fc6::t_69ad148a86a25c 4,591-592
 typescript/src/generated/schema.d.ts
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 542-543,4303-4306,7517-7573,7594
   s_18853c09ab9fc6::t_936738d5306372 7574-7584,7587-7590,7592-7593
@@ -57,6 +58,7 @@ go/pkg/basecamp/campfires.go
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 485-541
 typescript/src/generated/metadata.ts
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 615-626
+  s_18853c09ab9fc6::t_69ad148a86a25c 40,627-628
 go/README.md
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 231
 ruby/lib/basecamp/generated/services/campfires_service.rb
@@ -72,6 +74,8 @@ typescript/src/generated/openapi-stripped.json
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 4192-4269,4280-4305,24874-24887
 go/pkg/basecamp/url-routes.json
   s_18853c09ab9fc6::t_936738d5306372 491-492
+ruby/lib/basecamp/generated/types.rb
+  s_18853c09ab9fc6::t_69ad148a86a25c 4
 ---
 {
   "schema_version": "authorship/3.0.0",
