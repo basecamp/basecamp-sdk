@@ -416,17 +416,8 @@ func projectConstructionFromGenerated(gc generated.ProjectConstruction) ProjectC
 	}
 
 	if gc.Project.Id != 0 || gc.Project.Name != "" {
-		c.Project = &Project{
-			Name:        gc.Project.Name,
-			Description: gc.Project.Description,
-			Purpose:     gc.Project.Purpose,
-			CreatedAt:   gc.Project.CreatedAt,
-			UpdatedAt:   gc.Project.UpdatedAt,
-			Status:      gc.Project.Status,
-			URL:         gc.Project.Url,
-			AppURL:      gc.Project.AppUrl,
-		}
-		c.Project.ID = gc.Project.Id
+		project := projectFromGenerated(gc.Project)
+		c.Project = &project
 	}
 
 	return c
