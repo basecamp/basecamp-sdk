@@ -41,7 +41,7 @@ module Basecamp
       # @param name [String] name
       # @param description [String, nil] description
       # @param admissions [String, nil] invite|employee|team
-      # @param schedule_attributes [String, nil] schedule attributes
+      # @param schedule_attributes [Hash, nil] schedule attributes
       # @return [Hash] response data
       def update(project_id:, name:, description: nil, admissions: nil, schedule_attributes: nil)
         with_operation(service: "projects", operation: "update", is_mutation: true, project_id: project_id) do

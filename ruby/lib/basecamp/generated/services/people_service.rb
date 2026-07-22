@@ -24,7 +24,7 @@ module Basecamp
       end
 
       # Update the current user's preferences
-      # @param person [String] person
+      # @param person [Hash] person
       # @return [Hash] response data
       def update_my_preferences(person:)
         with_operation(service: "people", operation: "update_my_preferences", is_mutation: true) do
@@ -85,7 +85,7 @@ module Basecamp
 
       # Enable or replace out of office for a person.
       # @param person_id [Integer] person id ID
-      # @param out_of_office [String] out of office
+      # @param out_of_office [Hash] out of office
       # @return [Hash] response data
       def enable_out_of_office(person_id:, out_of_office:)
         with_operation(service: "people", operation: "enable_out_of_office", is_mutation: true, resource_id: person_id) do

@@ -18,7 +18,7 @@ module Basecamp
 
       # Update a gauge needle's description. Position and color are immutable.
       # @param needle_id [Integer] needle id ID
-      # @param gauge_needle [String, nil] gauge needle
+      # @param gauge_needle [Hash, nil] gauge needle
       # @return [Hash] response data
       def update_gauge_needle(needle_id:, gauge_needle: nil)
         with_operation(service: "gauges", operation: "update_gauge_needle", is_mutation: true, resource_id: needle_id) do
@@ -38,7 +38,7 @@ module Basecamp
 
       # Enable or disable the gauge for a project. Only project admins can toggle gauges.
       # @param project_id [Integer] project id ID
-      # @param gauge [String] gauge
+      # @param gauge [Hash] gauge
       # @return [void]
       def toggle_gauge(project_id:, gauge:)
         with_operation(service: "gauges", operation: "toggle_gauge", is_mutation: true, project_id: project_id) do
@@ -58,7 +58,7 @@ module Basecamp
 
       # Create a gauge needle (progress update) for a project
       # @param project_id [Integer] project id ID
-      # @param gauge_needle [String] gauge needle
+      # @param gauge_needle [Hash] gauge needle
       # @param notify [String, nil] Who to notify: "everyone", "working_on", "custom", or omit for nobody
       # @param subscriptions [Array, nil] Array of people IDs to notify (only used when notify is "custom")
       # @return [Hash] response data

@@ -59,12 +59,11 @@ module Basecamp
 
       # Create a project from a template (asynchronous)
       # @param template_id [Integer] template id ID
-      # @param name [String] name
-      # @param description [String, nil] description
+      # @param project [Hash] project
       # @return [Hash] response data
-      def create_project(template_id:, name:, description: nil)
+      def create_project(template_id:, project:)
         with_operation(service: "templates", operation: "create_project", is_mutation: true, resource_id: template_id) do
-          http_post("/templates/#{template_id}/project_constructions.json", body: compact_params(name: name, description: description)).json
+          http_post("/templates/#{template_id}/project_constructions.json", body: compact_params(project: project)).json
         end
       end
 

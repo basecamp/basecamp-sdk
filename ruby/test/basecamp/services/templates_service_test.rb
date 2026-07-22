@@ -62,9 +62,10 @@ class TemplatesServiceTest < Minitest::Test
     response = { "id" => 1, "status" => "processing" }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/templates/\d+/project_constructions\.json})
+      .with(body: { project: { name: "Q1 Project" } })
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.templates.create_project(template_id: 1, name: "Q1 Project")
+    result = @account.templates.create_project(template_id: 1, project: { name: "Q1 Project" })
     assert_equal "processing", result["status"]
   end
 

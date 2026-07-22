@@ -57,7 +57,7 @@ module Basecamp
       # Create a new question in a questionnaire
       # @param questionnaire_id [Integer] questionnaire id ID
       # @param title [String] title
-      # @param schedule [String] schedule
+      # @param schedule [Hash] schedule
       # @return [Hash] response data
       def create_question(questionnaire_id:, title:, schedule:)
         with_operation(service: "checkins", operation: "create_question", is_mutation: true, resource_id: questionnaire_id) do
@@ -77,7 +77,7 @@ module Basecamp
       # Update an existing question
       # @param question_id [Integer] question id ID
       # @param title [String, nil] title
-      # @param schedule [String, nil] schedule
+      # @param schedule [Hash, nil] schedule
       # @param paused [Boolean, nil] paused
       # @return [Hash] response data
       def update_question(question_id:, title: nil, schedule: nil, paused: nil)
