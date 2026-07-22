@@ -679,6 +679,16 @@ func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 	if body["base_name"] != "renamed" {
 		t.Errorf("expected base_name to be sent, got %v", body["base_name"])
 	}
+	// Only the two documented mutable fields may reach the wire. In particular
+	// attachable_sgid/file must never appear: the server ignores them on update
+	// (see /API-GAP-404.md), and TestUpdateUploadRequest_HasNoFileReplacementField
+	// guards the request type. This closes the loop on the wire itself.
+	documented := map[string]bool{"description": true, "base_name": true}
+	for key := range body {
+		if !documented[key] {
+			t.Errorf("update sent undocumented field %q; only description and base_name are documented mutable fields", key)
+		}
+	}
 }
 
 // TestCreateUploadRequest_Subscriptions tests that Subscriptions
