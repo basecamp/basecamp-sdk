@@ -1194,6 +1194,10 @@ class RepositionTodolistGroupRequestContent(TypedDict):
     position: int
 
 
+class RepositionTodolistRequestContent(TypedDict):
+    position: int
+
+
 class RepositionToolRequestContent(TypedDict):
     position: int
 

@@ -27,6 +27,15 @@ class TodolistsService(BaseService):
             operation="UpdateTodolistOrGroup",
         )
 
+    def reposition(self, *, todolist_id: int, position: int) -> None:
+        self._request_void(
+            OperationInfo(service="todolists", operation="reposition", is_mutation=True, resource_id=todolist_id),
+            "PUT",
+            f"/todosets/todolists/{todolist_id}/position.json",
+            json_body=self._compact(position=position),
+            operation="RepositionTodolist",
+        )
+
     def list(self, *, todoset_id: int, status: str | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
@@ -59,6 +68,15 @@ class AsyncTodolistsService(AsyncBaseService):
             f"/todolists/{id}",
             json_body=self._compact(name=name, description=description),
             operation="UpdateTodolistOrGroup",
+        )
+
+    async def reposition(self, *, todolist_id: int, position: int) -> None:
+        await self._request_void(
+            OperationInfo(service="todolists", operation="reposition", is_mutation=True, resource_id=todolist_id),
+            "PUT",
+            f"/todosets/todolists/{todolist_id}/position.json",
+            json_body=self._compact(position=position),
+            operation="RepositionTodolist",
         )
 
     async def list(self, *, todoset_id: int, status: str | None = None) -> ListResult:

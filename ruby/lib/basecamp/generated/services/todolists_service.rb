@@ -27,6 +27,17 @@ module Basecamp
         end
       end
 
+      # Reposition a to-do list within its to-do set.
+      # @param todolist_id [Integer] todolist id ID
+      # @param position [Integer] position
+      # @return [void]
+      def reposition(todolist_id:, position:)
+        with_operation(service: "todolists", operation: "reposition", is_mutation: true, resource_id: todolist_id) do
+          http_put("/todosets/todolists/#{todolist_id}/position.json", body: compact_params(position: position))
+          nil
+        end
+      end
+
       # List todolists in a todoset
       # @param todoset_id [Integer] todoset id ID
       # @param status [String, nil] active|archived|trashed

@@ -175,6 +175,7 @@ object Metadata {
         "ReplaceTodo" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "RepositionCardStep" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "RepositionTodo" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "RepositionTodolist" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "RepositionTodolistGroup" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "RepositionTool" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ResumeQuestion" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

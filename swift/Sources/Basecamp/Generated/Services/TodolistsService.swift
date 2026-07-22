@@ -46,6 +46,16 @@ public final class TodolistsService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func reposition(todolistId: Int, req: RepositionTodolistRequest) async throws {
+        try await requestVoid(
+            OperationInfo(service: "Todolists", operation: "RepositionTodolist", resourceType: "todolist", isMutation: true, resourceId: todolistId),
+            method: "PUT",
+            path: "/todosets/todolists/\(todolistId)/position.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "RepositionTodolist")
+        )
+    }
+
     public func update(id: Int, req: UpdateTodolistOrGroupRequest) async throws -> TodolistOrGroup {
         return try await request(
             OperationInfo(service: "Todolists", operation: "UpdateTodolistOrGroup", resourceType: "todolist_or_group", isMutation: true),

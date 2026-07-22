@@ -3,11 +3,14 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -269,6 +272,75 @@ func TestTodolistsService_Update(t *testing.T) {
 	}
 	if receivedBody["description"] != "Updated description" {
 		t.Errorf("expected request body description 'Updated description', got %q", receivedBody["description"])
+	}
+}
+
+func TestTodolistsService_Reposition(t *testing.T) {
+	var receivedBody map[string]int
+	called := false
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT, got %s", r.Method)
+		}
+		if r.URL.Path != "/99999/todosets/todolists/1069479519/position.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		json.Unmarshal(body, &receivedBody)
+		w.WriteHeader(204)
+	})
+
+	if err := svc.Reposition(context.Background(), 1069479519, 3); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected the server to be called")
+	}
+	if receivedBody["position"] != 3 {
+		t.Errorf("expected request body position 3, got %d", receivedBody["position"])
+	}
+}
+
+func TestTodolistsService_Reposition_NotFound(t *testing.T) {
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	})
+
+	err := svc.Reposition(context.Background(), 999, 1)
+	if err == nil {
+		t.Fatal("expected error for 404")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeNotFound {
+		t.Errorf("expected not_found error, got: %v", err)
+	}
+}
+
+func TestTodolistsService_Reposition_PositionTooLow(t *testing.T) {
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server should not be called when position is below 1")
+	})
+
+	if err := svc.Reposition(context.Background(), 1069479519, 0); err == nil {
+		t.Fatal("expected usage error for position < 1")
+	}
+}
+
+func TestTodolistsService_Reposition_PositionOutOfRange(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("positions above MaxInt32 are unrepresentable as int on 32-bit platforms")
+	}
+	svc := testTodolistsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("server should not be called when position exceeds MaxInt32")
+	})
+
+	// Build MaxInt32+1 at runtime: the constant math.MaxInt32+1 overflows int on
+	// 32-bit and would not compile there, even though the guard above skips it.
+	position := math.MaxInt32
+	position++
+	if err := svc.Reposition(context.Background(), 1069479519, position); err == nil {
+		t.Fatal("expected usage error for position > MaxInt32")
 	}
 }
 

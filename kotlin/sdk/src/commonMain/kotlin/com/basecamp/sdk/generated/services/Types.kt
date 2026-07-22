@@ -537,6 +537,11 @@ data class UpdateTodolistOrGroupBody(
     val description: String? = null
 )
 
+/** Request body for RepositionTodolist. */
+data class RepositionTodolistBody(
+    val position: Int
+)
+
 /** Options for ListTodolists. */
 data class ListTodolistsOptions(
     val status: String? = null,
