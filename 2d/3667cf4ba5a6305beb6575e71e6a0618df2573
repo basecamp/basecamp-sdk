@@ -1,0 +1,71 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/campfires.kt
+  s_18853c09ab9fc6::t_74e5afa7a43b73 236
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_18853c09ab9fc6::t_74e5afa7a43b73 57
+go/pkg/basecamp/api-provenance.json
+  s_18853c09ab9fc6::t_74e5afa7a43b73 4-5
+go/pkg/basecamp/campfires.go
+  s_18853c09ab9fc6::t_01162c7ca1f554 486-487,492
+go/pkg/generated/client.gen.go
+  s_18853c09ab9fc6::t_74e5afa7a43b73 2195
+ruby/lib/basecamp/generated/types.rb
+  s_18853c09ab9fc6::t_74e5afa7a43b73 4
+typescript/src/client.ts
+  s_18853c09ab9fc6::t_74e5afa7a43b73 223
+typescript/src/generated/services/campfires.ts
+  s_18853c09ab9fc6::t_74e5afa7a43b73 431
+typescript/src/generated/schema.d.ts
+  s_18853c09ab9fc6::t_74e5afa7a43b73 525-530
+spec/api-provenance.json
+  s_18853c09ab9fc6::t_34d5abf81572e1 4-5
+spec/basecamp.smithy
+  s_18853c09ab9fc6::t_74e5afa7a43b73 54
+  s_18853c09ab9fc6::t_75ca5c6a5461eb 3368-3371
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_18853c09ab9fc6::t_74e5afa7a43b73 30
+go/pkg/basecamp/version.go
+  s_18853c09ab9fc6::t_74e5afa7a43b73 7
+typescript/src/generated/openapi-stripped.json
+  s_18853c09ab9fc6::t_74e5afa7a43b73 5,4093
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_18853c09ab9fc6::t_74e5afa7a43b73 115,120,122
+typescript/tests/services/campfires.test.ts
+  s_18853c09ab9fc6::t_42af2166d3a39a 211-224
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_18853c09ab9fc6::t_74e5afa7a43b73 32
+openapi.json
+  s_18853c09ab9fc6::t_74e5afa7a43b73 5,4595
+python/src/basecamp/generated/services/campfires.py
+  s_18853c09ab9fc6::t_74e5afa7a43b73 90,95,206,211
+python/src/basecamp/_version.py
+  s_18853c09ab9fc6::t_74e5afa7a43b73 2
+ruby/lib/basecamp/version.rb
+  s_18853c09ab9fc6::t_74e5afa7a43b73 5
+go/pkg/basecamp/campfires_test.go
+  s_18853c09ab9fc6::t_e451c51fa9f207 702-703
+  s_18853c09ab9fc6::t_6b30a212a4dde9 675
+swift/Sources/Basecamp/Generated/Models/UpdateCampfireLineRequest.swift
+  s_18853c09ab9fc6::t_74e5afa7a43b73 7
+typescript/src/generated/metadata.ts
+  s_18853c09ab9fc6::t_74e5afa7a43b73 40
+ruby/lib/basecamp/generated/metadata.json
+  s_18853c09ab9fc6::t_74e5afa7a43b73 4
+ruby/test/basecamp/services/campfires_service_test.rb
+  s_18853c09ab9fc6::t_aace35463e1579 157-159,161-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2d3667cf4ba5a6305beb6575e71e6a0618df2573",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
