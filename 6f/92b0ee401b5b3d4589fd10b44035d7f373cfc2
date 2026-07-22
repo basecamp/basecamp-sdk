@@ -1,0 +1,27 @@
+typescript/src/generated/openapi-stripped.json
+  s_0c98ad9a7f5689::t_c84cdc58913cfd 22491-22492
+openapi.json
+  s_0c98ad9a7f5689::t_c84cdc58913cfd 24815-24816
+spec/basecamp.smithy
+  s_0c98ad9a7f5689::t_2ee7639babac68 8422
+typescript/src/generated/schema.d.ts
+  s_0c98ad9a7f5689::t_c84cdc58913cfd 3656
+behavior-model.json
+  s_0c98ad9a7f5689::t_c84cdc58913cfd 2597-2598
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "6f92b0ee401b5b3d4589fd10b44035d7f373cfc2",
+  "prompts": {},
+  "sessions": {
+    "s_0c98ad9a7f5689": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc2014f-a637-4b4d-9589-f87625258d9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
