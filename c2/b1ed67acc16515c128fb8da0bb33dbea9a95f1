@@ -1,0 +1,38 @@
+scripts/check-wrapper-drift/main.go
+  s_83c0f2fdc30030::t_60154b9234d97a 127-131,133-136
+  s_83c0f2fdc30030::t_d4d781fa0eaec1 25-28
+  s_83c0f2fdc30030::t_74f53dd0adcf5e 183-188
+  s_83c0f2fdc30030::t_f0781afd955b03 257,271-274,276-277,286,289,292-293,296-299,301-306,311-313,315
+  s_83c0f2fdc30030::t_dcbdfa0e1a2ab0 300
+  s_83c0f2fdc30030::t_f526b829d805c7 377-380,389-395
+  s_83c0f2fdc30030::t_e3b80f4984a448 219-223,225
+  s_83c0f2fdc30030::t_d932a7932eae09 459-565
+  s_83c0f2fdc30030::t_24e7554100fec4 275
+  s_83c0f2fdc30030::t_16eacb273cc5f9 38-70
+  s_83c0f2fdc30030::t_3a09ca54574045 153
+  s_83c0f2fdc30030::t_876c32d8db566b 316
+  s_83c0f2fdc30030::t_db79f0e89001bc 337,346
+  s_83c0f2fdc30030::t_4e018d72f89842 244
+  s_83c0f2fdc30030::t_5789c5f7620450 204-205,226-234
+scripts/check-wrapper-drift/main_test.go
+  s_83c0f2fdc30030::t_4f082c1788a220 6-7
+  s_83c0f2fdc30030::t_423cfa44face9b 134-160,164-165,180-186,188-205,212-216,218,220,222-251,253,255,257-286,288,290-317,319,321-335,337-360
+Makefile
+  s_83c0f2fdc30030::t_7d6d941a0055c9 231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2b1ed67acc16515c128fb8da0bb33dbea9a95f1",
+  "prompts": {},
+  "sessions": {
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
