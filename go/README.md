@@ -154,7 +154,7 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 |---------|---------|
 | `Projects()` | List, Get, Create, Update, Trash |
 | `Templates()` | List, Get, CreateProject |
-| `Tools()` | Get, List, Update (enable/disable/reorder dock tools) |
+| `Tools()` | Get, Create, Update, Delete, Enable, Disable, Reposition (dock tools) |
 | `People()` | List, Get, ListPingable, Me, ListProjectPeople |
 
 ### To-dos

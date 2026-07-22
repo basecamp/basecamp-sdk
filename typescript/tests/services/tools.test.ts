@@ -88,6 +88,32 @@ describe("ToolsService", () => {
       expect(tool.title).toBe("Message Board (Copy)");
     });
 
+    it("omits title from the request body when not provided", async () => {
+      const bucketId = 456;
+      const toolType = "Message::Board";
+      const mockTool = {
+        id: 334,
+        name: "message_board",
+        title: "Message Board",
+        enabled: true,
+        position: 5,
+      };
+
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/${bucketId}/dock/tools.json`,
+          async ({ request }) => {
+            const body = await request.json() as Record<string, unknown>;
+            expect(body).toEqual({ tool_type: toolType });
+            return HttpResponse.json(mockTool, { status: 201 });
+          }
+        )
+      );
+
+      const tool = await client.tools.create(bucketId, { toolType });
+      expect(tool.id).toBe(334);
+    });
+
     it("requires a tool type", async () => {
       await expect(client.tools.create(456, { toolType: "" })).rejects.toThrow(BasecampError);
     });
