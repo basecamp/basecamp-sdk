@@ -384,7 +384,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build oauth-fixtures-check
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live check-bc5-compat oauth-fixtures-check
 
 # Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
 # version is reproducible without a global install; the schema is separate from
@@ -473,6 +473,112 @@ conformance-python-replay:
 # Run all conformance tests
 conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
+
+# Orchestrate one canary pass against a single backend:
+#   1. TS captures canonical wire snapshots (live HTTP).
+#   2. Each replay runner decodes those snapshots through its SDK + walks raw JSON.
+#
+# Required env (passed through to children):
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BASECAMP_BACKEND, LIVE_RECORD_DIR
+# (BASECAMP_LIVE=1 is set by the conformance-typescript-live recipe itself.)
+#
+# The four replay runners run sequentially after the TS capture completes
+# (the per-language replays need the wire snapshots TS just wrote). They
+# read from `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/` and write to
+# `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/decode/<lang>/`. Failures in any
+# stage fail the orchestrator.
+#
+# Opt-in target: not invoked by `make check`.
+conformance-live:
+	@test -n "$$LIVE_RECORD_DIR" || (echo "LIVE_RECORD_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 1)
+	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 1)
+	@# Canonicalize LIVE_RECORD_DIR before fanning out: the capture and
+	@# replay recipes each `cd` into their runner directory, so a relative
+	@# path (e.g. the documented tmp/live-canary) would scatter snapshots
+	@# under conformance/runner/*/ while the pairwise compare reads from
+	@# the repo root — missing-snapshot errors instead of a comparison.
+	@LRD="$$LIVE_RECORD_DIR"; case "$$LRD" in /*) ;; *) LRD="$$(pwd)/$$LRD" ;; esac; \
+	echo "==> conformance-live: capturing canonical wire snapshots (TypeScript)..." && \
+	LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-typescript-live && \
+	echo "==> Running cross-language wire-replay against just-captured snapshots..." && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-ruby-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-python-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-go-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-kotlin-replay
+	@echo "==> conformance-live: capture + replay complete for backend $$BASECAMP_BACKEND"
+
+# Top-level orchestrator: full canary against BC4 then BC5, then pairwise comparison.
+#
+# Required env:
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BC5_HOST (BC5 backend origin)
+# Optional env:
+#   BASECAMP_HOST (BC4 backend origin; defaults to https://3.basecampapi.com)
+#   LIVE_RECORD_DIR (snapshot root; defaults to tmp/live-canary)
+#
+# Snapshot dirs are per-backend: $$LIVE_RECORD_DIR/{bc4,bc5}/{wire,decode}/.
+# The TS runner writes to `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/`, so the
+# orchestrator distinguishes runs by switching BASECAMP_BACKEND and the host
+# while reusing one snapshot root.
+#
+# Each pass must pass per-backend (TS schema validation + 4-language decode).
+# After both, the pairwise script applies the additive-only invariant to BC4
+# vs BC5 snapshots, reports all violations outside pairwiseDeltaAllowed, and
+# exits non-zero if any are found.
+#
+# Account state must be identical across the two runs — see CONTRIBUTING.md.
+check-bc5-compat:
+	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
+	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
+	@test -n "$$BC5_HOST" || (echo "BC5_HOST is required (BC5 backend origin, e.g. https://5.basecampapi.com)" >&2; exit 2)
+	@# Defaults resolve in the recipe shell, NOT via target-specific `?=`:
+	@# make 3.81 (macOS /usr/bin/make) leaks target-specific `?=` into a
+	@# global override that clobbers the caller's environment to empty for
+	@# every OTHER target's recipe — breaking conformance-live's
+	@# required-env guards whenever this makefile is loaded.
+	@#
+	@# The rm -rf lives on its own recipe line, separate from the $(MAKE)
+	@# invocations: under `make -n`, lines containing $(MAKE) are still
+	@# executed (with -n propagated to the sub-make), so folding the rm into
+	@# that line would delete snapshots during a dry-run.
+	@# Guard against a catastrophic rm -rf: strip ALL trailing slashes (a
+	@# single strip would let '///' through as '//' ≈ root), then refuse
+	@# "", ".", "/" (repo checkout / filesystem root) and any '..' PATH
+	@# SEGMENT (leading, trailing, interior, or the whole path); finally,
+	@# canonicalize an EXISTING dir (cd + pwd -P) into a separate GUARD
+	@# variable for the checkout-ancestor check, so non-canonical
+	@# spellings ('/x//y', symlinks into the checkout) can't slip past the
+	@# string compare — a failed cd empties the guard value, which the
+	@# ancestor pattern then refuses. The rm itself uses the ORIGINAL
+	@# path: when LIVE_RECORD_DIR is a symlink, rm removes the link, not
+	@# the tree it points to. A '..'
+	@# inside a segment (tmp/live-canary..pr308) is benign and allowed.
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; LRD_ORIG="$$LRD"; \
+	while [ "$${LRD%/}" != "$$LRD" ]; do LRD="$${LRD%/}"; done; \
+	case "$$LRD" in \
+	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD_ORIG'" >&2; exit 2 ;; \
+	  ".."|"../"*|*"/.."|*"/../"*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR with a '..' path segment: '$$LRD_ORIG'" >&2; exit 2 ;; \
+	esac; \
+	LRD_CHECK="$$LRD"; \
+	if [ -d "$$LRD" ]; then LRD_CHECK="$$(cd "$$LRD" && pwd -P)"; fi; \
+	case "$$LRD_CHECK" in \
+	  "/") echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it canonicalizes to the filesystem root" >&2; exit 2 ;; \
+	esac; \
+	case "$$(pwd -P)/" in \
+	  "$$LRD_CHECK"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
+	esac; \
+	rm -rf -- "$$LRD"
+	@echo "==> check-bc5-compat: BC4 pass"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC4_HOST" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: BC5 pass"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	./scripts/compare-canary-runs.sh "$$LRD/bc4/wire" "$$LRD/bc5/wire"
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets
@@ -641,7 +747,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps
+.PHONY: check-bucket-flat-parity validate-api-gaps check-compare-canary
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -652,6 +758,15 @@ check-bucket-flat-parity:
 # Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
 validate-api-gaps:
 	@./scripts/validate-api-gaps.sh
+
+# Network-free regression tests for the pairwise compare script (filename
+# scheme, missing-snapshot hard-fail, memories waiver scoping, pairwiseEqual
+# key-order, empty-paths guard).
+#
+# Requires bash >= 4.4 on PATH (`env bash`): both scripts guard for it and
+# fail with a clear message; macOS ships 3.2 at /bin/bash — brew install bash.
+check-compare-canary:
+	@./scripts/test-compare-canary-runs.sh
 
 #------------------------------------------------------------------------------
 # Combined targets
@@ -675,7 +790,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-compare-canary
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

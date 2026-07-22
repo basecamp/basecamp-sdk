@@ -1,0 +1,142 @@
+name: Live Canary
+
+# Runs the BC4↔BC5 live compatibility canary against real Basecamp backends.
+#
+# Triggers
+# --------
+# - workflow_dispatch: manual run, useful for ad-hoc verification.
+# - schedule: nightly cron at 09:00 UTC. Catches server-side drift between
+#   the BC4 (master) baseline and the BC5 (five) branch over time.
+#
+# Required secrets (configured at repo level)
+# -------------------------------------------
+#   BASECAMP_TOKEN       OAuth token for both backends. Must have read scope
+#                        on the canary's read-only fixture set.
+#   BASECAMP_ACCOUNT_ID  The numeric account ID used to compose the per-backend
+#                        base URL. Same on both backends — the canary requires
+#                        identical account state across BC4 and BC5 for
+#                        pairwise rules to be meaningful.
+#   BC5_HOST             Origin of the BC5 backend (e.g. https://5.basecampapi.com).
+#
+# Optional secret (defaults)
+# --------------------------
+#   BASECAMP_HOST        Origin of the BC4 backend. Defaults to
+#                        https://3.basecampapi.com when unset.
+#
+# The job no-ops with a clear log message if BASECAMP_TOKEN is unset (e.g.
+# when running from a fork without secrets). It does not fail the run —
+# missing secrets are operator-controllable state.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *'
+
+permissions: {}
+
+concurrency:
+  group: live-canary
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    name: BC4↔BC5 canary
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Check for canary secrets
+        id: secrets
+        env:
+          BASECAMP_TOKEN: ${{ secrets.BASECAMP_TOKEN }}
+          BASECAMP_ACCOUNT_ID: ${{ secrets.BASECAMP_ACCOUNT_ID }}
+          BC5_HOST: ${{ secrets.BC5_HOST }}
+        run: |
+          if [ -z "$BASECAMP_TOKEN" ] || [ -z "$BASECAMP_ACCOUNT_ID" ] || [ -z "$BC5_HOST" ]; then
+            echo "Canary secrets not configured; skipping live run."
+            echo "Required: BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BC5_HOST."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Go
+        if: steps.secrets.outputs.configured == 'true'
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: 'go/go.mod'
+          cache-dependency-path: 'go/go.sum'
+
+      - name: Set up Node.js
+        if: steps.secrets.outputs.configured == 'true'
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            typescript/package-lock.json
+            conformance/runner/typescript/package-lock.json
+
+      - name: Set up Java
+        if: steps.secrets.outputs.configured == 'true'
+        uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        if: steps.secrets.outputs.configured == 'true'
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        with:
+          cache-provider: basic
+
+      - name: Set up Ruby
+        if: steps.secrets.outputs.configured == 'true'
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9 # v1.316.0
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: conformance/runner/ruby
+
+      - name: Install uv (Python)
+        if: steps.secrets.outputs.configured == 'true'
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+
+      - name: Build TypeScript SDK
+        if: steps.secrets.outputs.configured == 'true'
+        working-directory: typescript
+        run: |
+          npm ci
+          npm run build
+
+      - name: Run live canary against BC4 + BC5 with pairwise comparison
+        if: steps.secrets.outputs.configured == 'true'
+        env:
+          BASECAMP_TOKEN: ${{ secrets.BASECAMP_TOKEN }}
+          BASECAMP_ACCOUNT_ID: ${{ secrets.BASECAMP_ACCOUNT_ID }}
+          # Default the BC4 origin here: an unset optional secret expands to ''.
+          # The Makefile's recipe-shell ${BASECAMP_HOST:-...} default would also
+          # catch the empty string, but defaulting explicitly keeps the workflow
+          # self-describing about which BC4 origin a run used.
+          BASECAMP_HOST: ${{ secrets.BASECAMP_HOST || 'https://3.basecampapi.com' }}
+          BC5_HOST: ${{ secrets.BC5_HOST }}
+          LIVE_RECORD_DIR: tmp/live-canary
+        run: make check-bc5-compat
+
+      # Deliberately EXCLUDES the wire/ trees: wire snapshots carry raw
+      # response bodies and captured headers from a live account, which must
+      # not persist as downloadable workflow artifacts. Decode results carry
+      # only booleans, error strings, and dotted field paths.
+      - name: Upload canary decode results
+        if: always() && steps.secrets.outputs.configured == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-canary-${{ github.run_id }}
+          path: |
+            tmp/live-canary/*/decode/
+          retention-days: 14
+          if-no-files-found: warn
