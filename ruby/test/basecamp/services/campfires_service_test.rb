@@ -154,17 +154,13 @@ class CampfiresServiceTest < Minitest::Test
     assert_nil result
   end
 
-  def test_update_line_with_content_type
-    stub_put("/12345/chats/200/lines/300", response_body: "", status: 204)
+  def test_update_line_validation_error
+    stub_put("/12345/chats/200/lines/300",
+             response_body: { "error" => "Unprocessable" }, status: 422)
 
-    result = @account.campfires.update_line(
-      campfire_id: 200,
-      line_id: 300,
-      content: "<strong>Edited</strong>",
-      content_type: "text/html"
-    )
-
-    assert_nil result
+    assert_raises(Basecamp::ValidationError) do
+      @account.campfires.update_line(campfire_id: 200, line_id: 300, content: "Edited")
+    end
   end
 
   def test_delete_line

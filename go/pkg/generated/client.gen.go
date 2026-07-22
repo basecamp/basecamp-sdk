@@ -2210,8 +2210,8 @@ type UpdateAccountNameResponseContent = Account
 
 // UpdateCampfireLineRequestContent defines model for UpdateCampfireLineRequestContent.
 type UpdateCampfireLineRequestContent struct {
-	Content     string `json:"content"`
-	ContentType string `json:"content_type,omitempty"`
+	// Content The new line content, interpreted as rich text (HTML)
+	Content string `json:"content"`
 }
 
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.

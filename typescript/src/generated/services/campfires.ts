@@ -77,10 +77,8 @@ export interface CreateLineCampfireRequest {
  * Request parameters for updateLine.
  */
 export interface UpdateLineCampfireRequest {
-  /** Text content */
+  /** The new line content, interpreted as rich text (HTML) */
   content: string;
-  /** Content type */
-  contentType?: string;
 }
 
 /**
@@ -430,7 +428,7 @@ export class CampfiresService extends BaseService {
   }
 
   /**
-   * Update an existing campfire line
+   * Update an existing campfire line; the content is always treated as rich text (HTML).
    * @param campfireId - The campfire ID
    * @param lineId - The line ID
    * @param req - Campfire_line update parameters
@@ -461,7 +459,6 @@ export class CampfiresService extends BaseService {
           },
           body: {
             content: req.content,
-            content_type: req.contentType,
           },
         })
     );

@@ -3365,7 +3365,10 @@ structure CreateCampfireLineOutput {
   line: CampfireLine
 }
 
-/// Update an existing campfire line
+/// Update an existing campfire line; the content is always treated as rich text (HTML).
+/// The server coerces every edited line to rich text and ignores any content
+/// type hint. Only the line's creator may edit it, and only text and
+/// rich-text lines are editable.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
@@ -3389,10 +3392,9 @@ structure UpdateCampfireLineInput {
   @httpLabel
   lineId: CampfireLineId
 
+  /// The new line content, interpreted as rich text (HTML)
   @required
   content: String
-
-  content_type: String
 }
 
 structure UpdateCampfireLineOutput {}

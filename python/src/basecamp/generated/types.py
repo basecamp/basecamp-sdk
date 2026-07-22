@@ -1505,7 +1505,6 @@ class UpdateAccountNameRequestContent(TypedDict):
 
 class UpdateCampfireLineRequestContent(TypedDict):
     content: str
-    content_type: NotRequired[str]
 
 
 class UpdateCardColumnRequestContent(TypedDict):

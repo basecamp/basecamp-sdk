@@ -482,19 +482,14 @@ func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, con
 	return &line, nil
 }
 
-// UpdateLineOptions specifies optional parameters for updating a campfire line.
-type UpdateLineOptions struct {
-	// ContentType is "text/plain" or "text/html". If empty, the API defaults to plain text.
-	ContentType string
-}
-
 // UpdateLine updates the content of an existing line (message) in a campfire.
-// opts is optional; pass an UpdateLineOptions to set content_type (text/html or text/plain).
+// The content is always treated as rich text (HTML) — the server coerces every
+// edited line to rich text — and only the line's creator may edit it.
 // The API returns 204 No Content on success; if the caller needs the updated
 // representation, follow up with GetLine. Mirrors DeleteLine in returning only
 // an error so a transient post-mutation read can't make a successful update
 // appear to fail.
-func (s *CampfiresService) UpdateLine(ctx context.Context, campfireID, lineID int64, content string, opts ...*UpdateLineOptions) (err error) {
+func (s *CampfiresService) UpdateLine(ctx context.Context, campfireID, lineID int64, content string) (err error) {
 	op := OperationInfo{
 		Service: "Campfires", Operation: "UpdateLine",
 		ResourceType: "campfire_line", IsMutation: true,
@@ -509,11 +504,6 @@ func (s *CampfiresService) UpdateLine(ctx context.Context, campfireID, lineID in
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if len(opts) > 1 {
-		err = ErrUsage("UpdateLine accepts at most one UpdateLineOptions argument")
-		return err
-	}
-
 	if content == "" {
 		err = ErrUsage("campfire line content is required")
 		return err
@@ -521,15 +511,6 @@ func (s *CampfiresService) UpdateLine(ctx context.Context, campfireID, lineID in
 
 	body := generated.UpdateCampfireLineJSONRequestBody{
 		Content: content,
-	}
-	if len(opts) > 0 && opts[0] != nil && opts[0].ContentType != "" {
-		switch opts[0].ContentType {
-		case LineContentTypePlain, LineContentTypeHTML:
-			body.ContentType = opts[0].ContentType
-		default:
-			err = ErrUsage("content_type must be \"text/plain\" or \"text/html\"")
-			return err
-		}
 	}
 
 	resp, err := s.client.parent.gen.UpdateCampfireLineWithResponse(ctx, s.client.accountID, campfireID, lineID, body)

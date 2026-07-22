@@ -672,30 +672,7 @@ func TestUpdateLine_EmptyContent(t *testing.T) {
 	}
 }
 
-func TestUpdateLine_MultipleOptions(t *testing.T) {
-	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("server should not be called when multiple options are provided")
-	})
-	err := svc.UpdateLine(context.Background(), 200, 1069479350, "x",
-		&UpdateLineOptions{ContentType: LineContentTypeHTML},
-		&UpdateLineOptions{ContentType: LineContentTypePlain})
-	if err == nil {
-		t.Fatalf("expected error for multiple options")
-	}
-}
-
-func TestUpdateLine_InvalidContentType(t *testing.T) {
-	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("server should not be called when content_type is invalid")
-	})
-	err := svc.UpdateLine(context.Background(), 200, 1069479350, "x",
-		&UpdateLineOptions{ContentType: "application/xml"})
-	if err == nil {
-		t.Fatalf("expected error for invalid content_type")
-	}
-}
-
-func TestUpdateLine_NoOptions_Service(t *testing.T) {
+func TestUpdateLine_Service(t *testing.T) {
 	var receivedBody map[string]any
 	var receivedMethod, receivedPath string
 	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -705,8 +682,15 @@ func TestUpdateLine_NoOptions_Service(t *testing.T) {
 		}
 		receivedMethod = r.Method
 		receivedPath = r.URL.Path
-		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &receivedBody)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("failed to read request body: %v", err)
+			return
+		}
+		if err := json.Unmarshal(body, &receivedBody); err != nil {
+			t.Errorf("failed to unmarshal request body: %v", err)
+			return
+		}
 		w.WriteHeader(204)
 	})
 
@@ -722,30 +706,8 @@ func TestUpdateLine_NoOptions_Service(t *testing.T) {
 	if receivedBody["content"] != "Edited!" {
 		t.Errorf("expected content 'Edited!', got %v", receivedBody["content"])
 	}
-	if _, exists := receivedBody["content_type"]; exists {
-		t.Errorf("content_type should be absent with no options, got %v", receivedBody["content_type"])
-	}
-}
-
-func TestUpdateLine_HTMLOption_Service(t *testing.T) {
-	var receivedBody map[string]any
-	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "PUT" {
-			t.Errorf("expected PUT only, got %s", r.Method)
-			return
-		}
-		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, &receivedBody)
-		w.WriteHeader(204)
-	})
-
-	err := svc.UpdateLine(context.Background(), 200, 1069479350, "<b>Hi</b>",
-		&UpdateLineOptions{ContentType: LineContentTypeHTML})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if receivedBody["content_type"] != "text/html" {
-		t.Errorf("expected content_type 'text/html', got %v", receivedBody["content_type"])
+	if len(receivedBody) != 1 {
+		t.Errorf("expected body to contain only content, got %v", receivedBody)
 	}
 }
 

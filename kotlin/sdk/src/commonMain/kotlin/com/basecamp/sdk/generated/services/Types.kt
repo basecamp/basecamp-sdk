@@ -54,8 +54,7 @@ data class CreateCampfireLineBody(
 
 /** Request body for UpdateCampfireLine. */
 data class UpdateCampfireLineBody(
-    val content: String,
-    val contentType: String? = null
+    val content: String
 )
 
 /** Options for ListCampfireUploads. */

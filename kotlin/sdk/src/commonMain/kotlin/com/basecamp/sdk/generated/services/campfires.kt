@@ -233,7 +233,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing campfire line
+     * Update an existing campfire line; the content is always treated as rich text (HTML).
      * @param campfireId The campfire ID
      * @param lineId The line ID
      * @param body Request body
@@ -250,7 +250,6 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
         request(info, {
             httpPut("/chats/${campfireId}/lines/${lineId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
-                body.contentType?.let { put("content_type", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { Unit }
     }

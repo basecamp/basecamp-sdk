@@ -193,7 +193,7 @@ describe("CampfiresService", () => {
       server.use(
         http.put(`${BASE_URL}/chats/42/lines/10`, async ({ request }) => {
           const body = (await request.json()) as Record<string, unknown>;
-          expect(body.content).toBe("Edited!");
+          expect(body).toEqual({ content: "Edited!" });
           return new HttpResponse(null, { status: 204 });
         })
       );
@@ -207,6 +207,20 @@ describe("CampfiresService", () => {
       await expect(
         client.campfires.updateLine(42, 10, { content: "" })
       ).rejects.toThrow();
+    });
+
+    it("should surface 422 as BasecampError", async () => {
+      server.use(
+        http.put(`${BASE_URL}/chats/42/lines/10`, () => {
+          return HttpResponse.json({ error: "Unprocessable" }, { status: 422 });
+        })
+      );
+
+      const error = await client.campfires
+        .updateLine(42, 10, { content: "Edited!" })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(422);
     });
   });
 

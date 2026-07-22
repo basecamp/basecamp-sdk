@@ -3,10 +3,8 @@ import Foundation
 
 public struct UpdateCampfireLineRequest: Codable, Sendable {
     public let content: String
-    public var contentType: String?
 
-    public init(content: String, contentType: String? = nil) {
+    public init(content: String) {
         self.content = content
-        self.contentType = contentType
     }
 }

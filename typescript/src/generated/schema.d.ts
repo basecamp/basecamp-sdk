@@ -539,7 +539,12 @@ export interface paths {
         };
         /** @description Get a campfire line by ID */
         get: operations["GetCampfireLine"];
-        /** @description Update an existing campfire line */
+        /**
+         * @description Update an existing campfire line; the content is always treated as rich text (HTML).
+         *     The server coerces every edited line to rich text and ignores any content
+         *     type hint. Only the line's creator may edit it, and only text and
+         *     rich-text lines are editable.
+         */
         put: operations["UpdateCampfireLine"];
         post?: never;
         /** @description Delete a campfire line */
@@ -4301,8 +4306,8 @@ export interface components {
         };
         UpdateAccountNameResponseContent: components["schemas"]["Account"];
         UpdateCampfireLineRequestContent: {
+            /** @description The new line content, interpreted as rich text (HTML) */
             content: string;
-            content_type?: string;
         };
         UpdateCardColumnRequestContent: {
             title?: string;

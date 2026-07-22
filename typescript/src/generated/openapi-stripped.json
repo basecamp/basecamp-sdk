@@ -4191,7 +4191,7 @@
         }
       },
       "put": {
-        "description": "Update an existing campfire line",
+        "description": "Update an existing campfire line; the content is always treated as rich text (HTML).\nThe server coerces every edited line to rich text and ignores any content\ntype hint. Only the line's creator may edit it, and only text and\nrich-text lines are editable.",
         "operationId": "UpdateCampfireLine",
         "requestBody": {
           "content": {
@@ -24875,10 +24875,8 @@
         "type": "object",
         "properties": {
           "content": {
-            "type": "string"
-          },
-          "content_type": {
-            "type": "string"
+            "type": "string",
+            "description": "The new line content, interpreted as rich text (HTML)"
           }
         },
         "required": [
