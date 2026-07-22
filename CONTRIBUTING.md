@@ -275,7 +275,10 @@ Optional env:
 
 - `BASECAMP_HOST` — backend **origin** only (e.g. `https://3.basecampapi.com`);
   the runner appends `/{accountId}` to mirror `createBasecampClient`'s
-  default URL composition.
+  default URL composition. Optional **for the bare `conformance-typescript-live`
+  target only** — when unset the SDK client falls back to its default origin.
+  The `conformance-canary` orchestrator and the CI workflow **require** it (no
+  hard-coded default), so the production BC5 origin is always explicit there.
 - `BASECAMP_BACKEND=bc5` — a `Backend` label (`bc4|bc5`) that namespaces
   persisted snapshots and selects the `BASECAMP_BC5_*` fixture overrides. The
   canary uses `bc5` — production runs BC5.
