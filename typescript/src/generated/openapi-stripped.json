@@ -7804,7 +7804,7 @@
     },
     "/my/readings.json": {
       "get": {
-        "description": "Get the current user's notification inbox (the \"Hey!\" menu).\nNotifications are grouped into unreads, reads, and memories.\nReads are paginated (50 per page). Unreads are capped at 100.",
+        "description": "Get the current user's notification inbox (the \"Hey!\" menu).\nNotifications are grouped into unreads, reads, bubble-ups, and\nscheduled bubble-ups (`memories` remains as an always-empty\nplaceholder on BC5). Reads are paginated (50 per page). Unreads are\ncapped at 100. Bubble-ups are capped per `limit_bubble_ups`.",
         "operationId": "GetMyNotifications",
         "parameters": [
           {
@@ -13258,7 +13258,7 @@
     },
     "/reports/schedules/upcoming.json": {
       "get": {
-        "description": "Get upcoming schedule entries within a date window",
+        "description": "Get upcoming schedule entries and assignable items within a date\nwindow. This endpoint is preserved as the canonical API path on BC5;\nthe BC5 `/calendar` web view is HTML-only.",
         "operationId": "GetUpcomingSchedule",
         "parameters": [
           {
@@ -22330,7 +22330,8 @@
             "x-go-type-skip-optional-pointer": true
           },
           "section": {
-            "type": "string"
+            "type": "string",
+            "description": "The notification category: `inbox`, `chats`, `pings`, `bubbles`,\nor `mentions`."
           },
           "unread_count": {
             "type": "integer",
@@ -22434,6 +22435,7 @@
       },
       "OutOfOffice": {
         "type": "object",
+        "description": "When out of office is not enabled, `enabled` is `false` and\n`start_date`, `end_date`, and `back_on_date` are omitted.",
         "properties": {
           "person": {
             "$ref": "#/components/schemas/OutOfOfficePerson"
@@ -22449,6 +22451,10 @@
           },
           "end_date": {
             "type": "string"
+          },
+          "back_on_date": {
+            "type": "string",
+            "description": "First working day after the out-of-office window ends.\nOmitted when out of office is not enabled."
           }
         }
       },
@@ -22652,7 +22658,8 @@
             "type": "string"
           },
           "time_zone_name": {
-            "type": "string"
+            "type": "string",
+            "description": "Returned as a Rails-style name (e.g. \"Central Time (US & Canada)\")."
           },
           "first_week_day": {
             "type": "string"
@@ -22667,7 +22674,7 @@
         "properties": {
           "time_zone_name": {
             "type": "string",
-            "description": "Time zone name (e.g. \"America/Chicago\", \"London\", \"UTC\")"
+            "description": "Time zone name. Accepts any valid Rails time zone name (e.g.\n\"London\", \"UTC\") as well as IANA identifiers (e.g.\n\"America/Chicago\"), which are normalized to the matching\nRails-style name before saving."
           },
           "first_week_day": {
             "type": "string",
@@ -25556,7 +25563,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/WebhookDelivery"
-            }
+            },
+            "description": "Up to the 25 most recent delivery exchanges, most recent first.\nEmpty when the webhook hasn't delivered anything yet."
           }
         },
         "required": [

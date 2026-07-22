@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-22T02:53:58Z
+# Generated: 2026-07-22T07:14:48Z
 
 require "json"
 require "time"
@@ -2168,9 +2168,10 @@ module Basecamp
     # OutOfOffice
     class OutOfOffice
       include TypeHelpers
-      attr_accessor :enabled, :end_date, :ongoing, :person, :start_date
+      attr_accessor :back_on_date, :enabled, :end_date, :ongoing, :person, :start_date
 
       def initialize(data = {})
+        @back_on_date = data["back_on_date"]
         @enabled = parse_boolean(data["enabled"])
         @end_date = data["end_date"]
         @ongoing = parse_boolean(data["ongoing"])
@@ -2180,6 +2181,7 @@ module Basecamp
 
       def to_h
         {
+          "back_on_date" => @back_on_date,
           "enabled" => @enabled,
           "end_date" => @end_date,
           "ongoing" => @ongoing,

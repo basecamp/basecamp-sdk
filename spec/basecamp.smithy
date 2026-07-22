@@ -5822,6 +5822,9 @@ structure Webhook {
   url: String
   @required
   app_url: String
+
+  /// Up to the 25 most recent delivery exchanges, most recent first.
+  /// Empty when the webhook hasn't delivered anything yet.
   recent_deliveries: WebhookDeliveryList
 }
 
@@ -7223,7 +7226,9 @@ structure GetOverdueTodosOutput {
   over_three_months_late: TodoItems
 }
 
-/// Get upcoming schedule entries within a date window
+/// Get upcoming schedule entries and assignable items within a date
+/// window. This endpoint is preserved as the canonical API path on BC5;
+/// the BC5 `/calendar` web view is HTML-only.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/reports/schedules/upcoming.json")
@@ -8163,8 +8168,10 @@ list MyAssignmentAssigneeList {
 // ===== Notification Operations =====
 
 /// Get the current user's notification inbox (the "Hey!" menu).
-/// Notifications are grouped into unreads, reads, and memories.
-/// Reads are paginated (50 per page). Unreads are capped at 100.
+/// Notifications are grouped into unreads, reads, bubble-ups, and
+/// scheduled bubble-ups (`memories` remains as an always-empty
+/// placeholder on BC5). Reads are paginated (50 per page). Unreads are
+/// capped at 100. Bubble-ups are capped per `limit_bubble_ups`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/my/readings.json")
@@ -8246,6 +8253,9 @@ structure Notification {
   created_at: ISO8601Timestamp
   @required
   updated_at: ISO8601Timestamp
+
+  /// The notification category: `inbox`, `chats`, `pings`, `bubbles`,
+  /// or `mentions`.
   section: String
   unread_count: Integer
   unread_at: ISO8601Timestamp
@@ -8391,12 +8401,18 @@ structure DisableOutOfOfficeOutput {}
 
 // ===== Out of Office Shapes =====
 
+/// When out of office is not enabled, `enabled` is `false` and
+/// `start_date`, `end_date`, and `back_on_date` are omitted.
 structure OutOfOffice {
   person: OutOfOfficePerson
   enabled: Boolean
   ongoing: Boolean
   start_date: ISO8601Date
   end_date: ISO8601Date
+
+  /// First working day after the out-of-office window ends.
+  /// Omitted when out of office is not enabled.
+  back_on_date: ISO8601Date
 }
 
 structure OutOfOfficePerson {
@@ -8453,7 +8469,10 @@ structure UpdateMyPreferencesInput {
 }
 
 structure PreferencesPayload {
-  /// Time zone name (e.g. "America/Chicago", "London", "UTC")
+  /// Time zone name. Accepts any valid Rails time zone name (e.g.
+  /// "London", "UTC") as well as IANA identifiers (e.g.
+  /// "America/Chicago"), which are normalized to the matching
+  /// Rails-style name before saving.
   time_zone_name: String
 
   /// First day of the week: Sunday, Monday, Tuesday, etc.
@@ -8473,6 +8492,8 @@ structure UpdateMyPreferencesOutput {
 structure Preferences {
   url: String
   app_url: String
+
+  /// Returned as a Rails-style name (e.g. "Central Time (US & Canada)").
   time_zone_name: String
   first_week_day: String
   time_format: String

@@ -919,6 +919,7 @@ class Notification(TypedDict):
 
 
 class OutOfOffice(TypedDict):
+    back_on_date: NotRequired[str]
     enabled: NotRequired[bool]
     end_date: NotRequired[str]
     ongoing: NotRequired[bool]

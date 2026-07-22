@@ -1104,8 +1104,10 @@ export interface paths {
         };
         /**
          * @description Get the current user's notification inbox (the "Hey!" menu).
-         *     Notifications are grouped into unreads, reads, and memories.
-         *     Reads are paginated (50 per page). Unreads are capped at 100.
+         *     Notifications are grouped into unreads, reads, bubble-ups, and
+         *     scheduled bubble-ups (`memories` remains as an always-empty
+         *     placeholder on BC5). Reads are paginated (50 per page). Unreads are
+         *     capped at 100. Bubble-ups are capped per `limit_bubble_ups`.
          */
         get: operations["GetMyNotifications"];
         put?: never;
@@ -1848,7 +1850,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Get upcoming schedule entries within a date window */
+        /**
+         * @description Get upcoming schedule entries and assignable items within a date
+         *     window. This endpoint is preserved as the canonical API path on BC5;
+         *     the BC5 `/calendar` web view is HTML-only.
+         */
         get: operations["GetUpcomingSchedule"];
         put?: never;
         post?: never;
@@ -3580,6 +3586,10 @@ export interface components {
             id: number;
             created_at: string;
             updated_at: string;
+            /**
+             * @description The notification category: `inbox`, `chats`, `pings`, `bubbles`,
+             *     or `mentions`.
+             */
             section?: string;
             /** Format: int32 */
             unread_count?: number;
@@ -3616,12 +3626,21 @@ export interface components {
             /** @description Custom image URL (pings only) */
             image_url?: string;
         };
+        /**
+         * @description When out of office is not enabled, `enabled` is `false` and
+         *     `start_date`, `end_date`, and `back_on_date` are omitted.
+         */
         OutOfOffice: {
             person?: components["schemas"]["OutOfOfficePerson"];
             enabled?: boolean;
             ongoing?: boolean;
             start_date?: string;
             end_date?: string;
+            /**
+             * @description First working day after the out-of-office window ends.
+             *     Omitted when out of office is not enabled.
+             */
+            back_on_date?: string;
         };
         OutOfOfficePayload: {
             /** @description Start date in ISO 8601 format (YYYY-MM-DD) */
@@ -3686,12 +3705,18 @@ export interface components {
         Preferences: {
             url?: string;
             app_url?: string;
+            /** @description Returned as a Rails-style name (e.g. "Central Time (US & Canada)"). */
             time_zone_name?: string;
             first_week_day?: string;
             time_format?: string;
         };
         PreferencesPayload: {
-            /** @description Time zone name (e.g. "America/Chicago", "London", "UTC") */
+            /**
+             * @description Time zone name. Accepts any valid Rails time zone name (e.g.
+             *     "London", "UTC") as well as IANA identifiers (e.g.
+             *     "America/Chicago"), which are normalized to the matching
+             *     Rails-style name before saving.
+             */
             time_zone_name?: string;
             /** @description First day of the week: Sunday, Monday, Tuesday, etc. */
             first_week_day?: string;
@@ -4515,6 +4540,10 @@ export interface components {
             types?: string[];
             url: string;
             app_url: string;
+            /**
+             * @description Up to the 25 most recent delivery exchanges, most recent first.
+             *     Empty when the webhook hasn't delivered anything yet.
+             */
             recent_deliveries?: components["schemas"]["WebhookDelivery"][];
         };
         /** @description Reference to a copied/moved recording in copy events. */
