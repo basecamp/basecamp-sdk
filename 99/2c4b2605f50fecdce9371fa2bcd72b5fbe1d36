@@ -1,0 +1,55 @@
+CONTRIBUTING.md
+  8a25d90aac60e426 242-317
+conformance/schema.json
+  8a25d90aac60e426 7-23,25-30,169-202
+conformance/runner/typescript/runner.test.ts
+  8a25d90aac60e426 52-56,946-955
+conformance/runner/typescript/package.json
+  8a25d90aac60e426 17-19
+conformance/runner/typescript/live-dispatch.ts
+  8a25d90aac60e426 1-112
+Makefile
+  8a25d90aac60e426 410-420,602-613,618-621,628-634,636,742-743
+  s_c9b7cecf44b5ed::t_3144891ce713aa 377
+conformance/runner/typescript/schema-validator.test.ts
+  8a25d90aac60e426 1-122
+conformance/tests/live-my-surface.json
+  8a25d90aac60e426 1-146
+conformance/runner/typescript/live-runner.test.ts
+  8a25d90aac60e426 1-28,30-189,191-202,208-309
+conformance/runner/typescript/fixtures.ts
+  8a25d90aac60e426 1-111
+conformance/runner/typescript/wire-capture.ts
+  8a25d90aac60e426 1-103
+conformance/runner/typescript/schema-validator.ts
+  8a25d90aac60e426 1-49,53-60,63-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "992c4b2605f50fecdce9371fa2bcd72b5fbe1d36",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 11,
+      "total_deletions": 1,
+      "accepted_lines": 1266,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

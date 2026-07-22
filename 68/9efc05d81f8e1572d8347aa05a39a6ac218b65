@@ -1,0 +1,178 @@
+openapi.json
+  8a25d90aac60e426 23587-23602,24712-24724,24871-24879,26522-26528,26925-26942
+spec/api-provenance.json
+  8a25d90aac60e426 6-7,12
+go/pkg/basecamp/api-provenance.json
+  8a25d90aac60e426 6-7,12
+spec/basecamp.smithy
+  8a25d90aac60e426 1260-1264,1309-1313,1386-1397,8190-8198,8200-8207,8265-8273
+spec/bucket-scoped-allowlist.txt
+  8a25d90aac60e426 1-8
+behavior-model.json
+  8a25d90aac60e426 2604
+Makefile
+  8a25d90aac60e426 410-420,591-602,602-613,607-621,618-630,632,727-728,738-739
+  s_2b59bf57d53599::t_c061f2b1911bee 111,114-115,117
+scripts/check-bucket-flat-parity.sh
+  8a25d90aac60e426 13-15,18-22,42-43,61,103
+  s_d84172d91a31eb::t_45ff13ba6cf459 44-45
+spec/api-gaps/recording-bubbleupable-field.md
+  8a25d90aac60e426 1-57
+scripts/validate-api-gaps.sh
+  8a25d90aac60e426 1-14
+spec/api-gaps/calendar.md
+  8a25d90aac60e426 1-64
+spec/api-gaps/allowlist.yml
+  8a25d90aac60e426 1-29
+spec/api-gaps/scratchpad.md
+  8a25d90aac60e426 1-67
+CONTRIBUTING.md
+  8a25d90aac60e426 242-274,242-317
+spec/api-gaps/step-top-level.md
+  8a25d90aac60e426 1-68
+spec/api-gaps/allowlist-schema.json
+  8a25d90aac60e426 1-36
+spec/api-gaps/schema.json
+  8a25d90aac60e426 1-59
+COORDINATION.md
+  8a25d90aac60e426 1-56
+spec/api-gaps/rich-text-project-attachable.md
+  8a25d90aac60e426 1-53
+spec/api-gaps/README.md
+  8a25d90aac60e426 1-74,80-81
+spec/api-gaps/recordable-subtypes-doc.md
+  8a25d90aac60e426 1-112
+spec/api-gaps/stack-doc-and-smithy.md
+  8a25d90aac60e426 1-75
+spec/api-gaps/activity-timeline.md
+  8a25d90aac60e426 1-70
+spec/api-gaps/search-filter-additions.md
+  8a25d90aac60e426 1-65
+spec/api-gaps/todoset-completed-list-visibility.md
+  8a25d90aac60e426 1-25,29-64
+  s_d84172d91a31eb::t_74c59d649aeed3 26-28
+scripts/validate-api-gaps.rb
+  8a25d90aac60e426 1-214
+spec/api-gaps/everything-aggregates.md
+  8a25d90aac60e426 1-91
+typescript/src/generated/openapi-stripped.json
+  8a25d90aac60e426 21263,21265-21278,22388-22400,22547-22555,24198-24204,24601-24618
+  65321caac279d940 21264
+  s_162ea6db661501::t_3dfdc2c2fb6d7f 22753-22758
+typescript/src/generated/schema.d.ts
+  8a25d90aac60e426 3302-3306,3308-3311,3313-3320,3600-3609,3657-3662,4120-4125,4233-4246
+  65321caac279d940 3307
+ruby/lib/basecamp/generated/types.rb
+  8a25d90aac60e426 2096,2109-2110,2139-2140,2253,2281,2308,3388,3423,3456,3677,3699,3702,3707-3708,3727,3730,3735-3736
+python/src/basecamp/generated/types.py
+  8a25d90aac60e426 709,712,895-896,964,1371,1452,1457,1469-1470
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Person.kt
+  8a25d90aac60e426 25
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todoset.kt
+  8a25d90aac60e426 34-38
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
+  8a25d90aac60e426 42-43
+swift/Sources/Basecamp/Generated/Models/GetMyNotificationsResponseContent.swift
+  8a25d90aac60e426 5,8
+swift/Sources/Basecamp/Generated/Models/Notification.swift
+  8a25d90aac60e426 10-11,38-39,65-66
+swift/Sources/Basecamp/Generated/Models/Person.swift
+  8a25d90aac60e426 26,51,75
+swift/Sources/Basecamp/Generated/Models/Todo.swift
+  8a25d90aac60e426 32,63,93
+swift/Sources/Basecamp/Generated/Models/Todoset.swift
+  8a25d90aac60e426 19,22,27-28,45,48,52-54,70,73,78-79
+go/pkg/generated/client.gen.go
+  8a25d90aac60e426 1024-1036,1039-1042,1448-1457,1538-1544,2019-2030,2126-2157
+typescript/package.json
+  s_d84172d91a31eb::t_d2a4deb5d07c86 69
+go.work.sum
+  s_162ea6db661501::t_b212c760f74072 11,50,67,69,71,75,79,98,133,135,137,144,164
+typescript/src/generated/metadata.ts
+  s_dded7873563c1c::t_ff3129b466f192 1-37,2689-2692
+conformance/tests/live-my-surface.json
+  8a25d90aac60e426 1-146
+conformance/runner/typescript/package.json
+  8a25d90aac60e426 17-19
+conformance/runner/typescript/live-dispatch.ts
+  8a25d90aac60e426 1-112
+conformance/runner/typescript/runner.test.ts
+  8a25d90aac60e426 52-56,946-955
+conformance/schema.json
+  8a25d90aac60e426 7-23,25-30,169-202
+conformance/runner/typescript/schema-validator.test.ts
+  8a25d90aac60e426 1-122
+conformance/runner/typescript/live-runner.test.ts
+  8a25d90aac60e426 1-306
+conformance/runner/typescript/wire-capture.ts
+  8a25d90aac60e426 1-103
+conformance/runner/typescript/fixtures.ts
+  8a25d90aac60e426 1-111
+conformance/runner/typescript/schema-validator.ts
+  8a25d90aac60e426 1-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "689efc05d81f8e1572d8347aa05a39a6ac218b65",
+  "prompts": {
+    "65321caac279d940": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ddab7-24dd-7f61-9849-997c07ab3799",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 663,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 18292,
+      "total_deletions": 9255,
+      "accepted_lines": 141,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_162ea6db661501": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7686d237-a0ba-4dcb-ade4-abf6e0c0e2f1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_dded7873563c1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19e700c6-96e9-428e-ae9e-45b2a4d43bdf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
