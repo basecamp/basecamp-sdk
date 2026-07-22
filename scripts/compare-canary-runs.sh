@@ -153,11 +153,33 @@ validate_snapshot() {
       and (.pages_count == (.pages | length))
       and all(.pages[];
             type == "object"
-            and has("status") and has("headers") and has("body")
-            and has("bodyText") and has("url"))
+            and (.status | type == "number")
+            and (.headers | type == "object")
+            and has("body")
+            and (.bodyText | type == "string")
+            and (.url | type == "string"))
     ' "$snap" >/dev/null 2>&1; then
-    echo "ERROR: structurally invalid wire snapshot '$snap' (expected an object with a non-empty pages array, matching pages_count, and {status, headers, body, bodyText, url} on every page)" >&2
+    echo "ERROR: structurally invalid wire snapshot '$snap' (expected an object with a non-empty pages array, matching pages_count, and correctly typed {status: number, headers: object, body, bodyText: string, url: string} on every page)" >&2
     exit 2
+  fi
+}
+
+# Bracket-path validation shared by enforcing rules and waiver entries.
+# Brackets are only documented (and only handled) as a leading 'pages[N]' or
+# 'pages[*]' segment, and a bracketed path must then enter the page BODY
+# ('pages[N].body...'): page-level keys other than body (status, headers,
+# url) are backend-specific metadata with no pairwise semantics, and a typo
+# like 'pages[0].items' would read null on BOTH snapshots and false-green
+# the rule. Any other bracket use — items[*].foo, a second star, a bare jq
+# stream like items[] — would stream through jq with undefined comparison
+# semantics. Reject all of these as fixture mistakes.
+validate_rule_path() {
+  local upath="$1" ctx="$2"
+  if [[ "$upath" == *"["* || "$upath" == *"]"* ]]; then
+    if ! [[ "$upath" =~ ^pages\[([0-9]+|\*)\]\.body(\.[^][]+)?$ ]]; then
+      echo "ERROR: unsupported path '$upath' on $ctx — brackets are only supported as the leading 'pages[N]' or 'pages[*]' segment and must enter the page body ('pages[N].body...')" >&2
+      exit 2
+    fi
   fi
 }
 
@@ -271,6 +293,12 @@ for entry in "${TEST_ENTRIES[@]}"; do
       echo "ERROR: pairwiseDeltaAllowed path extraction mismatch for $OPERATION (expected $ALLOW_COUNT, got ${#ALLOW_PATHS[@]}; paths must be strings)" >&2
       exit 2
     fi
+    # A malformed bracket path in a waiver-only entry must be a fixture
+    # error too — it names a path no enforcing rule can ever target, so it
+    # would otherwise sit unnoticed while appearing to document a waiver.
+    for ap in "${ALLOW_PATHS[@]}"; do
+      validate_rule_path "$ap" "$OPERATION (pairwiseDeltaAllowed)"
+    done
   fi
   is_allowed() {
     local p="$1"
@@ -342,22 +370,11 @@ for entry in "${TEST_ENTRIES[@]}"; do
     fi
 
     for upath in "${RULE_PATHS[@]}"; do
-      # Brackets are only documented (and only handled) as a leading
-      # 'pages[N]' or 'pages[*]' segment. Any other use — items[*].foo, a
-      # second star, a bare jq stream like items[] — would stream through
-      # jq with undefined comparison semantics: an unwrapped stream makes
-      # the length variables multi-line/empty, the -lt test errors falsy,
-      # and the violation is silently skipped. Reject it as a fixture
-      # mistake instead. Validate BEFORE the waiver skip below: a
-      # waived-but-unsupported path must still be reported, or a typo in a
-      # waived canary rule would permanently suppress enforcement without
-      # the fixture error ever surfacing.
-      if [[ "$upath" == *"["* || "$upath" == *"]"* ]]; then
-        if ! [[ "$upath" =~ ^pages\[([0-9]+|\*)\](\.[^][]+)?$ ]]; then
-          echo "ERROR: unsupported path '$upath' on $OPERATION — brackets are only supported as the leading 'pages[N]' or 'pages[*]' segment" >&2
-          exit 2
-        fi
-      fi
+      # Validate BEFORE the waiver skip below: a waived-but-unsupported
+      # path must still be reported, or a typo in a waived canary rule
+      # would permanently suppress enforcement without the fixture error
+      # ever surfacing.
+      validate_rule_path "$upath" "$OPERATION"
 
       if is_allowed "$upath"; then
         continue

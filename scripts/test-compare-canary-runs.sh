@@ -730,6 +730,88 @@ else
   fail "W: expected exit 2 with unsupported-brackets error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test X: a malformed bracket path that appears ONLY in a pairwiseDeltaAllowed
+# waiver (no enforcing rule targets it) must still be a fixture error — it
+# names a path no enforcing rule can ever use, so it would otherwise sit
+# unnoticed while appearing to document a waiver.
+read -r BC4 BC5 <<<"$(fresh_dirs X)"
+XW_TESTS="$TMP/X/xw-tests.json"
+cat >"$XW_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Waiver only bad path test",
+    "operation": "WbOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["items"], "reason": "valid enforcing rule" },
+      { "type": "pairwiseDeltaAllowed", "paths": ["items[*].foo"], "reason": "typo'd waiver path that no enforcing rule targets" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Waiver_only_bad_path_test.json" WbOp '{"items":[1]}'
+write_snapshot "$BC5/Waiver_only_bad_path_test.json" WbOp '{"items":[1]}'
+run_compare "$BC4" "$BC5" "$XW_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "pairwiseDeltaAllowed.*brackets are only supported\|brackets are only supported.*pairwiseDeltaAllowed" <<<"$RUN_OUT"; then
+  pass "X: malformed bracket path in a waiver-only entry fails with exit 2"
+else
+  fail "X: expected exit 2 with waiver unsupported-path error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# Test Y: a bracketed path that never enters the page body (pages[0].items
+# instead of pages[0].body.items) reads null on BOTH snapshots and would
+# false-green a superset rule — reject it as a fixture mistake.
+read -r BC4 BC5 <<<"$(fresh_dirs Y)"
+YB_TESTS="$TMP/Y/yb-tests.json"
+cat >"$YB_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Bodyless bracket path test",
+    "operation": "BbOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["pages[0].items"], "reason": "missing .body segment" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Bodyless_bracket_path_test.json" BbOp '{"items":[1,2]}'
+write_snapshot "$BC5/Bodyless_bracket_path_test.json" BbOp '{"items":[]}'
+run_compare "$BC4" "$BC5" "$YB_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "must enter the page body" <<<"$RUN_OUT"; then
+  pass "Y: bracket path skipping .body fails with exit 2, no false-green"
+else
+  fail "Y: expected exit 2 with must-enter-body error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# Test Z: a snapshot whose page keys exist but carry the wrong TYPES
+# (status as string, headers null) must fail structural validation — typed
+# corruption would make read_value return nulls and false-green rules.
+read -r BC4 BC5 <<<"$(fresh_dirs Z)"
+write_snapshot "$BC4/$GMN_SAFE_NAME.json" GetMyNotifications '{"memories":[1]}'
+mkdir -p "$BC5"
+cat >"$BC5/$GMN_SAFE_NAME.json" <<'JSON'
+{
+  "operation": "GetMyNotifications",
+  "pages": [
+    { "status": "200", "headers": null, "body": {"memories": []}, "bodyText": "{}", "url": "https://example.test" }
+  ],
+  "pages_count": 1
+}
+JSON
+run_compare "$BC4" "$BC5" "$GMN_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "structurally invalid wire snapshot" <<<"$RUN_OUT"; then
+  pass "Z: wrongly-typed page keys fail structural validation (exit 2)"
+else
+  fail "Z: expected exit 2 for wrongly-typed page keys; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
