@@ -1,0 +1,28 @@
+conformance/runner/typescript/wire-capture.ts
+  s_2b59bf57d53599::t_5175109e2df36d 48-50
+  s_2b59bf57d53599::t_20e638b12f975c 79-82,87-100
+conformance/runner/typescript/schema-validator.ts
+  s_2b59bf57d53599::t_3f3c4c987b0acb 150-162
+conformance/runner/typescript/schema-validator.test.ts
+  s_2b59bf57d53599::t_60b844e550b4d4 161-174
+conformance/runner/typescript/wire-capture.test.ts
+  s_2b59bf57d53599::t_29047d43eb19d8 1-112
+conformance/runner/typescript/package-lock.json
+  s_2b59bf57d53599::t_89a376087af9f8 26,898-900
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "53e6175cf7c90a2d47fa94a1293486f2939b772b",
+  "prompts": {},
+  "sessions": {
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

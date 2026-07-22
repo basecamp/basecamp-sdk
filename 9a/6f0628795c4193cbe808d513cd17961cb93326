@@ -1,0 +1,19 @@
+conformance/runner/typescript/package-lock.json
+  s_4ac9830e6ceb59::t_4c8f7b5238687c 16-18,901-903
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9a6f0628795c4193cbe808d513cd17961cb93326",
+  "prompts": {},
+  "sessions": {
+    "s_4ac9830e6ceb59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c3e842c-a5e5-499c-b07d-f467d43faaab",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
