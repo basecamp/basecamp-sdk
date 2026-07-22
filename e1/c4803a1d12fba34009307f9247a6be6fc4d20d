@@ -1,0 +1,22 @@
+go/pkg/basecamp/vaults_test.go
+  s_e360c8009d4261::t_da21dbd751a8e3 630,635,663-664
+  s_e360c8009d4261::t_20d89e4bd0c1ea 665
+spec/api-gaps/upload-new-version.md
+  s_e360c8009d4261::t_43dd130df1f822 100-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e1c4803a1d12fba34009307f9247a6be6fc4d20d",
+  "prompts": {},
+  "sessions": {
+    "s_e360c8009d4261": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978e5d70-ea1a-4130-a260-f5a99cfa4010",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
