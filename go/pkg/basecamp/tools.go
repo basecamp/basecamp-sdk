@@ -78,6 +78,9 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 }
 
 // Create adds a tool to the destination bucket.
+// toolType is required and must be one of Basecamp's dock tool types:
+// "Chat::Transcript", "Inbox", "Kanban::Board", "Message::Board",
+// "Questionnaire", "Schedule", "Todoset", or "Vault".
 // An optional title can be provided; if empty, Basecamp assigns the next available default title for the tool type.
 // Returns the newly created tool.
 func (s *ToolsService) Create(ctx context.Context, bucketID int64, toolType string, opts *CreateToolOptions) (result *Tool, err error) {
@@ -94,6 +97,11 @@ func (s *ToolsService) Create(ctx context.Context, bucketID int64, toolType stri
 	start := time.Now()
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if toolType == "" {
+		err = ErrUsage("tool type is required")
+		return nil, err
+	}
 
 	body := generated.CreateToolJSONRequestBody{
 		ToolType: toolType,
