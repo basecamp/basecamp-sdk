@@ -91,17 +91,15 @@ module Basecamp
           # default (read) — Ruby treats "" as truthy, so guard on emptiness too.
           params["scope"] = scope unless scope.nil? || scope.empty?
 
-          # Normalize ONCE at operation entry and thread the SAME value to both the
-          # client construction and the request, so a non-finite/non-positive input
-          # cannot leave the socket timeout unbounded on the default-built client.
-          # The body cap gets the same discipline: an invalid value (nil, Infinity,
-          # negative) would disable the streaming memory bound entirely.
+          # Normalize ONCE at operation entry and thread the SAME value to every
+          # request, so a non-finite/non-positive input cannot leave the socket
+          # timeout unbounded. The body cap gets the same discipline: an invalid
+          # value (nil, Infinity, negative) would disable the streaming bound.
           timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
           max_body_bytes = Fetcher.normalize_body_cap(max_body_bytes)
-          client = http_client || build_client(timeout)
           status, body = begin
             post_form(
-              client, device_authorization_endpoint, params,
+              http_client, device_authorization_endpoint, params,
               timeout: timeout, max_body_bytes: max_body_bytes,
               # A non-2xx device-auth response is a hard failure whose body is unused.
               skip_status: ->(s) { !(200..299).cover?(s) }
@@ -171,12 +169,11 @@ module Basecamp
           backoff_seconds = interval_seconds
           deadline = clock.call + expires_in
 
-          # Normalize ONCE, outside the polling loop, and reuse for the client and
-          # every per-poll request (see request_device_authorization). The body cap
-          # gets the same discipline — an invalid value would disable the bound.
+          # Normalize ONCE, outside the polling loop, and reuse for every per-poll
+          # request (see request_device_authorization). The body cap gets the same
+          # discipline — an invalid value would disable the bound.
           timeout = Fetcher.normalize_timeout(timeout, default: DEVICE_REQUEST_TIMEOUT)
           max_body_bytes = Fetcher.normalize_body_cap(max_body_bytes)
-          client = http_client || build_client(timeout)
           params = {
             "grant_type" => DEVICE_CODE_GRANT_TYPE,
             "device_code" => device_code,
@@ -202,7 +199,7 @@ module Basecamp
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if clock.call >= deadline
 
             outcome = begin
-              post_device_token(client, token_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
+              post_device_token(http_client, token_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
             rescue Faraday::TimeoutError
               # A connection timeout is transient: back off exponentially and
               # keep polling rather than ending the flow. Only the backoff grows —
@@ -319,10 +316,6 @@ module Basecamp
             value.is_a?(Numeric) && value.real? && value.finite? && value.positive? && value <= MAX_DEVICE_SECONDS
           end
 
-          def build_client(timeout)
-            Fetcher.build_client(timeout)
-          end
-
           # Waits +seconds+ while observing cancellation DURING the wait. A plain
           # +sleep+ is not interruptible, so a cancellation set mid-wait would not be
           # noticed until the whole (possibly grown +slow_down+) interval elapses.
@@ -345,21 +338,31 @@ module Basecamp
             end
           end
 
-          # POSTs a form body and reads the response under the same bounded/
-          # streaming cap as discovery (SPEC.md §9): the +on_data+ proc aborts the
-          # read the moment the accumulated size exceeds the cap, so an oversized
-          # response is never fully buffered. Returns +[status, body]+. The
-          # per-request timeout is always set here — even on an injected client —
-          # so a stalled socket can't hang the poll. A real adapter streams to
-          # +on_data+ (leaving +response.body+ empty); a test double that ignores
-          # the block falls back to the buffered body, still size-capped.
+          # POSTs a form body and returns +[status, body]+, reading under the same
+          # bounded/streaming cap as discovery (SPEC.md §9).
+          #
+          # With a nil +client+ the POST runs on the headers-first
+          # {Fetcher.stream_http} primitive: +skip_status+ classifies by status at
+          # HEADER time (a skipped body is never read, even one that stalls
+          # forever), and a watchdog bounds the whole request — including a
+          # stalled or byte-dripped header phase — at the timeout. An INJECTED
+          # Faraday connection keeps the Faraday path below.
           def post_form(client, url, params, timeout:, max_body_bytes:, skip_status: nil)
-            # +timeout+ is already normalized by the caller (request/poll entry). The
-            # wall-clock deadline bounds the WHOLE read: req.options.timeout below
-            # bounds only each socket read and resets on every on_data chunk, so a
-            # slow-drip peer could otherwise hang a device request past the timeout /
-            # code expiry while staying under the cap. +skip_status+ stops the read
-            # for a status whose body the caller doesn't use (non-2xx / 3xx).
+            if client.nil?
+              return Fetcher.stream_http(
+                :post, url,
+                headers: { "Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json" },
+                form: params, timeout: timeout, max_body_bytes: max_body_bytes, skip_status: skip_status
+              )
+            end
+
+            # Injected-client (Faraday) path. +timeout+ is already normalized by the
+            # caller (request/poll entry). The wall-clock deadline bounds the WHOLE
+            # read: req.options.timeout below bounds only each socket read and resets
+            # on every on_data chunk, so a slow-drip peer could otherwise hang a
+            # device request past the timeout / code expiry while staying under the
+            # cap. +skip_status+ stops the read for a status whose body the caller
+            # doesn't use (non-2xx / 3xx).
             deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
             chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline, skip_status: skip_status)
             response = client.post(url) do |req|
@@ -380,14 +383,13 @@ module Basecamp
             # every client shape and supported Faraday version, never buffered into
             # a size-cap error the caller must then untangle.
             #
-            # Known residual: Faraday exposes no headers-time callback, so a response
-            # whose headers arrive but whose body then stalls PAST the read timeout
-            # never returns from +client.post+ — it surfaces as a bounded transport
-            # timeout (request path: :transport; poll path: backoff, capped by code
-            # expiry) rather than this status-first classification. That degradation
-            # is bounded and redirect-safe (3xx Locations are never followed); exact
-            # headers-first semantics for it belong to the transport primitive shared
-            # with discovery, tracked as a pre-go-live hardening follow-up.
+            # Known residual — INJECTED clients only (the default path above is
+            # exact): Faraday exposes no headers-time callback, so a response whose
+            # headers arrive but whose body then stalls PAST the read timeout never
+            # returns from +client.post+ — it surfaces as a bounded transport timeout
+            # (request path: :transport; poll path: backoff, capped by code expiry)
+            # rather than this status-first classification. Bounded and
+            # redirect-safe (3xx Locations are never followed).
             return [ response.status, "" ] if skip_status && skip_status.call(response.status)
 
             body =

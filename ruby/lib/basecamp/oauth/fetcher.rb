@@ -2,6 +2,9 @@
 
 require "faraday"
 require "json"
+require "net/http"
+require "openssl"
+require "uri"
 
 module Basecamp
   module Oauth
@@ -145,29 +148,16 @@ module Basecamp
         [ chunks, reader ]
       end
 
-      # Builds the default SSRF-hardened Faraday connection. No redirect
-      # middleware is registered, so redirects are not followed.
-      #
-      # @param timeout [Integer] request + connect timeout in seconds
-      # @return [Faraday::Connection]
-      def self.build_client(timeout)
-        Faraday.new do |conn|
-          conn.options.timeout = timeout
-          conn.options.open_timeout = timeout
-          conn.adapter Faraday.default_adapter
-        end
-      end
-
       # Rejects an INJECTED connection whose middleware stack we cannot verify to
       # be redirect-free. Redirect suppression is a load-bearing SSRF control (RFC
       # 9728 §7.7): a caller-supplied client that follows redirects would silently
       # chase an attacker-controlled +Location+. A class-NAME heuristic (matching
       # +/redirect/+) is bypassable by a follower whose class name does not contain
       # "redirect", so we enforce a POLICY instead of guessing by name: an injected
-      # connection may carry ONLY adapter handlers. The default {build_client}
-      # connection (adapter only) and a test's mock adapter qualify; ANY request/
-      # response middleware — which could follow redirects under any name, or
-      # otherwise rewrite the request — is refused rather than trusted.
+      # connection may carry ONLY adapter handlers (an adapter-only connection or
+      # a test's mock adapter qualifies); ANY request/response middleware — which
+      # could follow redirects under any name, or otherwise rewrite the request —
+      # is refused rather than trusted.
       #
       # @param client [Faraday::Connection]
       # @raise [OauthError] +validation+ when non-adapter middleware is present
@@ -196,14 +186,170 @@ module Basecamp
         )
       end
 
+      # Headers-first bounded HTTP over Net::HTTP — the default transport for
+      # every SDK-built OAuth fetch (both discovery hops and the device flow).
+      # Injected Faraday connections keep the Faraday path; this primitive exists
+      # because Faraday cannot provide these two guarantees:
+      #
+      # 1. **Status at header time.** Faraday's +on_data+ is a body callback, so a
+      #    response whose body never arrives can only be classified after a
+      #    timeout. Net::HTTP's block form yields the response once HEADERS are
+      #    in: +skip_status+ classifies by status BEFORE any body read, and
+      #    raising out of the block makes +Net::HTTP.start+'s ensure close the
+      #    socket with the body undrained — exact status-first classification
+      #    (SPEC.md §16) for every response shape, including a stalled body.
+      # 2. **A total wall-clock bound.** A per-read timeout resets on every byte,
+      #    so a peer dripping header or body bytes defeats it. A WATCHDOG thread
+      #    closes the connection at a monotonic deadline, which interrupts even a
+      #    blocked or dripped HEADER read (closing the socket from another thread
+      #    raises IOError in the blocked reader — verified on a live socket).
+      #    +max_retries = 0+ is load-bearing: Net::HTTP's idempotent-retry would
+      #    otherwise silently REOPEN the connection the watchdog just closed.
+      #
+      # The body streams under the same cap + deadline as the Faraday path, and
+      # redirects are structurally never followed (+Net::HTTP#request+ has no
+      # follow logic). Transport failures surface as Faraday errors
+      # (+TimeoutError+ for timeouts, +ConnectionFailed+ for connection and
+      # protocol-parse failures) so both transport paths classify through the
+      # same caller rescues. Bounded-read violations keep raising the shared
+      # {BodyTooLarge} / {ReadDeadlineExceeded} markers — deliberately NOT
+      # Faraday errors, so each caller maps them to its own operation-specific
+      # error message, exactly as on the Faraday path.
+      #
+      # @param method [Symbol] +:get+ or +:post+
+      # @param url [String] fully-qualified URL (already origin-validated)
+      # @param headers [Hash] request headers
+      # @param form [Hash, nil] form params; www-form-encoded into the POST body
+      # @param timeout [Numeric] total request bound in seconds (already
+      #   normalized by the caller). The deadline is anchored BEFORE connect and
+      #   open_timeout carries the same value, so the total wall time is
+      #   ~timeout regardless of which phase stalls (the watchdog closes the
+      #   session the moment it exists if the deadline fired mid-connect)
+      # @param max_body_bytes [Integer] bounded read cap in bytes
+      # @param skip_status [Proc, nil] statuses whose body is never read
+      # @return [Array(Integer, String)] status and (possibly empty) body
+      def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil)
+        uri = begin
+          URI.parse(url)
+        rescue URI::InvalidURIError
+          nil
+        end
+        # Fail closed on an unparsable or hostless URL ("https:foo" parses with a
+        # nil hostname): require_https checks only the scheme, and a nil host
+        # would otherwise surface as a raw ArgumentError from inside Net::HTTP —
+        # outside the transport's Faraday-error contract.
+        if uri.nil? || uri.hostname.nil? || uri.hostname.empty?
+          raise OauthError.new("validation", "OAuth endpoint URL has no host: #{url.inspect}")
+        end
+
+        # URI#hostname strips IPv6 brackets ("[::1]" -> "::1"), which is the form
+        # Net::HTTP.new expects. ENV proxy handling matches faraday-net_http.
+        http = Net::HTTP.new(uri.hostname, uri.port)
+        http.use_ssl = uri.scheme == "https"
+        http.open_timeout = timeout
+        http.read_timeout = timeout
+        http.write_timeout = timeout
+        http.max_retries = 0
+
+        request =
+          case method
+          when :post then Net::HTTP::Post.new(uri)
+          when :get then Net::HTTP::Get.new(uri)
+          else raise ArgumentError, "stream_http supports :get and :post, got #{method.inspect}"
+          end
+        headers.each { |name, value| request[name] = value }
+        if form
+          request.body = URI.encode_www_form(form)
+          # A form body implies the form content type; explicit headers win.
+          request["Content-Type"] ||= "application/x-www-form-urlencoded"
+        end
+
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        deadline_fired = false
+        watchdog = Thread.new do
+          remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          sleep(remaining) if remaining.positive?
+          deadline_fired = true
+          # Retry until the session exists to close: the deadline can fire while
+          # the session is still CONNECTING (finish then raises IOError), and a
+          # one-shot close would leave the subsequent header read unbounded. The
+          # ensure below kills this thread the moment the request completes, so
+          # the loop cannot outlive the call.
+          begin
+            http.finish
+          rescue IOError
+            sleep(0.05)
+            retry
+          end
+        end
+
+        status = nil
+        chunks = []
+        total = 0
+        http.start do |session|
+          session.request(request) do |response|
+            status = response.code.to_i
+            # Status-first: a skipped status's body is NEVER read — the raise
+            # unwinds through start, whose ensure closes the socket undrained.
+            raise SkipBody.new(status) if skip_status&.call(status)
+
+            response.read_body do |chunk|
+              raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+              total += chunk.bytesize
+              raise BodyTooLarge if total > max_body_bytes
+
+              chunks << chunk
+            end
+          end
+        end
+        [ status, chunks.join.force_encoding(Encoding::UTF_8) ]
+      rescue SkipBody => e
+        [ e.status, "" ]
+      rescue Timeout::Error, Errno::ETIMEDOUT => e
+        # Timeout::Error covers Net::OpenTimeout/ReadTimeout/WriteTimeout alike
+        # (a peer that accepts the connection but stops READING trips the write
+        # timeout). Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT:
+        # both must map with the timeouts — the exact pair faraday-net_http
+        # rescues — or the device poll would terminate instead of applying its
+        # transient backoff.
+        raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
+      rescue IOError => e
+        # The watchdog's close raises IOError in the blocked reader; only map it
+        # to a timeout when the deadline actually fired — any other IOError (a
+        # peer closing mid-headers, for example) is a connection failure.
+        raise Faraday::TimeoutError, "OAuth request exceeded the timeout deadline" if deadline_fired
+
+        raise Faraday::ConnectionFailed, e.message
+      rescue OpenSSL::SSL::SSLError => e
+        # TLS failures (an unverifiable peer certificate above all) map to
+        # Faraday::SSLError exactly as faraday-net_http maps them, so the
+        # default and injected paths classify certificate rejection alike.
+        raise Faraday::SSLError, e.message
+      rescue Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
+             SystemCallError, SocketError => e
+        # The parse errors are direct StandardError subclasses (not IOError), so
+        # a malformed status line / header must be mapped here explicitly or it
+        # would leak raw from the public discovery/device APIs.
+        raise Faraday::ConnectionFailed, e.message
+      ensure
+        watchdog&.kill
+        watchdog&.join
+      end
+
       # Fetches +url+ and returns the parsed JSON object (a Hash).
       #
-      # The request timeout is applied per-request (not only on the connection)
-      # so a bounded read is enforced even when the caller INJECTS its own
-      # connection: an injected client's adapter default would otherwise leave the
-      # requested +timeout+ unenforced. This mirrors the device flow's +post_form+.
+      # With a nil +http_client+ the fetch runs on the headers-first
+      # {stream_http} primitive (total wall-clock bound incl. the header phase).
+      # An INJECTED connection keeps the Faraday path: the request timeout is
+      # applied per-request (not only on the connection) so a bounded read is
+      # enforced even under the injected adapter's defaults, and the wall-clock
+      # deadline bounds the whole body read — but Faraday exposes no
+      # headers-time callback, so a body that stalls past the read timeout on
+      # the injected path surfaces as a bounded transport timeout.
       #
-      # @param http_client [Faraday::Connection] the SSRF-hardened connection
+      # @param http_client [Faraday::Connection, nil] injected connection, or
+      #   nil for the default headers-first transport
       # @param url [String] fully-qualified well-known URL to fetch
       # @param timeout [Integer] per-request timeout in seconds
       # @param max_body_bytes [Integer] bounded read cap in bytes
@@ -211,6 +357,56 @@ module Basecamp
       # @raise [OauthError] +api_error+ on non-2xx, oversized body, non-object
       #   JSON, or parse failure; +network+ on transport failure
       def self.fetch_json(http_client, url, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES)
+        status, body =
+          if http_client.nil?
+            stream_http(
+              :get, url,
+              headers: { "Accept" => "application/json" },
+              timeout: timeout, max_body_bytes: max_body_bytes,
+              # STATUS DOMINATES THE BODY (SPEC.md: non-2xx on either hop →
+              # api_error, never network): skip draining a non-2xx body so a
+              # stalled/dripped error body cannot convert the required api_error
+              # into a network timeout. The body text was only optional
+              # diagnostics — the other SDKs read it best-effort at most.
+              skip_status: ->(response_status) { !(200..299).cover?(response_status) }
+            )
+          else
+            faraday_fetch(http_client, url, timeout: timeout, max_body_bytes: max_body_bytes)
+          end
+
+        unless (200..299).cover?(status)
+          # Status-only, on BOTH paths: the error category, retryability, and
+          # http_status are the observable contract; embedding response body
+          # text would put attacker-influenced content in exception messages
+          # and diverge from the (body-less) default transport and Python.
+          raise OauthError.new(
+            "api_error",
+            "OAuth discovery failed with status #{status}",
+            http_status: status
+          )
+        end
+
+        data = JSON.parse(body)
+        raise OauthError.new("api_error", "OAuth discovery response is not a JSON object") unless data.is_a?(Hash)
+
+        data
+      rescue BodyTooLarge
+        raise OauthError.new("api_error", "OAuth discovery response exceeds size cap")
+      rescue ReadDeadlineExceeded
+        raise OauthError.new("network", "OAuth discovery timed out", retryable: true)
+      rescue Faraday::Error => e
+        raise OauthError.new("network", "OAuth discovery failed: #{e.message}", retryable: true)
+      rescue JSON::ParserError => e
+        raise OauthError.new("api_error", "Failed to parse OAuth discovery response: #{e.message}")
+      end
+
+      # The Faraday transport for an INJECTED connection. The request timeout is
+      # applied per-request (not only on the connection) so a bounded read is
+      # enforced even under the injected adapter's defaults, and the wall-clock
+      # deadline bounds the whole body read.
+      #
+      # @return [Array(Integer, String)] status and body
+      def self.faraday_fetch(http_client, url, timeout:, max_body_bytes:)
         # Wall-clock deadline over the WHOLE read: req.options.timeout below bounds
         # only each socket read and resets on every chunk, so a slow-drip peer could
         # otherwise hang the fetch indefinitely while staying under max_body_bytes.
@@ -228,28 +424,7 @@ module Basecamp
           req.options.open_timeout = timeout
         end
 
-        body = chunks.join.force_encoding(Encoding::UTF_8)
-
-        unless (200..299).cover?(response.status)
-          raise OauthError.new(
-            "api_error",
-            "OAuth discovery failed with status #{response.status}: #{Basecamp::Security.truncate(body)}",
-            http_status: response.status
-          )
-        end
-
-        data = JSON.parse(body)
-        raise OauthError.new("api_error", "OAuth discovery response is not a JSON object") unless data.is_a?(Hash)
-
-        data
-      rescue BodyTooLarge
-        raise OauthError.new("api_error", "OAuth discovery response exceeds size cap")
-      rescue ReadDeadlineExceeded
-        raise OauthError.new("network", "OAuth discovery timed out", retryable: true)
-      rescue Faraday::Error => e
-        raise OauthError.new("network", "OAuth discovery failed: #{e.message}", retryable: true)
-      rescue JSON::ParserError => e
-        raise OauthError.new("api_error", "Failed to parse OAuth discovery response: #{e.message}")
+        [ response.status, chunks.join.force_encoding(Encoding::UTF_8) ]
       end
     end
   end

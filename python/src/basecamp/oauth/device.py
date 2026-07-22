@@ -13,10 +13,8 @@ clock and sleep are injectable so tests can drive the interval schedule
 
 from __future__ import annotations
 
-import asyncio
 import json
 import math
-import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,6 +23,7 @@ from typing import Any
 import httpx
 
 from basecamp._security import is_localhost, require_https
+from basecamp.oauth._transport import _MAX_REQUEST_TIMEOUT, request_bounded
 from basecamp.oauth.config import OAuthConfig
 from basecamp.oauth.device_authorization import DeviceAuthorization
 from basecamp.oauth.discovery import _normalize_body_cap, _normalize_timeout
@@ -58,17 +57,8 @@ MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647
 
 _DEVICE_TIMEOUT = 30.0
 
-#: Upper bound (seconds) on a device request timeout. A per-request timeout beyond
-#: this is nonsensical, and a huge finite value would overflow the wall-clock wait
-#: primitive (asyncio.wait_for / thread join); clamp to the default above it.
-_MAX_DEVICE_REQUEST_TIMEOUT = 3600.0
-
 #: Granularity (seconds) for polling ``should_cancel`` while waiting between polls.
 _CANCEL_POLL_INTERVAL = 0.1
-
-#: Extra time (seconds) to let a timed-out request's async cancellation/cleanup
-#: unwind before the caller abandons the (daemon) worker and returns a timeout.
-_WORKER_JOIN_GRACE = 5.0
 
 # Cap on a device-flow response body (1 MiB) — these responses are tiny; a
 # larger one is a fault, so abort rather than buffer it. Mirrors discovery.
@@ -89,8 +79,9 @@ def _post_form_bounded(
 ) -> tuple[int, bytes]:
     """SSRF-hardened form POST: suppress redirects, bound the timeout, and read
     the body under a genuine streaming cap that aborts once ``max_body_bytes`` is
-    exceeded (never a post-hoc check on an already-buffered body). Mirrors
-    :func:`basecamp.oauth.discovery._fetch_discovery_document`.
+    exceeded (never a post-hoc check on an already-buffered body). Delegates to
+    :func:`basecamp.oauth._transport.request_bounded`, which also bounds the
+    WHOLE round-trip (httpx's per-read timeout alone cannot).
 
     ``read_body(status)`` decides — from the response status, known once headers
     arrive — whether the body is drained. A caller returns ``False`` for statuses
@@ -102,66 +93,19 @@ def _post_form_bounded(
     :class:`httpx.TimeoutException`) so callers classify them; an oversized body
     raises :class:`OAuthError` (``api_error``).
     """
-    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_DEVICE_REQUEST_TIMEOUT)
-
-    async def _do() -> tuple[int, bytes]:
-        async with (
-            httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
-            client.stream("POST", url, data=params, headers=_FORM_HEADERS) as response,
-        ):
-            if not read_body(response.status_code):
-                return response.status_code, b""
-            chunks: list[bytes] = []
-            total = 0
-            async for chunk in response.aiter_bytes():
-                total += len(chunk)
-                if total > max_body_bytes:
-                    # An oversized body is api_error, not a timeout — abort the
-                    # stream so it is never fully buffered.
-                    raise OAuthError("api_error", "Device flow response exceeds size cap")
-                chunks.append(chunk)
-            return response.status_code, b"".join(chunks)
-
-    # httpx's timeout is per-read (it resets on every received chunk) and httpx has
-    # NO total-request timeout, so a peer slow-dripping header or body bytes just
-    # under that interval could otherwise hold the POST open indefinitely (verified);
-    # closing a sync client from a watchdog does not interrupt a blocked read either.
-    # asyncio.wait_for CANCELS the request (and closes the socket) at the deadline —
-    # the caller is bounded AND the work is actually terminated, no leaked worker.
-    #
-    # Run it in a DEDICATED thread with its own event loop rather than calling
-    # asyncio.run() here: this sync helper may be invoked from code that already has
-    # a running loop (Jupyter/FastAPI/async CLI), where asyncio.run() raises
-    # RuntimeError before any request is made. wait_for bounds the thread's work at
-    # ~timeout, so the bounded join below normally returns almost immediately; the
-    # is_alive backstop after it covers only a pathological async-cleanup hang.
-    result: list[tuple[int, bytes]] = []
-    error: list[Exception] = []
-
-    def _runner() -> None:
-        try:
-            result.append(asyncio.run(asyncio.wait_for(_do(), timeout)))
-        except Exception as exc:  # captured and re-raised on the caller thread
-            error.append(exc)
-
-    worker = threading.Thread(target=_runner, daemon=True)
-    worker.start()
-    # asyncio.wait_for cancels the request at `timeout`, so the worker normally
-    # finishes well within it. Join with a small grace for the cancellation/cleanup
-    # to unwind; if even that stalls (a pathological async cleanup hang), return a
-    # timeout rather than block the caller — the daemon worker never blocks
-    # interpreter exit. This is bounded AND non-leaking in every non-pathological case.
-    worker.join(timeout + _WORKER_JOIN_GRACE)
-    if worker.is_alive():
-        raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline")
-    if error:
-        exc = error[0]
-        # On Python >= 3.11 (this package's floor) asyncio.TimeoutError IS the
-        # builtin TimeoutError, so this catches wait_for's deadline expiry.
-        if isinstance(exc, TimeoutError):
-            raise httpx.ReadTimeout("Device flow request exceeded the timeout deadline") from exc
-        raise exc
-    return result[0]
+    # Normalize BEFORE the transport core, which requires a finite, positive,
+    # in-range timeout (see request_bounded).
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_REQUEST_TIMEOUT)
+    return request_bounded(
+        "POST",
+        url,
+        headers=_FORM_HEADERS,
+        params=params,
+        timeout=timeout,
+        max_body_bytes=max_body_bytes,
+        read_body=read_body,
+        context="Device flow",
+    )
 
 
 def request_device_authorization(
