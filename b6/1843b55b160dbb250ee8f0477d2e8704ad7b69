@@ -1,0 +1,31 @@
+openapi.json
+  s_0c98ad9a7f5689::t_42f66af10d60df 14953
+typescript/src/generated/services/reports.ts
+  s_0c98ad9a7f5689::t_42f66af10d60df 87
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/reports.kt
+  s_0c98ad9a7f5689::t_42f66af10d60df 44
+ruby/lib/basecamp/generated/services/reports_service.rb
+  s_0c98ad9a7f5689::t_42f66af10d60df 18
+spec/basecamp.smithy
+  s_0c98ad9a7f5689::t_6341678b347443 7229-7230
+typescript/src/generated/schema.d.ts
+  s_0c98ad9a7f5689::t_42f66af10d60df 1854-1855
+typescript/src/generated/openapi-stripped.json
+  s_0c98ad9a7f5689::t_42f66af10d60df 13261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b61843b55b160dbb250ee8f0477d2e8704ad7b69",
+  "prompts": {},
+  "sessions": {
+    "s_0c98ad9a7f5689": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc2014f-a637-4b4d-9589-f87625258d9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
