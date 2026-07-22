@@ -137,11 +137,14 @@ jobs:
           echo "$FILES" | grep -q '^typescript/dist/index\.js$'
           echo "$FILES" | grep -q '^typescript/dist/index\.d\.ts$'
 
+      # npx vitest run, not npm test: the runner's pretest script rebuilds
+      # the SDK, which this job just built two steps up. The runner's
+      # dist-freshness globalSetup still fails loudly if dist/ were stale.
       - name: Run TypeScript conformance tests
         working-directory: conformance/runner/typescript
         run: |
           npm ci
-          npm test
+          npx vitest run
 
   test-ruby:
     name: Ruby ${{ matrix.ruby }}
