@@ -36,6 +36,28 @@ const (
 	Wednesday FirstWeekDay = "Wednesday"
 )
 
+// Valid indicates whether the value is a known member of the FirstWeekDay enum.
+func (e FirstWeekDay) Valid() bool {
+	switch e {
+	case Friday:
+		return true
+	case Monday:
+		return true
+	case Saturday:
+		return true
+	case Sunday:
+		return true
+	case Thursday:
+		return true
+	case Tuesday:
+		return true
+	case Wednesday:
+		return true
+	default:
+		return false
+	}
+}
+
 // Account defines model for Account.
 type Account struct {
 	Active       bool                `json:"active,omitempty"`
@@ -999,9 +1021,25 @@ type GetMyDueAssignmentsResponseContent = []MyAssignment
 
 // GetMyNotificationsResponseContent defines model for GetMyNotificationsResponseContent.
 type GetMyNotificationsResponseContent struct {
+	// BubbleUps Items the user has saved with Bubble Up (BC5 addition). Roughly the
+	// successor to `memories` but with optional scheduling — see
+	// `scheduled_bubble_ups` for the time-deferred subset.
+	BubbleUps []Notification `json:"bubble_ups,omitempty"`
+
+	// Memories Legacy "save forever" collection. Observed BC5 behavior: emits `[]`
+	// while BC4 still populates with real items — the BC team has not yet
+	// resolved whether to keep BC4-shaped data on BC5 (back-compat) or to
+	// accept the empty-array break with a documented BC5 changelog entry.
+	// See COORDINATION.md for the open decision. The conceptual
+	// replacement is `bubble_ups` (with optional scheduling via
+	// `scheduled_bubble_ups`), though wire shapes are not interchangeable
+	// per-item, so cross-version readers should consume both.
 	Memories []Notification `json:"memories,omitempty"`
 	Reads    []Notification `json:"reads,omitempty"`
-	Unreads  []Notification `json:"unreads,omitempty"`
+
+	// ScheduledBubbleUps Bubble Ups scheduled to resurface in the future (BC5 addition).
+	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitempty"`
+	Unreads            []Notification `json:"unreads,omitempty"`
 }
 
 // GetMyPreferencesResponseContent defines model for GetMyPreferencesResponseContent.
@@ -1407,8 +1445,16 @@ type NotFoundErrorResponseContent struct {
 
 // Notification defines model for Notification.
 type Notification struct {
-	AppUrl         string    `json:"app_url,omitempty"`
-	BookmarkUrl    string    `json:"bookmark_url,omitempty"`
+	AppUrl      string `json:"app_url,omitempty"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+
+	// BubbleUpAt Scheduled resurfacing time when this item is queued as a scheduled
+	// Bubble Up (BC5 addition). Absent when there is no scheduled time.
+	BubbleUpAt time.Time `json:"bubble_up_at,omitempty"`
+
+	// BubbleUpUrl URL for the Bubble Up record covering this notification (BC5 addition).
+	// Eligibility-gated — only present on items the current user can bubble up.
+	BubbleUpUrl    string    `json:"bubble_up_url,omitempty"`
 	BucketName     string    `json:"bucket_name,omitempty"`
 	ContentExcerpt string    `json:"content_excerpt,omitempty"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -1489,9 +1535,13 @@ type Person struct {
 	Name                string              `json:"name"`
 	Owner               bool                `json:"owner,omitempty"`
 	PersonableType      string              `json:"personable_type,omitempty"`
-	TimeZone            string              `json:"time_zone,omitempty"`
-	Title               string              `json:"title,omitempty"`
-	UpdatedAt           time.Time           `json:"updated_at,omitempty"`
+
+	// Tagline Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
+	// older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
+	Tagline   string    `json:"tagline,omitempty"`
+	TimeZone  string    `json:"time_zone,omitempty"`
+	Title     string    `json:"title,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 }
 
 // PersonCompany defines model for PersonCompany.
@@ -1966,13 +2016,18 @@ type Todo struct {
 	StartsOn              types.Date `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
-	Status           string    `json:"status"`
-	SubscriptionUrl  string    `json:"subscription_url,omitempty"`
-	Title            string    `json:"title"`
-	Type             string    `json:"type"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	Url              string    `json:"url"`
-	VisibleToClients bool      `json:"visible_to_clients"`
+	Status string `json:"status"`
+
+	// Steps Steps embedded in the Todo response (BC5 addition). The shared
+	// `steps/step` jbuilder partial emits the same shape as `CardStep`,
+	// so the existing `CardStepList` is reused.
+	Steps            []CardStep `json:"steps,omitempty"`
+	SubscriptionUrl  string     `json:"subscription_url,omitempty"`
+	Title            string     `json:"title"`
+	Type             string     `json:"type"`
+	UpdatedAt        time.Time  `json:"updated_at"`
+	Url              string     `json:"url"`
+	VisibleToClients bool       `json:"visible_to_clients"`
 }
 
 // TodoBucket defines model for TodoBucket.
@@ -2068,26 +2123,38 @@ type TodolistOrGroup1 struct {
 
 // Todoset defines model for Todoset.
 type Todoset struct {
-	AppTodolistsUrl  string     `json:"app_todolists_url,omitempty"`
-	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket `json:"bucket"`
-	Completed        bool       `json:"completed,omitempty"`
-	CompletedRatio   string     `json:"completed_ratio,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	Creator          Person     `json:"creator"`
-	Id               int64      `json:"id"`
-	InheritsStatus   bool       `json:"inherits_status"`
-	Name             string     `json:"name"`
-	Position         int32      `json:"position,omitempty"`
-	Status           string     `json:"status"`
-	Title            string     `json:"title"`
-	TodolistsCount   int32      `json:"todolists_count,omitempty"`
-	TodolistsUrl     string     `json:"todolists_url,omitempty"`
-	Type             string     `json:"type"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Url              string     `json:"url"`
-	VisibleToClients bool       `json:"visible_to_clients"`
+	AppTodolistsUrl string `json:"app_todolists_url,omitempty"`
+
+	// AppTodosUrl In-app URL for viewing the todoset's todos (BC5 addition).
+	AppTodosUrl string     `json:"app_todos_url,omitempty"`
+	AppUrl      string     `json:"app_url"`
+	BookmarkUrl string     `json:"bookmark_url,omitempty"`
+	Bucket      TodoBucket `json:"bucket"`
+	Completed   bool       `json:"completed,omitempty"`
+
+	// CompletedLooseTodosCount Count of completed loose todos at the todoset level (BC5 addition).
+	CompletedLooseTodosCount int32     `json:"completed_loose_todos_count,omitempty"`
+	CompletedRatio           string    `json:"completed_ratio,omitempty"`
+	CreatedAt                time.Time `json:"created_at"`
+	Creator                  Person    `json:"creator"`
+	Id                       int64     `json:"id"`
+	InheritsStatus           bool      `json:"inherits_status"`
+	Name                     string    `json:"name"`
+	Position                 int32     `json:"position,omitempty"`
+	Status                   string    `json:"status"`
+	Title                    string    `json:"title"`
+	TodolistsCount           int32     `json:"todolists_count,omitempty"`
+	TodolistsUrl             string    `json:"todolists_url,omitempty"`
+
+	// TodosCount Total count of todos across all todolists in this todoset (BC5 addition).
+	TodosCount int32 `json:"todos_count,omitempty"`
+
+	// TodosUrl API URL for listing todos directly under this todoset (BC5 addition).
+	TodosUrl         string    `json:"todos_url,omitempty"`
+	Type             string    `json:"type"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Url              string    `json:"url"`
+	VisibleToClients bool      `json:"visible_to_clients"`
 }
 
 // ToggleGaugeRequestContent defines model for ToggleGaugeRequestContent.
@@ -18799,6 +18866,14 @@ func (r GetAccountResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAccountResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RemoveAccountLogoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -18822,6 +18897,14 @@ func (r RemoveAccountLogoResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RemoveAccountLogoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateAccountLogoResponse struct {
@@ -18848,6 +18931,14 @@ func (r UpdateAccountLogoResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAccountLogoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateAccountNameResponse struct {
@@ -18877,6 +18968,14 @@ func (r UpdateAccountNameResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAccountNameResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateAttachmentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -18904,6 +19003,14 @@ func (r CreateAttachmentResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAttachmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteBoostResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -18927,6 +19034,14 @@ func (r DeleteBoostResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteBoostResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetBoostResponse struct {
@@ -18953,6 +19068,14 @@ func (r GetBoostResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBoostResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type SetCardColumnColorResponse struct {
@@ -18983,6 +19106,14 @@ func (r SetCardColumnColorResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetCardColumnColorResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DisableCardColumnOnHoldResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19008,6 +19139,14 @@ func (r DisableCardColumnOnHoldResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DisableCardColumnOnHoldResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type EnableCardColumnOnHoldResponse struct {
@@ -19037,6 +19176,14 @@ func (r EnableCardColumnOnHoldResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnableCardColumnOnHoldResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListWebhooksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19061,6 +19208,14 @@ func (r ListWebhooksResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListWebhooksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateWebhookResponse struct {
@@ -19091,6 +19246,14 @@ func (r CreateWebhookResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCardResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19115,6 +19278,14 @@ func (r GetCardResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateCardResponse struct {
@@ -19144,6 +19315,14 @@ func (r UpdateCardResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type MoveCardResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19170,6 +19349,14 @@ func (r MoveCardResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RepositionCardStepResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19194,6 +19381,14 @@ func (r RepositionCardStepResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositionCardStepResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateCardStepResponse struct {
@@ -19223,6 +19418,14 @@ func (r CreateCardStepResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCardStepResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCardColumnResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19247,6 +19450,14 @@ func (r GetCardColumnResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCardColumnResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateCardColumnResponse struct {
@@ -19276,6 +19487,14 @@ func (r UpdateCardColumnResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCardColumnResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListCardsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19300,6 +19519,14 @@ func (r ListCardsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateCardResponse struct {
@@ -19329,6 +19556,14 @@ func (r CreateCardResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UnsubscribeFromCardColumnResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19352,6 +19587,14 @@ func (r UnsubscribeFromCardColumnResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnsubscribeFromCardColumnResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type SubscribeToCardColumnResponse struct {
@@ -19380,6 +19623,14 @@ func (r SubscribeToCardColumnResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubscribeToCardColumnResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCardStepResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19404,6 +19655,14 @@ func (r GetCardStepResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCardStepResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateCardStepResponse struct {
@@ -19433,6 +19692,14 @@ func (r UpdateCardStepResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCardStepResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SetCardStepCompletionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19460,6 +19727,14 @@ func (r SetCardStepCompletionResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetCardStepCompletionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCardTableResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19484,6 +19759,14 @@ func (r GetCardTableResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCardTableResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateCardColumnResponse struct {
@@ -19513,6 +19796,14 @@ func (r CreateCardColumnResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCardColumnResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type MoveCardColumnResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19539,6 +19830,14 @@ func (r MoveCardColumnResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveCardColumnResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListMessageTypesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19563,6 +19862,14 @@ func (r ListMessageTypesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMessageTypesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateMessageTypeResponse struct {
@@ -19592,6 +19899,14 @@ func (r CreateMessageTypeResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteMessageTypeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19615,6 +19930,14 @@ func (r DeleteMessageTypeResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetMessageTypeResponse struct {
@@ -19641,6 +19964,14 @@ func (r GetMessageTypeResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateMessageTypeResponse struct {
@@ -19670,6 +20001,14 @@ func (r UpdateMessageTypeResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListCampfiresResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19694,6 +20033,14 @@ func (r ListCampfiresResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCampfiresResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetCampfireResponse struct {
@@ -19722,6 +20069,14 @@ func (r GetCampfireResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCampfireResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListChatbotsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19746,6 +20101,14 @@ func (r ListChatbotsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListChatbotsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateChatbotResponse struct {
@@ -19775,6 +20138,14 @@ func (r CreateChatbotResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteChatbotResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19798,6 +20169,14 @@ func (r DeleteChatbotResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetChatbotResponse struct {
@@ -19824,6 +20203,14 @@ func (r GetChatbotResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateChatbotResponse struct {
@@ -19853,6 +20240,14 @@ func (r UpdateChatbotResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateChatbotResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListCampfireLinesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19877,6 +20272,14 @@ func (r ListCampfireLinesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCampfireLinesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateCampfireLineResponse struct {
@@ -19906,6 +20309,14 @@ func (r CreateCampfireLineResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCampfireLineResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteCampfireLineResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19929,6 +20340,14 @@ func (r DeleteCampfireLineResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteCampfireLineResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetCampfireLineResponse struct {
@@ -19957,6 +20376,14 @@ func (r GetCampfireLineResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCampfireLineResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListCampfireUploadsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -19981,6 +20408,14 @@ func (r ListCampfireUploadsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCampfireUploadsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateCampfireUploadResponse struct {
@@ -20010,6 +20445,14 @@ func (r CreateCampfireUploadResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCampfireUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListPingablePeopleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20034,6 +20477,14 @@ func (r ListPingablePeopleResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPingablePeopleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListClientApprovalsResponse struct {
@@ -20062,6 +20513,14 @@ func (r ListClientApprovalsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListClientApprovalsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetClientApprovalResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20086,6 +20545,14 @@ func (r GetClientApprovalResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClientApprovalResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListClientCorrespondencesResponse struct {
@@ -20114,6 +20581,14 @@ func (r ListClientCorrespondencesResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListClientCorrespondencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetClientCorrespondenceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20138,6 +20613,14 @@ func (r GetClientCorrespondenceResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClientCorrespondenceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListClientRepliesResponse struct {
@@ -20166,6 +20649,14 @@ func (r ListClientRepliesResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListClientRepliesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetClientReplyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20192,6 +20683,14 @@ func (r GetClientReplyResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClientReplyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCommentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20216,6 +20715,14 @@ func (r GetCommentResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateCommentResponse struct {
@@ -20245,6 +20752,14 @@ func (r UpdateCommentResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CloneToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20272,6 +20787,14 @@ func (r CloneToolResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CloneToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20295,6 +20818,14 @@ func (r DeleteToolResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetToolResponse struct {
@@ -20321,6 +20852,14 @@ func (r GetToolResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateToolResponse struct {
@@ -20350,6 +20889,14 @@ func (r UpdateToolResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetDocumentResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20374,6 +20921,14 @@ func (r GetDocumentResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateDocumentResponse struct {
@@ -20403,6 +20958,14 @@ func (r UpdateDocumentResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DestroyGaugeNeedleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20429,6 +20992,14 @@ func (r DestroyGaugeNeedleResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DestroyGaugeNeedleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetGaugeNeedleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20453,6 +21024,14 @@ func (r GetGaugeNeedleResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetGaugeNeedleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateGaugeNeedleResponse struct {
@@ -20483,6 +21062,14 @@ func (r UpdateGaugeNeedleResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateGaugeNeedleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetForwardResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20509,6 +21096,14 @@ func (r GetForwardResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetForwardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListForwardRepliesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20533,6 +21128,14 @@ func (r ListForwardRepliesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListForwardRepliesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateForwardReplyResponse struct {
@@ -20562,6 +21165,14 @@ func (r CreateForwardReplyResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateForwardReplyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetForwardReplyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20586,6 +21197,14 @@ func (r GetForwardReplyResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetForwardReplyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetInboxResponse struct {
@@ -20614,6 +21233,14 @@ func (r GetInboxResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetInboxResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListForwardsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20638,6 +21265,14 @@ func (r ListForwardsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListForwardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListLineupMarkersResponse struct {
@@ -20666,6 +21301,14 @@ func (r ListLineupMarkersResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListLineupMarkersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20692,6 +21335,14 @@ func (r CreateLineupMarkerResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateLineupMarkerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteLineupMarkerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20715,6 +21366,14 @@ func (r DeleteLineupMarkerResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteLineupMarkerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateLineupMarkerResponse struct {
@@ -20743,6 +21402,14 @@ func (r UpdateLineupMarkerResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateLineupMarkerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMessageBoardResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20769,6 +21436,14 @@ func (r GetMessageBoardResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMessageBoardResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListMessagesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20793,6 +21468,14 @@ func (r ListMessagesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMessagesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateMessageResponse struct {
@@ -20822,6 +21505,14 @@ func (r CreateMessageResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateMessageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMessageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20846,6 +21537,14 @@ func (r GetMessageResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMessageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateMessageResponse struct {
@@ -20875,6 +21574,14 @@ func (r UpdateMessageResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMessageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMyAssignmentsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20900,6 +21607,14 @@ func (r GetMyAssignmentsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyAssignmentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMyCompletedAssignmentsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20923,6 +21638,14 @@ func (r GetMyCompletedAssignmentsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyCompletedAssignmentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetMyDueAssignmentsResponse struct {
@@ -20951,6 +21674,14 @@ func (r GetMyDueAssignmentsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyDueAssignmentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMyPreferencesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -20974,6 +21705,14 @@ func (r GetMyPreferencesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyPreferencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateMyPreferencesResponse struct {
@@ -21003,6 +21742,14 @@ func (r UpdateMyPreferencesResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMyPreferencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMyProfileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21029,6 +21776,14 @@ func (r GetMyProfileResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UpdateMyProfileResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21052,6 +21807,14 @@ func (r UpdateMyProfileResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMyProfileResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetQuestionRemindersResponse struct {
@@ -21080,6 +21843,14 @@ func (r GetQuestionRemindersResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetQuestionRemindersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMyNotificationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21105,6 +21876,14 @@ func (r GetMyNotificationsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyNotificationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type MarkAsReadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21128,6 +21907,14 @@ func (r MarkAsReadResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MarkAsReadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListPeopleResponse struct {
@@ -21156,6 +21943,14 @@ func (r ListPeopleResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListPeopleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetPersonResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21180,6 +21975,14 @@ func (r GetPersonResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPersonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type DisableOutOfOfficeResponse struct {
@@ -21207,6 +22010,14 @@ func (r DisableOutOfOfficeResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DisableOutOfOfficeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOutOfOfficeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21231,6 +22042,14 @@ func (r GetOutOfOfficeResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOutOfOfficeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type EnableOutOfOfficeResponse struct {
@@ -21260,6 +22079,14 @@ func (r EnableOutOfOfficeResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnableOutOfOfficeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListProjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21284,6 +22111,14 @@ func (r ListProjectsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateProjectResponse struct {
@@ -21313,6 +22148,14 @@ func (r CreateProjectResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListRecordingsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21337,6 +22180,14 @@ func (r ListRecordingsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRecordingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type TrashProjectResponse struct {
@@ -21364,6 +22215,14 @@ func (r TrashProjectResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TrashProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetProjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21388,6 +22247,14 @@ func (r GetProjectResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateProjectResponse struct {
@@ -21417,6 +22284,14 @@ func (r UpdateProjectResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ToggleGaugeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21440,6 +22315,14 @@ func (r ToggleGaugeResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ToggleGaugeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListGaugeNeedlesResponse struct {
@@ -21469,6 +22352,14 @@ func (r ListGaugeNeedlesResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListGaugeNeedlesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateGaugeNeedleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21496,6 +22387,14 @@ func (r CreateGaugeNeedleResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateGaugeNeedleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListProjectPeopleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21520,6 +22419,14 @@ func (r ListProjectPeopleResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListProjectPeopleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateProjectAccessResponse struct {
@@ -21550,6 +22457,14 @@ func (r UpdateProjectAccessResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateProjectAccessResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetProjectTimelineResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21575,6 +22490,14 @@ func (r GetProjectTimelineResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProjectTimelineResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetProjectTimesheetResponse struct {
@@ -21603,6 +22526,14 @@ func (r GetProjectTimesheetResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProjectTimesheetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetAnswerResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21627,6 +22558,14 @@ func (r GetAnswerResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAnswerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateAnswerResponse struct {
@@ -21655,6 +22594,14 @@ func (r UpdateAnswerResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateAnswerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetQuestionnaireResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21681,6 +22628,14 @@ func (r GetQuestionnaireResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetQuestionnaireResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListQuestionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21705,6 +22660,14 @@ func (r ListQuestionsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListQuestionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateQuestionResponse struct {
@@ -21734,6 +22697,14 @@ func (r CreateQuestionResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateQuestionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetQuestionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21758,6 +22729,14 @@ func (r GetQuestionResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetQuestionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateQuestionResponse struct {
@@ -21787,6 +22766,14 @@ func (r UpdateQuestionResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateQuestionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListAnswersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21811,6 +22798,14 @@ func (r ListAnswersResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAnswersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateAnswerResponse struct {
@@ -21840,6 +22835,14 @@ func (r CreateAnswerResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateAnswerResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListQuestionAnswerersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21865,6 +22868,14 @@ func (r ListQuestionAnswerersResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListQuestionAnswerersResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetAnswersByPersonResponse struct {
@@ -21894,6 +22905,14 @@ func (r GetAnswersByPersonResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAnswersByPersonResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UpdateQuestionNotificationSettingsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21921,6 +22940,14 @@ func (r UpdateQuestionNotificationSettingsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateQuestionNotificationSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ResumeQuestionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21945,6 +22972,14 @@ func (r ResumeQuestionResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResumeQuestionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type PauseQuestionResponse struct {
@@ -21974,6 +23009,14 @@ func (r PauseQuestionResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PauseQuestionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UnpinMessageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21997,6 +23040,14 @@ func (r UnpinMessageResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnpinMessageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type PinMessageResponse struct {
@@ -22025,6 +23076,14 @@ func (r PinMessageResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PinMessageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRecordingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22051,6 +23110,14 @@ func (r GetRecordingResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListRecordingBoostsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22075,6 +23142,14 @@ func (r ListRecordingBoostsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListRecordingBoostsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateRecordingBoostResponse struct {
@@ -22104,6 +23179,14 @@ func (r CreateRecordingBoostResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateRecordingBoostResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SetClientVisibilityResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22131,6 +23214,14 @@ func (r SetClientVisibilityResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetClientVisibilityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListCommentsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22155,6 +23246,14 @@ func (r ListCommentsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListCommentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateCommentResponse struct {
@@ -22184,6 +23283,14 @@ func (r CreateCommentResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateCommentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListEventsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22210,6 +23317,14 @@ func (r ListEventsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListEventsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListEventBoostsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22234,6 +23349,14 @@ func (r ListEventBoostsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListEventBoostsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateEventBoostResponse struct {
@@ -22263,6 +23386,14 @@ func (r CreateEventBoostResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateEventBoostResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UnarchiveRecordingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22287,6 +23418,14 @@ func (r UnarchiveRecordingResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnarchiveRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ArchiveRecordingResponse struct {
@@ -22315,6 +23454,14 @@ func (r ArchiveRecordingResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ArchiveRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type TrashRecordingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22339,6 +23486,14 @@ func (r TrashRecordingResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TrashRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UnsubscribeResponse struct {
@@ -22366,6 +23521,14 @@ func (r UnsubscribeResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UnsubscribeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetSubscriptionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22390,6 +23553,14 @@ func (r GetSubscriptionResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSubscriptionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type SubscribeResponse struct {
@@ -22419,6 +23590,14 @@ func (r SubscribeResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SubscribeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UpdateSubscriptionResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22446,6 +23625,14 @@ func (r UpdateSubscriptionResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateSubscriptionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetRecordingTimesheetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22470,6 +23657,14 @@ func (r GetRecordingTimesheetResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetRecordingTimesheetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateTimesheetEntryResponse struct {
@@ -22499,6 +23694,14 @@ func (r CreateTimesheetEntryResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTimesheetEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DisableToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22522,6 +23725,14 @@ func (r DisableToolResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DisableToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type EnableToolResponse struct {
@@ -22550,6 +23761,14 @@ func (r EnableToolResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r EnableToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RepositionToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22574,6 +23793,14 @@ func (r RepositionToolResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositionToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ListGaugesResponse struct {
@@ -22602,6 +23829,14 @@ func (r ListGaugesResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListGaugesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetProgressReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22626,6 +23861,14 @@ func (r GetProgressReportResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProgressReportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetUpcomingScheduleResponse struct {
@@ -22654,6 +23897,14 @@ func (r GetUpcomingScheduleResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetUpcomingScheduleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetTimesheetReportResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22680,6 +23931,14 @@ func (r GetTimesheetReportResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTimesheetReportResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListAssignablePeopleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22704,6 +23963,14 @@ func (r ListAssignablePeopleResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListAssignablePeopleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetAssignedTodosResponse struct {
@@ -22733,6 +24000,14 @@ func (r GetAssignedTodosResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetAssignedTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetOverdueTodosResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22757,6 +24032,14 @@ func (r GetOverdueTodosResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetOverdueTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetPersonProgressResponse struct {
@@ -22786,6 +24069,14 @@ func (r GetPersonProgressResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetPersonProgressResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetScheduleEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22810,6 +24101,14 @@ func (r GetScheduleEntryResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScheduleEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateScheduleEntryResponse struct {
@@ -22839,6 +24138,14 @@ func (r UpdateScheduleEntryResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateScheduleEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetScheduleEntryOccurrenceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22865,6 +24172,14 @@ func (r GetScheduleEntryOccurrenceResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScheduleEntryOccurrenceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetScheduleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22889,6 +24204,14 @@ func (r GetScheduleResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetScheduleResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateScheduleSettingsResponse struct {
@@ -22918,6 +24241,14 @@ func (r UpdateScheduleSettingsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateScheduleSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListScheduleEntriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22942,6 +24273,14 @@ func (r ListScheduleEntriesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListScheduleEntriesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateScheduleEntryResponse struct {
@@ -22971,6 +24310,14 @@ func (r CreateScheduleEntryResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateScheduleEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type SearchResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22995,6 +24342,14 @@ func (r SearchResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SearchResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetSearchMetadataResponse struct {
@@ -23023,6 +24378,14 @@ func (r GetSearchMetadataResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetSearchMetadataResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTemplatesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23047,6 +24410,14 @@ func (r ListTemplatesResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListTemplatesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateTemplateResponse struct {
@@ -23076,6 +24447,14 @@ func (r CreateTemplateResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23099,6 +24478,14 @@ func (r DeleteTemplateResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetTemplateResponse struct {
@@ -23125,6 +24512,14 @@ func (r GetTemplateResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateTemplateResponse struct {
@@ -23154,6 +24549,14 @@ func (r UpdateTemplateResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateProjectFromTemplateResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23179,6 +24582,14 @@ func (r CreateProjectFromTemplateResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateProjectFromTemplateResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetProjectConstructionResponse struct {
@@ -23207,6 +24618,14 @@ func (r GetProjectConstructionResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetProjectConstructionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetTimesheetEntryResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23231,6 +24650,14 @@ func (r GetTimesheetEntryResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTimesheetEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateTimesheetEntryResponse struct {
@@ -23260,6 +24687,14 @@ func (r UpdateTimesheetEntryResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateTimesheetEntryResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RepositionTodolistGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23286,6 +24721,14 @@ func (r RepositionTodolistGroupResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositionTodolistGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetTodolistOrGroupResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23310,6 +24753,14 @@ func (r GetTodolistOrGroupResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTodolistOrGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateTodolistOrGroupResponse struct {
@@ -23339,6 +24790,14 @@ func (r UpdateTodolistOrGroupResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateTodolistOrGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTodolistGroupsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23363,6 +24822,14 @@ func (r ListTodolistGroupsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListTodolistGroupsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateTodolistGroupResponse struct {
@@ -23392,6 +24859,14 @@ func (r CreateTodolistGroupResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTodolistGroupResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTodosResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23416,6 +24891,14 @@ func (r ListTodosResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateTodoResponse struct {
@@ -23445,6 +24928,14 @@ func (r CreateTodoResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type TrashTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23468,6 +24959,14 @@ func (r TrashTodoResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TrashTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetTodoResponse struct {
@@ -23494,6 +24993,14 @@ func (r GetTodoResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type ReplaceTodoResponse struct {
@@ -23523,6 +25030,14 @@ func (r ReplaceTodoResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReplaceTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UncompleteTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23546,6 +25061,14 @@ func (r UncompleteTodoResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UncompleteTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CompleteTodoResponse struct {
@@ -23574,6 +25097,14 @@ func (r CompleteTodoResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CompleteTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RepositionTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23598,6 +25129,14 @@ func (r RepositionTodoResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositionTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetTodosetResponse struct {
@@ -23626,6 +25165,14 @@ func (r GetTodosetResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTodosetResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetHillChartResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23650,6 +25197,14 @@ func (r GetHillChartResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetHillChartResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateHillChartSettingsResponse struct {
@@ -23679,6 +25234,14 @@ func (r UpdateHillChartSettingsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateHillChartSettingsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListTodolistsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23703,6 +25266,14 @@ func (r ListTodolistsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListTodolistsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateTodolistResponse struct {
@@ -23732,6 +25303,14 @@ func (r CreateTodolistResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTodolistResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23756,6 +25335,14 @@ func (r GetUploadResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateUploadResponse struct {
@@ -23785,6 +25372,14 @@ func (r UpdateUploadResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListUploadVersionsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23811,6 +25406,14 @@ func (r ListUploadVersionsResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListUploadVersionsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetVaultResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23835,6 +25438,14 @@ func (r GetVaultResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVaultResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type UpdateVaultResponse struct {
@@ -23864,6 +25475,14 @@ func (r UpdateVaultResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateVaultResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListDocumentsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23888,6 +25507,14 @@ func (r ListDocumentsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListDocumentsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateDocumentResponse struct {
@@ -23917,6 +25544,14 @@ func (r CreateDocumentResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListUploadsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23941,6 +25576,14 @@ func (r ListUploadsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListUploadsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateUploadResponse struct {
@@ -23970,6 +25613,14 @@ func (r CreateUploadResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateUploadResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListVaultsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -23994,6 +25645,14 @@ func (r ListVaultsResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListVaultsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type CreateVaultResponse struct {
@@ -24023,6 +25682,14 @@ func (r CreateVaultResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVaultResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type DeleteWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24046,6 +25713,14 @@ func (r DeleteWebhookResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetWebhookResponse struct {
@@ -24074,6 +25749,14 @@ func (r GetWebhookResponse) StatusCode() int {
 	return 0
 }
 
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type UpdateWebhookResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -24100,6 +25783,14 @@ func (r UpdateWebhookResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 // GetAccountWithResponse request returning *GetAccountResponse
