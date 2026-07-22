@@ -1,0 +1,46 @@
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_b250506ef28983::t_1c8a9b0be75390 107-109
+  s_b250506ef28983::t_602606f20a38b9 110-116
+ruby/test/basecamp/oauth_device_test.rb
+  s_b250506ef28983::t_f9ad251fa012ee 679-689,697,704
+  s_b250506ef28983::t_5b171b9d1bcb5d 497-523,705
+  s_b250506ef28983::t_e1721de3b0e953 678,699-702
+  s_b250506ef28983::t_0da80a48bac063 690-692,694-696
+  s_b250506ef28983::t_0a2dca28710f4f 698
+  s_b250506ef28983::t_e6b3f491dca4a2 703
+  s_b250506ef28983::t_5d374dd63bdd48 706
+  s_e6f30bd8cdd6b5::t_1dc24dc08dbbd5 693
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_b250506ef28983::t_801efc55bd3ecf 139-140
+  s_b250506ef28983::t_f49d470ff96183 369-373,386
+  s_b250506ef28983::t_48e84d28d2364e 485-487
+  s_b250506ef28983::t_3c5d904e01c97a 149-167
+  s_b250506ef28983::t_e1d6bc2c0c9627 374-385
+  s_b250506ef28983::t_6fdc6d943f180e 499-500
+  s_b250506ef28983::t_ac652af46a79fc 310-316,318
+  s_b250506ef28983::t_5b257a5baedef2 387
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dec6680112e1c2129f1faca4c127eff612e42e7f",
+  "prompts": {},
+  "sessions": {
+    "s_b250506ef28983": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17cc04af-f9c9-42f4-8484-3fa39647ec65",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e6f30bd8cdd6b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a444cad31d2f25754",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
