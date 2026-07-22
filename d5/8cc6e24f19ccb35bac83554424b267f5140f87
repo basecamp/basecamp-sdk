@@ -1,0 +1,123 @@
+typescript/scripts/generate-services.ts
+  s_967a37aa4eb573::t_5b6d4f0adcef36 245
+go/pkg/basecamp/todolists_test.go
+  s_967a37aa4eb573::t_56122f519fa70a 277-338
+  s_967a37aa4eb573::t_fb7db9d9e82fa1 6,8
+openapi.json
+  s_967a37aa4eb573::t_3658240b66effd 18905-19012,26063,26069-26070
+  s_a34a5a2b290698::t_40477523b7760a 26064-26068,26071-26074
+spec/api-gaps/README.md
+  s_967a37aa4eb573::t_ff815d0d78b902 56
+AGENTS.md
+  s_967a37aa4eb573::t_0e0d417110ab4b 7
+  s_967a37aa4eb573::t_06746c14760238 34
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_967a37aa4eb573::t_19e857ce7db17a 95
+spec/basecamp.smithy
+  s_967a37aa4eb573::t_48d7a4390d4569 79
+  s_967a37aa4eb573::t_64122418cdb209 1113-1140
+spec/overlays/tags.smithy
+  s_967a37aa4eb573::t_89e52fda5c22f7 28
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_967a37aa4eb573::t_80a56cc58903b9 70-86
+spec/api-gaps/todolist-reposition.md
+  s_967a37aa4eb573::t_f6eb42a9f608fd 1-87
+go/pkg/basecamp/todolists.go
+  s_967a37aa4eb573::t_ec6eec149900c0 336-374
+  s_967a37aa4eb573::t_9d4f8c3f5670f8 7
+typescript/tests/services/todolists.test.ts
+  s_967a37aa4eb573::t_c5191839fcb3a3 127-152
+SPEC.md
+  s_967a37aa4eb573::t_e2919e63836068 1507-1508
+  s_967a37aa4eb573::t_23ccf90b0d8fd2 499
+python/scripts/generate_services.py
+  s_967a37aa4eb573::t_d907ce7f2b5735 118
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_967a37aa4eb573::t_982149c7f2a2d2 96
+python/tests/services/test_todolists_service.py
+  s_967a37aa4eb573::t_8864a421350a7e 51,62
+  s_967a37aa4eb573::t_bb879743f3a6d2 1-31,33-50,52-53,55-61,63-70
+  s_967a37aa4eb573::t_194e68e49a5a54 32,54
+behavior-model.json
+  s_967a37aa4eb573::t_3658240b66effd 2005-2016
+ruby/scripts/generate-services.rb
+  s_967a37aa4eb573::t_815d82ee1cc9b2 119
+go/pkg/basecamp/url-routes.json
+  s_a34a5a2b290698::t_d8a076d1656596 2031-2047
+go/pkg/generated/client.gen.go
+  s_d807adeb4ab6ea::t_6e559e6934bd9e 1827-1831,3023-3025,4021-4025,6826-6843,16181-16234,17351,18987-18991,25399-25432,28256-28272,38768-38821
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_967a37aa4eb573::t_0bf62d91e97446 178
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_967a37aa4eb573::t_2f88f873cb3926 540-544
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolists.kt
+  s_967a37aa4eb573::t_9b04f19ccf0d17 59-79
+python/src/basecamp/generated/metadata.json
+  s_a34a5a2b290698::t_220ae58d5547d9 1726-1737
+python/src/basecamp/generated/services/todolists.py
+  s_a34a5a2b290698::t_0bd5c455812638 30-38,73-81
+python/src/basecamp/generated/types.py
+  s_a34a5a2b290698::t_86d7a0729d9e2a 1197-1200
+ruby/lib/basecamp/generated/metadata.json
+  s_a34a5a2b290698::t_cc313c82b1d3a7 4,2416-2429
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_a34a5a2b290698::t_d55132dd4548e8 30-40
+ruby/lib/basecamp/generated/types.rb
+  s_a34a5a2b290698::t_48e7dc293b987e 4
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_d807adeb4ab6ea::t_db897bc516022d 161
+swift/Sources/Basecamp/Generated/Models/RepositionTodolistRequest.swift
+  s_d807adeb4ab6ea::t_f0770b99712e51 1-10
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_d807adeb4ab6ea::t_b7f9e626251786 49-58
+typescript/src/generated/metadata.ts
+  s_f829c5cb13f837::t_a8d1782adddb8b 40,2453-2466
+typescript/src/generated/openapi-stripped.json
+  s_a34a5a2b290698::t_e21eb52ef547a8 16780-16876,23718-23729
+typescript/src/generated/path-mapping.ts
+  s_f829c5cb13f837::t_4d891ef7295637 158
+typescript/src/generated/schema.d.ts
+  s_f829c5cb13f837::t_b5c33e80ac3542 2321-2341,3983-3986,16300-16368
+typescript/src/generated/services/todolists.ts
+  s_a34a5a2b290698::t_e3a28255e3a590 30-37,129-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d58cc6e24f19ccb35bac83554424b267f5140f87",
+  "prompts": {},
+  "sessions": {
+    "s_967a37aa4eb573": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7de9f7cd-df2c-48a8-8213-5c58d5dcd2ad",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_a34a5a2b290698": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8bf0-9f88-7c81-9aad-518905f6e660",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d807adeb4ab6ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdfc597e-6eed-4fda-b3eb-bb247065df5f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_f829c5cb13f837": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8b6e-c598-7990-a738-78463ea3b4e5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
