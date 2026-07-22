@@ -638,6 +638,37 @@ else
   fail "U2: expected exit 2 with unsupported-path error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# U3: an unsupported path stays a fixture error even when the same path is
+# listed in pairwiseDeltaAllowed — the waiver skip must not bypass path
+# validation, or a typo in a waived rule would permanently suppress
+# enforcement without ever surfacing.
+read -r BC4 BC5 <<<"$(fresh_dirs U3)"
+UP3_TESTS="$TMP/U3/up3-tests.json"
+cat >"$UP3_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Waived star test",
+    "operation": "WsOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["items[*].foo"], "reason": "undocumented star form" },
+      { "type": "pairwiseDeltaAllowed", "paths": ["items[*].foo"], "reason": "waiver must not hide the unsupported path" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Waived_star_test.json" WsOp '{"items":[{"foo":[1]}]}'
+write_snapshot "$BC5/Waived_star_test.json" WsOp '{"items":[{"foo":[1]}]}'
+run_compare "$BC4" "$BC5" "$UP3_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "only supported as the leading" <<<"$RUN_OUT"; then
+  pass "U3: waived unsupported path still fails with exit 2"
+else
+  fail "U3: expected exit 2 with unsupported-path error despite waiver; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

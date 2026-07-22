@@ -329,19 +329,22 @@ for entry in "${TEST_ENTRIES[@]}"; do
     fi
 
     for upath in "${RULE_PATHS[@]}"; do
-      if is_allowed "$upath"; then
-        continue
-      fi
-
       # '[*]' is only documented (and only handled) as the leading
       # 'pages[*]' segment. Any other use — items[*].foo, a second star —
       # would silently stream through jq with undefined comparison
-      # semantics; reject it as a fixture mistake instead.
+      # semantics; reject it as a fixture mistake instead. Validate BEFORE
+      # the waiver skip below: a waived-but-unsupported path must still be
+      # reported, or a typo in a waived canary rule would permanently
+      # suppress enforcement without the fixture error ever surfacing.
       if [[ "$upath" == *"[*]"* ]]; then
         if [[ "$upath" != "pages[*]"* ]] || [[ "${upath#pages\[\*\]}" == *"[*]"* ]]; then
           echo "ERROR: unsupported path '$upath' on $OPERATION — '[*]' is only supported as the leading 'pages[*]' segment" >&2
           exit 2
         fi
+      fi
+
+      if is_allowed "$upath"; then
+        continue
       fi
 
       DISPLAY="$(display_path "$upath")"
