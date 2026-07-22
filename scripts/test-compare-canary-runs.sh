@@ -669,6 +669,37 @@ else
   fail "U3: expected exit 2 with unsupported-path error despite waiver; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test V: a misspelled rule type is an operator error even when every path is
+# waived — the type check must run before the waiver skip, or the fixture
+# error exits clean and the (misspelled, so never-enforced) rule silently
+# stops guarding anything.
+read -r BC4 BC5 <<<"$(fresh_dirs V)"
+VT_TESTS="$TMP/V/vt-tests.json"
+cat >"$VT_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Misspelled type test",
+    "operation": "MtOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetAray", "paths": ["memories"], "reason": "typo'd rule type" },
+      { "type": "pairwiseDeltaAllowed", "paths": ["memories"], "reason": "waiver must not hide the unknown rule type" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Misspelled_type_test.json" MtOp '{"memories":[1]}'
+write_snapshot "$BC5/Misspelled_type_test.json" MtOp '{"memories":[]}'
+run_compare "$BC4" "$BC5" "$VT_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "unknown pairwise rule type" <<<"$RUN_OUT"; then
+  pass "V: misspelled rule type fails with exit 2 despite fully-waived paths"
+else
+  fail "V: expected exit 2 with unknown-rule-type error despite waiver; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

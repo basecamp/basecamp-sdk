@@ -305,6 +305,19 @@ for entry in "${TEST_ENTRIES[@]}"; do
   for rule in "${ENFORCED_RULES[@]}"; do
     RULE_TYPE="$(jq -r '.type' <<<"$rule")"
 
+    # Reject unknown rule types up front, BEFORE any per-path processing:
+    # the dispatch case below only runs for paths that survive the waiver
+    # skip, so a misspelled type whose paths are all waived would otherwise
+    # exit clean — an operator error silently suppressed. This script is
+    # invoked directly without schema validation, so it must self-check.
+    case "$RULE_TYPE" in
+      pairwiseSupersetArray | pairwiseSupersetKeys | pairwiseEqual) ;;
+      *)
+        echo "ERROR: unknown pairwise rule type '$RULE_TYPE' on $OPERATION — schema validation should have caught this" >&2
+        exit 2
+        ;;
+    esac
+
     # Guard the empty-array case off jq's own length, BEFORE splitting into
     # lines: an empty `paths` must not run the rule against the body root
     # (schema.json enforces minItems:1; this is defense in depth), and a lone
