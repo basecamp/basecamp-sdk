@@ -164,6 +164,13 @@ validate_snapshot() {
   fi
 }
 
+# Content-free shape summary of a JSON value, for violation messages. CI run
+# logs are retained and readable by anyone with log access, so violations
+# must never echo live-account field content — only type + size.
+shape_of() {
+  jq -nr --argjson v "$1" '$v | if type == "object" then "object(\(keys | length) keys)" elif type == "array" then "array(\(length))" elif type == "string" then "string(\(length))" else "\(type)" end'
+}
+
 # Bracket-path validation shared by enforcing rules and waiver entries.
 # Brackets are only documented (and only handled) as a leading 'pages[N]' or
 # 'pages[*]' segment, and a bracketed path must then enter the page BODY
@@ -438,7 +445,7 @@ for entry in "${TEST_ENTRIES[@]}"; do
           fi
 
           if [ "$BC4_LEN" = "INVALID" ] || [ "$BC5_LEN" = "INVALID" ]; then
-            violation "$OPERATION  pairwiseSupersetArray($DISPLAY): expected arrays on both sides; BC4=$BC4_VAL BC5=$BC5_VAL"
+            violation "$OPERATION  pairwiseSupersetArray($DISPLAY): expected arrays on both sides; BC4 $(shape_of "$BC4_VAL") vs BC5 $(shape_of "$BC5_VAL") (raw values redacted from logs)"
           elif [ "$BC5_LEN" -lt "$BC4_LEN" ]; then
             violation "$OPERATION  pairwiseSupersetArray($DISPLAY): BC5 length $BC5_LEN < BC4 length $BC4_LEN"
           fi
@@ -453,7 +460,7 @@ for entry in "${TEST_ENTRIES[@]}"; do
           BC5_KIND="$(jq -r 'if type == "object" then "object" elif . == null then "null" else "INVALID" end' <<<"$BC5_VAL")"
 
           if [ "$BC4_KIND" = "INVALID" ] || [ "$BC5_KIND" = "INVALID" ]; then
-            violation "$OPERATION  pairwiseSupersetKeys($DISPLAY): expected objects (or null for absent) on both sides; BC4=$BC4_VAL BC5=$BC5_VAL"
+            violation "$OPERATION  pairwiseSupersetKeys($DISPLAY): expected objects (or null for absent) on both sides; BC4 $(shape_of "$BC4_VAL") vs BC5 $(shape_of "$BC5_VAL") (raw values redacted from logs)"
           else
             BC4_OBJ="$BC4_VAL"
             BC5_OBJ="$BC5_VAL"
@@ -480,9 +487,7 @@ for entry in "${TEST_ENTRIES[@]}"; do
           # content. Operators reproduce locally against their own capture
           # to see the raw values.
           if [ "$(jq -n --argjson a "$BC4_VAL" --argjson b "$BC5_VAL" '$a == $b')" != "true" ]; then
-            BC4_SHAPE="$(jq -nr --argjson v "$BC4_VAL" '$v | if type == "object" then "object(\(keys | length) keys)" elif type == "array" then "array(\(length))" elif type == "string" then "string(\(length))" else "\(type)" end')"
-            BC5_SHAPE="$(jq -nr --argjson v "$BC5_VAL" '$v | if type == "object" then "object(\(keys | length) keys)" elif type == "array" then "array(\(length))" elif type == "string" then "string(\(length))" else "\(type)" end')"
-            violation "$OPERATION  pairwiseEqual($DISPLAY): values differ — BC4 $BC4_SHAPE vs BC5 $BC5_SHAPE (raw values redacted from logs; re-run the comparison locally to inspect)"
+            violation "$OPERATION  pairwiseEqual($DISPLAY): values differ — BC4 $(shape_of "$BC4_VAL") vs BC5 $(shape_of "$BC5_VAL") (raw values redacted from logs; re-run the comparison locally to inspect)"
           fi
           ;;
 
