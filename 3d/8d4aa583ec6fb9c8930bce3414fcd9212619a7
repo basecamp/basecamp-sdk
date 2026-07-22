@@ -1,0 +1,31 @@
+API-GAP-404.md
+  s_8adae5ec35a0a9::t_fb5d91257594b5 104-109
+go/pkg/basecamp/vaults_test.go
+  s_e360c8009d4261::t_9abcdc9c9cf195 11,602-628
+spec/api-gaps/upload-new-version.md
+  s_e360c8009d4261::t_eacfc7b94f8480 44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3d8d4aa583ec6fb9c8930bce3414fcd9212619a7",
+  "prompts": {},
+  "sessions": {
+    "s_8adae5ec35a0a9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8aef-eacc-71d0-b75e-2c9e4824a997",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e360c8009d4261": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "978e5d70-ea1a-4130-a260-f5a99cfa4010",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
