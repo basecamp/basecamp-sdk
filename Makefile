@@ -104,13 +104,13 @@ BC3_REPO ?= basecamp/bc3
 sync-status:
 	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
 	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
-	@./scripts/report-bc3-drift.sh \
+	@BC3_REPO="$(BC3_REPO)" ./scripts/report-bc3-drift.sh \
 		"$$(jq -r '.bc3.revision // empty' spec/api-provenance.json)" \
 		"$$(jq -r '.bc3.branch // "master"' spec/api-provenance.json)" \
 		"primary"
 	@for COMPAT_KEY in $$(jq -r '.compatibility // {} | keys[]' spec/api-provenance.json); do \
 		echo ""; \
-		./scripts/report-bc3-drift.sh \
+		BC3_REPO="$(BC3_REPO)" ./scripts/report-bc3-drift.sh \
 			"$$(jq -r --arg k "$$COMPAT_KEY" '.compatibility[$$k].revision // empty' spec/api-provenance.json)" \
 			"$$(jq -r --arg k "$$COMPAT_KEY" '.compatibility[$$k].branch // "master"' spec/api-provenance.json)" \
 			"compat"; \

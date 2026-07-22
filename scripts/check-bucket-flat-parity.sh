@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bucket↔flat parity lint.
 #
-# For every GET /{accountId}/buckets/{bucketId}/<resource>(/{filter})?.json operation
+# For every GET /{accountId}/buckets/{bucketId or projectId}/<resource>(/{filter})?.json operation
 # whose response is a list, check that a flat counterpart at
 # /{accountId}/<resource>(/{filter})?.json exists. If not, the path must be
 # entered in spec/bucket-scoped-allowlist.txt with a justification.
@@ -34,7 +34,7 @@ fi
 # Build the set of allowlisted patterns.
 ALLOWED=""
 if [ -f "$ALLOWLIST" ]; then
-  ALLOWED=$(grep -Ev '^\s*(#|$)' "$ALLOWLIST" || true)
+  ALLOWED=$(grep -Ev '^[[:space:]]*(#|$)' "$ALLOWLIST" || true)
 fi
 
 # Find candidate bucket-scoped GET list operations and their expected flat paths.
@@ -45,7 +45,7 @@ CANDIDATES=$(jq -r '
   . as $s
   | $s.paths
   | to_entries[]
-  | select(.key | test("^/\\{accountId\\}/buckets/\\{bucketId\\}/[^/]+(/\\{[^}]+\\})?\\.json$"))
+  | select(.key | test("^/\\{accountId\\}/buckets/\\{(bucketId|projectId)\\}/[^/]+(/\\{[^}]+\\})?\\.json$"))
   | select(.value.get != null)
   | . as $entry
   | (
@@ -71,8 +71,10 @@ while IFS= read -r BUCKET_PATH; do
   [ -z "$BUCKET_PATH" ] && continue
   COUNT=$((COUNT + 1))
 
-  # Compute the flat path: strip /buckets/{bucketId} from the bucket path.
-  FLAT_PATH=$(echo "$BUCKET_PATH" | sed 's|/buckets/{bucketId}||')
+  # Compute the flat path: strip the /buckets/{<label>} segment. The spec uses
+  # {bucketId} today; {projectId} is accepted for forward-compat with the
+  # documented Smithy path convention.
+  FLAT_PATH=$(echo "$BUCKET_PATH" | sed -E 's#/buckets/\{(bucketId|projectId)\}##')
 
   # Already covered by a flat sibling?
   if jq -e --arg p "$FLAT_PATH" '.paths[$p].get != null' "$SPEC" >/dev/null 2>&1; then
