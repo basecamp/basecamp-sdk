@@ -1,0 +1,21 @@
+Makefile
+  s_da6173413beb21::t_eec7e724366df7 106
+scripts/check-bucket-flat-parity.sh
+  s_da6173413beb21::t_2bf296cfc89493 4-5,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "66f9dfa9261c6df13f8985fdf9dc865d07af90f0",
+  "prompts": {},
+  "sessions": {
+    "s_da6173413beb21": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ddf-a089-7203-b2d1-90e786df7621",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
