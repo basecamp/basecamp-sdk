@@ -103,6 +103,7 @@ BC3_REPO ?= basecamp/bc3
 
 sync-status:
 	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
+	@command -v jq > /dev/null 2>&1 || { echo "ERROR: jq not found. Install: https://jqlang.github.io/jq/"; exit 1; }
 	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
 	@BC3_REPO="$(BC3_REPO)" ./scripts/report-bc3-drift.sh \
 		"$$(jq -r '.bc3.revision // empty' spec/api-provenance.json)" \

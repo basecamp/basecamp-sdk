@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Bucket↔flat parity lint.
 #
-# For every GET /{accountId}/buckets/{bucketId or projectId}/<resource>(/{filter})?.json operation
+# For every GET /{accountId}/buckets/{bucketId or projectId}/<resource>(/<filter>)?.json operation
+# (<filter> may be a literal segment like "completed" or a path parameter)
 # whose response is a list, check that a flat counterpart at
 # /{accountId}/<resource>(/{filter})?.json exists. If not, the path must be
 # entered in spec/bucket-scoped-allowlist.txt with a justification.
@@ -45,7 +46,7 @@ CANDIDATES=$(jq -r '
   . as $s
   | $s.paths
   | to_entries[]
-  | select(.key | test("^/\\{accountId\\}/buckets/\\{(bucketId|projectId)\\}/[^/]+(/\\{[^}]+\\})?\\.json$"))
+  | select(.key | test("^/\\{accountId\\}/buckets/\\{(bucketId|projectId)\\}/[^/]+(/[^/]+)?\\.json$"))
   | select(.value.get != null)
   | . as $entry
   | (
