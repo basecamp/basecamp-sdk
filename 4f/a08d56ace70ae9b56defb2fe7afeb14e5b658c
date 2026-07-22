@@ -1,0 +1,42 @@
+go/pkg/basecamp/templates.go
+  s_d70e8ca2b4d20b::t_d6141ea0a7d028 329-332
+go/pkg/generated/client.gen.go
+  s_d70e8ca2b4d20b::t_8b5ca12cf926e3 600,1642-1645
+  s_2e722a07ae260d::t_056013a27ecdb4 1646-1647
+go/pkg/basecamp/templates_test.go
+  s_d70e8ca2b4d20b::t_19398c14d36cbc 185-232
+  s_d70e8ca2b4d20b::t_34ecb8fc220d99 4,6-7
+  s_69226f3220082c::t_c921185af486ea 233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4fa08d56ace70ae9b56defb2fe7afeb14e5b658c",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_69226f3220082c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ae7-f1ed-7c72-8f44-ca06ba3bf6ca",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d70e8ca2b4d20b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47ce1679-590b-42bd-8f2c-a3916d99b0ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
