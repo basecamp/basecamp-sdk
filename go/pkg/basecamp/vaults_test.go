@@ -614,7 +614,11 @@ func TestUpdateUploadRequest_HasNoFileReplacementField(t *testing.T) {
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
 		jsonName := strings.Split(field.Tag.Get("json"), ",")[0]
+		// Match on the Go field name too, not just the json tag: a File []byte
+		// with no json tag serializes under its Go name and would otherwise slip
+		// the tag-only checks.
 		if jsonName == "attachable_sgid" || jsonName == "file" ||
+			strings.EqualFold(field.Name, "file") ||
 			strings.Contains(strings.ToLower(field.Name), "attachable") {
 			t.Errorf("UpdateUploadRequest carries file-replacement field %q (json %q); "+
 				"the server ignores attachable_sgid on update — see /API-GAP-404.md",
