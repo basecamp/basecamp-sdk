@@ -1,0 +1,31 @@
+conformance/tests/live-my-surface.json
+  s_c9b7cecf44b5ed::t_98641255ce6998 97
+  s_c9b7cecf44b5ed::t_35f6cb111de28b 87
+  s_c9b7cecf44b5ed::t_94f89e78912afa 74
+CONTRIBUTING.md
+  s_c2af5ed73cd34b::t_3fffe806bbf057 413,418,423-430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "45b5e5c60cfc369abe83cb33c1c98eedf3848d04",
+  "prompts": {},
+  "sessions": {
+    "s_c2af5ed73cd34b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1ae6ebdfac7c3d10",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
