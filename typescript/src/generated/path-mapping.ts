@@ -36,11 +36,6 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/card_tables/steps/{stepId}": "GetCardStep",
   "PUT:/{accountId}/card_tables/steps/{stepId}": "UpdateCardStep",
   "PUT:/{accountId}/card_tables/steps/{stepId}/completions.json": "SetCardStepCompletion",
-  "GET:/{accountId}/categories.json": "ListMessageTypes",
-  "POST:/{accountId}/categories.json": "CreateMessageType",
-  "DELETE:/{accountId}/categories/{typeId}": "DeleteMessageType",
-  "GET:/{accountId}/categories/{typeId}": "GetMessageType",
-  "PUT:/{accountId}/categories/{typeId}": "UpdateMessageType",
   "GET:/{accountId}/chats.json": "ListCampfires",
   "GET:/{accountId}/chats/{campfireId}": "GetCampfire",
   "GET:/{accountId}/chats/{campfireId}/integrations.json": "ListChatbots",
@@ -172,6 +167,13 @@ export const PATH_TO_OPERATION: Record<string, string> = {
 
   // Attachments
   "POST:/{accountId}/attachments.json": "CreateAttachment",
+
+  // Message Types
+  "GET:/{accountId}/buckets/{projectId}/categories.json": "ListMessageTypes",
+  "POST:/{accountId}/buckets/{projectId}/categories.json": "CreateMessageType",
+  "DELETE:/{accountId}/buckets/{projectId}/categories/{typeId}": "DeleteMessageType",
+  "GET:/{accountId}/buckets/{projectId}/categories/{typeId}": "GetMessageType",
+  "PUT:/{accountId}/buckets/{projectId}/categories/{typeId}": "UpdateMessageType",
 
   // People
   "GET:/{accountId}/circles/people.json": "ListPingablePeople",

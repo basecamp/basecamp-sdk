@@ -14,19 +14,20 @@ class MessageTypesService(client: AccountClient) : BaseService(client) {
 
     /**
      * List message types in a project
+     * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(options: PaginationOptions? = null): ListResult<MessageType> {
+    suspend fun list(projectId: Long, options: PaginationOptions? = null): ListResult<MessageType> {
         val info = OperationInfo(
             service = "MessageTypes",
             operation = "ListMessageTypes",
             resourceType = "message_type",
             isMutation = false,
-            projectId = null,
+            projectId = projectId,
             resourceId = null,
         )
         return requestPaginated(info, options, {
-            httpGet("/categories.json", operationName = info.operation)
+            httpGet("/buckets/${projectId}/categories.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<MessageType>>(body)
         }
@@ -34,19 +35,20 @@ class MessageTypesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Create a new message type in a project
+     * @param projectId The project ID
      * @param body Request body
      */
-    suspend fun create(body: CreateMessageTypeBody): MessageType {
+    suspend fun create(projectId: Long, body: CreateMessageTypeBody): MessageType {
         val info = OperationInfo(
             service = "MessageTypes",
             operation = "CreateMessageType",
             resourceType = "message_type",
             isMutation = true,
-            projectId = null,
+            projectId = projectId,
             resourceId = null,
         )
         return request(info, {
-            httpPost("/categories.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPost("/buckets/${projectId}/categories.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
                 put("icon", kotlinx.serialization.json.JsonPrimitive(body.icon))
             }), operationName = info.operation)
@@ -57,19 +59,20 @@ class MessageTypesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single message type by id
+     * @param projectId The project ID
      * @param typeId The type ID
      */
-    suspend fun get(typeId: Long): MessageType {
+    suspend fun get(projectId: Long, typeId: Long): MessageType {
         val info = OperationInfo(
             service = "MessageTypes",
             operation = "GetMessageType",
             resourceType = "message_type",
             isMutation = false,
-            projectId = null,
+            projectId = projectId,
             resourceId = typeId,
         )
         return request(info, {
-            httpGet("/categories/${typeId}", operationName = info.operation)
+            httpGet("/buckets/${projectId}/categories/${typeId}", operationName = info.operation)
         }) { body ->
             json.decodeFromString<MessageType>(body)
         }
@@ -77,20 +80,21 @@ class MessageTypesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Update an existing message type
+     * @param projectId The project ID
      * @param typeId The type ID
      * @param body Request body
      */
-    suspend fun update(typeId: Long, body: UpdateMessageTypeBody): MessageType {
+    suspend fun update(projectId: Long, typeId: Long, body: UpdateMessageTypeBody): MessageType {
         val info = OperationInfo(
             service = "MessageTypes",
             operation = "UpdateMessageType",
             resourceType = "message_type",
             isMutation = true,
-            projectId = null,
+            projectId = projectId,
             resourceId = typeId,
         )
         return request(info, {
-            httpPut("/categories/${typeId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+            httpPut("/buckets/${projectId}/categories/${typeId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 body.name?.let { put("name", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.icon?.let { put("icon", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
@@ -101,19 +105,20 @@ class MessageTypesService(client: AccountClient) : BaseService(client) {
 
     /**
      * Delete a message type
+     * @param projectId The project ID
      * @param typeId The type ID
      */
-    suspend fun delete(typeId: Long): Unit {
+    suspend fun delete(projectId: Long, typeId: Long): Unit {
         val info = OperationInfo(
             service = "MessageTypes",
             operation = "DeleteMessageType",
             resourceType = "message_type",
             isMutation = true,
-            projectId = null,
+            projectId = projectId,
             resourceId = typeId,
         )
         request(info, {
-            httpDelete("/categories/${typeId}", operationName = info.operation)
+            httpDelete("/buckets/${projectId}/categories/${typeId}", operationName = info.operation)
         }) { Unit }
     }
 }

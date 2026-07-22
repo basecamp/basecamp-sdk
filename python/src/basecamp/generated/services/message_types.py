@@ -11,80 +11,98 @@ from basecamp.hooks import OperationInfo
 
 
 class MessageTypesService(BaseService):
-    def list(self) -> ListResult:
+    def list(self, *, project_id: int) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="messagetypes", operation="list", is_mutation=False), "/categories.json"
+            OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=project_id),
+            f"/buckets/{project_id}/categories.json",
         )
 
-    def create(self, *, name: str, icon: str) -> dict[str, Any]:
+    def create(self, *, project_id: int, name: str, icon: str) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="messagetypes", operation="create", is_mutation=True),
+            OperationInfo(service="messagetypes", operation="create", is_mutation=True, project_id=project_id),
             "POST",
-            "/categories.json",
+            f"/buckets/{project_id}/categories.json",
             json_body=self._compact(name=name, icon=icon),
             operation="CreateMessageType",
         )
 
-    def get(self, *, type_id: int) -> dict[str, Any]:
+    def get(self, *, project_id: int, type_id: int) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="messagetypes", operation="get", is_mutation=False, resource_id=type_id),
+            OperationInfo(
+                service="messagetypes", operation="get", is_mutation=False, project_id=project_id, resource_id=type_id
+            ),
             "GET",
-            f"/categories/{type_id}",
+            f"/buckets/{project_id}/categories/{type_id}",
         )
 
-    def update(self, *, type_id: int, name: str | None = None, icon: str | None = None) -> dict[str, Any]:
+    def update(
+        self, *, project_id: int, type_id: int, name: str | None = None, icon: str | None = None
+    ) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="messagetypes", operation="update", is_mutation=True, resource_id=type_id),
+            OperationInfo(
+                service="messagetypes", operation="update", is_mutation=True, project_id=project_id, resource_id=type_id
+            ),
             "PUT",
-            f"/categories/{type_id}",
+            f"/buckets/{project_id}/categories/{type_id}",
             json_body=self._compact(name=name, icon=icon),
             operation="UpdateMessageType",
         )
 
-    def delete(self, *, type_id: int) -> None:
+    def delete(self, *, project_id: int, type_id: int) -> None:
         self._request_void(
-            OperationInfo(service="messagetypes", operation="delete", is_mutation=True, resource_id=type_id),
+            OperationInfo(
+                service="messagetypes", operation="delete", is_mutation=True, project_id=project_id, resource_id=type_id
+            ),
             "DELETE",
-            f"/categories/{type_id}",
+            f"/buckets/{project_id}/categories/{type_id}",
             operation="DeleteMessageType",
         )
 
 
 class AsyncMessageTypesService(AsyncBaseService):
-    async def list(self) -> ListResult:
+    async def list(self, *, project_id: int) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="messagetypes", operation="list", is_mutation=False), "/categories.json"
+            OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=project_id),
+            f"/buckets/{project_id}/categories.json",
         )
 
-    async def create(self, *, name: str, icon: str) -> dict[str, Any]:
+    async def create(self, *, project_id: int, name: str, icon: str) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="messagetypes", operation="create", is_mutation=True),
+            OperationInfo(service="messagetypes", operation="create", is_mutation=True, project_id=project_id),
             "POST",
-            "/categories.json",
+            f"/buckets/{project_id}/categories.json",
             json_body=self._compact(name=name, icon=icon),
             operation="CreateMessageType",
         )
 
-    async def get(self, *, type_id: int) -> dict[str, Any]:
+    async def get(self, *, project_id: int, type_id: int) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="messagetypes", operation="get", is_mutation=False, resource_id=type_id),
+            OperationInfo(
+                service="messagetypes", operation="get", is_mutation=False, project_id=project_id, resource_id=type_id
+            ),
             "GET",
-            f"/categories/{type_id}",
+            f"/buckets/{project_id}/categories/{type_id}",
         )
 
-    async def update(self, *, type_id: int, name: str | None = None, icon: str | None = None) -> dict[str, Any]:
+    async def update(
+        self, *, project_id: int, type_id: int, name: str | None = None, icon: str | None = None
+    ) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="messagetypes", operation="update", is_mutation=True, resource_id=type_id),
+            OperationInfo(
+                service="messagetypes", operation="update", is_mutation=True, project_id=project_id, resource_id=type_id
+            ),
             "PUT",
-            f"/categories/{type_id}",
+            f"/buckets/{project_id}/categories/{type_id}",
             json_body=self._compact(name=name, icon=icon),
             operation="UpdateMessageType",
         )
 
-    async def delete(self, *, type_id: int) -> None:
+    async def delete(self, *, project_id: int, type_id: int) -> None:
         await self._request_void(
-            OperationInfo(service="messagetypes", operation="delete", is_mutation=True, resource_id=type_id),
+            OperationInfo(
+                service="messagetypes", operation="delete", is_mutation=True, project_id=project_id, resource_id=type_id
+            ),
             "DELETE",
-            f"/categories/{type_id}",
+            f"/buckets/{project_id}/categories/{type_id}",
             operation="DeleteMessageType",
         )
