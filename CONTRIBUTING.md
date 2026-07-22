@@ -410,22 +410,24 @@ Example — the canonical `memories` canary on `GetMyNotifications`:
   {
     "type": "pairwiseSupersetArray",
     "paths": ["memories"],
-    "reason": "Additive-only invariant: BC5 memories[] must stay a superset of BC4's. Currently waived by the pairwiseDeltaAllowed entry below — see spec/api-gaps/memories-emptied-regression.md."
+    "reason": "Additive-only invariant: BC5 memories[] should remain a superset of BC4's. PERMANENTLY waived by the pairwiseDeltaAllowed entry below — bc3 documents memories as an always-empty placeholder on BC5 (doc/api/sections/my_notifications.md). See spec/api-gaps/memories-emptied-regression.md."
   },
   {
     "type": "pairwiseDeltaAllowed",
     "paths": ["memories"],
-    "reason": "Confirmed live regression: BC5 master ships `json.memories []` while BC4 (the four branch) still populates it. The fix is written but unmerged (BC3 #10947: `json.memories @bubble_ups`). Temporary — remove this waiver once #10947 merges. Tracked in spec/api-gaps/memories-emptied-regression.md."
+    "reason": "PERMANENT documented contract divergence: BC5 ships `json.memories []` by contract — doc/api/sections/my_notifications.md (bc3 #11628) codifies memories as an always-empty placeholder superseded by bubble_ups. The once-planned alias (`json.memories @bubble_ups`, bc3 #10947) never shipped; #10947 is closed unmerged. Not a pending regression — this entry is the machine-readable record of an accepted BC4→BC5 subtractive delta. Retire only if BC4 (the four branch) empties memories too (the superset rule then passes clean) or BC5's documented contract changes. Tracked in spec/api-gaps/memories-emptied-regression.md."
   }
 ]
 ```
 
-BC5 `master` currently ships `memories: []` (a confirmed regression — the fix
-is written but unmerged in BC3 #10947), so the superset rule is waived by the
-`pairwiseDeltaAllowed` entry above and tracked in
-`spec/api-gaps/memories-emptied-regression.md`. Once #10947 merges and the spec
-provenance is repinned, drop the waiver; the superset rule then fires on any
-future regression — the canary's contract with BC3 made concrete.
+BC5 ships `memories: []` permanently by documented contract —
+`doc/api/sections/my_notifications.md` (bc3 #11628) codifies memories as an
+always-empty placeholder superseded by `bubble_ups`. The superset rule stays
+as the encoded additive-only invariant; the `pairwiseDeltaAllowed` entry is
+the machine-readable record of the accepted delta, feeding the public
+compatibility report. Retire the waiver only if BC4 (the four branch) empties
+memories too — the superset rule then passes clean — or BC5's documented
+contract changes.
 
 ### Orchestrator
 
