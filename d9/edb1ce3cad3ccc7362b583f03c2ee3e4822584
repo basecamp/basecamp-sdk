@@ -1,0 +1,21 @@
+python/tests/services/test_campfires_service.py
+  s_18853c09ab9fc6::t_57842e3ffdf895 1-4,7-53,55-61,64-93,95-101,104-115
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/CampfiresServiceTest.kt
+  s_18853c09ab9fc6::t_af20afb12efb62 1-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d9edb1ce3cad3ccc7362b583f03c2ee3e4822584",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
