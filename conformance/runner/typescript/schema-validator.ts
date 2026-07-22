@@ -72,18 +72,22 @@ function findResponseSchema(doc: OpenAPIDocument, operationId: string): unknown 
       // last resort is "default". Operations that return 201 (Create*)
       // shouldn't fall back to "" because their response body still has
       // a schema worth validating.
-      const candidates = ["200", "201", "202", "203", "204", "default"];
+      const candidates = ["200", "201", "202", "203", "204"];
       for (const code of candidates) {
         if (!responses[code]) continue;
         const schema = responses[code].content?.["application/json"]?.schema;
         if (schema) return schema;
       }
-      // Last resort: any 2xx key not in the explicit list above.
+      // Any 2xx key not in the explicit list above (e.g. 205-299).
       for (const [code, response] of Object.entries(responses)) {
         if (!/^2\d\d$/.test(code)) continue;
         const schema = response.content?.["application/json"]?.schema;
         if (schema) return schema;
       }
+      // Last resort: "default".
+      const defaultSchema =
+        responses["default"]?.content?.["application/json"]?.schema;
+      if (defaultSchema) return defaultSchema;
     }
   }
   return null;
