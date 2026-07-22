@@ -562,6 +562,9 @@ check-bc5-compat:
 	esac; \
 	LRD_CHECK="$$LRD"; \
 	if [ -d "$$LRD" ]; then LRD_CHECK="$$(cd "$$LRD" && pwd -P)"; fi; \
+	case "$$LRD_CHECK" in \
+	  "/") echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it canonicalizes to the filesystem root" >&2; exit 2 ;; \
+	esac; \
 	case "$$(pwd -P)/" in \
 	  "$$LRD_CHECK"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
 	esac; \
