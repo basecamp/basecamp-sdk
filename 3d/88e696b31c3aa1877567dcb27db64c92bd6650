@@ -1,0 +1,31 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TemplatesServiceTest.kt
+  s_2e722a07ae260d::t_65d0a1d6b45479 1-69
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 477
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/templates.kt
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3d88e696b31c3aa1877567dcb27db64c92bd6650",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d70e8ca2b4d20b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47ce1679-590b-42bd-8f2c-a3916d99b0ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
