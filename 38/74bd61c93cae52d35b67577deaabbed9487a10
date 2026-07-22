@@ -1,0 +1,49 @@
+go/pkg/basecamp/todos.go
+  s_13deffa07b5c67::t_877f09bc936a8f 841-846
+  s_13deffa07b5c67::t_13b2199abd35e3 771-790
+go/pkg/basecamp/cards.go
+  s_13deffa07b5c67::t_63994a090ccfe6 120
+  s_13deffa07b5c67::t_0b50abb5179109 1324
+  s_13deffa07b5c67::t_2a8551a5ec099a 1408
+  s_13deffa07b5c67::t_c823ce01393138 51
+  s_13deffa07b5c67::t_cbf0a74f77f629 94
+  s_13deffa07b5c67::t_96712b3081078a 1250
+go/pkg/basecamp/events.go
+  s_13deffa07b5c67::t_f33be87f9cb96b 41-42
+  s_13deffa07b5c67::t_0a133ef9439f77 156-157
+go/pkg/basecamp/vaults.go
+  s_13deffa07b5c67::t_9e1b1ab3b0eaa2 114
+  s_13deffa07b5c67::t_a36662fb5ae9c4 1119
+  s_13deffa07b5c67::t_c84afd94d8d8a6 139
+  s_13deffa07b5c67::t_ab3d6490d0f66d 1171
+scripts/check-wrapper-drift/main_test.go
+  s_13deffa07b5c67::t_3d9dbdcae39637 1-34,37-48,50-179,182-245
+  s_13deffa07b5c67::t_04930bf7a2a7d7 35-36,49
+  s_13deffa07b5c67::t_9d40de55eb4f11 180-181
+Makefile
+  s_13deffa07b5c67::t_7bfddfe391c9b4 206,225-230
+  s_13deffa07b5c67::t_e4b2965c723b59 632
+  s_13deffa07b5c67::t_28d3d662876413 663-664
+go.work
+  s_13deffa07b5c67::t_e4896a1bd42bd6 6
+scripts/check-wrapper-drift/main.go
+  s_13deffa07b5c67::t_031b69ddbca240 1-150,152-169,171-271,279-306,316,320-446
+  s_13deffa07b5c67::t_aca17b1ef04f45 272-278,307-315,317-319
+  s_13deffa07b5c67::t_d608de16a7596e 151,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "3874bd61c93cae52d35b67577deaabbed9487a10",
+  "prompts": {},
+  "sessions": {
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

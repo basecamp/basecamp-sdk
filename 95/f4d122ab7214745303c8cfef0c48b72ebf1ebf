@@ -1,0 +1,31 @@
+scripts/check-wrapper-drift/main.go
+  s_83c0f2fdc30030::t_d8e415ca3a843e 16-25
+  s_83c0f2fdc30030::t_acf41f36cae2ab 46-64,67,70-75,81-85
+  s_83c0f2fdc30030::t_8d80ebef1a47a9 518
+  s_83c0f2fdc30030::t_36e016a0edee34 239-258
+  s_83c0f2fdc30030::t_ceff29ee3fe636 823-954
+  s_83c0f2fdc30030::t_d48f87a05a10d4 333-338
+  s_83c0f2fdc30030::t_215b08e39bba43 117-121,126-129,140-145,154-159
+  s_83c0f2fdc30030::t_38255380abb41c 303
+  s_83c0f2fdc30030::t_cb9c98c44afaf7 355-359,391-395
+  s_83c0f2fdc30030::t_0edbb56007aeac 396
+  s_83c0f2fdc30030::t_3ff72d6a35adb7 440-445,468-469,472,484,487-488
+  s_83c0f2fdc30030::t_674678612acb92 447
+  s_83c0f2fdc30030::t_efd2f607c398db 509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "95f4d122ab7214745303c8cfef0c48b72ebf1ebf",
+  "prompts": {},
+  "sessions": {
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
