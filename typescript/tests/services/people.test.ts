@@ -161,6 +161,7 @@ describe("PeopleService", () => {
 
       const status = await client.people.outOfOffice(1);
       expect(status.enabled).toBe(true);
+      expect(status.ongoing).toBe(true);
       expect(status.start_date).toBe("2026-07-20");
       expect(status.end_date).toBe("2026-07-26");
       expect(status.back_on_date).toBe("2026-07-27");

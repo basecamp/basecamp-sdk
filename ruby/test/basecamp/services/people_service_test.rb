@@ -116,6 +116,7 @@ class PeopleServiceTest < Minitest::Test
     result = @account.people.get_out_of_office(person_id: 1)
 
     assert result["enabled"]
+    assert result["ongoing"]
     assert_equal "2026-07-20", result["start_date"]
     assert_equal "2026-07-26", result["end_date"]
     assert_equal "2026-07-27", result["back_on_date"]
