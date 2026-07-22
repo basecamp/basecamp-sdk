@@ -264,10 +264,10 @@ async function executeOperation(
         await client.tools.get(Number(params.toolId));
         break;
 
-      case "CloneTool":
-        await client.tools.clone({
-          sourceRecordingId: Number(body.source_recording_id),
-          title: String(body.title || "Conformance Test"),
+      case "CreateTool":
+        await client.tools.create(Number(params.bucketId), {
+          toolType: String(body.tool_type),
+          title: body.title === undefined ? undefined : String(body.title),
         });
         break;
 

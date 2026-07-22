@@ -139,9 +139,10 @@ class OperationMapper
       @account.tools.get(
         tool_id: path_params["toolId"]
       )
-    when "CloneTool"
-      @account.tools.clone(
-        source_recording_id: body["source_recording_id"],
+    when "CreateTool"
+      @account.tools.create(
+        bucket_id: path_params["bucketId"],
+        tool_type: body["tool_type"],
         title: body["title"]
       )
     when "EnableTool"

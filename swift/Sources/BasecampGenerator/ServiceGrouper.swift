@@ -52,7 +52,7 @@ let serviceSplits: [String: [String: [String]]] = [
         "Documents": ["GetDocument", "UpdateDocument", "ListDocuments", "CreateDocument"],
     ],
     "Automation": [
-        "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CloneTool", "EnableTool", "DisableTool", "RepositionTool"],
+        "Tools": ["GetTool", "UpdateTool", "DeleteTool", "CreateTool", "EnableTool", "DisableTool", "RepositionTool"],
         "Recordings": ["GetRecording", "ArchiveRecording", "UnarchiveRecording", "TrashRecording", "ListRecordings"],
         "Webhooks": ["ListWebhooks", "CreateWebhook", "GetWebhook", "UpdateWebhook", "DeleteWebhook"],
         "Events": ["ListEvents"],

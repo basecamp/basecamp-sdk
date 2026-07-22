@@ -118,6 +118,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/dock/tools",
+      "resource": "Automation",
+      "operations": {
+        "POST": "CreateTool"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/webhooks",
       "resource": "Automation",
       "operations": {
@@ -632,19 +649,6 @@
         "commentId": {
           "role": "recording",
           "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/dock/tools",
-      "resource": "Automation",
-      "operations": {
-        "POST": "CloneTool"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
         }
       }
     },

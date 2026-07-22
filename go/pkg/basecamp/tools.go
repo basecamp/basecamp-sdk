@@ -23,9 +23,9 @@ type Tool struct {
 	Bucket    *Bucket   `json:"bucket,omitempty"`
 }
 
-// CloneToolOptions specifies optional parameters for cloning a tool.
-type CloneToolOptions struct {
-	// Title for the cloned tool. If empty, the source tool's title is used.
+// CreateToolOptions specifies optional parameters for creating a tool.
+type CreateToolOptions struct {
+	// Title for the new tool. If empty, Basecamp assigns the next available default title for the tool type.
 	Title string
 }
 
@@ -77,14 +77,17 @@ func (s *ToolsService) Get(ctx context.Context, toolID int64) (result *Tool, err
 	return &tool, nil
 }
 
-// Create clones an existing tool to create a new one.
-// An optional title can be provided; if empty, the source tool's title is used.
+// Create adds a tool to the destination bucket.
+// toolType is required and must be one of Basecamp's dock tool types:
+// "Chat::Transcript", "Inbox", "Kanban::Board", "Message::Board",
+// "Questionnaire", "Schedule", "Todoset", or "Vault".
+// An optional title can be provided; if empty, Basecamp assigns the next available default title for the tool type.
 // Returns the newly created tool.
-func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, opts *CloneToolOptions) (result *Tool, err error) {
+func (s *ToolsService) Create(ctx context.Context, bucketID int64, toolType string, opts *CreateToolOptions) (result *Tool, err error) {
 	op := OperationInfo{
 		Service: "Tools", Operation: "Create",
 		ResourceType: "tool", IsMutation: true,
-		ResourceID: sourceToolID,
+		ResourceID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -95,14 +98,19 @@ func (s *ToolsService) Create(ctx context.Context, sourceToolID int64, opts *Clo
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	body := generated.CloneToolJSONRequestBody{
-		SourceRecordingId: sourceToolID,
+	if toolType == "" {
+		err = ErrUsage("tool type is required")
+		return nil, err
+	}
+
+	body := generated.CreateToolJSONRequestBody{
+		ToolType: toolType,
 	}
 	if opts != nil && opts.Title != "" {
 		body.Title = opts.Title
 	}
 
-	resp, err := s.client.parent.gen.CloneToolWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CreateToolWithResponse(ctx, s.client.accountID, bucketID, body)
 	if err != nil {
 		return nil, err
 	}

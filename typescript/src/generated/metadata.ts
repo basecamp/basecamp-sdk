@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-22T02:53:56.174Z",
+  "generated": "2026-07-22T08:19:34.802Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -165,6 +165,17 @@ const metadata: MetadataOutput = {
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "CreateTool": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "ListWebhooks": {
@@ -762,17 +773,6 @@ const metadata: MetadataOutput = {
       },
       "idempotent": {
         "natural": true
-      }
-    },
-    "CloneTool": {
-      "retry": {
-        "maxAttempts": 2,
-        "baseDelayMs": 1000,
-        "backoff": "exponential",
-        "retryOn": [
-          429,
-          503
-        ]
       }
     },
     "GetTool": {

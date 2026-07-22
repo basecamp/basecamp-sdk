@@ -20,15 +20,39 @@ class ToolsServiceTest < Minitest::Test
     assert_equal true, result["enabled"]
   end
 
-  def test_clone
+  def test_create
     response = { "id" => 2, "name" => "Message Board (Copy)" }
 
-    stub_request(:post, %r{https://3\.basecampapi\.com/12345/dock/tools\.json})
-      .with(body: hash_including("source_recording_id" => 2, "title" => "Message Board (Copy)"))
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
+      .with(body: hash_including("tool_type" => "Message::Board", "title" => "Message Board (Copy)"))
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
-    result = @account.tools.clone(source_recording_id: 2, title: "Message Board (Copy)")
+    result = @account.tools.create(bucket_id: 456, tool_type: "Message::Board", title: "Message Board (Copy)")
     assert_equal "Message Board (Copy)", result["name"]
+  end
+
+  def test_create_omits_title_when_not_provided
+    response = { "id" => 2, "name" => "Message Board" }
+
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
+      .with { |req| JSON.parse(req.body) == { "tool_type" => "Message::Board" } }
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    result = @account.tools.create(bucket_id: 456, tool_type: "Message::Board")
+    assert_equal "Message Board", result["name"]
+  end
+
+  def test_create_raises_validation_error_on_422
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
+      .to_return(
+        status: 422,
+        body: { "error" => "Tool type is not included in the list" }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    assert_raises(Basecamp::ValidationError) do
+      @account.tools.create(bucket_id: 456, tool_type: "Bogus::Tool")
+    end
   end
 
   def test_update

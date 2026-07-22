@@ -1,10 +1,16 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func toolsFixturesDir() string {
@@ -74,6 +80,146 @@ func TestTool_UnmarshalGet(t *testing.T) {
 	}
 	if tool.Bucket.Type != "Project" {
 		t.Errorf("expected Bucket.Type 'Project', got %q", tool.Bucket.Type)
+	}
+}
+
+func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
+	const (
+		accountID = "5245563"
+		bucketID  = int64(33861629)
+		toolType  = "Message::Board"
+		title     = "Intervention Log / Journal"
+	)
+
+	expectedPath := fmt.Sprintf("/%s/buckets/%d/dock/tools.json", accountID, bucketID)
+
+	var capturedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedPath = r.URL.Path
+		if r.Method != http.MethodPost || r.URL.Path != expectedPath {
+			http.NotFound(w, r)
+			return
+		}
+
+		body := decodeRequestBody(t, r)
+		if got := body["tool_type"]; got != toolType {
+			t.Fatalf("tool_type = %v, want %q", got, toolType)
+		}
+		if got := body["title"]; got != title {
+			t.Fatalf("title = %v, want %q", got, title)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(loadToolsFixture(t, "create.json"))
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	var capturedOp OperationInfo
+	hooks := &testHooks{
+		onOperationStart: func(ctx context.Context, op OperationInfo) context.Context {
+			capturedOp = op
+			return ctx
+		},
+	}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHooks(hooks))
+
+	_, err := client.ForAccount(accountID).Tools().Create(
+		context.Background(),
+		bucketID,
+		toolType,
+		&CreateToolOptions{Title: title},
+	)
+	if err != nil {
+		t.Fatalf("Create() error = %v; request path = %s; want bucket %d dock tools endpoint", err, capturedPath, bucketID)
+	}
+	if capturedOp.ResourceID != bucketID {
+		t.Fatalf("Create() operation ResourceID = %d, want destination bucket %d", capturedOp.ResourceID, bucketID)
+	}
+}
+
+func TestToolsServiceCreateOmitsTitleWhenNotProvided(t *testing.T) {
+	const (
+		accountID = "5245563"
+		bucketID  = int64(33861629)
+		toolType  = "Message::Board"
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := decodeRequestBody(t, r)
+		if got := body["tool_type"]; got != toolType {
+			t.Fatalf("tool_type = %v, want %q", got, toolType)
+		}
+		if title, present := body["title"]; present {
+			t.Fatalf("title = %v, want omitted from request body", title)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(loadToolsFixture(t, "create.json"))
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+	if _, err := client.ForAccount(accountID).Tools().Create(context.Background(), bucketID, toolType, nil); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+}
+
+func TestToolsServiceCreateEmptyToolType(t *testing.T) {
+	var requestCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	var startedOp, endedOp OperationInfo
+	var startObserved, endObserved bool
+	var endErr error
+	hooks := &testHooks{
+		onOperationStart: func(ctx context.Context, op OperationInfo) context.Context {
+			startObserved = true
+			startedOp = op
+			return ctx
+		},
+		onOperationEnd: func(ctx context.Context, op OperationInfo, err error, d time.Duration) {
+			endObserved = true
+			endedOp = op
+			endErr = err
+		},
+	}
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}, WithHooks(hooks))
+
+	_, err := client.ForAccount("5245563").Tools().Create(context.Background(), 33861629, "", nil)
+	if err == nil {
+		t.Fatal("expected error for empty tool type")
+	}
+	apiErr, ok := errors.AsType[*Error](err)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got: %v", err)
+	}
+	if apiErr.Message != "tool type is required" {
+		t.Errorf("expected message %q, got %q", "tool type is required", apiErr.Message)
+	}
+	if requestCount != 0 {
+		t.Errorf("expected 0 HTTP requests for client-side validation failure, got %d", requestCount)
+	}
+	if !startObserved || !endObserved {
+		t.Fatalf("expected operation hooks to fire: start=%v end=%v", startObserved, endObserved)
+	}
+	if startedOp.Operation != "Create" || endedOp.Operation != "Create" {
+		t.Errorf("expected hooks to observe Create operation, got start=%q end=%q", startedOp.Operation, endedOp.Operation)
+	}
+	if !errors.Is(endErr, err) {
+		t.Errorf("expected OnOperationEnd to observe the usage error, got: %v", endErr)
 	}
 }
 

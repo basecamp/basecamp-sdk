@@ -15,17 +15,6 @@
         ]
       }
     },
-    "CloneTool": {
-      "retry": {
-        "max": 2,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
     "CompleteTodo": {
       "idempotent": true,
       "retry": {
@@ -314,6 +303,17 @@
       }
     },
     "CreateTodolistGroup": {
+      "retry": {
+        "max": 2,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTool": {
       "retry": {
         "max": 2,
         "base_delay_ms": 1000,

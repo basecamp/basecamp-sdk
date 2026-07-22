@@ -3,7 +3,7 @@
  *
  * Note: Generated services are spec-conformant:
  * - update() and reposition() take request objects, not bare params
- * - No client-side validation (API validates)
+ * - Request fields follow the generated OpenAPI shapes
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -59,32 +59,63 @@ describe("ToolsService", () => {
     });
   });
 
-  describe("clone", () => {
-    it("should clone a tool", async () => {
-      const sourceToolId = 222;
+  describe("create", () => {
+    it("should create a tool in a bucket", async () => {
+      const bucketId = 456;
+      const toolType = "Message::Board";
       const mockTool = {
         id: 333,
-        name: "todoset",
-        title: "To-dos (Copy)",
+        name: "message_board",
+        title: "Message Board (Copy)",
         enabled: true,
         position: 5,
       };
 
       server.use(
         http.post(
-          `${BASE_URL}/dock/tools.json`,
+          `${BASE_URL}/buckets/${bucketId}/dock/tools.json`,
           async ({ request }) => {
-            const body = await request.json() as { source_recording_id: number; title: string };
-            expect(body.source_recording_id).toBe(sourceToolId);
-            expect(body.title).toBe("To-dos (Copy)");
+            const body = await request.json() as { tool_type: string; title: string };
+            expect(body.tool_type).toBe(toolType);
+            expect(body.title).toBe("Message Board (Copy)");
             return HttpResponse.json(mockTool, { status: 201 });
           }
         )
       );
 
-      const tool = await client.tools.clone({ sourceRecordingId: sourceToolId, title: "To-dos (Copy)" });
+      const tool = await client.tools.create(bucketId, { toolType, title: "Message Board (Copy)" });
       expect(tool.id).toBe(333);
-      expect(tool.title).toBe("To-dos (Copy)");
+      expect(tool.title).toBe("Message Board (Copy)");
+    });
+
+    it("omits title from the request body when not provided", async () => {
+      const bucketId = 456;
+      const toolType = "Message::Board";
+      const mockTool = {
+        id: 334,
+        name: "message_board",
+        title: "Message Board",
+        enabled: true,
+        position: 5,
+      };
+
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/${bucketId}/dock/tools.json`,
+          async ({ request }) => {
+            const body = await request.json() as Record<string, unknown>;
+            expect(body).toEqual({ tool_type: toolType });
+            return HttpResponse.json(mockTool, { status: 201 });
+          }
+        )
+      );
+
+      const tool = await client.tools.create(bucketId, { toolType });
+      expect(tool.id).toBe(334);
+    });
+
+    it("requires a tool type", async () => {
+      await expect(client.tools.create(456, { toolType: "" })).rejects.toThrow(BasecampError);
     });
   });
 

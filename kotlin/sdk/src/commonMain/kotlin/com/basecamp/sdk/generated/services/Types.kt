@@ -584,9 +584,9 @@ data class RepositionTodoBody(
     val parentId: Long? = null
 )
 
-/** Request body for CloneTool. */
-data class CloneToolBody(
-    val sourceRecordingId: Long,
+/** Request body for CreateTool. */
+data class CreateToolBody(
+    val toolType: String,
     val title: String? = null
 )
 

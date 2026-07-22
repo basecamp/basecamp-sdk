@@ -69,7 +69,7 @@ class ServiceGenerator
       'Documents' => %w[GetDocument UpdateDocument ListDocuments CreateDocument]
     },
     'Automation' => {
-      'Tools' => %w[GetTool UpdateTool DeleteTool CloneTool EnableTool DisableTool RepositionTool],
+      'Tools' => %w[GetTool UpdateTool DeleteTool CreateTool EnableTool DisableTool RepositionTool],
       'Recordings' => %w[GetRecording ArchiveRecording UnarchiveRecording TrashRecording ListRecordings],
       'Webhooks' => %w[ListWebhooks CreateWebhook GetWebhook UpdateWebhook DeleteWebhook],
       'Events' => %w[ListEvents],

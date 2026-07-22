@@ -346,11 +346,6 @@ class ClientSide(TypedDict):
     url: NotRequired[str]
 
 
-class CloneToolRequestContent(TypedDict):
-    source_recording_id: int
-    title: NotRequired[str]
-
-
 class Comment(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -512,6 +507,11 @@ class CreateTodolistGroupRequestContent(TypedDict):
 class CreateTodolistRequestContent(TypedDict):
     description: NotRequired[str]
     name: str
+
+
+class CreateToolRequestContent(TypedDict):
+    title: NotRequired[str]
+    tool_type: str
 
 
 class CreateUploadRequestContent(TypedDict):
