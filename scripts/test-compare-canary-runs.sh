@@ -869,6 +869,35 @@ else
   fail "AB: expected exit 2 naming the bc5 snapshot; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test AC: jq punctuation WITHOUT brackets (comma, space) must be rejected —
+# the whitelist admits only dotted [A-Za-z0-9_-] segments, so 'items, .pages'
+# can't be interpolated into the jq program as raw syntax.
+read -r BC4 BC5 <<<"$(fresh_dirs AC)"
+AC_TESTS="$TMP/AC/ac-tests.json"
+cat >"$AC_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Comma path test",
+    "operation": "CpOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["items, .pages"], "reason": "jq punctuation without brackets" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Comma_path_test.json" CpOp '{"items":[1,2]}'
+write_snapshot "$BC5/Comma_path_test.json" CpOp '{"items":[]}'
+run_compare "$BC4" "$BC5" "$AC_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "paths are dotted" <<<"$RUN_OUT"; then
+  pass "AC: jq punctuation without brackets fails with exit 2, no false-green"
+else
+  fail "AC: expected exit 2 with dotted-segments error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
