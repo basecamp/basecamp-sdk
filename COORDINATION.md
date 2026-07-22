@@ -40,8 +40,9 @@ no changes under `doc/api/` or the API controllers/views.
 
 ## Contract decisions (cross-team)
 
-Two items the SDK canary surfaced. As of the BC5 API train (8 BC3 PRs merged
-to `master`, 2026-07-18..21) both are **settled**:
+Three cross-team items. The first two, surfaced by the SDK canary, settled
+as of the BC5 API train (8 BC3 PRs merged to `master`, 2026-07-18..21); the
+third, surfaced by a live failure, settled by BC5's release replacing BC4:
 
 1. `memories` going to `[]` on `GET /my/readings.json` — **settled:
    permanently empty by documented contract**.
@@ -67,8 +68,19 @@ to `master`, 2026-07-18..21) both are **settled**:
    consumers — the spec models the correctly-spelled `app_todolists_url`,
    which has always read `null`, so there is no regression either way. No SDK
    action needed.
+3. Dock tool creation contract flip (clone → create-by-type) on
+   `POST /buckets/:bucket_id/dock/tools.json` — **settled by release: BC5
+   replaced BC4 in production, so there is no live BC4 backend to shim**.
+   BC5 creates by `tool_type` + optional `title` (SDK absorbed as
+   `CreateTool`, #327); `four` required `source_recording_id` on the same
+   route. Surfaced live as basecamp-cli#471 (the clone-era SDK's flat
+   `POST /{account}/dock/tools.json` 404ing against production). Filed as
+   [`spec/api-gaps/dock-tool-create-contract.md`](spec/api-gaps/dock-tool-create-contract.md)
+   (status `absorbed-in-sdk`). Remaining tail is documentation only:
+   `doc/api/sections/tools.md` still documents the removed clone contract
+   (bc3#12364).
 
-Both records live on in the registry and this SDK plan's §8.
+These records live on in the registry and this SDK plan's §8.
 
 ## Where to look
 
