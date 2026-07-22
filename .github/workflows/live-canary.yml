@@ -12,8 +12,13 @@ name: Live Canary
 # - schedule: nightly cron at 09:00 UTC. Catches server-side drift on BC5
 #   over time.
 #
-# Required secrets (org-level CANARY_BASECAMP_*, scoped to this repo via the
-# basecamp-canary environment)
+# Required secrets (org-level CANARY_BASECAMP_*, granted to this repo)
+# --------------------------------------------------------------------
+# These are organization secrets shared with basecamp-sdk (an <app>-canary
+# naming convention other app repos can mirror). Branch-gating comes from the
+# basecamp-canary environment below — not from the secrets being environment-
+# scoped — because a job that references an environment only runs after that
+# environment's deployment-branch policy passes.
 # -------------------------------------------------------------------------
 #   CANARY_BASECAMP_TOKEN       OAuth token with read scope on the canary's
 #                               read-only fixture set. Read as BASECAMP_TOKEN.
@@ -42,10 +47,12 @@ jobs:
   canary:
     name: BC5 live canary
     runs-on: ubuntu-latest
-    # Scopes the real-account secrets behind a named environment gated to the
-    # default branch (see the basecamp-canary environment's branch policy).
-    # Scheduled runs are always default-branch, so they can read the secrets;
-    # a workflow_dispatch from another branch can't, and no-ops gracefully.
+    # Gates the whole job behind the basecamp-canary environment, whose
+    # deployment-branch policy allows only the default branch. A job runs only
+    # after its environment's protection rules pass, so a workflow_dispatch from
+    # any non-default branch is refused before it can read the secrets — this is
+    # what scopes access, regardless of whether the CANARY_BASECAMP_* values are
+    # org or environment secrets. Scheduled runs are always default-branch.
     # No required reviewers: a scheduled run has no approver and would hang.
     environment: basecamp-canary
     permissions:

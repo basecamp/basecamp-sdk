@@ -276,15 +276,16 @@ Optional env:
 - `BASECAMP_HOST` — backend **origin** only (e.g. `https://3.basecampapi.com`);
   the runner appends `/{accountId}` to mirror `createBasecampClient`'s
   default URL composition.
-- `BASECAMP_BACKEND=<label>` — namespaces persisted snapshots under a
-  backend label (the canary uses `production`).
+- `BASECAMP_BACKEND=bc5` — a `Backend` label (`bc4|bc5`) that namespaces
+  persisted snapshots and selects the `BASECAMP_BC5_*` fixture overrides. The
+  canary uses `bc5` — production runs BC5.
 - `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
   `<path>/<backend>/wire/<test>.json`. Consumed by the cross-language
   replay runners (`make conformance-*-replay`).
-- `BASECAMP_BC4_PROJECT_ID` / `BASECAMP_BC5_PROJECT_ID` /
-  `BASECAMP_PROJECT_ID` etc. — explicit fixture-IDs override the runner's
-  discovery walk. Same pattern applies for `TODOSET_ID`, `TODOLIST_ID`,
-  `TODO_ID`.
+- `BASECAMP_BC5_PROJECT_ID` / `BASECAMP_PROJECT_ID` etc. — explicit
+  fixture-IDs override the runner's discovery walk. The `BASECAMP_<BACKEND>_*`
+  form keys off `BASECAMP_BACKEND` (`bc5` for the canary). Same pattern applies
+  for `TODOSET_ID`, `TODOLIST_ID`, `TODO_ID`.
 
 Tests skip with a clear `skipReason` when a fixture-ID can't be resolved
 (no env override, no discovery match) — they don't fail.
@@ -335,13 +336,13 @@ Two-stage flow:
 BASECAMP_LIVE=1 \
 BASECAMP_TOKEN=<token> \
 BASECAMP_ACCOUNT_ID=<account> \
-BASECAMP_BACKEND=production \
+BASECAMP_BACKEND=bc5 \
 LIVE_RECORD_DIR=tmp/canary \
 make conformance-typescript-live
 
 # Step 2: each language replays those snapshots through its SDK (offline).
 for lang in ruby python go kotlin; do
-  WIRE_REPLAY_DIR=tmp/canary BASECAMP_BACKEND=production \
+  WIRE_REPLAY_DIR=tmp/canary BASECAMP_BACKEND=bc5 \
     make conformance-$lang-replay
 done
 ```
@@ -392,7 +393,7 @@ What it runs:
 
 1. Clears `LIVE_RECORD_DIR` (default `tmp/live-canary`, behind a hardened
    `rm -rf` guard).
-2. `BASECAMP_BACKEND=production LIVE_RECORD_DIR=tmp/live-canary make
+2. `BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR=tmp/live-canary make
    conformance-live` — TS captures wire snapshots from production BC5, then
    Ruby/Python/Go/Kotlin replay-decode.
 
@@ -406,10 +407,14 @@ default.
 cron and on `workflow_dispatch`. It is **opt-in**: the workflow no-ops with
 a clear log message if the required secrets aren't configured.
 
-The secrets are org-level (`CANARY_BASECAMP_*`), scoped to this repo through
-the `basecamp-canary` GitHub environment (gated to the default branch, no
-required reviewers so scheduled runs never hang). The tooling reads them
-under the fixed runtime env-var names:
+The secrets are org-level (`CANARY_BASECAMP_*`), granted to this repo (an
+`<app>-canary` naming convention other app repos can mirror). Branch-gating
+comes from the `basecamp-canary` GitHub environment, not from the secrets being
+environment-scoped: a job that references an environment runs only after the
+environment's deployment-branch policy passes, and `basecamp-canary` allows
+only the default branch — so a `workflow_dispatch` from any other branch is
+refused before it can read the secrets. (No required reviewers, so scheduled
+runs never hang.) The tooling reads them under the fixed runtime env-var names:
 
 - `CANARY_BASECAMP_TOKEN` → `BASECAMP_TOKEN` — OAuth token with read scope for
   the canary fixtures.

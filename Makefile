@@ -521,9 +521,9 @@ conformance-live:
 #   LIVE_RECORD_DIR (snapshot root; defaults to tmp/live-canary)
 #
 # Snapshot dirs are namespaced by backend label:
-# $$LIVE_RECORD_DIR/production/{wire,decode}/. BASECAMP_BACKEND is only a
-# snapshot-dir label (no semantic branching in the fixture/runners), so a
-# single `production` value is clean.
+# $$LIVE_RECORD_DIR/bc5/{wire,decode}/. The label is also the fixture-override
+# prefix (BASECAMP_BC5_* — see conformance/runner/typescript/fixtures.ts) and
+# must be a valid Backend value (bc4|bc5), so use `bc5` — production runs BC5.
 conformance-canary:
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
 	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
@@ -567,7 +567,7 @@ conformance-canary:
 	rm -rf -- "$$LRD"
 	@echo "==> conformance-canary: production BC5 pass"
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	BASECAMP_LIVE=1 BASECAMP_BACKEND=production LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	BASECAMP_LIVE=1 BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets
