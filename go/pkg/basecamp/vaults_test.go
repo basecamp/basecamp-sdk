@@ -600,7 +600,7 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 }
 
 // TestUpdateUploadRequest_HasNoFileReplacementField guards the confirmed server
-// contract: PUT /uploads/{id}.json accepts no file/blob replacement parameter.
+// contract: PUT /uploads/{id}(.json) accepts no file/blob replacement parameter.
 // The bc3 update action drops attachable_sgid entirely (verified against
 // basecamp/bc3 @ ba105ba7 — see /API-GAP-404.md), so the SDK must not offer it
 // as an upload-update field.
