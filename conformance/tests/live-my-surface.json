@@ -71,7 +71,7 @@
   {
     "mode": "live",
     "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
-    "description": "Verifies BC5 additions (bubble_ups, scheduled_bubble_ups) decode as arrays, and exercises the top-level memories[] contract divergence: BC5 ships memories as a documented always-empty placeholder (doc/api/sections/my_notifications.md) while BC4 (the four branch) still populates it. The pairwiseSupersetArray rule below encodes the additive-only invariant; the pairwiseDeltaAllowed entry records the permanent, documented BC4→BC5 delta — see spec/api-gaps/memories-emptied-regression.md.",
+    "description": "Schema-validates GetMyNotifications against production BC5: bubble_ups and scheduled_bubble_ups decode as arrays, and memories decodes as the always-empty placeholder BC5 ships by contract (doc/api/sections/my_notifications.md, bc3 #11628) — see spec/api-gaps/memories-emptied-regression.md.",
     "operation": "GetMyNotifications",
     "method": "GET",
     "path": "/my/readings.json",
@@ -79,23 +79,6 @@
     "liveAssertions": [
       { "type": "liveCallSucceeds" },
       { "type": "liveSchemaValidate" }
-    ],
-    "pairwiseAssertions": [
-      {
-        "type": "pairwiseSupersetArray",
-        "paths": ["memories"],
-        "reason": "Additive-only invariant: BC5 memories[] should remain a superset of BC4's. PERMANENTLY waived by the pairwiseDeltaAllowed entry below — bc3 documents memories as an always-empty placeholder on BC5 (doc/api/sections/my_notifications.md). See spec/api-gaps/memories-emptied-regression.md."
-      },
-      {
-        "type": "pairwiseSupersetKeys",
-        "paths": [""],
-        "reason": "Top-level GetMyNotifications keys must not regress between BC4 and BC5 — additive-only invariant. New BC5 keys (bubble_ups, scheduled_bubble_ups) are expected; key removals fail. memories remains present as a key on BC5 (only its contents are emptied), so this rule is unaffected by the memories regression."
-      },
-      {
-        "type": "pairwiseDeltaAllowed",
-        "paths": ["memories"],
-        "reason": "PERMANENT documented contract divergence: BC5 ships `json.memories []` by contract — doc/api/sections/my_notifications.md (bc3 #11628) codifies memories as an always-empty placeholder superseded by bubble_ups. The once-planned alias (`json.memories @bubble_ups`, bc3 #10947) never shipped; #10947 is closed unmerged. Not a pending regression — this entry is the machine-readable record of an accepted BC4→BC5 subtractive delta. Retire only if BC4 (the four branch) empties memories too (the superset rule then passes clean) or BC5's documented contract changes. Tracked in spec/api-gaps/memories-emptied-regression.md."
-      }
     ]
   },
   {

@@ -53,13 +53,16 @@ History of the finding, kept as narrative:
 ## Why it matters
 
 For existing BC4 integrations this remains a real behavior change: the request
-still succeeds, the field is still present and still type-conformant (an
-array), so per-backend schema validation passes on both sides. Only a
-*pairwise* BC4↔BC5 comparison surfaces it — exactly the additive-only
-invariant the live canary exists to enforce, and the canonical demonstration
-of why per-backend schema checks are necessary but not sufficient. The delta
-is now *documented and intentional*, which changes its classification (accepted
-delta, not regression) but not its visibility to BC4-era readers.
+still succeeds, the field is still present and still type-conformant (an empty
+array), so schema validation against BC5 passes. The delta is now *documented
+and intentional* — an accepted contract, not a regression — so it no longer
+needs active enforcement. Historically only a *pairwise* BC4↔BC5 comparison
+could surface it, and the live canary carried exactly that additive-only
+invariant; with BC5 having replaced BC4 in production there is no live BC4 to
+compare against, so the pairwise rule is retired and the contract is settled by
+this document. `GetMyNotifications` is still schema-validated by the
+single-backend canary, which is where new BC5 additions (`bubble_ups`,
+`scheduled_bubble_ups`) surface as extras-observed.
 
 ## Suggested API shape
 
@@ -85,14 +88,17 @@ follow-up.
 
 ## SDK absorption plan when this lands
 
-- **Canary waiver is now permanent:** the live-canary invariant for `memories`
-  lives in **PR #308** (`conformance/tests/live-my-surface.json` on that
-  branch): a `pairwiseSupersetArray: ["memories"]` rule on `GetMyNotifications`
-  plus a `pairwiseDeltaAllowed: ["memories"]` waiver. With the contract
-  settled, that waiver is **permanent** — the machine-readable record of the
-  accepted BC4→BC5 delta, citing `doc/api/sections/my_notifications.md` and
-  BC3 #11628 just as this entry does. Retire it only if BC4 empties `memories`
-  (delta disappears) or BC5's documented contract changes (delta reopens).
+- **Pairwise enforcement retired; contract settled by this document:** the
+  live-canary invariant for `memories` was a `pairwiseSupersetArray:
+  ["memories"]` rule on `GetMyNotifications` plus a `pairwiseDeltaAllowed:
+  ["memories"]` waiver (introduced in **PR #308**). BC5 replaced BC4 in
+  production, so there is no live BC4 backend to compare against — the pairwise
+  machinery was removed and the `memories: []` contract now rests on
+  `doc/api/sections/my_notifications.md` (BC3 #11628) and this entry.
+  `GetMyNotifications` is still schema-validated by the single-backend canary
+  (`conformance/tests/live-my-surface.json`). The pairwise engine is
+  recoverable from git history (PR #308) should a reachable legacy backend ever
+  warrant restoring it.
 - **Future absorption items** (separate additive PR, not this entry's
   regression scope): `bubble_ups_count` / `scheduled_bubble_ups_count` fields
   and the `limit_bubble_ups` query param on `GetMyNotifications`, plus a new
