@@ -473,9 +473,16 @@ for entry in "${TEST_ENTRIES[@]}"; do
         pairwiseEqual)
           # Compare semantically: jq deep-equality is independent of object
           # key order, so two snapshots that serialize the same object with
-          # different key order don't false-fail.
+          # different key order don't false-fail. REDACT the values in the
+          # violation: these are live-account response fields, and CI run
+          # logs are retained and readable by anyone with log access —
+          # report only shape summaries (type, and keys/length/digest), not
+          # content. Operators reproduce locally against their own capture
+          # to see the raw values.
           if [ "$(jq -n --argjson a "$BC4_VAL" --argjson b "$BC5_VAL" '$a == $b')" != "true" ]; then
-            violation "$OPERATION  pairwiseEqual($DISPLAY): BC4=$BC4_VAL BC5=$BC5_VAL"
+            BC4_SHAPE="$(jq -nr --argjson v "$BC4_VAL" '$v | if type == "object" then "object(\(keys | length) keys)" elif type == "array" then "array(\(length))" elif type == "string" then "string(\(length))" else "\(type)" end')"
+            BC5_SHAPE="$(jq -nr --argjson v "$BC5_VAL" '$v | if type == "object" then "object(\(keys | length) keys)" elif type == "array" then "array(\(length))" elif type == "string" then "string(\(length))" else "\(type)" end')"
+            violation "$OPERATION  pairwiseEqual($DISPLAY): values differ — BC4 $BC4_SHAPE vs BC5 $BC5_SHAPE (raw values redacted from logs; re-run the comparison locally to inspect)"
           fi
           ;;
 

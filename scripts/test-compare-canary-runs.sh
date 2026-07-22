@@ -927,6 +927,34 @@ else
   fail "AD: expected exit 2 with dotted-segments error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test AE: pairwiseEqual violations must NOT echo raw live values into the
+# log (CI run logs are retained and readable) — only shape summaries.
+read -r BC4 BC5 <<<"$(fresh_dirs AE)"
+AE_TESTS="$TMP/AE/ae-tests.json"
+cat >"$AE_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Redacted equal test",
+    "operation": "ReOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseEqual", "paths": ["secret_field"], "reason": "value content must stay out of logs" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Redacted_equal_test.json" ReOp '{"secret_field":"alice-private-note-bc4"}'
+write_snapshot "$BC5/Redacted_equal_test.json" ReOp '{"secret_field":"alice-private-note-bc5"}'
+run_compare "$BC4" "$BC5" "$AE_TESTS"
+if [ "$RUN_RC" -eq 1 ] && grep -q "values differ" <<<"$RUN_OUT"   && ! grep -q "alice-private-note" <<<"$RUN_OUT"; then
+  pass "AE: pairwiseEqual violation redacts raw values from output"
+else
+  fail "AE: expected exit 1 with redacted shapes only; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
