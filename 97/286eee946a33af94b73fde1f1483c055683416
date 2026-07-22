@@ -1,0 +1,19 @@
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_18853c09ab9fc6::t_a73803b6384a2b 389-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "97286eee946a33af94b73fde1f1483c055683416",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
