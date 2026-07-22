@@ -150,6 +150,23 @@ class ReplayRunner:
                         f"Unknown operation {op!r} in snapshot {f.name}; "
                         "TS dispatch table appears to have drifted from live-my-surface.json."
                     )
+                # A snapshot like `{"operation": "GetProject"}` would pass the
+                # gates above and then crash _decode_snapshot's
+                # `snapshot["pages"]` with KeyError. Mirror the Go runner's
+                # read-time checks: require a non-empty `pages` array and a
+                # matching `pages_count` so the gate fails fast with a
+                # deterministic message.
+                pages = snap.get("pages")
+                if not isinstance(pages, list) or not pages:
+                    msgs.append(
+                        f"Snapshot {f.name} has no pages; expected at least one wire response."
+                    )
+                    continue
+                if snap.get("pages_count") != len(pages):
+                    msgs.append(
+                        f"Snapshot {f.name} pages_count ({snap.get('pages_count')!r}) "
+                        f"does not match len(pages) ({len(pages)})."
+                    )
         return msgs
 
     def run(self) -> int:

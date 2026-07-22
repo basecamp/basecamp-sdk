@@ -131,6 +131,22 @@ class ReplayRunner
           msgs << "Unknown operation #{op.inspect} in snapshot #{File.basename(f)}; " \
                   "TS dispatch table appears to have drifted from live-my-surface.json."
         end
+
+        # A snapshot like `{"operation": "GetProject"}` would pass the gates
+        # above and then crash decode_snapshot's `snapshot["pages"].map` with
+        # NoMethodError. Mirror the Go runner's read-time checks: require a
+        # non-empty `pages` array and a matching `pages_count` so the gate
+        # fails fast with a deterministic message.
+        pages = snap["pages"]
+        unless pages.is_a?(Array) && !pages.empty?
+          msgs << "Snapshot #{File.basename(f)} has no pages; expected at least one wire response."
+          next
+        end
+
+        unless snap["pages_count"] == pages.length
+          msgs << "Snapshot #{File.basename(f)} pages_count (#{snap["pages_count"].inspect}) " \
+                  "does not match len(pages) (#{pages.length})."
+        end
       end
     end
 

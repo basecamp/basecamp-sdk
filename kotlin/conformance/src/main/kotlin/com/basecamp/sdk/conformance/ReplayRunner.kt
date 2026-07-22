@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -177,6 +178,21 @@ class ReplayRunner(
                 if (op !in fixtureOps) {
                     msgs += "Unknown operation \"$op\" in snapshot ${f.name}; TS dispatch " +
                         "table appears to have drifted from live-my-surface.json."
+                }
+                // A snapshot like `{"operation": "GetProject"}` would pass the
+                // gates above and then crash decodeSnapshot()'s `snap["pages"]!!`
+                // with an opaque NPE. Mirror the Go runner's read-time checks:
+                // require a non-empty `pages` array and a matching `pages_count`
+                // so the gate fails fast with a deterministic message.
+                val pages = snap["pages"] as? JsonArray
+                if (pages == null || pages.isEmpty()) {
+                    msgs += "Snapshot ${f.name} has no pages; expected at least one wire response."
+                    return@forEach
+                }
+                val pagesCount = (snap["pages_count"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+                if (pagesCount != pages.size) {
+                    msgs += "Snapshot ${f.name} pages_count (${pagesCount ?: "missing"}) " +
+                        "does not match len(pages) (${pages.size})."
                 }
             }
         }
