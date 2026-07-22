@@ -1,0 +1,320 @@
+openapi.json
+  8a25d90aac60e426 23587-23602,24712-24724,24871-24879,26522-26528,26925-26942
+spec/api-provenance.json
+  8a25d90aac60e426 6-7,12
+go/pkg/basecamp/api-provenance.json
+  8a25d90aac60e426 6-7,12
+spec/basecamp.smithy
+  8a25d90aac60e426 1260-1264,1309-1313,1386-1397,8190-8198,8200-8207,8265-8273
+spec/bucket-scoped-allowlist.txt
+  8a25d90aac60e426 1-8
+behavior-model.json
+  8a25d90aac60e426 2604
+Makefile
+  8a25d90aac60e426 426-436,437-441,450-454,463,634-645,645-656,650-664,650-653,650-666,660-666,661-673,668,675,775-776,779-780,786-787
+  s_2b59bf57d53599::t_c061f2b1911bee 111,114-115,117
+  02cba45918a7d653 400-407,413-420,442-449,455-462,728-739
+scripts/check-bucket-flat-parity.sh
+  8a25d90aac60e426 13-15,18-22,42-43,61,103
+  s_d84172d91a31eb::t_45ff13ba6cf459 44-45
+spec/api-gaps/recording-bubbleupable-field.md
+  8a25d90aac60e426 1-57
+scripts/validate-api-gaps.sh
+  8a25d90aac60e426 1-14
+spec/api-gaps/calendar.md
+  8a25d90aac60e426 1-64
+spec/api-gaps/allowlist.yml
+  8a25d90aac60e426 1-29
+spec/api-gaps/scratchpad.md
+  8a25d90aac60e426 1-67
+CONTRIBUTING.md
+  8a25d90aac60e426 242-249,242-292,242-295,293-295,366,366-386,367-391,367-434
+  02cba45918a7d653 296-365
+spec/api-gaps/step-top-level.md
+  8a25d90aac60e426 1-68
+spec/api-gaps/allowlist-schema.json
+  8a25d90aac60e426 1-36
+spec/api-gaps/schema.json
+  8a25d90aac60e426 1-59
+COORDINATION.md
+  8a25d90aac60e426 1-56
+spec/api-gaps/rich-text-project-attachable.md
+  8a25d90aac60e426 1-53
+spec/api-gaps/README.md
+  8a25d90aac60e426 1-74,80-81
+spec/api-gaps/recordable-subtypes-doc.md
+  8a25d90aac60e426 1-112
+spec/api-gaps/stack-doc-and-smithy.md
+  8a25d90aac60e426 1-75
+spec/api-gaps/activity-timeline.md
+  8a25d90aac60e426 1-70
+spec/api-gaps/search-filter-additions.md
+  8a25d90aac60e426 1-65
+spec/api-gaps/todoset-completed-list-visibility.md
+  8a25d90aac60e426 1-25,29-64
+  s_d84172d91a31eb::t_74c59d649aeed3 26-28
+scripts/validate-api-gaps.rb
+  8a25d90aac60e426 1-214
+spec/api-gaps/everything-aggregates.md
+  8a25d90aac60e426 1-91
+typescript/src/generated/openapi-stripped.json
+  8a25d90aac60e426 21263,21265-21278,22388-22400,22547-22555,24198-24204,24601-24618
+  65321caac279d940 21264
+  s_162ea6db661501::t_3dfdc2c2fb6d7f 22753-22758
+typescript/src/generated/schema.d.ts
+  8a25d90aac60e426 3302-3306,3308-3311,3313-3320,3600-3609,3657-3662,4120-4125,4233-4246
+  65321caac279d940 3307
+ruby/lib/basecamp/generated/types.rb
+  8a25d90aac60e426 2096,2109-2110,2139-2140,2253,2281,2308,3388,3423,3456,3677,3699,3702,3707-3708,3727,3730,3735-3736
+python/src/basecamp/generated/types.py
+  8a25d90aac60e426 709,712,895-896,964,1371,1452,1457,1469-1470
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Person.kt
+  8a25d90aac60e426 25
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todoset.kt
+  8a25d90aac60e426 34-38
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
+  8a25d90aac60e426 42-43
+swift/Sources/Basecamp/Generated/Models/GetMyNotificationsResponseContent.swift
+  8a25d90aac60e426 5,8
+swift/Sources/Basecamp/Generated/Models/Notification.swift
+  8a25d90aac60e426 10-11,38-39,65-66
+swift/Sources/Basecamp/Generated/Models/Person.swift
+  8a25d90aac60e426 26,51,75
+swift/Sources/Basecamp/Generated/Models/Todo.swift
+  8a25d90aac60e426 32,63,93
+swift/Sources/Basecamp/Generated/Models/Todoset.swift
+  8a25d90aac60e426 19,22,27-28,45,48,52-54,70,73,78-79
+go/pkg/generated/client.gen.go
+  8a25d90aac60e426 1024-1036,1039-1042,1448-1457,1538-1544,2019-2030,2126-2157
+typescript/package.json
+  s_d84172d91a31eb::t_d2a4deb5d07c86 69
+go.work.sum
+  s_162ea6db661501::t_b212c760f74072 11,50,67,69,71,75,79,98,133,135,137,144,164
+typescript/src/generated/metadata.ts
+  s_dded7873563c1c::t_ff3129b466f192 1-37,2689-2692
+conformance/tests/live-my-surface.json
+  8a25d90aac60e426 1-73,75-81,94-158
+  s_13deffa07b5c67::t_975129e334269e 74,82-93
+conformance/runner/typescript/package.json
+  8a25d90aac60e426 17-19,20-21
+conformance/runner/typescript/live-dispatch.ts
+  8a25d90aac60e426 1-3,4-8,9,10-12,13-15,16,17-24,25-32,33-34,35-41,42-43,44-49,50-51,52-57,58-59,60-65,66-67,68-73,74-75,76-81,82-83,84-89,90-91,92-97,98-99,100-105,106-107,108-113,114-118,119-120,121-122,123,124-126,127,128-129,130-241
+conformance/runner/typescript/runner.test.ts
+  8a25d90aac60e426 52-56,57-61,946-955,957-966
+conformance/schema.json
+  8a25d90aac60e426 7-23,25-30,169-202
+  s_13deffa07b5c67::t_11c495ca29376c 204-238
+conformance/runner/typescript/schema-validator.test.ts
+  8a25d90aac60e426 1-111,113-135,136-146,176-297
+  s_d84172d91a31eb::t_c868510cb539e1 147-160,175
+  s_2b59bf57d53599::t_60b844e550b4d4 161-174
+conformance/runner/typescript/live-runner.test.ts
+  8a25d90aac60e426 1-22,29-32,29-104,33,34,35-104,106-110,117-132,135-138,142,144-189,144-190,144-226,191,192,193,194-200,201-214,215,215-218,216-218,219,220-225,226,228-325,228-323,326-631
+  s_d84172d91a31eb::t_c3d695d5bc62b0 133-134,139-141,143
+  02cba45918a7d653 23-28,105,111,116,227
+  s_f1e7c9875f19f5::t_374a83ca2a9739 112-115
+conformance/runner/typescript/wire-capture.ts
+  8a25d90aac60e426 1-9,17-38,44-57,61-88,93-96,111-131,132-234
+  s_2b59bf57d53599::t_5175109e2df36d 58-60
+  s_2b59bf57d53599::t_20e638b12f975c 89-92,97-110
+  02cba45918a7d653 10-16,39-41
+conformance/runner/typescript/fixtures.ts
+  8a25d90aac60e426 1-111,112-222
+conformance/runner/typescript/schema-validator.ts
+  8a25d90aac60e426 1-3,1-69,1-74,7,9-11,17-26,28-52,53-58,62-69,70-74,76-80,82-86,91-96,91-148,102,104,106-108,114-141,144-148,168-176,168-181,168-179,179-181,202-264,204,204-210,206,211-213,214-215,216-230,231-233,231-286,242-243,245,247,249,255,266,267,284,286,287-505
+  s_d84172d91a31eb::t_9fd81396b8f1c3 149-153,167,182-201
+  s_2b59bf57d53599::t_3f3c4c987b0acb 154-166
+  s_d84172d91a31eb::t_ab6d3a2f834843 75,81,87-90
+conformance/runner/typescript/live-dispatch.test.ts
+  8a25d90aac60e426 1-45
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  8a25d90aac60e426 47-49,51-52,116-121
+conformance/runner/ruby/runner.rb
+  8a25d90aac60e426 735,736-740,741-742
+conformance/runner/python/runner.py
+  8a25d90aac60e426 599-606
+conformance/runner/go/main.go
+  8a25d90aac60e426 31-35,215-224
+  02cba45918a7d653 118-140
+conformance/runner/typescript/wire-capture.test.ts
+  s_2b59bf57d53599::t_29047d43eb19d8 1-112
+conformance/runner/typescript/package-lock.json
+  s_2b59bf57d53599::t_89a376087af9f8 29
+conformance/runner/ruby/schema-walker.rb
+  02cba45918a7d653 1-7,12-14,18-36,38,40-54,57-61,64-100,104-105,107-113,115-177
+  s_02cba45918a7d6::t_7f0c0a6b779f04 101-103,106,114
+  s_2e4b116409b569::t_636dd811a831c3 8-11,15-17
+  s_2e4b116409b569::t_9bfb96cd4c3921 62-63
+  s_d84172d91a31eb::t_ebe954fa8cfb6c 37,39,55-56
+conformance/runner/ruby/replay-runner.rb
+  02cba45918a7d653 1-10,15-33,38-112,122,124-208
+  s_02cba45918a7d6::t_48fa7d86a5c163 11-14
+  s_d84172d91a31eb::t_d783f3b5f3b1ab 34-37
+  s_d84172d91a31eb::t_db5b9c68e8adb2 113-121,123
+conformance/runner/python/schema_walker.py
+  02cba45918a7d653 1-50,52-59,63-149
+  s_d84172d91a31eb::t_1bf23bc63ecc9e 51,60-62
+conformance/runner/python/replay_runner.py
+  02cba45918a7d653 1-77,80,88-89,90-126,141-187,189-240
+  s_d84172d91a31eb::t_02ebff28a17b85 78-79,81-87
+  s_d84172d91a31eb::t_962ae9067bfdde 188
+  s_d84172d91a31eb::t_2280eb3c7ac3d9 127-131,138-140
+  s_f1e7c9875f19f5::t_96871f2fac812a 132-137
+conformance/runner/go/replay_runner.go
+  02cba45918a7d653 1-112,114-116,129-130,132-133,134-219,224-229,234-313,324-332,334-370
+  s_d84172d91a31eb::t_4777a931bbca69 113
+  s_d84172d91a31eb::t_0951e9e018b6e4 117-128,131
+  s_d84172d91a31eb::t_f2e8b3ed4ea689 333
+  s_d84172d91a31eb::t_e57323dbafd3ff 220-223,230-233
+  s_f1e7c9875f19f5::t_13fa76c37f54b5 314-323
+conformance/runner/go/schema_walker.go
+  02cba45918a7d653 1-5,10-13,17-72,74-84,87,88-92,95-139,143-145,147-153,155-278,280,282,284-285,286-323
+  s_02cba45918a7d6::t_a50079178ab99e 140-142,146,154
+  s_02cba45918a7d6::t_22fc62c962fa9d 279,281,283
+  s_2e4b116409b569::t_5c9274d1577191 6-9,14-16
+  s_2e4b116409b569::t_b992dd23bad64a 93-94
+  s_d84172d91a31eb::t_994de8ab66f333 73,85-86
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  02cba45918a7d653 1-8,10-11,10-13,12-13,15,15-19,16-19,21-145,149,172-222,229-236,241-250,252-263,268,270-283
+  s_02cba45918a7d6::t_15f3826054c472 237-240,251
+  s_02cba45918a7d6::t_6c367eb4a55507 264-267,269
+  s_d84172d91a31eb::t_05fbdf3c993f00 14
+  s_d84172d91a31eb::t_1aa6d11f143640 168-171
+  s_d84172d91a31eb::t_c70e0fb8cae96e 9
+  s_d84172d91a31eb::t_4337eadc1f56f0 151-167
+  s_d84172d91a31eb::t_9ea58225f1fda8 20
+  s_f1e7c9875f19f5::t_75581435b4b2d3 223-228
+  s_f1e7c9875f19f5::t_c4f402451961ed 146-148,150
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/SchemaWalker.kt
+  02cba45918a7d653 1-44,49-65,67-178,180-182
+  s_d84172d91a31eb::t_c4a75f6c929212 45-48,66
+  s_d84172d91a31eb::t_2d9908f22cc11d 179
+kotlin/conformance/build.gradle.kts
+  02cba45918a7d653 15-25,30-31
+  s_02cba45918a7d6::t_c47d833a602343 26-29
+.gitignore
+  02cba45918a7d653 41-42,44-45
+  s_d84172d91a31eb::t_45f144613ed77e 9
+conformance/runner/go/replay_runner_test.go
+  s_d84172d91a31eb::t_0fb576f803c6eb 2,16-19,22-65,66-68
+  s_f1e7c9875f19f5::t_d2b8bc338e30cd 1,3-15,20-21
+  s_f1e7c9875f19f5::t_44a73e92f6bfce 69-129
+conformance/runner/ruby/Gemfile
+  s_d84172d91a31eb::t_3cbdb9e58cab77 8
+conformance/runner/ruby/replay_runner_test.rb
+  s_d84172d91a31eb::t_99ee386c633a4f 1-2,11,17-28
+  s_d84172d91a31eb::t_7b11881f5058aa 3-10,12-16,29-30
+conformance/runner/python/test_replay_runner.py
+  s_d84172d91a31eb::t_a7de64af875afc 2,19,21-25,29,31-32,37,41,45,52-53
+  s_d84172d91a31eb::t_e0690633b20c6a 20,27,33-36,38-40,42-44,46-51,86-87
+  s_f1e7c9875f19f5::t_42ecd051bafc4c 1,3-18,26,28,30,54-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "ab0ec1e496a4c43424a5874dede91ad832c207a8",
+  "prompts": {
+    "02cba45918a7d653": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 2990,
+      "total_deletions": 59,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    },
+    "65321caac279d940": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ddab7-24dd-7f61-9849-997c07ab3799",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 663,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 18292,
+      "total_deletions": 9255,
+      "accepted_lines": 141,
+      "overriden_lines": 0
+    }
+  },
+  "sessions": {
+    "s_02cba45918a7d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e57fb1b4-c831-49d0-8be2-80fde991cbff",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_13deffa07b5c67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b021e6dd-3eb4-40be-ac0a-14aeb9d4ea79",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_162ea6db661501": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7686d237-a0ba-4dcb-ade4-abf6e0c0e2f1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_2e4b116409b569": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46a02e81-3999-407c-ba33-b5da5d935e66",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_dded7873563c1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19e700c6-96e9-428e-ae9e-45b2a4d43bdf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_f1e7c9875f19f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "992a3843-efd7-4f1a-88a0-3eb6c288874d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

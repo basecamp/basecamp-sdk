@@ -1,0 +1,19 @@
+.github/workflows/live-canary.yml
+  s_2b59bf57d53599::t_7ee12cd44e013b 48,69,76,86,93,99,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "c0f1dc39ba746f97aa843a45bed0f64469ec58b3",
+  "prompts": {},
+  "sessions": {
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

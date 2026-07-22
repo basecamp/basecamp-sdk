@@ -1,0 +1,24 @@
+scripts/test-compare-canary-runs.sh
+  s_2b59bf57d53599::t_dcebd10f5b5dea 62-73
+  s_2b59bf57d53599::t_05d52f53b935f5 307-351
+scripts/compare-canary-runs.sh
+  s_2b59bf57d53599::t_e77377a0eccc50 60-66
+  s_2b59bf57d53599::t_a96ac8cf7cded5 266-280
+  s_2b59bf57d53599::t_3a022fc395117d 23-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "0d68793ebff18a2f33d6cec3d82e8753f9cf9a24",
+  "prompts": {},
+  "sessions": {
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

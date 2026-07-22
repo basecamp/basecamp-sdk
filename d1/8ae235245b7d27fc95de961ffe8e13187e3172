@@ -1,0 +1,43 @@
+conformance/schema.json
+  s_83c0f2fdc30030::t_c4ac231e81c49a 223,225
+scripts/test-compare-canary-runs.sh
+  s_83c0f2fdc30030::t_f8af2ed3a1e5b2 1-195
+conformance/tests/live-my-surface.json
+  s_83c0f2fdc30030::t_7f2a47706f166f 74
+  s_83c0f2fdc30030::t_fd311099d6613c 87,92-97
+.github/workflows/live-canary.yml
+  s_83c0f2fdc30030::t_303a3eda5c49be 121-123
+CONTRIBUTING.md
+  s_83c0f2fdc30030::t_c280c3ced0169d 402-407,412-417
+  s_83c0f2fdc30030::t_1b4680fd232e67 439-440
+Makefile
+  s_83c0f2fdc30030::t_69c201c259ecd6 738
+  s_83c0f2fdc30030::t_c8ae3e6821a2bf 518-522
+  s_83c0f2fdc30030::t_b4c84a47531ee5 481,484-486
+  s_83c0f2fdc30030::t_6d626aa81fe5e2 710-715
+  s_83c0f2fdc30030::t_2b76acfc8f2374 508-509
+  s_83c0f2fdc30030::t_73e384aea45f45 698
+scripts/compare-canary-runs.sh
+  s_83c0f2fdc30030::t_a10b11fce81574 156,162-179
+  s_83c0f2fdc30030::t_3cc7483145e9d9 293-306
+  s_83c0f2fdc30030::t_227a8db17d6d4d 223-231
+  s_83c0f2fdc30030::t_7ecf3f2e9e97e5 275-278
+  s_83c0f2fdc30030::t_9f5216d8a99673 36-37
+  s_83c0f2fdc30030::t_700113fe6182b8 105-112,123,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d18ae235245b7d27fc95de961ffe8e13187e3172",
+  "prompts": {},
+  "sessions": {
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
