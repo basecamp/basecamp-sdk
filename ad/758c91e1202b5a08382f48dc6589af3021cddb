@@ -1,0 +1,58 @@
+go/pkg/generated/client.gen.go
+  s_18853c09ab9fc6::t_1a3d642aeb268a 2213-2214
+  s_18853c09ab9fc6::t_74e5afa7a43b73 2214
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/campfires.kt
+  s_18853c09ab9fc6::t_1a3d642aeb268a 236
+go/pkg/basecamp/campfires_test.go
+  s_18853c09ab9fc6::t_1a3d642aeb268a 675,702-703
+  s_18853c09ab9fc6::t_e451c51fa9f207 702-703
+  s_18853c09ab9fc6::t_6b30a212a4dde9 675
+go/pkg/basecamp/campfires.go
+  s_18853c09ab9fc6::t_1a3d642aeb268a 486-487,492
+  s_18853c09ab9fc6::t_01162c7ca1f554 486-487,492
+python/src/basecamp/generated/services/campfires.py
+  s_18853c09ab9fc6::t_1a3d642aeb268a 90,95,206,211
+  s_18853c09ab9fc6::t_74e5afa7a43b73 90,95,206,211
+ruby/test/basecamp/services/campfires_service_test.rb
+  s_18853c09ab9fc6::t_1a3d642aeb268a 157-159,161-163
+  s_18853c09ab9fc6::t_aace35463e1579 157-159,161-163
+spec/basecamp.smithy
+  s_18853c09ab9fc6::t_1a3d642aeb268a 3368-3371,3395
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_18853c09ab9fc6::t_1a3d642aeb268a 57
+  s_18853c09ab9fc6::t_74e5afa7a43b73 57
+swift/Sources/Basecamp/Generated/Models/UpdateCampfireLineRequest.swift
+  s_18853c09ab9fc6::t_1a3d642aeb268a 7
+  s_18853c09ab9fc6::t_74e5afa7a43b73 7
+typescript/src/generated/openapi-stripped.json
+  s_18853c09ab9fc6::t_1a3d642aeb268a 4194,24878-24879
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_18853c09ab9fc6::t_1a3d642aeb268a 115,118,120,122
+  s_18853c09ab9fc6::t_74e5afa7a43b73 120,122
+typescript/src/generated/services/campfires.ts
+  s_18853c09ab9fc6::t_1a3d642aeb268a 80,431
+openapi.json
+  s_18853c09ab9fc6::t_1a3d642aeb268a 4707,27212-27213
+typescript/tests/services/campfires.test.ts
+  s_18853c09ab9fc6::t_1a3d642aeb268a 211-224
+  s_18853c09ab9fc6::t_42af2166d3a39a 211-224
+typescript/src/generated/schema.d.ts
+  s_18853c09ab9fc6::t_1a3d642aeb268a 542-547,4309
+  s_18853c09ab9fc6::t_74e5afa7a43b73 542,547
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ad758c91e1202b5a08382f48dc6589af3021cddb",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
