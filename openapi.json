@@ -23585,7 +23585,7 @@
             "items": {
               "$ref": "#/components/schemas/Notification"
             },
-            "description": "Legacy \"save forever\" collection. On BC5 `master` this currently ships as\n`[]` while BC4 (the `four` branch) still populates it — a confirmed\nsubtractive regression tracked in\n`spec/api-gaps/memories-emptied-regression.md`. The fix is written but\nunmerged: BC3 #10947 repopulates it via `json.memories @bubble_ups`. New\nintegrations should prefer `bubble_ups` (the durable successor, with\noptional scheduling via `scheduled_bubble_ups`); until #10947 ships, do\nnot rely on `memories` being populated on BC5."
+            "description": "Legacy \"save forever\" collection. Permanently `[]` on BC5 by documented\ncontract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):\nan always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`\nbranch) still populates it — an accepted BC4→BC5 subtractive delta\nrecorded in `spec/api-gaps/memories-emptied-regression.md`. New\nintegrations should use `bubble_ups` / `scheduled_bubble_ups` and must\nnot rely on `memories` on BC5."
           },
           "bubble_ups": {
             "type": "array",

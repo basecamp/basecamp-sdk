@@ -1026,14 +1026,13 @@ type GetMyNotificationsResponseContent struct {
 	// `scheduled_bubble_ups` for the time-deferred subset.
 	BubbleUps []Notification `json:"bubble_ups,omitempty"`
 
-	// Memories Legacy "save forever" collection. On BC5 `master` this currently ships as
-	// `[]` while BC4 (the `four` branch) still populates it — a confirmed
-	// subtractive regression tracked in
-	// `spec/api-gaps/memories-emptied-regression.md`. The fix is written but
-	// unmerged: BC3 #10947 repopulates it via `json.memories @bubble_ups`. New
-	// integrations should prefer `bubble_ups` (the durable successor, with
-	// optional scheduling via `scheduled_bubble_ups`); until #10947 ships, do
-	// not rely on `memories` being populated on BC5.
+	// Memories Legacy "save forever" collection. Permanently `[]` on BC5 by documented
+	// contract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):
+	// an always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`
+	// branch) still populates it — an accepted BC4→BC5 subtractive delta
+	// recorded in `spec/api-gaps/memories-emptied-regression.md`. New
+	// integrations should use `bubble_ups` / `scheduled_bubble_ups` and must
+	// not rely on `memories` on BC5.
 	Memories []Notification `json:"memories,omitempty"`
 	Reads    []Notification `json:"reads,omitempty"`
 
