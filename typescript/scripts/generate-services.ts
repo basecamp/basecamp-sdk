@@ -13,6 +13,7 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { pathToFileURL } from "url";
 
 // =============================================================================
 // Types
@@ -127,6 +128,7 @@ interface BodyProperty {
   required: boolean;
   description?: string;
   formatHint?: string;
+  schema?: Schema;
 }
 
 interface ServiceDefinition {
@@ -693,6 +695,7 @@ function parseOperation(
           required: required.includes(name),
           description: prop.description,
           formatHint: getFormatHint(prop),
+          schema: prop, // preserve original schema/$ref for example rendering
         };
       });
     }
@@ -1463,9 +1466,42 @@ function buildBodyMapping(op: ParsedOperation): string {
   return `{\n            ${mappings.join(",\n            ")},\n          }`;
 }
 
-function generateExampleValue(name: string, type: string, formatHint?: string): string {
+function generateExampleValue(
+  name: string,
+  type: string,
+  formatHint?: string,
+  schema?: Schema,
+  visited: Set<string> = new Set(),
+): string {
   if (formatHint === "YYYY-MM-DD") return '"2025-06-01"';
   if (formatHint?.includes("RFC3339")) return '"2025-06-01T09:00:00Z"';
+
+  // Object-valued members (e.g. a `project`/`gauge`/`schedule` envelope) render as a
+  // nested object of their required child members, using each child's actual type.
+  // Without this, refs fall through to the '"example"' scalar and emit invalid examples
+  // like `{ project: "example" }`.
+  const resolved = schema?.$ref ? globalSchemas[resolveRef(schema.$ref)] : schema;
+  if (resolved?.type === "object" && resolved.properties) {
+    const refName = schema?.$ref ? resolveRef(schema.$ref) : undefined;
+    if (refName && visited.has(refName)) return "{ }"; // guard against recursive $refs
+    const nextVisited = refName ? new Set(visited).add(refName) : visited;
+    const requiredChildren = resolved.required || [];
+    const fields = Object.entries(resolved.properties)
+      .filter(([childName]) => requiredChildren.includes(childName))
+      .map(([childName, childSchema]) => {
+        const childType = parsePipeEnum(childSchema.description) || schemaToTsType(childSchema, true);
+        const value = generateExampleValue(
+          childName,
+          childType,
+          getFormatHint(childSchema),
+          childSchema,
+          nextVisited,
+        );
+        return `${toCamelCase(childName)}: ${value}`;
+      });
+    return `{ ${fields.join(", ")} }`;
+  }
+
   if (type.includes("[]") || type === "Array") return "[1234]";
   if (type === "boolean") return "true";
   if (type === "number") return "1";
@@ -1496,7 +1532,7 @@ function generateExampleArgs(op: ParsedOperation, hasRequest: boolean): string {
     } else {
       const fields = requiredProps.map((p) => {
         const camelName = toCamelCase(p.name);
-        const value = generateExampleValue(p.name, p.type, p.formatHint);
+        const value = generateExampleValue(p.name, p.type, p.formatHint, p.schema);
         return `${camelName}: ${value}`;
       });
       args.push(`{ ${fields.join(", ")} }`);
@@ -1628,4 +1664,11 @@ function main() {
   } operations total.`);
 }
 
-main();
+// Only run when invoked directly (not when imported by tests).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}
+
+// Exported for generator regression tests.
+export { generateExampleValue, setSchemas };
+export type { Schema };

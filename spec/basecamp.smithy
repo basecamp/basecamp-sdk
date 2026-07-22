@@ -6802,6 +6802,11 @@ structure CreateProjectFromTemplateInput {
   templateId: TemplateId
 
   @required
+  project: ProjectConstructionAttributes
+}
+
+structure ProjectConstructionAttributes {
+  @required
   name: String
 
   description: String
