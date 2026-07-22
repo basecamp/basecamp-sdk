@@ -1,0 +1,23 @@
+scripts/test-compare-canary-runs.sh
+  s_c9b7cecf44b5ed::t_3420248d851963 733-814
+Makefile
+  s_c9b7cecf44b5ed::t_491f670c22ae2d 538-542,550-551
+scripts/compare-canary-runs.sh
+  s_c9b7cecf44b5ed::t_53d0406e38d732 156-160,162,167-185,296-301,373-377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2728300e6a1e11ab79efa945c7f56d1d9b68b57e",
+  "prompts": {},
+  "sessions": {
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
