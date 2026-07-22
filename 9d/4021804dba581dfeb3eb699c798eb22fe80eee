@@ -1,0 +1,29 @@
+spec/api-gaps/schedule-recurrence-writes.md
+  s_0c98ad9a7f5689::t_9b01b92c0b3f82 1-96
+spec/api-gaps/README.md
+  s_0c98ad9a7f5689::t_17ca669acb662a 57-58
+  s_0c98ad9a7f5689::t_2d7c0fcf31975f 51-53
+spec/api-gaps/todoset-direct-todo-create.md
+  s_0c98ad9a7f5689::t_a34ebc27fdf68c 1-66
+spec/api-gaps/search-filter-additions.md
+  s_0c98ad9a7f5689::t_c1ae546bd9bd71 66-67
+  s_0c98ad9a7f5689::t_55bb611c9cc5eb 22-23,25-37,39-42
+spec/api-gaps/campfire-line-edit.md
+  s_0c98ad9a7f5689::t_406b8afbaf82d9 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "9d4021804dba581dfeb3eb699c798eb22fe80eee",
+  "prompts": {},
+  "sessions": {
+    "s_0c98ad9a7f5689": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc2014f-a637-4b4d-9589-f87625258d9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
