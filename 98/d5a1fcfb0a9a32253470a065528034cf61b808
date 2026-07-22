@@ -1,0 +1,57 @@
+spec/api-gaps/recording-bubbleupable-field.md
+  s_c9b7cecf44b5ed::t_e60444fa2a8b53 25-29
+spec/api-gaps/step-top-level.md
+  s_c9b7cecf44b5ed::t_cb67461b806788 3,6-12,18-20,36-39,41-44,46-49,53-57,61-62,66-67,71-77
+  s_c9b7cecf44b5ed::t_5d520dea8a8afd 21
+  s_c9b7cecf44b5ed::t_7ce7e9c1759ebc 40
+  s_c9b7cecf44b5ed::t_106415b5a72327 17
+spec/api-gaps/scratchpad.md
+  s_c9b7cecf44b5ed::t_3abe04730a39dc 3,6,11-12,14,18,22-25,27-37,42-43,48-50,54-55,59-64
+spec/api-gaps/activity-timeline.md
+  s_c9b7cecf44b5ed::t_106e458ccb9a99 16
+  s_c9b7cecf44b5ed::t_0c5be4a40e14fa 82-85
+  s_c9b7cecf44b5ed::t_673b464b511753 3,6,11,13,17-20,23,27-29,31-37,39-48,53-58,62-63,65-78,89-97
+spec/api-gaps/search-filter-additions.md
+  s_c9b7cecf44b5ed::t_2f40e74ec91532 22-27,29-33
+  s_c9b7cecf44b5ed::t_c941be19370a49 47-49,55-57,61-63
+  s_c9b7cecf44b5ed::t_adb0ebf12c4f4b 3
+spec/api-gaps/everything-aggregates.md
+  s_c9b7cecf44b5ed::t_9529b906f088db 3,6,45-50,52-53,55-58,60-65,67-73,75-81,83,85-104,108-111,115-126
+spec/api-gaps/todoset-completed-list-visibility.md
+  s_c9b7cecf44b5ed::t_b16dd894fee6ab 59-60
+  s_c9b7cecf44b5ed::t_6811ce41f6f670 25-31
+spec/api-gaps/rich-text-project-attachable.md
+  s_c9b7cecf44b5ed::t_2005ccdd83adaf 22-30
+spec/api-gaps/stack-doc-and-smithy.md
+  s_c9b7cecf44b5ed::t_b1a52f8e21123f 38-45
+  s_c9b7cecf44b5ed::t_891e2a824b8635 52-54
+  s_c9b7cecf44b5ed::t_b72fde7452c065 65-68
+spec/api-gaps/README.md
+  s_c9b7cecf44b5ed::t_2f1d70e7706b66 39-43,46,50-60
+spec/api-gaps/memories-emptied-regression.md
+  s_c9b7cecf44b5ed::t_465f38e2488591 3,6,15,18-22,26-32,34,36-43,45-51,55-62,66-76,80-84,88-104
+  s_c9b7cecf44b5ed::t_136b6be4a17114 44
+spec/api-gaps/recordable-subtypes-doc.md
+  s_c9b7cecf44b5ed::t_fa078c14496cf5 10-12,17-18,27-28,30-38,40-41,43-44,48-51,55,57-60,62-64,68-71,75-83,87-88
+COORDINATION.md
+  s_c9b7cecf44b5ed::t_993954e8aca57c 34-35,37-53,55-60,62
+  s_c9b7cecf44b5ed::t_ae2c150aa1d9b9 3-7,66-68
+spec/api-gaps/calendar.md
+  s_c9b7cecf44b5ed::t_02c2f3ac4c39e2 3,6,22-31,36-38,42-44,48-51,55-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "98d5a1fcfb0a9a32253470a065528034cf61b808",
+  "prompts": {},
+  "sessions": {
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
