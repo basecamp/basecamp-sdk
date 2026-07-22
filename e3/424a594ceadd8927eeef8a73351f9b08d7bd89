@@ -1,0 +1,44 @@
+typescript/src/generated/openapi-stripped.json
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 20272-20273,20277,22970-22981
+  s_2e722a07ae260d::t_e1fdffb0c465e8 22982-22983
+typescript/src/generated/services/checkins.ts
+  s_2e722a07ae260d::t_3e870a765b4fd4 282
+typescript/src/generated/services/templates.ts
+  s_2e722a07ae260d::t_3e870a765b4fd4 233
+  s_d70e8ca2b4d20b::t_5a24f282794c64 52-53,237-238,254
+typescript/tests/services/templates.test.ts
+  s_d70e8ca2b4d20b::t_b22ef0c7715743 172-174,181
+typescript/src/generated/services/gauges.ts
+  s_2e722a07ae260d::t_3e870a765b4fd4 172,238
+typescript/src/generated/services/people.ts
+  s_2e722a07ae260d::t_3e870a765b4fd4 155,331
+typescript/src/generated/schema.d.ts
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 3013,3784-3786
+  s_2e722a07ae260d::t_5fffda3012865d 3787
+typescript/src/generated/metadata.ts
+  s_2e722a07ae260d::t_3e870a765b4fd4 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e3424a594ceadd8927eeef8a73351f9b08d7bd89",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d70e8ca2b4d20b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47ce1679-590b-42bd-8f2c-a3916d99b0ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
