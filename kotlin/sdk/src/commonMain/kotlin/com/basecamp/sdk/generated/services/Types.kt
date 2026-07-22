@@ -474,8 +474,7 @@ data class UpdateTemplateBody(
 
 /** Request body for CreateProjectFromTemplate. */
 data class CreateProjectFromTemplateBody(
-    val name: String,
-    val description: String? = null
+    val project: JsonObject
 )
 
 /** Options for GetProjectTimesheet. */
