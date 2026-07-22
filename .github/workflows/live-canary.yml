@@ -127,11 +127,16 @@ jobs:
           LIVE_RECORD_DIR: tmp/live-canary
         run: make check-bc5-compat
 
-      - name: Upload canary artifacts
+      # Deliberately EXCLUDES the wire/ trees: wire snapshots carry raw
+      # response bodies and captured headers from a live account, which must
+      # not persist as downloadable workflow artifacts. Decode results carry
+      # only booleans, error strings, and dotted field paths.
+      - name: Upload canary decode results
         if: always() && steps.secrets.outputs.configured == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: live-canary-${{ github.run_id }}
-          path: tmp/live-canary/
+          path: |
+            tmp/live-canary/*/decode/
           retention-days: 14
           if-no-files-found: warn

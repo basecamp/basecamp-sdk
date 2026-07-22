@@ -870,7 +870,7 @@ else
 fi
 
 # Test AC: jq punctuation WITHOUT brackets (comma, space) must be rejected —
-# the whitelist admits only dotted [A-Za-z0-9_-] segments, so 'items, .pages'
+# the whitelist admits only dotted [A-Za-z0-9_] segments, so 'items, .pages'
 # can't be interpolated into the jq program as raw syntax.
 read -r BC4 BC5 <<<"$(fresh_dirs AC)"
 AC_TESTS="$TMP/AC/ac-tests.json"
@@ -896,6 +896,35 @@ if [ "$RUN_RC" -eq 2 ] && grep -q "paths are dotted" <<<"$RUN_OUT"; then
   pass "AC: jq punctuation without brackets fails with exit 2, no false-green"
 else
   fail "AC: expected exit 2 with dotted-segments error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# Test AD: hyphenated segments must be rejected — '.foo-bar' parses in jq as
+# subtraction ('.foo - bar'), not a key lookup, so a hyphen-keyed rule would
+# evaluate to garbage instead of reading the field.
+read -r BC4 BC5 <<<"$(fresh_dirs AD)"
+AD_TESTS="$TMP/AD/ad-tests.json"
+cat >"$AD_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Hyphen path test",
+    "operation": "HpOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["bubble-ups"], "reason": "hyphen would parse as jq subtraction" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Hyphen_path_test.json" HpOp '{"bubble-ups":[1]}'
+write_snapshot "$BC5/Hyphen_path_test.json" HpOp '{"bubble-ups":[]}'
+run_compare "$BC4" "$BC5" "$AD_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "paths are dotted" <<<"$RUN_OUT"; then
+  pass "AD: hyphenated path fails with exit 2, no jq-subtraction misparse"
+else
+  fail "AD: expected exit 2 with dotted-segments error; got rc=$RUN_RC: $RUN_OUT"
 fi
 
 echo ""

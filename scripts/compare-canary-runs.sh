@@ -177,19 +177,22 @@ validate_rule_path() {
   local upath="$1" ctx="$2"
   # "" is the documented body-root sentinel.
   [ -z "$upath" ] && return 0
-  # WHITELIST, not blacklist: a path is dotted key segments ([A-Za-z0-9_-]),
+  # WHITELIST, not blacklist: a path is dotted key segments ([A-Za-z0-9_]),
   # optionally led by a pages[N]/pages[*] indexer that must then enter the
   # page BODY. Anything else — commas, pipes, quotes, spaces, stray
   # brackets, bare jq streams — would be interpolated into the jq program
   # as raw syntax with undefined comparison semantics (page-level keys
   # other than body are backend-specific metadata; a typo like
   # 'pages[0].items' reads null on BOTH snapshots and false-greens rules).
-  local re_pages='^pages\[([0-9]+|\*)\]\.body(\.[A-Za-z0-9_-]+)*$'
-  local re_plain='^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$'
+  # No '-' in segments: '.foo-bar' parses in jq as subtraction ('.foo - bar'),
+  # not a key lookup. No current fixture path needs it; keys requiring
+  # quoting are a future, deliberate extension of to_jq_path.
+  local re_pages='^pages\[([0-9]+|\*)\]\.body(\.[A-Za-z0-9_]+)*$'
+  local re_plain='^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$'
   if [[ "$upath" =~ $re_pages || "$upath" =~ $re_plain ]]; then
     return 0
   fi
-  echo "ERROR: unsupported path '$upath' on $ctx — paths are dotted [A-Za-z0-9_-] key segments; brackets are only supported as the leading 'pages[N]' or 'pages[*]' segment and must enter the page body ('pages[N].body...')" >&2
+  echo "ERROR: unsupported path '$upath' on $ctx — paths are dotted [A-Za-z0-9_] key segments; brackets are only supported as the leading 'pages[N]' or 'pages[*]' segment and must enter the page body ('pages[N].body...')" >&2
   exit 2
 }
 
