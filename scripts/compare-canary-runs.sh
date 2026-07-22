@@ -376,6 +376,25 @@ for entry in "${TEST_ENTRIES[@]}"; do
       # ever surfacing.
       validate_rule_path "$upath" "$OPERATION"
 
+      # A concrete pages[N] rule asserts "page N exists on both backends"
+      # as a precondition. If either capture has fewer pages, reading the
+      # path yields null and the rule would pass clean — hiding a fixture
+      # typo (pages[1] against single-page captures) or a page-count
+      # regression. Both demand operator attention; fail as a fixture/
+      # capture error rather than comparing nulls. Cross-page-count
+      # comparison is what 'pages[*]' aggregation is for.
+      if [[ "$upath" =~ ^pages\[([0-9]+)\] ]]; then
+        PAGE_IDX="${BASH_REMATCH[1]}"
+        for side_snap in "$BC4_SNAPSHOT:bc4" "$BC5_SNAPSHOT:bc5"; do
+          snap_file="${side_snap%:*}"; snap_label="${side_snap##*:}"
+          snap_pages="$(jq -r '.pages | length' "$snap_file")"
+          if [ "$PAGE_IDX" -ge "$snap_pages" ]; then
+            echo "ERROR: path '$upath' on $OPERATION targets page $PAGE_IDX but the $snap_label snapshot has only $snap_pages page(s) — fix the rule's page index, or use 'pages[*]' to aggregate across pages" >&2
+            exit 2
+          fi
+        done
+      fi
+
       if is_allowed "$upath"; then
         continue
       fi

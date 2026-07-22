@@ -812,6 +812,63 @@ else
   fail "Z: expected exit 2 for wrongly-typed page keys; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test AA: a concrete pages[N] rule whose index is absent from BOTH captures
+# is a fixture typo — reading it would compare null vs null and pass clean.
+read -r BC4 BC5 <<<"$(fresh_dirs AA)"
+AA_TESTS="$TMP/AA/aa-tests.json"
+cat >"$AA_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Absent page index test",
+    "operation": "ApOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["pages[1].body.items"], "reason": "page 1 never captured" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Absent_page_index_test.json" ApOp '{"items":[1,2]}'
+write_snapshot "$BC5/Absent_page_index_test.json" ApOp '{"items":[]}'
+run_compare "$BC4" "$BC5" "$AA_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "targets page 1 but the .* snapshot has only" <<<"$RUN_OUT"; then
+  pass "AA: pages[1] against single-page captures fails with exit 2"
+else
+  fail "AA: expected exit 2 with page-index error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
+# AB: page absent from ONE side only (BC4 captured 2 pages, BC5 only 1) is
+# equally an error — a silent page-count regression must not read as null
+# and pass the rule.
+read -r BC4 BC5 <<<"$(fresh_dirs AB)"
+AB_TESTS="$TMP/AB/ab-tests.json"
+cat >"$AB_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "One sided page loss test",
+    "operation": "OpOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["pages[1].body.items"], "reason": "BC5 lost a page" }
+    ]
+  }
+]
+JSON
+write_snapshot_2p "$BC4/One_sided_page_loss_test.json" OpOp '{"items":[1]}' '{"items":[2]}'
+write_snapshot "$BC5/One_sided_page_loss_test.json" OpOp '{"items":[1]}'
+run_compare "$BC4" "$BC5" "$AB_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "targets page 1 but the bc5 snapshot has only 1" <<<"$RUN_OUT"; then
+  pass "AB: one-sided page loss fails with exit 2, no null false-green"
+else
+  fail "AB: expected exit 2 naming the bc5 snapshot; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2
