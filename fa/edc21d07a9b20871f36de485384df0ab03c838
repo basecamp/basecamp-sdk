@@ -1,0 +1,44 @@
+ruby/lib/basecamp/generated/services/people_service.rb
+  s_2e722a07ae260d::t_3e870a765b4fd4 27,88
+ruby/lib/basecamp/generated/types.rb
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 2547-2565,2567,2571
+  s_2e722a07ae260d::t_3e870a765b4fd4 4
+  s_2e722a07ae260d::t_cafbc2dc548b37 2566,2568-2570,2572-2573
+ruby/lib/basecamp/generated/services/checkins_service.rb
+  s_2e722a07ae260d::t_3e870a765b4fd4 60,80
+ruby/lib/basecamp/generated/metadata.json
+  s_2e722a07ae260d::t_3e870a765b4fd4 4
+ruby/lib/basecamp/generated/services/projects_service.rb
+  s_2e722a07ae260d::t_3e870a765b4fd4 44
+ruby/lib/basecamp/generated/services/gauges_service.rb
+  s_2e722a07ae260d::t_3e870a765b4fd4 21,41,61
+ruby/test/basecamp/services/templates_service_test.rb
+  s_d70e8ca2b4d20b::t_1ff3301c60b571 65,68
+ruby/lib/basecamp/generated/services/templates_service.rb
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 64,66
+  s_2e722a07ae260d::t_3e870a765b4fd4 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "faedc21d07a9b20871f36de485384df0ab03c838",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d70e8ca2b4d20b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47ce1679-590b-42bd-8f2c-a3916d99b0ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
