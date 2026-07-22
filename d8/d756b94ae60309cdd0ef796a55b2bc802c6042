@@ -1,0 +1,31 @@
+swift/Sources/Basecamp/Generated/Models/CreateProjectFromTemplateRequest.swift
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 5,7-8
+swift/Sources/Basecamp/Generated/Models/ProjectConstructionAttributes.swift
+  s_d70e8ca2b4d20b::t_93f3211b07abf5 1-12
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_2e722a07ae260d::t_6ab6e2c6e5d1be 66-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "d8d756b94ae60309cdd0ef796a55b2bc802c6042",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d70e8ca2b4d20b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47ce1679-590b-42bd-8f2c-a3916d99b0ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
