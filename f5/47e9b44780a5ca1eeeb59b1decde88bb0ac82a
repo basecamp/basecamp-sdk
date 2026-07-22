@@ -1,0 +1,25 @@
+go/pkg/basecamp/people_test.go
+  s_0c98ad9a7f5689::t_f87f1a7f742f7b 443-490
+ruby/test/basecamp/services/people_service_test.rb
+  s_0c98ad9a7f5689::t_cd99a51f1d1628 101-131
+spec/fixtures/people/out-of-office.json
+  s_0c98ad9a7f5689::t_985fac32cfaf81 1-12
+typescript/tests/services/people.test.ts
+  s_0c98ad9a7f5689::t_4d35149c7521a9 142-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f547e9b44780a5ca1eeeb59b1decde88bb0ac82a",
+  "prompts": {},
+  "sessions": {
+    "s_0c98ad9a7f5689": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc2014f-a637-4b4d-9589-f87625258d9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
