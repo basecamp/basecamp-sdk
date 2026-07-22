@@ -24,6 +24,14 @@ describe("generateExampleValue — object-valued body members", () => {
       },
       required: ["position"],
     },
+    OutOfOfficePayload: {
+      type: "object",
+      properties: {
+        start_date: { type: "string" },
+        end_date: { type: "string" },
+      },
+      required: ["start_date", "end_date"],
+    },
     FirstWeekDay: {
       type: "string",
     },
@@ -52,6 +60,15 @@ describe("generateExampleValue — object-valued body members", () => {
       $ref: "#/components/schemas/GaugeNeedlePayload",
     });
     expect(value).toBe("{ position: 1 }");
+  });
+
+  it("keeps nested schema member keys raw (snake_case), not camel-cased", () => {
+    // The nested object is typed as the component schema and forwarded to the wire
+    // unchanged, so its keys must match the schema exactly (start_date, not startDate).
+    const value = generateExampleValue("outOfOffice", 'components["schemas"]["OutOfOfficePayload"]', undefined, {
+      $ref: "#/components/schemas/OutOfOfficePayload",
+    });
+    expect(value).toBe('{ start_date: "example", end_date: "example" }');
   });
 
   it("leaves a string ref (FirstWeekDay) as a scalar, not an object", () => {

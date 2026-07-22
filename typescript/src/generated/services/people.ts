@@ -328,7 +328,7 @@ export class PeopleService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.people.enableOutOfOffice(123, { outOfOffice: { startDate: "example", endDate: "example" } });
+   * const result = await client.people.enableOutOfOffice(123, { outOfOffice: { start_date: "example", end_date: "example" } });
    * ```
    */
   async enableOutOfOffice(personId: number, req: EnableOutOfOfficePeopleRequest): Promise<components["schemas"]["EnableOutOfOfficeResponseContent"]> {

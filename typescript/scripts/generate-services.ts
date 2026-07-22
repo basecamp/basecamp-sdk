@@ -1497,7 +1497,10 @@ function generateExampleValue(
           childSchema,
           nextVisited,
         );
-        return `${toCamelCase(childName)}: ${value}`;
+        // Nested schema members serialize with their raw (snake_case) keys — the
+        // member is typed as the component schema and forwarded to the wire
+        // unchanged. Only the outer service request interface is camel-cased.
+        return `${childName}: ${value}`;
       });
     return `{ ${fields.join(", ")} }`;
   }
