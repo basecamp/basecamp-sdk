@@ -1,0 +1,41 @@
+ruby/test/basecamp/services/people_service_test.rb
+  s_0c98ad9a7f5689::t_b1a7eea0c85c2f 104-108,122
+typescript/src/generated/schema.d.ts
+  s_0c98ad9a7f5689::t_036c895f400f7b 3656
+go/pkg/generated/client.gen.go
+  s_0c98ad9a7f5689::t_036c895f400f7b 1516-1518
+openapi.json
+  s_0c98ad9a7f5689::t_036c895f400f7b 24813-24815
+typescript/tests/services/people.test.ts
+  s_0c98ad9a7f5689::t_1d29c41c1a8c9a 148-152,167
+python/src/basecamp/generated/types.py
+  s_0c98ad9a7f5689::t_036c895f400f7b 936
+go/pkg/basecamp/people.go
+  s_0c98ad9a7f5689::t_0f053608076d3b 550-552
+go/pkg/basecamp/people_test.go
+  s_0c98ad9a7f5689::t_e7f0493f6ad433 473-475
+ruby/lib/basecamp/generated/types.rb
+  s_0c98ad9a7f5689::t_036c895f400f7b 4,2228,2237,2244
+typescript/src/generated/openapi-stripped.json
+  s_0c98ad9a7f5689::t_036c895f400f7b 22489-22491
+spec/basecamp.smithy
+  s_0c98ad9a7f5689::t_55c7a73d8508cc 8422
+swift/Sources/Basecamp/Generated/Models/OutOfOfficePerson.swift
+  s_0c98ad9a7f5689::t_036c895f400f7b 6,9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7ad8125dfb65c1e653d7b4c9eacfdddb452c7209",
+  "prompts": {},
+  "sessions": {
+    "s_0c98ad9a7f5689": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3bc2014f-a637-4b4d-9589-f87625258d9d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
