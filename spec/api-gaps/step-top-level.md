@@ -38,7 +38,12 @@ Nothing — **absorbed**. The merged `doc/api/sections/card_table_steps.md` on
 `POST /card_tables/cards/:id/steps.json`, `PUT /card_tables/steps/:id.json`,
 `PUT /card_tables/steps/:id/completions.json`,
 `POST /card_tables/cards/:id/positions.json` (plus bucket-scoped
-equivalents) — and the SDK already models all five top-level operations in
+equivalents, e.g. `POST /buckets/:bucket_id/card_tables/cards/:id/steps.json` —
+the doc lists these as cross-references to the same operations, and they are
+**deliberately not modeled**: the SDK follows the card-tables service
+convention of modeling the canonical flat `/card_tables/...` routes only;
+the bucket-scoped forms are server-side aliases of the identical operations,
+not additional API surface) — and the SDK already models all five top-level operations in
 `spec/basecamp.smithy`: `GetCardStep` (:4456), `CreateCardStep` (:4479),
 `UpdateCardStep` (:4511), `SetCardStepCompletion` (:4541),
 `RepositionCardStep` (:4569).
