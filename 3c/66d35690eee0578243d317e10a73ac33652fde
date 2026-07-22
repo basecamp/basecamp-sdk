@@ -1,0 +1,43 @@
+spec/basecamp.smithy
+  s_d70e8ca2b4d20b::t_41c0f6c9b06826 6805-6808
+  s_2e722a07ae260d::t_fae923ea0fdd72 6804
+openapi.json
+  s_d70e8ca2b4d20b::t_a188661bf6f720 22606-22607,22611,25304-25315
+  s_2e722a07ae260d::t_7b10c1acbaf08a 25316-25317
+ruby/scripts/generate-services.rb
+  s_2e722a07ae260d::t_e2c2d0466c6310 536-538,540-542
+  s_2e722a07ae260d::t_cd30f3bde8a5fe 539
+typescript/tests/generator/example-value.test.ts
+  s_2e722a07ae260d::t_ef0528674f43fa 1-63
+typescript/scripts/generate-services.ts
+  s_2e722a07ae260d::t_7d929033d0f8b5 1469-1475,1478-1504
+  s_2e722a07ae260d::t_d2980d3e8398fe 1535
+  s_2e722a07ae260d::t_3a37c7620d95ef 16
+  s_2e722a07ae260d::t_af8bbe3ac6dff5 698
+  s_2e722a07ae260d::t_4efce80f0b7bd5 131
+  s_2e722a07ae260d::t_d838074a33bf71 1667-1674
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3c66d35690eee0578243d317e10a73ac33652fde",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_d70e8ca2b4d20b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47ce1679-590b-42bd-8f2c-a3916d99b0ac",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
