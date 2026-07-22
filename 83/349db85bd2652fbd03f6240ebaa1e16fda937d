@@ -1,0 +1,19 @@
+python/tests/services/test_campfires_service.py
+  s_18853c09ab9fc6::t_80b34f8e43ce09 5-6,62-63,102-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "83349db85bd2652fbd03f6240ebaa1e16fda937d",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
