@@ -55,24 +55,29 @@ export class MessageTypesService extends BaseService {
 
   /**
    * List message types in a project
+   * @param projectId - The project ID
    * @param options - Optional query parameters
    * @returns All MessageType across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
-   * const result = await client.messageTypes.list();
+   * const result = await client.messageTypes.list(123);
    * ```
    */
-  async list(options?: ListMessageTypeOptions): Promise<ListResult<MessageType>> {
+  async list(projectId: number, options?: ListMessageTypeOptions): Promise<ListResult<MessageType>> {
     return this.requestPaginated(
       {
         service: "MessageTypes",
         operation: "ListMessageTypes",
         resourceType: "message_type",
         isMutation: false,
+        projectId,
       },
       () =>
-        this.client.GET("/categories.json", {
+        this.client.GET("/buckets/{projectId}/categories.json", {
+          params: {
+            path: { projectId },
+          },
         })
       , options
     );
@@ -80,16 +85,17 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Create a new message type in a project
+   * @param projectId - The project ID
    * @param req - Message_type creation parameters
    * @returns The MessageType
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
    * ```ts
-   * const result = await client.messageTypes.create({ name: "My example", icon: "example" });
+   * const result = await client.messageTypes.create(123, { name: "My example", icon: "example" });
    * ```
    */
-  async create(req: CreateMessageTypeRequest): Promise<MessageType> {
+  async create(projectId: number, req: CreateMessageTypeRequest): Promise<MessageType> {
     if (!req.name) {
       throw Errors.validation("Name is required");
     }
@@ -102,9 +108,13 @@ export class MessageTypesService extends BaseService {
         operation: "CreateMessageType",
         resourceType: "message_type",
         isMutation: true,
+        projectId,
       },
       () =>
-        this.client.POST("/categories.json", {
+        this.client.POST("/buckets/{projectId}/categories.json", {
+          params: {
+            path: { projectId },
+          },
           body: {
             name: req.name,
             icon: req.icon,
@@ -116,28 +126,30 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Get a single message type by id
+   * @param projectId - The project ID
    * @param typeId - The type ID
    * @returns The MessageType
    * @throws {BasecampError} If the resource is not found
    *
    * @example
    * ```ts
-   * const result = await client.messageTypes.get(123);
+   * const result = await client.messageTypes.get(123, 123);
    * ```
    */
-  async get(typeId: number): Promise<MessageType> {
+  async get(projectId: number, typeId: number): Promise<MessageType> {
     const response = await this.request(
       {
         service: "MessageTypes",
         operation: "GetMessageType",
         resourceType: "message_type",
         isMutation: false,
+        projectId,
         resourceId: typeId,
       },
       () =>
-        this.client.GET("/categories/{typeId}", {
+        this.client.GET("/buckets/{projectId}/categories/{typeId}", {
           params: {
-            path: { typeId },
+            path: { projectId, typeId },
           },
         })
     );
@@ -146,6 +158,7 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Update an existing message type
+   * @param projectId - The project ID
    * @param typeId - The type ID
    * @param req - Message_type update parameters
    * @returns The MessageType
@@ -153,22 +166,23 @@ export class MessageTypesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.messageTypes.update(123, { });
+   * const result = await client.messageTypes.update(123, 123, { });
    * ```
    */
-  async update(typeId: number, req: UpdateMessageTypeRequest): Promise<MessageType> {
+  async update(projectId: number, typeId: number, req: UpdateMessageTypeRequest): Promise<MessageType> {
     const response = await this.request(
       {
         service: "MessageTypes",
         operation: "UpdateMessageType",
         resourceType: "message_type",
         isMutation: true,
+        projectId,
         resourceId: typeId,
       },
       () =>
-        this.client.PUT("/categories/{typeId}", {
+        this.client.PUT("/buckets/{projectId}/categories/{typeId}", {
           params: {
-            path: { typeId },
+            path: { projectId, typeId },
           },
           body: {
             name: req.name,
@@ -181,28 +195,30 @@ export class MessageTypesService extends BaseService {
 
   /**
    * Delete a message type
+   * @param projectId - The project ID
    * @param typeId - The type ID
    * @returns void
    * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * await client.messageTypes.delete(123);
+   * await client.messageTypes.delete(123, 123);
    * ```
    */
-  async delete(typeId: number): Promise<void> {
+  async delete(projectId: number, typeId: number): Promise<void> {
     await this.request(
       {
         service: "MessageTypes",
         operation: "DeleteMessageType",
         resourceType: "message_type",
         isMutation: true,
+        projectId,
         resourceId: typeId,
       },
       () =>
-        this.client.DELETE("/categories/{typeId}", {
+        this.client.DELETE("/buckets/{projectId}/categories/{typeId}", {
           params: {
-            path: { typeId },
+            path: { projectId, typeId },
           },
         })
     );

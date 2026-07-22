@@ -62,7 +62,7 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 	return &MessageTypesService{client: client}
 }
 
-// List returns all message types for the account.
+// List returns all message types for the given project.
 //
 // Pagination options:
 //   - Limit: maximum number of message types to return (0 = all, -1 = unlimited)
@@ -70,7 +70,7 @@ func NewMessageTypesService(client *AccountClient) *MessageTypesService {
 //
 // The returned MessageTypeListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
-func (s *MessageTypesService) List(ctx context.Context, opts *MessageTypeListOptions) (result *MessageTypeListResult, err error) {
+func (s *MessageTypesService) List(ctx context.Context, projectID int64, opts *MessageTypeListOptions) (result *MessageTypeListResult, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "List",
 		ResourceType: "message_type", IsMutation: false,
@@ -84,7 +84,7 @@ func (s *MessageTypesService) List(ctx context.Context, opts *MessageTypeListOpt
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListMessageTypesWithResponse(ctx, s.client.accountID)
+	resp, err := s.client.parent.gen.ListMessageTypesWithResponse(ctx, s.client.accountID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (s *MessageTypesService) List(ctx context.Context, opts *MessageTypeListOpt
 }
 
 // Get returns a message type by ID.
-func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *MessageType, err error) {
+func (s *MessageTypesService) Get(ctx context.Context, projectID, typeID int64) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Get",
 		ResourceType: "message_type", IsMutation: false,
@@ -157,7 +157,7 @@ func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *Me
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, typeID)
+	resp, err := s.client.parent.gen.GetMessageTypeWithResponse(ctx, s.client.accountID, projectID, typeID)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (s *MessageTypesService) Get(ctx context.Context, typeID int64) (result *Me
 
 // Create creates a new message type in a project.
 // Returns the created message type.
-func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageTypeRequest) (result *MessageType, err error) {
+func (s *MessageTypesService) Create(ctx context.Context, projectID int64, req *CreateMessageTypeRequest) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Create",
 		ResourceType: "message_type", IsMutation: true,
@@ -203,7 +203,7 @@ func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageType
 		Icon: req.Icon,
 	}
 
-	resp, err := s.client.parent.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, body)
+	resp, err := s.client.parent.gen.CreateMessageTypeWithResponse(ctx, s.client.accountID, projectID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func (s *MessageTypesService) Create(ctx context.Context, req *CreateMessageType
 
 // Update updates an existing message type.
 // Returns the updated message type.
-func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *UpdateMessageTypeRequest) (result *MessageType, err error) {
+func (s *MessageTypesService) Update(ctx context.Context, projectID, typeID int64, req *UpdateMessageTypeRequest) (result *MessageType, err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Update",
 		ResourceType: "message_type", IsMutation: true,
@@ -249,7 +249,7 @@ func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *Upd
 		body.Icon = req.Icon
 	}
 
-	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, typeID, body)
+	resp, err := s.client.parent.gen.UpdateMessageTypeWithResponse(ctx, s.client.accountID, projectID, typeID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func (s *MessageTypesService) Update(ctx context.Context, typeID int64, req *Upd
 }
 
 // Delete deletes a message type from a project.
-func (s *MessageTypesService) Delete(ctx context.Context, typeID int64) (err error) {
+func (s *MessageTypesService) Delete(ctx context.Context, projectID, typeID int64) (err error) {
 	op := OperationInfo{
 		Service: "MessageTypes", Operation: "Delete",
 		ResourceType: "message_type", IsMutation: true,
@@ -281,7 +281,7 @@ func (s *MessageTypesService) Delete(ctx context.Context, typeID int64) (err err
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, typeID)
+	resp, err := s.client.parent.gen.DeleteMessageTypeWithResponse(ctx, s.client.accountID, projectID, typeID)
 	if err != nil {
 		return err
 	}

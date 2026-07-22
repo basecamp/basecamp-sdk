@@ -153,6 +153,47 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{projectId}/categories",
+      "resource": "Messages",
+      "operations": {
+        "GET": "ListMessageTypes",
+        "POST": "CreateMessageType"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{projectId}/categories/{typeId}",
+      "resource": "Messages",
+      "operations": {
+        "DELETE": "DeleteMessageType",
+        "GET": "GetMessageType",
+        "PUT": "UpdateMessageType"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "projectId": {
+          "role": "bucket",
+          "type": "int64"
+        },
+        "typeId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/card_tables/cards/{cardId}",
       "resource": "Card Tables",
       "operations": {
@@ -357,39 +398,6 @@
         },
         "cardTableId": {
           "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/categories",
-      "resource": "Messages",
-      "operations": {
-        "GET": "ListMessageTypes",
-        "POST": "CreateMessageType"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/categories/{typeId}",
-      "resource": "Messages",
-      "operations": {
-        "DELETE": "DeleteMessageType",
-        "GET": "GetMessageType",
-        "PUT": "UpdateMessageType"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "typeId": {
-          "role": "recording",
           "type": "int64"
         }
       }
