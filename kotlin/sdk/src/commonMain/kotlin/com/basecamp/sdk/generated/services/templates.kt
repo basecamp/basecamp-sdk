@@ -136,8 +136,7 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
         )
         return request(info, {
             httpPost("/templates/${templateId}/project_constructions.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
-                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                put("project", body.project)
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)

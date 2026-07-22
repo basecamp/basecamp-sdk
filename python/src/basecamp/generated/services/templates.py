@@ -51,12 +51,12 @@ class TemplatesService(BaseService):
             operation="DeleteTemplate",
         )
 
-    def create_project(self, *, template_id: int, name: str, description: str | None = None) -> dict[str, Any]:
+    def create_project(self, *, template_id: int, project: dict) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="templates", operation="create_project", is_mutation=True, resource_id=template_id),
             "POST",
             f"/templates/{template_id}/project_constructions.json",
-            json_body=self._compact(name=name, description=description),
+            json_body=self._compact(project=project),
             operation="CreateProjectFromTemplate",
         )
 
@@ -113,12 +113,12 @@ class AsyncTemplatesService(AsyncBaseService):
             operation="DeleteTemplate",
         )
 
-    async def create_project(self, *, template_id: int, name: str, description: str | None = None) -> dict[str, Any]:
+    async def create_project(self, *, template_id: int, project: dict) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="templates", operation="create_project", is_mutation=True, resource_id=template_id),
             "POST",
             f"/templates/{template_id}/project_constructions.json",
-            json_body=self._compact(name=name, description=description),
+            json_body=self._compact(project=project),
             operation="CreateProjectFromTemplate",
         )
 

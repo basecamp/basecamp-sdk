@@ -597,8 +597,7 @@ type CreatePersonRequest struct {
 
 // CreateProjectFromTemplateRequestContent defines model for CreateProjectFromTemplateRequestContent.
 type CreateProjectFromTemplateRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
+	Project ProjectConstructionAttributes `json:"project"`
 }
 
 // CreateProjectFromTemplateResponseContent defines model for CreateProjectFromTemplateResponseContent.
@@ -1638,6 +1637,12 @@ type ProjectConstruction struct {
 	Project Project `json:"project,omitempty"`
 	Status  string  `json:"status"`
 	Url     string  `json:"url,omitempty"`
+}
+
+// ProjectConstructionAttributes defines model for ProjectConstructionAttributes.
+type ProjectConstructionAttributes struct {
+	Description string `json:"description,omitempty"`
+	Name        string `json:"name"`
 }
 
 // Question defines model for Question.

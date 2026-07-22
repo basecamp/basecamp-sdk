@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-22T08:33:01Z
+# Generated: 2026-07-22T21:16:21Z
 
 require "json"
 require "time"
@@ -2536,6 +2536,33 @@ module Basecamp
           "status" => @status,
           "project" => @project,
           "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # ProjectConstructionAttributes
+    class ProjectConstructionAttributes
+      include TypeHelpers
+      attr_accessor :name, :description
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[name].freeze
+      end
+
+      def initialize(data = {})
+        @name = data["name"]
+        @description = data["description"]
+      end
+
+      def to_h
+        {
+          "name" => @name,
+          "description" => @description,
         }.compact
       end
 

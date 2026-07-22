@@ -2,11 +2,9 @@
 import Foundation
 
 public struct CreateProjectFromTemplateRequest: Codable, Sendable {
-    public var description: String?
-    public let name: String
+    public let project: ProjectConstructionAttributes
 
-    public init(description: String? = nil, name: String) {
-        self.description = description
-        self.name = name
+    public init(project: ProjectConstructionAttributes) {
+        self.project = project
     }
 }

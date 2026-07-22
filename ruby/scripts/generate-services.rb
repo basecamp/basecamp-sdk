@@ -533,7 +533,13 @@ class ServiceGenerator
   def schema_to_ruby_type(schema)
     return 'Object' unless schema
 
-    case schema['type']
+    # Object-valued members (e.g. a `project`/`gauge`/`schedule` envelope) are passed
+    # as a Hash. Resolve $refs and treat only object-typed schemas as Hash; a string
+    # ref such as FirstWeekDay must stay String.
+    resolved = schema['$ref'] ? resolve_schema_ref(schema) : schema
+    return 'Hash' if resolved && resolved['type'] == 'object'
+
+    case resolved&.fetch('type', nil)
     when 'integer' then 'Integer'
     when 'boolean' then 'Boolean'
     when 'array' then 'Array'

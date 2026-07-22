@@ -449,8 +449,7 @@ class CreatePersonRequest(TypedDict):
 
 
 class CreateProjectFromTemplateRequestContent(TypedDict):
-    description: NotRequired[str]
-    name: str
+    project: ProjectConstructionAttributes
 
 
 class CreateProjectRequestContent(TypedDict):
@@ -1029,6 +1028,11 @@ class ProjectConstruction(TypedDict):
     project: NotRequired[Project]
     status: str
     url: NotRequired[str]
+
+
+class ProjectConstructionAttributes(TypedDict):
+    description: NotRequired[str]
+    name: str
 
 
 class Question(TypedDict):

@@ -49,10 +49,8 @@ export interface UpdateTemplateRequest {
  * Request parameters for createProject.
  */
 export interface CreateProjectTemplateRequest {
-  /** Display name */
-  name: string;
-  /** Rich text description (HTML) */
-  description?: string;
+  /** Project */
+  project: components["schemas"]["ProjectConstructionAttributes"];
 }
 
 
@@ -232,12 +230,12 @@ export class TemplatesService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.templates.createProject(123, { name: "My example" });
+   * const result = await client.templates.createProject(123, { project: { name: "My example" } });
    * ```
    */
   async createProject(templateId: number, req: CreateProjectTemplateRequest): Promise<components["schemas"]["CreateProjectFromTemplateResponseContent"]> {
-    if (!req.name) {
-      throw Errors.validation("Name is required");
+    if (!req.project) {
+      throw Errors.validation("Project is required");
     }
     const response = await this.request(
       {
@@ -253,8 +251,7 @@ export class TemplatesService extends BaseService {
             path: { templateId },
           },
           body: {
-            name: req.name,
-            description: req.description,
+            project: req.project,
           },
         })
     );

@@ -152,7 +152,7 @@ export class PeopleService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.people.updateMyPreferences({ person: "example" });
+   * const result = await client.people.updateMyPreferences({ person: {  } });
    * ```
    */
   async updateMyPreferences(req: UpdateMyPreferencesPeopleRequest): Promise<components["schemas"]["UpdateMyPreferencesResponseContent"]> {
@@ -328,7 +328,7 @@ export class PeopleService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.people.enableOutOfOffice(123, { outOfOffice: "example" });
+   * const result = await client.people.enableOutOfOffice(123, { outOfOffice: { start_date: "example", end_date: "example" } });
    * ```
    */
   async enableOutOfOffice(personId: number, req: EnableOutOfOfficePeopleRequest): Promise<components["schemas"]["EnableOutOfOfficeResponseContent"]> {

@@ -326,8 +326,10 @@ func (s *TemplatesService) CreateProject(ctx context.Context, templateID int64, 
 	}
 
 	body := generated.CreateProjectFromTemplateJSONRequestBody{
-		Name:        name,
-		Description: description,
+		Project: generated.ProjectConstructionAttributes{
+			Name:        name,
+			Description: description,
+		},
 	}
 
 	resp, err := s.client.parent.gen.CreateProjectFromTemplateWithResponse(ctx, s.client.accountID, templateID, body)

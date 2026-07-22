@@ -3010,8 +3010,7 @@ export interface components {
             company_name?: string;
         };
         CreateProjectFromTemplateRequestContent: {
-            name: string;
-            description?: string;
+            project: components["schemas"]["ProjectConstructionAttributes"];
         };
         CreateProjectFromTemplateResponseContent: components["schemas"]["ProjectConstruction"];
         CreateProjectRequestContent: {
@@ -3781,6 +3780,10 @@ export interface components {
             status: string;
             url?: string;
             project?: components["schemas"]["Project"];
+        };
+        ProjectConstructionAttributes: {
+            name: string;
+            description?: string;
         };
         Question: {
             /** Format: int64 */

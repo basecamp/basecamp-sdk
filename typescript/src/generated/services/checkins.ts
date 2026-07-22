@@ -279,7 +279,7 @@ export class CheckinsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.checkins.createQuestion(123, { title: "example", schedule: "example" });
+   * const result = await client.checkins.createQuestion(123, { title: "example", schedule: {  } });
    * ```
    */
   async createQuestion(questionnaireId: number, req: CreateQuestionCheckinRequest): Promise<Question> {

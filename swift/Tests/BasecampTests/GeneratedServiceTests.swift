@@ -63,6 +63,31 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(sentJSON["due_on"] as? String, "2026-03-01")
     }
 
+    func testCreateProjectFromTemplateNestsBodyUnderProjectEnvelope() async throws {
+        let responseJSON: [String: Any] = ["id": 900, "status": "completed"]
+        let responseData = try JSONSerialization.data(withJSONObject: responseJSON)
+
+        let transport = MockTransport(statusCode: 201, data: responseData)
+        let account = makeTestAccountClient(transport: transport)
+
+        let req = CreateProjectFromTemplateRequest(
+            project: ProjectConstructionAttributes(name: "New Project", description: "From template")
+        )
+        let construction = try await account.templates.createProject(templateId: 456, req: req)
+        XCTAssertEqual(construction.id, 900)
+
+        let sentURL = transport.lastRequest!.request.url!.absoluteString
+        XCTAssertTrue(sentURL.hasSuffix("/templates/456/project_constructions.json"), "Got \(sentURL)")
+
+        // Body must nest project attributes under a `project` envelope, not flat.
+        let sentBody = transport.lastRequest!.request.httpBody!
+        let sentJSON = try JSONSerialization.jsonObject(with: sentBody) as! [String: Any]
+        XCTAssertNil(sentJSON["name"], "name must not appear at the top level")
+        let project = sentJSON["project"] as! [String: Any]
+        XCTAssertEqual(project["name"] as? String, "New Project")
+        XCTAssertEqual(project["description"] as? String, "From template")
+    }
+
     // MARK: - requestVoid path (DELETE)
 
     func testTrashProjectSendsDelete() async throws {
