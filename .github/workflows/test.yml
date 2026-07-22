@@ -254,8 +254,8 @@ jobs:
         if: matrix.python == '3.13'
         working-directory: conformance/runner/python
         run: |
-          uv sync
-          uv run python runner.py
+          uv sync --python ${{ matrix.python }}
+          uv run --python ${{ matrix.python }} python runner.py
 
   test-swift:
     name: Swift Tests
@@ -337,9 +337,11 @@ jobs:
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
-          echo "$RESULTS"
-          if echo "$RESULTS" | grep -Eq '"result": *"(failure|cancelled|skipped)"'; then
-            echo "::error::A language test job (which runs its own conformance suite) did not succeed"
+          echo "$RESULTS" | jq .
+          NOT_GREEN=$(echo "$RESULTS" | jq -r 'to_entries[] | select(.value.result != "success") | "\(.key): \(.value.result)"')
+          if [ -n "$NOT_GREEN" ]; then
+            echo "::error::Language test jobs (which run their own conformance suites) did not succeed:"
+            echo "$NOT_GREEN"
             exit 1
           fi
           echo "All per-language conformance suites green"
