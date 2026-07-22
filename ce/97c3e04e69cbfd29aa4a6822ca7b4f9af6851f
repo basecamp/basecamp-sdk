@@ -1,0 +1,22 @@
+spec/api-gaps/dock-tool-create-contract.md
+  s_0bad29baa504ab::t_21e8867653b278 26,47-51,64-65,75-102
+  s_0bad29baa504ab::t_23392d735afca2 1-25,27-46,52-63,66-74
+spec/api-gaps/README.md
+  s_0bad29baa504ab::t_c31a17bf66f7b0 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ce97c3e04e69cbfd29aa4a6822ca7b4f9af6851f",
+  "prompts": {},
+  "sessions": {
+    "s_0bad29baa504ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f2f90b-2701-4889-a100-6a22b3f8d13b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
