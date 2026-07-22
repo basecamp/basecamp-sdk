@@ -955,6 +955,35 @@ else
   fail "AE: expected exit 1 with redacted shapes only; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test AF: a shorthand path (normalizing to pages[0].body) against a
+# multi-page snapshot is ambiguous — it would silently check only page 0.
+# Explicit pages[N]/pages[*] syntax is required once either capture paginates.
+read -r BC4 BC5 <<<"$(fresh_dirs AF)"
+AF_TESTS="$TMP/AF/af-tests.json"
+cat >"$AF_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Shorthand multipage test",
+    "operation": "SmOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["items"], "reason": "shorthand against paginated capture" }
+    ]
+  }
+]
+JSON
+write_snapshot_2p "$BC4/Shorthand_multipage_test.json" SmOp '{"items":[1]}' '{"items":[2]}'
+write_snapshot "$BC5/Shorthand_multipage_test.json" SmOp '{"items":[1,2]}'
+run_compare "$BC4" "$BC5" "$AF_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "is ambiguous" <<<"$RUN_OUT"; then
+  pass "AF: shorthand path against multi-page snapshot fails with exit 2"
+else
+  fail "AF: expected exit 2 with ambiguity error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

@@ -413,6 +413,20 @@ for entry in "${TEST_ENTRIES[@]}"; do
             exit 2
           fi
         done
+      elif [[ "$upath" != pages\[* ]]; then
+        # Shorthand paths ("" or "foo.bar") normalize to pages[0].body — a
+        # deliberate convenience for single-page captures only. Against a
+        # multi-page snapshot the shorthand would silently check page 0 and
+        # ignore the rest, under-enforcing the rule. Require explicit
+        # pages[N]/pages[*] syntax as soon as either capture paginates.
+        for side_snap in "$BC4_SNAPSHOT:bc4" "$BC5_SNAPSHOT:bc5"; do
+          snap_file="${side_snap%:*}"; snap_label="${side_snap##*:}"
+          snap_pages="$(jq -r '.pages | length' "$snap_file")"
+          if [ "$snap_pages" -gt 1 ]; then
+            echo "ERROR: shorthand path '$(display_path "$upath")' on $OPERATION is ambiguous — the $snap_label snapshot has $snap_pages pages; use explicit 'pages[N].body...' or 'pages[*].body...' syntax" >&2
+            exit 2
+          fi
+        done
       fi
 
       if is_allowed "$upath"; then
