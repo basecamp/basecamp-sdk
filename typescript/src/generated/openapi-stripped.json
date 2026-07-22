@@ -21261,7 +21261,7 @@
             "items": {
               "$ref": "#/components/schemas/Notification"
             },
-            "description": "Legacy \"save forever\" collection. Observed BC5 behavior: emits `[]`\nwhile BC4 still populates with real items — the BC team has not yet\nresolved whether to keep BC4-shaped data on BC5 (back-compat) or to\naccept the empty-array break with a documented BC5 changelog entry.\nSee COORDINATION.md for the open decision. The conceptual\nreplacement is `bubble_ups` (with optional scheduling via\n`scheduled_bubble_ups`), though wire shapes are not interchangeable\nper-item, so cross-version readers should consume both."
+            "description": "Legacy \"save forever\" collection. Permanently `[]` on BC5 by documented\ncontract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):\nan always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`\nbranch) still populates it — an accepted BC4→BC5 subtractive delta\nrecorded in `spec/api-gaps/memories-emptied-regression.md`. New\nintegrations should use `bubble_ups` / `scheduled_bubble_ups` and must\nnot rely on `memories` on BC5."
           },
           "bubble_ups": {
             "type": "array",

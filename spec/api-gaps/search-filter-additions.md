@@ -1,6 +1,6 @@
 ---
 gap: search-filter-additions
-status: no-json-contract
+status: partial-coverage
 detected: 2026-05-01
 sdk_demand: medium
 bc3_refs:
@@ -19,15 +19,18 @@ bc3_refs:
 
 ## What's missing
 
-The existing Search endpoint accepts a small set of filter parameters today.
-BC5 adds the following (per BC3 plan Phase 3e):
+Docs shipped, params not final — **do not absorb yet**. Search filter
+documentation landed on `master` with the BC5 API train (2026-07-18..21), but
+open BC3 **#12361** (search params rework) is actively reshaping the filter
+parameter surface. The status stays `partial-coverage` until #12361 settles:
+absorbing the current param list would model a contract BC3 has already
+queued for change.
 
-- `type_names` (string[]) — filter to specific recording types.
-- `creator_ids` (long[]) — filter to recordings authored by specific people.
-- `bucket_ids` (long[]) — restrict to specific projects.
-- `exclude_chat` (boolean) — drop chat messages from results.
-- `file_type` (string) — filter file recordings by extension/type.
-- `sort` (enum: "relevance" | "recency" | …) — control result ordering.
+The filter families in play (subject to #12361's rework — re-derive the final
+list from `doc/api/sections/search.md` once it merges):
+
+- recording-type filtering, creator/person filtering, project scoping,
+- chat exclusion, file-type filtering, and result ordering.
 
 The `timelines/searches` route is the timeline-scoped variant; covered here
 since it shares the input shape.
@@ -41,18 +44,23 @@ breaks if BC3 changes the param names).
 
 ## Suggested API shape
 
-Additive parameters on the existing `SearchInput` shape — types per the list
-above. Response shape is unchanged.
+Additive parameters on the existing `SearchInput` shape, typed per whatever
+`doc/api/sections/search.md` documents after #12361 merges. Response shape is
+unchanged.
 
 ## Implementation notes for BC3
 
 - All additions are query-string params handled server-side. No new
   controller actions, no new partials.
-- `doc/api/sections/search.md` updates the parameter list.
-- Document defaults explicitly (e.g. `sort: "relevance"`).
+- #12361 (open) is the deciding PR for the final param names/semantics;
+  `doc/api/sections/search.md` follows it.
+- Document defaults explicitly (e.g. the default sort).
 
 ## SDK absorption plan when this lands
 
+- **Wait for BC3 #12361 to merge**, then re-derive the param list from the
+  merged `doc/api/sections/search.md` and flip this entry to
+  `addressed-in-bc3-pr-12361`.
 - Extend the existing Smithy `SearchInput` structure with the new optional
   fields (each annotated `@httpQuery`).
 - Same change applies to the timeline-search input if it's a separate

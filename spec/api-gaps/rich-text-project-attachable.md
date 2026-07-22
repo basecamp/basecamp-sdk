@@ -19,8 +19,15 @@ bc3_refs:
 
 The existing `doc/api/sections/rich_text.md` enumerates Attachable types
 (types of recordings that can be inlined in a rich-text body). BC5 adds
-`Project` to that list — you can now attach a project reference inside a
-message, document, or comment body.
+`Project` to that list in the product — you can attach a project reference
+inside a message, document, or comment body — but the contract has not been
+documented.
+
+**Post-train spot-check (2026-07-21):** the BC5 API train (2026-07-18..21)
+did not close this. The merged `doc/api/sections/rich_text.md` on `master`
+still carries **no Project-as-attachable contract** — the only project
+reference in it is prose about Person mentions. Status stays
+`no-json-contract`.
 
 ## Why it matters
 
