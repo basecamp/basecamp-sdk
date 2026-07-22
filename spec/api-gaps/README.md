@@ -48,10 +48,14 @@ making the absorption journey publicly auditable.
 | [recording-bubbleupable-field](recording-bubbleupable-field.md) | no-json-contract | 3e | low |
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |
 | [memories-emptied-regression](memories-emptied-regression.md) | addressed-in-bc3-pr-11628 | launch | high |
+| [campfire-line-edit](campfire-line-edit.md) | addressed-in-bc3-pr-12359 | post-train | medium |
+| [todoset-direct-todo-create](todoset-direct-todo-create.md) | addressed-in-bc3-pr-12359 | post-train | medium |
+| [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
-> train. `memories-emptied-regression` is a *subtractive* delta (a field BC4
+> train. Entries with plan phase `post-train` track contracts documented
+> after the train (BC3 #12359, merged 2026-07-22). `memories-emptied-regression` is a *subtractive* delta (a field BC4
 > populates that BC5 emptied), settled as **permanently empty by documented
 > contract** — its `addressed-in-bc3-pr-11628` records the PR that codified
 > the empty-placeholder contract, not a repopulation; see the entry.
