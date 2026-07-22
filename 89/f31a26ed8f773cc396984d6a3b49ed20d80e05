@@ -28,6 +28,12 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
   s_18853c09ab9fc6::t_1a3d642aeb268a 57
 go/pkg/generated/client.gen.go
   s_18853c09ab9fc6::t_1a3d642aeb268a 2213-2214
+ruby/lib/basecamp/generated/metadata.json
+  s_18853c09ab9fc6::t_1220ce18a2ae15 4
+typescript/src/generated/metadata.ts
+  s_18853c09ab9fc6::t_1220ce18a2ae15 40
+ruby/lib/basecamp/generated/types.rb
+  s_18853c09ab9fc6::t_1220ce18a2ae15 4
 ---
 {
   "schema_version": "authorship/3.0.0",
