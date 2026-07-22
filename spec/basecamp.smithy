@@ -135,6 +135,7 @@ service Basecamp {
     ListCampfireLines,
     GetCampfireLine,
     CreateCampfireLine,
+    UpdateCampfireLine,
     DeleteCampfireLine,
     ListCampfireUploads,
     CreateCampfireUpload,
@@ -3364,7 +3365,42 @@ structure CreateCampfireLineOutput {
   line: CampfireLine
 }
 
-/// Delete a campfire line
+/// Update an existing campfire line; the content is always treated as rich text (HTML).
+/// The server coerces every edited line to rich text and ignores any content
+/// type hint. Only the line's creator may edit it, and only text and
+/// rich-text lines are editable.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/chats/{campfireId}/lines/{lineId}", code: 204)
+operation UpdateCampfireLine {
+  input: UpdateCampfireLineInput
+  output: UpdateCampfireLineOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UpdateCampfireLineInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  campfireId: CampfireId
+
+  @required
+  @httpLabel
+  lineId: CampfireLineId
+
+  /// The new line content, interpreted as rich text (HTML)
+  @required
+  content: String
+}
+
+structure UpdateCampfireLineOutput {}
+
+/// Delete a campfire line; allowed for the line's creator or an admin.
+/// The API responds 403 Forbidden otherwise.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)

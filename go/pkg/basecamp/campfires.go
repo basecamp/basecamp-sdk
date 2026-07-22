@@ -482,6 +482,44 @@ func (s *CampfiresService) CreateLine(ctx context.Context, campfireID int64, con
 	return &line, nil
 }
 
+// UpdateLine updates the content of an existing line (message) in a campfire.
+// The content is always treated as rich text (HTML) — the server coerces every
+// edited line to rich text — and only the line's creator may edit it.
+// The API returns 204 No Content on success; if the caller needs the updated
+// representation, follow up with GetLine. Mirrors DeleteLine in returning only
+// an error so a transient post-mutation read can't make a successful update
+// appear to fail.
+func (s *CampfiresService) UpdateLine(ctx context.Context, campfireID, lineID int64, content string) (err error) {
+	op := OperationInfo{
+		Service: "Campfires", Operation: "UpdateLine",
+		ResourceType: "campfire_line", IsMutation: true,
+		ResourceID: lineID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if content == "" {
+		err = ErrUsage("campfire line content is required")
+		return err
+	}
+
+	body := generated.UpdateCampfireLineJSONRequestBody{
+		Content: content,
+	}
+
+	resp, err := s.client.parent.gen.UpdateCampfireLineWithResponse(ctx, s.client.accountID, campfireID, lineID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // DeleteLine deletes a line (message) from a campfire.
 func (s *CampfiresService) DeleteLine(ctx context.Context, campfireID, lineID int64) (err error) {
 	op := OperationInfo{

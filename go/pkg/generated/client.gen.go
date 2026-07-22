@@ -2208,6 +2208,12 @@ type UpdateAccountNameRequestContent struct {
 // UpdateAccountNameResponseContent defines model for UpdateAccountNameResponseContent.
 type UpdateAccountNameResponseContent = Account
 
+// UpdateCampfireLineRequestContent defines model for UpdateCampfireLineRequestContent.
+type UpdateCampfireLineRequestContent struct {
+	// Content The new line content, interpreted as rich text (HTML)
+	Content string `json:"content"`
+}
+
 // UpdateCardColumnRequestContent defines model for UpdateCardColumnRequestContent.
 type UpdateCardColumnRequestContent struct {
 	Description string `json:"description,omitempty"`
@@ -2872,6 +2878,9 @@ type UpdateChatbotJSONRequestBody = UpdateChatbotRequestContent
 // CreateCampfireLineJSONRequestBody defines body for CreateCampfireLine for application/json ContentType.
 type CreateCampfireLineJSONRequestBody = CreateCampfireLineRequestContent
 
+// UpdateCampfireLineJSONRequestBody defines body for UpdateCampfireLine for application/json ContentType.
+type UpdateCampfireLineJSONRequestBody = UpdateCampfireLineRequestContent
+
 // UpdateCommentJSONRequestBody defines body for UpdateComment for application/json ContentType.
 type UpdateCommentJSONRequestBody = UpdateCommentRequestContent
 
@@ -3490,6 +3499,11 @@ type ClientInterface interface {
 
 	// GetCampfireLine request
 	GetCampfireLine(ctx context.Context, accountId string, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCampfireLineWithBody request with any body
+	UpdateCampfireLineWithBody(ctx context.Context, accountId string, campfireId int64, lineId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateCampfireLine(ctx context.Context, accountId string, campfireId int64, lineId int64, body UpdateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfireUploads request
 	ListCampfireUploads(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4818,6 +4832,24 @@ func (c *Client) GetCampfireLine(ctx context.Context, accountId string, campfire
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetCampfireLineRequest(c.Server, accountId, campfireId, lineId)
 	}, true, "GetCampfireLine", reqEditors...)
+
+}
+
+// UpdateCampfireLineWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateCampfireLineWithBody(ctx context.Context, accountId string, campfireId int64, lineId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateCampfireLineRequestWithBody(c.Server, accountId, campfireId, lineId, contentType, body)
+	}, true, "UpdateCampfireLine", reqEditors...)
+
+}
+
+func (c *Client) UpdateCampfireLine(ctx context.Context, accountId string, campfireId int64, lineId int64, body UpdateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateCampfireLineRequest(c.Server, accountId, campfireId, lineId, body)
+	}, true, "UpdateCampfireLine", reqEditors...)
 
 }
 
@@ -9264,6 +9296,67 @@ func NewGetCampfireLineRequest(server string, accountId string, campfireId int64
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewUpdateCampfireLineRequest calls the generic UpdateCampfireLine builder with application/json body
+func NewUpdateCampfireLineRequest(server string, accountId string, campfireId int64, lineId int64, body UpdateCampfireLineJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCampfireLineRequestWithBody(server, accountId, campfireId, lineId, "application/json", bodyReader)
+}
+
+// NewUpdateCampfireLineRequestWithBody generates requests for UpdateCampfireLine with any type of body
+func NewUpdateCampfireLineRequestWithBody(server string, accountId string, campfireId int64, lineId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "campfireId", runtime.ParamLocationPath, campfireId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "lineId", runtime.ParamLocationPath, lineId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/chats/%s/lines/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -17026,6 +17119,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateCampfireLine":                 {Idempotent: false, HasSensitiveParams: false},
 	"DeleteCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetCampfireLine":                    {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfireUploads":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateCampfireUpload":               {Idempotent: false, HasSensitiveParams: false},
 	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
@@ -18293,6 +18387,11 @@ type ClientWithResponsesInterface interface {
 
 	// GetCampfireLineWithResponse request
 	GetCampfireLineWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, reqEditors ...RequestEditorFn) (*GetCampfireLineResponse, error)
+
+	// UpdateCampfireLineWithBodyWithResponse request with any body
+	UpdateCampfireLineWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCampfireLineResponse, error)
+
+	UpdateCampfireLineWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, body UpdateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCampfireLineResponse, error)
 
 	// ListCampfireUploadsWithResponse request
 	ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error)
@@ -20440,6 +20539,41 @@ func (r GetCampfireLineResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetCampfireLineResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateCampfireLineResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCampfireLineResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCampfireLineResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCampfireLineResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26386,6 +26520,23 @@ func (c *ClientWithResponses) GetCampfireLineWithResponse(ctx context.Context, a
 	return ParseGetCampfireLineResponse(rsp)
 }
 
+// UpdateCampfireLineWithBodyWithResponse request with arbitrary body returning *UpdateCampfireLineResponse
+func (c *ClientWithResponses) UpdateCampfireLineWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCampfireLineResponse, error) {
+	rsp, err := c.UpdateCampfireLineWithBody(ctx, accountId, campfireId, lineId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCampfireLineResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateCampfireLineWithResponse(ctx context.Context, accountId string, campfireId int64, lineId int64, body UpdateCampfireLineJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCampfireLineResponse, error) {
+	rsp, err := c.UpdateCampfireLine(ctx, accountId, campfireId, lineId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCampfireLineResponse(rsp)
+}
+
 // ListCampfireUploadsWithResponse request returning *ListCampfireUploadsResponse
 func (c *ClientWithResponses) ListCampfireUploadsWithResponse(ctx context.Context, accountId string, campfireId int64, params *ListCampfireUploadsParams, reqEditors ...RequestEditorFn) (*ListCampfireUploadsResponse, error) {
 	rsp, err := c.ListCampfireUploads(ctx, accountId, campfireId, params, reqEditors...)
@@ -30776,6 +30927,67 @@ func ParseGetCampfireLineResponse(rsp *http.Response) (*GetCampfireLineResponse,
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateCampfireLineResponse parses an HTTP response from a UpdateCampfireLineWithResponse call
+func ParseUpdateCampfireLineResponse(rsp *http.Response) (*UpdateCampfireLineResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCampfireLineResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

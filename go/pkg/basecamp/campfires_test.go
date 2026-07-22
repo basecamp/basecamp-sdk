@@ -663,6 +663,54 @@ func TestCreateLine_PlainOption_Service(t *testing.T) {
 	}
 }
 
+func TestUpdateLine_EmptyContent(t *testing.T) {
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not be called when content is empty")
+	})
+	if err := svc.UpdateLine(context.Background(), 200, 1069479350, ""); err == nil {
+		t.Fatalf("expected error for empty content")
+	}
+}
+
+func TestUpdateLine_Service(t *testing.T) {
+	var receivedBody map[string]any
+	var receivedMethod, receivedPath string
+	svc := testCampfiresServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "PUT" {
+			t.Errorf("expected PUT only, got %s", r.Method)
+			return
+		}
+		receivedMethod = r.Method
+		receivedPath = r.URL.Path
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("failed to read request body: %v", err)
+			return
+		}
+		if err := json.Unmarshal(body, &receivedBody); err != nil {
+			t.Errorf("failed to unmarshal request body: %v", err)
+			return
+		}
+		w.WriteHeader(204)
+	})
+
+	if err := svc.UpdateLine(context.Background(), 200, 1069479350, "Edited!"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if receivedMethod != "PUT" {
+		t.Errorf("expected PUT, got %s", receivedMethod)
+	}
+	if receivedPath != "/99999/chats/200/lines/1069479350" {
+		t.Errorf("unexpected path: %s", receivedPath)
+	}
+	if receivedBody["content"] != "Edited!" {
+		t.Errorf("expected content 'Edited!', got %v", receivedBody["content"])
+	}
+	if len(receivedBody) != 1 {
+		t.Errorf("expected body to contain only content, got %v", receivedBody)
+	}
+}
+
 func TestChatbot_UnmarshalList(t *testing.T) {
 	data := loadCampfiresFixture(t, "chatbots_list.json")
 

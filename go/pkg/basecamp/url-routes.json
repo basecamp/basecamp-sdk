@@ -488,7 +488,8 @@
       "resource": "Campfire",
       "operations": {
         "DELETE": "DeleteCampfireLine",
-        "GET": "GetCampfireLine"
+        "GET": "GetCampfireLine",
+        "PUT": "UpdateCampfireLine"
       },
       "params": {
         "accountId": {

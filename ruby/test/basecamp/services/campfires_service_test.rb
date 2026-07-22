@@ -141,6 +141,28 @@ class CampfiresServiceTest < Minitest::Test
     assert_equal 998, line["id"]
   end
 
+  def test_update_line
+    # Generated service: /lines/{id} without .json
+    stub_put("/12345/chats/200/lines/300", response_body: "", status: 204)
+
+    result = @account.campfires.update_line(
+      campfire_id: 200,
+      line_id: 300,
+      content: "Edited message"
+    )
+
+    assert_nil result
+  end
+
+  def test_update_line_validation_error
+    stub_put("/12345/chats/200/lines/300",
+             response_body: { "error" => "Unprocessable" }, status: 422)
+
+    assert_raises(Basecamp::ValidationError) do
+      @account.campfires.update_line(campfire_id: 200, line_id: 300, content: "Edited")
+    end
+  end
+
   def test_delete_line
     # Generated service: /lines/{id} without .json
     stub_delete("/12345/chats/200/lines/300")

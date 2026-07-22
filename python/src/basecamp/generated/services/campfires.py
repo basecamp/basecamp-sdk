@@ -87,6 +87,15 @@ class CampfiresService(BaseService):
             f"/chats/{campfire_id}/lines/{line_id}",
         )
 
+    def update_line(self, *, campfire_id: int, line_id: int, content: str) -> None:
+        self._request_void(
+            OperationInfo(service="campfires", operation="update_line", is_mutation=True, resource_id=line_id),
+            "PUT",
+            f"/chats/{campfire_id}/lines/{line_id}",
+            json_body=self._compact(content=content),
+            operation="UpdateCampfireLine",
+        )
+
     def delete_line(self, *, campfire_id: int, line_id: int) -> None:
         self._request_void(
             OperationInfo(service="campfires", operation="delete_line", is_mutation=True, resource_id=line_id),
@@ -192,6 +201,15 @@ class AsyncCampfiresService(AsyncBaseService):
             OperationInfo(service="campfires", operation="get_line", is_mutation=False, resource_id=line_id),
             "GET",
             f"/chats/{campfire_id}/lines/{line_id}",
+        )
+
+    async def update_line(self, *, campfire_id: int, line_id: int, content: str) -> None:
+        await self._request_void(
+            OperationInfo(service="campfires", operation="update_line", is_mutation=True, resource_id=line_id),
+            "PUT",
+            f"/chats/{campfire_id}/lines/{line_id}",
+            json_body=self._compact(content=content),
+            operation="UpdateCampfireLine",
         )
 
     async def delete_line(self, *, campfire_id: int, line_id: int) -> None:

@@ -41,7 +41,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "Campfires": [
             "GetCampfire", "ListCampfires",
             "ListChatbots", "CreateChatbot", "GetChatbot", "UpdateChatbot", "DeleteChatbot",
-            "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "DeleteCampfireLine",
+            "ListCampfireLines", "CreateCampfireLine", "GetCampfireLine", "UpdateCampfireLine", "DeleteCampfireLine",
             "ListCampfireUploads", "CreateCampfireUpload",
         ],
     },
@@ -189,6 +189,7 @@ METHOD_NAME_OVERRIDES = {
     "ListCampfireLines": "list_lines",
     "CreateCampfireLine": "create_line",
     "GetCampfireLine": "get_line",
+    "UpdateCampfireLine": "update_line",
     "DeleteCampfireLine": "delete_line",
     "ListCampfireUploads": "list_uploads",
     "CreateCampfireUpload": "create_upload",

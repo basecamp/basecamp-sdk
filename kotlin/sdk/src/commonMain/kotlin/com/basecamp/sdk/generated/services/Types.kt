@@ -52,6 +52,11 @@ data class CreateCampfireLineBody(
     val contentType: String? = null
 )
 
+/** Request body for UpdateCampfireLine. */
+data class UpdateCampfireLineBody(
+    val content: String
+)
+
 /** Options for ListCampfireUploads. */
 data class ListCampfireUploadsOptions(
     val sort: String? = null,

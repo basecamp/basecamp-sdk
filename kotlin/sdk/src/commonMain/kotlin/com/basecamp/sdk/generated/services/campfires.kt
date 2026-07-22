@@ -233,7 +233,29 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Delete a campfire line
+     * Update an existing campfire line; the content is always treated as rich text (HTML).
+     * @param campfireId The campfire ID
+     * @param lineId The line ID
+     * @param body Request body
+     */
+    suspend fun updateLine(campfireId: Long, lineId: Long, body: UpdateCampfireLineBody): Unit {
+        val info = OperationInfo(
+            service = "Campfires",
+            operation = "UpdateCampfireLine",
+            resourceType = "campfire_line",
+            isMutation = true,
+            projectId = null,
+            resourceId = lineId,
+        )
+        request(info, {
+            httpPut("/chats/${campfireId}/lines/${lineId}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
+            }), operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Delete a campfire line; allowed for the line's creator or an admin.
      * @param campfireId The campfire ID
      * @param lineId The line ID
      */

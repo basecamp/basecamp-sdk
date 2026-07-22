@@ -112,7 +112,19 @@ module Basecamp
         end
       end
 
-      # Delete a campfire line
+      # Update an existing campfire line; the content is always treated as rich text (HTML).
+      # @param campfire_id [Integer] campfire id ID
+      # @param line_id [Integer] line id ID
+      # @param content [String] The new line content, interpreted as rich text (HTML)
+      # @return [void]
+      def update_line(campfire_id:, line_id:, content:)
+        with_operation(service: "campfires", operation: "update_line", is_mutation: true, resource_id: line_id) do
+          http_put("/chats/#{campfire_id}/lines/#{line_id}", body: compact_params(content: content))
+          nil
+        end
+      end
+
+      # Delete a campfire line; allowed for the line's creator or an admin.
       # @param campfire_id [Integer] campfire id ID
       # @param line_id [Integer] line id ID
       # @return [void]

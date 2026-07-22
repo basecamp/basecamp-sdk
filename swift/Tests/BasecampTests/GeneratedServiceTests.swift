@@ -439,4 +439,94 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(sentJSON["tool_type"] as? String, "Message::Board")
         XCTAssertNil(sentJSON["title"])
     }
+
+    // MARK: - Campfire line operations
+
+    private func campfireLineJSON(id: Int, content: String) -> [String: Any] {
+        [
+            "id": id, "content": content,
+            "app_url": "https://3.basecamp.com/1/buckets/1/chats/42/lines/\(id)",
+            "url": "https://3.basecampapi.com/1/buckets/1/chats/42/lines/\(id).json",
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "status": "active", "title": "Test line", "type": "Chat::Lines::Text",
+            "inherits_status": true, "visible_to_clients": false,
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "parent": ["id": 42, "title": "Campfire", "type": "Chat::Transcript",
+                        "app_url": "https://3.basecamp.com/1/buckets/1/chats/42",
+                        "url": "https://3.basecampapi.com/1/buckets/1/chats/42.json"] as [String: Any],
+        ]
+    }
+
+    func testCampfiresServiceCreateLine() async throws {
+        let data = try JSONSerialization.data(withJSONObject: campfireLineJSON(id: 300, content: "Hello everyone!"))
+        let transport = MockTransport(statusCode: 201, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let req = CreateCampfireLineRequest(content: "Hello everyone!")
+        let line = try await account.campfires.createLine(campfireId: 42, req: req)
+
+        XCTAssertEqual(line.id, 300)
+        XCTAssertEqual(line.content, "Hello everyone!")
+        XCTAssertEqual(transport.lastRequest!.request.httpMethod, "POST")
+        XCTAssertTrue(transport.lastRequest!.request.url!.absoluteString.hasSuffix("/chats/42/lines.json"))
+    }
+
+    func testCampfiresServiceGetLine() async throws {
+        let data = try JSONSerialization.data(withJSONObject: campfireLineJSON(id: 300, content: "Hello everyone!"))
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let line = try await account.campfires.getLine(campfireId: 42, lineId: 300)
+
+        XCTAssertEqual(line.id, 300)
+        XCTAssertEqual(line.type, "Chat::Lines::Text")
+        XCTAssertTrue(transport.lastRequest!.request.url!.absoluteString.hasSuffix("/chats/42/lines/300"))
+    }
+
+    func testCampfiresServiceUpdateLineSendsPUT() async throws {
+        let transport = MockTransport(statusCode: 204, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        let req = UpdateCampfireLineRequest(content: "Edited!")
+        try await account.campfires.updateLine(campfireId: 42, lineId: 300, req: req)
+
+        let sent = transport.lastRequest!.request
+        XCTAssertEqual(sent.httpMethod, "PUT")
+        XCTAssertTrue(sent.url!.absoluteString.hasSuffix("/chats/42/lines/300"))
+
+        let sentJSON = try JSONSerialization.jsonObject(with: sent.httpBody!) as! [String: Any]
+        XCTAssertEqual(sentJSON["content"] as? String, "Edited!")
+        XCTAssertEqual(sentJSON.count, 1, "Body should carry only content")
+    }
+
+    func testCampfiresServiceUpdateLine422MapsToValidation() async throws {
+        let errorBody = try JSONSerialization.data(withJSONObject: ["error": "Unprocessable"])
+        let transport = MockTransport(statusCode: 422, data: errorBody)
+        let account = makeTestAccountClient(transport: transport)
+
+        do {
+            let req = UpdateCampfireLineRequest(content: "Edited!")
+            try await account.campfires.updateLine(campfireId: 42, lineId: 300, req: req)
+            XCTFail("Expected 422 error")
+        } catch let error as BasecampError {
+            if case .validation(let message, let status, _, _) = error {
+                XCTAssertEqual(status, 422)
+                XCTAssertEqual(message, "Unprocessable")
+            } else {
+                XCTFail("Expected .validation error, got \(error)")
+            }
+        }
+    }
+
+    func testCampfiresServiceDeleteLine() async throws {
+        let transport = MockTransport(statusCode: 204, data: Data())
+        let account = makeTestAccountClient(transport: transport)
+
+        try await account.campfires.deleteLine(campfireId: 42, lineId: 300)
+
+        let sent = transport.lastRequest!.request
+        XCTAssertEqual(sent.httpMethod, "DELETE")
+        XCTAssertTrue(sent.url!.absoluteString.hasSuffix("/chats/42/lines/300"))
+    }
 }
