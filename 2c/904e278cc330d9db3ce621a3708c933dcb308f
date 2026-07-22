@@ -1,0 +1,38 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_18853c09ab9fc6::t_74e5afa7a43b73 57
+go/pkg/basecamp/campfires.go
+  s_18853c09ab9fc6::t_01162c7ca1f554 486-487,492
+go/pkg/generated/client.gen.go
+  s_18853c09ab9fc6::t_74e5afa7a43b73 2211
+typescript/src/generated/schema.d.ts
+  s_18853c09ab9fc6::t_74e5afa7a43b73 525,530
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_18853c09ab9fc6::t_74e5afa7a43b73 120,122
+typescript/tests/services/campfires.test.ts
+  s_18853c09ab9fc6::t_42af2166d3a39a 211-224
+python/src/basecamp/generated/services/campfires.py
+  s_18853c09ab9fc6::t_74e5afa7a43b73 90,95,206,211
+go/pkg/basecamp/campfires_test.go
+  s_18853c09ab9fc6::t_e451c51fa9f207 702-703
+  s_18853c09ab9fc6::t_6b30a212a4dde9 675
+swift/Sources/Basecamp/Generated/Models/UpdateCampfireLineRequest.swift
+  s_18853c09ab9fc6::t_74e5afa7a43b73 7
+ruby/test/basecamp/services/campfires_service_test.rb
+  s_18853c09ab9fc6::t_aace35463e1579 157-159,161-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2c904e278cc330d9db3ce621a3708c933dcb308f",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
