@@ -546,10 +546,13 @@ check-bc5-compat:
 	@# single strip would let '///' through as '//' ≈ root), then refuse
 	@# "", ".", "/" (repo checkout / filesystem root) and any '..' PATH
 	@# SEGMENT (leading, trailing, interior, or the whole path); finally,
-	@# canonicalize an EXISTING dir (cd + pwd -P) before the checkout-
-	@# ancestor check so non-canonical spellings ('/x//y', symlinks) can't
-	@# slip past the string compare — a failed cd empties LRD, which the
-	@# ancestor pattern then refuses. A '..'
+	@# canonicalize an EXISTING dir (cd + pwd -P) into a separate GUARD
+	@# variable for the checkout-ancestor check, so non-canonical
+	@# spellings ('/x//y', symlinks into the checkout) can't slip past the
+	@# string compare — a failed cd empties the guard value, which the
+	@# ancestor pattern then refuses. The rm itself uses the ORIGINAL
+	@# path: when LIVE_RECORD_DIR is a symlink, rm removes the link, not
+	@# the tree it points to. A '..'
 	@# inside a segment (tmp/live-canary..pr308) is benign and allowed.
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; LRD_ORIG="$$LRD"; \
 	while [ "$${LRD%/}" != "$$LRD" ]; do LRD="$${LRD%/}"; done; \
@@ -557,9 +560,10 @@ check-bc5-compat:
 	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD_ORIG'" >&2; exit 2 ;; \
 	  ".."|"../"*|*"/.."|*"/../"*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR with a '..' path segment: '$$LRD_ORIG'" >&2; exit 2 ;; \
 	esac; \
-	if [ -d "$$LRD" ]; then LRD="$$(cd "$$LRD" && pwd -P)"; fi; \
+	LRD_CHECK="$$LRD"; \
+	if [ -d "$$LRD" ]; then LRD_CHECK="$$(cd "$$LRD" && pwd -P)"; fi; \
 	case "$$(pwd -P)/" in \
-	  "$$LRD"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
+	  "$$LRD_CHECK"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
 	esac; \
 	rm -rf -- "$$LRD"
 	@echo "==> check-bc5-compat: BC4 pass"
