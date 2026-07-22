@@ -1,5 +1,6 @@
 Makefile
   s_13deffa07b5c67::t_959686b55da67b 467-522
+  s_c9b7cecf44b5ed::t_57622edd46ce8e 377
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -14,6 +15,14 @@ Makefile
         "model": "claude-opus-4-7"
       },
       "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    },
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
     }
   }
 }
