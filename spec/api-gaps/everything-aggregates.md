@@ -1,8 +1,9 @@
 ---
 gap: everything-aggregates
-status: no-json-contract
+status: addressed-in-bc3-pr-11627
 detected: 2026-05-01
 sdk_demand: high
+bc3_pr: 11627
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3c
@@ -18,7 +19,6 @@ bc3_refs:
     - "GET /:account_id/cards/unassigned.json"
     - "GET /:account_id/cards/no_due_date.json"
     - "GET /:account_id/cards/not_now.json"
-    - "GET /:account_id/documents.json"
     - "GET /:account_id/messages.json"
     - "GET /:account_id/comments.json"
     - "GET /:account_id/checkins.json"
@@ -33,7 +33,6 @@ bc3_refs:
     - app/controllers/everything/boosts_controller.rb
     - app/controllers/everything/checkins_controller.rb
     - app/controllers/everything/forwards_controller.rb
-    - app/controllers/everything/documents_controller.rb
     - app/controllers/everything/files_controller.rb
   related_existing_api:
     - ListMyAssignments (similar contract — flat aggregate of one recording type)
@@ -43,90 +42,86 @@ bc3_refs:
 
 ## What's missing
 
-BC5 introduces account-wide flat listings of recordings by type, served by the
-`everything/*_controller.rb` namespace under flat top-level paths (note:
-`/everything/...` is the **Rails controller namespace**, not part of the URL).
-There are 9 groups: todos, cards, messages, comments, boosts, checkins,
-forwards, documents, and files.
+SDK absorption only — the contract shipped. BC5's account-wide listings of
+recordings by type are served by the `everything/*_controller.rb` namespace
+under flat top-level paths (note: `/everything/...` is the **Rails controller
+namespace**, not part of the URL). The contract merged to `master` via BC3
+**#11627** as part of the BC5 API train (2026-07-18..21);
+`doc/api/sections/everything.md` on `master` is the contract of record.
 
-**Current BC3 scope: 18 documented GET operations across 9 groups**, per
-`doc/api/sections/everything.md` in BC3 PR #10947 (open/unmerged, head
-`589b1970`, verified 2026-07-13): todos ×5 and cards ×6 via filtered
-sub-routes (`open`, `completed`, `overdue`, `unassigned`, `no_due_date`, plus
-`not_now` for cards), and 7 root-path feeds — `/documents.json`,
-`/messages.json`, `/comments.json`, `/checkins.json`, `/forwards.json`,
-`/files.json`, `/boosts.json`.
+**Shipped scope: exactly 17 documented GET operations across 8 groups**
+(re-derived from the merged doc's example markers):
 
-Superseded interim history: the launch reconciliation
-(`BRIEF-bc5-reconciliation-scope-cuts.md`, `five+api` @ `716e710ee5`) briefly
-scoped this to a 17-operation surface with the files group excluded, and
-framed the feed groups as `recent`-suffixed sub-routes. #10947 has since
-**restored the files group** (`GET /files.json`, with `kind` and
-`people_ids[]` filters)
-and documented the feed groups at their **root paths**. Only the bare
-`/todos.json` and `/cards.json` roots remain HTML shells — use the filtered
-sub-routes for those two groups.
+- **todos ×5** — `/todos/{open,completed,overdue,unassigned,no_due_date}.json`
+- **cards ×6** — `/cards/{open,completed,overdue,unassigned,no_due_date,not_now}.json`
+- **flat roots ×6** — `/messages.json`, `/comments.json`, `/checkins.json`,
+  `/forwards.json`, `/files.json`, `/boosts.json`
 
-The `/<resource>/recent.json` paths still exist in the web app as internal
-Turbo-frame feeds, but they are **not** API surface. Per
-`doc/api/sections/everything.md`: "those are internal: the root collection is
-the documented API contract. Don't depend on the `/recent` paths." The SDK
-must not model them.
+There is **no `/documents.json` root** — earlier drafts of this entry (working
+from pre-merge #10947 heads) listed one, for an 18-op count. In the merged
+contract, Basecamp documents surface through the `/files.json` feed instead,
+alongside uploads and rich-text attachments.
+
+Two standing exclusions from the merged doc:
+
+- The bare `/todos.json` and `/cards.json` roots are **not JSON** — they are
+  HTML shells in the web app. The filtered sub-routes are the JSON surface for
+  those two groups.
+- `/<resource>/recent.json` paths exist as internal web/Turbo-frame feeds and
+  are explicitly **not** API contract: "those are internal: the root
+  collection is the documented API contract. Don't depend on the `/recent`
+  paths." The SDK must never model them.
 
 ## Why it matters
 
-Today, surfacing "all of one recording type across all projects" in a custom
-integration requires walking projects and concatenating per-project listings.
-The everything aggregates collapse that into a single paginated request.
-This is a strong demand signal from the SDK side — the workaround is painful
-and racy with project-membership changes.
+Without these, surfacing "all of one recording type across all projects" in a
+custom integration requires walking projects and concatenating per-project
+listings. The everything aggregates collapse that into a single paginated
+request. This is a strong demand signal from the SDK side — the workaround is
+painful and racy with project-membership changes.
 
 ## Suggested API shape
 
-`doc/api/sections/everything.md` (#10947, head `589b1970`) documents two
-contract families:
+The merged `doc/api/sections/everything.md` documents two contract families:
 
-- **Bucket-grouped lists** — the todos/cards filter sub-routes (`/todos/open.json`,
-  `/cards/not_now.json`, …) return a paginated array of buckets, each grouping
-  the matching recordings (and their steps) under their parent project.
-- **Flat recording lists** — `/todos/overdue.json`, `/cards/overdue.json`, and
-  the root feeds (`/documents.json`, `/messages.json`, `/comments.json`,
-  `/checkins.json`, `/forwards.json`, `/files.json`, `/boosts.json`) return a
-  flat array of recording objects, each embedding its `bucket` for project
-  context. Feeds are newest-first and paginated; overdue lists sort
-  oldest-first by due date.
+- **Bucket-grouped lists** — the todo/card filter sub-routes
+  (`/todos/{open,completed,unassigned,no_due_date}.json` and
+  `/cards/{open,completed,unassigned,no_due_date,not_now}.json`) return a
+  **paginated array of buckets** (Link-header pagination; observed live at 5
+  buckets per page), each entry grouping the matching recordings — and their
+  steps — under their parent project.
+- **Flat recording lists** — `/todos/overdue.json` and `/cards/overdue.json`
+  return a flat array of overdue recordings sorted oldest-first by due date;
+  the 6 roots (`/messages.json`, `/comments.json`, `/checkins.json`,
+  `/forwards.json`, `/files.json`, `/boosts.json`) return flat,
+  recency-ordered (newest-first), paginated recording arrays, each item
+  embedding its `bucket` for project context.
 
-`GET /files.json` additionally takes `kind` (`all` | `images` | `pdfs` |
-`documents` | `videos`) and repeatable `people_ids[]` query filters, and mixes
-uploads with rich-text attachments (attachments wrapped in a recording
-envelope plus `attachable_sgid` and blob metadata).
-
-Root feeds are documented at their root paths; todos and cards are reachable
-only via the filtered sub-routes (their bare roots stay HTML shells).
+`GET /files.json` additionally takes `kind`
+(`all` | `images` | `pdfs` | `documents` | `videos`) and repeatable
+`people_ids[]` query filters, and mixes uploads, Basecamp documents, and
+rich-text attachments (attachments wrapped in a recording envelope plus
+`attachable_sgid` and blob metadata).
 
 ## Implementation notes for BC3
 
-- 9 controllers under `app/controllers/everything/` (the files group is back
-  in scope — see What's missing).
-- Feed groups serve JSON at their root paths; the bare `/todos.json` and
-  `/cards.json` roots stay HTML shells with the filtered sub-routes as the
-  JSON surface. `/<resource>/recent.json` stays an internal web Turbo-frame
-  feed — keep it out of `doc/api/`.
-- Consistency: all 9 groups should use the same pagination + filter idiom.
-  Inconsistency between groups creates per-endpoint absorption work in the SDK.
+Shipped — nothing pending. 8 controllers under `app/controllers/everything/`
+serve the 17 operations. The bare `/todos.json` and `/cards.json` roots stay
+HTML shells, and `/<resource>/recent.json` stays internal web surface, per the
+merged doc.
 
 ## SDK absorption plan when this lands
 
-- New `EverythingService` with **18** operations matching the documented
-  contract (one per endpoint in the frontmatter route list), opening once BC3
-  PR #10947 merges. Re-derive the operation list from
-  `doc/api/sections/everything.md` at the merge head at absorption time.
-- Do **not** model the `/<resource>/recent.json` aliases unless explicitly
-  approved — they are internal web feeds, not API contract.
-- Each op routed at the flat top-level path (no `/everything/` URL prefix).
-- Reuse existing recording shapes (`Todo`, `Card`, `Document`, `Message`, etc.).
-- Canary fixture: cover at least one operation per group (9 groups) to catch
+- New `EverythingService` with **17** operations matching the merged contract
+  (one per endpoint in the frontmatter route list). Re-verify the operation
+  list against `doc/api/sections/everything.md` at absorption time.
+- Two response families: a bucket-grouped shape for the todo/card filter
+  sub-routes (bucket + grouped recordings + steps) and flat recording arrays
+  for the overdue lists and the 6 roots. Reuse existing recording shapes
+  (`Todo`, `Card`, `Message`, etc.) for the elements.
+- Do **not** model the `/<resource>/recent.json` aliases — internal web feeds,
+  not API contract. Do not model bare `/todos.json` / `/cards.json` (HTML
+  shells).
+- Model the `/files.json` `kind` and `people_ids[]` query filters.
+- Canary fixture: cover at least one operation per group (8 groups) to catch
   shape drift. Pairwise check: BC4 absent → BC5 present is fine.
-- Operation count in the PR description must match what #10947 actually ships
-  (18 as of head `589b1970`, 2026-07-13); re-sync the route list if BC3
-  settles a different final count before the absorption PR opens.

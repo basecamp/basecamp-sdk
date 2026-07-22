@@ -22,6 +22,11 @@ Recording envelope to indicate whether the current user can bubble-up the
 recording. The BC3 plan Phase 3e covers this addition along with any other
 new envelope fields.
 
+**Post-train spot-check (2026-07-21):** the BC5 API train (2026-07-18..21)
+did not close this. `bubbleupable` appears **nowhere in `doc/api/`** on
+`master` — no documented wire contract exists. Status stays
+`no-json-contract`.
+
 ## Why it matters
 
 Without the field, SDK consumers can't pre-compute the eligibility of UI

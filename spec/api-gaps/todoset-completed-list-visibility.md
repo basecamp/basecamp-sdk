@@ -22,10 +22,13 @@ A new route `todosets/completed_list_visibility` was detected on
 `origin/five` and is likely a PUT endpoint to show/hide the completed-todos
 list at the todoset level (matches the existing UI toggle).
 
-**This entry is currently `ambiguous`**: the BC3 plan has not classified
-whether this is an API-shaped resource or UI-only state. Classification
-must happen on the BC3 side (the SDK can't determine the right answer
-unilaterally); the brief stays in the registry either way:
+**This entry is currently `ambiguous`**: BC3 has not classified whether this
+is an API-shaped resource or UI-only state, and the BC5 API train
+(2026-07-18..21) did not touch it. The deciding PR is open BC3 **#12021**
+(completed-todos JSON), which covers the completed-list surface; its outcome
+classifies this route. Classification must happen on the BC3 side (the SDK
+can't determine the right answer unilaterally); the brief stays in the
+registry either way:
 
 - If JSON-API: SDK absorbs as `UpdateTodosetCompletedListVisibility` op,
   this entry flips to `no-json-contract` and the absorption PR ships once
@@ -53,6 +56,8 @@ The right answer comes from BC3, not from the SDK. Hence the brief.
 
 - Confirm whether the route is reached only by the web form (CSRF-token,
   session-cookie auth) or also by API auth.
+- Open #12021 (completed-todos JSON) is the natural home for that call — it
+  decides how the completed-todos surface is exposed over JSON.
 - If API-shaped: add JSON branch + jbuilder + doc entry.
 - If UI-only: explicit note in BC3 plan would close this brief.
 

@@ -36,24 +36,28 @@ making the absorption journey publicly auditable.
 
 | Gap | Status | BC3 plan phase | SDK demand |
 |---|---|---|---|
-| [calendar](calendar.md) | no-json-contract | 3b | medium |
-| [scratchpad](scratchpad.md) | no-json-contract | 3b | medium |
-| [step-top-level](step-top-level.md) | partial-coverage | 3b | low |
-| [everything-aggregates](everything-aggregates.md) | no-json-contract | 3c | high |
-| [activity-timeline](activity-timeline.md) | no-json-contract | 3d | high |
+| [calendar](calendar.md) | addressed-in-bc3-pr-12321 | 3b | medium |
+| [scratchpad](scratchpad.md) | addressed-in-bc3-pr-12322 | 3b | medium |
+| [step-top-level](step-top-level.md) | absorbed-in-sdk | 3b | low |
+| [everything-aggregates](everything-aggregates.md) | addressed-in-bc3-pr-11627 | 3c | high |
+| [activity-timeline](activity-timeline.md) | addressed-in-bc3-pr-11629 | 3d | high |
 | [recordable-subtypes-doc](recordable-subtypes-doc.md) | partial-coverage | 3a | medium |
 | [stack-doc-and-smithy](stack-doc-and-smithy.md) | confirmed-not-api-resource | 3b | medium |
-| [search-filter-additions](search-filter-additions.md) | no-json-contract | 3e | medium |
+| [search-filter-additions](search-filter-additions.md) | partial-coverage | 3e | medium |
 | [rich-text-project-attachable](rich-text-project-attachable.md) | no-json-contract | 3e | low |
 | [recording-bubbleupable-field](recording-bubbleupable-field.md) | no-json-contract | 3e | low |
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |
-| [memories-emptied-regression](memories-emptied-regression.md) | partial-coverage | launch | high |
+| [memories-emptied-regression](memories-emptied-regression.md) | addressed-in-bc3-pr-11628 | launch | high |
 
-> `memories-emptied-regression` is a *subtractive regression* (a field BC4
-> populates that BC5 emptied), not an additive gap; `partial-coverage` is the
-> closest status fit — see the entry. The fix is written but unmerged in BC3
-> #10947. `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
-> classification record (Stacks are web-only on both `four` and `master`).
+> Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
+> to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
+> train. `memories-emptied-regression` is a *subtractive* delta (a field BC4
+> populates that BC5 emptied), settled as **permanently empty by documented
+> contract** — its `addressed-in-bc3-pr-11628` records the PR that codified
+> the empty-placeholder contract, not a repopulation; see the entry.
+> `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
+> classification record (Stacks — renamed Folders in the product — are
+> web-only on both `four` and `master`).
 
 The detector also maintains [`allowlist.yml`](allowlist.yml) for routes
 classified as not-an-API-resource or absorbed under another entry. Allowlist

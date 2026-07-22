@@ -35,15 +35,23 @@ confirmed **web-only on both BC4 (`four`) and BC5 (`master`)**:
 Earlier drafts of this brief assumed BC3 Phase 3b would ship full Stack CRUD +
 list-collectables JSON. The reconciliation handoff
 (`BRIEF-bc5-reconciliation-scope-cuts.md`, `five+api` @ `716e710ee5`) withdrew
-that: there is no public JSON Stack contract on either branch.
+that: there is no public JSON Stack contract on either branch. The BC5 API
+train (2026-07-18..21) confirmed the classification — no Stack section shipped
+with it.
+
+**Post-launch update (2026-07-21):** the product has renamed Stacks to
+**Folders**, and an API for them is being scoped server-side. The wire `type`
+remains `Stack`. Neither the rename nor the scoping changes this entry today —
+there is still no JSON contract to model.
 
 ## Why it matters
 
 It matters as a *negative* result. The SDK explicitly does **not** model a
 `StacksService`, and the canary does not expect Stack endpoints on either
 backend. Recording that here prevents a future detector run or contributor from
-re-filing Stacks as an additive gap. If Stacks ever gain a JSON contract, file
-a fresh additive brief then.
+re-filing Stacks as an additive gap. When the server-side Folders API scoping
+produces a JSON contract, file a fresh additive brief then (watch the wire
+`type`, which stays `Stack` despite the product rename).
 
 ## Suggested API shape
 
@@ -54,10 +62,10 @@ propose.
 
 ## Implementation notes for BC3
 
-No SDK-facing action. If BC3 later decides to expose Stacks over JSON, that is
-net-new API work: `respond_to :json` branches, standalone jbuilder views, a
-`doc/api/sections/stacks.md`, and (if collectables are exposed) a
-`Stacks::CollectablesController`. None of that exists today on either branch.
+No SDK-facing action yet. The Folders API being scoped server-side is net-new
+API work: `respond_to :json` branches, standalone jbuilder views, a `doc/api/`
+section, and whatever collectables surface it defines. None of that exists
+today on either branch.
 
 ## SDK absorption plan when this lands
 

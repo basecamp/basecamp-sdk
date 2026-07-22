@@ -1,14 +1,24 @@
 ---
 gap: step-top-level
-status: partial-coverage
+status: absorbed-in-sdk
 detected: 2026-05-01
 sdk_demand: low
+bc3_pr: 12323
+smithy_refs:
+  - "GetCardStep (spec/basecamp.smithy:4456)"
+  - "CreateCardStep (spec/basecamp.smithy:4479)"
+  - "UpdateCardStep (spec/basecamp.smithy:4511)"
+  - "SetCardStepCompletion (spec/basecamp.smithy:4541)"
+  - "RepositionCardStep (spec/basecamp.smithy:4569)"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3b
   routes:
-    - "GET /:account_id/buckets/:bucket_id/cards/:card_id/steps/:id.json (existing — already in SDK)"
-    - "Top-level Step paths (final path/depth pending BC3 doc decision)"
+    - "GET /:account_id/card_tables/steps/:id.json (SDK-modeled; served but not listed in card_table_steps.md)"
+    - "POST /:account_id/card_tables/cards/:card_id/steps.json"
+    - "PUT /:account_id/card_tables/steps/:id.json"
+    - "PUT /:account_id/card_tables/steps/:id/completions.json"
+    - "POST /:account_id/card_tables/cards/:card_id/positions.json"
   controllers:
     - app/controllers/steps_controller.rb
   related_existing_api:
@@ -23,46 +33,47 @@ bc3_refs:
 
 ## What's missing
 
-BC5 generalises Step beyond the Kanban-card context (`Step::FormerlyKanbanStep`
-keeps `type: "Kanban::Step"` on the wire — see SDK plan §Out of scope). The
-jbuilder partial for Step is already shipped via the cards routes. The BC3
-parity plan Phase 3b adds a doc-only entry exposing top-level Step routes
-(unscoped from cards).
+Nothing — **absorbed**. The merged `doc/api/sections/card_table_steps.md` on
+`master` (docs true-up, BC3 **#12323**) documents the top-level step routes —
+`POST /card_tables/cards/:id/steps.json`, `PUT /card_tables/steps/:id.json`,
+`PUT /card_tables/steps/:id/completions.json`,
+`POST /card_tables/cards/:id/positions.json` (plus bucket-scoped
+equivalents) — and the SDK already models all five top-level operations in
+`spec/basecamp.smithy`: `GetCardStep` (:4456), `CreateCardStep` (:4479),
+`UpdateCardStep` (:4511), `SetCardStepCompletion` (:4541),
+`RepositionCardStep` (:4569).
 
-The wire shape itself is unchanged — the SDK already models `CardStep`. What's
-missing is documentation + Smithy operations under the new top-level paths.
+The parameter check passes too: both `CreateCardStep` and `UpdateCardStep`
+inputs carry `due_on: ISO8601Date` and `assignee_ids: PersonIdList`, matching
+the merged doc. The doc's legacy `assignees` comma-separated-string param is
+**deliberately unmodeled** in favor of the typed `assignee_ids` array.
 
 ## Why it matters
 
-If BC3 documents top-level Step routes, the SDK needs corresponding Smithy ops
-so SDK consumers can use them without manually constructing URLs from
-recording-id pairs. Forward compat is fine: the existing `CardStepsService`
-keeps working under its current paths.
+Historical: BC5 generalised Step beyond the Kanban-card context
+(`Step::FormerlyKanbanStep` keeps `type: "Kanban::Step"` on the wire), and
+this brief tracked whether the SDK's operations would line up with the
+top-level paths BC3 documented. They do — no URL construction from
+recording-id pairs is needed by SDK consumers.
 
 ## Suggested API shape
 
-Same as existing `CardStep` shape (already modelled at `spec/basecamp.smithy`
-line 4712). The new operations are merely routed differently — most likely:
-
-- `GET /:account_id/steps/:id.json` (single Step regardless of recording parent)
-- `PUT /:account_id/steps/:id/completions.json` (toggle completion)
-
-The wire payload's `type` field stays `"Kanban::Step"` per BC3 plan's
-`Step::FormerlyKanbanStep` override.
+Shipped and modeled; see the Smithy refs above. The wire payload's `type`
+field stays `"Kanban::Step"` per the `Step::FormerlyKanbanStep` override.
 
 ## Implementation notes for BC3
 
-- Choose and document the canonical top-level path.
-- Reuse the existing `_step.json.jbuilder` partial.
-- Update `doc/api/sections/cards.md` (or add `doc/api/sections/steps.md`) to
-  describe both forms.
+None — `doc/api/sections/card_table_steps.md` is the contract of record and
+matches the SDK's modeled operations.
 
 ## SDK absorption plan when this lands
 
-- Either extend `CardStepsService` with a new `getStep(id)` op routed at
-  `/:account_id/steps/:id.json`, OR add a parallel `StepsService` with the
-  same shape — coordinate naming with the BC3 doc choice.
-- Do not rename `CardStepsService` — the existing service stays.
-- No new Smithy structures (existing `CardStep` is reused).
+Done — no further absorption work:
+
+- The five top-level operations exist with the documented paths and inputs.
+- `CardStepsService` keeps its name; no parallel `StepsService` is needed.
+- No new Smithy structures (the existing `CardStep` shape is reused).
+- The legacy `assignees` comma-string param stays unmodeled by design; if BC3
+  ever removes it from the doc, nothing changes here.
 - Canary fixture: optional; the existing CardStep coverage already exercises
   the wire shape.
