@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -595,6 +596,102 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 
 	if roundtrip.Description != req.Description || roundtrip.BaseName != req.BaseName {
 		t.Error("round-trip mismatch")
+	}
+}
+
+// TestUpdateUploadRequest_HasNoFileReplacementField guards the confirmed server
+// contract: PUT /uploads/{id}(.json) accepts no file/blob replacement parameter.
+// The bc3 update action drops attachable_sgid entirely (verified against
+// basecamp/bc3 @ ba105ba7 — see /API-GAP-404.md), so the SDK must not offer it
+// as an upload-update field.
+//
+// This is asserted over the request type, not the wire: an omitempty field left
+// unset is simply absent from the body, so a wire-body check could not catch a
+// newly added field. Adding an attachable_sgid field to UpdateUploadRequest
+// without a verified server contract fails here.
+func TestUpdateUploadRequest_HasNoFileReplacementField(t *testing.T) {
+	typ := reflect.TypeOf(UpdateUploadRequest{})
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		jsonName := strings.Split(field.Tag.Get("json"), ",")[0]
+		// Match on the Go field name too, not just the json tag: a File []byte
+		// with no json tag serializes under its Go name and would otherwise slip
+		// the tag-only checks.
+		if jsonName == "attachable_sgid" || jsonName == "file" ||
+			strings.EqualFold(field.Name, "file") ||
+			strings.Contains(strings.ToLower(field.Name), "attachable") {
+			t.Errorf("UpdateUploadRequest carries file-replacement field %q (json %q); "+
+				"the server ignores attachable_sgid on update — see /API-GAP-404.md",
+				field.Name, jsonName)
+		}
+	}
+}
+
+// TestUploadsService_Update_SendsDocumentedFields verifies the update maps the
+// two documented mutable payload fields onto a PUT.
+func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
+	var receivedMethod string
+	var receivedPath string
+	var receivedAuth string
+	var receivedBody []byte
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedPath = r.URL.Path
+		receivedAuth = r.Header.Get("Authorization")
+		receivedBody, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id":       1069479400,
+			"title":    "logo.png",
+			"filename": "logo.png",
+		})
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	ac := client.ForAccount("12345")
+
+	_, err := ac.Uploads().Update(context.Background(), 1069479400, &UpdateUploadRequest{
+		Description: "Updated description",
+		BaseName:    "renamed",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedMethod != http.MethodPut {
+		t.Errorf("expected PUT, got %s", receivedMethod)
+	}
+	if receivedPath != "/12345/uploads/1069479400" {
+		t.Errorf("expected path /12345/uploads/1069479400, got %s", receivedPath)
+	}
+	if receivedAuth != "Bearer test-token" {
+		t.Errorf("expected Authorization 'Bearer test-token', got %s", receivedAuth)
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(receivedBody, &body); err != nil {
+		t.Fatalf("failed to parse request body: %v", err)
+	}
+	if body["description"] != "Updated description" {
+		t.Errorf("expected description to be sent, got %v", body["description"])
+	}
+	if body["base_name"] != "renamed" {
+		t.Errorf("expected base_name to be sent, got %v", body["base_name"])
+	}
+	// Only the two documented mutable fields may reach the wire. In particular
+	// attachable_sgid/file must never appear: the server ignores them on update
+	// (see /API-GAP-404.md), and TestUpdateUploadRequest_HasNoFileReplacementField
+	// guards the request type. This closes the loop on the wire itself.
+	documented := map[string]bool{"description": true, "base_name": true}
+	for key := range body {
+		if !documented[key] {
+			t.Errorf("update sent undocumented field %q; only description and base_name are documented mutable fields", key)
+		}
 	}
 }
 
