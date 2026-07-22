@@ -1,0 +1,31 @@
+COORDINATION.md
+  s_83c0f2fdc30030::t_9fb37925f524d8 42-46
+ruby/lib/basecamp/generated/types.rb
+  s_2b59bf57d53599::t_25ab34e4c0eac7 2436,2458,2460,2479,2481
+typescript/src/generated/metadata.ts
+  s_2b59bf57d53599::t_2e607ad3e2652e 1-37,2689-2692
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b1a6f29a161e0a756c8b1843a823d95a7ced0b20",
+  "prompts": {},
+  "sessions": {
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

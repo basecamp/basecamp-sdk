@@ -1,0 +1,28 @@
+COORDINATION.md
+  s_2b59bf57d53599::t_444ecdba3a64d0 41
+  s_2b59bf57d53599::t_c1b26adf4cd67c 42-43
+spec/api-gaps/memories-emptied-regression.md
+  s_2b59bf57d53599::t_ea865c0fdfa0cb 54
+  s_2b59bf57d53599::t_57b4bf5a4cf92a 51
+  s_2b59bf57d53599::t_0c8ff1eb900b90 52-53
+spec/api-gaps/everything-aggregates.md
+  s_2b59bf57d53599::t_d417f6438cbc61 21-26,37,49-61,66-74,86-97,99-102,104-105,109-115,120-125,128-129,131-132
+  s_2b59bf57d53599::t_c840cdb4ee2002 62
+  s_2b59bf57d53599::t_7ba0b89b78c7a4 63-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "ba6fb4496c45ce2025b516ec67daa48ff68111e5",
+  "prompts": {},
+  "sessions": {
+    "s_2b59bf57d53599": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2f92eda-6602-4e39-9a8d-591fe24faf1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

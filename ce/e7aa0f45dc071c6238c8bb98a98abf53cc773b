@@ -1,0 +1,21 @@
+spec/api-gaps/everything-aggregates.md
+  s_83c0f2fdc30030::t_65ccfc8e51e8b7 89
+spec/api-gaps/activity-timeline.md
+  s_83c0f2fdc30030::t_f46519e4ee7543 30-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cee7aa0f45dc071c6238c8bb98a98abf53cc773b",
+  "prompts": {},
+  "sessions": {
+    "s_83c0f2fdc30030": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61aefbbc-3a2e-4517-b63e-5365aa35ba98",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}
