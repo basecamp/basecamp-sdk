@@ -124,7 +124,7 @@ module Basecamp
         end
       end
 
-      # Delete a campfire line
+      # Delete a campfire line; allowed for the line's creator or an admin.
       # @param campfire_id [Integer] campfire id ID
       # @param line_id [Integer] line id ID
       # @return [void]

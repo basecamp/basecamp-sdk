@@ -547,7 +547,10 @@ export interface paths {
          */
         put: operations["UpdateCampfireLine"];
         post?: never;
-        /** @description Delete a campfire line */
+        /**
+         * @description Delete a campfire line; allowed for the line's creator or an admin.
+         *     The API responds 403 Forbidden otherwise.
+         */
         delete: operations["DeleteCampfireLine"];
         options?: never;
         head?: never;

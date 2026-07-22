@@ -1,9 +1,11 @@
 ---
 gap: campfire-line-edit
-status: addressed-in-bc3-pr-12359
+status: absorbed-in-sdk
 detected: 2026-07-22
 sdk_demand: medium
 bc3_pr: 12359
+smithy_refs:
+  - "UpdateCampfireLine (spec/basecamp.smithy:3376)"
 bc3_refs:
   introduced_in: five
   routes:
@@ -64,12 +66,11 @@ edit; creator-or-admin delete).
 
 ## SDK absorption plan when this lands
 
-- **SDK PR #295 (open) already models `UpdateCampfireLine`** and is the
-  likely absorbing PR; the §Q absorption queue's PR-2 build-ahead pair is
-  the fallback vehicle if #295 stalls.
-- Status flips to `absorbed-in-sdk` with the absorbing PR (which adds the
-  Smithy refs).
-- While absorbing, refresh `DeleteCampfireLine`'s doc comment with the
-  creator-or-admin / 403 language from the same doc section.
-- Pairwise check: route 404s on BC4 (no line editing), succeeds on BC5 —
-  additive-only, no invariant violation.
+Done — absorbed by **SDK PR #295** (`UpdateCampfireLine`): required `content` body
+member, 204/no output, `ForbiddenError` in the error list, and the rich-text
+coercion + creator-only constraints in the operation doc. The same PR
+refreshed `DeleteCampfireLine`'s doc comment with the creator-or-admin / 403
+language from the same doc section.
+
+Pairwise check: route 404s on BC4 (no line editing), succeeds on BC5 —
+additive-only, no invariant violation.

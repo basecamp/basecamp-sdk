@@ -48,7 +48,7 @@ making the absorption journey publicly auditable.
 | [recording-bubbleupable-field](recording-bubbleupable-field.md) | no-json-contract | 3e | low |
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |
 | [memories-emptied-regression](memories-emptied-regression.md) | addressed-in-bc3-pr-11628 | launch | high |
-| [campfire-line-edit](campfire-line-edit.md) | addressed-in-bc3-pr-12359 | post-train | medium |
+| [campfire-line-edit](campfire-line-edit.md) | absorbed-in-sdk | post-train | medium |
 | [todoset-direct-todo-create](todoset-direct-todo-create.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 

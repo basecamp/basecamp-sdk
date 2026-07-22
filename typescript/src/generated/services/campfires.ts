@@ -465,7 +465,7 @@ export class CampfiresService extends BaseService {
   }
 
   /**
-   * Delete a campfire line
+   * Delete a campfire line; allowed for the line's creator or an admin.
    * @param campfireId - The campfire ID
    * @param lineId - The line ID
    * @returns void

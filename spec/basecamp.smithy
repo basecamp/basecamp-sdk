@@ -3399,7 +3399,8 @@ structure UpdateCampfireLineInput {
 
 structure UpdateCampfireLineOutput {}
 
-/// Delete a campfire line
+/// Delete a campfire line; allowed for the line's creator or an admin.
+/// The API responds 403 Forbidden otherwise.
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)

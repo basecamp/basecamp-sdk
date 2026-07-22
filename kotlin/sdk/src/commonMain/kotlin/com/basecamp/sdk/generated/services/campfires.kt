@@ -255,7 +255,7 @@ class CampfiresService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Delete a campfire line
+     * Delete a campfire line; allowed for the line's creator or an admin.
      * @param campfireId The campfire ID
      * @param lineId The line ID
      */
