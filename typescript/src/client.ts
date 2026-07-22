@@ -429,7 +429,7 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
       // Content-Type describes a request body, so set the JSON default only when a
       // body is present and not already typed (preserves binary uploads, etc.).
       // bc3 silently discards query params on GET requests that carry a Content-Type.
-      if (request.body != null && !request.headers.has("Content-Type")) {
+      if (request.body !== null && !request.headers.has("Content-Type")) {
         request.headers.set("Content-Type", "application/json");
       }
       request.headers.set("Accept", "application/json");
