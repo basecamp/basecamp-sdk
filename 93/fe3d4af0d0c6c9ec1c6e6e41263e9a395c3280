@@ -1,0 +1,19 @@
+scripts/compare-canary-runs.sh
+  s_c9b7cecf44b5ed::t_bcbf800594bee0 167-173,448,463,490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "93fe3d4af0d0c6c9ec1c6e6e41263e9a395c3280",
+  "prompts": {},
+  "sessions": {
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
