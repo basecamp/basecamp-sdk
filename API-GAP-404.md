@@ -101,9 +101,12 @@ through a web-only path, not the JSON API.
 
 `PUT /uploads/{id}.json` accepts a new `attachable_sgid` on the wire (Rails
 strong-params silently discard the unpermitted key) but **does not act on it**:
-the file is not replaced and no version is created. Only `description` and
-`base_name` are mutable through the JSON API. The basecamp-cli#404 hypothesis
-is **not supported** by the current server.
+the file is not replaced and no version is created. The upload payload permits
+only `description` and `base_name`, and no file/blob replacement parameter is
+accepted through the JSON API. (The update also applies a top-level `status`
+param, but that changes the recording's status, not the file — it is unrelated
+to versioning.) The basecamp-cli#404 hypothesis is **not supported** by the
+current server.
 
 Per the SDK's hard rule against shipping a wire method the server silently
 drops, `AttachableSGID` was **not** added to `UpdateUploadRequest`. Doing so

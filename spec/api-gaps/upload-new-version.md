@@ -9,7 +9,6 @@ bc3_refs:
     - GET /:account_id/uploads/:id/versions.json
   controllers:
     - app/controllers/uploads_controller.rb
-    - app/models/upload.rb
   related_existing_api:
     - UpdateUpload
     - ListUploadVersions
@@ -42,8 +41,10 @@ does not:
   there is no version-write route.
 
 `PUT /uploads/{id}.json` accepts the key on the wire (strong-params silently
-drop it) but takes no action on it. Only `description` and `base_name` are
-mutable through the JSON API. Full controller-level evidence:
+drop it) but takes no action on it. The upload payload permits only
+`description` and `base_name`, and no file/blob replacement parameter is
+accepted (the update's top-level `status` param changes the recording status,
+not the file). Full controller-level evidence:
 [`/API-GAP-404.md`](../../API-GAP-404.md).
 
 ## Why it matters

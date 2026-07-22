@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -598,14 +599,33 @@ func TestUpdateUploadRequest_Marshal(t *testing.T) {
 	}
 }
 
-// TestUploadsService_Update_IgnoresAttachableSGID guards the confirmed server
-// contract: PUT /uploads/{id}.json mutates only description and base_name. The
-// bc3 update action drops attachable_sgid entirely (verified against
-// basecamp/bc3 @ ba105ba7 — see /API-GAP-404.md), so the SDK must never send it
-// on an upload update. If a future change adds an attachable_sgid field to
-// UpdateUploadRequest and maps it here without a verified server contract, this
-// test fails at the wire.
-func TestUploadsService_Update_IgnoresAttachableSGID(t *testing.T) {
+// TestUpdateUploadRequest_HasNoFileReplacementField guards the confirmed server
+// contract: PUT /uploads/{id}.json accepts no file/blob replacement parameter.
+// The bc3 update action drops attachable_sgid entirely (verified against
+// basecamp/bc3 @ ba105ba7 — see /API-GAP-404.md), so the SDK must not offer it
+// as an upload-update field.
+//
+// This is asserted over the request type, not the wire: an omitempty field left
+// unset is simply absent from the body, so a wire-body check could not catch a
+// newly added field. Adding an attachable_sgid field to UpdateUploadRequest
+// without a verified server contract fails here.
+func TestUpdateUploadRequest_HasNoFileReplacementField(t *testing.T) {
+	typ := reflect.TypeOf(UpdateUploadRequest{})
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		jsonName := strings.Split(field.Tag.Get("json"), ",")[0]
+		if jsonName == "attachable_sgid" || jsonName == "file" ||
+			strings.Contains(strings.ToLower(field.Name), "attachable") {
+			t.Errorf("UpdateUploadRequest carries file-replacement field %q (json %q); "+
+				"the server ignores attachable_sgid on update — see /API-GAP-404.md",
+				field.Name, jsonName)
+		}
+	}
+}
+
+// TestUploadsService_Update_SendsDocumentedFields verifies the update maps the
+// two documented mutable payload fields onto a PUT.
+func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 	var receivedMethod string
 	var receivedBody []byte
 
@@ -642,9 +662,6 @@ func TestUploadsService_Update_IgnoresAttachableSGID(t *testing.T) {
 	var body map[string]any
 	if err := json.Unmarshal(receivedBody, &body); err != nil {
 		t.Fatalf("failed to parse request body: %v", err)
-	}
-	if _, present := body["attachable_sgid"]; present {
-		t.Errorf("attachable_sgid must not be sent on upload update (server ignores it); body: %s", receivedBody)
 	}
 	if body["description"] != "Updated description" {
 		t.Errorf("expected description to be sent, got %v", body["description"])
