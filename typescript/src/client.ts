@@ -426,8 +426,10 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
       requireSameOrigin(request.url, baseUrl);
       await authStrategy.authenticate(request.headers);
       request.headers.set("User-Agent", userAgent);
-      // Only set Content-Type if not already set (preserves binary uploads, etc.)
-      if (!request.headers.has("Content-Type")) {
+      // Content-Type describes a request body, so set the JSON default only when a
+      // body is present and not already typed (preserves binary uploads, etc.).
+      // bc3 silently discards query params on GET requests that carry a Content-Type.
+      if (request.body !== null && !request.headers.has("Content-Type")) {
         request.headers.set("Content-Type", "application/json");
       }
       request.headers.set("Accept", "application/json");
