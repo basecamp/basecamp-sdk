@@ -700,6 +700,36 @@ else
   fail "V: expected exit 2 with unknown-rule-type error despite waiver; got rc=$RUN_RC: $RUN_OUT"
 fi
 
+# Test W: a bare jq-stream typo like `items[]` (no '[*]', so it dodged the
+# star guard) must be rejected as unsupported — unwrapped streams make the
+# length comparison error falsy, silently skipping a real shrink violation
+# (BC4 [1,2] vs BC5 [] would exit 0).
+read -r BC4 BC5 <<<"$(fresh_dirs W)"
+WS_TESTS="$TMP/W/ws-tests.json"
+cat >"$WS_TESTS" <<'JSON'
+[
+  {
+    "mode": "live",
+    "name": "Bare stream test",
+    "operation": "BsOp",
+    "method": "GET",
+    "path": "/x",
+    "liveAssertions": [{ "type": "liveCallSucceeds" }],
+    "pairwiseAssertions": [
+      { "type": "pairwiseSupersetArray", "paths": ["items[]"], "reason": "bare [] is an unsupported jq stream" }
+    ]
+  }
+]
+JSON
+write_snapshot "$BC4/Bare_stream_test.json" BsOp '{"items":[1,2]}'
+write_snapshot "$BC5/Bare_stream_test.json" BsOp '{"items":[]}'
+run_compare "$BC4" "$BC5" "$WS_TESTS"
+if [ "$RUN_RC" -eq 2 ] && grep -q "brackets are only supported" <<<"$RUN_OUT"; then
+  pass "W: bare 'items[]' stream path fails with exit 2, no false-green"
+else
+  fail "W: expected exit 2 with unsupported-brackets error; got rc=$RUN_RC: $RUN_OUT"
+fi
+
 echo ""
 if [ "$FAILURES" -ne 0 ]; then
   echo "FAILED: $FAILURES test(s)" >&2

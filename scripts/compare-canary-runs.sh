@@ -342,16 +342,19 @@ for entry in "${TEST_ENTRIES[@]}"; do
     fi
 
     for upath in "${RULE_PATHS[@]}"; do
-      # '[*]' is only documented (and only handled) as the leading
-      # 'pages[*]' segment. Any other use — items[*].foo, a second star —
-      # would silently stream through jq with undefined comparison
-      # semantics; reject it as a fixture mistake instead. Validate BEFORE
-      # the waiver skip below: a waived-but-unsupported path must still be
-      # reported, or a typo in a waived canary rule would permanently
-      # suppress enforcement without the fixture error ever surfacing.
-      if [[ "$upath" == *"[*]"* ]]; then
-        if [[ "$upath" != "pages[*]"* ]] || [[ "${upath#pages\[\*\]}" == *"[*]"* ]]; then
-          echo "ERROR: unsupported path '$upath' on $OPERATION — '[*]' is only supported as the leading 'pages[*]' segment" >&2
+      # Brackets are only documented (and only handled) as a leading
+      # 'pages[N]' or 'pages[*]' segment. Any other use — items[*].foo, a
+      # second star, a bare jq stream like items[] — would stream through
+      # jq with undefined comparison semantics: an unwrapped stream makes
+      # the length variables multi-line/empty, the -lt test errors falsy,
+      # and the violation is silently skipped. Reject it as a fixture
+      # mistake instead. Validate BEFORE the waiver skip below: a
+      # waived-but-unsupported path must still be reported, or a typo in a
+      # waived canary rule would permanently suppress enforcement without
+      # the fixture error ever surfacing.
+      if [[ "$upath" == *"["* || "$upath" == *"]"* ]]; then
+        if ! [[ "$upath" =~ ^pages\[([0-9]+|\*)\](\.[^][]+)?$ ]]; then
+          echo "ERROR: unsupported path '$upath' on $OPERATION — brackets are only supported as the leading 'pages[N]' or 'pages[*]' segment" >&2
           exit 2
         fi
       fi
