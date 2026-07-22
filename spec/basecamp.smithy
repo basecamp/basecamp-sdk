@@ -7226,8 +7226,8 @@ structure GetOverdueTodosOutput {
   over_three_months_late: TodoItems
 }
 
-/// Get upcoming schedule entries and assignable items within a date
-/// window. This endpoint is preserved as the canonical API path on BC5;
+/// Get upcoming schedule entries and assignable items within a date window.
+/// This endpoint is preserved as the canonical API path on BC5;
 /// the BC5 `/calendar` web view is HTML-only.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])

@@ -13258,7 +13258,7 @@
     },
     "/reports/schedules/upcoming.json": {
       "get": {
-        "description": "Get upcoming schedule entries and assignable items within a date\nwindow. This endpoint is preserved as the canonical API path on BC5;\nthe BC5 `/calendar` web view is HTML-only.",
+        "description": "Get upcoming schedule entries and assignable items within a date window.\nThis endpoint is preserved as the canonical API path on BC5;\nthe BC5 `/calendar` web view is HTML-only.",
         "operationId": "GetUpcomingSchedule",
         "parameters": [
           {

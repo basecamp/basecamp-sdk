@@ -1851,8 +1851,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get upcoming schedule entries and assignable items within a date
-         *     window. This endpoint is preserved as the canonical API path on BC5;
+         * @description Get upcoming schedule entries and assignable items within a date window.
+         *     This endpoint is preserved as the canonical API path on BC5;
          *     the BC5 `/calendar` web view is HTML-only.
          */
         get: operations["GetUpcomingSchedule"];
