@@ -11,6 +11,7 @@ typescript/README.md
 go/pkg/generated/client.gen.go
   s_18853c09ab9fc6::t_936738d5306372 20531
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 2208-2213,2875-2877,3495-3499,4805-4822,9246-9306,17111,18376-18380,20503-20524,20526,20528,20532,20534,20536,26496-26512,30872-30919,30923-30925,30928,30931
+  s_18853c09ab9fc6::t_2d493e75cdf3f4 20525,20527,20529-20530,20533,20535,20537
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 199
 python/src/basecamp/generated/services/campfires.py
@@ -31,6 +32,7 @@ spec/overlays/tags.smithy
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 87
 ruby/lib/basecamp/generated/metadata.json
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 568-579
+  s_18853c09ab9fc6::t_2d493e75cdf3f4 4
 typescript/src/generated/schema.d.ts
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 525-526,4302-4305,7445-7501,7522
   s_18853c09ab9fc6::t_936738d5306372 7502-7512,7515-7518,7520-7521
@@ -56,6 +58,7 @@ go/pkg/basecamp/campfires.go
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 485-541
 typescript/src/generated/metadata.ts
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 604-615
+  s_18853c09ab9fc6::t_2d493e75cdf3f4 40
 go/README.md
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 231
 ruby/lib/basecamp/generated/services/campfires_service.rb
@@ -71,6 +74,8 @@ typescript/src/generated/openapi-stripped.json
   s_18853c09ab9fc6::t_46fc6a91bb4b1b 4091-4168,4179-4204,24864-24877
 go/pkg/basecamp/url-routes.json
   s_18853c09ab9fc6::t_936738d5306372 474-475
+ruby/lib/basecamp/generated/types.rb
+  s_18853c09ab9fc6::t_2d493e75cdf3f4 4
 ---
 {
   "schema_version": "authorship/3.0.0",
