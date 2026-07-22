@@ -8,6 +8,7 @@
 import { BaseService, type RawClient } from "./base.js";
 import type { BasecampHooks } from "../hooks.js";
 import type { AuthStrategy } from "../auth-strategy.js";
+import { requireSecureEndpoint } from "../security.js";
 
 /**
  * The authenticated user's identity.
@@ -163,6 +164,8 @@ export class AuthorizationService extends BaseService {
    */
   async getInfo(options: GetAuthorizationInfoOptions = {}): Promise<AuthorizationInfo> {
     const endpoint = options.endpoint ?? DEFAULT_AUTHORIZATION_ENDPOINT;
+    // Validate caller-supplied endpoint overrides before attaching the token.
+    requireSecureEndpoint(endpoint, "authorization endpoint");
 
     return this.request(
       {

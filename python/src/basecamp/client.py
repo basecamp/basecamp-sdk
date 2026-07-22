@@ -166,7 +166,7 @@ class AccountClient:
 
     @property
     def todos(self):
-        from basecamp.generated.services.todos import TodosService
+        from basecamp.services.todos import TodosService
 
         return self._service("todos", lambda: TodosService(self))
 

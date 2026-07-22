@@ -41,7 +41,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get upcoming schedule entries within a date window
+     * Get upcoming schedule entries and assignable items within a date window.
      * @param options Optional query parameters and pagination control
      */
     suspend fun upcoming(options: GetUpcomingScheduleOptions? = null): JsonElement {

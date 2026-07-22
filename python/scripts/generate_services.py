@@ -114,7 +114,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
         "ClientVisibility": ["SetClientVisibility"],
     },
     "Todos": {
-        "Todos": ["ListTodos", "CreateTodo", "GetTodo", "UpdateTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+        "Todos": ["ListTodos", "CreateTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
         "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist"],
         "Todosets": ["GetTodoset"],
         "TodolistGroups": ["ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"],
@@ -244,6 +244,7 @@ VERB_PATTERNS = [
     ("Get", "get"),
     ("Create", "create"),
     ("Update", "update"),
+    ("Replace", "replace"),
     ("Delete", "delete"),
     ("Trash", "trash"),
     ("Archive", "archive"),

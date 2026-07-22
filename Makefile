@@ -103,22 +103,19 @@ BC3_REPO ?= basecamp/bc3
 
 sync-status:
 	@command -v gh > /dev/null 2>&1 || { echo "ERROR: gh CLI not found. Install: https://cli.github.com"; exit 1; }
+	@command -v jq > /dev/null 2>&1 || { echo "ERROR: jq not found. Install: https://jqlang.github.io/jq/"; exit 1; }
 	@gh auth status > /dev/null 2>&1 || { echo "ERROR: gh not authenticated. Run: gh auth login"; exit 1; }
-	@REV=$$(jq -r '.bc3.revision // empty' spec/api-provenance.json); \
-	if [ -z "$$REV" ]; then \
-		echo "==> bc3 API docs: no baseline revision set"; \
+	@BC3_REPO="$(BC3_REPO)" ./scripts/report-bc3-drift.sh \
+		"$$(jq -r '.bc3.revision // empty' spec/api-provenance.json)" \
+		"$$(jq -r '.bc3.branch // "master"' spec/api-provenance.json)" \
+		"primary"
+	@for COMPAT_KEY in $$(jq -r '.compatibility // {} | keys[]' spec/api-provenance.json); do \
 		echo ""; \
-		echo "==> bc3 API implementation: no baseline revision set"; \
-	else \
-		SHORT_REV=$$(echo $$REV | cut -c1-7); \
-		echo "==> bc3 API docs changes since last sync ($$SHORT_REV):"; \
-		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[] | select(.filename | startswith("doc/api/"))] | if length == 0 then "  (no changes in doc/api/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
-		echo ""; \
-		echo "==> bc3 API implementation changes since last sync ($$SHORT_REV):"; \
-		gh api "repos/$(BC3_REPO)/compare/$$REV...HEAD" \
-			--jq '[.files[] | select(.filename | startswith("app/controllers/"))] | if length == 0 then "  (no changes in app/controllers/)" else .[] | "  " + .status[:1] + " " + .filename end'; \
-	fi
+		BC3_REPO="$(BC3_REPO)" ./scripts/report-bc3-drift.sh \
+			"$$(jq -r --arg k "$$COMPAT_KEY" '.compatibility[$$k].revision // empty' spec/api-provenance.json)" \
+			"$$(jq -r --arg k "$$COMPAT_KEY" '.compatibility[$$k].branch // "master"' spec/api-provenance.json)" \
+			"compat"; \
+	done
 
 #------------------------------------------------------------------------------
 # Version management
@@ -152,6 +149,11 @@ endif
 		{ echo "ERROR: Swift version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@grep -qF 'VERSION = "$(VERSION)"' python/src/basecamp/_version.py || \
 		{ echo "ERROR: Python version does not match $(VERSION). Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@# Verify lockfiles are frozen against their manifests
+	@cd python && uv lock --check || \
+		{ echo "ERROR: python/uv.lock is stale. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
+	@test "$$(jq -r '.packages["../../../typescript"].version' conformance/runner/typescript/package-lock.json)" = "$(VERSION)" || \
+		{ echo "ERROR: conformance/runner/typescript/package-lock.json records a stale SDK version. Run 'make bump VERSION=$(VERSION)' first."; exit 1; }
 	@git diff --quiet && git diff --cached --quiet || \
 		{ echo "ERROR: Working tree has uncommitted changes. Commit first."; exit 1; }
 	@# Verify we're on main — release tags must be on the default branch
@@ -202,7 +204,7 @@ sync-api-version-check:
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: go-test go-lint go-check go-clean go-check-drift
+.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift
 
 go-test:
 	@$(MAKE) -C go test
@@ -220,6 +222,15 @@ go-clean:
 go-check-drift:
 	@echo "==> Checking service layer drift..."
 	@./scripts/check-service-drift.sh
+
+# Check for field-level drift between generated structs and hand-written
+# wrappers in go/pkg/basecamp/. Sibling of go-check-drift; that check is
+# operation-level, this one is field-level.
+go-check-wrapper-drift:
+	@echo "==> Running wrapper-drift checker tests..."
+	@go test ./scripts/check-wrapper-drift/
+	@echo "==> Checking wrapper field-level drift..."
+	@go run ./scripts/check-wrapper-drift/
 
 .PHONY: auth-routable-check
 
@@ -373,7 +384,18 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-build
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live check-bc5-compat oauth-fixtures-check
+
+# Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
+# version is reproducible without a global install; the schema is separate from
+# the operation-dispatch conformance/schema.json (unusable for OAuth data).
+CHECK_JSONSCHEMA_VERSION := 0.35.0
+
+# Validate OAuth resource-first discovery fixtures against their JSON Schema.
+oauth-fixtures-check:
+	@echo "==> Validating OAuth discovery fixtures..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--schemafile conformance/oauth/schema.json conformance/oauth/fixtures/*.json
 
 # Build conformance test runner
 conformance-build:
@@ -385,29 +407,178 @@ conformance-go: conformance-build
 	@echo "==> Running Go conformance tests..."
 	cd conformance/runner/go && ./conformance-runner
 
+# Run Go wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-go-replay:
+	@echo "==> Running Go wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd conformance/runner/go && go run .
+
 # Run Kotlin conformance tests
 conformance-kotlin:
 	@echo "==> Running Kotlin conformance tests..."
 	cd kotlin && ./gradlew :conformance:run
+
+# Run Kotlin wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-kotlin-replay:
+	@echo "==> Running Kotlin wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd kotlin && ./gradlew --quiet :conformance:runReplay
 
 # Run TypeScript conformance tests
 conformance-typescript:
 	@echo "==> Running TypeScript conformance tests..."
 	cd conformance/runner/typescript && npm ci && npm test
 
+# Run TypeScript live canary against a real Basecamp backend.
+#
+# Required env: BASECAMP_LIVE=1, BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID.
+# Optional env: BASECAMP_HOST (origin only, e.g. https://3.basecampapi.com —
+# runner appends /{accountId}); BASECAMP_BACKEND=bc4|bc5 to namespace
+# snapshots; LIVE_RECORD_DIR to persist wire snapshots for downstream
+# replay/compare. Opt-in: not invoked by `make check`.
+conformance-typescript-live:
+	@echo "==> Running TypeScript live canary..."
+	cd conformance/runner/typescript && npm ci && BASECAMP_LIVE=1 npm test
+
 # Run Ruby conformance tests
 conformance-ruby:
 	@echo "==> Running Ruby conformance tests..."
 	cd conformance/runner/ruby && bundle install --quiet && ruby runner.rb
+
+# Run Ruby wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-ruby-replay:
+	@echo "==> Running Ruby wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd conformance/runner/ruby && bundle install --quiet && ruby replay-runner.rb
 
 # Run Python conformance tests
 conformance-python:
 	@echo "==> Running Python conformance tests..."
 	cd conformance/runner/python && uv sync && uv run python runner.py
 
+# Run Python wire-replay against snapshots written by the TS live runner.
+# Required env: WIRE_REPLAY_DIR, BASECAMP_BACKEND. Opt-in: not in `make check`.
+conformance-python-replay:
+	@echo "==> Running Python wire-replay runner..."
+	@test -n "$$WIRE_REPLAY_DIR" || (echo "WIRE_REPLAY_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	cd conformance/runner/python && uv sync && uv run python replay_runner.py
+
 # Run all conformance tests
-conformance: conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
+conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
+
+# Orchestrate one canary pass against a single backend:
+#   1. TS captures canonical wire snapshots (live HTTP).
+#   2. Each replay runner decodes those snapshots through its SDK + walks raw JSON.
+#
+# Required env (passed through to children):
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BASECAMP_BACKEND, LIVE_RECORD_DIR
+# (BASECAMP_LIVE=1 is set by the conformance-typescript-live recipe itself.)
+#
+# The four replay runners run sequentially after the TS capture completes
+# (the per-language replays need the wire snapshots TS just wrote). They
+# read from `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/` and write to
+# `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/decode/<lang>/`. Failures in any
+# stage fail the orchestrator.
+#
+# Opt-in target: not invoked by `make check`.
+conformance-live:
+	@test -n "$$LIVE_RECORD_DIR" || (echo "LIVE_RECORD_DIR is required" >&2; exit 1)
+	@test -n "$$BASECAMP_BACKEND" || (echo "BASECAMP_BACKEND is required" >&2; exit 1)
+	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 1)
+	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 1)
+	@# Canonicalize LIVE_RECORD_DIR before fanning out: the capture and
+	@# replay recipes each `cd` into their runner directory, so a relative
+	@# path (e.g. the documented tmp/live-canary) would scatter snapshots
+	@# under conformance/runner/*/ while the pairwise compare reads from
+	@# the repo root — missing-snapshot errors instead of a comparison.
+	@LRD="$$LIVE_RECORD_DIR"; case "$$LRD" in /*) ;; *) LRD="$$(pwd)/$$LRD" ;; esac; \
+	echo "==> conformance-live: capturing canonical wire snapshots (TypeScript)..." && \
+	LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-typescript-live && \
+	echo "==> Running cross-language wire-replay against just-captured snapshots..." && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-ruby-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-python-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-go-replay && \
+	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-kotlin-replay
+	@echo "==> conformance-live: capture + replay complete for backend $$BASECAMP_BACKEND"
+
+# Top-level orchestrator: full canary against BC4 then BC5, then pairwise comparison.
+#
+# Required env:
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BC5_HOST (BC5 backend origin)
+# Optional env:
+#   BASECAMP_HOST (BC4 backend origin; defaults to https://3.basecampapi.com)
+#   LIVE_RECORD_DIR (snapshot root; defaults to tmp/live-canary)
+#
+# Snapshot dirs are per-backend: $$LIVE_RECORD_DIR/{bc4,bc5}/{wire,decode}/.
+# The TS runner writes to `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/`, so the
+# orchestrator distinguishes runs by switching BASECAMP_BACKEND and the host
+# while reusing one snapshot root.
+#
+# Each pass must pass per-backend (TS schema validation + 4-language decode).
+# After both, the pairwise script applies the additive-only invariant to BC4
+# vs BC5 snapshots, reports all violations outside pairwiseDeltaAllowed, and
+# exits non-zero if any are found.
+#
+# Account state must be identical across the two runs — see CONTRIBUTING.md.
+check-bc5-compat:
+	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
+	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
+	@test -n "$$BC5_HOST" || (echo "BC5_HOST is required (BC5 backend origin, e.g. https://5.basecampapi.com)" >&2; exit 2)
+	@# Defaults resolve in the recipe shell, NOT via target-specific `?=`:
+	@# make 3.81 (macOS /usr/bin/make) leaks target-specific `?=` into a
+	@# global override that clobbers the caller's environment to empty for
+	@# every OTHER target's recipe — breaking conformance-live's
+	@# required-env guards whenever this makefile is loaded.
+	@#
+	@# The rm -rf lives on its own recipe line, separate from the $(MAKE)
+	@# invocations: under `make -n`, lines containing $(MAKE) are still
+	@# executed (with -n propagated to the sub-make), so folding the rm into
+	@# that line would delete snapshots during a dry-run.
+	@# Guard against a catastrophic rm -rf: strip ALL trailing slashes (a
+	@# single strip would let '///' through as '//' ≈ root), then refuse
+	@# "", ".", "/" (repo checkout / filesystem root) and any '..' PATH
+	@# SEGMENT (leading, trailing, interior, or the whole path); finally,
+	@# canonicalize an EXISTING dir (cd + pwd -P) into a separate GUARD
+	@# variable for the checkout-ancestor check, so non-canonical
+	@# spellings ('/x//y', symlinks into the checkout) can't slip past the
+	@# string compare — a failed cd empties the guard value, which the
+	@# ancestor pattern then refuses. The rm itself uses the ORIGINAL
+	@# path: when LIVE_RECORD_DIR is a symlink, rm removes the link, not
+	@# the tree it points to. A '..'
+	@# inside a segment (tmp/live-canary..pr308) is benign and allowed.
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; LRD_ORIG="$$LRD"; \
+	while [ "$${LRD%/}" != "$$LRD" ]; do LRD="$${LRD%/}"; done; \
+	case "$$LRD" in \
+	  ""|"."|"/") echo "ERROR: refusing rm -rf on unsafe LIVE_RECORD_DIR='$$LRD_ORIG'" >&2; exit 2 ;; \
+	  ".."|"../"*|*"/.."|*"/../"*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR with a '..' path segment: '$$LRD_ORIG'" >&2; exit 2 ;; \
+	esac; \
+	LRD_CHECK="$$LRD"; \
+	if [ -d "$$LRD" ]; then LRD_CHECK="$$(cd "$$LRD" && pwd -P)"; fi; \
+	case "$$LRD_CHECK" in \
+	  "/") echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it canonicalizes to the filesystem root" >&2; exit 2 ;; \
+	esac; \
+	case "$$(pwd -P)/" in \
+	  "$$LRD_CHECK"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
+	esac; \
+	rm -rf -- "$$LRD"
+	@echo "==> check-bc5-compat: BC4 pass"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC4_HOST" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: BC5 pass"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	@echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison"
+	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
+	./scripts/compare-canary-runs.sh "$$LRD/bc4/wire" "$$LRD/bc5/wire"
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets
@@ -573,11 +744,53 @@ tools:
 	@echo "==> Done"
 
 #------------------------------------------------------------------------------
+# Spec-shape lints
+#------------------------------------------------------------------------------
+
+.PHONY: check-bucket-flat-parity validate-api-gaps check-compare-canary
+
+# Verify every bucket-scoped GET list operation has a flat-path counterpart
+# (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
+# consumers shouldn't need to enumerate projects to reach account-wide data.
+check-bucket-flat-parity:
+	@./scripts/check-bucket-flat-parity.sh
+
+# Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
+validate-api-gaps:
+	@./scripts/validate-api-gaps.sh
+
+# Network-free regression tests for the pairwise compare script (filename
+# scheme, missing-snapshot hard-fail, memories waiver scoping, pairwiseEqual
+# key-order, empty-paths guard).
+#
+# Requires bash >= 4.4 on PATH (`env bash`): both scripts guard for it and
+# fail with a clear message; macOS ships 3.2 at /bin/bash — brew install bash.
+check-compare-canary:
+	@./scripts/test-compare-canary-runs.sh
+
+#------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
 
+.PHONY: generate
+
+# Regenerate every machine-derived artifact in the repo, in dependency order.
+# Run after editing spec/basecamp.smithy or spec/api-provenance.json.
+# Sequential phases via sub-makes so language generators don't run in
+# parallel against a stale openapi.json under `make -j`.
+generate:
+	@$(MAKE) smithy-build
+	@$(MAKE) behavior-model url-routes provenance-sync
+	@$(MAKE) ts-generate ts-generate-services \
+	         rb-generate rb-generate-services \
+	         py-generate \
+	         kt-generate-services \
+	         swift-generate
+	@$(MAKE) -C go generate
+	@echo "==> Generation complete"
+
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-compare-canary
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -608,7 +821,8 @@ help:
 	@echo "  go-test          Run Go tests"
 	@echo "  go-lint          Run Go linter"
 	@echo "  go-check         Run all Go checks"
-	@echo "  go-check-drift   Check service layer drift vs generated client"
+	@echo "  go-check-drift           Check service layer drift vs generated client (operation-level)"
+	@echo "  go-check-wrapper-drift   Check wrapper struct drift vs generated structs (field-level)"
 	@echo "  go-clean         Remove Go build artifacts"
 	@echo ""
 	@echo "TypeScript SDK:"
@@ -637,13 +851,19 @@ help:
 	@echo "  swift-clean      Remove Swift build artifacts"
 	@echo ""
 	@echo "Conformance:"
-	@echo "  conformance            Run all conformance tests"
-	@echo "  conformance-go         Run Go conformance tests"
-	@echo "  conformance-kotlin     Run Kotlin conformance tests"
-	@echo "  conformance-typescript Run TypeScript conformance tests"
-	@echo "  conformance-ruby       Run Ruby conformance tests"
-	@echo "  conformance-python     Run Python conformance tests"
-	@echo "  conformance-build      Build Go conformance test runner"
+	@echo "  conformance                Run all conformance tests"
+	@echo "  conformance-go             Run Go conformance tests"
+	@echo "  conformance-go-replay      Decode TS-captured wire snapshots through Go SDK"
+	@echo "  conformance-kotlin         Run Kotlin conformance tests"
+	@echo "  conformance-kotlin-replay  Decode TS-captured wire snapshots through Kotlin SDK"
+	@echo "  conformance-typescript     Run TypeScript conformance tests"
+	@echo "  conformance-typescript-live Run TypeScript live canary against a real backend"
+	@echo "  conformance-ruby           Run Ruby conformance tests"
+	@echo "  conformance-ruby-replay    Decode TS-captured wire snapshots through Ruby SDK"
+	@echo "  conformance-python         Run Python conformance tests"
+	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
+	@echo "  conformance-build          Build Go conformance test runner"
+	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"
@@ -682,6 +902,7 @@ help:
 	@echo "  tools            Install development tools (smithy, golangci-lint, actionlint, zizmor)"
 	@echo ""
 	@echo "Combined:"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + Actions lint)"
+	@echo "  generate         Regenerate every machine-derived artifact (Smithy + per-language SDKs + provenance)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"

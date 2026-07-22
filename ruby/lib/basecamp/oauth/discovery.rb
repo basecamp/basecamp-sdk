@@ -1,91 +1,161 @@
 # frozen_string_literal: true
 
-require "faraday"
-require "json"
-
 module Basecamp
   module Oauth
-    # Fetches OAuth 2 server configuration from discovery endpoints.
+    # Fetches RFC 8414 OAuth 2 Authorization Server Metadata and binds the
+    # returned +issuer+ to the requested issuer origin (hop 2 of resource-first
+    # discovery).
     class Discovery
-      # @param http_client [Faraday::Connection, nil] HTTP client (uses default if nil)
-      # @param timeout [Integer] Request timeout in seconds (default: 10)
-      def initialize(http_client: nil, timeout: 10)
-        @http_client = http_client || build_default_client(timeout)
+      # Structured marker: AS metadata failed the RFC 8414 issuer code-point
+      # bind. Raised (never message-matched) so {Oauth.discover_from_resource}
+      # classifies an issuer mismatch by CLASS via {Oauth.as_failure_error} —
+      # brittle, locale-sensitive substring matching is gone. Kept in the
+      # discovery layer, deliberately NOT in the device error files that
+      # {DeviceFlowError} shares.
+      class IssuerBindingError < OauthError
+        def initialize(message, http_status: nil)
+          super("api_error", message, http_status: http_status)
+        end
       end
 
-      # Discovers OAuth configuration from the well-known endpoint.
+      # @param http_client [Faraday::Connection, nil] HTTP client (SSRF-hardened default if nil)
+      # @param timeout [Integer] request timeout in seconds (default: 10)
+      # @param max_body_bytes [Integer] bounded read cap in bytes
+      def initialize(http_client: nil, timeout: 10, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES)
+        Fetcher.ensure_redirects_suppressed!(http_client) if http_client
+        # Normalize before building the client and before the fetch computes its
+        # wall-clock deadline: a non-finite/non-positive timeout must not disable
+        # either bound (see Fetcher.normalize_timeout).
+        @timeout = Fetcher.normalize_timeout(timeout)
+        @http_client = http_client || Fetcher.build_client(@timeout)
+        # Normalize the public cap to a finite non-negative Integer: a nil, float,
+        # or Float::INFINITY would otherwise disable the streaming memory bound
+        # (an infinite/undefined cap never trips +total > max_body_bytes+),
+        # reintroducing an SSRF/OOM risk. Mirrors Resource#initialize.
+        @max_body_bytes =
+          if max_body_bytes.is_a?(Integer) && max_body_bytes >= 0
+            max_body_bytes
+          else
+            Fetcher::DEFAULT_MAX_BODY_BYTES
+          end
+      end
+
+      # Discovers OAuth configuration from
+      # <tt>{base_url}/.well-known/oauth-authorization-server</tt>, binding the
+      # returned +issuer+ to +base_url+ by code-point (RFC 8414 §3.3/§4, no
+      # normalization beyond origin-root parsing). +token_endpoint+ is required;
+      # +authorization_endpoint+ is optional (device-only servers omit it).
       #
-      # Fetches the OAuth 2 Authorization Server Metadata from:
-      # `{base_url}/.well-known/oauth-authorization-server`
-      #
-      # @param base_url [String] The OAuth server's base URL (e.g., "https://launchpad.37signals.com")
-      # @return [Config] The OAuth server configuration
-      # @raise [OauthError] on network or parsing errors
+      # @param base_url [String] the OAuth server's issuer origin
+      # @return [Config] the OAuth server configuration
+      # @raise [Basecamp::UsageError] on a malformed origin
+      # @raise [OauthError] +api_error+ on invalid metadata / issuer mismatch
       #
       # @example
-      #   discovery = Basecamp::Oauth::Discovery.new
-      #   config = discovery.discover("https://launchpad.37signals.com")
-      #   puts config.token_endpoint
-      #   # => "https://launchpad.37signals.com/authorization/token"
+      #   config = Basecamp::Oauth::Discovery.new.discover("https://launchpad.37signals.com")
+      #   config.token_endpoint # => "https://launchpad.37signals.com/authorization/token"
       def discover(base_url)
-        Basecamp::Security.require_https_unless_localhost!(base_url, "discovery base URL")
+        issuer_origin = Basecamp::Security.require_origin_root!(base_url, "OAuth discovery base URL")
+        # Bind against the caller's raw +base_url+ (RFC 8414 §3.3, SPEC.md §16 "NO
+        # normalization"); the normalized origin is only for the fetch URL.
+        discover_and_bind(issuer_origin, base_url)
+      end
 
-        normalized_base = base_url.chomp("/")
-        discovery_url = "#{normalized_base}/.well-known/oauth-authorization-server"
-
-        response = @http_client.get(discovery_url) do |req|
-          req.headers["Accept"] = "application/json"
-        end
-
-        unless response.success?
-          raise OauthError.new(
-            "network",
-            "OAuth discovery failed with status #{response.status}: #{Basecamp::Security.truncate(response.body)}",
-            http_status: response.status
-          )
-        end
-
-        Basecamp::Security.check_body_size!(response.body, Basecamp::Security::MAX_ERROR_BODY_BYTES, "Discovery")
-
-        data = JSON.parse(response.body)
-        validate_discovery_response!(data)
-
-        Config.new(
-          issuer: data["issuer"],
-          authorization_endpoint: data["authorization_endpoint"],
-          token_endpoint: data["token_endpoint"],
-          registration_endpoint: data["registration_endpoint"],
-          scopes_supported: data["scopes_supported"]
-        )
-      rescue Faraday::Error => e
-        raise OauthError.new("network", "OAuth discovery failed: #{e.message}", retryable: true)
-      rescue JSON::ParserError => e
-        raise OauthError.new("api_error", "Failed to parse discovery response: #{e.message}")
+      # Resource-first entry: validate +advertised_issuer+ as an origin root, then
+      # fetch from the normalized origin and bind the AS metadata +issuer+ against
+      # the RAW advertised string by code-point. Routing and binding are distinct —
+      # an AS whose issuer matches what the resource advertised (e.g. a trailing
+      # slash or explicit default port) binds instead of being normalized away into
+      # a false +issuer_mismatch+. Validation happens HERE so there is NO public
+      # unvalidated-fetch entry point: the SSRF origin policy is always enforced.
+      #
+      # @param advertised_issuer [String] the raw issuer string a resource advertised
+      # @raise [Basecamp::UsageError] on a malformed advertised origin
+      def discover_advertised(advertised_issuer)
+        issuer_origin = Basecamp::Security.require_origin_root!(advertised_issuer, "advertised issuer")
+        discover_and_bind(issuer_origin, advertised_issuer)
       end
 
       private
 
-      def build_default_client(timeout)
-        Faraday.new do |conn|
-          conn.options.timeout = timeout
-          conn.options.open_timeout = timeout
-          conn.adapter Faraday.default_adapter
+        # Fetch AS metadata from +issuer_origin+ (an ALREADY-VALIDATED origin root)
+        # but bind the returned +issuer+ against +bind_issuer+ by code-point. Kept
+        # private: it does no origin validation of its own, so exposing it would be
+        # an unvalidated-fetch entry point that defeats the SSRF origin policy.
+        def discover_and_bind(issuer_origin, bind_issuer)
+          discovery_url = "#{issuer_origin}/.well-known/oauth-authorization-server"
+          data = Fetcher.fetch_json(@http_client, discovery_url, timeout: @timeout, max_body_bytes: @max_body_bytes)
+          parse_and_bind(data, bind_issuer)
         end
-      end
 
-      def validate_discovery_response!(data)
-        missing = []
-        missing << "issuer" unless data["issuer"]
-        missing << "authorization_endpoint" unless data["authorization_endpoint"]
-        missing << "token_endpoint" unless data["token_endpoint"]
+        # Universal validation only: +issuer+ + +token_endpoint+ present and
+        # non-empty, issuer identical by code-point, and any present +*_endpoint+
+        # field non-empty. Per-grant endpoint checks are the consumer's job.
+        def parse_and_bind(data, expected_issuer_origin)
+          issuer = data["issuer"]
+          if !issuer.is_a?(String) || issuer.empty?
+            raise OauthError.new("api_error", "Invalid OAuth discovery response: missing required fields: issuer")
+          end
 
-        return if missing.empty?
+          # RFC 8414 §3.3/§4: issuer identical by code-point. No normalization.
+          unless issuer == expected_issuer_origin
+            raise IssuerBindingError.new(
+              "OAuth issuer mismatch: metadata issuer #{issuer.inspect} does not equal #{expected_issuer_origin.inspect}"
+            )
+          end
 
-        raise OauthError.new(
-          "api_error",
-          "Invalid OAuth discovery response: missing required fields: #{missing.join(", ")}"
-        )
-      end
+          token_endpoint = data["token_endpoint"]
+          if !token_endpoint.is_a?(String) || token_endpoint.empty?
+            raise OauthError.new("api_error", "Invalid OAuth discovery response: missing required fields: token_endpoint")
+          end
+
+          reject_empty_endpoints!(data)
+          validate_string_array!(data, "grant_types_supported")
+          validate_string_array!(data, "scopes_supported")
+
+          Config.new(
+            issuer: issuer,
+            authorization_endpoint: data["authorization_endpoint"],
+            token_endpoint: token_endpoint,
+            device_authorization_endpoint: data["device_authorization_endpoint"],
+            registration_endpoint: data["registration_endpoint"],
+            scopes_supported: data["scopes_supported"],
+            grant_types_supported: data["grant_types_supported"]
+          )
+        end
+
+        # Any endpoint field that IS present must be a non-empty String: "" is a
+        # truthy value in Ruby and must be rejected, and a non-string endpoint
+        # (array/number/object, or a present JSON null) is malformed metadata —
+        # a present null is NOT the same as an absent key.
+        def reject_empty_endpoints!(data)
+          data.each do |key, value|
+            next unless key.end_with?("_endpoint")
+
+            unless value.is_a?(String) && !value.empty?
+              raise OauthError.new("api_error", "Invalid OAuth discovery response: invalid #{key}")
+            end
+          end
+        end
+
+        # A metadata list field (e.g. +grant_types_supported+, +scopes_supported+),
+        # when present, must be an array of strings. A bare string must never be
+        # accepted: substring-matching +grant_types_supported+ could falsely enable
+        # a grant such as device_code, and a non-array is malformed metadata.
+        def validate_string_array!(data, key)
+          # Distinguish an ABSENT key from a present JSON null: a present null is
+          # malformed (the field must be an array of strings when present), while
+          # an absent key is legitimately unset.
+          return unless data.key?(key)
+
+          value = data[key]
+          unless value.is_a?(Array) && value.all?(String)
+            raise OauthError.new(
+              "api_error",
+              "Invalid OAuth discovery response: #{key} must be an array of strings"
+            )
+          end
+        end
     end
   end
 end

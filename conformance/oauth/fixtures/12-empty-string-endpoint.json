@@ -1,0 +1,20 @@
+{
+  "name": "empty-string-endpoint",
+  "description": "Direct hop-2 discover: AS metadata with a present-but-empty token_endpoint must be rejected as invalid metadata (exercises Ruby/Kotlin which historically accepted \"\").",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{ISSUER_ORIGIN}}",
+      "authorization_endpoint": "{{ISSUER_ORIGIN}}/oauth/authorize",
+      "token_endpoint": ""
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "invalid_metadata",
+    "errorCategory": "api_error"
+  }
+}

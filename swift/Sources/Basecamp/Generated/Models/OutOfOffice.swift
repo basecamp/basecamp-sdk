@@ -2,6 +2,7 @@
 import Foundation
 
 public struct OutOfOffice: Codable, Sendable {
+    public var backOnDate: String?
     public var enabled: Bool?
     public var endDate: String?
     public var ongoing: Bool?

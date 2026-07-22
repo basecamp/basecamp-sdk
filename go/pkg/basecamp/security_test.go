@@ -687,6 +687,13 @@ func TestIsLocalhost(t *testing.T) {
 		{"https://localhost.example.com/path", false},   // localhost as subdomain of non-localhost
 		{"https://fakelocalhostdomain.com/path", false}, // localhost embedded in domain
 
+		// The carve-out is limited to HTTP(S): any other scheme fails closed
+		// even for localhost, so RequireSecureEndpoint cannot accept e.g.
+		// ws://localhost.
+		{"ws://localhost:3000/path", false},
+		{"ftp://127.0.0.1/path", false},
+		{"wss://[::1]/path", false},
+
 		// Invalid URLs
 		{"://invalid", false},
 		{"", false},

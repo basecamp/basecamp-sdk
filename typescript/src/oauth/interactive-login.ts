@@ -5,7 +5,13 @@
  * discovery, PKCE, local callback server, browser launch, code exchange.
  */
 
-import { discover, discoverLaunchpad } from "./discovery.js";
+import {
+  discover,
+  discoverLaunchpad,
+  discoverFromResource,
+  isLaunchpadIssuer,
+  DiscoverySelectionError,
+} from "./discovery.js";
 import { generateState, generatePKCE } from "./pkce.js";
 import { buildAuthorizationUrl } from "./authorize.js";
 import { startCallbackServer } from "./callback-server.js";
@@ -24,9 +30,27 @@ export interface InteractiveLoginOptions {
   clientSecret?: string;
   /** Token store for persisting the resulting token */
   store: TokenStore;
-  /** OAuth server base URL (defaults to Launchpad) */
+  /**
+   * Legacy single-hop AS base URL (RFC 8414). Mutually exclusive with
+   * {@link resourceBaseUrl}. Defaults to Launchpad when neither is set.
+   */
   baseUrl?: string;
-  /** Use Launchpad's non-standard token format (default: true) */
+  /**
+   * Resource-first (two-hop) discovery origin — the API/resource host (RFC
+   * 9728). Mutually exclusive with {@link baseUrl}. Soft failures fall back to
+   * Launchpad; hard selection errors propagate.
+   */
+  resourceBaseUrl?: string;
+  /**
+   * Explicit issuer selection for resource-first discovery (passed through to
+   * `discoverFromResource`).
+   */
+  expectedIssuer?: string;
+  /**
+   * Use Launchpad's non-standard token format. When omitted, it is derived from
+   * the selected flow (legacy for Launchpad, standard for a first-party issuer);
+   * the legacy `baseUrl` path defaults to `true`.
+   */
   useLegacyFormat?: boolean;
   /** Port for the local callback server (optional) */
   callbackPort?: number;
@@ -75,16 +99,47 @@ export async function performInteractiveLogin(
     clientSecret,
     store,
     baseUrl,
-    useLegacyFormat = true,
+    resourceBaseUrl,
+    expectedIssuer,
+    useLegacyFormat,
     callbackPort,
     openBrowser,
     promptForManualVisit,
     onStatus,
   } = options;
 
+  // Presence, not truthiness: an explicitly-supplied empty string is "provided"
+  // (and invalid) — it must trip this guard, then reach origin validation below,
+  // never be silently treated as absent.
+  if (baseUrl !== undefined && resourceBaseUrl !== undefined) {
+    throw new BasecampError(
+      "usage",
+      "baseUrl and resourceBaseUrl are mutually exclusive discovery modes; supply only one"
+    );
+  }
+
   // 1. Discover OAuth endpoints
   onStatus?.("Discovering OAuth endpoints...");
-  const config = baseUrl ? await discover(baseUrl) : await discoverLaunchpad();
+  const { config, legacy } = await discoverEndpoints({
+    baseUrl,
+    resourceBaseUrl,
+    expectedIssuer,
+    useLegacyFormat,
+    onStatus,
+  });
+
+  // Authorization-code flow requires an authorization endpoint. It is optional
+  // in discovery now (device-only servers omit it), so assert presence here.
+  // Raise the typed hard-failure reason (capability_unavailable) the resource-
+  // first contract exposes, not a generic validation error, so consumers can
+  // distinguish a missing-capability issuer consistently across SDKs.
+  if (!config.authorizationEndpoint) {
+    throw new DiscoverySelectionError(
+      "capability_unavailable",
+      "Selected authorization server does not advertise an authorization_endpoint; " +
+        "authorization-code login is unavailable for this issuer"
+    );
+  }
 
   // 2. Generate PKCE and state
   const state = generateState();
@@ -139,7 +194,7 @@ export async function performInteractiveLogin(
       clientId,
       clientSecret,
       codeVerifier: pkce?.verifier,
-      useLegacyFormat,
+      useLegacyFormat: legacy,
     });
 
     // 8. Save token
@@ -150,4 +205,46 @@ export async function performInteractiveLogin(
   } finally {
     close();
   }
+}
+
+/**
+ * Resolves the OAuth config for the login flow across the two discovery modes,
+ * and decides whether to send Launchpad's legacy token format.
+ *
+ * Resource-first mode falls back to Launchpad ONLY on the two soft reasons; any
+ * hard selection error (issuer mismatch, AS fetch failure, ambiguity, …) throws
+ * from `discoverFromResource` and propagates here — never a silent Launchpad
+ * request.
+ */
+async function discoverEndpoints(opts: {
+  baseUrl?: string;
+  resourceBaseUrl?: string;
+  expectedIssuer?: string;
+  useLegacyFormat?: boolean;
+  onStatus?: (message: string) => void;
+}): Promise<{ config: import("./types.js").OAuthConfig; legacy: boolean }> {
+  const { baseUrl, resourceBaseUrl, expectedIssuer, useLegacyFormat, onStatus } = opts;
+
+  // Check presence, not truthiness: an explicitly-supplied empty resourceBaseUrl
+  // is invalid resource-first input and must reach origin validation (which
+  // rejects it), not silently fall through to a Launchpad login.
+  if (resourceBaseUrl !== undefined) {
+    const result = await discoverFromResource(resourceBaseUrl, { expectedIssuer });
+    if (result.kind === "selected") {
+      // Derive the token format from the selected issuer unless the caller
+      // pinned it explicitly.
+      const legacy = useLegacyFormat ?? isLaunchpadIssuer(result.config.issuer);
+      return { config: result.config, legacy };
+    }
+    // Soft fallback (resource_discovery_failed | no_as_advertised) → Launchpad.
+    onStatus?.(`Resource discovery fell back to Launchpad (${result.reason}).`);
+    const config = await discoverLaunchpad();
+    return { config, legacy: useLegacyFormat ?? true };
+  }
+
+  // Presence, not truthiness: an explicitly-supplied empty baseUrl must reach
+  // origin validation and raise a usage error, not silently fall back to Launchpad.
+  const config = baseUrl !== undefined ? await discover(baseUrl) : await discoverLaunchpad();
+  // Legacy single-hop path keeps its historical default of legacy=true.
+  return { config, legacy: useLegacyFormat ?? true };
 }

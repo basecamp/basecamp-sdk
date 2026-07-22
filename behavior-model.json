@@ -1963,6 +1963,22 @@
         ]
       }
     },
+    "ReplaceTodo": {
+      "idempotent": true,
+      "write": {
+        "mode": "replace",
+        "clearsOmitted": true
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "RepositionCardStep": {
       "retry": {
         "max": 2,
@@ -2505,18 +2521,6 @@
         ]
       }
     },
-    "UpdateTodo": {
-      "idempotent": true,
-      "retry": {
-        "max": 3,
-        "base_delay_ms": 1000,
-        "backoff": "exponential",
-        "retry_on": [
-          429,
-          503
-        ]
-      }
-    },
     "UpdateTodolistOrGroup": {
       "idempotent": true,
       "retry": {
@@ -2590,13 +2594,15 @@
       "$.avatar_url"
     ],
     "OutOfOfficePerson": [
-      "$.name"
+      "$.name",
+      "$.avatar_url"
     ],
     "Person": [
       "$.name",
       "$.email_address",
       "$.title",
       "$.bio",
+      "$.tagline",
       "$.location",
       "$.avatar_url"
     ],

@@ -115,7 +115,7 @@ class ServiceGenerator
       'ClientVisibility' => %w[SetClientVisibility]
     },
     'Todos' => {
-      'Todos' => %w[ListTodos CreateTodo GetTodo UpdateTodo CompleteTodo UncompleteTodo TrashTodo],
+      'Todos' => %w[ListTodos CreateTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo TrashTodo],
       'Todolists' => %w[GetTodolistOrGroup UpdateTodolistOrGroup ListTodolists CreateTodolist],
       'Todosets' => %w[GetTodoset],
       'HillCharts' => %w[GetHillChart UpdateHillChartSettings],
@@ -244,6 +244,7 @@ class ServiceGenerator
     { prefix: 'Get', method: 'get' },
     { prefix: 'Create', method: 'create' },
     { prefix: 'Update', method: 'update' },
+    { prefix: 'Replace', method: 'replace' },
     { prefix: 'Delete', method: 'delete' },
     { prefix: 'Trash', method: 'trash' },
     { prefix: 'Archive', method: 'archive' },

@@ -256,14 +256,8 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	// Extract person from first page
 	var person *Person
 	if resp.JSON200.Person.Id != 0 || resp.JSON200.Person.Name != "" {
-		person = &Person{
-			ID:           int64(resp.JSON200.Person.Id),
-			Name:         resp.JSON200.Person.Name,
-			EmailAddress: resp.JSON200.Person.EmailAddress,
-			AvatarURL:    resp.JSON200.Person.AvatarUrl,
-			Admin:        resp.JSON200.Person.Admin,
-			Owner:        resp.JSON200.Person.Owner,
-		}
+		p := personFromGenerated(resp.JSON200.Person)
+		person = &p
 	}
 
 	// Parse events from first page
@@ -393,14 +387,8 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 	e.CreatedAt = ge.CreatedAt
 
 	if ge.Creator.Id != 0 || ge.Creator.Name != "" {
-		e.Creator = &Person{
-			ID:           int64(ge.Creator.Id),
-			Name:         ge.Creator.Name,
-			EmailAddress: ge.Creator.EmailAddress,
-			AvatarURL:    ge.Creator.AvatarUrl,
-			Admin:        ge.Creator.Admin,
-			Owner:        ge.Creator.Owner,
-		}
+		creator := personFromGenerated(ge.Creator)
+		e.Creator = &creator
 	}
 
 	if ge.Bucket.Id != 0 || ge.Bucket.Name != "" {

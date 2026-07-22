@@ -92,7 +92,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
         "ClientVisibility" to listOf("SetClientVisibility"),
     ),
     "Todos" to mapOf(
-        "Todos" to listOf("ListTodos", "CreateTodo", "GetTodo", "UpdateTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"),
+        "Todos" to listOf("ListTodos", "CreateTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"),
         "Todolists" to listOf("GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist"),
         "Todosets" to listOf("GetTodoset"),
         "HillCharts" to listOf("GetHillChart", "UpdateHillChartSettings"),
@@ -112,6 +112,23 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
 )
 
 /**
+ * Services emitted as `open class` so a hand-written subclass in
+ * com.basecamp.sdk.services can add convenience methods (e.g. Todos
+ * gains merge-safe update/edit on top of the generated replace).
+ */
+val EXTENSIBLE_SERVICES = setOf("Todos")
+
+/**
+ * Services whose accessor constructs and declares a hand-written subclass
+ * instead of the generated class, keyed by service name to the subclass's
+ * fully-qualified name. The subclass's extra methods become visible on the
+ * accessor without any caller imports.
+ */
+val HAND_WRITTEN_SERVICES = mapOf(
+    "Todos" to "com.basecamp.sdk.services.TodosService",
+)
+
+/**
  * Verb extraction patterns for operationId → method name mapping.
  */
 val VERB_PATTERNS = listOf(
@@ -121,6 +138,7 @@ val VERB_PATTERNS = listOf(
     "Get" to "get",
     "Create" to "create",
     "Update" to "update",
+    "Replace" to "replace",
     "Delete" to "delete",
     "Trash" to "trash",
     "Archive" to "archive",

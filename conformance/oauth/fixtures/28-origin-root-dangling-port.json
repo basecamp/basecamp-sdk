@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-dangling-port",
+  "description": "Resource origin with a dangling port delimiter ('https://host:') is malformed: parsers normalize the empty port away, so each SDK scans the raw authority for a trailing ':' and rejects it.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https://api.example.com:",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

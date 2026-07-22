@@ -18,6 +18,8 @@ type Project struct {
 	Name           string         `json:"name"`
 	Description    string         `json:"description"`
 	Purpose        string         `json:"purpose"`
+	StartDate      string         `json:"start_date,omitempty"`
+	EndDate        string         `json:"end_date,omitempty"`
 	ClientsEnabled bool           `json:"clients_enabled"`
 	BookmarkURL    string         `json:"bookmark_url"`
 	URL            string         `json:"url"`
@@ -374,6 +376,8 @@ func projectFromGenerated(gp generated.Project) Project {
 		Name:           gp.Name,
 		Description:    gp.Description,
 		Purpose:        gp.Purpose,
+		StartDate:      gp.StartDate,
+		EndDate:        gp.EndDate,
 		ClientsEnabled: gp.ClientsEnabled,
 		BookmarkURL:    gp.BookmarkUrl,
 		URL:            gp.Url,
@@ -391,21 +395,7 @@ func projectFromGenerated(gp generated.Project) Project {
 	if len(gp.Dock) > 0 {
 		p.Dock = make([]DockItem, 0, len(gp.Dock))
 		for _, gd := range gp.Dock {
-			di := DockItem{
-				Title:   gd.Title,
-				Name:    gd.Name,
-				Enabled: gd.Enabled,
-				URL:     gd.Url,
-				AppURL:  gd.AppUrl,
-			}
-			if gd.Id != 0 {
-				di.ID = gd.Id
-			}
-			if gd.Position != 0 {
-				pos := int(gd.Position)
-				di.Position = &pos
-			}
-			p.Dock = append(p.Dock, di)
+			p.Dock = append(p.Dock, dockItemFromGenerated(gd))
 		}
 	}
 
@@ -426,4 +416,24 @@ func projectFromGenerated(gp generated.Project) Project {
 	}
 
 	return p
+}
+
+// dockItemFromGenerated converts a generated DockItem to our clean DockItem type.
+// Shared by Project and Template wrappers.
+func dockItemFromGenerated(gd generated.DockItem) DockItem {
+	di := DockItem{
+		Title:   gd.Title,
+		Name:    gd.Name,
+		Enabled: gd.Enabled,
+		URL:     gd.Url,
+		AppURL:  gd.AppUrl,
+	}
+	if gd.Id != 0 {
+		di.ID = gd.Id
+	}
+	if gd.Position != 0 {
+		pos := int(gd.Position)
+		di.Position = &pos
+	}
+	return di
 }

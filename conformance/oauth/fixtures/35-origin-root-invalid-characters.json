@@ -1,0 +1,12 @@
+{
+  "name": "origin-root-invalid-characters",
+  "description": "A caller origin containing a backslash ('https:\\\\api.example.com') is malformed. WHATWG-style parsers convert backslashes to forward slashes for special schemes, normalizing it to a clean origin; each SDK rejects C0 controls, space, and backslash in the raw input up front.",
+  "operation": "discoverProtectedResource",
+  "resourceOrigin": "https:\\\\api.example.com",
+  "expect": {
+    "outcome": "raise",
+    "error": "usage",
+    "launchpadContacted": false,
+    "errorCategory": "usage"
+  }
+}

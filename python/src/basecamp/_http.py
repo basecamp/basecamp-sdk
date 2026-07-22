@@ -54,7 +54,11 @@ class HttpClient:
     def get_absolute(self, url: str, *, params: dict | None = None) -> httpx.Response:
         if not _security.is_localhost(url):
             _security.require_https(url, "URL")
-        return self._request_with_retry("GET", url, params=params)
+        # Cross-origin is permitted only for the trusted Launchpad authorization
+        # endpoint; any other foreign origin still trips the same-origin guard so
+        # the bearer token never leaks off the configured host.
+        allow_cross_origin = url == _security.LAUNCHPAD_AUTHORIZATION_URL
+        return self._request_with_retry("GET", url, params=params, allow_cross_origin=allow_cross_origin)
 
     def post(self, url: str, *, json_body: dict | None = None, operation: str | None = None) -> httpx.Response:
         url = self._build_url(url)
@@ -140,6 +144,7 @@ class HttpClient:
         content: bytes | None = None,
         content_type: str | None = None,
         files: dict | None = None,
+        allow_cross_origin: bool = False,
     ) -> httpx.Response:
         attempt = 0
         last_error: BasecampError | None = None
@@ -159,6 +164,7 @@ class HttpClient:
                     content_type=content_type,
                     files=files,
                     attempt=attempt,
+                    allow_cross_origin=allow_cross_origin,
                 )
             except (RateLimitError, NetworkError, ApiError) as e:
                 if not e.retryable:
@@ -192,7 +198,14 @@ class HttpClient:
         files: dict | None = None,
         attempt: int = 1,
         _retry_count: int = 0,
+        allow_cross_origin: bool = False,
     ) -> httpx.Response:
+        if not allow_cross_origin and not (
+            _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
+        ):
+            raise UsageError(
+                f"Refusing to send credentials to a different origin than base URL: {_security.truncate(url)}"
+            )
         info = RequestInfo(method=method, url=url, attempt=attempt)
         safe_hook(self._hooks.on_request_start, info)
         start = time.monotonic()
@@ -229,6 +242,7 @@ class HttpClient:
                             files=files,
                             attempt=attempt,
                             _retry_count=_retry_count + 1,
+                            allow_cross_origin=allow_cross_origin,
                         )
                 raise error
 
@@ -263,11 +277,16 @@ class HttpClient:
         }
 
     def _build_url(self, path: str) -> str:
-        if path.startswith("https://"):
-            return path
-        if path.startswith("http://"):
+        # Schemes are case-insensitive (RFC 3986): detect absolute URLs on a
+        # lowercased copy so HTTPS://... is not mis-joined onto the base URL.
+        lower_path = path.lower()
+        if lower_path.startswith("https://"):
+            if _security.is_localhost(path) or _security.same_origin(path, self._config.base_url):
+                return path
+            raise UsageError(f"URL origin does not match configured base URL: {_security.truncate(path)}")
+        if lower_path.startswith("http://"):
             if not _security.is_localhost(path):
-                raise UsageError(f"URL must use HTTPS: {path}")
+                raise UsageError(f"URL must use HTTPS: {_security.truncate(path)}")
             return path
         if not path.startswith("/"):
             path = f"/{path}"

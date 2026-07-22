@@ -70,7 +70,7 @@
     "path": "/timesheet_entries/{entryId}",
     "pathParams": {"entryId": 999},
     "mockResponses": [
-      {"status": 200, "body": {"id": 999}}
+      {"status": 200, "body": {"id": 999, "status": "active", "visible_to_clients": false, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "title": "Timesheet entry", "inherits_status": true, "type": "Timesheet::Entry", "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999", "parent": {"id": 2, "title": "Timesheet", "type": "Timesheet", "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"}, "bucket": {"id": 456, "name": "Test", "type": "Project"}, "creator": {"id": 1, "name": "Test User"}, "date": "2024-01-01", "hours": "4.0"}}
     ],
     "assertions": [
       {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
@@ -87,7 +87,7 @@
     "pathParams": {"entryId": 999},
     "requestBody": {"hours": "4.0"},
     "mockResponses": [
-      {"status": 200, "body": {"id": 999, "hours": "4.0"}}
+      {"status": 200, "body": {"id": 999, "status": "active", "visible_to_clients": false, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "title": "Timesheet entry", "inherits_status": true, "type": "Timesheet::Entry", "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999", "parent": {"id": 2, "title": "Timesheet", "type": "Timesheet", "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"}, "bucket": {"id": 456, "name": "Test", "type": "Project"}, "creator": {"id": 1, "name": "Test User"}, "date": "2024-01-01", "hours": "4.0"}}
     ],
     "assertions": [
       {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
@@ -193,5 +193,39 @@
       {"type": "noError"}
     ],
     "tags": ["path", "tools"]
+  },
+  {
+    "name": "Mixed-case host and explicit default port stay on the mocked origin",
+    "description": "Regression for runner origin interception: a configOverrides.baseUrl with a mixed-case host and an explicit default port must be normalized (lowercase host, default port dropped) so the request is still served by the mock queue instead of escaping to the network. Runners that dial baseUrl directly rather than intercepting by origin may skip.",
+    "operation": "GetTool",
+    "method": "GET",
+    "path": "/dock/tools/{toolId}",
+    "pathParams": {"toolId": 789},
+    "configOverrides": {"baseUrl": "https://3.BasecampAPI.com:443"},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 789, "name": "todoset", "title": "To-dos", "status": "active", "enabled": true, "position": 1, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "origin", "normalization"]
+  },
+  {
+    "name": "Bracketed IPv6 loopback origin stays on the mocked origin",
+    "description": "Regression for runner origin interception with IPv6: a configOverrides.baseUrl of http://[::1]:3000 (the SPEC §16 IPv6 example; loopback is exempt from HTTPS enforcement) must keep its brackets through origin normalization so the request is served by the mock queue. Runners that dial baseUrl directly rather than intercepting by origin may skip.",
+    "operation": "GetTool",
+    "method": "GET",
+    "path": "/dock/tools/{toolId}",
+    "pathParams": {"toolId": 789},
+    "configOverrides": {"baseUrl": "http://[::1]:3000"},
+    "mockResponses": [
+      {"status": 200, "body": {"id": 789, "name": "todoset", "title": "To-dos", "status": "active", "enabled": true, "position": 1, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "noError"}
+    ],
+    "tags": ["path", "origin", "normalization", "ipv6"]
   }
 ]

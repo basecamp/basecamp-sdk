@@ -12,7 +12,7 @@
 | **Kotlin SDK** | Production-ready | 38 generated services, Ktor/KMP-based |
 | **Python SDK** | Production-ready | 40 generated services, httpx-based |
 
-All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. No hand-written API methods exist in any SDK runtime.
+All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
 
 ---
 
@@ -37,8 +37,9 @@ All 175 operations across 38+ services are generated. Hand-written code is limit
 |---------|-----------|------|-------|--------|--------|
 | HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` | `sdk/.../services/BaseService.kt` | `src/basecamp/generated/services/_base.py` |
 | OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — | `sdk/.../oauth/*.kt` | `src/basecamp/services/authorization.py` |
+| Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `src/services/todos-extensions.ts` | `lib/basecamp/services/todos_extensions.rb` | `Sources/Basecamp/TodosServiceExtensions.swift` | `sdk/.../services/TodosService.kt` | `src/basecamp/services/todos.py` |
 
-Other hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) are NOT loaded at runtime. They exist only as reference implementations.
+Hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) beyond the tables above are NOT loaded at runtime. They exist only as reference implementations.
 
 ### Smithy Spec vs Actual API Responses
 
@@ -67,7 +68,7 @@ When verifying API response shapes, check Go generated code in `go/pkg/generated
 ### Never Do These
 
 1. **NEVER edit files under `*/generated/`** — they get overwritten by generators
-2. **NEVER add hand-written service methods for API operations** — all API ops come from generators
+2. **NEVER add hand-written service methods that touch the wire** — all wire operations come from generators. The sole exception is a conformance-tested composite that only calls generated wire methods and satisfies SPEC.md §18 "Hand-Written Composite Methods"
 3. **NEVER skip running `make smithy-build` after Smithy changes** — keeps OpenAPI in sync
 4. **NEVER construct API paths manually** — use the generated client methods
 5. **NEVER bypass the SDK** — no raw `client.Get()`, string-concatenated URLs, or internal method calls
@@ -212,7 +213,7 @@ Or `make generate` if it cascades. Never commit a Smithy change without regenera
 1. **`openapi.json` must always reflect the current Smithy spec.** Run `make smithy-build` after any change to `spec/basecamp.smithy` or `spec/overlays/*.smithy`.
 2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, `kotlin/generator/.../Config.kt`, and `python/scripts/generate_services.py` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
 3. **Tags in `spec/overlays/tags.smithy` control service grouping.** Every new operation needs a tag or it won't appear in any generated service.
-4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`.
+4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`. One carve-out (SPEC.md §18 "Hand-Written Composite Methods"): where `omitempty` request structs cannot express always-send-empty semantics, a sanctioned composite's transport may marshal an explicit body map through the operation's generated `*WithBody` variant.
 
 ### Verification
 
@@ -269,6 +270,8 @@ gh api repos/basecamp/bc3/commits/HEAD --jq '.sha'
 Update the `revision` and `date` fields, then `make provenance-sync`. This is not optional — provenance tracks what the SDK is conformant to.
 
 The Smithy service version is derived from the shared provenance date. Run `make sync-spec-version` (or `make smithy-build`, which does this automatically) after updating provenance.
+
+**Pin semantics.** The pin is the conformance baseline as of the last sync — it asserts that all upstream drift up to that revision has been *triaged*, not that every contract in it has been *absorbed*. Upstream contracts shipped past the SDK's modeled surface are tracked in `spec/api-gaps/` (status `addressed-in-bc3-pr-N`) until an absorption PR lands. A repin is valid exactly when every drift item in `pin..HEAD` is either absorbed into the spec or registered in `spec/api-gaps/`; it is not blocked on absorption itself. The pin never moves backward. The `compatibility.*` pins mark the last **verified API-surface state** of their branch, not a last-glanced timestamp — refresh one only when re-verifying that branch's API surface, and record verification dates in the PR that did the checking.
 
 ### Pre-sync
 

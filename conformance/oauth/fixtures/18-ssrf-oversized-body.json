@@ -1,0 +1,20 @@
+{
+  "name": "ssrf-oversized-body",
+  "description": "AS metadata body exceeds the SSRF read cap. The bounded/streaming read must abort before buffering the whole body (memory bounded, not a post-hoc size check) \u2192 api_error.",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 200,
+    "oversized": true,
+    "body": {
+      "issuer": "{{ISSUER_ORIGIN}}",
+      "token_endpoint": "{{ISSUER_ORIGIN}}/oauth/token"
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "api_error",
+    "errorCategory": "api_error"
+  }
+}

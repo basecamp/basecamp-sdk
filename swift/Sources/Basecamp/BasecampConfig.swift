@@ -24,10 +24,10 @@ public struct BasecampConfig: Sendable {
     public let timeoutInterval: TimeInterval
 
     /// SDK version string.
-    public static let version = "0.7.3"
+    public static let version = "0.8.0"
 
     /// Basecamp API version this SDK targets.
-    public static let apiVersion = "2026-06-01"
+    public static let apiVersion = "2026-07-22"
 
     /// Default User-Agent header value.
     public static let defaultUserAgent = "basecamp-sdk-swift/\(version) (api:\(apiVersion))"

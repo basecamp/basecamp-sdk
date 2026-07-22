@@ -9,6 +9,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import com.basecamp.sdk.BasecampException
+import com.basecamp.sdk.requireSecureEndpoint
 import com.basecamp.sdk.http.currentTimeMillis
 
 /**
@@ -148,6 +149,9 @@ private suspend fun postTokenRequest(
     params: Parameters,
     client: HttpClient?,
 ): OAuthToken {
+    // Never POST credentials over cleartext (localhost exempt for dev/test).
+    requireSecureEndpoint(endpoint, "token endpoint")
+
     val httpClient = client ?: HttpClient()
     val shouldClose = client == null
 

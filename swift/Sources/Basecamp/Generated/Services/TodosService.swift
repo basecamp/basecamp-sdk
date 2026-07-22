@@ -60,6 +60,16 @@ public final class TodosService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func replace(todoId: Int, req: ReplaceTodoRequest) async throws -> Todo {
+        return try await request(
+            OperationInfo(service: "Todos", operation: "ReplaceTodo", resourceType: "todo", isMutation: true, resourceId: todoId),
+            method: "PUT",
+            path: "/todos/\(todoId)",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "ReplaceTodo")
+        )
+    }
+
     public func reposition(todoId: Int, req: RepositionTodoRequest) async throws {
         try await requestVoid(
             OperationInfo(service: "Todos", operation: "RepositionTodo", resourceType: "todo", isMutation: true, resourceId: todoId),
@@ -85,16 +95,6 @@ public final class TodosService: BaseService, @unchecked Sendable {
             method: "DELETE",
             path: "/todos/\(todoId)/completion.json",
             retryConfig: Metadata.retryConfig(for: "UncompleteTodo")
-        )
-    }
-
-    public func update(todoId: Int, req: UpdateTodoRequest) async throws -> Todo {
-        return try await request(
-            OperationInfo(service: "Todos", operation: "UpdateTodo", resourceType: "todo", isMutation: true, resourceId: todoId),
-            method: "PUT",
-            path: "/todos/\(todoId)",
-            body: req,
-            retryConfig: Metadata.retryConfig(for: "UpdateTodo")
         )
     }
 }

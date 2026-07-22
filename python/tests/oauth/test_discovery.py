@@ -41,13 +41,19 @@ class TestDiscover:
 
     @respx.mock
     def test_discover_localhost_allowed(self):
+        # Issuer must bind to the requested origin by code-point (RFC 8414).
+        local_metadata = {
+            "issuer": "http://localhost:3000",
+            "authorization_endpoint": "http://localhost:3000/oauth/authorize",
+            "token_endpoint": "http://localhost:3000/oauth/token",
+        }
         respx.get("http://localhost:3000/.well-known/oauth-authorization-server").mock(
-            return_value=httpx.Response(200, json=DISCOVERY_RESPONSE)
+            return_value=httpx.Response(200, json=local_metadata)
         )
 
         config = discover("http://localhost:3000")
 
-        assert config.issuer == DISCOVERY_RESPONSE["issuer"]
+        assert config.issuer == "http://localhost:3000"
 
     @respx.mock
     def test_discover_missing_fields(self):

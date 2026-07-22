@@ -4,8 +4,30 @@
   "title": "SDK Conformance Test",
   "description": "Schema for cross-language SDK conformance tests",
   "type": "object",
-  "required": ["name", "operation", "assertions"],
+  "required": ["name", "operation"],
+  "allOf": [
+    {
+      "if": { "anyOf": [
+        { "not": { "required": ["mode"] } },
+        { "properties": { "mode": { "const": "mock" } } }
+      ] },
+      "then": { "required": ["mockResponses", "assertions"] }
+    },
+    {
+      "if": { "properties": { "mode": { "const": "live" } }, "required": ["mode"] },
+      "then": {
+        "not": { "required": ["mockResponses"] },
+        "required": ["liveAssertions"]
+      }
+    }
+  ],
   "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["mock", "live"],
+      "default": "mock",
+      "description": "Execution mode. 'mock' (default) registers MSW handlers and asserts SDK behavior offline. 'live' dispatches against a real Basecamp backend, captures raw wire bytes, and validates against the OpenAPI response schema."
+    },
     "name": {
       "type": "string",
       "description": "Human-readable test name"
@@ -16,12 +38,12 @@
     },
     "operation": {
       "type": "string",
-      "description": "Operation ID from OpenAPI spec (e.g., ListProjects, GetTodo)"
+      "description": "Runner dispatch/scenario key. Usually an OpenAPI operation ID (e.g., ListProjects, GetTodo), but synthetic keys exist for SDK-surface scenarios that are not wire operations (e.g., EditTodo drives the SDK's edit closure, UpdateTodo the merge-safe update)"
     },
     "method": {
       "type": "string",
       "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
-      "description": "HTTP method for the operation"
+      "description": "HTTP method for the operation's wire request. Runners enforce it against the first captured request as an implicit invariant unless the case carries explicit requestMethod assertions (multi-hop scenarios describe their full wire sequence with indexed requestMethod assertions instead)"
     },
     "path": {
       "type": "string",
@@ -92,6 +114,9 @@
               "errorType",
               "noError",
               "requestPath",
+              "requestMethod",
+              "requestBody",
+              "requestBodyAbsent",
               "errorCode",
               "errorMessage",
               "errorField",
@@ -114,11 +139,11 @@
           },
           "path": {
             "type": "string",
-            "description": "JSONPath or dot-notation path for nested value assertions"
+            "description": "JSONPath or dot-notation path for nested value assertions. For requestBody / requestBodyAbsent, the key (dot-notation) inside the captured request body."
           },
           "index": {
             "type": "integer",
-            "description": "Request index for headerPresent / headerAbsent / headerInjected (0-based; negative values index from the end, e.g. -1 = last request). Default 0."
+            "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0."
           }
         }
       }
@@ -139,6 +164,80 @@
           "type": "integer",
           "description": "Override the maximum number of items to fetch across all pages"
         }
+      }
+    },
+    "liveAssertions": {
+      "type": "array",
+      "description": "Assertions evaluated when mode=live, against the raw wire response (not SDK-decoded structures).",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "liveCallSucceeds",
+              "liveResponseFieldsRequired",
+              "liveResponseFieldsExpected",
+              "liveSchemaValidate"
+            ],
+            "description": "liveCallSucceeds: dispatch returns without throwing, HTTP 2xx, JSON parses. liveResponseFieldsRequired: dotted paths that must be structurally present (per spec @required). liveResponseFieldsExpected: dotted paths that should be present; missing logs a warning, never fails. liveSchemaValidate: validate the raw wire body against the OpenAPI response schema for the operation."
+          },
+          "fields": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Dotted-path fields for liveResponseFieldsRequired / liveResponseFieldsExpected. Empty arrays count as present."
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Set false to disable a default-on assertion such as liveSchemaValidate."
+          }
+        }
+      }
+    },
+    "fixtureIds": {
+      "type": "object",
+      "description": "Placeholder names referenced in pathParams/queryParams for live tests (e.g., PROJECT_ID, TODOLIST_ID). Resolved per the fixture-ID ladder: explicit env var → generic env var → discovery → skip.",
+      "additionalProperties": { "type": "string" }
+    },
+    "pairwiseAssertions": {
+      "type": "array",
+      "description": "Rules that compare a BC4 wire snapshot to a BC5 wire snapshot of the same operation. Paths are dotted, relative to each snapshot body — equivalent to `pages[0].body.<path>` for single-page bodies; use explicit `pages[N].body.<path>` to address a specific page or `pages[*].body.<path>` to aggregate across pages. The empty path `\"\"` addresses the body root. These rules enforce the canary's additive-only invariant: BC5 must not regress fields/keys/values that BC4 emitted.",
+      "items": {
+        "type": "object",
+        "required": ["type", "paths"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "pairwiseSupersetArray",
+              "pairwiseSupersetKeys",
+              "pairwiseEqual",
+              "pairwiseDeltaAllowed"
+            ],
+            "description": "pairwiseSupersetArray: BC5 array length at each path must be >= BC4's. pairwiseSupersetKeys: BC5 object's keys at each path must be a superset of BC4's keys. pairwiseEqual: BC5 value at each path must equal BC4's (use sparingly; intended for type discriminators). pairwiseDeltaAllowed: paths where divergence is explicitly accepted; requires `reason`."
+          },
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "Dotted-path identifiers. Empty string \"\" addresses the body root. At least one path is required — an empty array is a meaningless rule and is rejected (the compare script would otherwise risk treating it as the body root)."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Free-form justification. Required for `pairwiseDeltaAllowed` (a public compatibility report indexes accepted divergences). Recommended for other rule types so the reader of a future failure knows the invariant being enforced."
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "pairwiseDeltaAllowed" } } },
+            "then": {
+              "required": ["reason"],
+              "properties": { "reason": { "minLength": 1 } }
+            }
+          }
+        ]
       }
     },
     "tags": {

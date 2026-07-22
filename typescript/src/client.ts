@@ -7,25 +7,21 @@
  */
 
 import createClient, { type Middleware } from "openapi-fetch";
-import { createRequire } from "node:module";
 import type { paths } from "./generated/schema.js";
+import metadata from "./generated/metadata.js";
 import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
-import type { BasecampHooks, OperationInfo, RequestInfo, RequestResult } from "./hooks.js";
+import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
-import { isLocalhost } from "./security.js";
+import { isLocalhost, requireSameOrigin } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
-
-// Use createRequire for JSON import (Node 18+ compatible)
-const require = createRequire(import.meta.url);
-const metadata = require("./generated/metadata.json") as OperationMetadata;
 
 // ============================================================================
 // Services - Generated from OpenAPI spec (spec-driven, not hand-written)
 // ============================================================================
 import { ProjectsService } from "./generated/services/projects.js";
-import { TodosService } from "./generated/services/todos.js";
+import { TodosService } from "./services/todos-extensions.js";
 import { TodolistsService } from "./generated/services/todolists.js";
 import { TodosetsService } from "./generated/services/todosets.js";
 import { HillChartsService } from "./generated/services/hill-charts.js";
@@ -223,8 +219,8 @@ export interface BasecampClientOptions {
   maxPages?: number;
 }
 
-export const VERSION = "0.7.3";
-export const API_VERSION = "2026-06-01";
+export const VERSION = "0.8.0";
+export const API_VERSION = "2026-07-22";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
@@ -285,7 +281,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   const client = createClient<paths>({ baseUrl });
 
   // Apply middleware in order: auth first, then hooks, then cache, then retry
-  client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs));
+  client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs, baseUrl));
 
   if (hooks) {
     client.use(createHooksMiddleware(hooks));
@@ -314,6 +310,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   // Create fetchPage closure for pagination — uses same auth & User-Agent as main client
   const fetchPage = async (url: string): Promise<Response> => {
+    requireSameOrigin(url, baseUrl);
     const headers = new Headers({
       "User-Agent": userAgent,
       Accept: "application/json",
@@ -324,6 +321,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   // Authenticated fetch for multipart uploads — adds auth + User-Agent, caller controls body/method
   const authenticatedFetch = async (url: string, init: RequestInit): Promise<Response> => {
+    requireSameOrigin(url, baseUrl);
     const headers = new Headers(init.headers);
     headers.set("User-Agent", userAgent);
     await authStrategy.authenticate(headers);
@@ -421,13 +419,17 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 // Auth Middleware
 // =============================================================================
 
-function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, requestTimeoutMs: number): Middleware {
+function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, requestTimeoutMs: number, baseUrl: string): Middleware {
   return {
     async onRequest({ request }) {
+      // Backstop: never attach credentials to a foreign origin.
+      requireSameOrigin(request.url, baseUrl);
       await authStrategy.authenticate(request.headers);
       request.headers.set("User-Agent", userAgent);
-      // Only set Content-Type if not already set (preserves binary uploads, etc.)
-      if (!request.headers.has("Content-Type")) {
+      // Content-Type describes a request body, so set the JSON default only when a
+      // body is present and not already typed (preserves binary uploads, etc.).
+      // bc3 silently discards query params on GET requests that carry a Content-Type.
+      if (request.body !== null && !request.headers.has("Content-Type")) {
         request.headers.set("Content-Type", "application/json");
       }
       request.headers.set("Accept", "application/json");
@@ -671,16 +673,6 @@ function getCacheKey(url: string, tokenHash: string): string {
 // =============================================================================
 // Retry Middleware
 // =============================================================================
-
-/**
- * Type for the metadata.json file structure.
- */
-interface OperationMetadata {
-  operations: Record<string, {
-    retry?: RetryConfig;
-    idempotent?: { natural: boolean };
-  }>;
-}
 
 /**
  * Retry configuration matching x-basecamp-retry extension schema.

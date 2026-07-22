@@ -1,0 +1,13 @@
+{
+  "name": "hop1-transport-failure",
+  "description": "Hop-1 fetch fails at the transport layer (connection refused) → soft resource_discovery_failed → Launchpad.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": { "transportError": true },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "resource_discovery_failed",
+    "launchpadContacted": true
+  }
+}

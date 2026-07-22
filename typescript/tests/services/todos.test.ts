@@ -108,21 +108,250 @@ describe("TodosService", () => {
   });
 
   describe("update", () => {
-    it("should update a todo", async () => {
+    const fullTodo = (id = 42) => ({
+      ...sampleTodo(id),
+      starts_on: "2024-02-01",
+      completion_subscribers: [{ id: 555, name: "Sub Scriber" }],
+    });
+
+    it("merges: an omitted field is preserved from the GET", async () => {
       const todoId = 42;
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
 
       server.use(
+        http.get(`${BASE_URL}/todos/${todoId}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(fullTodo(todoId));
+        }),
         http.put(`${BASE_URL}/todos/${todoId}`, async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          expect(body.content).toBe("Updated task");
-          return HttpResponse.json(sampleTodo(todoId));
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo(todoId));
         })
       );
 
-      const todo = await client.todos.update(todoId, {
-        content: "Updated task",
-      });
+      const todo = await client.todos.update(todoId, { content: "Updated task" });
       expect(todo.id).toBe(todoId);
+      expect(requests).toEqual(["GET", "PUT"]);
+      expect(putBody.content).toBe("Updated task");
+      expect(putBody.description).toBe("<p>From the store</p>");
+      expect(putBody.due_on).toBe("2024-03-01");
+      expect(putBody.starts_on).toBe("2024-02-01");
+      expect(putBody.assignee_ids).toEqual([100]);
+      expect(putBody.completion_subscriber_ids).toEqual([555]);
+      expect(putBody).not.toHaveProperty("notify");
+    });
+
+    it("clears with an explicitly-passed empty array", async () => {
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      await client.todos.update(42, { assigneeIds: [] });
+      expect(putBody.assignee_ids).toEqual([]);
+      expect(putBody.completion_subscriber_ids).toEqual([555]);
+      expect(putBody.content).toBe("Buy milk");
+    });
+
+    it("sends notify only when true", async () => {
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      await client.todos.update(42, { content: "ping", notify: true });
+      expect(putBody.notify).toBe(true);
+    });
+
+    it("hooks observe the wire operations GetTodo then ReplaceTodo", async () => {
+      const operations: string[] = [];
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            operations.push(info.operation);
+          },
+        },
+      });
+
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo()))
+      );
+
+      await hookedClient.todos.update(42, { content: "observed" });
+      expect(operations).toEqual(["GetTodo", "ReplaceTodo"]);
+    });
+  });
+
+  describe("edit", () => {
+    const fullTodo = (id = 42) => ({
+      ...sampleTodo(id),
+      completion_subscribers: [{ id: 555, name: "Sub Scriber" }],
+    });
+
+    it("hands the callback current state and PUTs everything back", async () => {
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      const todo = await client.todos.edit(42, (t) => {
+        expect(t.content).toBe("Buy milk");
+        t.content = `🚨 ${t.content}`;
+      });
+      expect(todo.id).toBe(42);
+      expect(putBody.content).toBe("🚨 Buy milk");
+      expect(putBody.description).toBe("<p>From the store</p>");
+      expect(putBody.assignee_ids).toEqual([100]);
+    });
+
+    it("clears a date by setting it empty — omitted from the PUT body", async () => {
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      await client.todos.edit(42, (t) => {
+        expect(t.dueOn).toBe("2024-03-01");
+        t.dueOn = "";
+      });
+      expect(putBody).not.toHaveProperty("due_on");
+      expect(putBody.content).toBe("Buy milk");
+    });
+
+    it("clears description and ID lists explicitly — present-and-empty in the PUT body", async () => {
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      await client.todos.edit(42, (t) => {
+        t.description = "";
+        t.assigneeIds = [];
+        t.completionSubscriberIds = [];
+      });
+      expect(putBody.description).toBe("");
+      expect(putBody.assignee_ids).toEqual([]);
+      expect(putBody.completion_subscriber_ids).toEqual([]);
+    });
+
+    it("aborts without a PUT when the callback throws", async () => {
+      let putCount = 0;
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, () => {
+          putCount++;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      await expect(
+        client.todos.edit(42, () => {
+          throw new Error("abort");
+        })
+      ).rejects.toThrow("abort");
+      expect(putCount).toBe(0);
+    });
+
+    it("supports async callbacks", async () => {
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(fullTodo());
+        })
+      );
+
+      await client.todos.edit(42, async (t) => {
+        t.content = await Promise.resolve("async content");
+      });
+      expect(putBody.content).toBe("async content");
+    });
+
+    it("hooks observe the wire operations GetTodo then ReplaceTodo", async () => {
+      const operations: string[] = [];
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            operations.push(info.operation);
+          },
+        },
+      });
+
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo())),
+        http.put(`${BASE_URL}/todos/42`, () => HttpResponse.json(fullTodo()))
+      );
+
+      await hookedClient.todos.edit(42, (t) => {
+        t.content = "observed";
+      });
+      expect(operations).toEqual(["GetTodo", "ReplaceTodo"]);
+    });
+  });
+
+  describe("replace", () => {
+    it("sends the sparse request verbatim with no GET", async () => {
+      const requests: string[] = [];
+      let putBody: Record<string, unknown> = {};
+      server.use(
+        http.get(`${BASE_URL}/todos/42`, () => {
+          requests.push("GET");
+          return HttpResponse.json(sampleTodo(42));
+        }),
+        http.put(`${BASE_URL}/todos/42`, async ({ request }) => {
+          requests.push("PUT");
+          putBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleTodo(42));
+        })
+      );
+
+      const todo = await client.todos.replace(42, { content: "the whole new todo" });
+      expect(todo.id).toBe(42);
+      expect(requests).toEqual(["PUT"]);
+      expect(putBody.content).toBe("the whole new todo");
+      // Unset fields are omitted — the server clears them.
+      expect(putBody).not.toHaveProperty("description");
+      expect(putBody).not.toHaveProperty("assignee_ids");
+      expect(putBody).not.toHaveProperty("completion_subscriber_ids");
+      expect(putBody).not.toHaveProperty("due_on");
+      expect(putBody).not.toHaveProperty("starts_on");
+      expect(putBody).not.toHaveProperty("notify");
+    });
+
+    it("requires content", async () => {
+      await expect(
+        client.todos.replace(42, { content: "" })
+      ).rejects.toThrow(BasecampError);
     });
   });
 

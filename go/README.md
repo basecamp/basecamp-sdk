@@ -115,6 +115,60 @@ func main() {
 }
 ```
 
+### OAuth discovery (resource-first)
+
+BC5's authorization-server (AS) metadata lives only at its canonical issuer (the
+web host), so discovery starts from the **resource** (RFC 9728) and composes with
+AS metadata discovery (RFC 8414). The `oauth` package exposes three composable
+operations on `*oauth.Discoverer`:
+
+```go
+import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
+
+d := oauth.NewDiscoverer(http.DefaultClient)
+
+// RFC 8414 — authorization-server metadata, with issuer binding.
+cfg, err := d.Discover(ctx, "https://launchpad.37signals.com")
+
+// RFC 9728 — protected-resource metadata (hop 1).
+meta, err := d.DiscoverProtectedResource(ctx, "https://3.basecampapi.com")
+
+// Orchestrator — resource-first selection + stage-sensitive fallback.
+result, err := d.DiscoverFromResource(ctx, "https://3.basecampapi.com")
+if err != nil {
+    // Hard failure — never fall back to Launchpad. Match with errors.Is:
+    switch {
+    case errors.Is(err, oauth.ErrAmbiguousIssuers):          // ≥2 non-Launchpad issuers, no expected issuer
+    case errors.Is(err, oauth.ErrExpectedIssuerUnavailable): // expected issuer not advertised
+    case errors.Is(err, oauth.ErrInvalidIssuerOrigin):       // advertised issuer is not a valid origin root
+    case errors.Is(err, oauth.ErrASFetchFailed):             // committed issuer's AS metadata unavailable
+    case errors.Is(err, oauth.ErrIssuerMismatch):            // committed issuer's metadata fails issuer binding
+    }
+    return err
+}
+if result.IsFallback() {
+    // Soft fallback: result.FallbackReason is resource_discovery_failed or
+    // no_as_advertised. Fall back to Launchpad (oauth.LaunchpadBaseURL).
+} else {
+    use(result.Config, result.Issuer) // selected BC5 authorization server
+}
+```
+
+Pass `oauth.WithExpectedIssuer(issuer)` to select an issuer authoritatively
+instead of by the exclude-Launchpad heuristic; `oauth.WithTimeout` and
+`oauth.WithMaxBodyBytes` tune each fetch.
+
+Notes:
+
+- `Config.AuthorizationEndpoint` is now `*string` (optional): device-only servers
+  omit it, so authorization-code consumers must assert its presence before use.
+  `Config` also carries `DeviceAuthorizationEndpoint *string` and
+  `GrantTypesSupported []string`.
+- Every fetch is SSRF-hardened: origins are validated with `net/url` before any
+  socket opens, HTTPS is required (localhost exempt), redirects are suppressed,
+  timeouts are bounded, and bodies are read under a bounded cap. Non-2xx on
+  either hop surfaces as an `api_error`.
+
 ## Configuration
 
 ### Environment Variables

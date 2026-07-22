@@ -14,7 +14,7 @@ All SDK implementations enforce HTTPS for API communication with specific except
 | OAuth endpoints | Yes | Yes - for local OAuth testing |
 | Webhook payload URLs | Yes | **No** - webhooks are production-only |
 
-Localhost is defined as: `localhost`, `127.0.0.1`, or `::1`.
+Localhost is defined as: `localhost`, any `*.localhost` subdomain (RFC 6761), `127.0.0.1`, or the IPv6 loopback `::1` (also accepted in its bracketed URL form `[::1]`). Host matching is case-insensitive.
 
 **Rationale**: Base URLs and OAuth endpoints may use localhost during development. Webhook payload URLs never allow localhost because webhooks are a server-to-server feature that only makes sense in production contexts.
 
@@ -22,6 +22,15 @@ Localhost is defined as: `localhost`, `127.0.0.1`, or `::1`.
 
 #### Cross-Origin Redirect Handling
 Authorization headers are automatically stripped when HTTP redirects cross origin boundaries. This prevents credential leakage to third-party hosts.
+
+#### Same-Origin Credential Attachment
+The bearer token is attached only to requests targeting the configured base-URL origin (with a localhost carve-out for development and testing). When a caller supplies an absolute URL as the request path, its origin must match the configured base URL or the request is rejected **before any network call is made** — so the credential can never be sent to a foreign host.
+
+This is enforced at two layers:
+- **URL-build chokepoint**: the URL builder rejects absolute URLs whose origin differs from the configured base URL.
+- **Token-attach backstop**: immediately before the `Authorization` header is added, the request origin is re-checked, so the invariant holds even if a future code path bypasses the URL builder.
+
+The one intentional exception is the authenticated request to the OAuth **authorization endpoint** — by default Launchpad's (`https://launchpad.37signals.com/authorization.json`). Some SDKs let callers override this endpoint, validated as HTTPS (or localhost) before the token is attached. This is the sole sanctioned cross-origin credentialed request, and it complements the redirect Authorization-stripping and same-origin pagination `Link` validation described above.
 
 #### Pagination Security
 Link headers from paginated responses are validated for same-origin before following. This prevents:

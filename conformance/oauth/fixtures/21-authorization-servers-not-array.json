@@ -1,0 +1,19 @@
+{
+  "name": "authorization-servers-not-array",
+  "description": "Hop-1 authorization_servers is a JSON string, not an array. Structural validation must reject it as malformed metadata (never iterate its characters as issuers) → soft resource_discovery_failed → Launchpad.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": "{{BC5_ISSUER}}"
+    }
+  },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "resource_discovery_failed",
+    "launchpadContacted": true
+  }
+}

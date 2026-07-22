@@ -1,0 +1,20 @@
+{
+  "name": "device-only-as",
+  "description": "AS metadata omits authorization_endpoint (device-only client). discover succeeds; the auth-code consumer must assert presence and error, the device consumer proceeds.",
+  "operation": "discover",
+  "issuerOrigin": "{{ISSUER_ORIGIN}}",
+  "hop2": {
+    "origin": "{{ISSUER_ORIGIN}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{ISSUER_ORIGIN}}",
+      "token_endpoint": "{{ISSUER_ORIGIN}}/oauth/token",
+      "device_authorization_endpoint": "{{ISSUER_ORIGIN}}/oauth/device",
+      "grant_types_supported": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"]
+    }
+  },
+  "expect": {
+    "outcome": "selected",
+    "selectedIssuer": "{{ISSUER_ORIGIN}}"
+  }
+}

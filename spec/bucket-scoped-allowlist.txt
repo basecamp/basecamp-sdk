@@ -1,0 +1,8 @@
+# Bucket-scoped list operations that legitimately have no flat counterpart.
+# One path-pattern per line. Format must match the OpenAPI path exactly.
+# Each entry should have a justification comment immediately above it.
+# Read by scripts/check-bucket-flat-parity.sh.
+
+# Webhooks are inherently per-project: a webhook subscribes to events scoped
+# to a single project, so there is no meaningful account-wide aggregate.
+/{accountId}/buckets/{bucketId}/webhooks.json

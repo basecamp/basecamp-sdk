@@ -266,6 +266,22 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 
 The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 40 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
 
+### Merge-Safe Write Surface (Todos)
+
+The `PUT /{accountId}/todos/{todoId}` endpoint is **full replace, omission clears** (spec operation `ReplaceTodo`, `content` required, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). Every SDK exposes a three-method, two-state surface over it:
+
+- **`update`** — merge-safe. GET the current todo → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed; an explicitly-passed empty collection is a set (clears). Set-detection is language-native: Go zero-value guards, TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`.
+- **`edit`** — read-modify-write closure over the full writable state (`TodoFields`: content, description, assignee_ids, completion_subscriber_ids, due_on, starts_on, notify). Clear = set empty (`""`/`[]`); a closure error/throw aborts before the PUT. Python's form is a context manager (`with`/`async with`) whose `.result` holds the updated todo after clean exit (RuntimeError before completion).
+- **`replace`** — the generated wire method: verbatim sparse PUT, no GET, omission clears, content required.
+
+Full-state serialization (update/edit): content, description, and both ID lists are always sent (empties included, so clears survive); dates only when non-empty (the server clears an omitted date, and `""` is a format error); `notify` only when true (a send directive, never populated from GET).
+
+**Hook contract:** update/edit compose the public get + replace, so hooks observe the wire operations under each SDK's native identities (conceptually one GetTodo + one ReplaceTodo; one ReplaceTodo for replace) — never a synthetic composite. This keeps retry/idempotency policy keyed to the wire operation and the mutation always observable/gateable as a replace. Precedent: `uploads.download` surfaces its constituent operations the same way.
+
+**Race:** update/edit are read-modify-write, not atomic. There is no conditional-update signal on this endpoint; a concurrent write between the GET and PUT is overwritten — last write wins for the whole representation, with a window of one round-trip. Use `replace` to overwrite deliberately.
+
+Conformance: `conformance/tests/todos_write.json` (`update-merge`, `edit-clear`, `replace-omission-clears`).
+
 ### Known Gaps (informational, not prescriptive)
 
 - Go is missing a standalone `automation` service; `clientVisibility` is implemented on `RecordingsService` (not a separate service); uses singular `Timesheet` vs `timesheets`
@@ -912,16 +928,161 @@ FUNCTION generateState() → String
 END
 ```
 
-### RFC 8414 Discovery
+### Resource-First Discovery `[conformance]`
+
+*Rubric-critical: BC5 OAuth go-live (communique §2/§3).*
+
+BC5's Authorization Server (AS) metadata lives **only** at the canonical issuer
+(the web host, e.g. `https://3.basecamp.com`). Probing the API host
+(`3.basecampapi.com/.well-known/oauth-authorization-server`) 404s permanently
+because RFC 8414 §3.3 requires `issuer` to equal the URL the metadata was
+derived from, and BC5's issuer is the web host. Discovery therefore starts from
+the **resource** (RFC 9728) and composes with AS discovery (RFC 8414).
+
+**Two composable operations, never merged:**
+
+1. `discover(issuerURL)` — RFC 8414 AS metadata (unchanged public op).
+2. `discoverProtectedResource(resourceOrigin)` — RFC 9728 resource metadata.
+
+A third orchestrator, `discoverFromResource(resourceOrigin, expectedIssuer?)`,
+composes them and encodes selection + the stage-sensitive fallback below.
+
+#### Origin-root profile `[conformance]`
+
+Both hops derive a well-known path from a caller- or metadata-supplied origin.
+The origin MUST be parsed with the SDK's **own transport URL parser** (Go
+`net/url`, JS `URL`, Python `urllib`, Ruby `URI`, Kotlin the extracted Ktor
+`parseAbsoluteUrl`) — never a hand-rolled regex, because bracketed IPv6
+(`http://[::1]:3000`) and ports break naive regexes and can disagree with the
+host the client actually dials.
 
 ```
-FUNCTION discoverOAuthEndpoints(issuer: String) → OAuthEndpoints
-  1. Fetch issuer + "/.well-known/oauth-authorization-server". (Basecamp's Launchpad issuer is at the origin root; RFC 8414 path-segment rules do not apply.)
-  2. Parse JSON response.
-  3. Extract authorization_endpoint, token_endpoint.
-  4. → OAuthEndpoints
+FUNCTION requireOriginRoot(raw: String) → Origin | raise usage
+  1. parsed = transportParser.parse(raw)          # fail-closed on parse error
+  2. REQUIRE scheme ∈ {https} OR (scheme == http AND isLocalhost(host))
+  3. REQUIRE host present
+  4. REQUIRE port absent OR a valid numeric port
+  5. REQUIRE path is empty OR exactly "/"
+  6. REQUIRE no query, no fragment, no userinfo
+  7. → origin = scheme "://" host [":" port]
+  # A bad caller-supplied origin is a usage error; a bad *advertised* issuer
+  # origin is a discovery-classification failure (see fallback table).
 END
 ```
+
+Accept `http://[::1]:3000`; reject `http://[::1]:notaport`, any path beyond `/`,
+and any query/fragment/userinfo.
+
+#### Hop 1 — RFC 9728 resource metadata `[conformance]`
+
+```
+FUNCTION discoverProtectedResource(resourceOrigin: String) → ProtectedResourceMetadata
+  1. origin = requireOriginRoot(resourceOrigin)
+  2. doc = fetchJSON(origin + "/.well-known/oauth-protected-resource")   # SSRF-hardened
+  3. REQUIRE doc.resource present and non-empty
+  4. REQUIRE doc.resource IDENTICAL BY CODE-POINT to the resource identifier used
+            (the requested resourceOrigin); NO normalization
+  5. authorization_servers is OPTIONAL; preserve absent vs [] DISTINCTLY
+  6. → ProtectedResourceMetadata{ resource, authorizationServers? }
+END
+```
+
+`ProtectedResourceMetadata` models `authorization_servers` as a nullable list so
+"key absent" (BC5 omits it while dark) and "present but empty `[]`" stay
+distinguishable at the type level, even though both select Launchpad.
+
+#### Hop 2 — RFC 8414 AS metadata with issuer binding `[conformance]`
+
+```
+FUNCTION discover(issuerURL: String) → OAuthConfig
+  1. origin = requireOriginRoot(issuerURL)
+  2. doc = fetchJSON(origin + "/.well-known/oauth-authorization-server")  # SSRF-hardened
+  3. REQUIRE doc.issuer present, non-empty, and IDENTICAL BY CODE-POINT to
+            issuerURL (the advertised issuer string); NO normalization  # RFC 8414 §3.3/§4
+  4. Universal endpoint validation: token_endpoint present + non-empty;
+     any endpoint field that IS present must be non-empty (reject "").
+  5. authorization_endpoint is OPTIONAL (device-only AS omit it).
+  6. → OAuthConfig{ issuer, tokenEndpoint, authorizationEndpoint?, ... }
+END
+```
+
+**Per-grant endpoint validation is the consumer's, not `discover`'s.** `discover`
+no longer requires `authorization_endpoint`. Each consumer asserts the endpoints
+its grant needs:
+- authorization-code: `authorization_endpoint` + `token_endpoint`.
+- device flow: `device_authorization_endpoint` + `token_endpoint`.
+
+#### `authorization_endpoint` is now OPTIONAL `[static]`
+
+Previously required in every SDK model; now optional/nullable, preserving absent
+vs present-empty (Go `*string`, TS `authorizationEndpoint?`, Python `str | None`,
+Ruby kw default `nil`, Kotlin `String? = null`). `token_endpoint` stays required.
+**Public-compatibility impact:** a previously-always-present field becomes
+optional — authorization-code consumers MUST assert presence before use.
+
+#### Selection — one name, one rule `[conformance]`
+
+`expectedIssuer` is the single selection parameter (`preferredIssuer` is dropped).
+
+```
+FUNCTION selectIssuer(advertised: [String], expectedIssuer?: String)
+  IF expectedIssuer provided:                       # explicit, authoritative
+    IF ∃ m ∈ advertised with m == expectedIssuer (code-point): SELECT m
+    ELSE raise expected_issuer_unavailable          # HARD
+  ELSE:                                              # Basecamp-profile heuristic
+    nonLaunchpad = advertised \ {Launchpad}          #   (identification by exclusion)
+    IF |nonLaunchpad| == 1: SELECT that member       # documented heuristic
+    IF |nonLaunchpad| ≥ 2: raise ambiguous_issuers   # HARD — never guess
+    IF |nonLaunchpad| == 0: soft no_as_advertised → Launchpad
+END
+```
+
+The SDK does not know BC5's canonical issuer a priori; during migration the
+advertised set is {BC5 canonical, Launchpad}, so exactly-one-non-Launchpad
+identifies BC5 by exclusion. Callers wanting no heuristic pass `expectedIssuer`.
+
+#### Stage-sensitive fallback state machine `[conformance]`
+
+Launchpad fallback is allowed **only before BC5 is committed**. Once valid
+resource metadata advertises BC5 and it is selected, every later failure is
+**fatal — no Launchpad request may be issued.**
+
+| Stage / failure | Outcome |
+|---|---|
+| Hop-1 fetch/parse fails, or `resource` mismatch | **soft** `resource_discovery_failed` → Launchpad |
+| Valid resource metadata omits BC5 (absent / `[]` / only-Launchpad) | **soft** `no_as_advertised` → select Launchpad |
+| ≥2 non-Launchpad issuers advertised (no `expectedIssuer`) | **hard** `ambiguous_issuers` |
+| `expectedIssuer` provided but not advertised | **hard** `expected_issuer_unavailable` |
+| BC5 committed → invalid BC5 issuer origin | **hard** `invalid_issuer_origin` |
+| BC5 committed → AS-metadata fetch fails (5xx / network) | **hard** `as_fetch_failed` |
+| BC5 committed → issuer binding mismatch | **hard** `issuer_mismatch` |
+| BC5 committed → missing per-grant endpoint/capability | **hard** `capability_unavailable` (consumer-asserted) |
+
+`discoverFromResource` returns `Selected(config)` **or** `FallBack(reason)` where
+`reason ∈ {resource_discovery_failed, no_as_advertised}` ONLY, and **raises** a
+typed selection error for every hard case. **No consumer may convert a raise into
+a Launchpad request.** ("BC5 committed" = valid resource metadata advertised a
+BC5 issuer that was then selected.)
+
+#### SSRF hardening — both hops, all five SDKs `[conformance]`
+
+RFC 9728 §7.7 flags SSRF via attacker-influenced metadata; advertised AS URLs are
+untrusted input. Every `fetchJSON` above MUST:
+
+1. **Require HTTPS** (localhost exempt) — validated by `requireOriginRoot` before
+   any socket is opened.
+2. **Bound the timeout.**
+3. **Suppress redirects** — fetch `redirect:"error"` (TS) / `CheckRedirect:
+   ErrUseLastResponse` (Go) / `followRedirects=false` (Ktor) /
+   `follow_redirects=False` (httpx) / no redirect middleware (Faraday) — or
+   re-validate each target against the origin-root profile.
+4. **Read the body under a genuine, bounded/streaming cap that aborts once the
+   limit is exceeded** — NOT a post-hoc size check on an already-buffered body.
+   Python (`httpx.stream()`) and Ruby (Faraday `on_data`/capped read) must switch
+   from buffered reads to bounded streaming reads; Go/Kotlin/TS gain bounded reads
+   they lack today.
+
+Non-2xx on either hop → `api_error` (not `network`).
 
 ### Launchpad Legacy Format
 
@@ -1026,6 +1187,18 @@ When serializing request bodies to JSON, strip keys with null/nil values. Do not
 
 The generated service method must pass its operation name to the HTTP transport layer so the retry middleware can look up the operation's idempotency flag in `behavior-model.json` for Gate 2 (§7).
 
+### Hand-Written Composite Methods `[manual]`
+
+All wire operations are generated (rubric 1A.6). One narrow exception is sanctioned: a hand-written **composite convenience method** may be added on top of a generated service when the generator cannot express a safety-critical surface. A composite is permitted only when all of the following hold:
+
+1. **No hand-written wire I/O.** Every request flows through public generated wire methods (Go: through the shared generated-client transport). No manual path construction or verb selection. Bodies use the generated request types, with one Go-specific carve-out: where zero-value + `omitempty` request structs cannot express always-send-empty semantics, the composite's private transport MAY marshal an explicit body map and call the operation's generated `*WithBody` variant — the generated wrapper still owns path, verb, content type, and response decoding, and the operation identity still reaches hooks and retry. This is the only sanctioned use of hand-marshaled bodies; sparse public methods keep using the generated request types.
+2. **Composition, not substitution.** It composes existing generated operations (e.g. GET → overlay → full PUT); it never introduces a wire operation the spec lacks — fix the spec and regenerate instead.
+3. **Native hook identities.** Hooks observe the constituent wire operations under their normal per-language identities; composites never mint synthetic operation names.
+4. **Conformance-covered.** The composite's behavior is encoded in `conformance/tests/` fixtures run by every runner (with native test mirrors where a runner does not exist yet, e.g. Swift).
+5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/todos-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
+
+Current composites: Todos `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
+
 ---
 
 ## §19. Conformance Testing
@@ -1109,7 +1282,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | 6 | 2C.5 | Cross-origin pagination Link header rejected | §8 | `[conformance]` |
 | 7 | 3C.1 | HTTPS enforcement for non-localhost | §9 | `[conformance]` |
 | 8 | 1C.3 | No manual path construction | §3, §18 | `[manual]` |
-| 9 | 1A.6 | No hand-written API methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F) | §18 | `[manual]` |
+| 9 | 1A.6 | No hand-written wire methods (multi-language only; Go uses hand-written service wrappers around generated client — see Appendix F). Conformance-tested composites over generated operations are permitted per §18 "Hand-Written Composite Methods" | §18 | `[manual]` |
 | 10 | 4A.1 | Smithy → OpenAPI freshness check | §21 | `[static]` |
 
 ---
@@ -1202,7 +1375,7 @@ attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, 
 |-----------|-------------|---------|
 | 1A.1 | §18, §21 | Smithy model validates |
 | 1A.2 | §18, §21 | OpenAPI derived from Smithy |
-| 1A.6 | §18 | No hand-written API methods |
+| 1A.6 | §18 | No hand-written wire methods; conformance-tested composites permitted |
 | 1B.2 | §18 | Types generated from OpenAPI schema |
 | 1B.4 | §10 | Optional fields use language optionals |
 | 1B.5 | §10 | Date fields use ISO 8601 / native types |

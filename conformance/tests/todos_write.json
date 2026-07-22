@@ -1,0 +1,546 @@
+[
+  {
+    "name": "update-merge: content-only update preserves every unset field",
+    "description": "The merge-safe update GETs the current todo, overlays only the explicitly-set fields, and PUTs the full representation back to the canonical flat route. A content-only update must carry over description, dates, assignees (mapped Person → assignee_ids), and completion subscribers, and must not send notify.",
+    "operation": "UpdateTodo",
+    "method": "PUT",
+    "path": "/todos/{todoId}",
+    "pathParams": {
+      "todoId": 456
+    },
+    "requestBody": {
+      "content": "New title"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": "<p>From the store</p>",
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ]
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": "<p>From the store</p>",
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/456",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/456",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "content",
+        "expected": "New title",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "<p>From the store</p>",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "due_on",
+        "expected": "2024-03-01",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "starts_on",
+        "expected": "2024-02-01",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "assignee_ids",
+        "expected": [
+          100
+        ],
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "completion_subscriber_ids",
+        "expected": [
+          555
+        ],
+        "index": 1
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "notify",
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "todos",
+      "write",
+      "merge"
+    ]
+  },
+  {
+    "name": "edit-clear: setting fields empty clears them while everything else is preserved",
+    "description": "The edit closure receives the todo's full writable state; the runner assigns each requestBody key onto the corresponding field. Clearing description and assignee_ids (set empty) must arrive present-and-empty in the PUT body, while untouched content, due dates, and completion subscribers are carried over from the GET.",
+    "operation": "EditTodo",
+    "method": "PUT",
+    "path": "/todos/{todoId}",
+    "pathParams": {
+      "todoId": 456
+    },
+    "requestBody": {
+      "description": "",
+      "assignee_ids": []
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": "<p>From the store</p>",
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ]
+        }
+      },
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": "<p>From the store</p>",
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "requestMethod",
+        "expected": "GET",
+        "index": 0
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 1
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/456",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "description",
+        "expected": "",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "assignee_ids",
+        "expected": [],
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "content",
+        "expected": "Buy milk",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "due_on",
+        "expected": "2024-03-01",
+        "index": 1
+      },
+      {
+        "type": "requestBody",
+        "path": "completion_subscriber_ids",
+        "expected": [
+          555
+        ],
+        "index": 1
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "todos",
+      "write",
+      "edit",
+      "clear"
+    ]
+  },
+  {
+    "name": "replace-omission-clears: sparse replace sends the request verbatim with no GET",
+    "description": "Replace is the server-native verbatim PUT: exactly one request, no read-before-write, and any field omitted from the request is omitted from the body (the server clears it). Content is required and must be present.",
+    "operation": "ReplaceTodo",
+    "method": "PUT",
+    "path": "/todos/{todoId}",
+    "pathParams": {
+      "todoId": 456
+    },
+    "requestBody": {
+      "content": "The whole new todo"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 456,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-15T10:00:00Z",
+          "updated_at": "2024-01-15T10:00:00Z",
+          "title": "Buy milk",
+          "inherits_status": true,
+          "type": "Todo",
+          "url": "https://3.basecampapi.com/999/buckets/1/todos/456.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/todos/456",
+          "bookmark_url": "https://3.basecampapi.com/999/my/bookmarks/abc123.json",
+          "content": "Buy milk",
+          "description": "<p>From the store</p>",
+          "due_on": "2024-03-01",
+          "starts_on": "2024-02-01",
+          "completed": false,
+          "comments_count": 0,
+          "position": 1,
+          "parent": {
+            "id": 2,
+            "title": "Todolist",
+            "type": "Todolist",
+            "url": "https://3.basecampapi.com/999/buckets/1/todolists/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/todolists/2"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "Project",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User",
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+          },
+          "assignees": [
+            {
+              "id": 100,
+              "name": "Jane Doe",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ],
+          "completion_subscribers": [
+            {
+              "id": 555,
+              "name": "Sub Scriber",
+              "created_at": "2024-01-01T00:00:00Z",
+              "updated_at": "2024-01-01T00:00:00Z"
+            }
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/456",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "content",
+        "expected": "The whole new todo",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "description",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "assignee_ids",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "completion_subscriber_ids",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "due_on",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "starts_on",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "notify",
+        "index": 0
+      }
+    ],
+    "tags": [
+      "todos",
+      "write",
+      "replace"
+    ]
+  }
+]

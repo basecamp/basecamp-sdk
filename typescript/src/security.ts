@@ -5,6 +5,9 @@
  * sensitive information like tokens and cookies.
  */
 
+import { isSameOrigin } from "./pagination-utils.js";
+import { BasecampError, truncateErrorMessage } from "./errors.js";
+
 /**
  * Headers that contain sensitive values and should be redacted.
  */
@@ -101,16 +104,74 @@ export function redactHeadersRecord(
  * isLocalhost("myapp.localhost");     // true
  * isLocalhost("127.0.0.1");           // true
  * isLocalhost("::1");                 // true
+ * isLocalhost("[::1]");               // true (bracketed IPv6 from URL.hostname)
  * isLocalhost("example.com");         // false
  * isLocalhost("localhost.example.com"); // false
  * ```
  */
 export function isLocalhost(hostname: string): boolean {
-  const normalized = hostname.toLowerCase();
+  // URL.hostname returns IPv6 literals bracketed (e.g. "[::1]"); strip the
+  // brackets so the loopback comparison matches.
+  const normalized = hostname.toLowerCase().replace(/^\[(.*)\]$/, "$1");
   return (
     normalized === "localhost" ||
     normalized === "127.0.0.1" ||
     normalized === "::1" ||
     normalized.endsWith(".localhost")
   );
+}
+
+/**
+ * Returns true when `target` shares an origin with `base`, or when `target`
+ * is a localhost URL (dev/test carve-out, consistent with the base-URL HTTPS
+ * check in createBasecampClient).
+ */
+export function isSameOriginAllowingLocalhost(target: string, base: string): boolean {
+  try {
+    if (isSameOrigin(target, base)) return true;
+    // The localhost carve-out is limited to HTTP(S) so credentials fail closed
+    // on any other scheme.
+    const parsed = new URL(target);
+    return (
+      (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+      isLocalhost(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Throws a BasecampError unless `target` is same-origin with the configured
+ * base URL (localhost carve-out). This keeps the bearer token from being
+ * attached to a foreign host on the initial, caller-influenced request —
+ * mirroring the same-origin guard already applied to pagination Link headers
+ * and cross-origin redirects.
+ */
+export function requireSameOrigin(target: string, base: string): void {
+  if (!isSameOriginAllowingLocalhost(target, base)) {
+    throw new BasecampError(
+      "validation",
+      `Refusing to send credentials to a different origin than the configured base URL: ${truncateErrorMessage(target)}`
+    );
+  }
+}
+
+/**
+ * Validates that an endpoint URL is secure: HTTPS everywhere, with plain HTTP
+ * permitted only for localhost (RFC 6761) during local development. Any other
+ * scheme is rejected. Used to validate caller-supplied authorization endpoint
+ * overrides before the bearer token is attached.
+ */
+export function requireSecureEndpoint(url: string, label: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new BasecampError("validation", `Invalid ${label}: ${truncateErrorMessage(url)}`);
+  }
+  const isLocalhostHttp = parsed.protocol === "http:" && isLocalhost(parsed.hostname);
+  if (parsed.protocol !== "https:" && !isLocalhostHttp) {
+    throw new BasecampError("validation", `${label} must use HTTPS: ${truncateErrorMessage(url)}`);
+  }
 }

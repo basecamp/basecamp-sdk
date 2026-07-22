@@ -133,6 +133,50 @@ if token.expired?
 end
 ```
 
+### Resource-First Discovery (RFC 9728 + RFC 8414)
+
+BC5's Authorization Server (AS) metadata lives only at the canonical issuer (the
+web host), so discovery starts from the **resource** (the API host) rather than
+probing the API host for AS metadata. Three composable operations are provided:
+
+```ruby
+# RFC 8414 — AS metadata for a known issuer, bound to the requested issuer by
+# code-point. token_endpoint is required; authorization_endpoint is OPTIONAL
+# (device-only servers omit it) — authorization-code consumers must assert it.
+config = Basecamp::Oauth.discover("https://launchpad.37signals.com")
+
+# RFC 9728 — protected-resource metadata for a resource origin. resource is
+# bound by code-point; authorization_servers preserves absent (nil) vs [].
+resource = Basecamp::Oauth.discover_protected_resource("https://3.basecampapi.com")
+
+# Orchestrator — resource-first selection + stage-sensitive fallback.
+result = Basecamp::Oauth.discover_from_resource(
+  "https://3.basecampapi.com",
+  expected_issuer: nil # optional: authoritative issuer selection
+)
+
+if result.selected?
+  config = result.config # bound AS config for the selected issuer
+else
+  # Only two SOFT reasons ever yield a fallback (→ Launchpad):
+  #   "resource_discovery_failed" | "no_as_advertised"
+  result.reason
+end
+```
+
+`discover_from_resource` returns a `DiscoveryResult` that is either **selected**
+or a **soft fallback**. Every *hard* failure — an ambiguous advertised set, an
+unavailable `expected_issuer`, an invalid advertised issuer origin, an AS-metadata
+fetch failure, or an issuer-binding mismatch after a BC5 issuer was selected —
+raises `Basecamp::Oauth::DiscoverySelectionError` (carrying a `reason`). A hard
+failure is **never** silently converted into a Launchpad request.
+
+All discovery fetches are SSRF-hardened: origins are validated against the
+origin-root profile (HTTPS-only, localhost exempt) with Ruby's `URI` parser before
+any socket opens, redirects are not followed, timeouts are bounded, non-2xx maps
+to `api_error`, and the response body is read under a genuine streaming cap that
+aborts before an oversized body is buffered.
+
 ## Services
 
 The SDK provides 37 services covering the complete Basecamp API:

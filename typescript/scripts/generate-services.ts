@@ -239,7 +239,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     ClientVisibility: ["SetClientVisibility"],
   },
   Todos: {
-    Todos: ["ListTodos", "CreateTodo", "GetTodo", "UpdateTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+    Todos: ["ListTodos", "CreateTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
     Todolists: ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist"],
     Todosets: ["GetTodoset"],
     HillCharts: ["GetHillChart", "UpdateHillChartSettings"],
@@ -268,6 +268,7 @@ const VERB_PATTERNS = [
   { prefix: "Get", method: "get" },
   { prefix: "Create", method: "create" },
   { prefix: "Update", method: "update" },
+  { prefix: "Replace", method: "replace" },
   { prefix: "Delete", method: "delete" },
   { prefix: "Trash", method: "trash" },
   { prefix: "Archive", method: "archive" },

@@ -91,7 +91,7 @@ let serviceSplits: [String: [String: [String]]] = [
         "ClientVisibility": ["SetClientVisibility"],
     ],
     "Todos": [
-        "Todos": ["ListTodos", "CreateTodo", "GetTodo", "UpdateTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+        "Todos": ["ListTodos", "CreateTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
         "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist"],
         "Todosets": ["GetTodoset"],
         "HillCharts": ["GetHillChart", "UpdateHillChartSettings"],

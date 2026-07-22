@@ -28,9 +28,13 @@ class ClientAccessorEmitter {
 
         for ((name, service) in services.entries.sortedBy { it.key }) {
             val propertyName = name[0].lowercase() + name.substring(1)
+            // Hand-written subclasses are constructed and declared by their
+            // fully-qualified name so their convenience methods are visible
+            // on the accessor without caller imports.
+            val className = HAND_WRITTEN_SERVICES[name] ?: service.className
             sb.appendLine("/** ${service.name} operations. */")
-            sb.appendLine("val AccountClient.${propertyName}: ${service.className}")
-            sb.appendLine("    get() = service(\"${name}\") { ${service.className}(this) }")
+            sb.appendLine("val AccountClient.${propertyName}: ${className}")
+            sb.appendLine("    get() = service(\"${name}\") { ${className}(this) }")
             sb.appendLine()
         }
 

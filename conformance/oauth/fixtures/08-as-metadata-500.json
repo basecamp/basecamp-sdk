@@ -1,0 +1,30 @@
+{
+  "name": "as-metadata-500",
+  "description": "BC5 committed, but hop-2 AS metadata fetch returns 500 \u2192 HARD as_fetch_failed, no Launchpad request.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": [
+        "{{BC5_ISSUER}}",
+        "{{LAUNCHPAD_ORIGIN}}"
+      ]
+    }
+  },
+  "hop2": {
+    "origin": "{{BC5_ISSUER}}",
+    "status": 500,
+    "body": {
+      "error": "internal_server_error"
+    }
+  },
+  "expect": {
+    "outcome": "raise",
+    "error": "as_fetch_failed",
+    "launchpadContacted": false,
+    "errorCategory": "api_error"
+  }
+}

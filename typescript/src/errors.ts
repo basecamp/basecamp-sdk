@@ -31,8 +31,10 @@ const MAX_ERROR_MESSAGE_LENGTH = 500;
 
 /**
  * Truncates a string to maxLen characters, appending "..." if truncated.
+ * Exported for internal use in error messages that embed caller-supplied
+ * values (e.g. URLs); not part of the public API surface.
  */
-function truncateErrorMessage(s: string, maxLen: number = MAX_ERROR_MESSAGE_LENGTH): string {
+export function truncateErrorMessage(s: string, maxLen: number = MAX_ERROR_MESSAGE_LENGTH): string {
   if (s.length <= maxLen) return s;
   return s.slice(0, maxLen - 3) + "...";
 }

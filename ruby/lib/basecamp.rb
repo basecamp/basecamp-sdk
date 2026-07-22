@@ -4,6 +4,12 @@ require "zeitwerk"
 
 loader = Zeitwerk::Loader.for_gem
 loader.collapse("#{__dir__}/basecamp/generated")
+# The generated class owns the Basecamp::Services::TodosService constant
+# (generated/ is collapsed), so the hand-written merge-safe update/edit
+# surface is prepended onto it as soon as zeitwerk loads it.
+loader.on_load("Basecamp::Services::TodosService") do |klass, _abspath|
+  klass.prepend(Basecamp::Services::TodosExtensions)
+end
 loader.setup
 
 # Load generated types if available

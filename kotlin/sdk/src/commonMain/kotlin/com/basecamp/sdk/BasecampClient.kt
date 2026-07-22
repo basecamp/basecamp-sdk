@@ -107,18 +107,6 @@ class BasecampClientBuilder {
     }
 }
 
-/** Returns true if the URL points to localhost (for dev/test). */
-private fun isLocalhost(url: String): Boolean {
-    val hostStart = url.indexOf("://")
-    if (hostStart < 0) return false
-    val afterScheme = hostStart + 3
-    val hostEnd = url.indexOfAny(charArrayOf('/', ':', '?'), afterScheme).let {
-        if (it < 0) url.length else it
-    }
-    val host = url.substring(afterScheme, hostEnd)
-    return host == "localhost" || host == "127.0.0.1" || host == "::1"
-}
-
 /**
  * Creates a [BasecampClient] using the builder DSL.
  *

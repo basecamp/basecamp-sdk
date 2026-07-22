@@ -67,6 +67,13 @@ def process_operation:
         (if .maxPageSize then {maxPageSize: .maxPageSize} else {} end)
       else null end
     ),
+    write: (
+      if has_trait("basecamp.traits#basecampWriteSemantics") then
+        get_trait("basecamp.traits#basecampWriteSemantics") |
+        {mode: .mode} +
+        (if .clearsOmitted != null then {clearsOmitted: .clearsOmitted} else {} end)
+      else null end
+    ),
     retry: (
       if has_trait("basecamp.traits#basecampRetry") then
         get_trait("basecamp.traits#basecampRetry") |

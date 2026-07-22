@@ -86,21 +86,18 @@ internal fun parseNextLink(linkHeader: String?): String? {
  * Used to prevent SSRF via poisoned Link headers.
  */
 internal fun isSameOrigin(url1: String, url2: String): Boolean {
-    val origin1 = extractOrigin(url1) ?: return false
-    val origin2 = extractOrigin(url2) ?: return false
-    return origin1 == origin2
+    val a = parseAbsoluteUrl(url1) ?: return false
+    val b = parseAbsoluteUrl(url2) ?: return false
+    // Url.port falls back to the protocol default, so an explicit default port
+    // is the same origin as no port (https://h:443 ≡ https://h).
+    return a.protocol.name == b.protocol.name &&
+        a.host.lowercase() == b.host.lowercase() &&
+        a.port == b.port
 }
 
-/** Extracts scheme://host:port from a URL string. */
-private fun extractOrigin(url: String): String? {
-    val schemeEnd = url.indexOf("://")
-    if (schemeEnd < 0) return null
-    val afterScheme = schemeEnd + 3
-    // Find end of authority (host:port) — next / or end of string
-    val pathStart = url.indexOf('/', afterScheme)
-    val authority = if (pathStart < 0) url.substring(afterScheme) else url.substring(afterScheme, pathStart)
-    return url.substring(0, schemeEnd) + "://" + authority
-}
+// parseAbsoluteUrl and isLocalhost now live in Urls.kt alongside the shared
+// origin-root / secure-endpoint guards; they remain in this same package so
+// isSameOrigin below calls them unqualified.
 
 /**
  * Parses the Retry-After header value.

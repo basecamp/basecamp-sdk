@@ -111,6 +111,7 @@ type Document struct {
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	CommentsURL      string    `json:"comments_url"`
 	Position         int       `json:"position,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
@@ -135,6 +136,7 @@ type Upload struct {
 	SubscriptionURL  string    `json:"subscription_url"`
 	CommentsCount    int       `json:"comments_count"`
 	BoostsCount      int       `json:"boosts_count,omitempty"`
+	BoostsURL        string    `json:"boosts_url,omitempty"`
 	CommentsURL      string    `json:"comments_url"`
 	Position         int       `json:"position,omitempty"`
 	Parent           *Parent   `json:"parent,omitempty"`
@@ -1093,14 +1095,8 @@ func vaultFromGenerated(gv generated.Vault) Vault {
 	}
 
 	if gv.Creator.Id != 0 || gv.Creator.Name != "" {
-		v.Creator = &Person{
-			ID:           int64(gv.Creator.Id),
-			Name:         gv.Creator.Name,
-			EmailAddress: gv.Creator.EmailAddress,
-			AvatarURL:    gv.Creator.AvatarUrl,
-			Admin:        gv.Creator.Admin,
-			Owner:        gv.Creator.Owner,
-		}
+		creator := personFromGenerated(gv.Creator)
+		v.Creator = &creator
 	}
 
 	return v
@@ -1120,6 +1116,7 @@ func documentFromGenerated(gd generated.Document) Document {
 		SubscriptionURL:  gd.SubscriptionUrl,
 		CommentsCount:    int(gd.CommentsCount),
 		BoostsCount:      int(gd.BoostsCount),
+		BoostsURL:        gd.BoostsUrl,
 		CommentsURL:      gd.CommentsUrl,
 		Position:         int(gd.Position),
 		Content:          gd.Content,
@@ -1150,14 +1147,8 @@ func documentFromGenerated(gd generated.Document) Document {
 	}
 
 	if gd.Creator.Id != 0 || gd.Creator.Name != "" {
-		d.Creator = &Person{
-			ID:           int64(gd.Creator.Id),
-			Name:         gd.Creator.Name,
-			EmailAddress: gd.Creator.EmailAddress,
-			AvatarURL:    gd.Creator.AvatarUrl,
-			Admin:        gd.Creator.Admin,
-			Owner:        gd.Creator.Owner,
-		}
+		creator := personFromGenerated(gd.Creator)
+		d.Creator = &creator
 	}
 
 	return d
@@ -1177,6 +1168,7 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		SubscriptionURL:  gu.SubscriptionUrl,
 		CommentsCount:    int(gu.CommentsCount),
 		BoostsCount:      int(gu.BoostsCount),
+		BoostsURL:        gu.BoostsUrl,
 		CommentsURL:      gu.CommentsUrl,
 		Position:         int(gu.Position),
 		Description:      gu.Description,
@@ -1213,14 +1205,8 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 	}
 
 	if gu.Creator.Id != 0 || gu.Creator.Name != "" {
-		u.Creator = &Person{
-			ID:           int64(gu.Creator.Id),
-			Name:         gu.Creator.Name,
-			EmailAddress: gu.Creator.EmailAddress,
-			AvatarURL:    gu.Creator.AvatarUrl,
-			Admin:        gu.Creator.Admin,
-			Owner:        gu.Creator.Owner,
-		}
+		creator := personFromGenerated(gu.Creator)
+		u.Creator = &creator
 	}
 
 	return u

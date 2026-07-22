@@ -49,6 +49,11 @@ interface TestCase {
   assertions: Assertion[];
   tags?: string[];
   configOverrides?: { baseUrl?: string; maxPages?: number; maxItems?: number };
+  /**
+   * Live tests are loaded by live-runner.test.ts; this runner ignores them.
+   * Defaults to "mock" when omitted.
+   */
+  mode?: "mock" | "live";
 }
 
 // =============================================================================
@@ -76,9 +81,15 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
-  "UploadsDownload delegates through DownloadURL primitive":
-    "TS runner's MSW stub matches a single path; multi-hop download fixtures need per-hop stub wiring (tracked as follow-up with DownloadURL)",
 };
+
+/**
+ * Operations whose fixtures describe multi-hop download flows: the fixture
+ * `path` refers to the raw download URL (or a hop other than request 0), so
+ * the generic first-request path invariant does not apply. DownloadURL keeps
+ * its own stricter hop-1 invariant below.
+ */
+const MULTI_HOP_OPERATIONS = new Set(["DownloadURL", "UploadsDownload"]);
 
 // =============================================================================
 // Test infrastructure
@@ -92,6 +103,26 @@ afterAll(() => server.close());
 // =============================================================================
 // Operation dispatcher
 // =============================================================================
+
+/** Fixture wire keys (snake_case) → SDK todo write params (camelCase). */
+const TODO_WIRE_TO_SDK: Record<string, string> = {
+  content: "content",
+  description: "description",
+  assignee_ids: "assigneeIds",
+  completion_subscriber_ids: "completionSubscriberIds",
+  due_on: "dueOn",
+  starts_on: "startsOn",
+  notify: "notify",
+};
+
+/** Map only the keys present in the fixture requestBody onto SDK param names. */
+function mapTodoWireFields(body: Record<string, unknown>): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {};
+  for (const [wire, sdk] of Object.entries(TODO_WIRE_TO_SDK)) {
+    if (wire in body) mapped[sdk] = body[wire];
+  }
+  return mapped;
+}
 
 /**
  * Executes the appropriate SDK method for the given operation name.
@@ -166,6 +197,30 @@ async function executeOperation(
           content: String(body.content || "Conformance Test"),
           dueOn: body.due_on ? String(body.due_on) : undefined,
         });
+        break;
+
+      case "UpdateTodo":
+        // Merge-safe update: GET then full PUT; only fixture-present keys are passed.
+        await client.todos.update(Number(params.todoId), mapTodoWireFields(body));
+        break;
+
+      case "EditTodo":
+        // Synthetic scenario key: read-modify-write via the edit callback,
+        // assigning each fixture-present key onto the mapped TodoFields member.
+        await client.todos.edit(Number(params.todoId), (t) => {
+          const mapped = mapTodoWireFields(body);
+          for (const [key, value] of Object.entries(mapped)) {
+            (t as unknown as Record<string, unknown>)[key] = value;
+          }
+        });
+        break;
+
+      case "ReplaceTodo":
+        // Verbatim sparse PUT — no GET. Fixtures always include content.
+        await client.todos.replace(
+          Number(params.todoId),
+          mapTodoWireFields(body) as { content: string },
+        );
         break;
 
       case "GetTimesheetEntry":
@@ -262,43 +317,86 @@ async function executeOperation(
 // Mock server setup
 // =============================================================================
 
+/** True when any mock response advertises a Link rel="next" header (the TS SDK auto-paginates). */
+function suiteHasLinkNext(tc: TestCase): boolean {
+  return tc.mockResponses.some((r) => r.headers?.["Link"]?.includes('rel="next"'));
+}
+
 /**
- * Installs MSW handlers that serve mockResponses in order for a test case.
+ * Installs a method-agnostic catch-all MSW handler on the active API origin
+ * that serves mockResponses sequentially (per hop, regardless of method or
+ * path). Requests to other origins are NOT swallowed — MSW's
+ * unhandled-request behavior still applies to them.
  * Returns a tracker object with request metadata.
  */
 function installMockHandlers(tc: TestCase): {
   requestCount: () => number;
   requestTimes: () => number[];
   requestPaths: () => string[];
+  requestMethods: () => string[];
+  requestBodies: () => unknown[];
   requestHeaders: () => Record<string, string>[];
 } {
   let responseIndex = 0;
   const times: number[] = [];
   const paths: string[] = [];
+  const methods: string[] = [];
+  const bodies: unknown[] = [];
   const requestHeadersList: Record<string, string>[] = [];
   let count = 0;
 
-  // Catch-all handler for all requests to our mock server origin.
-  const handler = http.all(`http://localhost:9876/*`, async ({ request }) => {
+  // Active API origin: from configOverrides.baseUrl when present, else the
+  // runner's default base URL.
+  const baseUrl =
+    tc.configOverrides?.baseUrl ?? `http://localhost:9876/${TEST_ACCOUNT_ID}`;
+  const origin = new URL(baseUrl).origin;
+
+  // Catch-all handler for all requests to the active API origin. Matched as
+  // a RegExp on the request URL — a string pattern goes through MSW's
+  // path-to-regexp parsing, which trips over bracketed IPv6 origins like
+  // http://[::1]:3000.
+  const originPattern = new RegExp(
+    `^${origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/`,
+  );
+  const handler = http.all(originPattern, async ({ request }) => {
     count++;
     times.push(Date.now());
     const url = new URL(request.url);
     paths.push(url.pathname);
+    methods.push(request.method);
     const headerObj: Record<string, string> = {};
     request.headers.forEach((v, k) => { headerObj[k] = v; });
     requestHeadersList.push(headerObj);
 
+    // Capture the JSON request body (parsed), or undefined when there is no
+    // body or it isn't JSON. Clone first: the resolver must not consume the
+    // request body MSW may still need.
+    let parsedBody: unknown;
+    try {
+      const text = await request.clone().text();
+      parsedBody = text ? JSON.parse(text) : undefined;
+    } catch {
+      parsedBody = undefined;
+    }
+    bodies.push(parsedBody);
+
     const idx = responseIndex++;
 
     if (idx >= tc.mockResponses.length) {
-      // Return an empty 200 for overflow requests. This handles the TS SDK's
-      // auto-pagination: when the last real mock response includes a Link
-      // header, the SDK follows it; this empty response (with no Link header)
-      // terminates the pagination loop cleanly.
-      return new HttpResponse(JSON.stringify([]), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      // Queue exhausted. When a mock response advertises a Link rel="next"
+      // header, the TS SDK auto-paginates past the scripted responses; an
+      // empty 200 (with no Link header) terminates that loop cleanly.
+      // Otherwise a beyond-queue request is unexpected — fail loudly with 500.
+      if (suiteHasLinkNext(tc)) {
+        return new HttpResponse(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new HttpResponse(
+        JSON.stringify({ error: `mock response queue exhausted: request ${idx + 1} beyond ${tc.mockResponses.length} scripted responses` }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
     }
 
     const mock = tc.mockResponses[idx]!;
@@ -352,6 +450,8 @@ function installMockHandlers(tc: TestCase): {
     requestCount: () => count,
     requestTimes: () => times,
     requestPaths: () => paths,
+    requestMethods: () => methods,
+    requestBodies: () => bodies,
     requestHeaders: () => requestHeadersList,
   };
 }
@@ -360,17 +460,55 @@ function installMockHandlers(tc: TestCase): {
 // Assertion checker
 // =============================================================================
 
+/**
+ * Resolve a per-request assertion index (0-based; negative counts from end)
+ * against the number of captured requests. Returns the concrete index, or
+ * undefined if out of range.
+ */
+function resolveRequestIndex(count: number, index: number): number | undefined {
+  let i = index;
+  if (i < 0) i += count;
+  return i >= 0 && i < count ? i : undefined;
+}
+
 /** Resolve captured headers at index (0-based; negative counts from end), or undefined if out of range. */
 function requestHeadersAt(
   all: Record<string, string>[],
   index: number,
 ): Record<string, string> | undefined {
-  const n = all.length;
-  if (n === 0) return undefined;
-  let i = index;
-  if (i < 0) i += n;
-  if (i < 0 || i >= n) return undefined;
-  return all[i];
+  const i = resolveRequestIndex(all.length, index);
+  return i === undefined ? undefined : all[i];
+}
+
+/**
+ * Look up a dot-notation key inside a captured JSON request body,
+ * distinguishing an absent key from a present-but-falsy value.
+ */
+function lookupBodyPath(
+  body: unknown,
+  dotPath: string,
+): { present: boolean; value?: unknown } {
+  let current: unknown = body;
+  for (const key of dotPath.split(".")) {
+    if (current === null || typeof current !== "object" || Array.isArray(current)) {
+      return { present: false };
+    }
+    const obj = current as Record<string, unknown>;
+    if (!(key in obj)) return { present: false };
+    current = obj[key];
+  }
+  return { present: true, value: current };
+}
+
+/** Substitute {param} placeholders in a fixture path with pathParams values. */
+function substitutePathParams(
+  fixturePath: string,
+  pathParams: Record<string, number | string> | undefined,
+): string {
+  return fixturePath.replace(/\{(\w+)\}/g, (match, name: string) => {
+    const value = pathParams?.[name];
+    return value === undefined ? match : String(value);
+  });
 }
 
 function checkAssertions(
@@ -382,9 +520,7 @@ function checkAssertions(
   // The TS SDK auto-paginates (follows all Link next headers), so the
   // actual requestCount will be higher than what the conformance test
   // expects. In this case, assert >= instead of strict equality.
-  const hasLinkNextHeader = tc.mockResponses.some(
-    (r) => r.headers?.["Link"]?.includes('rel="next"'),
-  );
+  const hasLinkNextHeader = suiteHasLinkNext(tc);
 
   // DownloadURL implicit invariant: hop 1 must hit the test case path.
   // The MSW handler is origin-wide so hop 2's relative-resolved URL is
@@ -395,6 +531,37 @@ function checkAssertions(
     if (recordedPaths.length > 0 && recordedPaths[0] !== tc.path) {
       throw new Error(
         `[${tc.name}] DownloadURL hop 1 expected path ${tc.path}, got ${recordedPaths[0]}`,
+      );
+    }
+  }
+
+  // Generic implicit invariant for single-target operations: the handler is
+  // an origin-wide catch-all, so a misrouted first request would otherwise be
+  // served silently. When the fixture defines a path, the FIRST captured
+  // request's URL path must contain the pathParams-substituted fixture path.
+  // DownloadURL-style multi-hop operations are exempt (DownloadURL keeps its
+  // stricter hop-1 check above).
+  if (tc.path && !MULTI_HOP_OPERATIONS.has(tc.operation)) {
+    const recordedPaths = tracker.requestPaths();
+    if (recordedPaths.length > 0) {
+      const expectedFragment = substitutePathParams(tc.path, tc.pathParams);
+      if (!recordedPaths[0]!.includes(expectedFragment)) {
+        throw new Error(
+          `[${tc.name}] expected first request path to contain ${expectedFragment}, got ${recordedPaths[0]}`,
+        );
+      }
+    }
+  }
+
+  // Implicit method invariant: the MSW handler is method-agnostic, so a
+  // wrong-verb request (e.g. a PUT regressing to POST) would consume a
+  // queued response silently. When the fixture declares a method and carries
+  // no explicit requestMethod assertions, the first request must use it.
+  if (tc.method && !tc.assertions.some((a) => a.type === "requestMethod")) {
+    const methods = tracker.requestMethods();
+    if (methods.length > 0 && methods[0] !== tc.method.toUpperCase()) {
+      throw new Error(
+        `[${tc.name}] expected first request method ${tc.method.toUpperCase()}, got ${methods[0]}`,
       );
     }
   }
@@ -466,15 +633,87 @@ function checkAssertions(
 
       case "requestPath": {
         const expected = String(assertion.expected);
+        const idx = assertion.index ?? 0;
         const recordedPaths = tracker.requestPaths();
+        const i = resolveRequestIndex(recordedPaths.length, idx);
+        if (i === undefined) {
+          throw new Error(
+            `[${tc.name}] expected request path ${expected} on request index ${idx}, but only ${recordedPaths.length} requests were recorded`,
+          );
+        }
         expect(
-          recordedPaths.length,
-          `[${tc.name}] expected at least one request`,
-        ).toBeGreaterThan(0);
-        expect(
-          recordedPaths[0],
-          `[${tc.name}] expected request path ${expected}, got ${recordedPaths[0]}`,
+          recordedPaths[i],
+          `[${tc.name}] expected request path ${expected} on request index ${idx}, got ${recordedPaths[i]}`,
         ).toBe(expected);
+        break;
+      }
+
+      case "requestMethod": {
+        const expected = String(assertion.expected);
+        const idx = assertion.index ?? 0;
+        const methods = tracker.requestMethods();
+        const i = resolveRequestIndex(methods.length, idx);
+        if (i === undefined) {
+          throw new Error(
+            `[${tc.name}] expected request method ${expected} on request index ${idx}, but only ${methods.length} requests were recorded`,
+          );
+        }
+        expect(
+          methods[i],
+          `[${tc.name}] expected request method ${expected} on request index ${idx}, got ${methods[i]}`,
+        ).toBe(expected);
+        break;
+      }
+
+      case "requestBody": {
+        const key = assertion.path!;
+        const idx = assertion.index ?? 0;
+        const bodies = tracker.requestBodies();
+        const i = resolveRequestIndex(bodies.length, idx);
+        if (i === undefined) {
+          throw new Error(
+            `[${tc.name}] expected request body key ${key} on request index ${idx}, but only ${bodies.length} requests were recorded`,
+          );
+        }
+        const body = bodies[i];
+        if (body === undefined) {
+          throw new Error(
+            `[${tc.name}] expected request body key ${key} on request index ${idx}, but the request had no JSON body`,
+          );
+        }
+        const { present, value } = lookupBodyPath(body, key);
+        if (!present) {
+          throw new Error(
+            `[${tc.name}] expected request body key ${key} on request index ${idx}, but it was absent (body: ${JSON.stringify(body)})`,
+          );
+        }
+        expect(
+          value,
+          `[${tc.name}] expected request body ${key} = ${JSON.stringify(assertion.expected)} on request index ${idx}, got ${JSON.stringify(value)}`,
+        ).toEqual(assertion.expected);
+        break;
+      }
+
+      case "requestBodyAbsent": {
+        const key = assertion.path!;
+        const idx = assertion.index ?? 0;
+        const bodies = tracker.requestBodies();
+        const i = resolveRequestIndex(bodies.length, idx);
+        if (i === undefined) {
+          throw new Error(
+            `[${tc.name}] expected request body key ${key} absent on request index ${idx}, but only ${bodies.length} requests were recorded`,
+          );
+        }
+        const body = bodies[i];
+        // No JSON body at all trivially satisfies absence.
+        if (body !== undefined) {
+          const { present, value } = lookupBodyPath(body, key);
+          if (present) {
+            throw new Error(
+              `[${tc.name}] expected request body key ${key} absent on request index ${idx}, got ${JSON.stringify(value)}`,
+            );
+          }
+        }
         break;
       }
 
@@ -704,10 +943,16 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
     .filter((f) => f.endsWith(".json"))
     .sort();
 
-  return files.map((filename) => {
-    const content = fs.readFileSync(path.join(TESTS_DIR, filename), "utf-8");
-    return { filename, tests: JSON.parse(content) as TestCase[] };
-  });
+  return files
+    .map((filename) => {
+      const content = fs.readFileSync(path.join(TESTS_DIR, filename), "utf-8");
+      const all = JSON.parse(content) as TestCase[];
+      // Live tests are owned by live-runner.test.ts. Drop them here so they
+      // never reach installMockHandlers / MSW.
+      const tests = all.filter((tc) => (tc.mode ?? "mock") === "mock");
+      return { filename, tests };
+    })
+    .filter((suite) => suite.tests.length > 0);
 }
 
 /**

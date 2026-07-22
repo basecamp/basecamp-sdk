@@ -43,6 +43,7 @@ use aws.protocols#restJson1
 use basecamp.traits#basecampRetry
 use basecamp.traits#basecampPagination
 use basecamp.traits#basecampIdempotent
+use basecamp.traits#basecampWriteSemantics
 use basecamp.traits#basecampMultipart
 use basecamp.traits#basecampSensitive
 use basecamp.traits#basecampAuthRoutableUrl
@@ -50,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-06-01"
+  version: "2026-07-22"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -63,7 +64,7 @@ service Basecamp {
     ListTodos,
     GetTodo,
     CreateTodo,
-    UpdateTodo,
+    ReplaceTodo,
     TrashTodo,
     CompleteTodo,
     UncompleteTodo,
@@ -565,6 +566,8 @@ structure Project {
   name: ProjectName
   description: ProjectDescription
   purpose: String
+  start_date: ISO8601Date
+  end_date: ISO8601Date
   clients_enabled: Boolean
   bookmark_url: String
   @required
@@ -707,18 +710,28 @@ structure CreateTodoOutput {
   todo: Todo
 }
 
-/// Update an existing todo
+/// Replace a todo with a new complete representation.
+/// The request body is the todo's full writable state: any writable field
+/// omitted from the request is cleared server-side (empty/missing
+/// assignee_ids clears assignees, missing description clears it, and so
+/// on). content is required — a request without it is rejected.
+/// To set some fields while preserving the rest, use the SDK's merge-safe
+/// update or edit methods, which GET the current todo and PUT the full
+/// representation back. Those read-modify-write helpers are not atomic:
+/// a concurrent write between the GET and PUT is overwritten (last write
+/// wins for the whole representation; the window is one round-trip).
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
 @http(method: "PUT", uri: "/{accountId}/todos/{todoId}")
-operation UpdateTodo {
-  input: UpdateTodoInput
-  output: UpdateTodoOutput
+operation ReplaceTodo {
+  input: ReplaceTodoInput
+  output: ReplaceTodoOutput
   errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
-structure UpdateTodoInput {
+structure ReplaceTodoInput {
   @required
   @httpLabel
   accountId: AccountId
@@ -727,7 +740,9 @@ structure UpdateTodoInput {
   @httpLabel
   todoId: TodoId
 
+  @required
   content: TodoContent
+
   description: TodoDescription
   assignee_ids: PersonIdList
   completion_subscriber_ids: PersonIdList
@@ -736,7 +751,7 @@ structure UpdateTodoInput {
   starts_on: ISO8601Date
 }
 
-structure UpdateTodoOutput {
+structure ReplaceTodoOutput {
 
   todo: Todo
 }
@@ -1242,6 +1257,11 @@ structure Todo {
   completion_url: String
   boosts_count: Integer
   boosts_url: String
+
+  /// Steps embedded in the Todo response (BC5 addition). The shared
+  /// `steps/step` jbuilder partial emits the same shape as `CardStep`,
+  /// so the existing `CardStepList` is reused.
+  steps: CardStepList
 }
 
 structure TodoParent {
@@ -1285,6 +1305,11 @@ structure Person {
 
   @basecampSensitive(category: "pii", redact: false)
   bio: PersonBio
+
+  /// Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;
+  /// older BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.
+  @basecampSensitive(category: "pii", redact: false)
+  tagline: PersonBio
 
   @basecampSensitive(category: "pii", redact: false)
   location: PersonLocation
@@ -1358,6 +1383,18 @@ structure Todoset {
   completed_ratio: String
   completed: Boolean
   app_todolists_url: String
+
+  /// Total count of todos across all todolists in this todoset (BC5 addition).
+  todos_count: Integer
+
+  /// Count of completed loose todos at the todoset level (BC5 addition).
+  completed_loose_todos_count: Integer
+
+  /// API URL for listing todos directly under this todoset (BC5 addition).
+  todos_url: String
+
+  /// In-app URL for viewing the todoset's todos (BC5 addition).
+  app_todos_url: String
 }
 
 // ===== Todolist Shapes =====
@@ -5785,6 +5822,9 @@ structure Webhook {
   url: String
   @required
   app_url: String
+
+  /// Up to the 25 most recent delivery exchanges, most recent first.
+  /// Empty when the webhook hasn't delivered anything yet.
   recent_deliveries: WebhookDeliveryList
 }
 
@@ -7192,7 +7232,9 @@ structure GetOverdueTodosOutput {
   over_three_months_late: TodoItems
 }
 
-/// Get upcoming schedule entries within a date window
+/// Get upcoming schedule entries and assignable items within a date window.
+/// This endpoint is preserved as the canonical API path on BC5;
+/// the BC5 `/calendar` web view is HTML-only.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/reports/schedules/upcoming.json")
@@ -8132,8 +8174,10 @@ list MyAssignmentAssigneeList {
 // ===== Notification Operations =====
 
 /// Get the current user's notification inbox (the "Hey!" menu).
-/// Notifications are grouped into unreads, reads, and memories.
-/// Reads are paginated (50 per page). Unreads are capped at 100.
+/// Notifications are grouped into unreads, reads, bubble-ups, and
+/// scheduled bubble-ups (`memories` remains as an always-empty
+/// placeholder on BC5). Reads are paginated (50 per page). Unreads are
+/// capped at 100. Bubble-ups are capped per `limit_bubble_ups`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @http(method: "GET", uri: "/{accountId}/my/readings.json")
@@ -8156,7 +8200,23 @@ structure GetMyNotificationsInput {
 structure GetMyNotificationsOutput {
   unreads: NotificationList
   reads: NotificationList
+
+  /// Legacy "save forever" collection. Permanently `[]` on BC5 by documented
+  /// contract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):
+  /// an always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`
+  /// branch) still populates it — an accepted BC4→BC5 subtractive delta
+  /// recorded in `spec/api-gaps/memories-emptied-regression.md`. New
+  /// integrations should use `bubble_ups` / `scheduled_bubble_ups` and must
+  /// not rely on `memories` on BC5.
   memories: NotificationList
+
+  /// Items the user has saved with Bubble Up (BC5 addition). Roughly the
+  /// successor to `memories` but with optional scheduling — see
+  /// `scheduled_bubble_ups` for the time-deferred subset.
+  bubble_ups: NotificationList
+
+  /// Bubble Ups scheduled to resurface in the future (BC5 addition).
+  scheduled_bubble_ups: NotificationList
 }
 
 /// Mark specified items as read
@@ -8199,6 +8259,9 @@ structure Notification {
   created_at: ISO8601Timestamp
   @required
   updated_at: ISO8601Timestamp
+
+  /// The notification category: `inbox`, `chats`, `pings`, `bubbles`,
+  /// or `mentions`.
   section: String
   unread_count: Integer
   unread_at: ISO8601Timestamp
@@ -8214,6 +8277,15 @@ structure Notification {
   unread_url: String
   bookmark_url: String
   memory_url: String
+
+  /// URL for the Bubble Up record covering this notification (BC5 addition).
+  /// Eligibility-gated — only present on items the current user can bubble up.
+  bubble_up_url: String
+
+  /// Scheduled resurfacing time when this item is queued as a scheduled
+  /// Bubble Up (BC5 addition). Absent when there is no scheduled time.
+  bubble_up_at: ISO8601Timestamp
+
   subscription_url: String
   subscribed: Boolean
   previewable_attachments: PreviewableAttachmentList
@@ -8335,18 +8407,25 @@ structure DisableOutOfOfficeOutput {}
 
 // ===== Out of Office Shapes =====
 
+/// When out of office is not enabled, `enabled` is `false` and
+/// `start_date`, `end_date`, and `back_on_date` are omitted.
 structure OutOfOffice {
   person: OutOfOfficePerson
   enabled: Boolean
   ongoing: Boolean
   start_date: ISO8601Date
   end_date: ISO8601Date
+
+  /// First working day after the out-of-office window ends.
+  /// Omitted when out of office is not enabled.
+  back_on_date: ISO8601Date
 }
 
 structure OutOfOfficePerson {
   @required
   id: PersonId
   name: PersonName
+  avatar_url: AvatarUrl
 }
 
 // =============================================================================
@@ -8397,7 +8476,10 @@ structure UpdateMyPreferencesInput {
 }
 
 structure PreferencesPayload {
-  /// Time zone name (e.g. "America/Chicago", "London", "UTC")
+  /// Time zone name. Accepts any valid Rails time zone name (e.g.
+  /// "London", "UTC") as well as IANA identifiers (e.g.
+  /// "America/Chicago"), which are normalized to the matching
+  /// Rails-style name before saving.
   time_zone_name: String
 
   /// First day of the week: Sunday, Monday, Tuesday, etc.
@@ -8417,6 +8499,8 @@ structure UpdateMyPreferencesOutput {
 structure Preferences {
   url: String
   app_url: String
+
+  /// Returned as a Rails-style name (e.g. "Central Time (US & Canada)").
   time_zone_name: String
   first_week_day: String
   time_format: String

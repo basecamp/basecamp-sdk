@@ -1979,7 +1979,7 @@
       "operations": {
         "DELETE": "TrashTodo",
         "GET": "GetTodo",
-        "PUT": "UpdateTodo"
+        "PUT": "ReplaceTodo"
       },
       "params": {
         "accountId": {

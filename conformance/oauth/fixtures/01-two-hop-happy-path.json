@@ -1,0 +1,30 @@
+{
+  "name": "two-hop-happy-path",
+  "description": "Resource metadata advertises BC5 + Launchpad; exactly one non-Launchpad issuer is selected by exclusion, its AS metadata binds, config is returned.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": true,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": ["{{BC5_ISSUER}}", "{{LAUNCHPAD_ORIGIN}}"]
+    }
+  },
+  "hop2": {
+    "origin": "{{BC5_ISSUER}}",
+    "status": 200,
+    "body": {
+      "issuer": "{{BC5_ISSUER}}",
+      "authorization_endpoint": "{{BC5_ISSUER}}/oauth/authorize",
+      "token_endpoint": "{{BC5_ISSUER}}/oauth/token",
+      "device_authorization_endpoint": "{{BC5_ISSUER}}/oauth/device",
+      "grant_types_supported": ["urn:ietf:params:oauth:grant-type:device_code", "refresh_token"]
+    }
+  },
+  "expect": {
+    "outcome": "selected",
+    "selectedIssuer": "{{BC5_ISSUER}}",
+    "launchpadContacted": false
+  }
+}

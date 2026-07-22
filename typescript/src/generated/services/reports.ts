@@ -84,7 +84,7 @@ export class ReportsService extends BaseService {
   }
 
   /**
-   * Get upcoming schedule entries within a date window
+   * Get upcoming schedule entries and assignable items within a date window.
    * @param options - Optional query parameters
    * @returns The upcoming_schedule
    *

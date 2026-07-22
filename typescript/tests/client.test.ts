@@ -63,6 +63,80 @@ describe("BasecampClient", () => {
     });
   });
 
+  describe("content type", () => {
+    it("should not set Content-Type on bodyless GET requests", async () => {
+      // bc3 silently discards query params on GET requests that carry a
+      // Content-Type header, so bodyless requests must not send one.
+      let capturedRequest: Request | null = null;
+
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      await client.GET("/projects.json");
+
+      expect(capturedRequest?.headers.get("Content-Type")).toBeNull();
+      expect(capturedRequest?.headers.get("Accept")).toBe("application/json");
+    });
+
+    it("should set Content-Type to application/json for JSON bodies", async () => {
+      let capturedRequest: Request | null = null;
+
+      server.use(
+        http.post(`${BASE_URL}/todolists/456/todos.json`, ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ id: 1, content: "Test todo" }, { status: 201 });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      await client.POST("/todolists/{todolistId}/todos.json", {
+        params: { path: { todolistId: 456 } },
+        body: { content: "Test todo" },
+      });
+
+      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
+    });
+
+    it("should preserve an explicitly set Content-Type on requests with a body", async () => {
+      let capturedRequest: Request | null = null;
+
+      server.use(
+        http.post(`${BASE_URL}/todolists/456/todos.json`, ({ request }) => {
+          capturedRequest = request;
+          return HttpResponse.json({ id: 1, content: "Test todo" }, { status: 201 });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      await client.POST("/todolists/{todolistId}/todos.json", {
+        params: { path: { todolistId: 456 } },
+        body: { content: "Test todo" },
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+
+      expect(capturedRequest?.headers.get("Content-Type")).toBe(
+        "application/json; charset=utf-8"
+      );
+    });
+  });
+
   describe("retry behavior", () => {
     it("should retry on 429 with Retry-After header", async () => {
       let attempts = 0;

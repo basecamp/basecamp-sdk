@@ -706,8 +706,10 @@ class GetMyAssignmentsResponseContent(TypedDict):
 
 
 class GetMyNotificationsResponseContent(TypedDict):
+    bubble_ups: NotRequired[list[Notification]]
     memories: NotRequired[list[Notification]]
     reads: NotRequired[list[Notification]]
+    scheduled_bubble_ups: NotRequired[list[Notification]]
     unreads: NotRequired[list[Notification]]
 
 
@@ -890,6 +892,8 @@ class NotFoundErrorResponseContent(TypedDict):
 class Notification(TypedDict):
     app_url: NotRequired[str]
     bookmark_url: NotRequired[str]
+    bubble_up_at: NotRequired[str]
+    bubble_up_url: NotRequired[str]
     bucket_name: NotRequired[str]
     content_excerpt: NotRequired[str]
     created_at: str
@@ -915,6 +919,7 @@ class Notification(TypedDict):
 
 
 class OutOfOffice(TypedDict):
+    back_on_date: NotRequired[str]
     enabled: NotRequired[bool]
     end_date: NotRequired[str]
     ongoing: NotRequired[bool]
@@ -928,6 +933,7 @@ class OutOfOfficePayload(TypedDict):
 
 
 class OutOfOfficePerson(TypedDict):
+    avatar_url: NotRequired[str]
     id: int
     name: NotRequired[str]
 
@@ -957,6 +963,7 @@ class Person(TypedDict):
     name: str
     owner: NotRequired[bool]
     personable_type: NotRequired[str]
+    tagline: NotRequired[str]
     time_zone: NotRequired[str]
     title: NotRequired[str]
     updated_at: NotRequired[str]
@@ -1002,9 +1009,11 @@ class Project(TypedDict):
     created_at: str
     description: NotRequired[str]
     dock: NotRequired[list[DockItem]]
+    end_date: NotRequired[str]
     id: int
     name: str
     purpose: NotRequired[str]
+    start_date: NotRequired[str]
     status: str
     updated_at: str
     url: str
@@ -1155,6 +1164,16 @@ class RecordingParent(TypedDict):
     title: str
     type: str
     url: str
+
+
+class ReplaceTodoRequestContent(TypedDict):
+    assignee_ids: NotRequired[list[int]]
+    completion_subscriber_ids: NotRequired[list[int]]
+    content: str
+    description: NotRequired[str]
+    due_on: NotRequired[str]
+    notify: NotRequired[bool]
+    starts_on: NotRequired[str]
 
 
 class RepositionCardStepRequestContent(TypedDict):
@@ -1351,6 +1370,7 @@ class Todo(TypedDict):
     position: NotRequired[int]
     starts_on: NotRequired[str]
     status: str
+    steps: NotRequired[list[CardStep]]
     subscription_url: NotRequired[str]
     title: str
     type: str
@@ -1431,10 +1451,12 @@ class TodolistGroup(TypedDict):
 
 class Todoset(TypedDict):
     app_todolists_url: NotRequired[str]
+    app_todos_url: NotRequired[str]
     app_url: str
     bookmark_url: NotRequired[str]
     bucket: TodoBucket
     completed: NotRequired[bool]
+    completed_loose_todos_count: NotRequired[int]
     completed_ratio: NotRequired[str]
     created_at: str
     creator: Person
@@ -1446,6 +1468,8 @@ class Todoset(TypedDict):
     title: str
     todolists_count: NotRequired[int]
     todolists_url: NotRequired[str]
+    todos_count: NotRequired[int]
+    todos_url: NotRequired[str]
     type: str
     updated_at: str
     url: str
@@ -1610,16 +1634,6 @@ class UpdateTimesheetEntryRequestContent(TypedDict):
     description: NotRequired[str]
     hours: NotRequired[str]
     person_id: NotRequired[int]
-
-
-class UpdateTodoRequestContent(TypedDict):
-    assignee_ids: NotRequired[list[int]]
-    completion_subscriber_ids: NotRequired[list[int]]
-    content: NotRequired[str]
-    description: NotRequired[str]
-    due_on: NotRequired[str]
-    notify: NotRequired[bool]
-    starts_on: NotRequired[str]
 
 
 class UpdateTodolistOrGroupRequestContent(TypedDict):

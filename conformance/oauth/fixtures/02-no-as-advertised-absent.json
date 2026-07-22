@@ -1,0 +1,16 @@
+{
+  "name": "no-as-advertised-absent",
+  "description": "authorization_servers key absent (BC5 dark posture) → soft no_as_advertised → Launchpad.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": { "resource": "{{RESOURCE_ORIGIN}}" }
+  },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "no_as_advertised",
+    "launchpadContacted": true
+  }
+}

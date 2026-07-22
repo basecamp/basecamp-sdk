@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-06-01",
+    "version": "2026-07-22",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -8799,7 +8799,7 @@
     },
     "/{accountId}/my/readings.json": {
       "get": {
-        "description": "Get the current user's notification inbox (the \"Hey!\" menu).\nNotifications are grouped into unreads, reads, and memories.\nReads are paginated (50 per page). Unreads are capped at 100.",
+        "description": "Get the current user's notification inbox (the \"Hey!\" menu).\nNotifications are grouped into unreads, reads, bubble-ups, and\nscheduled bubble-ups (`memories` remains as an always-empty\nplaceholder on BC5). Reads are paginated (50 per page). Unreads are\ncapped at 100. Bubble-ups are capped per `limit_bubble_ups`.",
         "operationId": "GetMyNotifications",
         "parameters": [
           {
@@ -14959,7 +14959,7 @@
     },
     "/{accountId}/reports/schedules/upcoming.json": {
       "get": {
-        "description": "Get upcoming schedule entries within a date window",
+        "description": "Get upcoming schedule entries and assignable items within a date window.\nThis endpoint is preserved as the canonical API path on BC5;\nthe BC5 `/calendar` web view is HTML-only.",
         "operationId": "GetUpcomingSchedule",
         "parameters": [
           {
@@ -18371,16 +18371,17 @@
         }
       },
       "put": {
-        "description": "Update an existing todo",
-        "operationId": "UpdateTodo",
+        "description": "Replace a todo with a new complete representation.\nThe request body is the todo's full writable state: any writable field\nomitted from the request is cleared server-side (empty/missing\nassignee_ids clears assignees, missing description clears it, and so\non). content is required — a request without it is rejected.\nTo set some fields while preserving the rest, use the SDK's merge-safe\nupdate or edit methods, which GET the current todo and PUT the full\nrepresentation back. Those read-modify-write helpers are not atomic:\na concurrent write between the GET and PUT is overwritten (last write\nwins for the whole representation; the window is one round-trip).",
+        "operationId": "ReplaceTodo",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTodoRequestContent"
+                "$ref": "#/components/schemas/ReplaceTodoRequestContent"
               }
             }
-          }
+          },
+          "required": true
         },
         "parameters": [
           {
@@ -18406,11 +18407,11 @@
         ],
         "responses": {
           "200": {
-            "description": "UpdateTodo 200 response",
+            "description": "ReplaceTodo 200 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UpdateTodoResponseContent"
+                  "$ref": "#/components/schemas/ReplaceTodoResponseContent"
                 }
               }
             }
@@ -18480,6 +18481,10 @@
             429,
             503
           ]
+        },
+        "x-basecamp-write-semantics": {
+          "mode": "replace",
+          "clearsOmitted": true
         }
       }
     },
@@ -23588,7 +23593,22 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
-            }
+            },
+            "description": "Legacy \"save forever\" collection. Permanently `[]` on BC5 by documented\ncontract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):\nan always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`\nbranch) still populates it — an accepted BC4→BC5 subtractive delta\nrecorded in `spec/api-gaps/memories-emptied-regression.md`. New\nintegrations should use `bubble_ups` / `scheduled_bubble_ups` and must\nnot rely on `memories` on BC5."
+          },
+          "bubble_ups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "description": "Items the user has saved with Bubble Up (BC5 addition). Roughly the\nsuccessor to `memories` but with optional scheduling — see\n`scheduled_bubble_ups` for the time-deferred subset."
+          },
+          "scheduled_bubble_ups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            },
+            "description": "Bubble Ups scheduled to resurface in the future (BC5 addition)."
           }
         }
       },
@@ -24643,7 +24663,8 @@
             "x-go-type-skip-optional-pointer": true
           },
           "section": {
-            "type": "string"
+            "type": "string",
+            "description": "The notification category: `inbox`, `chats`, `pings`, `bubbles`,\nor `mentions`."
           },
           "unread_count": {
             "type": "integer",
@@ -24698,6 +24719,19 @@
           "memory_url": {
             "type": "string"
           },
+          "bubble_up_url": {
+            "type": "string",
+            "description": "URL for the Bubble Up record covering this notification (BC5 addition).\nEligibility-gated — only present on items the current user can bubble up."
+          },
+          "bubble_up_at": {
+            "type": "string",
+            "description": "Scheduled resurfacing time when this item is queued as a scheduled\nBubble Up (BC5 addition). Absent when there is no scheduled time.",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
           "subscription_url": {
             "type": "string"
           },
@@ -24734,6 +24768,7 @@
       },
       "OutOfOffice": {
         "type": "object",
+        "description": "When out of office is not enabled, `enabled` is `false` and\n`start_date`, `end_date`, and `back_on_date` are omitted.",
         "properties": {
           "person": {
             "$ref": "#/components/schemas/OutOfOfficePerson"
@@ -24749,6 +24784,10 @@
           },
           "end_date": {
             "type": "string"
+          },
+          "back_on_date": {
+            "type": "string",
+            "description": "First working day after the out-of-office window ends.\nOmitted when out of office is not enabled."
           }
         }
       },
@@ -24778,6 +24817,10 @@
             "x-go-type-skip-optional-pointer": false
           },
           "name": {
+            "type": "string",
+            "format": "password"
+          },
+          "avatar_url": {
             "type": "string",
             "format": "password"
           }
@@ -24838,6 +24881,15 @@
           },
           "bio": {
             "type": "string",
+            "format": "password",
+            "x-basecamp-sensitive": {
+              "category": "pii",
+              "redact": false
+            }
+          },
+          "tagline": {
+            "type": "string",
+            "description": "Alias of `bio` introduced in BC5. BC3 emits both keys with identical content;\nolder BC4 responses may omit `tagline`. Prefer `bio` for cross-version reads.",
             "format": "password",
             "x-basecamp-sensitive": {
               "category": "pii",
@@ -24943,7 +24995,8 @@
             "type": "string"
           },
           "time_zone_name": {
-            "type": "string"
+            "type": "string",
+            "description": "Returned as a Rails-style name (e.g. \"Central Time (US & Canada)\")."
           },
           "first_week_day": {
             "type": "string"
@@ -24958,7 +25011,7 @@
         "properties": {
           "time_zone_name": {
             "type": "string",
-            "description": "Time zone name (e.g. \"America/Chicago\", \"London\", \"UTC\")"
+            "description": "Time zone name. Accepts any valid Rails time zone name (e.g.\n\"London\", \"UTC\") as well as IANA identifiers (e.g.\n\"America/Chicago\"), which are normalized to the matching\nRails-style name before saving."
           },
           "first_week_day": {
             "type": "string",
@@ -25039,6 +25092,12 @@
             "type": "string"
           },
           "purpose": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "end_date": {
             "type": "string"
           },
           "clients_enabled": {
@@ -25656,6 +25715,57 @@
           "type",
           "url"
         ]
+      },
+      "ReplaceTodoRequestContent": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "assignee_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "completion_subscriber_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "notify": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "due_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "starts_on": {
+            "type": "string",
+            "x-go-type": "types.Date",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "ReplaceTodoResponseContent": {
+        "$ref": "#/components/schemas/Todo"
       },
       "RepositionCardStepRequestContent": {
         "type": "object",
@@ -26429,6 +26539,13 @@
           },
           "boosts_url": {
             "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CardStep"
+            },
+            "description": "Steps embedded in the Todo response (BC5 addition). The shared\n`steps/step` jbuilder partial emits the same shape as `CardStep`,\nso the existing `CardStepList` is reused."
           }
         },
         "required": [
@@ -26825,6 +26942,24 @@
           },
           "app_todolists_url": {
             "type": "string"
+          },
+          "todos_count": {
+            "type": "integer",
+            "description": "Total count of todos across all todolists in this todoset (BC5 addition).",
+            "format": "int32"
+          },
+          "completed_loose_todos_count": {
+            "type": "integer",
+            "description": "Count of completed loose todos at the todoset level (BC5 addition).",
+            "format": "int32"
+          },
+          "todos_url": {
+            "type": "string",
+            "description": "API URL for listing todos directly under this todoset (BC5 addition)."
+          },
+          "app_todos_url": {
+            "type": "string",
+            "description": "In-app URL for viewing the todoset's todos (BC5 addition)."
           }
         },
         "required": [
@@ -27401,54 +27536,6 @@
       "UpdateTimesheetEntryResponseContent": {
         "$ref": "#/components/schemas/TimesheetEntry"
       },
-      "UpdateTodoRequestContent": {
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "assignee_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          "completion_subscriber_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          "notify": {
-            "type": "boolean",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "due_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "starts_on": {
-            "type": "string",
-            "x-go-type": "types.Date",
-            "x-go-type-import": {
-              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
-            },
-            "x-go-type-skip-optional-pointer": true
-          }
-        }
-      },
-      "UpdateTodoResponseContent": {
-        "$ref": "#/components/schemas/Todo"
-      },
       "UpdateTodolistOrGroupRequestContent": {
         "type": "object",
         "properties": {
@@ -27813,7 +27900,8 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/WebhookDelivery"
-            }
+            },
+            "description": "Up to the 25 most recent delivery exchanges, most recent first.\nEmpty when the webhook hasn't delivered anything yet."
           }
         },
         "required": [

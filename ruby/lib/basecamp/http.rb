@@ -61,12 +61,56 @@ module Basecamp
     end
 
     # Performs a GET request to an absolute URL.
-    # Used for endpoints not on the base API (e.g., Launchpad).
+    # Used for endpoints not on the base API.
+    #
+    # This is the PUBLIC, general path and it credentials cross-origin for ONE
+    # destination only: the exact Launchpad authorization URL
+    # ({Basecamp::Security::LAUNCHPAD_AUTHORIZATION_URL}). Every other foreign
+    # origin — including an endpoint-shaped URL such as
+    # +https://evil.example/authorization.json+ — trips the same-origin guard, so
+    # the bearer token only ever reaches Launchpad, the configured base URL, or
+    # localhost. There is deliberately NO raw-string trusted-origin parameter: a
+    # syntactically valid origin does not prove discovery provenance, so the ONE
+    # legitimate cross-origin discovery destination goes through the narrow
+    # {#get_authorization_document}, which derives its issuer from internal
+    # discovery of the configured base URL rather than any caller argument.
+    #
     # @param url [String] absolute URL
     # @param params [Hash] query parameters
     # @return [Response]
     def get_absolute(url, params: {})
-      request(:get, url, params: params)
+      Security.require_https_unless_localhost!(url, "absolute URL")
+
+      allow_cross_origin = url == Security::LAUNCHPAD_AUTHORIZATION_URL
+      request(:get, url, params: params, allow_cross_origin: allow_cross_origin)
+    end
+
+    # Fetches the credentialed authorization document (the fixed +authorization.json+
+    # path). This is the ONE sanctioned cross-origin credential path besides
+    # Launchpad, and the origin that receives the bearer token is NOT
+    # caller-supplied.
+    #
+    # The issuer is derived HERE by running resource-first discovery (SPEC.md §16)
+    # against this client's OWN configured base URL, then binding to whatever
+    # issuer discovery selects and validates (RFC 8414 issuer binding). A soft
+    # fallback fetches Launchpad's fixed URL; a hard discovery failure raises. The
+    # request URL is CONSTRUCTED from the discovered issuer origin + the fixed path
+    # (string concatenation, never URL re-parsing). Because no caller-supplied
+    # config, origin, or path reaches this method, there is no public API through
+    # which a forged issuer could redirect the credential to a foreign host —
+    # discovery provenance is structural, not a claim about a passed-in object.
+    #
+    # @return [Response]
+    # @raise [Oauth::DiscoverySelectionError] on a hard discovery failure
+    # @raise [Basecamp::UsageError] when the discovered issuer is not an origin root
+    def get_authorization_document
+      result = Oauth.discover_from_resource(@config.base_url)
+      if result.selected?
+        issuer_origin = Security.require_origin_root!(result.issuer, "selected issuer origin")
+        request(:get, "#{issuer_origin}/authorization.json", allow_cross_origin: true)
+      else
+        get_absolute(Security::LAUNCHPAD_AUTHORIZATION_URL)
+      end
     end
 
     # Performs a POST request.
@@ -296,18 +340,18 @@ module Basecamp
       end
     end
 
-    def request(method, path, params: {}, body: nil)
-      url = build_url(path)
+    def request(method, path, params: {}, body: nil, allow_cross_origin: false)
+      url = build_url(path, allow_cross_origin: allow_cross_origin)
 
       # Mutations don't retry on 429/5xx to avoid duplicating data
       if method == :get
-        request_with_retry(method, url, params: params)
+        request_with_retry(method, url, params: params, allow_cross_origin: allow_cross_origin)
       else
-        single_request(method, url, params: params, body: body, attempt: 1)
+        single_request(method, url, params: params, body: body, attempt: 1, allow_cross_origin: allow_cross_origin)
       end
     end
 
-    def request_with_retry(method, url, params: {})
+    def request_with_retry(method, url, params: {}, allow_cross_origin: false)
       attempt = 0
       last_error = nil
 
@@ -316,7 +360,7 @@ module Basecamp
         break if attempt > @config.max_retries
 
         begin
-          return single_request(method, url, params: params, body: nil, attempt: attempt)
+          return single_request(method, url, params: params, body: nil, attempt: attempt, allow_cross_origin: allow_cross_origin)
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
           raise e unless e.retryable?
 
@@ -336,7 +380,8 @@ module Basecamp
       raise last_error || Basecamp::ApiError.new("Request failed after #{@config.max_retries} retries")
     end
 
-    def single_request(method, url, params:, body:, attempt:, retry_count: 0)
+    def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false)
+      assert_credential_origin!(url, allow_cross_origin)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
 
@@ -370,7 +415,7 @@ module Basecamp
         # After a successful token refresh on 401, retry the request once
         if error.is_a?(Basecamp::AuthError) && error.http_status == 401 && retry_count < 1 && @token_refreshed
           @token_refreshed = false
-          return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1)
+          return single_request(method, url, params: params, body: body, attempt: attempt, retry_count: retry_count + 1, allow_cross_origin: allow_cross_origin)
         end
 
         raise error
@@ -393,6 +438,7 @@ module Basecamp
     end
 
     def single_request_raw(method, url, body:, content_type:, attempt:)
+      assert_credential_origin!(url, false)
       info = RequestInfo.new(method: method.to_s.upcase, url: url, attempt: attempt)
       @hooks.on_request_start(info)
 
@@ -467,15 +513,40 @@ module Basecamp
       err
     end
 
-    def build_url(path)
-      if path.start_with?("https://")
-        return path
-      elsif path.start_with?("http://")
-        raise Basecamp::UsageError.new("URL must use HTTPS: #{path}")
+    def build_url(path, allow_cross_origin: false)
+      # Schemes are case-insensitive (RFC 3986): detect absolute URLs on a
+      # lowercased copy so HTTPS://... is not mis-joined onto the base URL.
+      lower_path = path.downcase
+      if lower_path.start_with?("https://")
+        return path if allow_cross_origin
+        return path if Security.localhost?(path) || Security.same_origin?(path, @config.base_url)
+
+        raise Basecamp::UsageError.new("URL origin does not match configured base URL: #{Security.truncate(path)}")
+      elsif lower_path.start_with?("http://")
+        # Localhost may use plain HTTP for local development; every other host
+        # must use HTTPS.
+        return path if Security.localhost?(path)
+
+        raise Basecamp::UsageError.new("URL must use HTTPS: #{Security.truncate(path)}")
       end
 
       path = "/#{path}" unless path.start_with?("/")
       "#{@config.base_url}#{path}"
+    end
+
+    # Attach-point backstop: refuse to attach credentials to a foreign origin
+    # before the auth strategy adds the bearer token. Localhost is carved out
+    # for dev/test. allow_cross_origin is granted only by get_absolute (for the
+    # trusted Launchpad authorization endpoint) or get_authorization_document (for
+    # a URL constructed against an issuer that internal discovery selected and
+    # validated); every other absolute URL must be same-origin with the base URL.
+    def assert_credential_origin!(url, allow_cross_origin)
+      return if allow_cross_origin
+      return if Security.localhost?(url) || Security.same_origin?(url, @config.base_url)
+
+      raise Basecamp::UsageError.new(
+        "Refusing to send credentials to a different origin than base URL: #{Security.truncate(url)}"
+      )
     end
 
     def calculate_delay(attempt, server_retry_after)

@@ -1,0 +1,16 @@
+{
+  "name": "no-as-advertised-empty-array",
+  "description": "authorization_servers present but empty [] (distinct from absent) → soft no_as_advertised → Launchpad.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": { "resource": "{{RESOURCE_ORIGIN}}", "authorization_servers": [] }
+  },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "no_as_advertised",
+    "launchpadContacted": true
+  }
+}

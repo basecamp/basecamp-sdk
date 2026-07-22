@@ -1,0 +1,19 @@
+{
+  "name": "authorization-servers-present-null",
+  "description": "Hop-1 metadata with a present authorization_servers: null is MALFORMED (not absent, not empty): it fails hop-1 → soft resource_discovery_failed → Launchpad, never a silent no_as_advertised.",
+  "operation": "discoverFromResource",
+  "resourceOrigin": "{{RESOURCE_ORIGIN}}",
+  "bc5Committed": false,
+  "hop1": {
+    "status": 200,
+    "body": {
+      "resource": "{{RESOURCE_ORIGIN}}",
+      "authorization_servers": null
+    }
+  },
+  "expect": {
+    "outcome": "fallback",
+    "fallbackReason": "resource_discovery_failed",
+    "launchpadContacted": true
+  }
+}

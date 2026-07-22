@@ -534,18 +534,22 @@ type UpdateMyPreferencesRequest struct {
 }
 
 // OutOfOffice represents out-of-office status for a person.
+// When out of office is not enabled, Enabled is false and StartDate,
+// EndDate, and BackOnDate are omitted from the response.
 type OutOfOffice struct {
-	Enabled   bool              `json:"enabled,omitempty"`
-	StartDate string            `json:"start_date,omitempty"`
-	EndDate   string            `json:"end_date,omitempty"`
-	Ongoing   bool              `json:"ongoing,omitempty"`
-	Person    OutOfOfficePerson `json:"person,omitempty"`
+	Enabled    bool              `json:"enabled,omitempty"`
+	StartDate  string            `json:"start_date,omitempty"`
+	EndDate    string            `json:"end_date,omitempty"`
+	BackOnDate string            `json:"back_on_date,omitempty"`
+	Ongoing    bool              `json:"ongoing,omitempty"`
+	Person     OutOfOfficePerson `json:"person,omitempty"`
 }
 
 // OutOfOfficePerson represents the person associated with an out-of-office status.
 type OutOfOfficePerson struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name,omitempty"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 // EnableOutOfOfficeRequest specifies the parameters for enabling out-of-office.
@@ -732,21 +736,25 @@ func (s *PeopleService) DisableOutOfOffice(ctx context.Context, personID int64) 
 // personFromGenerated converts a generated Person to our clean Person type.
 func personFromGenerated(gp generated.Person) Person {
 	p := Person{
-		AttachableSGID:    gp.AttachableSgid,
-		Name:              gp.Name,
-		EmailAddress:      gp.EmailAddress,
-		PersonableType:    gp.PersonableType,
-		Title:             gp.Title,
-		Bio:               gp.Bio,
-		Location:          gp.Location,
-		Admin:             gp.Admin,
-		Owner:             gp.Owner,
-		Client:            gp.Client,
-		Employee:          gp.Employee,
-		TimeZone:          gp.TimeZone,
-		AvatarURL:         gp.AvatarUrl,
-		CanManageProjects: gp.CanManageProjects,
-		CanManagePeople:   gp.CanManagePeople,
+		AttachableSGID:      gp.AttachableSgid,
+		Name:                gp.Name,
+		EmailAddress:        gp.EmailAddress,
+		PersonableType:      gp.PersonableType,
+		Title:               gp.Title,
+		Bio:                 gp.Bio,
+		Tagline:             gp.Tagline, // BC5 forward-compat field
+		Location:            gp.Location,
+		Admin:               gp.Admin,
+		Owner:               gp.Owner,
+		Client:              gp.Client,
+		Employee:            gp.Employee,
+		TimeZone:            gp.TimeZone,
+		AvatarURL:           gp.AvatarUrl,
+		CanPing:             gp.CanPing,
+		CanAccessHillCharts: gp.CanAccessHillCharts,
+		CanAccessTimesheet:  gp.CanAccessTimesheet,
+		CanManageProjects:   gp.CanManageProjects,
+		CanManagePeople:     gp.CanManagePeople,
 	}
 
 	if gp.Id != 0 {
