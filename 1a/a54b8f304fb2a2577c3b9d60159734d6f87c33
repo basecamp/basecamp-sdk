@@ -1,0 +1,44 @@
+SPEC.md
+  s_18853c09ab9fc6::t_a3912ab80831ab 499
+  s_18853c09ab9fc6::t_48135eb076b51d 1507-1509
+python/tests/services/test_campfires_service.py
+  s_18853c09ab9fc6::t_d29e3cba902ccf 52,93
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/campfires.kt
+  s_18853c09ab9fc6::t_8087f2be706669 236
+typescript/src/generated/schema.d.ts
+  s_18853c09ab9fc6::t_8087f2be706669 526-529
+  s_18853c09ab9fc6::t_b89f9a64610a8e 4308
+spec/basecamp.smithy
+  s_18853c09ab9fc6::t_26834adb547409 3368-3371
+  s_18853c09ab9fc6::t_d8c48326f388fe 3395
+openapi.json
+  s_18853c09ab9fc6::t_8087f2be706669 4595
+  s_18853c09ab9fc6::t_b89f9a64610a8e 27203-27204
+typescript/src/generated/services/campfires.ts
+  s_18853c09ab9fc6::t_8087f2be706669 431
+  s_18853c09ab9fc6::t_b89f9a64610a8e 80
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_18853c09ab9fc6::t_8087f2be706669 115
+  s_18853c09ab9fc6::t_b89f9a64610a8e 118
+typescript/src/generated/openapi-stripped.json
+  s_18853c09ab9fc6::t_8087f2be706669 4093
+  s_18853c09ab9fc6::t_b89f9a64610a8e 24868-24869
+go/pkg/generated/client.gen.go
+  s_18853c09ab9fc6::t_b89f9a64610a8e 2210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1aa54b8f304fb2a2577c3b9d60159734d6f87c33",
+  "prompts": {},
+  "sessions": {
+    "s_18853c09ab9fc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0f427c-d723-45c2-b43d-8b665d0d7e1d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
