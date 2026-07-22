@@ -7,6 +7,7 @@ public struct Todo: Codable, Sendable {
     public let content: String
     public let createdAt: String
     public let creator: Person
+    public let descriptionAttachments: [RichTextAttachment]
     public let id: Int
     public let inheritsStatus: Bool
     public let parent: TodoParent
@@ -38,6 +39,7 @@ public struct Todo: Codable, Sendable {
         content: String,
         createdAt: String,
         creator: Person,
+        descriptionAttachments: [RichTextAttachment],
         id: Int,
         inheritsStatus: Bool,
         parent: TodoParent,
@@ -68,6 +70,7 @@ public struct Todo: Codable, Sendable {
         self.content = content
         self.createdAt = createdAt
         self.creator = creator
+        self.descriptionAttachments = descriptionAttachments
         self.id = id
         self.inheritsStatus = inheritsStatus
         self.parent = parent

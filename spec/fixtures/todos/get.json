@@ -50,7 +50,7 @@
     "can_manage_projects": true,
     "can_manage_people": true
   },
-  "description": "",
+  "description": "<div>Latest schematic and the full spec are attached.<br><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3\" caption=\"Leto locator schematic\"></bc-attachment><bc-attachment sgid=\"BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6\"></bc-attachment></div>",
   "completed": false,
   "content": "Program Leto locator  microcontroller unit",
   "starts_on": null,
@@ -78,5 +78,33 @@
     }
   ],
   "completion_subscribers": [],
-  "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520/completion.json"
+  "completion_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todos/1069479520/completion.json",
+  "description_attachments": [
+    {
+      "id": 1069480000,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3",
+      "filename": "leto-schematic.png",
+      "content_type": "image/png",
+      "byte_size": 284111,
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/download/leto-schematic.png",
+      "width": 1024.0,
+      "height": 768,
+      "previewable": true,
+      "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/previews/leto-schematic.png",
+      "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMAY6BkVU--a1b2c3/thumbnails/leto-schematic.png"
+    },
+    {
+      "id": 1069480001,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6",
+      "filename": "leto-spec.pdf",
+      "content_type": "application/pdf",
+      "byte_size": 1048576,
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/download/leto-spec.pdf",
+      "width": null,
+      "height": null,
+      "previewable": false,
+      "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/previews/leto-spec.pdf",
+      "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958500/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAwMQY6BkVU--d4e5f6/thumbnails/leto-spec.pdf"
+    }
+  ]
 }

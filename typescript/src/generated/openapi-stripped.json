@@ -23747,6 +23747,76 @@
           }
         }
       },
+      "RichTextAttachment": {
+        "type": "object",
+        "description": "Structured metadata for a downloadable file attachment embedded in a\nrich text attribute. Every rich text attribute in an API response is\naccompanied by a corresponding `*_attachments` array named after the\nattribute (a Todo's `description_attachments` for its `description`).\nMentions, remote images, and opengraph embeds are excluded — only\ndownloadable file attachments appear.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "sgid": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "byte_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "download_url": {
+            "type": "string",
+            "x-basecamp-auth-routable-url": {}
+          },
+          "width": {
+            "type": "integer",
+            "description": "Pixel dimensions, present as keys on every attachment but null for\nnon-image blobs, and the BC3 API may serialize them float-spelled\n(`1024.0`) — hence optional/nullable rather than `@required` (the enhance\npass marks them `nullable: true` in the OpenAPI). All SDKs decode both\nforms faithfully and type the nullable value statically: Go `types.FlexInt`\n→ `*int32`, Kotlin `Int?` via `FlexibleIntSerializer`, Swift `Int32?`,\nTypeScript `number | null`, Python `Optional[int | float]` (raw JSON keeps\nthe float), Ruby nilable. See SPEC.md §10 Type Fidelity.",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "height": {
+            "type": "integer",
+            "description": "See `width` — same nullable/float-spelled behavior and cross-SDK note.",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "previewable": {
+            "type": "boolean"
+          },
+          "preview_url": {
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "byte_size",
+          "content_type",
+          "download_url",
+          "filename",
+          "id",
+          "preview_url",
+          "previewable",
+          "sgid",
+          "thumbnail_url"
+        ]
+      },
       "Schedule": {
         "type": "object",
         "properties": {
@@ -24413,6 +24483,12 @@
           "content": {
             "type": "string"
           },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "starts_on": {
             "type": "string",
             "x-go-type": "types.Date",
@@ -24465,6 +24541,7 @@
           "content",
           "created_at",
           "creator",
+          "description_attachments",
           "id",
           "inherits_status",
           "parent",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, Optional, TypedDict
 
 WebhookHeadersMap = dict[str, str]
 
@@ -1206,6 +1206,20 @@ class ResumeQuestionResponseContent(TypedDict):
     paused: NotRequired[bool]
 
 
+class RichTextAttachment(TypedDict):
+    byte_size: int
+    content_type: str
+    download_url: str
+    filename: str
+    height: NotRequired[Optional[int | float]]
+    id: int
+    preview_url: str
+    previewable: bool
+    sgid: str
+    thumbnail_url: str
+    width: NotRequired[Optional[int | float]]
+
+
 class Schedule(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -1371,6 +1385,7 @@ class Todo(TypedDict):
     created_at: str
     creator: Person
     description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
     due_on: NotRequired[str]
     id: int
     inherits_status: bool
@@ -1687,7 +1702,7 @@ class Upload(TypedDict):
     description: NotRequired[str]
     download_url: NotRequired[str]
     filename: NotRequired[str]
-    height: NotRequired[int]
+    height: NotRequired[int | float]
     id: int
     inherits_status: bool
     parent: RecordingParent
@@ -1699,7 +1714,7 @@ class Upload(TypedDict):
     updated_at: str
     url: str
     visible_to_clients: bool
-    width: NotRequired[int]
+    width: NotRequired[int | float]
 
 
 class ValidationErrorResponseContent(TypedDict):

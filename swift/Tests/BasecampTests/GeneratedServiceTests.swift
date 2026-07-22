@@ -40,6 +40,7 @@ final class GeneratedServiceTests: XCTestCase {
             "app_url": "https://3.basecamp.com/1/buckets/1/todos/99", "url": "https://3.basecampapi.com/1/buckets/1/todos/99.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
             "status": "active", "title": "Buy milk", "type": "Todo",
+            "description_attachments": [],
             "inherits_status": false, "visible_to_clients": false,
             "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
             "creator": ["id": 1, "name": "Test User"] as [String: Any],

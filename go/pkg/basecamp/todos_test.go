@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -190,9 +191,53 @@ func TestTodo_UnmarshalGet(t *testing.T) {
 		t.Errorf("expected title %q, got %q", expectedContent, todo.Title)
 	}
 
-	// Description should be empty string when not set (not HTML-wrapped)
-	if todo.Description != "" {
-		t.Errorf("expected empty description, got %q", todo.Description)
+	// Description carries the rich-text HTML with inline attachments.
+	if !strings.HasPrefix(todo.Description, "<div>Latest schematic") {
+		t.Errorf("expected rich-text description, got %q", todo.Description)
+	}
+	if !strings.Contains(todo.Description, "<bc-attachment") {
+		t.Errorf("expected description to reference bc-attachment, got %q", todo.Description)
+	}
+
+	// DescriptionAttachments decode directly through RichTextAttachment's
+	// UnmarshalJSON (Todo has no custom decoder, so its embedded elements
+	// invoke it automatically). The image entry's float-spelled "width":
+	// 1024.0 decodes to 1024; the non-image entry's "width": null / "height":
+	// null decode to nil rather than sentinel-zero.
+	if len(todo.DescriptionAttachments) != 2 {
+		t.Fatalf("expected 2 description attachments, got %d", len(todo.DescriptionAttachments))
+	}
+	img := todo.DescriptionAttachments[0]
+	if img.ID != 1069480000 {
+		t.Errorf("expected attachment ID 1069480000, got %d", img.ID)
+	}
+	if img.Filename != "leto-schematic.png" {
+		t.Errorf("expected filename 'leto-schematic.png', got %q", img.Filename)
+	}
+	if img.ContentType != "image/png" {
+		t.Errorf("expected content_type 'image/png', got %q", img.ContentType)
+	}
+	if img.ByteSize != 284111 {
+		t.Errorf("expected byte_size 284111, got %d", img.ByteSize)
+	}
+	if img.Width == nil || *img.Width != 1024 {
+		t.Errorf("expected width 1024 from float-spelled 1024.0, got %v", img.Width)
+	}
+	if img.Height == nil || *img.Height != 768 {
+		t.Errorf("expected height 768, got %v", img.Height)
+	}
+	if !img.Previewable {
+		t.Error("expected image attachment previewable")
+	}
+	pdf := todo.DescriptionAttachments[1]
+	if pdf.ContentType != "application/pdf" {
+		t.Errorf("expected content_type 'application/pdf', got %q", pdf.ContentType)
+	}
+	if pdf.Width != nil || pdf.Height != nil {
+		t.Errorf("expected nil dimensions for null-dimension blob, got %v x %v", pdf.Width, pdf.Height)
+	}
+	if pdf.Previewable {
+		t.Error("expected non-image attachment not previewable")
 	}
 
 	// Verify timestamps are parsed
@@ -930,6 +975,113 @@ func TestTodoFromGenerated_CompletionSubscribers(t *testing.T) {
 	}
 }
 
+// TestTodoFromGenerated_DescriptionAttachments tests the nil-vs-empty
+// contract for the description's inline files: a server-sent [] becomes a
+// non-nil zero-length slice, an absent property stays nil. The API always
+// sends the array, so clients enumerating inline files depend on the
+// distinction the same way they do for CompletionSubscribers.
+func TestTodoFromGenerated_DescriptionAttachments(t *testing.T) {
+	// Present but empty: non-nil zero-length slice.
+	gt := generated.Todo{
+		Id:                     12345,
+		Content:                "Content",
+		DescriptionAttachments: []generated.RichTextAttachment{},
+	}
+	todo := todoFromGenerated(gt)
+	if todo.DescriptionAttachments == nil {
+		t.Error("expected non-nil DescriptionAttachments for server-sent []")
+	}
+	if len(todo.DescriptionAttachments) != 0 {
+		t.Errorf("expected 0 description attachments, got %d", len(todo.DescriptionAttachments))
+	}
+
+	// Absent: stays nil.
+	gt = generated.Todo{Id: 12345, Content: "Content"}
+	todo = todoFromGenerated(gt)
+	if todo.DescriptionAttachments != nil {
+		t.Errorf("expected nil DescriptionAttachments for absent property, got %v", todo.DescriptionAttachments)
+	}
+
+	// Populated: every field is carried through. Id is a plain int64 (the
+	// nine non-dimension fields are @required), and the generated
+	// *types.FlexInt dimensions are narrowed into the public *int32.
+	attachmentID := int64(987)
+	w := types.FlexInt(800)
+	h := types.FlexInt(600)
+	gt = generated.Todo{
+		Id:      12345,
+		Content: "Content",
+		DescriptionAttachments: []generated.RichTextAttachment{
+			{
+				Id:           attachmentID,
+				Sgid:         "BAh7CEki",
+				Filename:     "diagram.png",
+				ContentType:  "image/png",
+				ByteSize:     20480,
+				DownloadUrl:  "https://example.com/download/diagram.png",
+				Width:        &w,
+				Height:       &h,
+				Previewable:  true,
+				PreviewUrl:   "https://example.com/preview/diagram.png",
+				ThumbnailUrl: "https://example.com/thumb/diagram.png",
+			},
+		},
+	}
+	todo = todoFromGenerated(gt)
+	if len(todo.DescriptionAttachments) != 1 {
+		t.Fatalf("expected 1 description attachment, got %d", len(todo.DescriptionAttachments))
+	}
+	a := todo.DescriptionAttachments[0]
+	if a.ID != attachmentID {
+		t.Errorf("expected attachment ID %d, got %d", attachmentID, a.ID)
+	}
+	if a.SGID != "BAh7CEki" {
+		t.Errorf("expected sgid 'BAh7CEki', got %q", a.SGID)
+	}
+	if a.Filename != "diagram.png" {
+		t.Errorf("expected filename 'diagram.png', got %q", a.Filename)
+	}
+	if a.ContentType != "image/png" {
+		t.Errorf("expected content_type 'image/png', got %q", a.ContentType)
+	}
+	if a.ByteSize != 20480 {
+		t.Errorf("expected byte_size 20480, got %d", a.ByteSize)
+	}
+	if a.DownloadURL != "https://example.com/download/diagram.png" {
+		t.Errorf("unexpected download_url %q", a.DownloadURL)
+	}
+	if a.Width == nil || *a.Width != 800 || a.Height == nil || *a.Height != 600 {
+		t.Errorf("expected 800x600, got %v x %v", a.Width, a.Height)
+	}
+	if !a.Previewable {
+		t.Error("expected previewable true")
+	}
+	if a.PreviewURL != "https://example.com/preview/diagram.png" {
+		t.Errorf("unexpected preview_url %q", a.PreviewURL)
+	}
+	if a.ThumbnailURL != "https://example.com/thumb/diagram.png" {
+		t.Errorf("unexpected thumbnail_url %q", a.ThumbnailURL)
+	}
+
+	// Nil generated dimensions (a non-image blob's null width/height) leave
+	// the public *int32 dimensions nil rather than sentinel-zero.
+	gt = generated.Todo{
+		Id:      12345,
+		Content: "Content",
+		DescriptionAttachments: []generated.RichTextAttachment{
+			{Id: 654, Filename: "spec.pdf", ContentType: "application/pdf"},
+		},
+	}
+	todo = todoFromGenerated(gt)
+	nonImage := todo.DescriptionAttachments[0]
+	if nonImage.ID != 654 {
+		t.Errorf("expected ID 654, got %d", nonImage.ID)
+	}
+	if nonImage.Width != nil || nonImage.Height != nil {
+		t.Errorf("expected nil dimensions for non-image blob, got %v x %v", nonImage.Width, nonImage.Height)
+	}
+}
+
 func TestTodoFromGenerated_CommentsCount(t *testing.T) {
 	gt := generated.Todo{Id: 12345, Content: "Content", CommentsCount: 7}
 	todo := todoFromGenerated(gt)
@@ -1060,6 +1212,134 @@ func TestTodosService_List_QueryParameters(t *testing.T) {
 				t.Fatalf("completed query = %q, want %q", got, tt.wantCompleted)
 			}
 		})
+	}
+}
+
+// TestTodosService_Get_DescriptionAttachments exercises the full service
+// path — wire JSON → generated.Todo (dimensions as *types.FlexInt) →
+// todoFromGenerated → public Todo — and then re-encodes the result. It pins
+// the two dimension behaviors that matter for `todos show --json`: the BC3
+// API's float-spelled "width": 1024.0 normalizes to integer 1024, and a
+// non-image blob's "width": null / "height": null re-encode as explicit
+// null (the *int32 dimensions carry no omitempty), never a sentinel 0 or a
+// dropped key. Every @required field survives the round-trip.
+func TestTodosService_Get_DescriptionAttachments(t *testing.T) {
+	fixture := loadTodosFixture(t, "get.json")
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write(fixture)
+	})
+
+	todo, err := svc.Get(context.Background(), 1069479520)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(todo.DescriptionAttachments) != 2 {
+		t.Fatalf("expected 2 description attachments, got %d", len(todo.DescriptionAttachments))
+	}
+	img := todo.DescriptionAttachments[0]
+	if img.ID != 1069480000 {
+		t.Errorf("expected image attachment ID 1069480000, got %d", img.ID)
+	}
+	if img.Width == nil || *img.Width != 1024 {
+		t.Errorf("expected image width 1024 (from float-spelled 1024.0), got %v", img.Width)
+	}
+	if img.Height == nil || *img.Height != 768 {
+		t.Errorf("expected image height 768, got %v", img.Height)
+	}
+	pdf := todo.DescriptionAttachments[1]
+	if pdf.Width != nil || pdf.Height != nil {
+		t.Errorf("expected nil dimensions for non-image blob, got %v x %v", pdf.Width, pdf.Height)
+	}
+
+	// Re-encode and confirm the wire shape is faithful.
+	out, err := json.Marshal(todo)
+	if err != nil {
+		t.Fatalf("failed to marshal todo: %v", err)
+	}
+	decoded, err := unmarshalTodosWithNumbers(out)
+	if err != nil {
+		t.Fatalf("failed to decode marshaled todo: %v", err)
+	}
+	atts, ok := decoded["description_attachments"].([]any)
+	if !ok || len(atts) != 2 {
+		t.Fatalf("expected 2 marshaled description_attachments, got %T %v", decoded["description_attachments"], decoded["description_attachments"])
+	}
+
+	first, ok := atts[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected first attachment to be an object, got %T", atts[0])
+	}
+	if num, ok := first["width"].(json.Number); !ok || num.String() != "1024" {
+		t.Errorf("expected marshaled image width 1024, got %v (%T)", first["width"], first["width"])
+	}
+	for _, k := range []string{"id", "sgid", "filename", "content_type", "byte_size", "download_url", "previewable", "preview_url", "thumbnail_url"} {
+		if _, present := first[k]; !present {
+			t.Errorf("expected marshaled attachment to carry required field %q", k)
+		}
+	}
+
+	second, ok := atts[1].(map[string]any)
+	if !ok {
+		t.Fatalf("expected second attachment to be an object, got %T", atts[1])
+	}
+	wv, present := second["width"]
+	if !present {
+		t.Error("expected non-image attachment to keep an explicit width key")
+	}
+	if wv != nil {
+		t.Errorf("expected non-image width to marshal as null, got %v (%T)", wv, wv)
+	}
+	hv, present := second["height"]
+	if !present {
+		t.Error("expected non-image attachment to keep an explicit height key")
+	}
+	if hv != nil {
+		t.Errorf("expected non-image height to marshal as null, got %v (%T)", hv, hv)
+	}
+}
+
+// TestTodosService_Get_DescriptionAttachmentsEmptyPreserved pins the
+// nil-vs-empty contract through the service path: a server-sent [] decodes to
+// a non-nil zero-length slice and re-encodes as [] (not dropped, not null).
+func TestTodosService_Get_DescriptionAttachmentsEmptyPreserved(t *testing.T) {
+	base := loadTodosFixture(t, "get.json")
+	fixture := patchTodoFixture(t, base, map[string]any{
+		"description_attachments": []any{},
+	})
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write(fixture)
+	})
+
+	todo, err := svc.Get(context.Background(), 1069479520)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if todo.DescriptionAttachments == nil {
+		t.Error("expected non-nil empty slice for server-sent []")
+	}
+	if len(todo.DescriptionAttachments) != 0 {
+		t.Errorf("expected 0 attachments, got %d", len(todo.DescriptionAttachments))
+	}
+
+	out, err := json.Marshal(todo)
+	if err != nil {
+		t.Fatalf("failed to marshal todo: %v", err)
+	}
+	decoded, err := unmarshalTodosWithNumbers(out)
+	if err != nil {
+		t.Fatalf("failed to decode marshaled todo: %v", err)
+	}
+	atts, ok := decoded["description_attachments"].([]any)
+	if !ok {
+		t.Fatalf("expected description_attachments array, got %T", decoded["description_attachments"])
+	}
+	if len(atts) != 0 {
+		t.Errorf("expected [] preserved on re-encode, got %v", atts)
 	}
 }
 

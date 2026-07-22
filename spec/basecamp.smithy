@@ -1280,6 +1280,8 @@ structure Todo {
   completed: Boolean
   @required
   content: TodoContent
+  @required
+  description_attachments: RichTextAttachmentList
   starts_on: ISO8601Date
   due_on: ISO8601Date
   assignees: PersonList
@@ -1292,6 +1294,51 @@ structure Todo {
   /// `steps/step` jbuilder partial emits the same shape as `CardStep`,
   /// so the existing `CardStepList` is reused.
   steps: CardStepList
+}
+
+list RichTextAttachmentList {
+  member: RichTextAttachment
+}
+
+/// Structured metadata for a downloadable file attachment embedded in a
+/// rich text attribute. Every rich text attribute in an API response is
+/// accompanied by a corresponding `*_attachments` array named after the
+/// attribute (a Todo's `description_attachments` for its `description`).
+/// Mentions, remote images, and opengraph embeds are excluded — only
+/// downloadable file attachments appear.
+structure RichTextAttachment {
+  @required
+  id: Long
+  @required
+  sgid: String
+  @required
+  filename: String
+  @required
+  content_type: String
+  @required
+  byte_size: Long
+  @required
+  @basecampAuthRoutableUrl
+  download_url: String
+
+  /// Pixel dimensions, present as keys on every attachment but null for
+  /// non-image blobs, and the BC3 API may serialize them float-spelled
+  /// (`1024.0`) — hence optional/nullable rather than `@required` (the enhance
+  /// pass marks them `nullable: true` in the OpenAPI). All SDKs decode both
+  /// forms faithfully and type the nullable value statically: Go `types.FlexInt`
+  /// → `*int32`, Kotlin `Int?` via `FlexibleIntSerializer`, Swift `Int32?`,
+  /// TypeScript `number | null`, Python `Optional[int | float]` (raw JSON keeps
+  /// the float), Ruby nilable. See SPEC.md §10 Type Fidelity.
+  width: Integer
+  /// See `width` — same nullable/float-spelled behavior and cross-SDK note.
+  height: Integer
+
+  @required
+  previewable: Boolean
+  @required
+  preview_url: String
+  @required
+  thumbnail_url: String
 }
 
 structure TodoParent {

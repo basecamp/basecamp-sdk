@@ -3991,6 +3991,44 @@ export interface components {
         ResumeQuestionResponseContent: {
             paused?: boolean;
         };
+        /**
+         * @description Structured metadata for a downloadable file attachment embedded in a
+         *     rich text attribute. Every rich text attribute in an API response is
+         *     accompanied by a corresponding `*_attachments` array named after the
+         *     attribute (a Todo's `description_attachments` for its `description`).
+         *     Mentions, remote images, and opengraph embeds are excluded — only
+         *     downloadable file attachments appear.
+         */
+        RichTextAttachment: {
+            /** Format: int64 */
+            id: number;
+            sgid: string;
+            filename: string;
+            content_type: string;
+            /** Format: int64 */
+            byte_size: number;
+            download_url: string;
+            /**
+             * Format: int32
+             * @description Pixel dimensions, present as keys on every attachment but null for
+             *     non-image blobs, and the BC3 API may serialize them float-spelled
+             *     (`1024.0`) — hence optional/nullable rather than `@required` (the enhance
+             *     pass marks them `nullable: true` in the OpenAPI). All SDKs decode both
+             *     forms faithfully and type the nullable value statically: Go `types.FlexInt`
+             *     → `*int32`, Kotlin `Int?` via `FlexibleIntSerializer`, Swift `Int32?`,
+             *     TypeScript `number | null`, Python `Optional[int | float]` (raw JSON keeps
+             *     the float), Ruby nilable. See SPEC.md §10 Type Fidelity.
+             */
+            width?: number | null;
+            /**
+             * Format: int32
+             * @description See `width` — same nullable/float-spelled behavior and cross-SDK note.
+             */
+            height?: number | null;
+            previewable: boolean;
+            preview_url: string;
+            thumbnail_url: string;
+        };
         Schedule: {
             /** Format: int64 */
             id: number;
@@ -4173,6 +4211,7 @@ export interface components {
             description?: string;
             completed?: boolean;
             content: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
             starts_on?: string;
             due_on?: string;
             assignees?: components["schemas"]["Person"][];

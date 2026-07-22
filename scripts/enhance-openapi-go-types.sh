@@ -119,6 +119,28 @@ walk(
   }
 )
 |
+# Fourth-b pass: RichTextAttachment width/height → nullable *types.FlexInt
+# Same float-encoded-integer wire format as Upload (1024.0), but here the
+# dimensions are nullable (the key is always emitted but the value is null for
+# non-image blobs). Keep the optional pointer (skip-optional-pointer: false)
+# and mark the schema nullable so the static types across SDKs capture the
+# present-null value: Go *types.FlexInt, TypeScript `number | null`, Python
+# `Optional[int]`. Scoped to the RichTextAttachment schema.
+.components.schemas.RichTextAttachment.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  }
+)
+|
 # Fifth pass: override starts_at/ends_at on ScheduleEntry response to use types.FlexibleTime
 # The API returns date-only strings ("2006-01-02") for all-day schedule entries,
 # which time.Time cannot parse. FlexibleTime handles RFC3339, RFC3339Nano, and date-only.

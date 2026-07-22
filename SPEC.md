@@ -665,6 +665,46 @@ All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin
 
 `[CONFLICT: JavaScript Number.MAX_SAFE_INTEGER is 2^53 - 1. The TypeScript SDK has a documented known gap — JSON.parse truncates integers beyond this value. The spec prescribes 64-bit precision; TypeScript implementations must document the limitation. See waiver 1B.6 in rubric-audit.json.]`
 
+### Nullable Numeric Dimensions (rich-text attachment width/height)
+
+Rich-text `*_attachments` elements (e.g. `Todo.description_attachments`, per the
+`RichTextAttachment` schema) always emit `width` and `height` keys, but the
+**value is `null` for non-image blobs**, and the BC3 API may serialize a present
+dimension **float-spelled** (`1024.0`). These two members are deliberately
+optional/nullable in the schema (not `@required`, and marked `nullable: true` in
+the canonical OpenAPI); the nine other attachment fields are `@required`. All
+SDKs **decode both forms faithfully and type the nullable value statically**; the
+only residual is a pre-existing encoder behavior in two SDKs, noted below:
+
+| SDK | static type | decode `null` | decode `1024.0` |
+|-----|-------------|--------------|-----------------|
+| **Go** | `*types.FlexInt` → `*int32` | `nil` | `1024` (+ re-encodes as `"width": null`) |
+| **Swift** | `Int32?` | `nil` | `1024` |
+| **Ruby** | nilable (`parse_integer`) | `nil` | `1024` (`to_i`) |
+| **TypeScript** | `width?: number \| null` | `null` | `1024` (JS number) |
+| **Python** | `NotRequired[Optional[int \| float]]` | `None` | `1024.0` (float, no coercion) |
+| **Kotlin** | `Int?` via `FlexibleIntSerializer` | `null` | `1024` |
+
+- **Go** is fully faithful and round-trips: `*int32` without `omitempty`, so a
+  `nil` dimension re-encodes as an explicit `"width": null`.
+- **Kotlin** decodes faithfully: the generated `width`/`height` are nullable
+  `Int?` decoded through `FlexibleIntSerializer` (mirroring `FlexibleLongSerializer`
+  and Go's `types.FlexInt`), so a served `null` stays `null` — never the sentinel
+  `0` that a bare `Int = 0` under `coerceInputValues = true` would produce — and a
+  float-spelled `1024.0` decodes to `1024`. `Upload.width`/`height` share this
+  representation.
+- **TypeScript / Python** model the nullable value in their **static** types
+  because the schema is `nullable: true`, so a present `null` is captured — not
+  just an absent key. TypeScript is `width?: number | null` (JS has no int/float
+  distinction, so a float-spelled `1024.0` is simply the number `1024`). Python
+  is `NotRequired[Optional[int | float]]`: the raw `response.json()` performs no
+  int coercion, so a float-spelled `1024.0` stays a Python `float`, and the type
+  admits both `int` and `float` rather than lying with a bare `int`.
+- **Ruby / Swift** decode faithfully but omit a `nil` dimension on **re-encode**
+  (Ruby `to_h` `.compact`; Swift's synthesized encoder). This is a pre-existing
+  SDK-wide *encoder* behavior, **out of scope** for this response field (`todos
+  show --json` surfaces it via the Go SDK, which round-trips faithfully).
+
 ### Date/Time Fields `[static]`
 
 Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format. Implementations may use the language's native date/time type (Go `time.Time`, Ruby `Time`, Kotlin `Instant`) or keep them as ISO 8601 strings (TypeScript uses `string` from openapi-fetch schema types). The choice is a language adaptation.

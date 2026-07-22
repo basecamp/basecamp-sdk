@@ -4,6 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import com.basecamp.sdk.serialization.FlexibleIntSerializer
 
 /**
  * Upload entity from the Basecamp API.
@@ -33,8 +34,10 @@ data class Upload(
     val description: String? = null,
     @SerialName("content_type") val contentType: String? = null,
     @SerialName("byte_size") val byteSize: Long = 0L,
-    val width: Int = 0,
-    val height: Int = 0,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val width: Int? = null,
+    @Serializable(with = FlexibleIntSerializer::class)
+    val height: Int? = null,
     @SerialName("download_url") val downloadUrl: String? = null,
     val filename: String? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,

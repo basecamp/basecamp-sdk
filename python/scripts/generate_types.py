@@ -15,7 +15,14 @@ PYTHON_KEYWORDS = set(keyword.kwlist)
 
 
 def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> str:
-    if "$ref" in schema:
+    # types.FlexInt dimensions (rich-text attachment / upload width & height)
+    # arrive float-spelled (1024.0) and Python's raw response.json() preserves
+    # the float — there is no int-coercion layer — so the honest static type is
+    # int | float. ("FlexibleInt64" for Person id does not contain the substring
+    # "FlexInt", so the two markers never collide.)
+    if "FlexInt" in str(schema.get("x-go-type", "")):
+        t = "int | float"
+    elif "$ref" in schema:
         ref_name = schema["$ref"].rsplit("/", 1)[-1]
         ref_schema = schemas.get(ref_name, {})
         # Enum schemas (string with enum values) map to str, not a TypedDict
@@ -40,6 +47,13 @@ def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> st
     else:
         t = "Any"
 
+    # Nullable schemas carry an explicit null value on the wire (e.g. a
+    # rich-text attachment's width/height for non-image blobs). Preserve that
+    # in the static type as Optional so a present None is captured, not just an
+    # absent key.
+    if schema.get("nullable") is True:
+        t = f"Optional[{t}]"
+
     if optional:
         return f"NotRequired[{t}]"
     return t
@@ -62,7 +76,7 @@ def main() -> None:
         "",
         "from __future__ import annotations",
         "",
-        "from typing import Any, NotRequired, TypedDict",
+        "from typing import Any, NotRequired, Optional, TypedDict",
     ]
 
     # Emit type aliases for map schemas (object with additionalProperties, no properties)

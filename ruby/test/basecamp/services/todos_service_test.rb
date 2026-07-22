@@ -258,6 +258,49 @@ class TodosServiceTest < Minitest::Test
     assert_nil result
   end
 
+  # The typed decode (Basecamp::Types::Todo → RichTextAttachment) carries the
+  # rich-text description's inline files. Pixel dimensions arrive float-spelled
+  # (1024.0) for images and null for non-image blobs; parse_integer decodes
+  # both faithfully — 1024.0 → 1024 (to_i) and null → nil. This is a
+  # decode-only assertion: re-encoding a nil dimension is out of scope here,
+  # since to_h calls .compact and drops the nil key (an SDK-wide encoder
+  # behavior documented in SPEC.md §10 Type Fidelity).
+  def test_description_attachment_dimensions_decode
+    todo = Basecamp::Types::Todo.new(
+      "id" => 456,
+      "content" => "Buy milk",
+      "description_attachments" => [
+        {
+          "id" => 1_069_480_000, "sgid" => "BAh-img", "filename" => "leto-schematic.png",
+          "content_type" => "image/png", "byte_size" => 284_111,
+          "download_url" => "https://3.basecampapi.com/12345/buckets/1/blobs/img/download/leto-schematic.png",
+          "width" => 1024.0, "height" => 768, "previewable" => true,
+          "preview_url" => "https://3.basecampapi.com/12345/buckets/1/blobs/img/previews/leto-schematic.png",
+          "thumbnail_url" => "https://3.basecampapi.com/12345/buckets/1/blobs/img/thumbnails/leto-schematic.png"
+        },
+        {
+          "id" => 1_069_480_001, "sgid" => "BAh-pdf", "filename" => "leto-spec.pdf",
+          "content_type" => "application/pdf", "byte_size" => 1_048_576,
+          "download_url" => "https://3.basecampapi.com/12345/buckets/1/blobs/pdf/download/leto-spec.pdf",
+          "width" => nil, "height" => nil, "previewable" => false,
+          "preview_url" => "https://3.basecampapi.com/12345/buckets/1/blobs/pdf/previews/leto-spec.pdf",
+          "thumbnail_url" => "https://3.basecampapi.com/12345/buckets/1/blobs/pdf/thumbnails/leto-spec.pdf"
+        }
+      ]
+    )
+
+    image, pdf = todo.description_attachments
+
+    # Float-spelled 1024.0 decodes to the integer 1024.
+    assert_equal 1024, image.width
+    assert_equal 768, image.height
+    assert_equal "image/png", image.content_type
+
+    # null dimensions decode to nil (not a sentinel 0).
+    assert_nil pdf.width
+    assert_nil pdf.height
+  end
+
   class TrackingHooks
     include Basecamp::Hooks
 
