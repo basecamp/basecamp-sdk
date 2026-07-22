@@ -1,0 +1,43 @@
+go/pkg/generated/client.gen.go
+  s_c9b7cecf44b5ed::t_57e537fd06077d 1029-1035
+typescript/src/generated/schema.d.ts
+  s_c9b7cecf44b5ed::t_607b5f38ef9ff2 3303-3309
+spec/api-gaps/memories-emptied-regression.md
+  s_c9b7cecf44b5ed::t_136b6be4a17114 44
+typescript/src/generated/metadata.ts
+  s_c9b7cecf44b5ed::t_00b3ed4a6cc3ef 40
+ruby/lib/basecamp/generated/types.rb
+  s_c06872ba8590e9::t_1b347030912c66 4
+openapi.json
+  s_c9b7cecf44b5ed::t_cf4e6900d7ad82 23588
+ruby/lib/basecamp/generated/metadata.json
+  s_c9b7cecf44b5ed::t_b72ee95dfbbc5f 4
+spec/basecamp.smithy
+  s_c9b7cecf44b5ed::t_66ef05e25d156a 8191-8197
+typescript/src/generated/openapi-stripped.json
+  s_c9b7cecf44b5ed::t_3d6ef2175882f7 21264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "36a856c630301fbe236d2aee6f3903c9c70167f1",
+  "prompts": {},
+  "sessions": {
+    "s_c06872ba8590e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7768f7ba-43cb-4063-bdc1-19142d42759b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_c9b7cecf44b5ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab562d91-3cc7-47e1-bd7b-46f572409e16",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
