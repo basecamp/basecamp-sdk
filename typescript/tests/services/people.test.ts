@@ -175,6 +175,9 @@ describe("PeopleService", () => {
 
       const status = await client.people.outOfOffice(1);
       expect(status.enabled).toBe(false);
+      expect(status.ongoing).toBe(false);
+      expect(status.start_date).toBeUndefined();
+      expect(status.end_date).toBeUndefined();
       expect(status.back_on_date).toBeUndefined();
     });
   });

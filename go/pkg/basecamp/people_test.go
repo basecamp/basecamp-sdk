@@ -483,6 +483,9 @@ func TestOutOfOffice_UnmarshalDisabled(t *testing.T) {
 	if ooo.Enabled {
 		t.Error("expected enabled to be false")
 	}
+	if ooo.Ongoing {
+		t.Error("expected ongoing to be false")
+	}
 	if ooo.StartDate != "" || ooo.EndDate != "" || ooo.BackOnDate != "" {
 		t.Errorf("expected omitted dates to be empty, got start=%q end=%q back_on=%q",
 			ooo.StartDate, ooo.EndDate, ooo.BackOnDate)
