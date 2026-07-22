@@ -628,11 +628,13 @@ func TestUpdateUploadRequest_HasNoFileReplacementField(t *testing.T) {
 func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 	var receivedMethod string
 	var receivedPath string
+	var receivedAuth string
 	var receivedBody []byte
 
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedMethod = r.Method
 		receivedPath = r.URL.Path
+		receivedAuth = r.Header.Get("Authorization")
 		receivedBody, _ = io.ReadAll(r.Body)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -662,6 +664,9 @@ func TestUploadsService_Update_SendsDocumentedFields(t *testing.T) {
 	}
 	if receivedPath != "/12345/uploads/1069479400" {
 		t.Errorf("expected path /12345/uploads/1069479400, got %s", receivedPath)
+	}
+	if receivedAuth != "Bearer test-token" {
+		t.Errorf("expected Authorization 'Bearer test-token', got %s", receivedAuth)
 	}
 
 	var body map[string]any
