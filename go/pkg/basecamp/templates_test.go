@@ -203,7 +203,10 @@ func TestTemplatesService_CreateProjectEnvelope(t *testing.T) {
 	fixture := loadTemplatesFixture(t, "project_construction.json")
 
 	var receivedBody map[string]any
+	var receivedMethod, receivedPath string
 	svc := testTemplatesServer(t, func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedPath = r.URL.Path
 		receivedBody = decodeRequestBody(t, r)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -214,6 +217,13 @@ func TestTemplatesService_CreateProjectEnvelope(t *testing.T) {
 	_, err := svc.CreateProject(context.Background(), 987, "New Project from Template", "Kick-off details")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if receivedMethod != http.MethodPost {
+		t.Errorf("expected POST, got %s", receivedMethod)
+	}
+	if want := "/99999/templates/987/project_constructions.json"; receivedPath != want {
+		t.Errorf("expected path %q, got %q", want, receivedPath)
 	}
 
 	project, ok := receivedBody["project"].(map[string]any)
