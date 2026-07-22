@@ -1,0 +1,20 @@
+.github/workflows/release-python.yml
+  s_8cf9519efa7dba::t_3b0e8b6dd7cad6 35
+  s_8cf9519efa7dba::t_aa3461380f1ef6 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "e6705dafad537424b329d6331dbd26e8611082e6",
+  "prompts": {},
+  "sessions": {
+    "s_8cf9519efa7dba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be12d219-86ad-429f-aad7-3fbe14ab6e48",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
