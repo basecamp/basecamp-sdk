@@ -18,6 +18,12 @@ typescript/src/generated/services/campfires.ts
   s_18853c09ab9fc6::t_1ea2b2ced4c6b1 468
 ruby/lib/basecamp/generated/services/campfires_service.rb
   s_18853c09ab9fc6::t_1ea2b2ced4c6b1 127
+ruby/lib/basecamp/generated/metadata.json
+  s_18853c09ab9fc6::t_9659b2a2a9fc8e 4
+ruby/lib/basecamp/generated/types.rb
+  s_18853c09ab9fc6::t_9659b2a2a9fc8e 4
+typescript/src/generated/metadata.ts
+  s_18853c09ab9fc6::t_9659b2a2a9fc8e 40
 ---
 {
   "schema_version": "authorship/3.0.0",
