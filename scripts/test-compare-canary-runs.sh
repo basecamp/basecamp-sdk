@@ -755,7 +755,7 @@ JSON
 write_snapshot "$BC4/Waiver_only_bad_path_test.json" WbOp '{"items":[1]}'
 write_snapshot "$BC5/Waiver_only_bad_path_test.json" WbOp '{"items":[1]}'
 run_compare "$BC4" "$BC5" "$XW_TESTS"
-if [ "$RUN_RC" -eq 2 ] && grep -q "pairwiseDeltaAllowed.*brackets are only supported\|brackets are only supported.*pairwiseDeltaAllowed" <<<"$RUN_OUT"; then
+if [ "$RUN_RC" -eq 2 ] && grep -Eq "pairwiseDeltaAllowed.*brackets are only supported|brackets are only supported.*pairwiseDeltaAllowed" <<<"$RUN_OUT"; then
   pass "X: malformed bracket path in a waiver-only entry fails with exit 2"
 else
   fail "X: expected exit 2 with waiver unsupported-path error; got rc=$RUN_RC: $RUN_OUT"
