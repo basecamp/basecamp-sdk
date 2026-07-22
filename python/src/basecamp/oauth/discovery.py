@@ -57,43 +57,73 @@ class _IssuerBindingError(OAuthError):
         super().__init__("api_error", message, **kwargs)
 
 
-def _normalize_body_cap(max_body_bytes: object) -> int:
+def _normalize_body_cap(max_body_bytes: object, default: int = MAX_DISCOVERY_BODY_BYTES) -> int:
     """Coerce the public cap to a finite, non-negative int.
 
     ``max_body_bytes`` is *typed* ``int``, but callers can pass ``None``, a float,
     or ``float("inf")`` at runtime; any of those would disable the streaming memory
     bound (``total > inf`` never trips), defeating the SSRF guarantee. Fall back to
-    the default so the bound can never be turned off. ``bool`` is excluded (a
+    ``default`` so the bound can never be turned off. ``bool`` is excluded (a
     subclass of ``int``, but a nonsensical cap).
+
+    ``default`` is operation-specific (discovery vs device flow, mirroring
+    :func:`_normalize_timeout`) and validated too, so an invalid fallback cannot
+    disable the bound either.
     """
-    if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0:
-        return MAX_DISCOVERY_BODY_BYTES
-    return max_body_bytes
+    if not (isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0):
+        return max_body_bytes
+    if not (isinstance(default, bool) or not isinstance(default, int) or default < 0):
+        return default
+    return MAX_DISCOVERY_BODY_BYTES
 
 
-def _normalize_timeout(timeout: object) -> float:
+def _normalize_timeout(timeout: object, default: float = _DISCOVERY_TIMEOUT, maximum: float | None = None) -> float:
     """Coerce the public timeout to a finite, positive float.
 
     ``timeout`` is *typed* ``float``, but a caller can pass ``None``, a non-number,
     a non-positive value, or ``float("inf")``/``nan`` at runtime. An infinite or
     non-positive timeout would disable BOTH httpx's bound and the wall-clock
     deadline below (``time.monotonic() > inf`` never trips), letting a slow-drip
-    endpoint hold the SSRF-hardened fetch open indefinitely. Fall back to the
-    default so the bound can never be turned off — the same discipline as
+    endpoint hold the SSRF-hardened fetch open indefinitely. Fall back to
+    ``default`` so the bound can never be turned off — the same discipline as
     :func:`_normalize_body_cap`. ``bool`` is excluded (a subclass of ``int``, but
     a nonsensical timeout).
+
+    ``default`` is operation-specific: discovery passes ``_DISCOVERY_TIMEOUT`` (10s),
+    device flow passes ``_DEVICE_TIMEOUT`` (30s), so an invalid runtime value falls
+    back to that operation's own budget rather than a foreign one.
     """
-    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
-        return _DISCOVERY_TIMEOUT
+    value = _finite_positive_timeout(timeout)
+    if value is not None and (maximum is None or value <= maximum):
+        return value
+    # Validate the fallback too: a caller passing an invalid (or over-max) ``default``
+    # must not be able to disable the bound. Fall back to the discovery constant.
+    fallback = _finite_positive_timeout(default)
+    if fallback is not None and (maximum is None or fallback <= maximum):
+        return fallback
+    # The final constant fallback must also honor the bound: if maximum is smaller
+    # than _DISCOVERY_TIMEOUT, return maximum rather than exceed the contract.
+    if maximum is not None and 0 < maximum < _DISCOVERY_TIMEOUT:
+        return maximum
+    return _DISCOVERY_TIMEOUT
+
+
+def _finite_positive_timeout(value: object) -> float | None:
+    """Return ``value`` as a finite, positive float, or None if it is not one.
+
+    ``bool`` is excluded (an ``int`` subclass, but a nonsensical timeout); an int
+    too large to convert to float (``10**400``) is rejected rather than letting
+    ``math.isfinite``/``float`` raise.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
     try:
-        value = float(timeout)
+        f = float(value)
     except OverflowError:
-        # An int too large to convert to float (e.g. 10**400) — treat as invalid
-        # rather than letting math.isfinite/float raise out of the normalizer.
-        return _DISCOVERY_TIMEOUT
-    if not math.isfinite(value) or value <= 0:
-        return _DISCOVERY_TIMEOUT
-    return value
+        return None
+    if not math.isfinite(f) or f <= 0:
+        return None
+    return f
 
 
 def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> Any:

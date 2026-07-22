@@ -126,6 +126,61 @@ class OAuthSsrfTest < Minitest::Test
     # The read aborted mid-stream: fewer bytes were delivered than the full body.
     assert_operator meter[:delivered], :<, body.bytesize
   end
+  def test_device_over_cap_body_aborts_before_buffering_whole_body
+    endpoint = "https://issuer.ssrf-test.example/oauth/device"
+    # A well-formed device-auth doc padded far past the cap.
+    oversized = {
+      "device_code" => "d", "user_code" => "u", "verification_uri" => "https://x",
+      "expires_in" => 900, "pad" => "x" * (256 * 1024)
+    }.to_json
+
+    meter = { delivered: 0 }
+    connection = Faraday.new do |conn|
+      conn.adapter StreamingAdapter, body: oversized, chunk_size: 4096, meter: meter
+    end
+
+    cap = 8 * 1024
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: endpoint, client_id: "basecamp-cli",
+        http_client: connection, max_body_bytes: cap
+      )
+    end
+    assert_equal "api_error", error.type
+
+    # The device response read is bounded exactly like discovery: it aborts once
+    # the accumulated bytes exceed the cap, never buffering the whole 256 KiB body.
+    assert_operator meter[:delivered], :<=, cap + 4096
+    assert_operator meter[:delivered], :<, oversized.bytesize
+  end
+
+  def test_device_slow_drip_aborts_on_wall_clock_deadline
+    endpoint = "https://issuer.ssrf-test.example/oauth/device"
+    # An in-cap device-auth doc dripped one byte at a time: the per-read socket
+    # timeout never trips (each chunk resets it), so only the whole-read wall-clock
+    # deadline can stop it — the device path must bound reads exactly like discovery.
+    body = {
+      "device_code" => "d", "user_code" => "u", "verification_uri" => "https://x",
+      "expires_in" => 900
+    }.to_json
+
+    meter = { delivered: 0 }
+    connection = Faraday.new do |conn|
+      conn.adapter SlowDripAdapter, body: body, chunk_size: 1, pause: 0.02, meter: meter
+    end
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: endpoint, client_id: "basecamp-cli",
+        http_client: connection, timeout: 0.1
+      )
+    end
+    # A slow-drip timeout is a transport failure (retryable), not an api_error.
+    assert_equal :transport, error.reason
+
+    # The read aborted mid-stream: fewer bytes delivered than the full body.
+    assert_operator meter[:delivered], :<, body.bytesize
+  end
 
   # A middleware whose name matches the redirect detector. Standing in for
   # faraday-follow_redirects without taking the dependency.
@@ -133,6 +188,32 @@ class OAuthSsrfTest < Minitest::Test
     def call(env)
       @app.call(env)
     end
+  end
+
+  def test_device_injected_client_carrying_redirect_middleware_is_rejected
+    connection = Faraday.new do |conn|
+      conn.use RedirectFollowingMiddleware
+      conn.adapter Faraday.default_adapter
+    end
+
+    # Device flow applies the same redirect-suppression guard as discovery, so an
+    # injected redirect-following client is refused before any request is issued.
+    auth_error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: "https://issuer.ssrf-test.example/oauth/device",
+        client_id: "basecamp-cli", http_client: connection
+      )
+    end
+    assert_equal "validation", auth_error.type
+
+    poll_error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.poll_device_token(
+        token_endpoint: "https://issuer.ssrf-test.example/oauth/token",
+        client_id: "basecamp-cli", device_code: "d", interval: 5, expires_in: 900,
+        http_client: connection
+      )
+    end
+    assert_equal "validation", poll_error.type
   end
 
   def test_injected_client_carrying_redirect_middleware_is_rejected
@@ -219,6 +300,22 @@ class OAuthSsrfTest < Minitest::Test
     end
     # A valid positive timeout is preserved.
     assert_equal 2.5, Basecamp::Oauth::Discovery.new(timeout: 2.5).instance_variable_get(:@timeout)
+  end
+
+  def test_normalize_timeout_honors_operation_default
+    # An invalid timeout falls back to the caller-supplied default, so device flow
+    # (30s) does not silently borrow discovery's shorter 10s budget.
+    assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT, Basecamp::Oauth::Fetcher.normalize_timeout(nil)
+    assert_equal 30, Basecamp::Oauth::Fetcher.normalize_timeout(nil, default: 30)
+    assert_equal 30, Basecamp::Oauth::Fetcher.normalize_timeout(Float::INFINITY, default: 30)
+    # A valid value is preserved regardless of the default.
+    assert_equal 5, Basecamp::Oauth::Fetcher.normalize_timeout(5, default: 30)
+    # An INVALID default must not disable the bounds either: fall back to the
+    # finite constant rather than returning the bad default.
+    assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT,
+      Basecamp::Oauth::Fetcher.normalize_timeout(nil, default: Float::INFINITY)
+    assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT,
+      Basecamp::Oauth::Fetcher.normalize_timeout("bad", default: nil)
   end
 
   def test_redirect_is_not_followed

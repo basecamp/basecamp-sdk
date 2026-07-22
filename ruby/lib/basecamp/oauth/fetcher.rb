@@ -41,13 +41,40 @@ module Basecamp
       #
       # @param timeout [Object] caller-supplied timeout
       # @return [Numeric] a finite, positive timeout in seconds
-      def self.normalize_timeout(timeout)
-        # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
-        # not define — calling them would raise NoMethodError). Integer, Float, and
-        # Rational are all real and answer both.
-        return timeout if timeout.is_a?(Numeric) && timeout.real? && timeout.finite? && timeout.positive?
+      # +default+ is operation-specific: discovery falls back to +DEFAULT_TIMEOUT+
+      # (10s), device flow passes its own 30s budget, so an invalid runtime value
+      # falls back to that operation's own timeout rather than a foreign one.
+      def self.normalize_timeout(timeout, default: DEFAULT_TIMEOUT)
+        return timeout if valid_timeout?(timeout)
+        # Validate the fallback too: a caller passing an invalid +default+ must not
+        # be able to disable both timeout bounds. Fall back to the finite constant.
+        return default if valid_timeout?(default)
 
         DEFAULT_TIMEOUT
+      end
+
+      # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
+      # not define — calling them would raise NoMethodError). Integer, Float, and
+      # Rational are all real and answer both.
+      def self.valid_timeout?(value)
+        value.is_a?(Numeric) && value.real? && value.finite? && value.positive?
+      end
+
+      # Coerce the public body cap to a non-negative Integer. A nil, non-Integer
+      # (+Float::INFINITY+ included), or negative value would disable the streaming
+      # memory bound (+total > cap+ never trips), defeating the bounded-read
+      # guarantee. This is the one shared policy for Discovery, Resource, and the
+      # device flow; the +default+ is validated too, so an invalid fallback cannot
+      # disable the bound either.
+      def self.normalize_body_cap(cap, default: DEFAULT_MAX_BODY_BYTES)
+        return cap if valid_body_cap?(cap)
+        return default if valid_body_cap?(default)
+
+        DEFAULT_MAX_BODY_BYTES
+      end
+
+      def self.valid_body_cap?(value)
+        value.is_a?(Integer) && value >= 0
       end
 
       # Raised internally to abort a streaming read once the cap is exceeded.
@@ -57,6 +84,19 @@ module Basecamp
       # Raised internally when a streaming read exceeds its wall-clock deadline.
       # Never escapes this module — it is mapped to a retryable +network+ OauthError.
       class ReadDeadlineExceeded < StandardError; end
+
+      # Raised from +on_data+ to STOP reading a response whose body the caller does
+      # not use (a non-2xx device-auth, a 3xx token redirect). Draining a slow such
+      # body would otherwise time out and be misclassified as a transport failure.
+      # Carries the response status so the caller can classify by it. Never escapes.
+      class SkipBody < StandardError
+        attr_reader :status
+
+        def initialize(status)
+          @status = status
+          super("device flow response body skipped for status #{status}")
+        end
+      end
 
       # Builds a +[chunks, on_data]+ pair for a genuine bounded/streaming read.
       # Assign +on_data+ to a request's +req.options.on_data+; after the request
@@ -77,10 +117,22 @@ module Basecamp
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @param deadline [Float, nil] monotonic clock deadline (CLOCK_MONOTONIC seconds)
       # @return [Array(Array<String>, Proc)] the chunk buffer and the +on_data+ proc
-      def self.bounded_reader(max_body_bytes, deadline: nil)
+      def self.bounded_reader(max_body_bytes, deadline: nil, skip_status: nil)
         chunks = []
         total = 0
-        reader = proc do |chunk, _received|
+        reader = proc do |chunk, _received, env|
+          # Fast-path status-first skip: Faraday >= 2.5 passes +env+ (with the
+          # response status) to +on_data+ once headers are in, so a body the caller
+          # will not use (a non-2xx device-auth / a 3xx token redirect) is abandoned
+          # at the FIRST body chunk rather than drained. +env+ is nil on older
+          # Faraday (2.0–2.4) or a 2-arg call; every response that COMPLETES is
+          # still classified by status via the caller's post-request re-check (see
+          # +DeviceFlow#post_form+). +on_data+ is a body callback, not a headers
+          # callback, so the one unreachable case — headers arrive, then the body
+          # stalls past the read timeout — surfaces as a bounded transport timeout
+          # instead (never followed, never unbounded; see +post_form+).
+          raise SkipBody.new(env.status) if skip_status && env && skip_status.call(env.status)
+
           if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
             raise ReadDeadlineExceeded
           end

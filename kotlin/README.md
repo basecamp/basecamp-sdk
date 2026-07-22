@@ -196,6 +196,88 @@ if (isTokenExpired(token)) {
 }
 ```
 
+### Device Authorization Flow (RFC 8628)
+
+For input-constrained clients (CLIs, TVs) the SDK implements the OAuth 2.0 device
+authorization grant. The public `basecamp-cli` client is pre-registered with
+`token_endpoint_auth_method: none` — it sends no client secret, and an omitted
+scope defaults to `read`.
+
+```kotlin
+import com.basecamp.sdk.BasecampClient
+import com.basecamp.sdk.oauth.*
+
+// 1. Resource-first discovery selects the authorization server. Device flow needs
+//    an AS that advertises the device_code grant AND a
+//    device_authorization_endpoint — Launchpad advertises neither, so obtain the
+//    config from discoverFromResource rather than discoverLaunchpad().
+val config = when (val result = discoverFromResource("https://3.basecampapi.com")) {
+    is DiscoveryResult.Selected -> result.config
+    is DiscoveryResult.FallBack ->
+        error("This authorization server does not offer device flow (${result.reason.code})")
+}
+
+// 2. Run the full flow: request a code, show it to the user, then poll for the
+//    token. performDeviceLogin guards capability, so it throws
+//    BasecampException.DeviceFlow(reason = "unavailable") when the server can't
+//    do device flow.
+val token = performDeviceLogin(
+    config = config,
+    clientId = "basecamp-cli",
+    display = { auth ->
+        println("Visit ${auth.verificationUri} and enter code ${auth.userCode}")
+        // Or open auth.verificationUriComplete directly when present.
+    },
+)
+
+// Use the token to build a client — never print or log its value.
+val client = BasecampClient {
+    accessToken(token.accessToken)
+}
+```
+
+The two building blocks are also public if you need finer control:
+
+```kotlin
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
+
+// deviceAuthorizationEndpoint is optional (device-only servers advertise it,
+// others omit it), so assert its presence rather than dereferencing with `!!`.
+val deviceEndpoint = config.deviceAuthorizationEndpoint
+    ?: error("Selected authorization server does not offer device flow")
+
+val auth = requestDeviceAuthorization(deviceEndpoint, "basecamp-cli")
+
+// Anchor the expiry deadline at code issuance, BEFORE showing the code, so time
+// the user spends reading it counts against the code's lifetime rather than
+// resetting the clock. (performDeviceLogin does this for you.)
+val issuedAt = TimeSource.Monotonic.markNow()
+println("Enter ${auth.userCode} at ${auth.verificationUri}")
+
+// Polls until approval, denial, or expiry. The wait honours the server interval,
+// a sustained slow_down (+5s), and the monotonic expiry deadline.
+val token = pollDeviceToken(
+    tokenEndpoint = config.tokenEndpoint,
+    clientId = "basecamp-cli",
+    deviceCode = auth.deviceCode,
+    interval = auth.interval,
+    expiresIn = auth.expiresIn,
+    deadline = issuedAt + auth.expiresIn.seconds,
+)
+```
+
+Polling is cancellation-aware: cancel the enclosing coroutine (job/scope) to stop
+it — the `CancellationException` propagates untouched. Terminal *flow* outcomes
+(the user denied, the code expired, a transport failure, or the server can't do
+device flow) surface as `BasecampException.DeviceFlow`, whose `reason`
+(`access_denied`, `expired`, `transport`, `unavailable`) derives the parent error
+`code` (`auth_required`, `network`, `validation`). Protocol faults are *not*
+`DeviceFlow`: a malformed 2xx token response (unparseable body or an empty
+`access_token`) and an unrecognized RFC 8628 error code both surface as
+`BasecampException.Api`. `refreshToken`'s `clientSecret` is optional so public
+clients like `basecamp-cli` can refresh without a secret.
+
 ## Webhook Verification
 
 Verify incoming webhook signatures using HMAC-SHA256:

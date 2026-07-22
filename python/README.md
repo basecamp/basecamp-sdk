@@ -277,6 +277,94 @@ token = exchange_code(
 )
 ```
 
+### Device Authorization Grant (RFC 8628)
+
+For input-constrained clients (CLIs, TVs), the device flow trades a redirect for
+a user code the person enters on another device. `perform_device_login` accepts
+an already-selected `OAuthConfig` (from discovery), guards the device capability,
+requests a code, surfaces it through your `display` hook, then polls for a token.
+
+The device grant lives on BC5's authorization server, not Launchpad — so the
+config MUST come from resource-first discovery. Launchpad advertises no device
+authorization endpoint, and the capability guard rejects it before any request.
+
+```python
+from basecamp import Client
+from basecamp.oauth import discover_from_resource, perform_device_login
+
+result = discover_from_resource("https://3.basecampapi.com")
+if result.kind != "selected":
+    raise RuntimeError(f"device flow requires a discovered AS (got fallback: {result.reason})")
+config = result.selected_config()  # enforces the selected-result invariant, typed OAuthConfig
+
+def show(auth):
+    print(f"Visit {auth.verification_uri} and enter code: {auth.user_code}")
+
+token = perform_device_login(config, "basecamp-cli", display=show)
+# Use the token to build a client — never print or log its value.
+client = Client(access_token=token.access_token)
+```
+
+The capability guard requires both `config.device_authorization_endpoint` and
+`"urn:ietf:params:oauth:grant-type:device_code"` in `config.grant_types_supported`;
+otherwise it raises `DeviceFlowError(reason="unavailable")` before any request.
+An omitted `scope` lets the server apply its default (`read`).
+
+The two building blocks compose directly when you want finer control:
+
+```python
+import time
+
+from basecamp.oauth import request_device_authorization, poll_device_token
+
+# `device_authorization_endpoint` is optional on a discovered config (device-only
+# servers omit it). `perform_device_login` guards this for you; when composing the
+# building blocks yourself, assert the capability before requesting a code.
+endpoint = config.device_authorization_endpoint
+if endpoint is None:
+    raise RuntimeError("selected AS advertises no device_authorization_endpoint")
+
+auth = request_device_authorization(endpoint, "basecamp-cli")
+
+# The code's lifetime starts at issuance, not after display: anchor before the
+# display hook and poll with the remaining lifetime, so a slow display eats into
+# the deadline instead of extending it. (`perform_device_login` does this for you.)
+issued_at = time.monotonic()
+show(auth)
+token = poll_device_token(
+    config.token_endpoint,
+    "basecamp-cli",
+    auth.device_code,
+    auth.interval,
+    auth.expires_in - (time.monotonic() - issued_at),
+)
+```
+
+`poll_device_token` runs the RFC 8628 §3.5 loop: it waits at least `interval`
+seconds, honors `slow_down` (sustained +5s) and `authorization_pending`, backs
+off exponentially on connection timeouts, and enforces a monotonic expiry
+deadline. Pass `should_cancel` (any `() -> bool`, e.g. `threading.Event.is_set`)
+for cooperative cancellation. The `clock` and `sleep` seams are injectable for
+deterministic tests.
+
+A terminal device-flow outcome raises `DeviceFlowError` carrying one of these
+five `.reason` values, with the parent error category derived from it:
+
+| `reason` | `.code` | Retryable |
+|----------|---------|-----------|
+| `access_denied` | `auth_required` | no |
+| `expired` | `auth_required` | no |
+| `transport` | `network` | yes |
+| `unavailable` | `validation` | no |
+| `cancelled` | `usage` | no |
+
+Only these five outcomes are `DeviceFlowError`. A malformed response from an
+otherwise-successful round-trip — an unparseable body, a `2xx` missing
+`access_token`, or an unrecognized `error` code — is a server fault, not a
+device-flow outcome, so it raises `OAuthError` with type `api_error` instead.
+`.reason`-derived retryability is authoritative: only `transport` retries, and a
+caller cannot override it.
+
 ### Token Expiry
 
 ```python

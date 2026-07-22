@@ -1109,6 +1109,135 @@ FUNCTION exchangeCode(token_endpoint, code, redirect_uri, client_id, client_secr
 END
 ```
 
+### RFC 8628 Device Authorization Grant `[conformance]`
+
+*BC5 go-live (communique §4). Public pre-registered client `basecamp-cli`:
+`token_endpoint_auth_method: none`, grants `device_code`+`refresh_token`, no
+redirect URIs, no secret. An omitted scope defaults to `read`.*
+
+Three functions per SDK. All device-auth + token requests are TLS-guarded (§9).
+
+```
+FUNCTION requestDeviceAuthorization(deviceAuthEndpoint, clientId, scope?) → DeviceAuthorization
+  1. requireSecureEndpoint(deviceAuthEndpoint)
+  2. POST deviceAuthEndpoint (application/x-www-form-urlencoded):
+       client_id={clientId}
+       scope={scope}          # OMITTED entirely when unset → server default `read`
+  3. Parse → { device_code, user_code, verification_uri,
+               verification_uri_complete?, expires_in, interval? }
+  4. Validate: device_code, user_code, verification_uri non-empty;
+     expires_in and interval are positive WHOLE seconds ≤ 2147483 — an
+     integer-valued float (900.0) is accepted, a fractional value (2.5) is
+     malformed (api_error). interval defaults to 5 when absent; a JSON null
+     duration is treated as absent (Go/Kotlin decoders cannot distinguish
+     null from omission).
+     The 2147483 s (~24.8 day) ceiling is the largest whole-second duration
+     whose millisecond form fits a 32-bit signed timer (2147483 × 1000 ≤ 2³¹−1):
+     beyond it JS setTimeout silently clamps to 1 ms (hot poll loop) and Go's
+     float→int conversion is implementation-defined. An absurd value such as
+     1e100 is a malformed response (api_error), not a schedulable deadline.
+     The bound is shared across all five SDKs.
+END
+```
+
+```
+FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresIn, clock) → Token
+  1. requireSecureEndpoint(tokenEndpoint)
+  2. deadline = clock.now() + expiresIn    # MONOTONIC clock, injectable
+     backoff = interval                    # transient timeout backoff, SEPARATE
+                                           # from the server-driven interval
+  3. LOOP (cancellation-aware):
+       IF cancelled → raise DeviceFlowError(cancelled)
+       IF clock.now() ≥ deadline → raise DeviceFlowError(expired)   # check BEFORE waiting,
+              # so a long display hook, a stalled prior request, or a long backoff
+              # cannot carry the loop past expiry undetected
+       wait = max(interval, backoff), clamped to the remaining lifetime (> 0 here)
+       SLEEP wait   # abortable; a cancel mid-wait → DeviceFlowError(cancelled)
+       IF clock.now() ≥ deadline → raise DeviceFlowError(expired)
+              # re-check AFTER the wait, before POSTing: the clamp above makes the
+              # final sleep land exactly on expiry, so without this check the loop
+              # would issue one POST for a code already known to be expired
+       POST tokenEndpoint: grant_type=urn:ietf:params:oauth:grant-type:device_code,
+                           device_code, client_id
+       CASE response:
+         200 with a non-empty access_token → validate optional fields, return Token
+         200 that is not a JSON object, or lacks a non-empty access_token
+              → raise api_error (a malformed success body is NOT a usable Token,
+                and is NOT a retryable transport error)
+         200 whose optional token fields are malformed → raise api_error:
+              expires_in, when present, MUST be a finite positive WHOLE number ≤
+              2147483647 s — a non-numeric value, a non-finite one (1e400 parses
+              to Infinity), a fractional one, a non-positive one, or one past the
+              ceiling would make expires_at arithmetic overflow/NaN so the token
+              would appear to never expire (an integer-valued float like 3600.0 is
+              accepted and coerced to whole seconds, matching the device-duration
+              rule; every SDK decodes the numeric value and validates it
+              explicitly to reject a fractional lifetime);
+              refresh_token/token_type/scope, when present and non-null, MUST be
+              strings — a JSON null is treated as absent (like an omitted field),
+              consistent with the null-duration rule above. token_type is
+              additionally non-empty when present: absent or JSON null defaults to
+              Bearer, while an explicit "" is malformed (api_error). A non-object
+              or unparsable body, and every field/status error above, carries the
+              HTTP status on the raised api_error.
+              Absent expires_in is allowed (the token carries no expiry).
+              The 2147483647 s (~68 year) token-lifetime ceiling is separate from
+              the 2147483 s device-duration ceiling above: it bounds expires_at
+              arithmetic (a Date/instant), not a schedulable timer, so it is the
+              cross-runtime-safe int/Date maximum rather than the 32-bit-ms timer
+              bound. Shared across all five SDKs.
+         3xx (redirects are never followed)
+              → raise api_error BEFORE OAuth-error body parsing (a redirect
+                carrying an authorization_pending body must not keep polling)
+         error authorization_pending → keep polling
+         error slow_down → interval += 5   (this AND all subsequent polls)
+         error access_denied → raise DeviceFlowError(access_denied)
+         error expired_token → raise DeviceFlowError(expired)
+         connection timeout → backoff = min(backoff × 2, 60), keep polling
+       ANY completed round-trip (2xx or OAuth error) → backoff = interval
+       # The two timers never contaminate each other: slow_down inflates
+       # interval permanently; timeouts inflate backoff transiently, and a
+       # completed round-trip resets backoff to the current interval.
+END
+```
+
+```
+FUNCTION performDeviceLogin(config: OAuthConfig, clientId, scope?, display, clock?) → Token
+  1. Capability guard: REQUIRE config.deviceAuthorizationEndpoint present
+     AND config.grantTypesSupported ∋ "urn:ietf:params:oauth:grant-type:device_code"
+     ELSE raise DeviceFlowError(unavailable)      # accepts an ALREADY-SELECTED config
+  2. auth = requestDeviceAuthorization(config.deviceAuthorizationEndpoint, clientId, scope)
+  3. deadline = clock.now() + auth.expiresIn   # anchor at ISSUANCE, before the hook
+     display(auth)         # hook: show user_code + verification_uri
+  4. remaining = deadline − clock.now()        # deduct display-hook time
+     IF remaining ≤ 0 → raise DeviceFlowError(expired)
+     return pollDeviceToken(config.tokenEndpoint, clientId, auth.deviceCode,
+                            auth.interval, remaining, clock)
+     # A slow display hook consumes code lifetime; polling gets only what is
+     # left of the server-issued expires_in, never a fresh full window.
+END
+```
+
+**Terminal outcomes — `DeviceFlowError` carrying a `DeviceFlowReason`; the parent
+error category is DERIVED from the reason:**
+
+| reason | parent `code` |
+|---|---|
+| `access_denied` | `auth_required` |
+| `expired` | `auth_required` |
+| `transport` | `network` (retryable) |
+| `unavailable` | `validation` |
+| `cancelled` | native cancellation (Go `ctx.Err()`, Kotlin `CancellationException`) else `usage` |
+
+Clocks are injectable for tests and SHOULD be monotonic: Go `time.Now`
+(monotonic reading); TS `performance.now` when available, falling back to
+`Date.now()` (wall-clock — a system clock adjustment can move the deadline;
+environments without `performance` accept this); Python `time.monotonic`;
+Ruby `CLOCK_MONOTONIC`; Kotlin a `TimeSource` (default `Monotonic`; tests
+pass a `TestTimeSource` locked to virtual time). The public
+`basecamp-cli` client sends no secret; Kotlin `refreshToken`'s `clientSecret`
+becomes nullable.
+
 ---
 
 ## §17. ETag Caching
