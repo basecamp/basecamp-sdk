@@ -3653,6 +3653,7 @@ export interface components {
             id: number;
             /** Format: password */
             name?: string;
+            avatar_url?: string;
         };
         PauseQuestionResponseContent: {
             paused?: boolean;

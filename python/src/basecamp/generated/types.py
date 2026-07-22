@@ -933,6 +933,7 @@ class OutOfOfficePayload(TypedDict):
 
 
 class OutOfOfficePerson(TypedDict):
+    avatar_url: NotRequired[str]
     id: int
     name: NotRequired[str]
 

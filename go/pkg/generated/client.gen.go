@@ -1513,8 +1513,9 @@ type OutOfOfficePayload struct {
 
 // OutOfOfficePerson defines model for OutOfOfficePerson.
 type OutOfOfficePerson struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name,omitempty"`
+	AvatarUrl string `json:"avatar_url,omitempty"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name,omitempty"`
 }
 
 // PauseQuestionResponseContent defines model for PauseQuestionResponseContent.

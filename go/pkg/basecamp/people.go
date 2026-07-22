@@ -547,8 +547,9 @@ type OutOfOffice struct {
 
 // OutOfOfficePerson represents the person associated with an out-of-office status.
 type OutOfOfficePerson struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name,omitempty"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name,omitempty"`
+	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 // EnableOutOfOfficeRequest specifies the parameters for enabling out-of-office.

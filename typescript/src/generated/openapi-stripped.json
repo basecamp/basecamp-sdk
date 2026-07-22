@@ -22486,6 +22486,9 @@
           "name": {
             "type": "string",
             "format": "password"
+          },
+          "avatar_url": {
+            "type": "string"
           }
         },
         "required": [

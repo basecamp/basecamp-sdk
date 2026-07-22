@@ -470,6 +470,9 @@ func TestOutOfOffice_Unmarshal(t *testing.T) {
 	if ooo.Person.Name != "Victor Cooper" {
 		t.Errorf("expected person name 'Victor Cooper', got %q", ooo.Person.Name)
 	}
+	if ooo.Person.AvatarURL == "" {
+		t.Error("expected non-empty person avatar_url")
+	}
 }
 
 func TestOutOfOffice_UnmarshalDisabled(t *testing.T) {

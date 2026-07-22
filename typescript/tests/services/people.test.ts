@@ -145,7 +145,11 @@ describe("PeopleService", () => {
       server.use(
         http.get(`${BASE_URL}/people/1/out_of_office.json`, () => {
           return HttpResponse.json({
-            person: { id: 1049715913, name: "Victor Cooper" },
+            person: {
+              id: 1049715913,
+              name: "Victor Cooper",
+              avatar_url: "https://example.com/avatar",
+            },
             enabled: true,
             ongoing: true,
             start_date: "2026-07-20",
@@ -160,6 +164,7 @@ describe("PeopleService", () => {
       expect(status.start_date).toBe("2026-07-20");
       expect(status.end_date).toBe("2026-07-26");
       expect(status.back_on_date).toBe("2026-07-27");
+      expect(status.person?.avatar_url).toBe("https://example.com/avatar");
     });
 
     it("should omit dates when out of office is not enabled", async () => {

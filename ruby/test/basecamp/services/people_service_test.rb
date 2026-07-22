@@ -101,7 +101,11 @@ class PeopleServiceTest < Minitest::Test
 
   def test_get_out_of_office
     stub_get("/12345/people/1/out_of_office.json", response_body: {
-      "person" => { "id" => 1049715913, "name" => "Victor Cooper" },
+      "person" => {
+        "id" => 1049715913,
+        "name" => "Victor Cooper",
+        "avatar_url" => "https://example.com/avatar"
+      },
       "enabled" => true,
       "ongoing" => true,
       "start_date" => "2026-07-20",
@@ -115,6 +119,7 @@ class PeopleServiceTest < Minitest::Test
     assert_equal "2026-07-20", result["start_date"]
     assert_equal "2026-07-26", result["end_date"]
     assert_equal "2026-07-27", result["back_on_date"]
+    assert_equal "https://example.com/avatar", result["person"]["avatar_url"]
   end
 
   def test_get_out_of_office_disabled_omits_dates
