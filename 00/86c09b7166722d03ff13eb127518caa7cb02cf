@@ -1,0 +1,716 @@
+conformance/oauth/fixtures/25-origin-root-bare-fragment.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+typescript/src/index.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 109-112,116,442-445,451-452,454-455,458
+spec/fixtures/people/out-of-office.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+go/pkg/basecamp/recordings.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 46-49,378-381,407-408
+conformance/oauth/fixtures/09-ambiguous-issuers.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-24
+conformance/oauth/fixtures/26-advertised-issuer-trailing-slash-binds.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-27
+.github/workflows/codeql.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 113,131,165,191,202,228
+go/pkg/basecamp/todolist_groups.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 392-393
+python/src/basecamp/client.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 169
+go/pkg/basecamp/cards.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 51,94,120,1213-1214,1250,1279-1280,1324,1364-1365,1369-1370,1408,1448-1449,1453-1454
+ruby/test/basecamp/zeitwerk_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 7-16
+conformance/runner/go/replay_runner.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-370
+swift/Sources/Basecamp/Generated/Models/Notification.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 10-11,38-39,65-66
+go/pkg/basecamp/timesheet.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 14-32,466-478,486-487,491-492
+spec/api-gaps/allowlist.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-29
+typescript/src/generated/path-mapping.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 148
+conformance/oauth/fixtures/32-origin-root-signed-port.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+conformance/tests/paths.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 73,90,196-229
+conformance/oauth/fixtures/11-expected-issuer-unavailable.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-24
+conformance/runner/typescript/schema-validator.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-286
+go/pkg/basecamp/events.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 41-42,156-157,175-176
+ruby/test/basecamp/oauth_ssrf_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-242
+spec/overlays/tags.smithy
+  s_0bad29baa504ab::t_7d5293bcadfaa5 17
+ruby/test/basecamp/oauth_resource_discovery_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-174
+ruby/test/basecamp/same_origin_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-178
+ruby/test/basecamp/oauth_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 39-41,43,52,70,77-207,311-338
+typescript/tests/oauth/oauth.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 70-103,117-120,124,130,146-147,150-171
+  s_0bad29baa504ab::t_6b97ec25ecc649 172
+conformance/oauth/fixtures/27-authorization-servers-present-null.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-19
+SECURITY.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 17,26-33
+  s_0bad29baa504ab::t_ac5fdb9d228082 34
+go/pkg/basecamp/client_correspondences.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 230-231
+go/pkg/basecamp/people_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 443-496
+typescript/src/download.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 2
+go/pkg/basecamp/oauth/types.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4-6,8-11,13-185
+go/pkg/basecamp/subscriptions.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 183
+go/pkg/basecamp/checkins.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 110-111,750-751,828-829,848-849,884-885
+ruby/test/basecamp/services/projects_service_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 23-25,57-58
+go/pkg/basecamp/projects_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 55-60,107-112
+spec/api-gaps/recording-bubbleupable-field.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-62
+spec/api-gaps/step-top-level.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-84
+swift/Sources/Basecamp/Pagination.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 106-110,112-118,121-124,142-160
+  s_0bad29baa504ab::t_fc5631a0f9d041 161
+typescript/src/errors.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 34-35,37
+ruby/lib/basecamp/oauth/config.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5-10,13,15,18-22,28-30,35,37-39
+swift/Sources/Basecamp/BasecampClient.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 105-106,108
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/SchemaWalker.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-182
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Urls.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-155
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 16,27-28,85-86,100
+ruby/test/basecamp/security_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 190-267,287-296,299
+.github/workflows/release-kotlin.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 35,85
+spec/fixtures/projects/get.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 9-10
+spec/fixtures/projects/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 40-41
+conformance/oauth/fixtures/30-origin-root-port-zero.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+conformance/oauth/fixtures/03-no-as-advertised-empty-array.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-16
+kotlin/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 110-141,155-158,160
+conformance/oauth/fixtures/17-origin-root-ipv6-localhost-accept.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-11
+typescript/src/client.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 11,13,15,24,222-223,284,313,324,422,425-426,429-432
+go/pkg/basecamp/client_replies.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 210-211
+conformance/oauth/fixtures/34-resource-first-trailing-slash-binds.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-27
+go/pkg/basecamp/oauth/oauth_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 6,13-14,21-23,27,29,46,52-54,56,60,69-75,81-125,130,133,137,139-142
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Discovery.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3-14,16,19-37,40-44,46-50,54,58-59,62-98,101-106,109-128,130-135,139,142-146,148-163,165-178,180-202,204-219,221-222,225-226,228-403,405-435,439,443-548
+ruby/lib/basecamp/security.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 13-21,76-78,95-163
+  s_0bad29baa504ab::t_cce68710391e44 164-165
+conformance/oauth/fixtures/18-ssrf-oversized-body.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-20
+go/pkg/generated/client.gen.go
+  s_0bad29baa504ab::t_0b6dc0e9bb4935 19208-19213,19241-19242
+  s_0bad29baa504ab::t_7d5293bcadfaa5 39-60,787-788,1028-1039,1042-1045,1054-1055,1452-1461,1481-1496,1498-1505,1519-1521,1550-1556,1570-1571,1584-1587,1617,1621,1789-1802,2036-2047,2143-2174,2541-2548,2998-2999,3978-3979,3981,6720,6722,6725-6726,6730,6733-6734,15862-15863,15870,15873-15874,17163,18000-18001,18004-18005,18781-18782,18784,18896-18903,18929-18936,18963-18970,18998-19005,19033-19040,19066-19073,19100-19107,19136-19143,19171-19178,19206-19207,19243-19248,19275-19282,19311-19318,19345-19352,19380-19387,19414-19421,19448-19455,19483-19490,19517-19524,19552-19559,19586-19593,19621-19628,19654-19661,19688-19695,19722-19729,19757-19764,19792-19799,19826-19833,19861-19868,19895-19902,19929-19936,19964-19971,19997-20004,20031-20038,20066-20073,20100-20107,20134-20141,20168-20175,20203-20210,20236-20243,20270-20277,20305-20312,20339-20346,20374-20381,20407-20414,20441-20448,20475-20482,20510-20517,20544-20551,20578-20585,20612-20619,20646-20653,20680-20687,20714-20721,20748-20755,20782-20789,20817-20824,20850-20857,20884-20891,20919-20926,20953-20960,20988-20995,21022-21029,21056-21063,21092-21099,21126-21133,21160-21167,21195-21202,21229-21236,21263-21270,21297-21304,21331-21338,21365-21372,21398-21405,21432-21439,21466-21473,21500-21507,21535-21542,21569-21576,21604-21611,21637-21644,21670-21677,21704-21711,21737-21744,21772-21779,21806-21813,21839-21846,21873-21880,21906-21913,21939-21946,21973-21980,22007-22014,22040-22047,22074-22081,22109-22116,22143-22150,22178-22185,22212-22219,22245-22252,22279-22286,22314-22321,22347-22354,22382-22389,22417-22424,22451-22458,22487-22494,22522-22529,22556-22563,22590-22597,22624-22631,22658-22665,22692-22699,22727-22734,22761-22768,22796-22803,22830-22837,22865-22872,22900-22907,22935-22942,22970-22977,23004-23011,23039-23046,23072-23079,23106-23113,23140-23147,23174-23181,23209-23216,23244-23251,23278-23285,23313-23320,23347-23354,23381-23388,23416-23423,23450-23457,23484-23491,23518-23525,23551-23558,23585-23592,23620-23627,23655-23662,23689-23696,23724-23731,23757-23764,23791-23798,23825-23832,23859-23866,23893-23900,23927-23934,23961-23968,23995-24002,24030-24037,24064-24071,24099-24106,24133-24140,24168-24175,24202-24209,24236-24243,24271-24278,24305-24312,24340-24347,24374-24381,24408-24415,24442-24449,24477-24484,24510-24517,24544-24551,24579-24586,24614-24621,24648-24655,24682-24689,24717-24724,24751-24758,24785-24792,24820-24827,24854-24861,24889-24896,24923-24930,24958-24965,24991-24998,25025-25033,25036,25045,25053,25060-25067,25093-25100,25127-25134,25161-25168,25195-25202,25229-25236,25264-25271,25298-25305,25333-25340,25367-25374,25402-25409,25436-25443,25470-25477,25505-25512,25539-25546,25574-25581,25608-25615,25643-25650,25677-25684,25712-25719,25745-25752,25779-25786,25815-25822,27923-27925,27929,27932-27933,27937,38224-38225,38232,38239
+kotlin/gradle/libs.versions.toml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 2,8
+conformance/runner/typescript/wire-capture.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-131
+spec/fixtures/projects/list.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 10-11
+ruby/test/basecamp/http_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 110-115
+conformance/oauth/fixtures/16-origin-root-path-rejected.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+kotlin/conformance/build.gradle.kts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 15-31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todos.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 13,90,94,97,105
+scripts/check-wrapper-drift/main.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-1032
+python/src/basecamp/services/__init__.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 2,8-11
+spec/basecamp.smithy
+  s_0bad29baa504ab::t_7d5293bcadfaa5 46,54,67,569-570,713-722,726,728-730,734,743,745,754,1260-1264,1309-1313,1386-1397,5825-5827,7235-7237,8177-8180,8203-8210,8212-8219,8262-8264,8280-8288,8410-8411,8418-8421,8428,8479-8482,8502-8503
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 37,78-88,153,187-197,221-232
+  s_0bad29baa504ab::t_76b22427fc1641 233-234
+conformance/oauth/fixtures/19-ssrf-redirect-not-followed.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-16
+conformance/tests/todos_write.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-546
+go/pkg/basecamp/version.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4,7
+spec/api-gaps/memories-emptied-regression.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-104
+go/pkg/basecamp/search.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 248-249
+python/src/basecamp/oauth/discovery.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-14,17-21,24-32,38-72,74-75,77-84,86-96,99-110,112-137,143-145,148-149,153,155-164,166-195,199-240,243,245-246,249-250,254-275,277-288,290-303,306,308-413
+ruby/scripts/generate-services.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 118,247
+conformance/runner/go/main.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 31-35,77-78,80,82,88-96,99,118-140,196-199,215-224,243-244,259-269,274-275,372-387,390,480-546,701-702,804-807,809-852,1087-1116,1141-1174
+  s_0bad29baa504ab::t_3b60668b728638 1175
+spec/api-gaps/rich-text-project-attachable.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-60
+conformance/oauth/fixtures/08-as-metadata-500.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-30
+.github/workflows/test.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 65-67,90-95,114-116,140-148,191-197,217,253-259,292,319-321,323-328,332,336-338,340-347,363-365,391-393,417-419
+typescript/src/generated/metadata.ts
+  s_0bad29baa504ab::t_0b6dc0e9bb4935 40,170-180
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-39,41-169,181-2692
+typescript/src/generated/schema.d.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1107-1110,1853-1857,2256-2268,3309-3317,3319-3326,3590-3593,3610-3619,3630-3633,3640-3644,3657-3658,3678-3683,3711,3717-3722,3753-3754,3918-3927,4147-4152,4260-4273,4546-4549,15903,15912,15914,15918,15924
+typescript/src/oauth/interactive-login.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 8-14,33-36,38-53,102-104,111-120,123-142,197,209-249
+  s_0bad29baa504ab::t_4f712c924f1b21 250
+conformance/runner/ruby/schema-walker.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-177
+conformance/runner/go/replay_runner_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-129
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Person.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 25
+scripts/report-bc3-drift.sh
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-37
+conformance/runner/typescript/live-dispatch.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-129
+python/tests/test_security.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3,16-31,91-99,106-128
+  s_0bad29baa504ab::t_31716408e5a202 129-130
+conformance/oauth/fixtures/04-only-launchpad.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-16
+typescript/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 171-229
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 20,118-142
+  s_0bad29baa504ab::t_6f2f7e4a817bd1 143
+python/pyproject.toml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 7
+conformance/oauth/fixtures/28-origin-root-dangling-port.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+python/src/basecamp/services/todos.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-249
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 175
+spec/api-provenance.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3-12
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 13
+package.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3
+.github/workflows/scorecard.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 36
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 52,106,153,233,421-449
+  s_0bad29baa504ab::t_5e38810d2953ab 450
+AGENTS.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 15,40,42,71,216,274
+  s_0bad29baa504ab::t_a84d75093bdb02 275
+typescript/tests/services/projects.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 18-19,46,75-76
+conformance/oauth/fixtures/01-two-hop-happy-path.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-30
+conformance/oauth/fixtures/10-expected-issuer-selected.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-29
+conformance/runner/ruby/replay_runner_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-30
+go/pkg/basecamp/comments.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 17-33,307-319,346-347
+conformance/oauth/fixtures/05-resource-mismatch.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-19
+ruby/lib/basecamp/services/authorization_service.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-45
+go/pkg/basecamp/client.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 364-367,372-374,390-393,691-695,700-702,839-842,844-862,873-883
+  s_0bad29baa504ab::t_538d32df6cbc82 884-885
+go/pkg/basecamp/projects.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 21-22,379-380,398,420-438
+  s_0bad29baa504ab::t_a6ec7499524208 439
+go/pkg/basecamp/security.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 123-131
+conformance/runner/ruby/runner.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 28,30,154-167,172-183,261-267,272-278,301-326,330-344,362-387,460-463,465,467-511,736-743
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 31-32
+conformance/oauth/fixtures/06-hop1-transport-failure.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-13
+conformance/oauth/fixtures/23-launchpad-lookalike-with-path.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-23
+go/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 118-171
+kotlin/sdk/build.gradle.kts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 8
+ruby/lib/basecamp/oauth/resource.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-95
+conformance/oauth/fixtures/15-origin-root-malformed-port.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ClientAccessorEmitter.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 31-34,36-37
+ruby/lib/basecamp/oauth.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 49-60,69-118,149-259
+typescript/src/oauth/index.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 49-52,58-59,61-62,65
+go/pkg/basecamp/message_boards.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 13-29,77-90,106-107
+spec/api-gaps/scratchpad.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-67
+conformance/runner/python/schema_walker.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-149
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 48-58
+conformance/oauth/fixtures/36-origin-root-missing-authority.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+scripts/validate-api-gaps.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-233
+spec/smithy-bare-arrays/build.gradle.kts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 19-20
+scripts/validate-api-gaps.sh
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-14
+spec/api-gaps/todoset-direct-todo-create.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-66
+typescript/tests/oauth/resource-discovery.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-472
+conformance/runner/typescript/fixtures.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-111
+swift/Sources/Basecamp/Generated/Models/OutOfOffice.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5
+go/pkg/basecamp/reports.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 105-106
+spec/api-gaps/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-96
+typescript/package.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3,23,69-72
+python/src/basecamp/generated/metadata.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1691-1702
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 89-95,98-100
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodosService.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-121
+ruby/lib/basecamp/generated/services/todos_service.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 47,49,57-58
+.github/workflows/smithy-verify.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 23
+ruby/test/basecamp/services/authorization_service_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 8-11,16-19,29-30,35-36,39-47,51-52,55-63,68-69,71-125
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 570-572
+scripts/generate-behavior-model
+  s_0bad29baa504ab::t_7d5293bcadfaa5 70-76
+swift/Sources/Basecamp/Generated/Models/ReplaceTodoRequest.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-30
+spec/api-gaps/todoset-completed-list-visibility.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-69
+conformance/runner/typescript/runner.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 52-56,86-93,107-126,202-225,320-324,326-329,336-337,343-344,348-361,366,371-382,386-399,453-454,463-473,479-511,523,538-568,636,638-643,645-660,662-663,668-719,946-955
+SPEC.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 269-284,931-1025,1028-1036,1040-1086,1190-1201,1285,1378
+python/src/basecamp/_security.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5-6,15-19,43-149,151-154,156-161,163,168,170-172,200-204
+typescript/src/services/todos-extensions.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-160
+python/src/basecamp/oauth/errors.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3-4,14-25,33,37-55
+conformance/oauth/fixtures/31-resource-trailing-slash-binds.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-17
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 27,30
+go/pkg/basecamp/search_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 289-316
+go/pkg/basecamp/my_notifications.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 14-60,68-74,118
+ruby/lib/basecamp.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 7-12
+go/pkg/basecamp/todos_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 893-940,1086-1119,1121,1124-1146,1148,1150,1152,1160-1173,1175-1190,1196,1207-1208,1219-1222,1227-1228,1230,1241-1242,1255,1257,1260-1333,1339-1345,1347,1349-1444,1446-1447,1450-1468
+python/src/basecamp/services/authorization.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5-7
+scripts/bump-version.sh
+  s_0bad29baa504ab::t_7d5293bcadfaa5 70-78
+python/src/basecamp/_async_http.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 58-62,147,167,201,203-208,245,280-287,289
+python/tests/oauth/test_discovery.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 44-49,51,56
+typescript/tests/services/todos.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 111-117,119-120,123-126,128-130,134,136-354
+spec/api-gaps/activity-timeline.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-97
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 128-273
+.github/workflows/release-python.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 35,90
+spec/api-gaps/schema.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-59
+typescript/tests/services/authorization.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4,91-119
+  s_0bad29baa504ab::t_9f8cb9e9acda40 120
+go/pkg/basecamp/templates.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 24-32,389-390,397-403,419-420
+swift/Tests/BasecampTests/TodosServiceExtensionsTests.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-253
+swift/Sources/Basecamp/Generated/Models/Person.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 26,51,75
+conformance/oauth/schema.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-112
+ruby/test/basecamp/services/people_service_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 101-140
+CONTRIBUTING.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 18-21,215,217,220-222,238-507
+  s_0bad29baa504ab::t_86bbf21195c788 508
+go/go.mod
+  s_0bad29baa504ab::t_7d5293bcadfaa5 6,21,24-25,30,33-35,40-41,43,46-51
+spec/api-gaps/recordable-subtypes-doc.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-88
+conformance/oauth/fixtures/12-empty-string-endpoint.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-20
+swift/Sources/Basecamp/HTTP/Transport.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 29-35,54-81
+  s_0bad29baa504ab::t_e848636f3119d5 82
+conformance/oauth/fixtures/07-issuer-binding-mismatch.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-32
+conformance/oauth/fixtures/37-origin-root-dot-segment-path.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+ruby/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 136-179
+swift/Sources/Basecamp/Generated/Models/GetMyNotificationsResponseContent.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5,8
+swift/Sources/Basecamp/Generated/Models/Project.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 19,21,38-40,56,58
+swift/Sources/Basecamp/Generated/Models/Todoset.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 19,22,27-28,45,48,52-54,70,73,78-79
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 61,191,277-287
+  s_0bad29baa504ab::t_d6325b15166ef5 288
+typescript/src/generated/services/todos.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 51,53,55,204,206,208,212,215-218,228
+go/pkg/basecamp/schedules.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 64-65,584-585,605-606,639-640,647
+go/BRIEF-bc5-forward-compat-wrappers.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-207
+conformance/tests/live-my-surface.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-163
+conformance/oauth/fixtures/22-grant-types-not-array.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-20
+typescript/scripts/generate-path-mapping.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 8,19
+go/pkg/basecamp/gauges.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 28-29,53-55,90-103,128,139,172,183,217,265,308
+typescript/src/oauth/types.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 14-21,24-25,30-31,36-81
+  s_0bad29baa504ab::t_ddc107d98a30ad 82
+.github/workflows/labeler.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 16
+spec/basecamp-traits.smithy
+  s_0bad29baa504ab::t_7d5293bcadfaa5 73-89
+python/src/basecamp/_http.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 57-61,147,167,201,203-208,245,280-287,289
+go.work
+  s_0bad29baa504ab::t_7d5293bcadfaa5 6
+conformance/runner/typescript/wire-capture.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-112
+python/tests/oauth/test_resource_discovery.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-542
+spec/bucket-scoped-allowlist.txt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-8
+typescript/src/services/authorization.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 11,167-168
+spec/api-gaps/everything-aggregates.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-127
+ruby/lib/basecamp/oauth/discovery_result.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-33
+ruby/test/test_helper.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 109-110,112,116-117,119-121,123,126
+ruby/lib/basecamp/version.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4-5
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/SameOriginTest.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-152
+python/src/basecamp/generated/services/todos.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 56,60,69,81,161,165,174,186
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 95,114-130,141
+conformance/oauth/fixtures/13-device-only-as.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-20
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todoset.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 34-38
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ProjectsServiceTest.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 32,112-113
+conformance/runner/typescript/package.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5-7,13,17-19
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 49-50
+conformance/oauth/fixtures/20-invalid-issuer-origin.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-23
+conformance/runner/typescript/live-runner.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-325
+openapi.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5,8802,14962,18374-18375,18380,18383-18384,18410,18414,18484-18487,23596-23611,24666-24667,24722-24734,24771,24787-24790,24822-24825,24890-24898,24998-24999,25014,25097-25102,25719-25769,26542-26548,26945-26962,27903-27904
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-204
+typescript/src/services/base.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 27
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/reports.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 44
+go/pkg/basecamp/messages.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 17-38,451-467,494-495
+.gitignore
+  s_0bad29baa504ab::t_7d5293bcadfaa5 9,41-42,44-45,53
+conformance/runner/python/replay_runner.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-257
+go/pkg/basecamp/api-provenance.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3-12
+go/pkg/basecamp/my_notifications_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 66-70,82-83,101-176
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Exchange.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 12,152-154
+conformance/runner/python/runner.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 26-32,38-39,97-115,198-201,207,223-244,252-253,262-267,272-276,282-300,363-366,368,370-406,515-531,603-610
+python/src/basecamp/generated/types.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 709,712,895-896,922,936,966,1012,1016,1169-1178,1373,1454,1459,1471-1472
+conformance/oauth/fixtures/38-unmodeled-endpoint-empty.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-21
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDiscoveryTest.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-864
+conformance/runner/go/schema_walker.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-323
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/ReplayRunner.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-299
+ruby/lib/basecamp/generated/types.rb
+  s_0bad29baa504ab::t_0b6dc0e9bb4935 4
+  s_0bad29baa504ab::t_7d5293bcadfaa5 2096,2109-2110,2139-2140,2171,2174,2184,2228,2237,2244,2257,2285,2312,2440,2462,2464,2483,2485,3392,3427,3460,3681,3703,3706,3711-3712,3731,3734,3739-3740
+python/src/basecamp/_version.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-2
+spec/api-gaps/calendar.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-64
+spec/api-gaps/campfire-line-edit.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-75
+swift/Sources/Basecamp/BasecampError.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 201-204
+swift/Sources/Basecamp/Generated/Services/TodosService.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 63-72
+ruby/lib/basecamp/generated/services/reports_service.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 18
+go/pkg/basecamp/boosts.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 367-368
+python/scripts/generate_services.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 117,247
+conformance/oauth/fixtures/35-origin-root-invalid-characters.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+spec/api-gaps/allowlist-schema.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-36
+typescript/scripts/extract-metadata.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3-4,6,24,105-146
+typescript/scripts/generate-services.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 242,271
+Makefile
+  s_0bad29baa504ab::t_7d5293bcadfaa5 106,108-112,114-118,152-156,207,226-234,387-398,410-417,423-430,436-446,452-459,465-472,474,477-582,746-770,775-791,793,824-825,854-866,905-906
+go/pkg/basecamp/todolists.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 28-29,346-347,387-388
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ErrorTest.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 156,171
+conformance/runner/typescript/live-dispatch.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-45
+go/pkg/basecamp/campfires.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 70-71,76-77,97-99,914-915,920-921,939-940,956-958,999-1000
+go/pkg/basecamp/todos.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 18-57,63-68,70-96,172-173,180,183,193-295,496-509,511-513,516-517,521,523,526,529,532-538,541,543-611,613-631,633-635,637-644,651,774-793,828-829,840-856
+  s_0bad29baa504ab::t_b4c7669737ae3a 857
+ruby/lib/basecamp/generated/metadata.json
+  s_0bad29baa504ab::t_0b6dc0e9bb4935 4
+  s_0bad29baa504ab::t_7d5293bcadfaa5 2332
+scripts/compare-canary-runs.sh
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-544
+typescript/src/security.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 8-10,107,113-115,123-177
+go/pkg/basecamp/forwards.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 60-75,80-99,104-120,445-457,473-474,483-498,524-525,534-546,572-573
+python/src/basecamp/async_client.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 168
+spec/api-gaps/search-filter-additions.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-83
+typescript/src/generated/services/reports.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 87
+.github/workflows/security.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 27-28,39,46-60,73-74,85,92-106,163,207-208,219,226-240,286
+scripts/check-bucket-flat-parity.sh
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-110
+conformance/oauth/fixtures/24-duplicate-issuer-deduped.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-28
+typescript/tests/client.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 66-139
+go/pkg/basecamp/people.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 537-538,540-545,550-552,739-757
+go/pkg/basecamp/vaults.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 114,139,1098-1099,1119,1150-1151,1171,1208-1209
+ruby/lib/basecamp/oauth/discovery.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5-7,9-18,21-47,49-52,55-56,58-62,64-77,79,81-88,91-98,100-105,107-110,112-114,116-124,127-133,135-139,141-158
+swift/Sources/Basecamp/TodosServiceExtensions.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-130
+typescript/tests/security.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 20-24,721-732,796-923
+spec/api-gaps/schedule-recurrence-writes.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-96
+typescript/tests/oauth/interactive-login.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 11-12,142-205,212-213,352-440
+  s_0bad29baa504ab::t_50bdb90af42877 441
+typescript/src/oauth/discovery.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4-12,15,17-23,25,27-30,33,37-62,71-76,80-128,130-131,133,135-212,214-228,230-273,275-280,283-302,308,310,312-314,317-323,325-326,331-337,340,362-375,377-385,388-412,414-504,506-558,560-647
+conformance/oauth/fixtures/02-no-as-advertised-absent.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-16
+python/tests/services/test_todos.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-283
+go/pkg/basecamp/wrapper_propagation_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-886
+conformance/oauth/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-38
+conformance/runner/ruby/replay-runner.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-224
+conformance/oauth/fixtures/29-origin-root-empty-userinfo.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+go/pkg/basecamp/oauth/discovery.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4,7,11-12,14-34,38-42,56-281,283,285-289,293,295,299-303,306-469,471-628,630-632
+go/pkg/basecamp/same_origin_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-276
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 42-43
+go.work.sum
+  s_0bad29baa504ab::t_7d5293bcadfaa5 11,37,50,67,69,71,75,79,90,98,133,135,137,144,163-164,170-171,185,187-188
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 167-168
+python/README.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 12,157,161-215
+  s_0bad29baa504ab::t_8fbc56176ce7b6 216
+conformance/runner/ruby/Gemfile
+  s_0bad29baa504ab::t_7d5293bcadfaa5 8
+ruby/basecamp-sdk.gemspec
+  s_0bad29baa504ab::t_7d5293bcadfaa5 40
+python/src/basecamp/oauth/__init__.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3,5-18,25-27,32-34,41
+scripts/test-compare-canary-runs.sh
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-992
+ruby/lib/basecamp/http.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 64-77,82-113,343-344,348,350,354,363,383-384,418,441,516-530,537-550
+  s_0bad29baa504ab::t_efbbbadca32792 551
+swift/Tests/BasecampTests/SameOriginGuardTests.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-164
+conformance/schema.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 7-23,25-30,41,46,117-119,142,146,169-242
+COORDINATION.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-82
+scripts/check-wrapper-drift/go.mod
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-3
+conformance/oauth/fixtures/33-discover-issuer-trailing-slash-binds.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-18
+typescript/src/generated/openapi-stripped.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 5,7817,13271,16304-16305,16310,16313-16314,16329,16333,16403-16406,21273-21288,22343-22344,22399-22411,22448,22464-22467,22499-22502,22567-22575,22675-22676,22691,22774-22779,23396-23446,24219-24225,24622-24639,25580-25581
+python/tests/services/test_projects.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-67
+go/pkg/basecamp/normalize.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 20,32-109,121
+go/templates/client.tmpl
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1145-1146,1150
+conformance/oauth/fixtures/21-authorization-servers-not-array.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-19
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated-compat/UpdateTodoBody.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-21
+.github/workflows/live-canary.yml
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-142
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 24-25
+go/pkg/basecamp/url-routes.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1982
+conformance/oauth/fixtures/14-origin-root-http-nonlocalhost.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-12
+conformance/runner/typescript/schema-validator.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-175
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodosServiceTest.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4-5,235-434,436-437
+  s_0bad29baa504ab::t_ca4a6e3a02434b 435
+ruby/lib/basecamp/oauth/protected_resource_metadata.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-22
+spec/api-gaps/stack-doc-and-smithy.md
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-76
+go/pkg/basecamp/client_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 6,13-24,141-220
+  s_0bad29baa504ab::t_e0ee73c5ff8323 221
+ruby/lib/basecamp/services/todos_extensions.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-121
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 94
+go/pkg/basecamp/oauth/resource_discovery_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-732
+swift/Sources/Basecamp/Generated/Models/OutOfOfficePerson.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 6,9,11
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_0bad29baa504ab::t_7d5293bcadfaa5 9,47-49,51-52,116-121,146-147,171-172,187-188,282-293,351-354,356-386,653-700,816-834
+  s_0bad29baa504ab::t_79a16bcbe0a078 835
+ruby/test/basecamp/services/todos_service_test.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 62-70,72-149,151-225,260-275
+swift/Sources/Basecamp/Generated/Models/Todo.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 32,63,93
+conformance/runner/python/test_replay_runner.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-87
+python/tests/test_http.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 3-4,18,187-327
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_0bad29baa504ab::t_7d5293bcadfaa5 158
+go/pkg/basecamp/security_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 690-696
+ruby/lib/basecamp/oauth/discovery_selection_error.rb
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-30
+scripts/check-wrapper-drift/main_test.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1-1071
+python/src/basecamp/oauth/config.py
+  s_0bad29baa504ab::t_7d5293bcadfaa5 4-5,10,13-20,24-105
+typescript/tests/services/people.test.ts
+  s_0bad29baa504ab::t_7d5293bcadfaa5 142-189
+go/pkg/basecamp/client_approvals.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 259-260,264-265,305-306
+go/pkg/basecamp/timeline.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 259-260,390-391
+go/pkg/basecamp/todosets.go
+  s_0bad29baa504ab::t_7d5293bcadfaa5 34-38,100-106,128-129
+behavior-model.json
+  s_0bad29baa504ab::t_7d5293bcadfaa5 1966-1981,2597-2598,2605
+conformance/runner/typescript/package-lock.json
+  s_0bad29baa504ab::t_048fb022d462a3 9-11,15-18,23,29,49-52,56-58,61-64,68-69,72-75,79-80,196-214,240-243,246-248,250-253,262-265,267-270,279-282,284-287,297-299,301-304,314-316,318-321,331-333,335-338,348-350,352-355,357,365-367,369-372,382-384,386-389,398-401,403-406,415-418,420-423,433-435,437-440,450-452,454-457,459,464-471,473-476,478,485-488,490-493,502-512,521-531,551-553,565-567,571,573-576,583-585,589,598,610-612,616,623-625,629,637-639,643-644,653-655,663-665,669-671,677-709,819-825,840-849,858-860,894-915,993-1259,1326-1328,1384-1386,1397-1399,1417,1435-1443,1451-1454,1458-1459,1462,1465,1468-1482,1533-1535,1605-1607,1612,1622-1624,1664-1671,1699-1701,1705-1709,1725-1726,1741,1744-1747,1750,1777-1779,1783-1791,1796,1800-1801,1817-1822,1824-1825,1846-1851,1860-1862
+go/go.sum
+  s_0bad29baa504ab::t_8cd9519c910a0a 16-17,24-25,31-36,74-75,85-92,108-109,122-125,139-140,160-161,166-167,175-176,180-181,196-197,204-205,209-210
+python/uv.lock
+  s_0bad29baa504ab::t_754c854b1a0251 20,376,378,380
+ruby/Gemfile.lock
+  s_0bad29baa504ab::t_bfb26a8771e654 4,121,133,147,156,199,206
+typescript/package-lock.json
+  s_0bad29baa504ab::t_e1331a60e72fe1 3,9,777-779,794-796,811-813,828-830,845-847,862-864,879-881,896-898,913-915,930-932,947-949,964-966,981-983,998-1000,1015-1017,1032-1034,1049-1051,1066-1068,1083-1085,1145-1167,1739-1741,1748,1998-2000,2676-2678,2691-2709,3110-3112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "0086c09b7166722d03ff13eb127518caa7cb02cf",
+  "prompts": {},
+  "sessions": {
+    "s_0bad29baa504ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f2f90b-2701-4889-a100-6a22b3f8d13b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
