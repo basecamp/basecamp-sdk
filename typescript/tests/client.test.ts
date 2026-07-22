@@ -237,6 +237,24 @@ describe("BasecampClient", () => {
       expect(path).toBe("/{accountId}/buckets/{bucketId}/webhooks.json");
     });
 
+    it("should resolve message type paths with bucketId not projectId", () => {
+      // Regression test: same class as webhooks above. Message types (categories) are
+      // bucket-scoped (#368), and PATH_TO_OPERATION keys them under {bucketId}, but
+      // idMapping.buckets defaults to {projectId} — so without the contextOverrides
+      // entry all five keys silently become unreachable and getRetryConfigForRequest
+      // stops seeing their metadata. For the four non-POST ops that means falling
+      // through to DEFAULT_RETRY_CONFIG; CreateMessageType is a POST without
+      // idempotent.natural, so it returns NO_RETRY_CONFIG either way and is unaffected
+      // by reachability. Both outcomes happen to match today's declared metadata, so
+      // the miss is currently inert — this test exists so it stays that way if any of
+      // these ops is later given a non-default retry or idempotency.
+      const collection = normalizeUrlPath(`${BASE_URL}/buckets/123/categories.json`);
+      expect(collection).toBe("/{accountId}/buckets/{bucketId}/categories.json");
+
+      const member = normalizeUrlPath(`${BASE_URL}/buckets/123/categories/456`);
+      expect(member).toBe("/{accountId}/buckets/{bucketId}/categories/{typeId}");
+    });
+
     it("should refresh auth token on retry", async () => {
       let attempts = 0;
       const capturedTokens: string[] = [];

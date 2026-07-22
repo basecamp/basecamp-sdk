@@ -780,7 +780,7 @@ export function normalizeUrlPath(url: string): string {
   // override the placeholder from the default idMapping. This handles cases like
   // /buckets/{id}/webhooks → {bucketId} vs /buckets/{id}/timeline → {projectId}.
   const contextOverrides: Record<string, Record<string, string>> = {
-    buckets: { webhooks: "{bucketId}" },
+    buckets: { webhooks: "{bucketId}", categories: "{bucketId}" },
   };
 
   // Build normalized path by replacing IDs and dates based on context
