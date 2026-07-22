@@ -1,0 +1,27 @@
+typescript/tests/services/tools.test.ts
+  s_0bad29baa504ab::t_724aba32550895 91-116
+ruby/test/basecamp/services/tools_service_test.rb
+  s_0bad29baa504ab::t_f67d1f578ac171 34-57
+python/tests/services/test_tools.py
+  s_0bad29baa504ab::t_d4cf4a88685c6a 60-71
+  s_0bad29baa504ab::t_ce537210606b88 11
+  s_0bad29baa504ab::t_0121d711923e34 96-121
+go/README.md
+  s_0bad29baa504ab::t_d0a819f9d275ef 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5d89e6fd6bbe137671b9c485aaf5e376896e900e",
+  "prompts": {},
+  "sessions": {
+    "s_0bad29baa504ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31f2f90b-2701-4889-a100-6a22b3f8d13b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
