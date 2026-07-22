@@ -534,12 +534,15 @@ type UpdateMyPreferencesRequest struct {
 }
 
 // OutOfOffice represents out-of-office status for a person.
+// When out of office is not enabled, Enabled is false and StartDate,
+// EndDate, and BackOnDate are omitted from the response.
 type OutOfOffice struct {
-	Enabled   bool              `json:"enabled,omitempty"`
-	StartDate string            `json:"start_date,omitempty"`
-	EndDate   string            `json:"end_date,omitempty"`
-	Ongoing   bool              `json:"ongoing,omitempty"`
-	Person    OutOfOfficePerson `json:"person,omitempty"`
+	Enabled    bool              `json:"enabled,omitempty"`
+	StartDate  string            `json:"start_date,omitempty"`
+	EndDate    string            `json:"end_date,omitempty"`
+	BackOnDate string            `json:"back_on_date,omitempty"`
+	Ongoing    bool              `json:"ongoing,omitempty"`
+	Person     OutOfOfficePerson `json:"person,omitempty"`
 }
 
 // OutOfOfficePerson represents the person associated with an out-of-office status.
