@@ -1,0 +1,24 @@
+typescript/scripts/generate-services.ts
+  s_2e722a07ae260d::t_14859c3632dbfd 1500-1503
+typescript/src/generated/services/people.ts
+  s_2e722a07ae260d::t_6f7881557fc5ae 331
+typescript/tests/generator/example-value.test.ts
+  s_2e722a07ae260d::t_c746b4c91c93d3 65-73
+  s_2e722a07ae260d::t_7c02b33c626d36 27-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "fc7cd80af6be6e8287ca34578a6a04dfbf3c4e79",
+  "prompts": {},
+  "sessions": {
+    "s_2e722a07ae260d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79852c08-7ef4-4baa-9b37-d92ccf5d41b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
