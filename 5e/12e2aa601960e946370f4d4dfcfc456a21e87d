@@ -1,0 +1,19 @@
+typescript/package.json
+  s_d84172d91a31eb::t_d2a4deb5d07c86 69-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.7",
+  "base_commit_sha": "5e12e2aa601960e946370f4d4dfcfc456a21e87d",
+  "prompts": {},
+  "sessions": {
+    "s_d84172d91a31eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4979ccf1-84bb-4739-8146-eb9488ffd415",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer <jeremy@37signals.com>"
+    }
+  }
+}

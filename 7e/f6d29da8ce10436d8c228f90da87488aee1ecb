@@ -1,0 +1,22 @@
+python/src/basecamp/generated/types.py
+  8a25d90aac60e426 709,712,895-896,964,1371,1452,1457,1469-1470
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "7ef6d29da8ce10436d8c228f90da87488aee1ecb",
+  "prompts": {
+    "8a25d90aac60e426": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1e77c29f-eb8c-4ab2-ab2d-5c4748663327",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jeremy Daer",
+      "total_additions": 11,
+      "total_deletions": 1,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    }
+  }
+}
