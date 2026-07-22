@@ -15,7 +15,7 @@ module Basecamp
         end
       end
 
-      # Get upcoming schedule entries within a date window
+      # Get upcoming schedule entries and assignable items within a date window.
       # @param window_starts_on [String, nil] window starts on
       # @param window_ends_on [String, nil] window ends on
       # @return [Hash] response data

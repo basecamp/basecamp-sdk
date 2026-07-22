@@ -2594,7 +2594,8 @@
       "$.avatar_url"
     ],
     "OutOfOfficePerson": [
-      "$.name"
+      "$.name",
+      "$.avatar_url"
     ],
     "Person": [
       "$.name",

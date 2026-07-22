@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-22T02:53:58Z
+# Generated: 2026-07-22T07:50:03Z
 
 require "json"
 require "time"
@@ -2168,9 +2168,10 @@ module Basecamp
     # OutOfOffice
     class OutOfOffice
       include TypeHelpers
-      attr_accessor :enabled, :end_date, :ongoing, :person, :start_date
+      attr_accessor :back_on_date, :enabled, :end_date, :ongoing, :person, :start_date
 
       def initialize(data = {})
+        @back_on_date = data["back_on_date"]
         @enabled = parse_boolean(data["enabled"])
         @end_date = data["end_date"]
         @ongoing = parse_boolean(data["ongoing"])
@@ -2180,6 +2181,7 @@ module Basecamp
 
       def to_h
         {
+          "back_on_date" => @back_on_date,
           "enabled" => @enabled,
           "end_date" => @end_date,
           "ongoing" => @ongoing,
@@ -2223,7 +2225,7 @@ module Basecamp
     # OutOfOfficePerson
     class OutOfOfficePerson
       include TypeHelpers
-      attr_accessor :id, :name
+      attr_accessor :id, :avatar_url, :name
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2232,12 +2234,14 @@ module Basecamp
 
       def initialize(data = {})
         @id = parse_integer(data["id"])
+        @avatar_url = data["avatar_url"]
         @name = data["name"]
       end
 
       def to_h
         {
           "id" => @id,
+          "avatar_url" => @avatar_url,
           "name" => @name,
         }.compact
       end

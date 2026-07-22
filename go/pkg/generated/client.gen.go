@@ -781,7 +781,8 @@ type EnableOutOfOfficeRequestContent struct {
 	OutOfOffice OutOfOfficePayload `json:"out_of_office"`
 }
 
-// EnableOutOfOfficeResponseContent defines model for EnableOutOfOfficeResponseContent.
+// EnableOutOfOfficeResponseContent When out of office is not enabled, `enabled` is `false` and
+// `start_date`, `end_date`, and `back_on_date` are omitted.
 type EnableOutOfOfficeResponseContent = OutOfOffice
 
 // Event defines model for Event.
@@ -1047,7 +1048,8 @@ type GetMyPreferencesResponseContent = Preferences
 // GetMyProfileResponseContent defines model for GetMyProfileResponseContent.
 type GetMyProfileResponseContent = Person
 
-// GetOutOfOfficeResponseContent defines model for GetOutOfOfficeResponseContent.
+// GetOutOfOfficeResponseContent When out of office is not enabled, `enabled` is `false` and
+// `start_date`, `end_date`, and `back_on_date` are omitted.
 type GetOutOfOfficeResponseContent = OutOfOffice
 
 // GetOverdueTodosResponseContent defines model for GetOverdueTodosResponseContent.
@@ -1473,24 +1475,31 @@ type Notification struct {
 	ReadAt                 time.Time               `json:"read_at,omitempty"`
 	ReadableIdentifier     string                  `json:"readable_identifier,omitempty"`
 	ReadableSgid           string                  `json:"readable_sgid,omitempty"`
-	Section                string                  `json:"section,omitempty"`
-	Subscribed             bool                    `json:"subscribed,omitempty"`
-	SubscriptionUrl        string                  `json:"subscription_url,omitempty"`
-	Title                  string                  `json:"title,omitempty"`
-	Type                   string                  `json:"type,omitempty"`
-	UnreadAt               time.Time               `json:"unread_at,omitempty"`
-	UnreadCount            int32                   `json:"unread_count,omitempty"`
-	UnreadUrl              string                  `json:"unread_url,omitempty"`
-	UpdatedAt              time.Time               `json:"updated_at"`
+
+	// Section The notification category: `inbox`, `chats`, `pings`, `bubbles`,
+	// or `mentions`.
+	Section         string    `json:"section,omitempty"`
+	Subscribed      bool      `json:"subscribed,omitempty"`
+	SubscriptionUrl string    `json:"subscription_url,omitempty"`
+	Title           string    `json:"title,omitempty"`
+	Type            string    `json:"type,omitempty"`
+	UnreadAt        time.Time `json:"unread_at,omitempty"`
+	UnreadCount     int32     `json:"unread_count,omitempty"`
+	UnreadUrl       string    `json:"unread_url,omitempty"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-// OutOfOffice defines model for OutOfOffice.
+// OutOfOffice When out of office is not enabled, `enabled` is `false` and
+// `start_date`, `end_date`, and `back_on_date` are omitted.
 type OutOfOffice struct {
-	Enabled   bool              `json:"enabled,omitempty"`
-	EndDate   string            `json:"end_date,omitempty"`
-	Ongoing   bool              `json:"ongoing,omitempty"`
-	Person    OutOfOfficePerson `json:"person,omitempty"`
-	StartDate string            `json:"start_date,omitempty"`
+	// BackOnDate First working day after the out-of-office window ends.
+	// Omitted when out of office is not enabled.
+	BackOnDate string            `json:"back_on_date,omitempty"`
+	Enabled    bool              `json:"enabled,omitempty"`
+	EndDate    string            `json:"end_date,omitempty"`
+	Ongoing    bool              `json:"ongoing,omitempty"`
+	Person     OutOfOfficePerson `json:"person,omitempty"`
+	StartDate  string            `json:"start_date,omitempty"`
 }
 
 // OutOfOfficePayload defines model for OutOfOfficePayload.
@@ -1504,8 +1513,9 @@ type OutOfOfficePayload struct {
 
 // OutOfOfficePerson defines model for OutOfOfficePerson.
 type OutOfOfficePerson struct {
-	Id   int64  `json:"id"`
-	Name string `json:"name,omitempty"`
+	AvatarUrl string `json:"avatar_url,omitempty"`
+	Id        int64  `json:"id"`
+	Name      string `json:"name,omitempty"`
 }
 
 // PauseQuestionResponseContent defines model for PauseQuestionResponseContent.
@@ -1554,6 +1564,8 @@ type Preferences struct {
 	AppUrl       string `json:"app_url,omitempty"`
 	FirstWeekDay string `json:"first_week_day,omitempty"`
 	TimeFormat   string `json:"time_format,omitempty"`
+
+	// TimeZoneName Returned as a Rails-style name (e.g. "Central Time (US & Canada)").
 	TimeZoneName string `json:"time_zone_name,omitempty"`
 	Url          string `json:"url,omitempty"`
 }
@@ -1566,7 +1578,10 @@ type PreferencesPayload struct {
 	// TimeFormat Time display format: twelve_hour or twenty_four_hour
 	TimeFormat string `json:"time_format,omitempty"`
 
-	// TimeZoneName Time zone name (e.g. "America/Chicago", "London", "UTC")
+	// TimeZoneName Time zone name. Accepts any valid Rails time zone name (e.g.
+	// "London", "UTC") as well as IANA identifiers (e.g.
+	// "America/Chicago"), which are normalized to the matching
+	// Rails-style name before saving.
 	TimeZoneName string `json:"time_zone_name,omitempty"`
 }
 
@@ -2520,11 +2535,14 @@ type Vault struct {
 
 // Webhook defines model for Webhook.
 type Webhook struct {
-	Active           bool              `json:"active,omitempty"`
-	AppUrl           string            `json:"app_url"`
-	CreatedAt        time.Time         `json:"created_at"`
-	Id               int64             `json:"id"`
-	PayloadUrl       string            `json:"payload_url"`
+	Active     bool      `json:"active,omitempty"`
+	AppUrl     string    `json:"app_url"`
+	CreatedAt  time.Time `json:"created_at"`
+	Id         int64     `json:"id"`
+	PayloadUrl string    `json:"payload_url"`
+
+	// RecentDeliveries Up to the 25 most recent delivery exchanges, most recent first.
+	// Empty when the webhook hasn't delivered anything yet.
 	RecentDeliveries []WebhookDelivery `json:"recent_deliveries,omitempty"`
 	Types            []string          `json:"types,omitempty"`
 	UpdatedAt        time.Time         `json:"updated_at"`

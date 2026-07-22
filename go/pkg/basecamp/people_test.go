@@ -440,3 +440,57 @@ func TestPeopleService_UpdateMyProfileClearsField(t *testing.T) {
 		t.Errorf("expected bio to be empty string, got %v", bio)
 	}
 }
+
+func TestOutOfOffice_Unmarshal(t *testing.T) {
+	data := loadPeopleFixture(t, "out-of-office.json")
+
+	var ooo OutOfOffice
+	if err := json.Unmarshal(data, &ooo); err != nil {
+		t.Fatalf("failed to unmarshal out-of-office.json: %v", err)
+	}
+
+	if !ooo.Enabled {
+		t.Error("expected enabled to be true")
+	}
+	if !ooo.Ongoing {
+		t.Error("expected ongoing to be true")
+	}
+	if ooo.StartDate != "2026-07-20" {
+		t.Errorf("expected start_date '2026-07-20', got %q", ooo.StartDate)
+	}
+	if ooo.EndDate != "2026-07-26" {
+		t.Errorf("expected end_date '2026-07-26', got %q", ooo.EndDate)
+	}
+	if ooo.BackOnDate != "2026-07-27" {
+		t.Errorf("expected back_on_date '2026-07-27', got %q", ooo.BackOnDate)
+	}
+	if ooo.Person.ID != 1049715913 {
+		t.Errorf("expected person id 1049715913, got %d", ooo.Person.ID)
+	}
+	if ooo.Person.Name != "Victor Cooper" {
+		t.Errorf("expected person name 'Victor Cooper', got %q", ooo.Person.Name)
+	}
+	if ooo.Person.AvatarURL == "" {
+		t.Error("expected non-empty person avatar_url")
+	}
+}
+
+func TestOutOfOffice_UnmarshalDisabled(t *testing.T) {
+	data := []byte(`{"person":{"id":1049715913,"name":"Victor Cooper"},"enabled":false,"ongoing":false}`)
+
+	var ooo OutOfOffice
+	if err := json.Unmarshal(data, &ooo); err != nil {
+		t.Fatalf("failed to unmarshal disabled out-of-office: %v", err)
+	}
+
+	if ooo.Enabled {
+		t.Error("expected enabled to be false")
+	}
+	if ooo.Ongoing {
+		t.Error("expected ongoing to be false")
+	}
+	if ooo.StartDate != "" || ooo.EndDate != "" || ooo.BackOnDate != "" {
+		t.Errorf("expected omitted dates to be empty, got start=%q end=%q back_on=%q",
+			ooo.StartDate, ooo.EndDate, ooo.BackOnDate)
+	}
+}

@@ -19,18 +19,27 @@ bc3_refs:
 
 ## What's missing
 
-Docs shipped, params not final — **do not absorb yet**. Search filter
-documentation landed on `master` with the BC5 API train (2026-07-18..21), but
-open BC3 **#12361** (search params rework) is actively reshaping the filter
-parameter surface. The status stays `partial-coverage` until #12361 settles:
-absorbing the current param list would model a contract BC3 has already
-queued for change.
+Docs shipped, params not final — **do not absorb yet**. As of the 2026-07-22
+sync, `doc/api/sections/search.md` on `master` documents the filter surface:
 
-The filter families in play (subject to #12361's rework — re-derive the final
-list from `doc/api/sections/search.md` once it merges):
+- `type_names[]` — array of recording types to include (`key` values from
+  the metadata endpoint's `recording_search_types`); the metadata endpoint
+  prose now advertises `type_names[]` as the discovery target.
+- `bucket_ids[]` — array of project IDs.
+- `creator_ids[]` — array of creator person IDs.
+- `since` — time-range filter: `last_7_days`, `last_30_days`, `last_90_days`,
+  `last_12_months`, or `forever` (the default); unrecognized values
+  normalize to `forever`.
+- `sort` — `best_match` (default, relevance with a recency boost) or
+  `recency` (strictly newest first); unrecognized values fall back to
+  recency ordering.
+- Deprecated-but-retained singulars for older clients: `type`, `bucket_id`,
+  `creator_id` (prefer the plural array forms).
 
-- recording-type filtering, creator/person filtering, project scoping,
-- chat exclusion, file-type filtering, and result ordering.
+The hold stands because open BC3 **#12361** ("Search API: query-faithful
+params and root cache") is still reshaping this parameter surface. The
+status stays `partial-coverage` until #12361 settles: absorbing the current
+param list would model a contract BC3 has already queued for change.
 
 The `timelines/searches` route is the timeline-scoped variant; covered here
 since it shares the input shape.
@@ -54,7 +63,8 @@ unchanged.
   controller actions, no new partials.
 - #12361 (open) is the deciding PR for the final param names/semantics;
   `doc/api/sections/search.md` follows it.
-- Document defaults explicitly (e.g. the default sort).
+- Defaults are now documented (`since=forever`, `sort=best_match`), along
+  with the fallback behavior for unrecognized values.
 
 ## SDK absorption plan when this lands
 
