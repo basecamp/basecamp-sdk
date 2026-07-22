@@ -24812,7 +24812,8 @@
             "format": "password"
           },
           "avatar_url": {
-            "type": "string"
+            "type": "string",
+            "format": "password"
           }
         },
         "required": [

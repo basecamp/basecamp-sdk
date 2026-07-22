@@ -8419,7 +8419,7 @@ structure OutOfOfficePerson {
   @required
   id: PersonId
   name: PersonName
-  avatar_url: String
+  avatar_url: AvatarUrl
 }
 
 // =============================================================================
