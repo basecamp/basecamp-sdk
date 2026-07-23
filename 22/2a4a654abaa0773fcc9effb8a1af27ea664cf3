@@ -1,0 +1,155 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Upload.kt
+  s_0035fde3aeb318::t_247c7f43902a47 7,37-40
+typescript/src/generated/openapi-stripped.json
+  s_0035fde3aeb318::t_247c7f43902a47 23669,23679
+  s_605ac886f5cfe8::t_29b16ce7289e9d 23641-23668,23670-23678,23680-23685,23687-23693,23695-23696,23698-23699,23701,23707,24379,24433
+  s_b1b525335083d5::t_1d98e3e1c8d8da 23686,23694,23697,23700,23702-23706,23708,24375-24378,24380
+ruby/lib/basecamp/generated/metadata.json
+  s_0035fde3aeb318::t_247c7f43902a47 4
+go/pkg/basecamp/todos.go
+  s_605ac886f5cfe8::t_3c6f0a8a832cd6 130-134,145,172-173,951
+  s_605ac886f5cfe8::t_7329c11e54fecf 36-45
+  s_0035fde3aeb318::t_cd7d2d4dbda5b9 143-144
+  s_605ac886f5cfe8::t_f8e4e0bdf36ab0 18-35,46-55
+  s_605ac886f5cfe8::t_b69a940720f60e 903-913,924-925,930-931,933-941,949-950
+  s_0035fde3aeb318::t_0df5370fb8fe5e 135-142,146-171
+  s_0035fde3aeb318::t_4bd72988bb1e53 926-929,932,942-948
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/RichTextAttachment.kt
+  s_605ac886f5cfe8::t_29b16ce7289e9d 1-6,8-24,29
+  s_0035fde3aeb318::t_247c7f43902a47 7,25-28
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_0035fde3aeb318::t_b33ecf5f926ade 43
+scripts/enhance-openapi-go-types.sh
+  s_0035fde3aeb318::t_65fb9169d0e70d 122-139
+swift/Sources/Basecamp/Generated/Models/RichTextAttachment.swift
+  s_605ac886f5cfe8::t_29b16ce7289e9d 1-11
+  s_1ef9dccf6841e3::t_9fd066de7a23b6 12-42
+spec/basecamp.smithy
+  s_0035fde3aeb318::t_e31594ab6d2efa 1254
+  s_605ac886f5cfe8::t_b302c170e24323 1270-1280,1282,1284,1286,1288,1290,1292-1293,1302,1304,1307,1309,1311-1313
+  s_0035fde3aeb318::t_853f1a89e3ede4 1281,1283,1285,1287,1289,1291,1294-1296,1305-1306,1308,1310
+  s_0035fde3aeb318::t_b1c5040dbc451f 1297-1301,1303
+  s_605ac886f5cfe8::t_26357b2dce71bb 1255
+swift/Tests/BasecampTests/HooksTests.swift
+  s_0035fde3aeb318::t_b58b0d081a9378 115
+  s_0035fde3aeb318::t_afd625f699014a 239
+go/pkg/basecamp/todos_test.go
+  s_605ac886f5cfe8::t_c8af098888c2d0 978-1004,1008,1011-1015,1017-1021,1024-1052,1055-1065,1068-1071,1073-1075,1082-1084
+  s_0035fde3aeb318::t_e04b53638abc28 13
+  s_0035fde3aeb318::t_cea09c96043092 1005-1007,1009-1010,1016,1022-1023,1053-1054,1066-1067,1072,1076-1081
+  s_0035fde3aeb318::t_850f3eb3952834 1218-1345
+  s_0035fde3aeb318::t_aeba5fd3e58d5d 194-240
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleIntSerializer.kt
+  s_0035fde3aeb318::t_99c05b11036848 1-58
+typescript/src/generated/metadata.ts
+  s_0035fde3aeb318::t_247c7f43902a47 40
+go/pkg/generated/client.gen.go
+  s_0035fde3aeb318::t_4e11eaceba5c48 1844-1848,1850-1858,1864,2063
+  s_605ac886f5cfe8::t_bb7749e07123df 1837-1843,1865-1866,2048-2062,2064-2069
+  s_0035fde3aeb318::t_247c7f43902a47 1849,1859-1863
+ruby/test/basecamp/services/todos_service_test.rb
+  s_0035fde3aeb318::t_606be778419a5e 261-303
+spec/fixtures/todos/create-response.json
+  s_0035fde3aeb318::t_2282de4593a4a4 81-82
+SPEC.md
+  s_0035fde3aeb318::t_5975f9c3562c4d 668-674,678-685,687,696-698,701,705
+  s_0035fde3aeb318::t_d2da1e872ff28f 675-677,686,688-695,699-700,702-704
+openapi.json
+  s_605ac886f5cfe8::t_6612130e559443 25975-26002,26010-26012,26020-26029,26042,26709-26714
+  s_0035fde3aeb318::t_247c7f43902a47 26003,26013
+  s_0035fde3aeb318::t_e8fee72412cc4a 26004-26009,26014-26019,26030-26041,26767
+spec/fixtures/todos/get.json
+  s_0035fde3aeb318::t_a9e3ee81c92dd8 53
+  s_0035fde3aeb318::t_88ab2b534946af 81-109
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodosServiceTest.kt
+  s_0035fde3aeb318::t_980dda943b37b4 31-37,46-47
+  s_0035fde3aeb318::t_37833075778970 428,430-435,447,461-463,469,481-485
+  s_0035fde3aeb318::t_1ab8e20087f46b 16
+  s_0035fde3aeb318::t_2dd6d3e986f89c 429,436-446,448-460,464-468,470-480,486-489
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
+  s_e655a660e9dd25::t_2ee5f12159c0e4 29
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_0035fde3aeb318::t_0a1d19a58bbaa1 88-92,94-97
+  s_0035fde3aeb318::t_49617c66a0de46 56
+  s_0035fde3aeb318::t_99abf0d0a65cd5 1-55,57-87,93
+ruby/lib/basecamp/generated/types.rb
+  s_0035fde3aeb318::t_247c7f43902a47 4,2992-3036,3464,3468,3477,3511
+spec/fixtures/todos/list.json
+  s_0035fde3aeb318::t_5fe2da7d88913d 144-145
+  s_0035fde3aeb318::t_ba5b893b9c57aa 82-83
+conformance/tests/status-codes.json
+  s_0035fde3aeb318::t_db84a7ec5517d8 60
+swift/Tests/BasecampTests/TodosServiceExtensionsTests.swift
+  s_0035fde3aeb318::t_89bb062b1f59bc 254-313
+  s_0035fde3aeb318::t_a6a99f9b1f5eca 80-81
+python/tests/services/test_todos.py
+  s_0035fde3aeb318::t_14e489de0def7e 284-341
+spec/api-gaps/README.md
+  s_0035fde3aeb318::t_be2c1feb29ce00 56
+python/src/basecamp/generated/types.py
+  s_605ac886f5cfe8::t_29b16ce7289e9d 1205-1218,1384
+conformance/tests/todos_write.json
+  s_0035fde3aeb318::t_03fcad5cf0ef71 72-73,133-134,289-290,350-351,488-489
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_0035fde3aeb318::t_767b5fefa193a3 44-52
+  s_0035fde3aeb318::t_b30c5ec822e684 135-140
+  s_0035fde3aeb318::t_02240f8a00a0db 181-189
+  s_0035fde3aeb318::t_3463e983a7f025 80,86-87
+  s_e655a660e9dd25::t_f10c308b35b6bf 88
+typescript/src/generated/schema.d.ts
+  s_0035fde3aeb318::t_247c7f43902a47 3990-3994,3999
+  s_605ac886f5cfe8::t_29b16ce7289e9d 3969-3989,3995
+  s_b1b525335083d5::t_d6d17a4067c435 3996-3998,4000-4005,4188
+typescript/tests/services/todos.test.ts
+  s_0035fde3aeb318::t_4b265393f9f9c8 87-142
+swift/Sources/Basecamp/Generated/Models/Todo.swift
+  s_1ef9dccf6841e3::t_2d82d8647d9a3f 10,42,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "222a4a654abaa0773fcc9effb8a1af27ea664cf3",
+  "prompts": {},
+  "sessions": {
+    "s_0035fde3aeb318": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0ce20d52-822d-438c-aeb7-3cd091f47c9e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_1ef9dccf6841e3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8b91-58fd-7bd2-913d-d6b6b6b6949d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_605ac886f5cfe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "641ad459-ef47-4c98-86a0-f7a1f70c3835",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b1b525335083d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eed2f6e-8506-44d4-9afd-bae990b2c900",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e655a660e9dd25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69453502-1952-42fc-8bb9-c34a8d94d478",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
