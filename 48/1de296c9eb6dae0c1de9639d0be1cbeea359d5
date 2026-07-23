@@ -1,0 +1,45 @@
+typescript/tests/services/wormholes.test.ts
+  s_3fd48deaa8600c::t_3d36ad30ef39d8 1-184
+typescript/tests/services/card-tables.test.ts
+  s_3fd48deaa8600c::t_134929f511af63 56-91
+typescript/src/generated/path-mapping.ts
+  s_3fd48deaa8600c::t_4e25a7ead25b07 16,20-21
+typescript/src/index.ts
+  s_3fd48deaa8600c::t_6f8e2189b3617c 200-206
+typescript/src/generated/schema.d.ts
+  s_3fd48deaa8600c::t_4e25a7ead25b07 133-173,2846,3160-3167,4559-4566,4702-4737,5373-5591
+typescript/src/generated/services/index.ts
+  s_3fd48deaa8600c::t_4e25a7ead25b07 5
+typescript/scripts/generate-services.ts
+  s_3fd48deaa8600c::t_034b398e72697e 312-314
+  s_3fd48deaa8600c::t_f26b5ebd3fcac7 423
+  s_3fd48deaa8600c::t_dbe28b280f43f6 197
+typescript/src/generated/metadata.ts
+  s_3fd48deaa8600c::t_4e25a7ead25b07 40,170-208
+typescript/README.md
+  s_3fd48deaa8600c::t_4044af0fbfc7ed 270
+typescript/src/generated/openapi-stripped.json
+  s_3fd48deaa8600c::t_4e25a7ead25b07 916-1242,19850-19855,21032-21048,25888-25904,26340-26427
+typescript/src/generated/services/wormholes.ts
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-142
+typescript/src/client.ts
+  s_3fd48deaa8600c::t_7c3d84569f3365 382
+  s_3fd48deaa8600c::t_d4851f2559f71b 125-126
+  s_3fd48deaa8600c::t_e07bb77f39d4a4 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "481de296c9eb6dae0c1de9639d0be1cbeea359d5",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
