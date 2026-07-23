@@ -123,6 +123,7 @@ export {
   type ListTodolistOptions,
   type CreateTodolistRequest,
   type UpdateTodolistRequest,
+  type RepositionTodolistRequest,
 } from "./generated/services/todolists.js";
 
 export {
