@@ -15,13 +15,16 @@ python/src/basecamp/generated/types.py
 go/pkg/generated/client.gen.go
   s_605ac886f5cfe8::t_bb7749e07123df 1842-1848,1870-1871,2053-2067,2069-2074
   s_0035fde3aeb318::t_4e11eaceba5c48 1849-1853,1855-1863,1869,2068
+  s_0035fde3aeb318::t_baa92739196202 1854,1864-1868
 python/tests/services/test_todos.py
   s_0035fde3aeb318::t_14e489de0def7e 284-341
 spec/api-gaps/rich-text-attachments-coverage.md
   s_0035fde3aeb318::t_99abf0d0a65cd5 1-6,7-51,53-82,90
+  s_0035fde3aeb318::t_baa92739196202 52,83-89,91-94
 kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodosServiceTest.kt
   s_0035fde3aeb318::t_2dd6d3e986f89c 429,436-446,448-460,464-468,470-480,486-489
   s_0035fde3aeb318::t_980dda943b37b4 31-37,46-47
+  s_0035fde3aeb318::t_baa92739196202 16,428,430-435,447,461-463,469,481-485
 go/pkg/basecamp/todos_test.go
   s_0035fde3aeb318::t_aeba5fd3e58d5d 194-240
   s_0035fde3aeb318::t_cea09c96043092 1005-1007,1009-1010,1016,1022-1023,1053-1054,1066-1067,1072,1076-1081
@@ -33,16 +36,21 @@ spec/basecamp.smithy
   s_605ac886f5cfe8::t_b302c170e24323 1299-1309,1311,1313,1315,1317,1319,1321-1322,1331,1333,1336,1338,1340-1342
   s_0035fde3aeb318::t_e31594ab6d2efa 1283
   s_605ac886f5cfe8::t_26357b2dce71bb 1284
+  s_0035fde3aeb318::t_baa92739196202 1326-1330,1332
 typescript/src/generated/openapi-stripped.json
   s_605ac886f5cfe8::t_29b16ce7289e9d 23750-23777,23779-23787,23789-23794,23796-23802,23804-23805,23807-23808,23810,23816,24488,24542
   s_b1b525335083d5::t_1d98e3e1c8d8da 23795,23803,23806,23809,23811-23815,23817,24484-24487,24489
+  s_0035fde3aeb318::t_baa92739196202 23778,23788
 SPEC.md
   s_0035fde3aeb318::t_5975f9c3562c4d 668-674,678-685,696-698,701,705
+  s_0035fde3aeb318::t_baa92739196202 675-677,686-695,699-700,702-704
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/RichTextAttachment.kt
   s_605ac886f5cfe8::t_29b16ce7289e9d 1-6,8-24,29
+  s_0035fde3aeb318::t_baa92739196202 7,25-28
 openapi.json
   s_605ac886f5cfe8::t_6612130e559443 26095-26122,26130-26132,26140-26149,26162,26829-26834
   s_0035fde3aeb318::t_e8fee72412cc4a 26124-26129,26134-26139,26150-26161,26887
+  s_0035fde3aeb318::t_baa92739196202 26123,26133
 conformance/tests/todos_write.json
   s_0035fde3aeb318::t_03fcad5cf0ef71 72-73,133-134,289-290,350-351,488-489
 go/pkg/basecamp/todos.go
@@ -52,6 +60,7 @@ go/pkg/basecamp/todos.go
   s_605ac886f5cfe8::t_b69a940720f60e 903-913,924-925,930-931,933-941,949-950
   s_0035fde3aeb318::t_4bd72988bb1e53 926-929,932,942-948
   s_605ac886f5cfe8::t_7329c11e54fecf 36-45
+  s_0035fde3aeb318::t_baa92739196202 143-144
 swift/Tests/BasecampTests/HooksTests.swift
   s_0035fde3aeb318::t_b58b0d081a9378 115
   s_0035fde3aeb318::t_afd625f699014a 239
@@ -60,6 +69,7 @@ ruby/test/basecamp/services/todos_service_test.rb
 typescript/src/generated/schema.d.ts
   s_605ac886f5cfe8::t_29b16ce7289e9d 3994-4014,4020
   s_b1b525335083d5::t_d6d17a4067c435 4021-4023,4025-4030,4213
+  s_0035fde3aeb318::t_baa92739196202 4015-4019,4024
 spec/fixtures/todos/list.json
   s_0035fde3aeb318::t_ba5b893b9c57aa 82-83
   s_0035fde3aeb318::t_5fe2da7d88913d 144-145
@@ -76,6 +86,12 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
   s_e655a660e9dd25::t_2ee5f12159c0e4 29
 swift/Sources/Basecamp/Generated/Models/Todo.swift
   s_1ef9dccf6841e3::t_2d82d8647d9a3f 10,42,73
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_0035fde3aeb318::t_baa92739196202 44-52,80,86-88,135-140,181-188
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Upload.kt
+  s_0035fde3aeb318::t_baa92739196202 7,37-40
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/serialization/FlexibleIntSerializer.kt
+  s_0035fde3aeb318::t_baa92739196202 1-58
 ---
 {
   "schema_version": "authorship/3.0.0",
