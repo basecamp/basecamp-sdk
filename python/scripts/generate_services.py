@@ -57,6 +57,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
             "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
             "RepositionCardStep",
         ],
+        "Wormholes": ["CreateWormhole", "UpdateWormhole", "DeleteWormhole"],
     },
     "Files": {
         "Attachments": ["CreateAttachment"],
@@ -145,6 +146,9 @@ METHOD_NAME_OVERRIDES = {
     "CreateCardStep": "create",
     "UpdateCardStep": "update",
     "SetCardStepCompletion": "set_completion",
+    "CreateWormhole": "create",
+    "UpdateWormhole": "update",
+    "DeleteWormhole": "delete",
     "GetQuestionnaire": "get_questionnaire",
     "GetQuestion": "get_question",
     "GetAnswer": "get_answer",

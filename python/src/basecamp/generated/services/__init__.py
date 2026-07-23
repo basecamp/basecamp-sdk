@@ -47,6 +47,7 @@ from basecamp.generated.services.tools import ToolsService, AsyncToolsService
 from basecamp.generated.services.uploads import UploadsService, AsyncUploadsService
 from basecamp.generated.services.vaults import VaultsService, AsyncVaultsService
 from basecamp.generated.services.webhooks_service import WebhooksService, AsyncWebhooksService
+from basecamp.generated.services.wormholes import WormholesService, AsyncWormholesService
 
 __all__ = [
     "AccountService",
@@ -137,4 +138,6 @@ __all__ = [
     "AsyncVaultsService",
     "WebhooksService",
     "AsyncWebhooksService",
+    "WormholesService",
+    "AsyncWormholesService",
 ]
