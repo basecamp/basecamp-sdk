@@ -97,6 +97,7 @@ type AccountClient struct {
 	cards                 *CardsService
 	cardColumns           *CardColumnsService
 	cardSteps             *CardStepsService
+	wormholes             *WormholesService
 	attachments           *AttachmentsService
 	clientApprovals       *ClientApprovalsService
 	clientCorrespondences *ClientCorrespondencesService
@@ -1273,6 +1274,16 @@ func (ac *AccountClient) CardSteps() *CardStepsService {
 		ac.cardSteps = NewCardStepsService(ac)
 	}
 	return ac.cardSteps
+}
+
+// Wormholes returns the WormholesService for card-table wormhole operations.
+func (ac *AccountClient) Wormholes() *WormholesService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.wormholes == nil {
+		ac.wormholes = NewWormholesService(ac)
+	}
+	return ac.wormholes
 }
 
 // Attachments returns the AttachmentsService for file upload operations.

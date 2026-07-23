@@ -118,6 +118,49 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/card_tables/wormholes/{wormholeId}",
+      "resource": "Card Tables",
+      "operations": {
+        "DELETE": "DeleteWormhole",
+        "PUT": "UpdateWormhole"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "wormholeId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes",
+      "resource": "Card Tables",
+      "operations": {
+        "POST": "CreateWormhole"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "cardTableId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/dock/tools",
       "resource": "Automation",
       "operations": {
