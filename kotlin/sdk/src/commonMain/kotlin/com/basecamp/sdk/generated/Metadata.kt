@@ -52,6 +52,7 @@ object Metadata {
         "CreateUpload" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateVault" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateWebhook" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "CreateWormhole" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "DeleteBoost" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DeleteCampfireLine" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DeleteChatbot" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
@@ -60,6 +61,7 @@ object Metadata {
         "DeleteTemplate" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DeleteTool" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DeleteWebhook" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "DeleteWormhole" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DestroyGaugeNeedle" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "DisableCardColumnOnHold" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "DisableOutOfOffice" to OperationConfig(true, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
@@ -225,5 +227,6 @@ object Metadata {
         "UpdateUpload" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateVault" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "UpdateWebhook" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "UpdateWormhole" to OperationConfig(true, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
     )
 }

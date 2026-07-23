@@ -6,12 +6,12 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
- * CardTable entity from the Basecamp API.
+ * Wormhole entity from the Basecamp API.
  *
  * @generated from OpenAPI spec — do not edit directly
  */
 @Serializable
-data class CardTable(
+data class Wormhole(
     val id: Long,
     val status: String,
     @SerialName("visible_to_clients") val visibleToClients: Boolean,
@@ -22,11 +22,11 @@ data class CardTable(
     val type: String,
     val url: String,
     @SerialName("app_url") val appUrl: String,
+    val parent: RecordingParent,
     val bucket: TodoBucket,
     val creator: Person,
+    val linked: Boolean,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val subscribers: List<Person> = emptyList(),
-    val lists: List<CardColumn> = emptyList(),
-    val wormholes: List<Wormhole> = emptyList()
+    val color: String? = null,
+    @SerialName("destination_url") val destinationUrl: String? = null
 )
