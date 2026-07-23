@@ -286,16 +286,20 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
 private func emitRequiredNullableCoding(orderedProps: [String], properties: [String: Any], requiredFields: Set<String>) -> [String] {
     var lines: [String] = []
 
-    // Emits `case camel` or `case camel = "snake"`, plus the synthetic
-    // system_label key for FlexibleInt id fields.
+    // Emits bare `case camel` for every field. BaseService's decoder/encoder use
+    // `.convertFromSnakeCase`/`.convertToSnakeCase`, which map the camelCase
+    // CodingKey rawValue to/from the snake_case wire key. Emitting an explicit
+    // `= "snake"` rawValue here would instead be matched against the *converted*
+    // (camelCase) incoming key and fail with keyNotFound for any snake_case field
+    // (e.g. `app_url`). Single-word fields already match under either scheme.
     func codingKeyLines() -> [String] {
         var out: [String] = []
         for propName in orderedProps {
             guard let propSchema = properties[propName] as? [String: Any] else { continue }
             let camelName = toCamelCase(propName)
-            out.append(camelName == propName ? "        case \(camelName)" : "        case \(camelName) = \"\(propName)\"")
+            out.append("        case \(camelName)")
             if schemaToSwiftType(propSchema) == "FlexibleInt" {
-                out.append("        case systemLabel = \"system_label\"")
+                out.append("        case systemLabel")
             }
         }
         return out

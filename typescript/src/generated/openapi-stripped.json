@@ -26630,7 +26630,7 @@
               "string",
               "null"
             ],
-            "description": "URL of the destination column, or null when unlinked. Always present in the\nresponse but nullable; modeled as a nullable string (type [\"string\",\"null\"]\n+ x-go-type \"*string\") via smithy-build.json jsonAdd, mirroring SearchType.key.",
+            "description": "URL of the destination column; always present on the wire, `null` for an\nunlinked wormhole. `@required` models the presence; the nullability of the\nvalue is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:\n[\"string\",\"null\"] + x-go-type \"*string\") since Smithy has no native\nrequired-and-nullable — exactly the SearchType.key treatment. SDKs model it\nas required-but-nullable (`string | null`, not `string | null | undefined`).",
             "x-go-type": "*string"
           }
         },
@@ -26639,6 +26639,7 @@
           "bucket",
           "created_at",
           "creator",
+          "destination_url",
           "id",
           "inherits_status",
           "linked",

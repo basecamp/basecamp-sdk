@@ -1824,7 +1824,7 @@ class Wormhole(TypedDict):
     color: NotRequired[str]
     created_at: str
     creator: Person
-    destination_url: NotRequired[str | None]
+    destination_url: str | None
     id: int
     inherits_status: bool
     linked: bool

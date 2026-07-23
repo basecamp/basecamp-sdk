@@ -2715,10 +2715,13 @@ type Wormhole struct {
 	CreatedAt time.Time `json:"created_at"`
 	Creator   Person    `json:"creator"`
 
-	// DestinationUrl URL of the destination column, or null when unlinked. Always present in the
-	// response but nullable; modeled as a nullable string (type ["string","null"]
-	// + x-go-type "*string") via smithy-build.json jsonAdd, mirroring SearchType.key.
-	DestinationUrl *string `json:"destination_url,omitempty"`
+	// DestinationUrl URL of the destination column; always present on the wire, `null` for an
+	// unlinked wormhole. `@required` models the presence; the nullability of the
+	// value is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
+	// ["string","null"] + x-go-type "*string") since Smithy has no native
+	// required-and-nullable — exactly the SearchType.key treatment. SDKs model it
+	// as required-but-nullable (`string | null`, not `string | null | undefined`).
+	DestinationUrl *string `json:"destination_url"`
 	Id             int64   `json:"id"`
 	InheritsStatus bool    `json:"inherits_status"`
 
