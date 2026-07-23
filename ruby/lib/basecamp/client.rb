@@ -431,6 +431,11 @@ module Basecamp
       service(:card_steps) { Services::CardStepsService.new(self) }
     end
 
+    # @return [Services::WormholesService]
+    def wormholes
+      service(:wormholes) { Services::WormholesService.new(self) }
+    end
+
     # @return [Services::TemplatesService]
     def templates
       service(:templates) { Services::TemplatesService.new(self) }
