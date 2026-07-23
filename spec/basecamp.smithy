@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-07-22"
+  version: "2026-07-23"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }

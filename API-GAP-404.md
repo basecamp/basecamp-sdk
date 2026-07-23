@@ -19,10 +19,14 @@ method at all — it would look like it worked.
 
 ## Finding: the API ignores `attachable_sgid` on update
 
-**Verified against the BC3 source pinned in `spec/api-provenance.json`
-(`basecamp/bc3` @ `ba105ba7d7e48bd97afdc98305e9fb8a63a88beb`).** This is a
-static source read of the pinned revision, not a live-account request — see
-*Verification status* below.
+**Verified against `basecamp/bc3` @
+`ba105ba7d7e48bd97afdc98305e9fb8a63a88beb`** — the revision `spec/api-provenance.json`
+pinned when this was verified (the pin has since advanced to `338b7a11`). This is
+a static source read of that revision, not a live-account request — see
+*Verification status* below. The finding carries over to `338b7a11`: the
+`ba105ba7..338b7a11` range changed none of the relevant source
+(`uploads_controller.rb`, `upload.rb`, or the `versions` route), so no
+re-verification was needed.
 
 `PUT /uploads/{id}.json` is served by `UploadsController#update`. The update
 path never reads `attachable_sgid`:
@@ -116,8 +120,11 @@ anything.
 ## Verification status
 
 - **Source-verified** against `basecamp/bc3` @ `ba105ba7` (the revision
-  `spec/api-provenance.json` pins). Controller, model, routes, and published
-  API docs all agree.
+  `spec/api-provenance.json` pinned at the time of verification; the pin has
+  since advanced to `338b7a11`, and that range changed none of the relevant
+  source — `uploads_controller.rb`, `upload.rb`, the `versions` route — so the
+  finding is unaffected). Controller,
+  model, routes, and published API docs all agree.
 - **Not** verified against a live account. A live confirmation is not required
   to reject the change — the source is unambiguous that the update path drops
   the key — but if the API team later adds a version-write contract, absorption
