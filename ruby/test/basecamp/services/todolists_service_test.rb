@@ -69,11 +69,13 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_reposition
+    captured = {}
     stub_request(:put, "https://3.basecampapi.com/12345/todosets/todolists/2/position.json")
-      .with(body: { position: 3 })
+      .with { |req| captured[:body] = JSON.parse(req.body) }
       .to_return(status: 204)
 
     assert_nil @account.todolists.reposition(todolist_id: 2, position: 3)
+    assert_equal({ "position" => 3 }, captured[:body])
   end
 
   def test_reposition_not_found
