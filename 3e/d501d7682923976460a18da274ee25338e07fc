@@ -1,0 +1,91 @@
+go/pkg/basecamp/schedules_test.go
+  s_9dca1a241a65c0::t_dbb5001e81ef7d 738-784
+spec/api-provenance.json
+  s_9dca1a241a65c0::t_726aced2938da9 4
+spec/api-gaps/dock-tool-create-contract.md
+  s_9dca1a241a65c0::t_85e37173e26f68 109-113
+  s_9dca1a241a65c0::t_7c2da3c253a5ff 26-28
+  s_9dca1a241a65c0::t_b83f64a5948978 6
+  s_9dca1a241a65c0::t_64ea5c21e37890 119-120
+go/pkg/basecamp/messages_test.go
+  s_9dca1a241a65c0::t_a1938a4986eb38 494-538
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/MessagesServiceTest.kt
+  s_9dca1a241a65c0::t_5ee477fc7e82a6 1-87
+spec/api-gaps/search-filter-additions.md
+  s_9dca1a241a65c0::t_ef006b2844601f 42-45
+  s_9dca1a241a65c0::t_e8f679cb11a6c3 3,6
+  s_9dca1a241a65c0::t_a716ee9aea4dd6 23-26
+  s_9dca1a241a65c0::t_1a416155a99974 59-60
+  s_9dca1a241a65c0::t_0c519b4fb9249b 73-75
+  s_9dca1a241a65c0::t_58cde6a4ce1efd 66-67
+go/pkg/basecamp/checkins_test.go
+  s_9dca1a241a65c0::t_bc0f379815c70c 1037-1093
+go/pkg/basecamp/vaults.go
+  s_9dca1a241a65c0::t_2bd6a9bc52f4f4 191-194
+  s_9dca1a241a65c0::t_c3b57bf4554f60 225-228
+  s_9dca1a241a65c0::t_99583e1eea8a80 581-585
+  s_9dca1a241a65c0::t_15782d1adc2ceb 865-869
+spec/basecamp.smithy
+  s_9dca1a241a65c0::t_c70065a7652e33 2304-2305
+  s_9dca1a241a65c0::t_ac659d14eddcc3 2579-2580
+  s_9dca1a241a65c0::t_6848a5dc7f33fe 6150-6151
+  s_9dca1a241a65c0::t_bc82436c9f9977 1742-1743
+  s_9dca1a241a65c0::t_52697f58edf571 2183-2184
+  s_9dca1a241a65c0::t_9aedc53111903c 1073-1074
+spec/api-gaps/README.md
+  s_9dca1a241a65c0::t_4d561f95e60e8f 46
+  s_9dca1a241a65c0::t_7d924378d9aa0f 57-58
+spec/api-gaps/schedule-recurrence-writes.md
+  s_9dca1a241a65c0::t_14d1ea2ad4f02a 79-81
+  s_9dca1a241a65c0::t_5fbaa4752596ab 90-93
+  s_9dca1a241a65c0::t_cf7fb5a46caa57 54-58
+ruby/test/basecamp/services/messages_service_test.rb
+  s_9dca1a241a65c0::t_7ef9fc2334492b 102-133
+go/pkg/basecamp/todolists_test.go
+  s_9dca1a241a65c0::t_05e7804a1238a5 365-409
+typescript/tests/services/messages.test.ts
+  s_9dca1a241a65c0::t_1be495e1478236 141-166
+go/pkg/basecamp/checkins.go
+  s_9dca1a241a65c0::t_b23fce7dfb3800 360-362
+  s_9dca1a241a65c0::t_ebf118ee504402 128-131
+go/pkg/basecamp/messages.go
+  s_9dca1a241a65c0::t_6af110b0268800 257-261
+  s_9dca1a241a65c0::t_01b650f62426ac 54-57
+spec/api-gaps/client-visibility-at-create.md
+  s_9dca1a241a65c0::t_16c2fb4b32087e 95-110
+  s_9dca1a241a65c0::t_0ae411e3145035 1-94,111-117
+go/pkg/basecamp/todolists.go
+  s_9dca1a241a65c0::t_508c2d34a60bdf 248-250
+  s_9dca1a241a65c0::t_9c0050bfc96b67 77-80
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_9dca1a241a65c0::t_6ce4d668ee6d19 557-602
+go/pkg/basecamp/vaults_test.go
+  s_9dca1a241a65c0::t_71cfaedc8223cd 942-1059
+python/tests/services/test_messages.py
+  s_9dca1a241a65c0::t_ffb64c72ffb24a 1-54
+go/pkg/basecamp/schedules.go
+  s_9dca1a241a65c0::t_ef8614b9ccf394 103-106
+  s_9dca1a241a65c0::t_c830c589713974 349-356
+spec/api-gaps/external-links.md
+  s_9dca1a241a65c0::t_f763d887d17cc4 10-15,17,21-22,30-64,67,71-76,80-89,91-92,97,104-107
+  s_9dca1a241a65c0::t_f1593a93f846b5 23
+  s_9dca1a241a65c0::t_14c7968d39dc5e 90
+  s_9dca1a241a65c0::t_62ee4aea7852aa 94-96,98-101
+  s_9dca1a241a65c0::t_e305ec12b14868 1-9,16,18-20,24-29,65-66,68-70,77-79,93,102-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3ed501d7682923976460a18da274ee25338e07fc",
+  "prompts": {},
+  "sessions": {
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
