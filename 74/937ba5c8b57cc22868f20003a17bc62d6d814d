@@ -1,0 +1,31 @@
+spec/api-gaps/visible-to-clients-on-creates.md
+  s_0e09583c24fd21::t_850c589351c82d 1-63,78-79,84-91
+  s_0e09583c24fd21::t_e59fd6865d7171 64-77,80-83
+spec/api-gaps/README.md
+  s_0e09583c24fd21::t_dbd830581912a6 56-57
+spec/api-gaps/external-links-doors.md
+  s_0e09583c24fd21::t_b8ad14fad4bb62 65-83
+  s_0e09583c24fd21::t_c2e71ba2f3c675 1-64,84-98
+spec/api-provenance.json
+  s_0e09583c24fd21::t_f2174907c65b4e 4
+spec/api-gaps/recordable-subtypes-doc.md
+  s_0e09583c24fd21::t_df4074176df545 43-48
+go/pkg/basecamp/api-provenance.json
+  s_0e09583c24fd21::t_a53c86f3599412 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "74937ba5c8b57cc22868f20003a17bc62d6d814d",
+  "prompts": {},
+  "sessions": {
+    "s_0e09583c24fd21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84671fef-02de-4674-abd5-b3a178e7f29d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
