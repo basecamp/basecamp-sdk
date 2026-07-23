@@ -33,6 +33,7 @@ import { CardTablesService } from "./generated/services/card-tables.js";
 import { CardsService } from "./generated/services/cards.js";
 import { CardColumnsService } from "./generated/services/card-columns.js";
 import { CardStepsService } from "./generated/services/card-steps.js";
+import { WormholesService } from "./generated/services/wormholes.js";
 import { MessageBoardsService } from "./generated/services/message-boards.js";
 import { MessageTypesService } from "./generated/services/message-types.js";
 import { ForwardsService } from "./generated/services/forwards.js";
@@ -121,6 +122,8 @@ export interface BasecampClient extends RawClient {
   readonly cardColumns: CardColumnsService;
   /** Card steps service - create, update, complete, and manage card steps */
   readonly cardSteps: CardStepsService;
+  /** Wormholes service - create, update, and delete card-table wormholes */
+  readonly wormholes: WormholesService;
   /** Message boards service - get message boards */
   readonly messageBoards: MessageBoardsService;
   /** Message types service - list, get, create, update, delete message types */
@@ -376,6 +379,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("cards", () => new CardsService(client, hooks, fetchPage, maxPages));
   defineService("cardColumns", () => new CardColumnsService(client, hooks, fetchPage, maxPages));
   defineService("cardSteps", () => new CardStepsService(client, hooks, fetchPage, maxPages));
+  defineService("wormholes", () => new WormholesService(client, hooks, fetchPage, maxPages));
   defineService("messageBoards", () => new MessageBoardsService(client, hooks, fetchPage, maxPages));
   defineService("messageTypes", () => new MessageTypesService(client, hooks, fetchPage, maxPages));
   defineService("forwards", () => new ForwardsService(client, hooks, fetchPage, maxPages));

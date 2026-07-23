@@ -197,6 +197,13 @@ export {
   type UpdateCardStepRequest,
 } from "./generated/services/card-steps.js";
 
+export {
+  WormholesService,
+  type Wormhole,
+  type CreateWormholeRequest,
+  type UpdateWormholeRequest,
+} from "./generated/services/wormholes.js";
+
 // Message services - generated
 export {
   MessageBoardsService,
