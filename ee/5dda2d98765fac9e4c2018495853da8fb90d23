@@ -1,0 +1,40 @@
+ruby/test/basecamp/services/wormholes_service_test.rb
+  s_3fd48deaa8600c::t_df93a31b490b69 1-42,44-121
+  s_3fd48deaa8600c::t_3eb3088d94d61c 43
+ruby/lib/basecamp/generated/types.rb
+  s_3fd48deaa8600c::t_4e25a7ead25b07 4,696,720,741,4155-4204,4206,4210
+  s_3fd48deaa8600c::t_b929797fe3216e 4205,4207-4209,4211
+  s_3fd48deaa8600c::t_c8cf3947f59c1c 3149,3151-3152,3155-3170,3172-3173,3178-3179,3421,3425
+ruby/lib/basecamp/client.rb
+  s_3fd48deaa8600c::t_135d1040aa60b5 434-438
+ruby/README.md
+  s_3fd48deaa8600c::t_fbfc564058df6a 213
+  s_3fd48deaa8600c::t_8e0e701891b0f1 182
+ruby/lib/basecamp/generated/metadata.json
+  s_3fd48deaa8600c::t_4e25a7ead25b07 4,134-172
+ruby/scripts/generate-services.rb
+  s_3fd48deaa8600c::t_28f7be4f1496c5 63-64
+  s_3fd48deaa8600c::t_261c30a98a37de 150-152
+ruby/test/basecamp/services/card_tables_service_test.rb
+  s_3fd48deaa8600c::t_3eb3088d94d61c 64
+  s_3fd48deaa8600c::t_118a7ce6a87bdd 25-40,56-63,65-66
+  s_3fd48deaa8600c::t_389c835683e26e 67
+ruby/lib/basecamp/generated/services/wormholes_service.rb
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ee5dda2d98765fac9e4c2018495853da8fb90d23",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

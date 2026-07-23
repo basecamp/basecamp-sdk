@@ -1,0 +1,40 @@
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 38,47,213
+swift/Sources/Basecamp/Generated/AccountClient+Services.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 49
+swift/Tests/BasecampTests/WormholesServiceTests.swift
+  s_3fd48deaa8600c::t_aabaa824a6a8a4 1-60,62-72,74-97,99-120,122-132,134-165
+  s_3fd48deaa8600c::t_4773539ea239bc 61,73,98,121,133
+swift/Sources/Basecamp/Generated/Models/Wormhole.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-60
+swift/README.md
+  s_3fd48deaa8600c::t_8e0e701891b0f1 12,161
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_3fd48deaa8600c::t_54ba9acb8a8b70 47
+swift/Sources/Basecamp/Generated/Models/UpdateWormholeRequest.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-10
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_3fd48deaa8600c::t_b66688002bb6ec 47-49
+swift/Sources/Basecamp/Generated/Models/CreateWormholeRequest.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-10
+swift/Sources/Basecamp/Generated/Services/WormholesService.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-33
+swift/Sources/Basecamp/Generated/Models/CardTable.swift
+  s_3fd48deaa8600c::t_4e25a7ead25b07 21,39-40,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "462d0fcf2c0e2f69ad5f7dea9368c4360d478d21",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
