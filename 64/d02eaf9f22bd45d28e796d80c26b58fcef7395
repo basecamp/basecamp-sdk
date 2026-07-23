@@ -1,0 +1,62 @@
+spec/api-gaps/recordable-subtypes-doc.md
+  s_0e09583c24fd21::t_df4074176df545 43-48
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_0e09583c24fd21::t_93e497db3a6ec0 30
+typescript/src/generated/metadata.ts
+  s_0e09583c24fd21::t_93e497db3a6ec0 40
+spec/api-gaps/README.md
+  s_0e09583c24fd21::t_dbd830581912a6 57-58
+openapi.json
+  s_0e09583c24fd21::t_93e497db3a6ec0 5
+go/pkg/basecamp/api-provenance.json
+  s_0e09583c24fd21::t_3ae4e8ee90d5e7 5
+  s_0e09583c24fd21::t_85c468a547d9eb 4
+ruby/lib/basecamp/generated/metadata.json
+  s_0e09583c24fd21::t_93e497db3a6ec0 4
+ruby/lib/basecamp/generated/types.rb
+  s_0e09583c24fd21::t_93e497db3a6ec0 4
+spec/api-gaps/visible-to-clients-on-creates.md
+  s_0e09583c24fd21::t_78bb553013a821 15,23,31
+  s_0e09583c24fd21::t_850c589351c82d 1-14,16-22,24-30,32-45,54-62,71-77,94-95,100,102-107
+  s_0e09583c24fd21::t_811b359ce228c3 48
+  s_0e09583c24fd21::t_d40445507768d4 46-47,49-53
+  s_0e09583c24fd21::t_47bb7fed3ea5ba 63-70
+  s_0e09583c24fd21::t_e59fd6865d7171 78-79,83-85,87-89,93,96
+  s_0e09583c24fd21::t_b76f30bdf30580 80-82,86,90-92,97-99,101
+ruby/lib/basecamp/version.rb
+  s_0e09583c24fd21::t_93e497db3a6ec0 5
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_0e09583c24fd21::t_93e497db3a6ec0 32
+go/pkg/basecamp/version.go
+  s_0e09583c24fd21::t_93e497db3a6ec0 7
+spec/basecamp.smithy
+  s_0e09583c24fd21::t_3ae4e8ee90d5e7 54
+spec/api-gaps/external-links-doors.md
+  s_0e09583c24fd21::t_c2e71ba2f3c675 1-64,84-98
+  s_0e09583c24fd21::t_b8ad14fad4bb62 65-83
+spec/api-provenance.json
+  s_0e09583c24fd21::t_3d6967cc3f734c 5
+  s_0e09583c24fd21::t_d7f0bb78e2333e 4
+typescript/src/client.ts
+  s_0e09583c24fd21::t_93e497db3a6ec0 223
+python/src/basecamp/_version.py
+  s_0e09583c24fd21::t_93e497db3a6ec0 2
+typescript/src/generated/openapi-stripped.json
+  s_0e09583c24fd21::t_93e497db3a6ec0 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "64d02eaf9f22bd45d28e796d80c26b58fcef7395",
+  "prompts": {},
+  "sessions": {
+    "s_0e09583c24fd21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84671fef-02de-4674-abd5-b3a178e7f29d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
