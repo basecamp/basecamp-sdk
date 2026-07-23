@@ -1,0 +1,50 @@
+spec/basecamp.smithy
+  s_3fd48deaa8600c::t_0ab2de2e649451 4899-4900
+  s_3fd48deaa8600c::t_f044e0f245fdca 4891-4892
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_3fd48deaa8600c::t_f699fdbdb91d1b 142-162
+openapi.json
+  s_3fd48deaa8600c::t_fd78ec6fbbc6c3 29007-29012
+  s_3fd48deaa8600c::t_5184d4130af330 29000
+ruby/lib/basecamp/generated/types.rb
+  s_3fd48deaa8600c::t_b2c354883bdbc5 4
+  s_3fd48deaa8600c::t_fd78ec6fbbc6c3 2994-3038,3194,3196-3198,3202-3208,3213-3219,3285-3311,3488,3492,3501,3535
+typescript/src/generated/schema.d.ts
+  s_3fd48deaa8600c::t_fa6bf0d34ae305 4780
+  s_3fd48deaa8600c::t_5184d4130af330 4781-4782
+  s_3fd48deaa8600c::t_fd78ec6fbbc6c3 4783,4792-4793,4795
+go/pkg/generated/client.gen.go
+  s_3fd48deaa8600c::t_5184d4130af330 2712-2713,2719-2723
+go/pkg/basecamp/wormholes.go
+  s_3fd48deaa8600c::t_8fd52818939353 211-214
+typescript/src/generated/openapi-stripped.json
+  s_3fd48deaa8600c::t_5184d4130af330 26622
+  s_3fd48deaa8600c::t_fd78ec6fbbc6c3 26629-26634
+typescript/src/generated/metadata.ts
+  s_3fd48deaa8600c::t_b2c354883bdbc5 40
+python/src/basecamp/generated/types.py
+  s_3fd48deaa8600c::t_fd78ec6fbbc6c3 1827
+spec/smithy-build.json
+  s_3fd48deaa8600c::t_ba8aa6d6147eb4 39
+  s_3fd48deaa8600c::t_6db74808686582 37-38
+spec/api-gaps/card-table-wormholes.md
+  s_3fd48deaa8600c::t_a8c57f0b05795b 31-32,88,97-98
+ruby/lib/basecamp/generated/metadata.json
+  s_3fd48deaa8600c::t_b2c354883bdbc5 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "5353b9aab51c7660aed4f010ed6fe80234c87acc",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
