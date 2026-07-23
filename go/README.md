@@ -254,6 +254,7 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 | `Cards()` | List, Get, Create, Update, Move |
 | `CardColumns()` | List, Get, Create, Update, Watch, Unwatch |
 | `CardSteps()` | List, Get |
+| `Wormholes()` | Create, Update, Delete |
 
 ### Reporting & Search
 

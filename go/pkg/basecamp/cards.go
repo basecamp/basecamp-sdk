@@ -28,6 +28,7 @@ type CardTable struct {
 	Creator          *Person      `json:"creator,omitempty"`
 	Subscribers      []Person     `json:"subscribers,omitempty"`
 	Lists            []CardColumn `json:"lists,omitempty"`
+	Wormholes        []Wormhole   `json:"wormholes,omitempty"`
 }
 
 // CardColumn represents a column in a card table.
@@ -520,6 +521,11 @@ type MoveCardOptions struct {
 }
 
 // Move moves a card to a different column, optionally at a specific position.
+//
+// A wormhole id is a valid columnID: passing one teleports the card to the
+// destination column on another card table, the only way to move a card across
+// projects. Discover a card table's wormholes via CardTables().Get; manage them
+// with Wormholes().
 func (s *CardsService) Move(ctx context.Context, cardID, columnID int64, opts *MoveCardOptions) (err error) {
 	op := OperationInfo{
 		Service: "Cards", Operation: "Move",
@@ -1225,6 +1231,13 @@ func cardTableFromGenerated(gc generated.CardTable) CardTable {
 		ct.Lists = make([]CardColumn, 0, len(gc.Lists))
 		for _, gl := range gc.Lists {
 			ct.Lists = append(ct.Lists, cardColumnFromGenerated(gl))
+		}
+	}
+
+	if len(gc.Wormholes) > 0 {
+		ct.Wormholes = make([]Wormhole, 0, len(gc.Wormholes))
+		for _, gw := range gc.Wormholes {
+			ct.Wormholes = append(ct.Wormholes, wormholeFromGenerated(gw))
 		}
 	}
 

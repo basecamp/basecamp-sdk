@@ -306,6 +306,7 @@ type CardTable struct {
 	UpdatedAt        time.Time    `json:"updated_at"`
 	Url              string       `json:"url"`
 	VisibleToClients bool         `json:"visible_to_clients"`
+	Wormholes        []Wormhole   `json:"wormholes,omitempty"`
 }
 
 // Chatbot defines model for Chatbot.
@@ -735,6 +736,19 @@ type CreateWebhookRequestContent struct {
 
 // CreateWebhookResponseContent defines model for CreateWebhookResponseContent.
 type CreateWebhookResponseContent = Webhook
+
+// CreateWormholeRequestContent defines model for CreateWormholeRequestContent.
+type CreateWormholeRequestContent struct {
+	// DestinationRecordingId Id of the destination column (on another accessible card table) to link to.
+	DestinationRecordingId int64 `json:"destination_recording_id"`
+}
+
+// CreateWormholeResponseContent A wormhole links this card table to a column on another card table, enabling
+// cards to move across projects. It carries the full recording representation
+// plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
+// point at the *source* board; `destination_url` is the only field identifying
+// the destination column.
+type CreateWormholeResponseContent = Wormhole
 
 // DisableCardColumnOnHoldResponseContent defines model for DisableCardColumnOnHoldResponseContent.
 type DisableCardColumnOnHoldResponseContent = CardColumn
@@ -2534,6 +2548,19 @@ type UpdateWebhookRequestContent struct {
 // UpdateWebhookResponseContent defines model for UpdateWebhookResponseContent.
 type UpdateWebhookResponseContent = Webhook
 
+// UpdateWormholeRequestContent defines model for UpdateWormholeRequestContent.
+type UpdateWormholeRequestContent struct {
+	// DestinationRecordingId Id of the new destination column (on another accessible card table).
+	DestinationRecordingId int64 `json:"destination_recording_id"`
+}
+
+// UpdateWormholeResponseContent A wormhole links this card table to a column on another card table, enabling
+// cards to move across projects. It carries the full recording representation
+// plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
+// point at the *source* board; `destination_url` is the only field identifying
+// the destination column.
+type UpdateWormholeResponseContent = Wormhole
+
 // Upload defines model for Upload.
 type Upload struct {
 	AppUrl           string          `json:"app_url"`
@@ -2670,6 +2697,39 @@ type WebhookHeadersMap map[string]string
 type WebhookLimitErrorResponseContent struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
+}
+
+// Wormhole A wormhole links this card table to a column on another card table, enabling
+// cards to move across projects. It carries the full recording representation
+// plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
+// point at the *source* board; `destination_url` is the only field identifying
+// the destination column.
+type Wormhole struct {
+	AppUrl      string     `json:"app_url"`
+	BookmarkUrl string     `json:"bookmark_url,omitempty"`
+	Bucket      TodoBucket `json:"bucket"`
+
+	// Color Wormhole color, or null.
+	Color     string    `json:"color,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	Creator   Person    `json:"creator"`
+
+	// DestinationUrl URL of the destination column, or null when unlinked. Always present in the
+	// response but nullable, so it is not @required.
+	DestinationUrl string `json:"destination_url,omitempty"`
+	Id             int64  `json:"id"`
+	InheritsStatus bool   `json:"inherits_status"`
+
+	// Linked True only while the destination column, its board, and its bucket are all
+	// active; false once the destination is unlinked. Always emitted.
+	Linked           bool            `json:"linked"`
+	Parent           RecordingParent `json:"parent"`
+	Status           string          `json:"status"`
+	Title            string          `json:"title"`
+	Type             string          `json:"type"`
+	UpdatedAt        time.Time       `json:"updated_at"`
+	Url              string          `json:"url"`
+	VisibleToClients bool            `json:"visible_to_clients"`
 }
 
 // SensitiveString is a string type that redacts its value in logs.
@@ -2909,6 +2969,12 @@ type UpdateAccountNameJSONRequestBody = UpdateAccountNameRequestContent
 
 // SetCardColumnColorJSONRequestBody defines body for SetCardColumnColor for application/json ContentType.
 type SetCardColumnColorJSONRequestBody = SetCardColumnColorRequestContent
+
+// UpdateWormholeJSONRequestBody defines body for UpdateWormhole for application/json ContentType.
+type UpdateWormholeJSONRequestBody = UpdateWormholeRequestContent
+
+// CreateWormholeJSONRequestBody defines body for CreateWormhole for application/json ContentType.
+type CreateWormholeJSONRequestBody = CreateWormholeRequestContent
 
 // CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
 type CreateToolJSONRequestBody = CreateToolRequestContent
@@ -3443,6 +3509,19 @@ type ClientInterface interface {
 
 	// EnableCardColumnOnHold request
 	EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteWormhole request
+	DeleteWormhole(ctx context.Context, accountId string, bucketId int64, wormholeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateWormholeWithBody request with any body
+	UpdateWormholeWithBody(ctx context.Context, accountId string, bucketId int64, wormholeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateWormhole(ctx context.Context, accountId string, bucketId int64, wormholeId int64, body UpdateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWormholeWithBody request with any body
+	CreateWormholeWithBody(ctx context.Context, accountId string, bucketId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateWormhole(ctx context.Context, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateToolWithBody request with any body
 	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4287,6 +4366,64 @@ func (c *Client) DisableCardColumnOnHold(ctx context.Context, accountId string, 
 func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewEnableCardColumnOnHoldRequest(c.Server, accountId, bucketId, columnId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// DeleteWormhole is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteWormhole(ctx context.Context, accountId string, bucketId int64, wormholeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteWormholeRequest(c.Server, accountId, bucketId, wormholeId)
+	}, true, "DeleteWormhole", reqEditors...)
+
+}
+
+// UpdateWormholeWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateWormholeWithBody(ctx context.Context, accountId string, bucketId int64, wormholeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateWormholeRequestWithBody(c.Server, accountId, bucketId, wormholeId, contentType, body)
+	}, true, "UpdateWormhole", reqEditors...)
+
+}
+
+func (c *Client) UpdateWormhole(ctx context.Context, accountId string, bucketId int64, wormholeId int64, body UpdateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateWormholeRequest(c.Server, accountId, bucketId, wormholeId, body)
+	}, true, "UpdateWormhole", reqEditors...)
+
+}
+
+// CreateWormholeWithBody executes the CreateWormhole operation.
+
+func (c *Client) CreateWormholeWithBody(ctx context.Context, accountId string, bucketId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateWormholeRequestWithBody(c.Server, accountId, bucketId, cardTableId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateWormhole(ctx context.Context, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateWormholeRequest(c.Server, accountId, bucketId, cardTableId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -7656,6 +7793,176 @@ func NewEnableCardColumnOnHoldRequest(server string, accountId string, bucketId 
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewDeleteWormholeRequest generates requests for DeleteWormhole
+func NewDeleteWormholeRequest(server string, accountId string, bucketId int64, wormholeId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "wormholeId", runtime.ParamLocationPath, wormholeId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/wormholes/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateWormholeRequest calls the generic UpdateWormhole builder with application/json body
+func NewUpdateWormholeRequest(server string, accountId string, bucketId int64, wormholeId int64, body UpdateWormholeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateWormholeRequestWithBody(server, accountId, bucketId, wormholeId, "application/json", bodyReader)
+}
+
+// NewUpdateWormholeRequestWithBody generates requests for UpdateWormhole with any type of body
+func NewUpdateWormholeRequestWithBody(server string, accountId string, bucketId int64, wormholeId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "wormholeId", runtime.ParamLocationPath, wormholeId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/wormholes/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateWormholeRequest calls the generic CreateWormhole builder with application/json body
+func NewCreateWormholeRequest(server string, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateWormholeRequestWithBody(server, accountId, bucketId, cardTableId, "application/json", bodyReader)
+}
+
+// NewCreateWormholeRequestWithBody generates requests for CreateWormhole with any type of body
+func NewCreateWormholeRequestWithBody(server string, accountId string, bucketId int64, cardTableId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "cardTableId", runtime.ParamLocationPath, cardTableId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/card_tables/%s/wormholes.json", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -17390,6 +17697,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
 	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
 	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
+	"DeleteWormhole":                     {Idempotent: true, HasSensitiveParams: false},
+	"UpdateWormhole":                     {Idempotent: true, HasSensitiveParams: false},
+	"CreateWormhole":                     {Idempotent: false, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
@@ -18554,6 +18864,19 @@ type ClientWithResponsesInterface interface {
 	// EnableCardColumnOnHoldWithResponse request
 	EnableCardColumnOnHoldWithResponse(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*EnableCardColumnOnHoldResponse, error)
 
+	// DeleteWormholeWithResponse request
+	DeleteWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, wormholeId int64, reqEditors ...RequestEditorFn) (*DeleteWormholeResponse, error)
+
+	// UpdateWormholeWithBodyWithResponse request with any body
+	UpdateWormholeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, wormholeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWormholeResponse, error)
+
+	UpdateWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, wormholeId int64, body UpdateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWormholeResponse, error)
+
+	// CreateWormholeWithBodyWithResponse request with any body
+	CreateWormholeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWormholeResponse, error)
+
+	CreateWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWormholeResponse, error)
+
 	// CreateToolWithBodyWithResponse request with any body
 	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
@@ -19617,6 +19940,111 @@ func (r EnableCardColumnOnHoldResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r EnableCardColumnOnHoldResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteWormholeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteWormholeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteWormholeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteWormholeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateWormholeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateWormholeResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateWormholeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateWormholeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateWormholeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateWormholeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateWormholeResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWormholeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWormholeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateWormholeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26407,6 +26835,49 @@ func (c *ClientWithResponses) EnableCardColumnOnHoldWithResponse(ctx context.Con
 	return ParseEnableCardColumnOnHoldResponse(rsp)
 }
 
+// DeleteWormholeWithResponse request returning *DeleteWormholeResponse
+func (c *ClientWithResponses) DeleteWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, wormholeId int64, reqEditors ...RequestEditorFn) (*DeleteWormholeResponse, error) {
+	rsp, err := c.DeleteWormhole(ctx, accountId, bucketId, wormholeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteWormholeResponse(rsp)
+}
+
+// UpdateWormholeWithBodyWithResponse request with arbitrary body returning *UpdateWormholeResponse
+func (c *ClientWithResponses) UpdateWormholeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, wormholeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateWormholeResponse, error) {
+	rsp, err := c.UpdateWormholeWithBody(ctx, accountId, bucketId, wormholeId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWormholeResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, wormholeId int64, body UpdateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateWormholeResponse, error) {
+	rsp, err := c.UpdateWormhole(ctx, accountId, bucketId, wormholeId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateWormholeResponse(rsp)
+}
+
+// CreateWormholeWithBodyWithResponse request with arbitrary body returning *CreateWormholeResponse
+func (c *ClientWithResponses) CreateWormholeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWormholeResponse, error) {
+	rsp, err := c.CreateWormholeWithBody(ctx, accountId, bucketId, cardTableId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWormholeResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWormholeResponse, error) {
+	rsp, err := c.CreateWormhole(ctx, accountId, bucketId, cardTableId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWormholeResponse(rsp)
+}
+
 // CreateToolWithBodyWithResponse request with arbitrary body returning *CreateToolResponse
 func (c *ClientWithResponses) CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error) {
 	rsp, err := c.CreateToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
@@ -29256,6 +29727,189 @@ func ParseEnableCardColumnOnHoldResponse(rsp *http.Response) (*EnableCardColumnO
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteWormholeResponse parses an HTTP response from a DeleteWormholeWithResponse call
+func ParseDeleteWormholeResponse(rsp *http.Response) (*DeleteWormholeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteWormholeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateWormholeResponse parses an HTTP response from a UpdateWormholeWithResponse call
+func ParseUpdateWormholeResponse(rsp *http.Response) (*UpdateWormholeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateWormholeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateWormholeResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWormholeResponse parses an HTTP response from a CreateWormholeWithResponse call
+func ParseCreateWormholeResponse(rsp *http.Response) (*CreateWormholeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWormholeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateWormholeResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest ValidationErrorResponseContent
