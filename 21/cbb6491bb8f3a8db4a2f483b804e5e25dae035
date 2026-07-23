@@ -80,11 +80,13 @@ ruby/lib/basecamp/generated/types.rb
   s_0e09583c24fd21::t_975f077307ca4f 3257
   s_0e09583c24fd21::t_96de3739535b54 4
   s_0e09583c24fd21::t_cdf3c2f4f85883 3241,3245,3250,3256
+  s_0e09583c24fd21::t_d2a5ddef5013a1 3441,3445
 swift/Sources/Basecamp/Generated/Models/SearchType.swift
   s_0e09583c24fd21::t_e9167312fb4d55 4,7,9,28
   s_0e09583c24fd21::t_5237b47d97c946 10
   s_0e09583c24fd21::t_bbbb83380d8485 6
   s_0e09583c24fd21::t_bbe0bde3462022 5,8,11-27
+  s_0e09583c24fd21::t_d2a5ddef5013a1 1-3,29
 kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/SearchServiceTest.kt
   s_0e09583c24fd21::t_1e913504a83d9f 68-113
   s_0e09583c24fd21::t_66c418156fcae9 1-67,114-154
@@ -193,6 +195,7 @@ swift/Sources/BasecampGenerator/ModelEmitter.swift
   s_1428918d04de39::t_77728e4f1af33f 274
 python/scripts/generate_types.py
   s_0e09583c24fd21::t_ab35bfb4ffec87 21-28
+  s_0e09583c24fd21::t_d36496d4280d7f 18-20
 python/src/basecamp/generated/services/hill_charts.py
   s_0e09583c24fd21::t_92ba72d572069d 22,42
 conformance/tests/live-my-surface.json
