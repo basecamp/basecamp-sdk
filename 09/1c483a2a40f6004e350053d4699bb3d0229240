@@ -1,0 +1,146 @@
+spec/api-gaps/dock-tool-visible-to-clients.md
+  s_9dca1a241a65c0::t_c7388bc25d36e9 1-82
+go/pkg/basecamp/vaults_test.go
+  s_9dca1a241a65c0::t_71cfaedc8223cd 942-1059
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/MessagesServiceTest.kt
+  s_9dca1a241a65c0::t_5ee477fc7e82a6 1-87
+typescript/tests/services/messages.test.ts
+  s_9dca1a241a65c0::t_1be495e1478236 141-166
+spec/api-gaps/dock-tool-create-contract.md
+  s_cbeadd4a90db32::t_8504c8bd23c7ed 8,56-61
+  s_9dca1a241a65c0::t_8f9c5f76c0ef13 105-110
+  s_9dca1a241a65c0::t_85e37173e26f68 114-118
+  s_9dca1a241a65c0::t_9a835575baeccb 125-129
+  s_9dca1a241a65c0::t_64ea5c21e37890 124
+  s_9dca1a241a65c0::t_7c2da3c253a5ff 26-28
+  s_9dca1a241a65c0::t_b83f64a5948978 6
+spec/api-gaps/client-visibility-at-create.md
+  s_9dca1a241a65c0::t_16c2fb4b32087e 103-118
+  s_cbeadd4a90db32::t_dce71460d361dc 126
+  s_9dca1a241a65c0::t_0ae411e3145035 1-81,90-102,119-125
+  s_9dca1a241a65c0::t_74f947bcfd04db 82-89
+go/pkg/basecamp/checkins_test.go
+  s_9dca1a241a65c0::t_bc0f379815c70c 1037-1093
+spec/api-gaps/card-table-wormholes.md
+  s_9dca1a241a65c0::t_f6e73633ac7766 92
+  s_3fd48deaa8600c::t_c635b7a47700b7 86-91
+  s_9dca1a241a65c0::t_4d4595f1756e8d 1-85
+spec/api-gaps/external-links.md
+  s_9dca1a241a65c0::t_e305ec12b14868 1-9,16,18-20,24-29,65-66,68-70,77-79,93,102-103
+  s_2e17d0ef857ebe::t_bbe9fadfe4e6a6 105,108-112
+  s_9dca1a241a65c0::t_14c7968d39dc5e 90
+  s_9dca1a241a65c0::t_f763d887d17cc4 10-15,17,21-22,30-64,67,71-76,80-89,91-92,97,104,107
+  s_9dca1a241a65c0::t_62ee4aea7852aa 94-96,98-101
+  s_9dca1a241a65c0::t_9bcf95ddb49d3f 106
+  s_9dca1a241a65c0::t_f1593a93f846b5 23
+spec/api-provenance.json
+  s_9dca1a241a65c0::t_470f4544827d3c 4-5
+go/pkg/basecamp/schedules.go
+  s_9dca1a241a65c0::t_c830c589713974 349-356
+  s_9dca1a241a65c0::t_ef8614b9ccf394 103-106
+go/pkg/basecamp/messages.go
+  s_9dca1a241a65c0::t_01b650f62426ac 54-57
+  s_9dca1a241a65c0::t_6af110b0268800 257-261
+spec/basecamp.smithy
+  s_9dca1a241a65c0::t_bc82436c9f9977 1789-1790
+  s_9dca1a241a65c0::t_52697f58edf571 2230-2231
+  s_9dca1a241a65c0::t_9aedc53111903c 1073-1074
+  s_9dca1a241a65c0::t_c70065a7652e33 2351-2352
+  s_9dca1a241a65c0::t_ac659d14eddcc3 2626-2627
+  s_9dca1a241a65c0::t_6848a5dc7f33fe 6197-6198
+  s_9dca1a241a65c0::t_64b2c494dde1e3 54
+spec/api-gaps/schedule-recurrence-writes.md
+  s_9dca1a241a65c0::t_5fbaa4752596ab 90-93
+  s_9dca1a241a65c0::t_cf7fb5a46caa57 54-58
+  s_9dca1a241a65c0::t_14d1ea2ad4f02a 79-81
+spec/api-gaps/search-filter-additions.md
+  s_9dca1a241a65c0::t_0c519b4fb9249b 73-75
+  s_9dca1a241a65c0::t_ef006b2844601f 42-45
+  s_9dca1a241a65c0::t_e8f679cb11a6c3 3,6
+  s_9dca1a241a65c0::t_a716ee9aea4dd6 23-26
+  s_9dca1a241a65c0::t_1a416155a99974 59-60
+  s_9dca1a241a65c0::t_58cde6a4ce1efd 66-67
+go/pkg/basecamp/todolists.go
+  s_9dca1a241a65c0::t_9c0050bfc96b67 77-80
+  s_9dca1a241a65c0::t_508c2d34a60bdf 248-250
+go/pkg/basecamp/checkins.go
+  s_9dca1a241a65c0::t_b23fce7dfb3800 360-362
+  s_9dca1a241a65c0::t_ebf118ee504402 128-131
+ruby/test/basecamp/services/messages_service_test.rb
+  s_9dca1a241a65c0::t_7ef9fc2334492b 102-133
+spec/api-gaps/README.md
+  s_9dca1a241a65c0::t_7d924378d9aa0f 58-59
+  s_3fd48deaa8600c::t_974b01df02cbe1 73-80
+  s_9dca1a241a65c0::t_4d561f95e60e8f 46
+  s_9dca1a241a65c0::t_2ad5cb11cb242b 60-61
+go/pkg/basecamp/todolists_test.go
+  s_9dca1a241a65c0::t_05e7804a1238a5 365-409
+go/pkg/basecamp/vaults.go
+  s_9dca1a241a65c0::t_15782d1adc2ceb 865-869
+  s_9dca1a241a65c0::t_2bd6a9bc52f4f4 191-194
+  s_9dca1a241a65c0::t_99583e1eea8a80 581-585
+  s_9dca1a241a65c0::t_c3b57bf4554f60 225-228
+spec/api-gaps/upload-new-version.md
+  s_70ea5a80b3efd3::t_1d17138f6c7a8d 28-30
+python/tests/services/test_messages.py
+  s_9dca1a241a65c0::t_ffb64c72ffb24a 1-54
+go/pkg/basecamp/schedules_test.go
+  s_9dca1a241a65c0::t_dbb5001e81ef7d 738-784
+spec/api-gaps/todolist-reposition.md
+  s_9dca1a241a65c0::t_8ee2309f8ff034 48-52
+  s_70ea5a80b3efd3::t_d58e778dedb07a 6,8,21,23-34
+  s_9dca1a241a65c0::t_b968a42505bfa1 91-92
+  s_9dca1a241a65c0::t_a4032834e1fde9 77-83
+go/pkg/basecamp/messages_test.go
+  s_9dca1a241a65c0::t_a1938a4986eb38 494-538
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_9dca1a241a65c0::t_6ce4d668ee6d19 558-603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "091c483a2a40f6004e350053d4699bb3d0229240",
+  "prompts": {},
+  "sessions": {
+    "s_2e17d0ef857ebe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d7c-b6c8-7761-8f92-f9ac5dd96187",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_70ea5a80b3efd3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8c1d-a0af-7e91-a3a4-2bd35bdff875",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_cbeadd4a90db32": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ba2-bfcb-7c73-8d02-c7f50e7abf69",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
