@@ -281,3 +281,62 @@ class TestAsyncReplace:
         body = _put_body(put_route)
         assert body["content"] == "verbatim"
         assert "description" not in body
+
+
+class TestDescriptionAttachments:
+    @respx.mock
+    def test_get_preserves_dimension_float_and_none(self):
+        """A Todo's rich-text description is paired with a description_attachments
+        array. Pixel dimensions arrive float-spelled (1024.0) for images and null
+        for non-image blobs. The service returns the parsed response dict, so
+        httpx/json preserves both the float and None verbatim — Python performs
+        no int coercion. The generated TypedDict types these honestly as
+        ``NotRequired[Optional[int | float]]`` (the schema is nullable and the
+        FlexInt dimension may arrive as a float), so both the float value and
+        None below are within the declared type. See SPEC.md §10 Type Fidelity.
+        """
+        todo = _todo(
+            77,
+            description_attachments=[
+                {
+                    "id": 1069480000,
+                    "sgid": "BAh-img",
+                    "filename": "leto-schematic.png",
+                    "content_type": "image/png",
+                    "byte_size": 284111,
+                    "download_url": f"{BASE}/buckets/1/blobs/img/download/leto-schematic.png",
+                    "width": 1024.0,
+                    "height": 768,
+                    "previewable": True,
+                    "preview_url": f"{BASE}/buckets/1/blobs/img/previews/leto-schematic.png",
+                    "thumbnail_url": f"{BASE}/buckets/1/blobs/img/thumbnails/leto-schematic.png",
+                },
+                {
+                    "id": 1069480001,
+                    "sgid": "BAh-pdf",
+                    "filename": "leto-spec.pdf",
+                    "content_type": "application/pdf",
+                    "byte_size": 1048576,
+                    "download_url": f"{BASE}/buckets/1/blobs/pdf/download/leto-spec.pdf",
+                    "width": None,
+                    "height": None,
+                    "previewable": False,
+                    "preview_url": f"{BASE}/buckets/1/blobs/pdf/previews/leto-spec.pdf",
+                    "thumbnail_url": f"{BASE}/buckets/1/blobs/pdf/thumbnails/leto-spec.pdf",
+                },
+            ],
+        )
+        respx.get(f"{BASE}/todos/77").mock(return_value=httpx.Response(200, json=todo))
+
+        result = _sync_todos().get(todo_id=77)
+        attachments = result["description_attachments"]
+        assert len(attachments) == 2
+
+        # Float-spelled 1024.0 is preserved verbatim, as a Python float — the
+        # runtime performs no integer coercion (unlike Go's FlexInt).
+        assert attachments[0]["width"] == 1024
+        assert isinstance(attachments[0]["width"], float)
+        assert attachments[0]["height"] == 768
+        # None is preserved verbatim despite the TypedDict's non-optional width.
+        assert attachments[1]["width"] is None
+        assert attachments[1]["height"] is None

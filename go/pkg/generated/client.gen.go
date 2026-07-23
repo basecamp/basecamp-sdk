@@ -1839,6 +1839,37 @@ type ResumeQuestionResponseContent struct {
 	Paused bool `json:"paused,omitempty"`
 }
 
+// RichTextAttachment Structured metadata for a downloadable file attachment embedded in a
+// rich text attribute. Every rich text attribute in an API response is
+// accompanied by a corresponding `*_attachments` array named after the
+// attribute (a Todo's `description_attachments` for its `description`).
+// Mentions, remote images, and opengraph embeds are excluded — only
+// downloadable file attachments appear.
+type RichTextAttachment struct {
+	ByteSize    int64  `json:"byte_size"`
+	ContentType string `json:"content_type"`
+	DownloadUrl string `json:"download_url"`
+	Filename    string `json:"filename"`
+
+	// Height See `width` — same nullable/float-spelled behavior and cross-SDK note.
+	Height       *types.FlexInt `json:"height,omitempty"`
+	Id           int64          `json:"id"`
+	PreviewUrl   string         `json:"preview_url"`
+	Previewable  bool           `json:"previewable"`
+	Sgid         string         `json:"sgid"`
+	ThumbnailUrl string         `json:"thumbnail_url"`
+
+	// Width Pixel dimensions, present as keys on every attachment but null for
+	// non-image blobs, and the BC3 API may serialize them float-spelled
+	// (`1024.0`) — hence optional/nullable rather than `@required` (the enhance
+	// pass marks them `nullable: true` in the OpenAPI). All SDKs decode both
+	// forms faithfully and type the nullable value statically: Go `types.FlexInt`
+	// → `*int32`, Kotlin `Int?` via `FlexibleIntSerializer`, Swift `Int32?`,
+	// TypeScript `number | null`, Python `Optional[int | float]` (raw JSON keeps
+	// the float), Ruby nilable. See SPEC.md §10 Type Fidelity.
+	Width *types.FlexInt `json:"width,omitempty"`
+}
+
 // Schedule defines model for Schedule.
 type Schedule struct {
 	AppUrl                string     `json:"app_url"`
@@ -2020,27 +2051,28 @@ type TimesheetEntry struct {
 
 // Todo defines model for Todo.
 type Todo struct {
-	AppUrl                string     `json:"app_url"`
-	Assignees             []Person   `json:"assignees,omitempty"`
-	BookmarkUrl           string     `json:"bookmark_url,omitempty"`
-	BoostsCount           int32      `json:"boosts_count,omitempty"`
-	BoostsUrl             string     `json:"boosts_url,omitempty"`
-	Bucket                TodoBucket `json:"bucket"`
-	CommentsCount         int32      `json:"comments_count,omitempty"`
-	CommentsUrl           string     `json:"comments_url,omitempty"`
-	Completed             bool       `json:"completed,omitempty"`
-	CompletionSubscribers []Person   `json:"completion_subscribers,omitempty"`
-	CompletionUrl         string     `json:"completion_url,omitempty"`
-	Content               string     `json:"content"`
-	CreatedAt             time.Time  `json:"created_at"`
-	Creator               Person     `json:"creator"`
-	Description           string     `json:"description,omitempty"`
-	DueOn                 types.Date `json:"due_on,omitempty"`
-	Id                    int64      `json:"id"`
-	InheritsStatus        bool       `json:"inherits_status"`
-	Parent                TodoParent `json:"parent"`
-	Position              int32      `json:"position,omitempty"`
-	StartsOn              types.Date `json:"starts_on,omitempty"`
+	AppUrl                 string               `json:"app_url"`
+	Assignees              []Person             `json:"assignees,omitempty"`
+	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	CommentsUrl            string               `json:"comments_url,omitempty"`
+	Completed              bool                 `json:"completed,omitempty"`
+	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
+	CompletionUrl          string               `json:"completion_url,omitempty"`
+	Content                string               `json:"content"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            string               `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	DueOn                  types.Date           `json:"due_on,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Parent                 TodoParent           `json:"parent"`
+	Position               int32                `json:"position,omitempty"`
+	StartsOn               types.Date           `json:"starts_on,omitempty"`
 
 	// Status active|archived|trashed
 	Status string `json:"status"`

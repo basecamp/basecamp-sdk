@@ -15,35 +15,44 @@ const DefaultTodoLimit = 100
 
 // Todo represents a Basecamp todo item.
 type Todo struct {
-	ID               int64      `json:"id"`
-	Status           string     `json:"status"`
-	VisibleTo        []int64    `json:"visible_to"`
-	VisibleToClients bool       `json:"visible_to_clients"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
-	Title            string     `json:"title"`
-	InheritsVis      bool       `json:"inherits_status"`
-	Type             string     `json:"type"`
-	URL              string     `json:"url"`
-	AppURL           string     `json:"app_url"`
-	BookmarkURL      string     `json:"bookmark_url"`
-	SubscriptionURL  string     `json:"subscription_url,omitempty"`
-	Parent           *Parent    `json:"parent,omitempty"`
-	Bucket           *Bucket    `json:"bucket,omitempty"`
-	Creator          *Person    `json:"creator,omitempty"`
-	Content          string     `json:"content"`
-	Description      string     `json:"description"`
-	StartsOn         string     `json:"starts_on,omitempty"`
-	DueOn            string     `json:"due_on,omitempty"`
-	Completed        bool       `json:"completed"`
-	BoostsCount      int        `json:"boosts_count,omitempty"`
-	BoostsURL        string     `json:"boosts_url,omitempty"`
-	CommentsCount    int        `json:"comments_count,omitempty"`
-	CommentsURL      string     `json:"comments_url,omitempty"`
-	CompletionURL    string     `json:"completion_url,omitempty"`
-	CompletedAt      *time.Time `json:"completed_at,omitempty"`
-	Completer        *Person    `json:"completer,omitempty"`
-	Assignees        []Person   `json:"assignees,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleTo        []int64   `json:"visible_to"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsVis      bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	SubscriptionURL  string    `json:"subscription_url,omitempty"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
+	Content          string    `json:"content"`
+	Description      string    `json:"description"`
+	// DescriptionAttachments holds structured metadata for the
+	// downloadable files embedded in the rich text Description. Like
+	// CompletionSubscribers it distinguishes present-but-empty from
+	// absent: the API always sends this array (empty when the description
+	// has no inline files), so a non-nil zero-length slice means an empty
+	// list and nil means the property was absent. Deliberately not
+	// omitempty so re-encoding keeps the field visible either way (nil
+	// marshals as null, empty as []) instead of dropping it.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	StartsOn               string               `json:"starts_on,omitempty"`
+	DueOn                  string               `json:"due_on,omitempty"`
+	Completed              bool                 `json:"completed"`
+	BoostsCount            int                  `json:"boosts_count,omitempty"`
+	BoostsURL              string               `json:"boosts_url,omitempty"`
+	CommentsCount          int                  `json:"comments_count,omitempty"`
+	CommentsURL            string               `json:"comments_url,omitempty"`
+	CompletionURL          string               `json:"completion_url,omitempty"`
+	CompletedAt            *time.Time           `json:"completed_at,omitempty"`
+	Completer              *Person              `json:"completer,omitempty"`
+	Assignees              []Person             `json:"assignees,omitempty"`
 	// CompletionSubscribers distinguishes present-but-empty from absent:
 	// a non-nil zero-length slice means the server sent an empty list,
 	// nil means the property was absent from the response. Deliberately
@@ -116,6 +125,50 @@ type Bucket struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+}
+
+// RichTextAttachment is the structured metadata for a downloadable file
+// embedded in a rich text attribute. The API pairs every rich text field
+// with a corresponding attachments array named after it — a Todo's
+// Description is accompanied by DescriptionAttachments. Mentions, remote
+// images, and opengraph embeds are excluded; only downloadable files appear.
+//
+// The nine non-dimension fields are always emitted by the API and carry no
+// omitempty so re-encoding preserves them verbatim. Width and Height are
+// pixel dimensions present as keys on every attachment but null for
+// non-image blobs; they are *int32 without omitempty so a nil dimension
+// re-encodes as an explicit "width": null rather than being dropped,
+// faithfully round-tripping the wire shape. The BC3 API may serialize the
+// dimensions float-spelled (1024.0); UnmarshalJSON decodes those via
+// types.FlexInt. The schema marks these nullable, so every SDK types the
+// nullable value statically — see SPEC.md §10 Type Fidelity for the matrix.
+type RichTextAttachment struct {
+	ID           int64  `json:"id"`
+	SGID         string `json:"sgid"`
+	Filename     string `json:"filename"`
+	ContentType  string `json:"content_type"`
+	ByteSize     int64  `json:"byte_size"`
+	DownloadURL  string `json:"download_url"`
+	Width        *int32 `json:"width"`
+	Height       *int32 `json:"height"`
+	Previewable  bool   `json:"previewable"`
+	PreviewURL   string `json:"preview_url"`
+	ThumbnailURL string `json:"thumbnail_url"`
+}
+
+// UnmarshalJSON decodes a RichTextAttachment from JSON, delegating through
+// the generated type (which uses types.FlexInt for the pixel dimensions) so
+// the public struct decodes the BC3 API's float-encoded integers (1024.0)
+// and null dimensions directly. Mirrors Upload.UnmarshalJSON. Because Todo
+// has no custom UnmarshalJSON, its embedded DescriptionAttachments elements
+// invoke this automatically.
+func (a *RichTextAttachment) UnmarshalJSON(data []byte) error {
+	var ga generated.RichTextAttachment
+	if err := json.Unmarshal(data, &ga); err != nil {
+		return err
+	}
+	*a = richTextAttachmentFromGenerated(ga)
+	return nil
 }
 
 // TodoListOptions specifies options for listing todos.
@@ -847,6 +900,17 @@ func todoFromGenerated(gt generated.Todo) Todo {
 		}
 	}
 
+	// Convert description attachments, preserving the nil-vs-empty
+	// distinction the same way as CompletionSubscribers: the API always
+	// sends the array, so a server-sent [] becomes a non-nil zero-length
+	// slice and an absent property stays nil.
+	if gt.DescriptionAttachments != nil {
+		t.DescriptionAttachments = make([]RichTextAttachment, 0, len(gt.DescriptionAttachments))
+		for _, ga := range gt.DescriptionAttachments {
+			t.DescriptionAttachments = append(t.DescriptionAttachments, richTextAttachmentFromGenerated(ga))
+		}
+	}
+
 	// BC5: convert embedded steps
 	if len(gt.Steps) > 0 {
 		t.Steps = make([]CardStep, 0, len(gt.Steps))
@@ -856,4 +920,32 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	}
 
 	return t
+}
+
+// richTextAttachmentFromGenerated converts a generated RichTextAttachment to
+// our clean type. The nine always-emitted fields are @required in the schema
+// and copied directly. Width and Height are optional/nullable *types.FlexInt
+// in the generated type; a nil pointer (absent or JSON null) leaves the
+// public *int32 nil, and a present value is narrowed to int32.
+func richTextAttachmentFromGenerated(ga generated.RichTextAttachment) RichTextAttachment {
+	a := RichTextAttachment{
+		ID:           ga.Id,
+		SGID:         ga.Sgid,
+		Filename:     ga.Filename,
+		ContentType:  ga.ContentType,
+		ByteSize:     ga.ByteSize,
+		DownloadURL:  ga.DownloadUrl,
+		Previewable:  ga.Previewable,
+		PreviewURL:   ga.PreviewUrl,
+		ThumbnailURL: ga.ThumbnailUrl,
+	}
+	if ga.Width != nil {
+		w := int32(*ga.Width)
+		a.Width = &w
+	}
+	if ga.Height != nil {
+		h := int32(*ga.Height)
+		a.Height = &h
+	}
+	return a
 }

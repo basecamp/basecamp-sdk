@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TodosServiceTest {
@@ -27,7 +28,13 @@ class TodosServiceTest {
         }
     }
 
-    private fun todoJson(id: Long, content: String, completed: Boolean = false, extras: String = "") = """{
+    private fun todoJson(
+        id: Long,
+        content: String,
+        completed: Boolean = false,
+        attachments: String = "[]",
+        extras: String = "",
+    ) = """{
         "id": $id, "content": "$content", "completed": $completed,
         "status": "active", "title": "$content", "type": "Todo",
         "visible_to_clients": false, "inherits_status": true,
@@ -36,7 +43,8 @@ class TodosServiceTest {
         "app_url": "https://3.basecamp.com/1/buckets/1/todos/$id",
         "creator": {"id": 1, "name": "Test", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"},
         "bucket": {"id": 1, "name": "Project", "type": "Project"},
-        "parent": {"id": 2, "title": "Todolist", "type": "Todolist", "url": "https://3.basecampapi.com/1/buckets/1/todolists/2.json", "app_url": "https://3.basecamp.com/1/buckets/1/todolists/2"}
+        "parent": {"id": 2, "title": "Todolist", "type": "Todolist", "url": "https://3.basecampapi.com/1/buckets/1/todolists/2.json", "app_url": "https://3.basecamp.com/1/buckets/1/todolists/2"},
+        "description_attachments": $attachments
         ${if (extras.isNotEmpty()) ", $extras" else ""}
     }"""
 
@@ -413,6 +421,68 @@ class TodosServiceTest {
         }
 
         assertEquals(listOf("GET"), capture.methods)
+
+        client.close()
+    }
+
+    // -- Attachment dimension decode (SPEC.md §10 Type Fidelity) --
+    //
+    // A Todo's rich-text description is paired with a description_attachments
+    // array whose pixel dimensions arrive float-spelled (1024.0) for images and
+    // null for non-image blobs. The generated RichTextAttachment gives
+    // width/height a nullable `Int?` decoded through FlexibleIntSerializer, so
+    // Kotlin decodes both faithfully — matching Go/Swift/Ruby: a served null
+    // stays null (not a sentinel 0), and a float-spelled 1024.0 becomes 1024.
+
+    private fun attachmentJson(width: String, height: String) = """{
+        "id": 1069480000, "sgid": "BAh-img", "filename": "leto-schematic.png",
+        "content_type": "image/png", "byte_size": 284111,
+        "download_url": "https://3.basecampapi.com/1/buckets/1/blobs/img/download/leto-schematic.png",
+        "width": $width, "height": $height, "previewable": true,
+        "preview_url": "https://3.basecampapi.com/1/buckets/1/blobs/img/previews/leto-schematic.png",
+        "thumbnail_url": "https://3.basecampapi.com/1/buckets/1/blobs/img/thumbnails/leto-schematic.png"
+    }"""
+
+    @Test
+    fun descriptionAttachmentNullDimensionsDecodeToNull() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = todoJson(
+                    300, "With null-dimension attachment",
+                    attachments = "[${attachmentJson("null", "null")}]",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val todo = client.forAccount("12345").todos.get(todoId = 300)
+        val attachment = todo.descriptionAttachments.single()
+        // A non-image blob's null dimensions decode to null, not a sentinel 0.
+        assertNull(attachment.width)
+        assertNull(attachment.height)
+
+        client.close()
+    }
+
+    @Test
+    fun descriptionAttachmentFloatDimensionDecodesToInt() = runTest {
+        val client = mockClient { _ ->
+            respond(
+                content = todoJson(
+                    301, "With float-spelled attachment",
+                    attachments = "[${attachmentJson("1024.0", "768")}]",
+                ),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val todo = client.forAccount("12345").todos.get(todoId = 301)
+        val attachment = todo.descriptionAttachments.single()
+        // The BC3 API's float-spelled 1024.0 decodes to the integer 1024.
+        assertEquals(1024, attachment.width)
+        assertEquals(768, attachment.height)
 
         client.close()
     }

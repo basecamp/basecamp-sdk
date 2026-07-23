@@ -84,6 +84,63 @@ describe("TodosService", () => {
 
       await expect(client.todos.get(999)).rejects.toThrow(BasecampError);
     });
+
+    it("preserves float-spelled and null attachment dimensions at runtime", async () => {
+      // A Todo's rich-text description is paired with a description_attachments
+      // array. Pixel dimensions arrive float-spelled (1024.0) for images and
+      // null for non-image blobs. The schema is nullable, so the generated
+      // static type is `width?: number | null` — the present null is captured.
+      // (In JS there is no int/float distinction, so 1024.0 is simply the
+      // number 1024.) openapi-fetch performs no runtime validation; the values
+      // below survive verbatim on the parsed object.
+      const todoId = 77;
+      server.use(
+        http.get(`${BASE_URL}/todos/${todoId}`, () => {
+          return HttpResponse.json({
+            ...sampleTodo(todoId),
+            description_attachments: [
+              {
+                id: 1069480000,
+                sgid: "BAh-img",
+                filename: "leto-schematic.png",
+                content_type: "image/png",
+                byte_size: 284111,
+                download_url: `${BASE_URL}/buckets/1/blobs/img/download/leto-schematic.png`,
+                width: 1024.0,
+                height: 768,
+                previewable: true,
+                preview_url: `${BASE_URL}/buckets/1/blobs/img/previews/leto-schematic.png`,
+                thumbnail_url: `${BASE_URL}/buckets/1/blobs/img/thumbnails/leto-schematic.png`,
+              },
+              {
+                id: 1069480001,
+                sgid: "BAh-pdf",
+                filename: "leto-spec.pdf",
+                content_type: "application/pdf",
+                byte_size: 1048576,
+                download_url: `${BASE_URL}/buckets/1/blobs/pdf/download/leto-spec.pdf`,
+                width: null,
+                height: null,
+                previewable: false,
+                preview_url: `${BASE_URL}/buckets/1/blobs/pdf/previews/leto-spec.pdf`,
+                thumbnail_url: `${BASE_URL}/buckets/1/blobs/pdf/thumbnails/leto-spec.pdf`,
+              },
+            ],
+          });
+        })
+      );
+
+      const todo = await client.todos.get(todoId);
+      const attachments = todo.description_attachments;
+      expect(attachments).toHaveLength(2);
+
+      // Float-spelled 1024.0 is preserved as the number 1024.
+      expect(attachments[0]!.width).toBe(1024);
+      expect(attachments[0]!.height).toBe(768);
+      // null is preserved verbatim despite the static `width?: number` type.
+      expect(attachments[1]!.width).toBeNull();
+      expect(attachments[1]!.height).toBeNull();
+    });
   });
 
   describe("create", () => {

@@ -77,7 +77,8 @@ private func fullTodoJSON(id: Int = 42) -> [String: Any] {
             "app_url": "https://3.basecamp.com/999999999/buckets/1/todolists/2"
         ] as [String: Any],
         "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
-        "creator": ["id": 1, "name": "Test User"] as [String: Any]
+        "creator": ["id": 1, "name": "Test User"] as [String: Any],
+        "description_attachments": []
     ]
 }
 
@@ -249,5 +250,65 @@ final class TodosServiceExtensionsTests: XCTestCase {
             XCTAssertNil(body[field], "\(field) must be omitted from a sparse replace")
         }
         XCTAssertEqual(recorder.operations, ["ReplaceTodo"])
+    }
+
+    // MARK: - description_attachments dimension decode
+
+    /// The API pairs a Todo's rich-text description with a
+    /// description_attachments array whose pixel dimensions arrive
+    /// float-spelled (1024.0) for images and null for non-image blobs.
+    /// Swift's JSONDecoder decodes both faithfully: 1024.0 → 1024 into
+    /// Int32?, and null → nil. This is a decode-only assertion — re-encode
+    /// omission of nil dimensions is a separate, documented SDK-wide encoder
+    /// behavior, out of scope for this response field (see SPEC.md §10).
+    func testDescriptionAttachmentsDecodeDimensions() async throws {
+        var todo = fullTodoJSON(id: 77)
+        todo["description_attachments"] = [
+            [
+                "id": 1069480000,
+                "sgid": "BAh7CEki-img",
+                "filename": "leto-schematic.png",
+                "content_type": "image/png",
+                "byte_size": 284111,
+                "download_url": "https://3.basecampapi.com/999999999/buckets/1/blobs/img/download/leto-schematic.png",
+                "width": 1024.0,
+                "height": 768,
+                "previewable": true,
+                "preview_url": "https://3.basecampapi.com/999999999/buckets/1/blobs/img/previews/leto-schematic.png",
+                "thumbnail_url": "https://3.basecampapi.com/999999999/buckets/1/blobs/img/thumbnails/leto-schematic.png",
+            ] as [String: Any],
+            [
+                "id": 1069480001,
+                "sgid": "BAh7CEki-pdf",
+                "filename": "leto-spec.pdf",
+                "content_type": "application/pdf",
+                "byte_size": 1048576,
+                "download_url": "https://3.basecampapi.com/999999999/buckets/1/blobs/pdf/download/leto-spec.pdf",
+                "width": NSNull(),
+                "height": NSNull(),
+                "previewable": false,
+                "preview_url": "https://3.basecampapi.com/999999999/buckets/1/blobs/pdf/previews/leto-spec.pdf",
+                "thumbnail_url": "https://3.basecampapi.com/999999999/buckets/1/blobs/pdf/thumbnails/leto-spec.pdf",
+            ] as [String: Any],
+        ]
+        let data = try JSONSerialization.data(withJSONObject: todo)
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let decoded: Todo = try await account.todos.get(todoId: 77)
+        XCTAssertEqual(decoded.descriptionAttachments.count, 2)
+
+        let image = decoded.descriptionAttachments[0]
+        XCTAssertEqual(image.filename, "leto-schematic.png")
+        // Float-spelled 1024.0 decodes to 1024.
+        XCTAssertEqual(image.width, Int32(1024))
+        XCTAssertEqual(image.height, Int32(768))
+        XCTAssertTrue(image.previewable)
+
+        let pdf = decoded.descriptionAttachments[1]
+        XCTAssertEqual(pdf.contentType, "application/pdf")
+        // null dimensions decode to nil, not a sentinel 0.
+        XCTAssertNil(pdf.width)
+        XCTAssertNil(pdf.height)
     }
 }

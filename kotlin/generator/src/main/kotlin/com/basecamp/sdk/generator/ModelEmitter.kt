@@ -41,6 +41,15 @@ class ModelEmitter(private val api: OpenApiParser) {
         if (hasFlexible) {
             lines += "import com.basecamp.sdk.serialization.FlexibleLongSerializer"
         }
+        // Check if any property needs FlexibleIntSerializer (float-spelled,
+        // nullable pixel dimensions). "FlexibleInt64" does not contain the
+        // substring "FlexInt", so the two markers never collide.
+        val hasFlexibleInt = properties.any { (_, propSchema) ->
+            isFlexInt(propSchema.jsonObject)
+        }
+        if (hasFlexibleInt) {
+            lines += "import com.basecamp.sdk.serialization.FlexibleIntSerializer"
+        }
         lines += ""
         lines += "/**"
         lines += " * $typeName entity from the Basecamp API."
@@ -68,10 +77,14 @@ class ModelEmitter(private val api: OpenApiParser) {
             val camelName = propName.snakeToCamelCase()
             val needsSerialName = camelName != propName
             val isFlexible = propObj["x-go-type"]?.jsonPrimitive?.content?.contains("FlexibleInt64") == true
+            val isFlexibleInt = isFlexInt(propObj)
 
             val propLine = buildString {
                 if (isFlexible) {
                     append("    @Serializable(with = FlexibleLongSerializer::class)\n")
+                }
+                if (isFlexibleInt) {
+                    append("    @Serializable(with = FlexibleIntSerializer::class)\n")
                 }
                 if (needsSerialName) {
                     append("    @SerialName(\"$propName\") ")
@@ -119,6 +132,12 @@ class ModelEmitter(private val api: OpenApiParser) {
         if (goType?.contains("FlexibleInt64") == true) {
             return "Long"  // Uses @Serializable(with = FlexibleLongSerializer::class) annotation
         }
+        // Float-spelled, nullable pixel dimensions (types.FlexInt). Always
+        // nullable so a served null decodes to null rather than a sentinel 0.
+        // Uses @Serializable(with = FlexibleIntSerializer::class).
+        if (isFlexInt(schema)) {
+            return "Int?"
+        }
 
         return when (schema["type"]?.jsonPrimitive?.content) {
             "integer" -> when (schema["format"]?.jsonPrimitive?.content) {
@@ -158,6 +177,15 @@ class ModelEmitter(private val api: OpenApiParser) {
             else -> "JsonElement"
         }
     }
+
+    /**
+     * True for a schema tagged `x-go-type: types.FlexInt` — the float-spelled,
+     * nullable pixel dimensions (rich-text attachment / upload width & height).
+     * "FlexibleInt64" (Person id) does not contain the substring "FlexInt", so
+     * the two flexible markers never collide.
+     */
+    private fun isFlexInt(schema: JsonObject): Boolean =
+        schema["x-go-type"]?.jsonPrimitive?.content?.contains("FlexInt") == true
 
     private fun defaultValue(type: String): String = when {
         type == "Boolean" -> "false"

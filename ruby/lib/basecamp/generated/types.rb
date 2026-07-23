@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-22T23:56:11Z
+# Generated: 2026-07-23T07:14:22Z
 
 require "json"
 require "time"
@@ -2989,6 +2989,51 @@ module Basecamp
       end
     end
 
+    # RichTextAttachment
+    class RichTextAttachment
+      include TypeHelpers
+      attr_accessor :byte_size, :content_type, :download_url, :filename, :id, :preview_url, :previewable, :sgid, :thumbnail_url, :height, :width
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[byte_size content_type download_url filename id preview_url previewable sgid thumbnail_url].freeze
+      end
+
+      def initialize(data = {})
+        @byte_size = parse_integer(data["byte_size"])
+        @content_type = data["content_type"]
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @id = parse_integer(data["id"])
+        @preview_url = data["preview_url"]
+        @previewable = parse_boolean(data["previewable"])
+        @sgid = data["sgid"]
+        @thumbnail_url = data["thumbnail_url"]
+        @height = parse_integer(data["height"])
+        @width = parse_integer(data["width"])
+      end
+
+      def to_h
+        {
+          "byte_size" => @byte_size,
+          "content_type" => @content_type,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "id" => @id,
+          "preview_url" => @preview_url,
+          "previewable" => @previewable,
+          "sgid" => @sgid,
+          "thumbnail_url" => @thumbnail_url,
+          "height" => @height,
+          "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # Schedule
     class Schedule
       include TypeHelpers
@@ -3416,11 +3461,11 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator description_attachments id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -3429,6 +3474,7 @@ module Basecamp
         @content = data["content"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "TodoParent")
@@ -3462,6 +3508,7 @@ module Basecamp
           "content" => @content,
           "created_at" => @created_at,
           "creator" => @creator,
+          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
