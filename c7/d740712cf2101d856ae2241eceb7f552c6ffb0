@@ -1,0 +1,48 @@
+python/src/basecamp/generated/metadata.json
+  s_3fd48deaa8600c::t_4e25a7ead25b07 356-366,463-474,2346-2347,2349-2351,2353-2357
+  s_3fd48deaa8600c::t_6a3742444aa0e3 2348,2352
+python/src/basecamp/generated/services/wormholes.py
+  s_3fd48deaa8600c::t_4e25a7ead25b07 1-66
+python/tests/services/test_wormholes_service.py
+  s_3fd48deaa8600c::t_7f6c642d2e6d2a 1-28,30-94,96-224
+  s_3fd48deaa8600c::t_110a48d773fde5 29,95
+python/README.md
+  s_3fd48deaa8600c::t_8e0e701891b0f1 11,322
+python/src/basecamp/generated/services/__init__.py
+  s_3fd48deaa8600c::t_4e25a7ead25b07 50,141-142
+python/scripts/generate_services.py
+  s_3fd48deaa8600c::t_6ea1999a0a35eb 149-151
+  s_3fd48deaa8600c::t_e0466759689529 60
+python/src/basecamp/generated/types.py
+  s_3fd48deaa8600c::t_4e25a7ead25b07 242,534-537,1701-1704,1818-1837
+python/src/basecamp/client.py
+  s_3fd48deaa8600c::t_e513c5a9f1a685 312-316
+  s_3fd48deaa8600c::t_eb43d6d4d76d43 311
+python/src/basecamp/async_client.py
+  s_3fd48deaa8600c::t_d240b890950d59 311-315
+  s_0e09583c24fd21::t_eb30eb719b70b8 310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c7d740712cf2101d856ae2241eceb7f552c6ffb0",
+  "prompts": {},
+  "sessions": {
+    "s_0e09583c24fd21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84671fef-02de-4674-abd5-b3a178e7f29d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
