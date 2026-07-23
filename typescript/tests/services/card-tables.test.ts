@@ -53,5 +53,41 @@ describe("CardTablesService", () => {
 
       await expect(client.cardTables.get(999)).rejects.toThrow(BasecampError);
     });
+
+    it("should decode linked and unlinked wormholes", async () => {
+      const cardTableId = 42;
+
+      server.use(
+        http.get(`${BASE_URL}/card_tables/${cardTableId}`, () => {
+          return HttpResponse.json({
+            ...sampleCardTable(cardTableId),
+            wormholes: [
+              {
+                id: 1069479400,
+                title: "Design → Marketing backlog",
+                linked: true,
+                color: "#f5d76e",
+                destination_url:
+                  `${BASE_URL}/buckets/2085958500/card_tables/columns/1069479500.json`,
+              },
+              {
+                id: 1069479401,
+                title: "Broken teleport",
+                linked: false,
+                color: null,
+                destination_url: null,
+              },
+            ],
+          });
+        })
+      );
+
+      const cardTable = await client.cardTables.get(cardTableId);
+      expect(cardTable.wormholes).toHaveLength(2);
+      expect(cardTable.wormholes?.[0].linked).toBe(true);
+      expect(cardTable.wormholes?.[0].destination_url).not.toBeNull();
+      expect(cardTable.wormholes?.[1].linked).toBe(false);
+      expect(cardTable.wormholes?.[1].destination_url).toBeNull();
+    });
   });
 });

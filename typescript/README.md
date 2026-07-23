@@ -267,6 +267,7 @@ The SDK provides typed services for the complete Basecamp API:
 | `cards` | list, get, create, update, move |
 | `cardColumns` | get, create, update, move |
 | `cardSteps` | list, get, create, update, complete, uncomplete |
+| `wormholes` | create, update, delete |
 
 ### Scheduling
 
