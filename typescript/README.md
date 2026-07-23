@@ -245,7 +245,7 @@ The SDK provides typed services for the complete Basecamp API:
 | Service | Methods |
 |---------|---------|
 | `todos` | list, get, create, update, trash, complete, uncomplete, reposition |
-| `todolists` | list, get, create, update, trash |
+| `todolists` | list, get, create, update, trash, reposition |
 | `todosets` | get |
 | `todolistGroups` | list, get, create, reposition |
 

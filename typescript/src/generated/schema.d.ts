@@ -2318,6 +2318,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/todosets/todolists/{todolistId}/position.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Reposition a to-do list within its to-do set.
+         *     position is the 1-based index among the to-do lists the caller can see; the server
+         *     translates it relative to loose to-dos and hidden completed lists. Shifts siblings.
+         */
+        put: operations["RepositionTodolist"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/todosets/{todosetId}": {
         parameters: {
             query?: never;
@@ -3956,6 +3977,10 @@ export interface components {
             parent_id?: number;
         };
         RepositionTodolistGroupRequestContent: {
+            /** Format: int32 */
+            position: number;
+        };
+        RepositionTodolistRequestContent: {
             /** Format: int32 */
             position: number;
         };
@@ -16260,6 +16285,75 @@ export interface operations {
         responses: {
             /** @description RepositionTodo 200 response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    RepositionTodolist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                todolistId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositionTodolistRequestContent"];
+            };
+        };
+        responses: {
+            /** @description RepositionTodolist 204 response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -2029,6 +2029,23 @@
       }
     },
     {
+      "pattern": "/{accountId}/todosets/todolists/{todolistId}/position",
+      "resource": "Todos",
+      "operations": {
+        "PUT": "RepositionTodolist"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "todolistId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/todosets/{todosetId}",
       "resource": "Todos",
       "operations": {

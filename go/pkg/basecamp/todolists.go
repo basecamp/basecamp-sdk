@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -326,6 +327,45 @@ func (s *TodolistsService) Trash(ctx context.Context, todolistID int64) (err err
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	resp, err := s.client.parent.gen.TrashRecordingWithResponse(ctx, s.client.accountID, todolistID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// Reposition moves a todolist to a new position within its todoset.
+// position is the 1-based index among the todolists the caller can see; the
+// server translates it relative to loose todos and hidden completed lists and
+// shifts the sibling lists to make room.
+func (s *TodolistsService) Reposition(ctx context.Context, todolistID int64, position int) (err error) {
+	op := OperationInfo{
+		Service: "Todolists", Operation: "Reposition",
+		ResourceType: "todolist", IsMutation: true,
+		ResourceID: todolistID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if position < 1 {
+		err = ErrUsage("position must be at least 1")
+		return err
+	}
+	if position > math.MaxInt32 {
+		err = ErrUsage("position is out of range")
+		return err
+	}
+
+	body := generated.RepositionTodolistJSONRequestBody{
+		Position: int32(position), // #nosec G115 -- bounded above by the MaxInt32 guard
+	}
+
+	resp, err := s.client.parent.gen.RepositionTodolistWithResponse(ctx, s.client.accountID, todolistID, body)
 	if err != nil {
 		return err
 	}

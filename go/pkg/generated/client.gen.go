@@ -1824,6 +1824,11 @@ type RepositionTodolistGroupRequestContent struct {
 	Position int32 `json:"position"`
 }
 
+// RepositionTodolistRequestContent defines model for RepositionTodolistRequestContent.
+type RepositionTodolistRequestContent struct {
+	Position int32 `json:"position"`
+}
+
 // RepositionToolRequestContent defines model for RepositionToolRequestContent.
 type RepositionToolRequestContent struct {
 	Position int32 `json:"position"`
@@ -3015,6 +3020,9 @@ type ReplaceTodoJSONRequestBody = ReplaceTodoRequestContent
 // RepositionTodoJSONRequestBody defines body for RepositionTodo for application/json ContentType.
 type RepositionTodoJSONRequestBody = RepositionTodoRequestContent
 
+// RepositionTodolistJSONRequestBody defines body for RepositionTodolist for application/json ContentType.
+type RepositionTodolistJSONRequestBody = RepositionTodolistRequestContent
+
 // UpdateHillChartSettingsJSONRequestBody defines body for UpdateHillChartSettings for application/json ContentType.
 type UpdateHillChartSettingsJSONRequestBody = UpdateHillChartSettingsRequestContent
 
@@ -4009,6 +4017,11 @@ type ClientInterface interface {
 	RepositionTodoWithBody(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RepositionTodo(ctx context.Context, accountId string, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RepositionTodolistWithBody request with any body
+	RepositionTodolistWithBody(ctx context.Context, accountId string, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RepositionTodolist(ctx context.Context, accountId string, todolistId int64, body RepositionTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodoset request
 	GetTodoset(ctx context.Context, accountId string, todosetId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6807,6 +6820,24 @@ func (c *Client) RepositionTodo(ctx context.Context, accountId string, todoId in
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewRepositionTodoRequest(c.Server, accountId, todoId, body)
 	}, true, "RepositionTodo", reqEditors...)
+
+}
+
+// RepositionTodolistWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) RepositionTodolistWithBody(ctx context.Context, accountId string, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionTodolistRequestWithBody(c.Server, accountId, todolistId, contentType, body)
+	}, true, "RepositionTodolist", reqEditors...)
+
+}
+
+func (c *Client) RepositionTodolist(ctx context.Context, accountId string, todolistId int64, body RepositionTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewRepositionTodolistRequest(c.Server, accountId, todolistId, body)
+	}, true, "RepositionTodolist", reqEditors...)
 
 }
 
@@ -16147,6 +16178,60 @@ func NewRepositionTodoRequestWithBody(server string, accountId string, todoId in
 	return req, nil
 }
 
+// NewRepositionTodolistRequest calls the generic RepositionTodolist builder with application/json body
+func NewRepositionTodolistRequest(server string, accountId string, todolistId int64, body RepositionTodolistJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRepositionTodolistRequestWithBody(server, accountId, todolistId, "application/json", bodyReader)
+}
+
+// NewRepositionTodolistRequestWithBody generates requests for RepositionTodolist with any type of body
+func NewRepositionTodolistRequestWithBody(server string, accountId string, todolistId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "todolistId", runtime.ParamLocationPath, todolistId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todosets/todolists/%s/position.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetTodosetRequest generates requests for GetTodoset
 func NewGetTodosetRequest(server string, accountId string, todosetId int64) (*http.Request, error) {
 	var err error
@@ -17263,6 +17348,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UncompleteTodo":                     {Idempotent: true, HasSensitiveParams: false},
 	"CompleteTodo":                       {Idempotent: true, HasSensitiveParams: false},
 	"RepositionTodo":                     {Idempotent: true, HasSensitiveParams: false},
+	"RepositionTodolist":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetTodoset":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetHillChart":                       {Idempotent: true, HasSensitiveParams: false},
 	"UpdateHillChartSettings":            {Idempotent: true, HasSensitiveParams: false},
@@ -18897,6 +18983,11 @@ type ClientWithResponsesInterface interface {
 	RepositionTodoWithBodyWithResponse(ctx context.Context, accountId string, todoId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
 
 	RepositionTodoWithResponse(ctx context.Context, accountId string, todoId int64, body RepositionTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodoResponse, error)
+
+	// RepositionTodolistWithBodyWithResponse request with any body
+	RepositionTodolistWithBodyWithResponse(ctx context.Context, accountId string, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistResponse, error)
+
+	RepositionTodolistWithResponse(ctx context.Context, accountId string, todolistId int64, body RepositionTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistResponse, error)
 
 	// GetTodosetWithResponse request
 	GetTodosetWithResponse(ctx context.Context, accountId string, todosetId int64, reqEditors ...RequestEditorFn) (*GetTodosetResponse, error)
@@ -25305,6 +25396,40 @@ func (r RepositionTodoResponse) ContentType() string {
 	return ""
 }
 
+type RepositionTodolistResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r RepositionTodolistResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RepositionTodolistResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RepositionTodolistResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetTodosetResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -28126,6 +28251,23 @@ func (c *ClientWithResponses) RepositionTodoWithResponse(ctx context.Context, ac
 		return nil, err
 	}
 	return ParseRepositionTodoResponse(rsp)
+}
+
+// RepositionTodolistWithBodyWithResponse request with arbitrary body returning *RepositionTodolistResponse
+func (c *ClientWithResponses) RepositionTodolistWithBodyWithResponse(ctx context.Context, accountId string, todolistId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RepositionTodolistResponse, error) {
+	rsp, err := c.RepositionTodolistWithBody(ctx, accountId, todolistId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionTodolistResponse(rsp)
+}
+
+func (c *ClientWithResponses) RepositionTodolistWithResponse(ctx context.Context, accountId string, todolistId int64, body RepositionTodolistJSONRequestBody, reqEditors ...RequestEditorFn) (*RepositionTodolistResponse, error) {
+	rsp, err := c.RepositionTodolist(ctx, accountId, todolistId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRepositionTodolistResponse(rsp)
 }
 
 // GetTodosetWithResponse request returning *GetTodosetResponse
@@ -38609,6 +38751,60 @@ func ParseRepositionTodoResponse(rsp *http.Response) (*RepositionTodoResponse, e
 	}
 
 	response := &RepositionTodoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRepositionTodolistResponse parses an HTTP response from a RepositionTodolistWithResponse call
+func ParseRepositionTodolistResponse(rsp *http.Response) (*RepositionTodolistResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RepositionTodolistResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

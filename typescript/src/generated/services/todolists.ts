@@ -28,6 +28,14 @@ export interface UpdateTodolistRequest {
 }
 
 /**
+ * Request parameters for reposition.
+ */
+export interface RepositionTodolistRequest {
+  /** Position for ordering (1-based) */
+  position: number;
+}
+
+/**
  * Options for list.
  */
 export interface ListTodolistOptions extends PaginationOptions {
@@ -116,6 +124,39 @@ export class TodolistsService extends BaseService {
         })
     );
     return response;
+  }
+
+  /**
+   * Reposition a to-do list within its to-do set.
+   * @param todolistId - The todolist ID
+   * @param req - Todolist request parameters
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.todolists.reposition(123, { position: 1 });
+   * ```
+   */
+  async reposition(todolistId: number, req: RepositionTodolistRequest): Promise<void> {
+    await this.request(
+      {
+        service: "Todolists",
+        operation: "RepositionTodolist",
+        resourceType: "todolist",
+        isMutation: true,
+        resourceId: todolistId,
+      },
+      () =>
+        this.client.PUT("/todosets/todolists/{todolistId}/position.json", {
+          params: {
+            path: { todolistId },
+          },
+          body: {
+            position: req.position,
+          },
+        })
+    );
   }
 
   /**

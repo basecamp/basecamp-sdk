@@ -158,6 +158,7 @@ enum Metadata {
         "ReplaceTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "RepositionCardStep": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "RepositionTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "RepositionTodolist": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "RepositionTodolistGroup": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "RepositionTool": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "ResumeQuestion": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),

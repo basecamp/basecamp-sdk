@@ -217,7 +217,7 @@ cfg, err := basecamp.LoadConfig("/path/to/config.json")
 |---------|---------|
 | `Todos()` | List, Get, Create, Update, Trash, Complete, Uncomplete, Reposition |
 | `Todosets()` | Get |
-| `Todolists()` | List, Get, Create, Update, Trash |
+| `Todolists()` | List, Get, Create, Update, Trash, Reposition |
 | `TodolistGroups()` | List, Get, Create, Reposition |
 
 ### Messages & Communication

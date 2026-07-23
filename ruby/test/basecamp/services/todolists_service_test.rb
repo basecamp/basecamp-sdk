@@ -67,4 +67,23 @@ class TodolistsServiceTest < Minitest::Test
     result = @account.todolists.update(id: 2, name: "Updated List")
     assert_equal "Updated List", result["name"]
   end
+
+  def test_reposition
+    captured = {}
+    stub_request(:put, "https://3.basecampapi.com/12345/todosets/todolists/2/position.json")
+      .with { |req| captured[:body] = JSON.parse(req.body) }
+      .to_return(status: 204)
+
+    assert_nil @account.todolists.reposition(todolist_id: 2, position: 3)
+    assert_equal({ "position" => 3 }, captured[:body])
+  end
+
+  def test_reposition_not_found
+    stub_request(:put, "https://3.basecampapi.com/12345/todosets/todolists/999/position.json")
+      .to_return(status: 404, body: "")
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.todolists.reposition(todolist_id: 999, position: 1)
+    end
+  end
 end

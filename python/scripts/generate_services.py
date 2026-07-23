@@ -115,7 +115,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
     },
     "Todos": {
         "Todos": ["ListTodos", "CreateTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
-        "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist"],
+        "Todolists": ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"],
         "Todosets": ["GetTodoset"],
         "TodolistGroups": ["ListTodolistGroups", "CreateTodolistGroup", "RepositionTodolistGroup"],
         "HillCharts": ["GetHillChart", "UpdateHillChartSettings"],

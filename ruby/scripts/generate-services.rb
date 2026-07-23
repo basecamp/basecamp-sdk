@@ -116,7 +116,7 @@ class ServiceGenerator
     },
     'Todos' => {
       'Todos' => %w[ListTodos CreateTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo TrashTodo],
-      'Todolists' => %w[GetTodolistOrGroup UpdateTodolistOrGroup ListTodolists CreateTodolist],
+      'Todolists' => %w[GetTodolistOrGroup UpdateTodolistOrGroup ListTodolists CreateTodolist RepositionTodolist],
       'Todosets' => %w[GetTodoset],
       'HillCharts' => %w[GetHillChart UpdateHillChartSettings],
       'TodolistGroups' => %w[ListTodolistGroups CreateTodolistGroup RepositionTodolistGroup]

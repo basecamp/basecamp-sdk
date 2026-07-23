@@ -76,6 +76,7 @@ service Basecamp {
     GetTodolistOrGroup,
     CreateTodolist,
     UpdateTodolistOrGroup,
+    RepositionTodolist,
     ListTodolistGroups,
     CreateTodolistGroup,
     RepositionTodolistGroup,
@@ -1108,6 +1109,34 @@ structure UpdateTodolistOrGroupOutput {
 
   result: TodolistOrGroup
 }
+
+/// Reposition a to-do list within its to-do set.
+/// position is the 1-based index among the to-do lists the caller can see; the server
+/// translates it relative to loose to-dos and hidden completed lists. Shifts siblings.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/todosets/todolists/{todolistId}/position.json", code: 204)
+operation RepositionTodolist {
+  input: RepositionTodolistInput
+  output: RepositionTodolistOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure RepositionTodolistInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  todolistId: TodolistId
+
+  @required
+  position: Integer
+}
+
+structure RepositionTodolistOutput {}
 
 // ===== Todolist Group Operations =====
 // Note: GetTodolistGroup and UpdateTodolistGroup are consolidated into

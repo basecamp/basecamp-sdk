@@ -124,4 +124,30 @@ describe("TodolistsService", () => {
       expect(todolist.id).toBe(id);
     });
   });
+
+  describe("reposition", () => {
+    it("should reposition a todolist within its todoset", async () => {
+      const id = 42;
+
+      server.use(
+        http.put(`${BASE_URL}/todosets/todolists/${id}/position.json`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.position).toBe(3);
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      await expect(client.todolists.reposition(id, { position: 3 })).resolves.toBeUndefined();
+    });
+
+    it("should throw not_found for missing todolist", async () => {
+      server.use(
+        http.put(`${BASE_URL}/todosets/todolists/999/position.json`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.todolists.reposition(999, { position: 1 })).rejects.toThrow(BasecampError);
+    });
+  });
 });

@@ -57,6 +57,27 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Reposition a to-do list within its to-do set.
+     * @param todolistId The todolist ID
+     * @param body Request body
+     */
+    suspend fun reposition(todolistId: Long, body: RepositionTodolistBody): Unit {
+        val info = OperationInfo(
+            service = "Todolists",
+            operation = "RepositionTodolist",
+            resourceType = "todolist",
+            isMutation = true,
+            projectId = null,
+            resourceId = todolistId,
+        )
+        request(info, {
+            httpPut("/todosets/todolists/${todolistId}/position.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("position", kotlinx.serialization.json.JsonPrimitive(body.position))
+            }), operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
      * List todolists in a todoset
      * @param todosetId The todoset ID
      * @param options Optional query parameters and pagination control
