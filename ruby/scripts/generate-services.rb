@@ -60,7 +60,8 @@ class ServiceGenerator
       'CardSteps' => %w[
         GetCardStep CreateCardStep UpdateCardStep SetCardStepCompletion
         RepositionCardStep
-      ]
+      ],
+      'Wormholes' => %w[CreateWormhole UpdateWormhole DeleteWormhole]
     },
     'Files' => {
       'Attachments' => %w[CreateAttachment],
@@ -146,6 +147,9 @@ class ServiceGenerator
     'CreateCardStep' => 'create',
     'UpdateCardStep' => 'update',
     'SetCardStepCompletion' => 'set_completion',
+    'CreateWormhole' => 'create',
+    'UpdateWormhole' => 'update',
+    'DeleteWormhole' => 'delete',
     'GetQuestionnaire' => 'get_questionnaire',
     'GetQuestion' => 'get_question',
     'GetAnswer' => 'get_answer',

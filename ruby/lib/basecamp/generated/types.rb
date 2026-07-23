@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-25T03:15:23Z
+# Generated: 2026-07-23T07:44:47Z
 
 require "json"
 require "time"
@@ -439,11 +439,11 @@ module Basecamp
     # Card
     class Card
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_at, :completer, :completion_subscribers, :completion_url, :content, :description, :due_on, :position, :steps, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator description_attachments id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -451,7 +451,6 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "RecordingParent")
@@ -486,7 +485,6 @@ module Basecamp
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
-          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
@@ -695,7 +693,7 @@ module Basecamp
     # CardTable
     class CardTable
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url, :wormholes
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -719,6 +717,7 @@ module Basecamp
         @lists = parse_array(data["lists"], "CardColumn")
         @subscribers = parse_array(data["subscribers"], "Person")
         @subscription_url = data["subscription_url"]
+        @wormholes = parse_array(data["wormholes"], "Wormhole")
       end
 
       def to_h
@@ -739,6 +738,7 @@ module Basecamp
           "lists" => @lists,
           "subscribers" => @subscribers,
           "subscription_url" => @subscription_url,
+          "wormholes" => @wormholes,
         }.compact
       end
 
@@ -789,17 +789,16 @@ module Basecamp
     # ClientApproval
     class ClientApproval
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :approval_status, :approver, :bookmark_url, :content, :due_on, :replies_count, :replies_url, :responses, :subject, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :approval_status, :approver, :bookmark_url, :content, :due_on, :replies_count, :replies_url, :responses, :subject, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content_attachments created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -827,7 +826,6 @@ module Basecamp
         {
           "app_url" => @app_url,
           "bucket" => @bucket,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -935,17 +933,16 @@ module Basecamp
     # ClientCorrespondence
     class ClientCorrespondence
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :content, :replies_count, :replies_url, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :content, :replies_count, :replies_url, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content_attachments created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -969,7 +966,6 @@ module Basecamp
         {
           "app_url" => @app_url,
           "bucket" => @bucket,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -998,18 +994,17 @@ module Basecamp
     # ClientReply
     class ClientReply
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content content_attachments created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -1029,7 +1024,6 @@ module Basecamp
           "app_url" => @app_url,
           "bucket" => @bucket,
           "content" => @content,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -1051,7 +1045,6 @@ module Basecamp
     end
 
     # ClientSide
-    # @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
     class ClientSide
       include TypeHelpers
       attr_accessor :app_url, :url
@@ -1076,18 +1069,17 @@ module Basecamp
     # Comment
     class Comment
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content content_attachments created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -1109,7 +1101,6 @@ module Basecamp
           "app_url" => @app_url,
           "bucket" => @bucket,
           "content" => @content,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -1203,17 +1194,16 @@ module Basecamp
     # Document
     class Document
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :content, :position, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :content, :position, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content_attachments created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -1239,7 +1229,6 @@ module Basecamp
         {
           "app_url" => @app_url,
           "bucket" => @bucket,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -1333,17 +1322,16 @@ module Basecamp
     # Forward
     class Forward
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :content, :from, :replies_count, :replies_url, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :content, :from, :replies_count, :replies_url, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content_attachments created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -1368,7 +1356,6 @@ module Basecamp
         {
           "app_url" => @app_url,
           "bucket" => @bucket,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -1398,18 +1385,17 @@ module Basecamp
     # ForwardReply
     class ForwardReply
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content content_attachments created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -1431,7 +1417,6 @@ module Basecamp
           "app_url" => @app_url,
           "bucket" => @bucket,
           "content" => @content,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -1457,7 +1442,7 @@ module Basecamp
     # Gauge
     class Gauge
       include TypeHelpers
-      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :bucket, :creator, :description, :description_attachments, :enabled, :inherits_status, :last_needle_color, :last_needle_position, :previous_needle_position, :status, :title, :type, :url, :visible_to_clients
+      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :bucket, :creator, :description, :enabled, :inherits_status, :last_needle_color, :last_needle_position, :previous_needle_position, :status, :title, :type, :url, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -1473,7 +1458,6 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @creator = parse_type(data["creator"], "Person")
         @description = data["description"]
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @enabled = parse_boolean(data["enabled"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @last_needle_color = data["last_needle_color"]
@@ -1496,7 +1480,6 @@ module Basecamp
           "bucket" => @bucket,
           "creator" => @creator,
           "description" => @description,
-          "description_attachments" => @description_attachments,
           "enabled" => @enabled,
           "inherits_status" => @inherits_status,
           "last_needle_color" => @last_needle_color,
@@ -1518,16 +1501,15 @@ module Basecamp
     # GaugeNeedle
     class GaugeNeedle
       include TypeHelpers
-      attr_accessor :created_at, :description_attachments, :id, :updated_at, :app_url, :bookmark_url, :boosts_count, :boosts_url, :bucket, :color, :comments_count, :comments_url, :creator, :description, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :url, :visible_to_clients
+      attr_accessor :created_at, :id, :updated_at, :app_url, :bookmark_url, :boosts_count, :boosts_url, :bucket, :color, :comments_count, :comments_url, :creator, :description, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :url, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[created_at description_attachments id updated_at].freeze
+        %i[created_at id updated_at].freeze
       end
 
       def initialize(data = {})
         @created_at = parse_datetime(data["created_at"])
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @updated_at = parse_datetime(data["updated_at"])
         @app_url = data["app_url"]
@@ -1554,7 +1536,6 @@ module Basecamp
       def to_h
         {
           "created_at" => @created_at,
-          "description_attachments" => @description_attachments,
           "id" => @id,
           "updated_at" => @updated_at,
           "app_url" => @app_url,
@@ -1819,18 +1800,17 @@ module Basecamp
     # Message
     class Message
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :category, :comments_count, :comments_url, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :subject, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :category, :comments_count, :comments_url, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content content_attachments created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator id inherits_status parent status subject title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -1857,7 +1837,6 @@ module Basecamp
           "app_url" => @app_url,
           "bucket" => @bucket,
           "content" => @content,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -2460,8 +2439,6 @@ module Basecamp
     # Project
     class Project
       include TypeHelpers
-      # @!attribute [rw] clientside
-      #   @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
       attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :start_date
 
       # @return [Array<Symbol>]
@@ -2660,18 +2637,17 @@ module Basecamp
     # QuestionAnswer
     class QuestionAnswer
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :content_attachments, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :group_on, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :group_on, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content content_attachments created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
@@ -2697,7 +2673,6 @@ module Basecamp
           "app_url" => @app_url,
           "bucket" => @bucket,
           "content" => @content,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "id" => @id,
@@ -2898,7 +2873,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :content_attachments, :description_attachments, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2923,8 +2898,6 @@ module Basecamp
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @subscription_url = data["subscription_url"]
       end
 
@@ -2947,8 +2920,6 @@ module Basecamp
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "content" => @content,
-          "content_attachments" => @content_attachments,
-          "description_attachments" => @description_attachments,
           "subscription_url" => @subscription_url,
         }.compact
       end
@@ -3012,51 +2983,6 @@ module Basecamp
           "title" => @title,
           "type" => @type,
           "url" => @url,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # RichTextAttachment
-    class RichTextAttachment
-      include TypeHelpers
-      attr_accessor :byte_size, :content_type, :download_url, :filename, :id, :preview_url, :previewable, :sgid, :thumbnail_url, :height, :width
-
-      # @return [Array<Symbol>]
-      def self.required_fields
-        %i[byte_size content_type download_url filename id preview_url previewable sgid thumbnail_url].freeze
-      end
-
-      def initialize(data = {})
-        @byte_size = parse_integer(data["byte_size"])
-        @content_type = data["content_type"]
-        @download_url = data["download_url"]
-        @filename = data["filename"]
-        @id = parse_integer(data["id"])
-        @preview_url = data["preview_url"]
-        @previewable = parse_boolean(data["previewable"])
-        @sgid = data["sgid"]
-        @thumbnail_url = data["thumbnail_url"]
-        @height = parse_integer(data["height"])
-        @width = parse_integer(data["width"])
-      end
-
-      def to_h
-        {
-          "byte_size" => @byte_size,
-          "content_type" => @content_type,
-          "download_url" => @download_url,
-          "filename" => @filename,
-          "id" => @id,
-          "preview_url" => @preview_url,
-          "previewable" => @previewable,
-          "sgid" => @sgid,
-          "thumbnail_url" => @thumbnail_url,
-          "height" => @height,
-          "width" => @width,
         }.compact
       end
 
@@ -3147,11 +3073,11 @@ module Basecamp
     # ScheduleEntry
     class ScheduleEntry
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :summary, :title, :type, :updated_at, :url, :visible_to_clients, :all_day, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :ends_at, :participants, :starts_at, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :summary, :title, :type, :updated_at, :url, :visible_to_clients, :all_day, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :description, :ends_at, :participants, :starts_at, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator description_attachments id inherits_status parent status summary title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status summary title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -3159,7 +3085,6 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "RecordingParent")
@@ -3189,7 +3114,6 @@ module Basecamp
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
-          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
@@ -3222,32 +3146,37 @@ module Basecamp
     # SearchMetadata
     class SearchMetadata
       include TypeHelpers
-      attr_accessor :default_bucket_label, :default_circle_label, :default_creator_label, :default_file_type_label, :default_type_label, :file_search_types, :recording_search_types
-
-      # @return [Array<Symbol>]
-      def self.required_fields
-        %i[default_bucket_label default_circle_label default_creator_label default_file_type_label default_type_label file_search_types recording_search_types].freeze
-      end
+      attr_accessor :projects
 
       def initialize(data = {})
-        @default_bucket_label = data["default_bucket_label"]
-        @default_circle_label = data["default_circle_label"]
-        @default_creator_label = data["default_creator_label"]
-        @default_file_type_label = data["default_file_type_label"]
-        @default_type_label = data["default_type_label"]
-        @file_search_types = parse_array(data["file_search_types"], "SearchType")
-        @recording_search_types = parse_array(data["recording_search_types"], "SearchType")
+        @projects = parse_array(data["projects"], "SearchProject")
       end
 
       def to_h
         {
-          "default_bucket_label" => @default_bucket_label,
-          "default_circle_label" => @default_circle_label,
-          "default_creator_label" => @default_creator_label,
-          "default_file_type_label" => @default_file_type_label,
-          "default_type_label" => @default_type_label,
-          "file_search_types" => @file_search_types,
-          "recording_search_types" => @recording_search_types,
+          "projects" => @projects,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # SearchProject
+    class SearchProject
+      include TypeHelpers
+      attr_accessor :id, :name
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "name" => @name,
         }.compact
       end
 
@@ -3259,7 +3188,7 @@ module Basecamp
     # SearchResult
     class SearchResult
       include TypeHelpers
-      attr_accessor :app_url, :id, :title, :type, :url, :bookmark_url, :bucket, :content, :content_attachments, :created_at, :creator, :description, :description_attachments, :inherits_status, :parent, :status, :subject, :updated_at, :visible_to_clients
+      attr_accessor :app_url, :id, :title, :type, :url, :bookmark_url, :bucket, :content, :created_at, :creator, :description, :inherits_status, :parent, :status, :subject, :updated_at, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3275,11 +3204,9 @@ module Basecamp
         @bookmark_url = data["bookmark_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @content = data["content"]
-        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
         @description = data["description"]
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "RecordingParent")
         @status = data["status"]
@@ -3298,11 +3225,9 @@ module Basecamp
           "bookmark_url" => @bookmark_url,
           "bucket" => @bucket,
           "content" => @content,
-          "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
           "description" => @description,
-          "description_attachments" => @description_attachments,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
           "status" => @status,
@@ -3310,33 +3235,6 @@ module Basecamp
           "updated_at" => @updated_at,
           "visible_to_clients" => @visible_to_clients,
         }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # SearchType
-    class SearchType
-      include TypeHelpers
-      attr_accessor :key, :value
-
-      # @return [Array<Symbol>]
-      def self.required_fields
-        %i[key value].freeze
-      end
-
-      def initialize(data = {})
-        @key = data["key"]
-        @value = data["value"]
-      end
-
-      def to_h
-        {
-          "key" => @key,
-          "value" => @value,
-        }.reject { |k, v| v.nil? && !["key"].include?(k) }
       end
 
       def to_json(*args)
@@ -3520,11 +3418,11 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content created_at creator description_attachments id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -3533,7 +3431,6 @@ module Basecamp
         @content = data["content"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "TodoParent")
@@ -3567,7 +3464,6 @@ module Basecamp
           "content" => @content,
           "created_at" => @created_at,
           "creator" => @creator,
-          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
@@ -3665,11 +3561,11 @@ module Basecamp
     # Todolist
     class Todolist
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :description, :groups_url, :position, :subscription_url, :todos_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :description, :groups_url, :position, :subscription_url, :todos_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status name parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -3677,7 +3573,6 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @name = data["name"]
@@ -3709,7 +3604,6 @@ module Basecamp
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
-          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "name" => @name,
@@ -3929,11 +3823,11 @@ module Basecamp
     # Upload
     class Upload
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :byte_size, :comments_count, :comments_url, :content_type, :description, :download_url, :filename, :height, :position, :subscription_url, :width
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :byte_size, :comments_count, :comments_url, :content_type, :description, :download_url, :filename, :height, :position, :subscription_url, :width
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator description_attachments id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -3941,7 +3835,6 @@ module Basecamp
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "RecordingParent")
@@ -3973,7 +3866,6 @@ module Basecamp
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
-          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
@@ -4253,6 +4145,63 @@ module Basecamp
           "id" => @id,
           "kind" => @kind,
           "recording" => @recording,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Wormhole
+    class Wormhole
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :linked, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :color, :destination_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at creator id inherits_status linked parent status title type updated_at url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @linked = parse_boolean(data["linked"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+        @color = data["color"]
+        @destination_url = data["destination_url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "linked" => @linked,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+          "color" => @color,
+          "destination_url" => @destination_url,
         }.compact
       end
 

@@ -179,7 +179,7 @@ aborts before an oversized body is buffered.
 
 ## Services
 
-The SDK provides 37 services covering the complete Basecamp API:
+The SDK provides 38 services covering the complete Basecamp API:
 
 | Service | Description |
 |---------|-------------|
@@ -210,6 +210,7 @@ The SDK provides 37 services covering the complete Basecamp API:
 | `card_tables` | Card tables (kanban) |
 | `card_columns` | Card table columns |
 | `card_steps` | Card workflow steps |
+| `wormholes` | Card table wormholes (cross-project moves) |
 | `lineup` | Card lineup view |
 | `tools` | Project dock tools |
 | `search` | Full-text search |
