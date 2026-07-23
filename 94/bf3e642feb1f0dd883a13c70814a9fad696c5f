@@ -1,0 +1,19 @@
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_967a37aa4eb573::t_f27af3597256a9 72,74,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "94bf3e642feb1f0dd883a13c70814a9fad696c5f",
+  "prompts": {},
+  "sessions": {
+    "s_967a37aa4eb573": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7de9f7cd-df2c-48a8-8213-5c58d5dcd2ad",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
