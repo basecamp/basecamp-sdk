@@ -1,0 +1,19 @@
+python/tests/services/test_card_tables_service.py
+  s_3fd48deaa8600c::t_4cf08a2a31dccb 1-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "8892d612ca46af32cc75f404c83fe678a31a4b0f",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
