@@ -4777,7 +4777,10 @@ export interface components {
             parent: components["schemas"]["RecordingParent"];
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
-            /** @description Wormhole color, or null. */
+            /**
+             * @description Wormhole color, or null. Optional string, matching the repo-wide color
+             *     convention (CardColumn.color et al.); a server null decodes as absent.
+             */
             color?: string;
             /**
              * @description True only while the destination column, its board, and its bucket are all
@@ -4786,9 +4789,10 @@ export interface components {
             linked: boolean;
             /**
              * @description URL of the destination column, or null when unlinked. Always present in the
-             *     response but nullable, so it is not @required.
+             *     response but nullable; modeled as a nullable string (type ["string","null"]
+             *     + x-go-type "*string") via smithy-build.json jsonAdd, mirroring SearchType.key.
              */
-            destination_url?: string;
+            destination_url?: string | null;
         };
     };
     responses: never;

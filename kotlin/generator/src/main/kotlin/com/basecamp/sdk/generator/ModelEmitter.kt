@@ -139,6 +139,27 @@ class ModelEmitter(private val api: OpenApiParser) {
             return "Int?"
         }
 
+        // OpenAPI 3.1 null-union type (e.g. ["string","null"]): the member permits
+        // an explicit JSON null, so it is always nullable regardless of requiredness.
+        // Resolve the non-null member of the union and mark it nullable.
+        val typeNode = schema["type"]
+        if (typeNode is JsonArray) {
+            val nonNullType = typeNode.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                .firstOrNull { it != "null" }
+            return when (nonNullType) {
+                "integer" -> if (schema["format"]?.jsonPrimitive?.content == "int64") "Long?" else "Int?"
+                "boolean" -> "Boolean?"
+                "number" -> "Double?"
+                "string" -> "String?"
+                "array" -> {
+                    val itemType = resolveArrayItemType(schema["items"]?.jsonObject)
+                    "List<$itemType>?"
+                }
+                "object" -> "JsonObject?"
+                else -> "JsonElement?"
+            }
+        }
+
         return when (schema["type"]?.jsonPrimitive?.content) {
             "integer" -> when (schema["format"]?.jsonPrimitive?.content) {
                 "int64" -> "Long"

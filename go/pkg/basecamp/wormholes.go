@@ -208,12 +208,10 @@ func wormholeFromGenerated(gw generated.Wormhole) Wormhole {
 		w.ID = gw.Id
 	}
 
-	// prefer-skip-optional-pointer generates DestinationUrl as a value string.
-	// A linked wormhole's destination URL is never empty; an unlinked wormhole
-	// decodes to "". Map the empty string back to nil to preserve the nullable
-	// contract.
-	if gw.DestinationUrl != "" {
-		s := gw.DestinationUrl
+	// destination_url is modeled as a nullable string (x-go-type "*string"), so the
+	// generated field is already *string — nil for an unlinked wormhole, set otherwise.
+	if gw.DestinationUrl != nil {
+		s := *gw.DestinationUrl
 		w.DestinationURL = &s
 	}
 

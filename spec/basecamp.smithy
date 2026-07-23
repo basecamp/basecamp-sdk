@@ -4888,14 +4888,16 @@ structure Wormhole {
   bucket: TodoBucket
   @required
   creator: Person
-  /// Wormhole color, or null.
+  /// Wormhole color, or null. Optional string, matching the repo-wide color
+  /// convention (CardColumn.color et al.); a server null decodes as absent.
   color: String
   /// True only while the destination column, its board, and its bucket are all
   /// active; false once the destination is unlinked. Always emitted.
   @required
   linked: Boolean
   /// URL of the destination column, or null when unlinked. Always present in the
-  /// response but nullable, so it is not @required.
+  /// response but nullable; modeled as a nullable string (type ["string","null"]
+  /// + x-go-type "*string") via smithy-build.json jsonAdd, mirroring SearchType.key.
   destination_url: String
 }
 

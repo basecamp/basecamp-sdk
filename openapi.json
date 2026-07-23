@@ -28997,15 +28997,19 @@
           },
           "color": {
             "type": "string",
-            "description": "Wormhole color, or null."
+            "description": "Wormhole color, or null. Optional string, matching the repo-wide color\nconvention (CardColumn.color et al.); a server null decodes as absent."
           },
           "linked": {
             "type": "boolean",
             "description": "True only while the destination column, its board, and its bucket are all\nactive; false once the destination is unlinked. Always emitted."
           },
           "destination_url": {
-            "type": "string",
-            "description": "URL of the destination column, or null when unlinked. Always present in the\nresponse but nullable, so it is not @required."
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL of the destination column, or null when unlinked. Always present in the\nresponse but nullable; modeled as a nullable string (type [\"string\",\"null\"]\n+ x-go-type \"*string\") via smithy-build.json jsonAdd, mirroring SearchType.key.",
+            "x-go-type": "*string"
           }
         },
         "required": [

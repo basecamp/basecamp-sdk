@@ -2709,16 +2709,18 @@ type Wormhole struct {
 	BookmarkUrl string     `json:"bookmark_url,omitempty"`
 	Bucket      TodoBucket `json:"bucket"`
 
-	// Color Wormhole color, or null.
+	// Color Wormhole color, or null. Optional string, matching the repo-wide color
+	// convention (CardColumn.color et al.); a server null decodes as absent.
 	Color     string    `json:"color,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	Creator   Person    `json:"creator"`
 
 	// DestinationUrl URL of the destination column, or null when unlinked. Always present in the
-	// response but nullable, so it is not @required.
-	DestinationUrl string `json:"destination_url,omitempty"`
-	Id             int64  `json:"id"`
-	InheritsStatus bool   `json:"inherits_status"`
+	// response but nullable; modeled as a nullable string (type ["string","null"]
+	// + x-go-type "*string") via smithy-build.json jsonAdd, mirroring SearchType.key.
+	DestinationUrl *string `json:"destination_url,omitempty"`
+	Id             int64   `json:"id"`
+	InheritsStatus bool    `json:"inherits_status"`
 
 	// Linked True only while the destination column, its board, and its bucket are all
 	// active; false once the destination is unlinked. Always emitted.

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-23T07:44:47Z
+# Generated: 2026-07-23T19:34:23Z
 
 require "json"
 require "time"
@@ -2991,6 +2991,51 @@ module Basecamp
       end
     end
 
+    # RichTextAttachment
+    class RichTextAttachment
+      include TypeHelpers
+      attr_accessor :byte_size, :content_type, :download_url, :filename, :id, :preview_url, :previewable, :sgid, :thumbnail_url, :height, :width
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[byte_size content_type download_url filename id preview_url previewable sgid thumbnail_url].freeze
+      end
+
+      def initialize(data = {})
+        @byte_size = parse_integer(data["byte_size"])
+        @content_type = data["content_type"]
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @id = parse_integer(data["id"])
+        @preview_url = data["preview_url"]
+        @previewable = parse_boolean(data["previewable"])
+        @sgid = data["sgid"]
+        @thumbnail_url = data["thumbnail_url"]
+        @height = parse_integer(data["height"])
+        @width = parse_integer(data["width"])
+      end
+
+      def to_h
+        {
+          "byte_size" => @byte_size,
+          "content_type" => @content_type,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "id" => @id,
+          "preview_url" => @preview_url,
+          "previewable" => @previewable,
+          "sgid" => @sgid,
+          "thumbnail_url" => @thumbnail_url,
+          "height" => @height,
+          "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # Schedule
     class Schedule
       include TypeHelpers
@@ -3146,37 +3191,32 @@ module Basecamp
     # SearchMetadata
     class SearchMetadata
       include TypeHelpers
-      attr_accessor :projects
+      attr_accessor :default_bucket_label, :default_circle_label, :default_creator_label, :default_file_type_label, :default_type_label, :file_search_types, :recording_search_types
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[default_bucket_label default_circle_label default_creator_label default_file_type_label default_type_label file_search_types recording_search_types].freeze
+      end
 
       def initialize(data = {})
-        @projects = parse_array(data["projects"], "SearchProject")
+        @default_bucket_label = data["default_bucket_label"]
+        @default_circle_label = data["default_circle_label"]
+        @default_creator_label = data["default_creator_label"]
+        @default_file_type_label = data["default_file_type_label"]
+        @default_type_label = data["default_type_label"]
+        @file_search_types = parse_array(data["file_search_types"], "SearchType")
+        @recording_search_types = parse_array(data["recording_search_types"], "SearchType")
       end
 
       def to_h
         {
-          "projects" => @projects,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # SearchProject
-    class SearchProject
-      include TypeHelpers
-      attr_accessor :id, :name
-
-      def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @name = data["name"]
-      end
-
-      def to_h
-        {
-          "id" => @id,
-          "name" => @name,
+          "default_bucket_label" => @default_bucket_label,
+          "default_circle_label" => @default_circle_label,
+          "default_creator_label" => @default_creator_label,
+          "default_file_type_label" => @default_file_type_label,
+          "default_type_label" => @default_type_label,
+          "file_search_types" => @file_search_types,
+          "recording_search_types" => @recording_search_types,
         }.compact
       end
 
@@ -3235,6 +3275,33 @@ module Basecamp
           "updated_at" => @updated_at,
           "visible_to_clients" => @visible_to_clients,
         }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # SearchType
+    class SearchType
+      include TypeHelpers
+      attr_accessor :key, :value
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[key value].freeze
+      end
+
+      def initialize(data = {})
+        @key = data["key"]
+        @value = data["value"]
+      end
+
+      def to_h
+        {
+          "key" => @key,
+          "value" => @value,
+        }.reject { |k, v| v.nil? && !["key"].include?(k) }
       end
 
       def to_json(*args)
@@ -3418,11 +3485,11 @@ module Basecamp
     # Todo
     class Todo
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
+      attr_accessor :app_url, :bucket, :content, :created_at, :creator, :description_attachments, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :assignees, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completion_subscribers, :completion_url, :description, :due_on, :position, :starts_on, :steps, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket content created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket content created_at creator description_attachments id inherits_status parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -3431,6 +3498,7 @@ module Basecamp
         @content = data["content"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "TodoParent")
@@ -3464,6 +3532,7 @@ module Basecamp
           "content" => @content,
           "created_at" => @created_at,
           "creator" => @creator,
+          "description_attachments" => @description_attachments,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "parent" => @parent,

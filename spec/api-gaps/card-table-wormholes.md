@@ -28,7 +28,8 @@ bc3_refs:
 > ([dock-tool-create-contract](dock-tool-create-contract.md),
 > [memories-emptied-regression](memories-emptied-regression.md)), this records
 > new BC5 surface the SDKs could not express. The server contract is fully
-> shipped inside the pinned bc3 provenance (`ba105ba7`, 2026-07-22);
+> shipped and present in the pinned bc3 provenance (`338b7a11`, 2026-07-23; it
+> also predates that pin, having landed by `ba105ba7`, 2026-07-22);
 > `absorbed-in-sdk` means the SDK absorbed it without a provenance bump
 > (basecamp-sdk#397).
 
@@ -84,7 +85,7 @@ destination column, its board, and its bucket are all active);
 
 None. The contract is shipped, documented
 (`doc/api/sections/card_table_wormholes.md`), and inside the pinned provenance
-(`ba105ba7`). No upstream doc or route work remains.
+(`338b7a11`). No upstream doc or route work remains.
 
 ## SDK absorption plan when this lands
 
@@ -93,5 +94,5 @@ structure + `wormholes: WormholeList` on `CardTable`, a dedicated `Wormholes`
 service split across all six SDKs, the hand-written Go layer
 (`go/pkg/basecamp/wormholes.go`), client wiring, and per-language tests
 (CRUD happy + error paths, plus a linked/unlinked `wormholes[]` decode). No
-`spec/api-provenance.json` SHA bump — the contract was already at the pinned
-`ba105ba7`. No further SDK change is needed.
+`spec/api-provenance.json` SHA bump — the contract was already present at the
+pinned `338b7a11` (and earlier). No further SDK change is needed.
