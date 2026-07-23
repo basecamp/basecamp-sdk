@@ -9,7 +9,7 @@ Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 ## Features
 
 - Full Swift 6 concurrency support (strict `Sendable` throughout)
-- 38 services covering the complete Basecamp API
+- 39 services covering the complete Basecamp API
 - Async/await API with structured concurrency
 - ETag-based HTTP caching (opt-in)
 - Automatic retry with exponential backoff
@@ -158,6 +158,7 @@ let client = BasecampClient(
 | `cards` | Card table cards |
 | `cardColumns` | Card table columns |
 | `cardSteps` | Card workflow steps |
+| `wormholes` | Card table wormholes (cross-project moves) |
 
 ### Scheduling
 

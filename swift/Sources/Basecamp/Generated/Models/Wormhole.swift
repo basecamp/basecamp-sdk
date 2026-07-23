@@ -1,13 +1,15 @@
 // @generated from OpenAPI spec — do not edit directly
 import Foundation
 
-public struct CardTable: Codable, Sendable {
+public struct Wormhole: Codable, Sendable {
     public let appUrl: String
     public let bucket: TodoBucket
     public let createdAt: String
     public let creator: Person
     public let id: Int
     public let inheritsStatus: Bool
+    public let linked: Bool
+    public let parent: RecordingParent
     public let status: String
     public let title: String
     public let type: String
@@ -15,10 +17,8 @@ public struct CardTable: Codable, Sendable {
     public let url: String
     public let visibleToClients: Bool
     public var bookmarkUrl: String?
-    public var lists: [CardColumn]?
-    public var subscribers: [Person]?
-    public var subscriptionUrl: String?
-    public var wormholes: [Wormhole]?
+    public var color: String?
+    public var destinationUrl: String?
 
     public init(
         appUrl: String,
@@ -27,6 +27,8 @@ public struct CardTable: Codable, Sendable {
         creator: Person,
         id: Int,
         inheritsStatus: Bool,
+        linked: Bool,
+        parent: RecordingParent,
         status: String,
         title: String,
         type: String,
@@ -34,10 +36,8 @@ public struct CardTable: Codable, Sendable {
         url: String,
         visibleToClients: Bool,
         bookmarkUrl: String? = nil,
-        lists: [CardColumn]? = nil,
-        subscribers: [Person]? = nil,
-        subscriptionUrl: String? = nil,
-        wormholes: [Wormhole]? = nil
+        color: String? = nil,
+        destinationUrl: String? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
@@ -45,6 +45,8 @@ public struct CardTable: Codable, Sendable {
         self.creator = creator
         self.id = id
         self.inheritsStatus = inheritsStatus
+        self.linked = linked
+        self.parent = parent
         self.status = status
         self.title = title
         self.type = type
@@ -52,9 +54,7 @@ public struct CardTable: Codable, Sendable {
         self.url = url
         self.visibleToClients = visibleToClients
         self.bookmarkUrl = bookmarkUrl
-        self.lists = lists
-        self.subscribers = subscribers
-        self.subscriptionUrl = subscriptionUrl
-        self.wormholes = wormholes
+        self.color = color
+        self.destinationUrl = destinationUrl
     }
 }

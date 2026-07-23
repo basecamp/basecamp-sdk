@@ -46,4 +46,5 @@ extension AccountClient {
     public var uploads: UploadsService { service("uploads") { UploadsService(accountClient: self) } }
     public var vaults: VaultsService { service("vaults") { VaultsService(accountClient: self) } }
     public var webhooks: WebhooksService { service("webhooks") { WebhooksService(accountClient: self) } }
+    public var wormholes: WormholesService { service("wormholes") { WormholesService(accountClient: self) } }
 }
