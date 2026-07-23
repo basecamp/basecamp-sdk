@@ -1,0 +1,98 @@
+spec/api-gaps/external-links-doors.md
+  s_0e09583c24fd21::t_0c3f2c5cba6f5d 44
+  s_0e09583c24fd21::t_b8ad14fad4bb62 68-73,76-87
+  s_0e09583c24fd21::t_634ff20fded304 42
+  s_0e09583c24fd21::t_83e185fc97b437 74-75,96-97
+  s_0e09583c24fd21::t_18bf347bf6da89 34,38,49
+  s_0e09583c24fd21::t_c2e71ba2f3c675 1-10,14,17-19,23-29,31-33,35-37,39-41,45-48,50-67,88-95,98-103
+  s_0e09583c24fd21::t_7bb5f690591156 13,22
+  s_0e09583c24fd21::t_e884c1910daec4 11-12,15-16
+  s_0e09583c24fd21::t_7ca1127671fb8d 30
+  s_0e09583c24fd21::t_297c169cec26ff 20-21
+  s_0e09583c24fd21::t_741c4bd240084a 43
+spec/api-gaps/visible-to-clients-on-creates.md
+  s_0e09583c24fd21::t_d40445507768d4 52,55-59
+  s_0e09583c24fd21::t_148248b2699a34 19-24
+  s_0e09583c24fd21::t_47bb7fed3ea5ba 69-76
+  s_0e09583c24fd21::t_1a168fec9d014d 96-99
+  s_0e09583c24fd21::t_4f8a2f527a6361 103,105-109
+  s_0e09583c24fd21::t_0481e95794d5ef 53
+  s_0e09583c24fd21::t_18bf347bf6da89 54
+  s_0e09583c24fd21::t_850c589351c82d 1-5,9-10,18,26-32,34-44,51,60-68,77-83,101-102,110,112-115
+  s_0e09583c24fd21::t_1438cae12621e7 116-123
+  s_0e09583c24fd21::t_78bb553013a821 17,25,33
+  s_0e09583c24fd21::t_a755e7a4fdef62 45-50
+  s_0e09583c24fd21::t_e59fd6865d7171 84-85,89-91,93-95,100
+  s_0e09583c24fd21::t_78cfa09f8a1a81 6-8
+  s_0e09583c24fd21::t_b76f30bdf30580 86-88,92,104,111
+  s_0e09583c24fd21::t_cf623404328c64 11-16
+ruby/lib/basecamp/generated/metadata.json
+  s_0e09583c24fd21::t_bc57f62e66e0d3 4
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_0e09583c24fd21::t_93e497db3a6ec0 32
+go/pkg/basecamp/version.go
+  s_0e09583c24fd21::t_93e497db3a6ec0 7
+spec/api-gaps/upload-new-version.md
+  s_0e09583c24fd21::t_d9371e377551d5 29
+  s_0e09583c24fd21::t_37204b20071b94 28
+openapi.json
+  s_0e09583c24fd21::t_93e497db3a6ec0 5
+spec/api-gaps/todolist-reposition.md
+  s_0e09583c24fd21::t_f6883d9d15fa7b 6-7
+  s_0e09583c24fd21::t_dff7f69c01c20e 29-35
+  s_0e09583c24fd21::t_b08b7b74e0de73 50-53
+  s_0e09583c24fd21::t_de9e6c37324f52 8
+  s_0e09583c24fd21::t_4ee5172b7ca7e4 26-28
+  s_0e09583c24fd21::t_10d3565075a4c6 79-83
+spec/api-gaps/README.md
+  s_0e09583c24fd21::t_dbd830581912a6 58-59
+COORDINATION.md
+  s_0e09583c24fd21::t_f26f423a83d164 12
+typescript/src/client.ts
+  s_0e09583c24fd21::t_93e497db3a6ec0 223
+API-GAP-404.md
+  s_0e09583c24fd21::t_80167462280cea 26-29
+  s_0e09583c24fd21::t_f40dfe63b7ae5f 123,127
+  s_0e09583c24fd21::t_2417feb87fbe10 22-25
+  s_0e09583c24fd21::t_2fe996bf144d47 124-126
+python/src/basecamp/_version.py
+  s_0e09583c24fd21::t_93e497db3a6ec0 2
+spec/api-gaps/recordable-subtypes-doc.md
+  s_0e09583c24fd21::t_df4074176df545 43-44,46-48
+  s_0e09583c24fd21::t_d34d4174fa49f0 45
+  s_0e09583c24fd21::t_14f4a577d25897 88-90
+spec/basecamp.smithy
+  s_0e09583c24fd21::t_3ae4e8ee90d5e7 54
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_0e09583c24fd21::t_93e497db3a6ec0 30
+go/pkg/basecamp/api-provenance.json
+  s_0e09583c24fd21::t_3ae4e8ee90d5e7 5
+  s_0e09583c24fd21::t_3f784b7498597c 4
+spec/api-provenance.json
+  s_0e09583c24fd21::t_daeb5cd5bf378a 4
+  s_0e09583c24fd21::t_3d6967cc3f734c 5
+typescript/src/generated/metadata.ts
+  s_0e09583c24fd21::t_bc57f62e66e0d3 40
+ruby/lib/basecamp/generated/types.rb
+  s_0e09583c24fd21::t_bc57f62e66e0d3 4
+ruby/lib/basecamp/version.rb
+  s_0e09583c24fd21::t_93e497db3a6ec0 5
+typescript/src/generated/openapi-stripped.json
+  s_0e09583c24fd21::t_93e497db3a6ec0 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c49324fc19b5e4e0cddc98b155da43202f11a8b1",
+  "prompts": {},
+  "sessions": {
+    "s_0e09583c24fd21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84671fef-02de-4674-abd5-b3a178e7f29d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
