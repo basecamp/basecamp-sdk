@@ -58,7 +58,7 @@ making the absorption journey publicly auditable.
 | [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | absorbed-in-sdk | post-train | medium |
 | [external-links-doors](external-links-doors.md) | addressed-in-bc3-pr-12375 | post-train | low |
 | [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | addressed-in-bc3-pr-12386 | post-train | low |
-| [card-table-wormholes](card-table-wormholes.md) | addressed-in-bc3-pr-12144 | post-train | low |
+| [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
