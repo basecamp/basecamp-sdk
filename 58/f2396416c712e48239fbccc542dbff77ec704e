@@ -1,0 +1,44 @@
+SPEC.md
+  s_3fd48deaa8600c::t_6d0a9bcaec3ced 1548-1549
+openapi.json
+  s_3fd48deaa8600c::t_90de8f923648ba 29011,29020
+spec/basecamp.smithy
+  s_3fd48deaa8600c::t_5ede6407f2f9e4 4898-4904
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_3fd48deaa8600c::t_b93483182a7982 289-294,300,302
+typescript/src/generated/schema.d.ts
+  s_3fd48deaa8600c::t_90de8f923648ba 4791-4796,4798
+swift/Sources/Basecamp/Generated/Models/Wormhole.swift
+  s_3fd48deaa8600c::t_90de8f923648ba 9,28,40,46,59-61,63,65,67,69-73,75,78-120
+  s_3fd48deaa8600c::t_7b161ba930110e 62,64,66,68,74,76-77
+go/pkg/generated/client.gen.go
+  s_3fd48deaa8600c::t_90de8f923648ba 2718-2724
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Wormhole.kt
+  s_3fd48deaa8600c::t_90de8f923648ba 29,31
+typescript/src/generated/openapi-stripped.json
+  s_3fd48deaa8600c::t_90de8f923648ba 26633,26642
+spec/api-gaps/card-table-wormholes.md
+  s_3fd48deaa8600c::t_c8aa4536b384d2 53-54
+  s_3fd48deaa8600c::t_1a6f5b9b79f793 15-16
+python/tests/services/test_wormholes_service.py
+  s_3fd48deaa8600c::t_b9a65c33612638 184-185
+  s_3fd48deaa8600c::t_754a7719c934ab 143-145
+python/src/basecamp/generated/types.py
+  s_3fd48deaa8600c::t_90de8f923648ba 1827
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "58f2396416c712e48239fbccc542dbff77ec704e",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
