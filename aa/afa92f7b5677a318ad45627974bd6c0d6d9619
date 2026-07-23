@@ -75,6 +75,7 @@ go/pkg/generated/client.gen.go
   s_0e09583c24fd21::t_e9167312fb4d55 1900-1906,1933-1940,2816-2836,2838-2846,15072-15155,15172-15216,15218
 swift/Sources/Basecamp/Generated/Models/SearchType.swift
   s_0e09583c24fd21::t_e9167312fb4d55 4-11
+  s_0e09583c24fd21::t_3c94a6d7f1ba9c 1-3,12
 python/src/basecamp/generated/types.py
   s_0e09583c24fd21::t_e9167312fb4d55 1263-1269,1292-1294
   s_0e09583c24fd21::t_89c374379f3ec7 1295-1296
