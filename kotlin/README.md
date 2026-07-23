@@ -10,7 +10,7 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 - Kotlin Multiplatform (JVM target)
 - Builder DSL for client configuration
-- 38 services covering the complete Basecamp API
+- 39 services covering the complete Basecamp API
 - OAuth 2.0 with PKCE support
 - Webhook signature verification (HMAC-SHA256)
 - ETag-based HTTP caching (opt-in)
@@ -254,6 +254,7 @@ if (!isValid) {
 | `cards` | Card table cards |
 | `cardColumns` | Card table columns |
 | `cardSteps` | Card workflow steps |
+| `wormholes` | Card table wormholes (cross-project moves) |
 
 ### Scheduling
 
