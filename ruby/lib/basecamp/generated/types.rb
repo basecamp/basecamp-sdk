@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-23T16:38:34Z
+# Generated: 2026-07-23T17:31:39Z
 
 require "json"
 require "time"
@@ -3189,37 +3189,32 @@ module Basecamp
     # SearchMetadata
     class SearchMetadata
       include TypeHelpers
-      attr_accessor :projects
+      attr_accessor :default_bucket_label, :default_circle_label, :default_creator_label, :default_file_type_label, :default_type_label, :file_search_types, :recording_search_types
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[default_bucket_label default_circle_label default_creator_label default_file_type_label default_type_label file_search_types recording_search_types].freeze
+      end
 
       def initialize(data = {})
-        @projects = parse_array(data["projects"], "SearchProject")
+        @default_bucket_label = data["default_bucket_label"]
+        @default_circle_label = data["default_circle_label"]
+        @default_creator_label = data["default_creator_label"]
+        @default_file_type_label = data["default_file_type_label"]
+        @default_type_label = data["default_type_label"]
+        @file_search_types = parse_array(data["file_search_types"], "SearchType")
+        @recording_search_types = parse_array(data["recording_search_types"], "SearchType")
       end
 
       def to_h
         {
-          "projects" => @projects,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # SearchProject
-    class SearchProject
-      include TypeHelpers
-      attr_accessor :id, :name
-
-      def initialize(data = {})
-        @id = parse_integer(data["id"])
-        @name = data["name"]
-      end
-
-      def to_h
-        {
-          "id" => @id,
-          "name" => @name,
+          "default_bucket_label" => @default_bucket_label,
+          "default_circle_label" => @default_circle_label,
+          "default_creator_label" => @default_creator_label,
+          "default_file_type_label" => @default_file_type_label,
+          "default_type_label" => @default_type_label,
+          "file_search_types" => @file_search_types,
+          "recording_search_types" => @recording_search_types,
         }.compact
       end
 
@@ -3278,6 +3273,33 @@ module Basecamp
           "updated_at" => @updated_at,
           "visible_to_clients" => @visible_to_clients,
         }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # SearchType
+    class SearchType
+      include TypeHelpers
+      attr_accessor :key, :value
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[key value].freeze
+      end
+
+      def initialize(data = {})
+        @key = data["key"]
+        @value = data["value"]
+      end
+
+      def to_h
+        {
+          "key" => @key,
+          "value" => @value,
+        }.reject { |k, v| v.nil? && !["key"].include?(k) }
       end
 
       def to_json(*args)

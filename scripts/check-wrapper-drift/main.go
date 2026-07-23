@@ -232,7 +232,7 @@ var directDecodePairs = map[string]string{
 	"PersonCompany":               "PersonCompany",          // composite literal in personFromGenerated (people.go)
 	"QuestionSchedule":            "QuestionSchedule",       // composite literal in questionFromGenerated (checkins.go)
 	"SearchMetadata":              "SearchMetadata",         // composite literal in SearchService.Metadata (search.go)
-	"SearchProject":               "SearchProject",          // composite literal in SearchService.Metadata (search.go)
+	"SearchType":                  "SearchType",             // composite literal in searchTypesFromGenerated (search.go)
 	"UpdateProjectAccessResponse": "ProjectAccessResult",    // composite literal in PeopleService.UpdateProjectAccess (people.go)
 }
 
@@ -252,7 +252,7 @@ var tier3Wrappers = map[string]bool{
 	"PersonCompany":               true,
 	"QuestionSchedule":            true,
 	"SearchMetadata":              true,
-	"SearchProject":               true,
+	"SearchType":                  true,
 	"UpdateProjectAccessResponse": true,
 }
 

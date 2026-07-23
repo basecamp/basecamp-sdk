@@ -43,7 +43,7 @@ making the absorption journey publicly auditable.
 | [activity-timeline](activity-timeline.md) | addressed-in-bc3-pr-11629 | 3d | high |
 | [recordable-subtypes-doc](recordable-subtypes-doc.md) | partial-coverage | 3a | medium |
 | [stack-doc-and-smithy](stack-doc-and-smithy.md) | confirmed-not-api-resource | 3b | medium |
-| [search-filter-additions](search-filter-additions.md) | partial-coverage | 3e | medium |
+| [search-filter-additions](search-filter-additions.md) | absorbed-in-sdk | 3e | medium |
 | [rich-text-project-attachable](rich-text-project-attachable.md) | no-json-contract | 3e | low |
 | [recording-bubbleupable-field](recording-bubbleupable-field.md) | no-json-contract | 3e | low |
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |

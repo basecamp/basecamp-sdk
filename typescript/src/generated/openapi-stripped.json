@@ -14546,12 +14546,118 @@
             "required": true
           },
           {
-            "name": "sort",
+            "name": "type_names[]",
             "in": "query",
-            "description": "best_match|created_at",
+            "description": "Recording types to include. Use `key` values from the metadata\nendpoint's `recording_search_types`. Available since Basecamp 5.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Recording types to include. Use `key` values from the metadata\nendpoint's `recording_search_types`. Available since Basecamp 5.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "bucket_ids[]",
+            "in": "query",
+            "description": "Project IDs to filter by. Available since Basecamp 5.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Project IDs to filter by. Available since Basecamp 5.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "creator_ids[]",
+            "in": "query",
+            "description": "Creator person IDs to filter by. Available since Basecamp 5.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Creator person IDs to filter by. Available since Basecamp 5.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "description": "Filter attachments by type. Use `key` values from the metadata\nendpoint's `file_search_types`.",
             "schema": {
               "type": "string",
-              "description": "best_match|created_at"
+              "description": "Filter attachments by type. Use `key` values from the metadata\nendpoint's `file_search_types`."
+            }
+          },
+          {
+            "name": "exclude_chat",
+            "in": "query",
+            "description": "Set to true to exclude chat results.",
+            "schema": {
+              "type": "boolean",
+              "description": "Set to true to exclude chat results."
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "description": "last_7_days|last_30_days|last_90_days|last_12_months|forever",
+            "schema": {
+              "type": "string",
+              "description": "last_7_days|last_30_days|last_90_days|last_12_months|forever"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "best_match|recency",
+            "schema": {
+              "type": "string",
+              "description": "best_match|recency"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Deprecated: prefer type_names[].",
+            "schema": {
+              "type": "string",
+              "deprecated": true,
+              "description": "Deprecated: prefer type_names[].\nThis shape is deprecated since 2026-07: Use typeNames (type_names[]) instead"
+            }
+          },
+          {
+            "name": "bucket_id",
+            "in": "query",
+            "description": "Deprecated: prefer bucket_ids[].",
+            "schema": {
+              "type": "integer",
+              "deprecated": true,
+              "description": "Deprecated: prefer bucket_ids[].\nThis shape is deprecated since 2026-07: Use bucketIds (bucket_ids[]) instead",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "creator_id",
+            "in": "query",
+            "description": "Deprecated: prefer creator_ids[].",
+            "schema": {
+              "type": "integer",
+              "deprecated": true,
+              "description": "Deprecated: prefer creator_ids[].\nThis shape is deprecated since 2026-07: Use creatorIds (creator_ids[]) instead",
+              "format": "int64"
             }
           }
         ],
@@ -24038,26 +24144,43 @@
       "SearchMetadata": {
         "type": "object",
         "properties": {
-          "projects": {
+          "recording_search_types": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SearchProject"
+              "$ref": "#/components/schemas/SearchType"
             }
-          }
-        }
-      },
-      "SearchProject": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
           },
-          "name": {
+          "file_search_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchType"
+            }
+          },
+          "default_creator_label": {
+            "type": "string"
+          },
+          "default_bucket_label": {
+            "type": "string"
+          },
+          "default_circle_label": {
+            "type": "string"
+          },
+          "default_file_type_label": {
+            "type": "string"
+          },
+          "default_type_label": {
             "type": "string"
           }
-        }
+        },
+        "required": [
+          "default_bucket_label",
+          "default_circle_label",
+          "default_creator_label",
+          "default_file_type_label",
+          "default_type_label",
+          "file_search_types",
+          "recording_search_types"
+        ]
       },
       "SearchResponseContent": {
         "type": "array",
@@ -24138,6 +24261,27 @@
           "title",
           "type",
           "url"
+        ]
+      },
+      "SearchType": {
+        "type": "object",
+        "description": "A selectable search filter option. `key` is the value passed back as a\nfilter parameter (null represents the default \"everything\" option); `value`\nis the human-readable label.",
+        "properties": {
+          "key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Always present on the wire; `null` for the default \"everything\" option.\n`@required` models the presence; nullability of the value is layered on in\nthe OpenAPI (smithy-build.json jsonAdd -> type: [\"string\", \"null\"]) since\nSmithy has no native required-and-nullable.",
+            "x-go-type": "*string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
         ]
       },
       "SetCardColumnColorRequestContent": {

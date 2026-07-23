@@ -67,8 +67,18 @@ abstract class BaseService(
      * Null values are omitted. Returns "" if no params, or "?k1=v1&k2=v2".
      */
     protected fun buildQueryString(vararg params: Pair<String, Any?>): String {
-        val parts = params.mapNotNull { (key, value) ->
-            value?.let { "$key=${it.toString().encodeURLParameter()}" }
+        val parts = params.flatMap { (key, value) ->
+            val encodedKey = key.encodeURLParameter()
+            when (value) {
+                null -> emptyList()
+                // Array wire names arrive as an Iterable keyed by the raw
+                // bracketed name (e.g. "bucket_ids[]"); expand into one
+                // repeated `key=elem` pair per element rather than stringifying
+                // the whole list. The key is encoded (`[]` → `%5B%5D`).
+                is Iterable<*> -> value.filterNotNull()
+                    .map { "$encodedKey=${it.toString().encodeURLParameter()}" }
+                else -> listOf("$encodedKey=${value.toString().encodeURLParameter()}")
+            }
         }
         return if (parts.isEmpty()) "" else "?" + parts.joinToString("&")
     }

@@ -51,7 +51,7 @@ class GaugesService(BaseService):
         )
 
     def create_gauge_needle(
-        self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list | None = None
+        self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list[int] | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="gauges", operation="create_gauge_needle", is_mutation=True, project_id=project_id),
@@ -110,7 +110,7 @@ class AsyncGaugesService(AsyncBaseService):
         )
 
     async def create_gauge_needle(
-        self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list | None = None
+        self, *, project_id: int, gauge_needle: dict, notify: str | None = None, subscriptions: list[int] | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="gauges", operation="create_gauge_needle", is_mutation=True, project_id=project_id),

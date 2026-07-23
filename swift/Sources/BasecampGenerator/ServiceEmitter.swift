@@ -133,23 +133,12 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
         // Non-paginated ops: build URL query string inline
         lines.append("        var queryItems: [URLQueryItem] = []")
         for q in requiredQueryParams {
-            let camelName = toCamelCase(q.name)
-            if q.swiftType == "Int" {
-                lines.append("        queryItems.append(URLQueryItem(name: \"\(q.name)\", value: String(\(camelName))))")
-            } else {
-                lines.append("        queryItems.append(URLQueryItem(name: \"\(q.name)\", value: \(camelName)))")
-            }
+            lines += queryItemAppendLines(q, accessor: toCamelCase(q.name), indent: "        ")
         }
         for q in optionalQueryParams {
             let camelName = toCamelCase(q.name)
             lines.append("        if let \(camelName) = options?.\(camelName) {")
-            if q.swiftType == "Int" {
-                lines.append("            queryItems.append(URLQueryItem(name: \"\(q.name)\", value: String(\(camelName))))")
-            } else if q.swiftType == "Bool" {
-                lines.append("            queryItems.append(URLQueryItem(name: \"\(q.name)\", value: String(\(camelName))))")
-            } else {
-                lines.append("            queryItems.append(URLQueryItem(name: \"\(q.name)\", value: \(camelName)))")
-            }
+            lines += queryItemAppendLines(q, accessor: camelName, indent: "            ")
             lines.append("        }")
         }
     }
@@ -157,23 +146,12 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     if isPaginated && hasQueryItems {
         lines.append("        var queryItems: [URLQueryItem] = []")
         for q in requiredQueryParams {
-            let camelName = toCamelCase(q.name)
-            if q.swiftType == "Int" {
-                lines.append("        queryItems.append(URLQueryItem(name: \"\(q.name)\", value: String(\(camelName))))")
-            } else {
-                lines.append("        queryItems.append(URLQueryItem(name: \"\(q.name)\", value: \(camelName)))")
-            }
+            lines += queryItemAppendLines(q, accessor: toCamelCase(q.name), indent: "        ")
         }
         for q in optionalQueryParams {
             let camelName = toCamelCase(q.name)
             lines.append("        if let \(camelName) = options?.\(camelName) {")
-            if q.swiftType == "Int" {
-                lines.append("            queryItems.append(URLQueryItem(name: \"\(q.name)\", value: String(\(camelName))))")
-            } else if q.swiftType == "Bool" {
-                lines.append("            queryItems.append(URLQueryItem(name: \"\(q.name)\", value: String(\(camelName))))")
-            } else {
-                lines.append("            queryItems.append(URLQueryItem(name: \"\(q.name)\", value: \(camelName)))")
-            }
+            lines += queryItemAppendLines(q, accessor: camelName, indent: "            ")
             lines.append("        }")
         }
     }

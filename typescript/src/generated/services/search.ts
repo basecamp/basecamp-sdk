@@ -18,8 +18,28 @@ import type { PaginationOptions } from "../../pagination.js";
  * Options for search.
  */
 export interface SearchSearchOptions extends PaginationOptions {
+  /** Recording types to include. Use `key` values from the metadata
+endpoint's `recording_search_types`. Available since Basecamp 5. */
+  typeNames?: string[];
+  /** Project IDs to filter by. Available since Basecamp 5. */
+  bucketIds?: number[];
+  /** Creator person IDs to filter by. Available since Basecamp 5. */
+  creatorIds?: number[];
+  /** Filter attachments by type. Use `key` values from the metadata
+endpoint's `file_search_types`. */
+  fileType?: string;
+  /** Set to true to exclude chat results. */
+  excludeChat?: boolean;
+  /** Filter by since */
+  since?: "last_7_days" | "last_30_days" | "last_90_days" | "last_12_months" | "forever";
   /** Filter by sort */
-  sort?: "best_match" | "created_at";
+  sort?: "best_match" | "recency";
+  /** Deprecated: prefer type_names[]. */
+  type?: string;
+  /** Deprecated: prefer bucket_ids[]. */
+  bucketId?: number;
+  /** Deprecated: prefer creator_ids[]. */
+  creatorId?: number;
 }
 
 
@@ -54,7 +74,7 @@ export class SearchService extends BaseService {
       () =>
         this.client.GET("/search.json", {
           params: {
-            query: { q: q, sort: options?.sort },
+            query: { q: q, "type_names[]": options?.typeNames, "bucket_ids[]": options?.bucketIds, "creator_ids[]": options?.creatorIds, "file_type": options?.fileType, "exclude_chat": options?.excludeChat, since: options?.since, sort: options?.sort, type: options?.type, "bucket_id": options?.bucketId, "creator_id": options?.creatorId },
           },
         })
       , options

@@ -26,7 +26,7 @@ class MessagesService(BaseService):
         content: str | None = None,
         status: str | None = None,
         category_id: int | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="messages", operation="create", is_mutation=True, resource_id=board_id),
@@ -95,7 +95,7 @@ class AsyncMessagesService(AsyncBaseService):
         content: str | None = None,
         status: str | None = None,
         category_id: int | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="messages", operation="create", is_mutation=True, resource_id=board_id),

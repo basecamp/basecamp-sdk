@@ -74,7 +74,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_gauges(bucket_ids: nil)
         wrap_paginated(service: "gauges", operation: "list_gauges", is_mutation: false) do
-          params = compact_params(bucket_ids: bucket_ids)
+          params = compact_query_params(bucket_ids: bucket_ids)
           paginate("/reports/gauges.json", params: params)
         end
       end

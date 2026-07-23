@@ -30,15 +30,34 @@ type SearchResult struct {
 	Subject          string    `json:"subject,omitempty"`
 }
 
-// SearchMetadata represents metadata about available search scopes.
+// SearchMetadata represents the available search filter options returned by
+// GET /searches/metadata.json.
 type SearchMetadata struct {
-	Projects []SearchProject `json:"projects"`
+	// RecordingSearchTypes are the selectable recording-type filters. Pass a
+	// non-nil Key as a SearchOptions.TypeNames value; a nil Key is the default
+	// "everything" option.
+	RecordingSearchTypes []SearchType `json:"recording_search_types"`
+	// FileSearchTypes are the selectable file-type filters. Pass a non-nil Key
+	// as SearchOptions.FileType; a nil Key is the default "all files" option.
+	FileSearchTypes []SearchType `json:"file_search_types"`
+	// DefaultCreatorLabel is the label for the unfiltered creator option.
+	DefaultCreatorLabel string `json:"default_creator_label"`
+	// DefaultBucketLabel is the label for the unfiltered project option.
+	DefaultBucketLabel string `json:"default_bucket_label"`
+	// DefaultCircleLabel is the label for the unfiltered ping option.
+	DefaultCircleLabel string `json:"default_circle_label"`
+	// DefaultFileTypeLabel is the label for the unfiltered file-type option.
+	DefaultFileTypeLabel string `json:"default_file_type_label"`
+	// DefaultTypeLabel is the label for the unfiltered recording-type option.
+	DefaultTypeLabel string `json:"default_type_label"`
 }
 
-// SearchProject represents a project available for search scope filtering.
-type SearchProject struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+// SearchType is a selectable search filter option. Key is the value passed back
+// as a filter parameter; a nil Key (JSON null on the wire) represents the
+// default "everything"/"all files" option. Value is the human-readable label.
+type SearchType struct {
+	Key   *string `json:"key"`
+	Value string  `json:"value"`
 }
 
 // SearchListResult contains the results from searching.
@@ -51,9 +70,45 @@ type SearchListResult struct {
 
 // SearchOptions specifies optional parameters for search.
 type SearchOptions struct {
-	// Sort specifies the sort order: "best_match" or "created_at" (default: created_at desc).
-	// "best_match" returns results ranked by relevance with a recency boost.
+	// Sort specifies the sort order: "best_match" (default, relevance with a
+	// recency boost) or "recency" (strictly newest first).
 	Sort string
+
+	// TypeNames restricts results to the given recording types. Use Key values
+	// from SearchMetadata.RecordingSearchTypes.
+	TypeNames []string
+
+	// BucketIds restricts results to the given project IDs.
+	BucketIds []int64
+
+	// CreatorIds restricts results to the given creator person IDs.
+	CreatorIds []int64
+
+	// FileType filters attachments by type. Use a Key value from
+	// SearchMetadata.FileSearchTypes.
+	FileType string
+
+	// ExcludeChat excludes chat results when true.
+	ExcludeChat bool
+
+	// Since bounds results to a time range: "last_7_days", "last_30_days",
+	// "last_90_days", "last_12_months", or "forever" (the default).
+	Since string
+
+	// Type is the deprecated single-recording-type filter. Prefer TypeNames.
+	//
+	// Deprecated: use TypeNames.
+	Type string
+
+	// BucketID is the deprecated single-project filter. Prefer BucketIds.
+	//
+	// Deprecated: use BucketIds.
+	BucketID int64
+
+	// CreatorID is the deprecated single-creator filter. Prefer CreatorIds.
+	//
+	// Deprecated: use CreatorIds.
+	CreatorID int64
 
 	// Limit is the maximum number of results to return.
 	// If 0 (default), returns all results.
@@ -104,8 +159,42 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	params := &generated.SearchParams{
 		Q: query,
 	}
-	if opts != nil && opts.Sort != "" {
-		params.Sort = opts.Sort
+	if opts != nil {
+		if opts.Sort != "" {
+			params.Sort = opts.Sort
+		}
+		// Array filters map onto the generated params, which own the wire
+		// encoding (form:"bucket_ids[]" tags → repeated bucket_ids%5B%5D=…
+		// pairs); no URL rewriting here. The params are *pointer* slices so the
+		// generated client omits them entirely when unset — pass a pointer only
+		// for a non-empty slice, else an empty `bucket_ids[]=` would reach Rails
+		// and normalize to a bogus [0] filter.
+		if len(opts.TypeNames) > 0 {
+			params.TypeNames = &opts.TypeNames
+		}
+		if len(opts.BucketIds) > 0 {
+			params.BucketIds = &opts.BucketIds
+		}
+		if len(opts.CreatorIds) > 0 {
+			params.CreatorIds = &opts.CreatorIds
+		}
+		if opts.FileType != "" {
+			params.FileType = opts.FileType
+		}
+		params.ExcludeChat = opts.ExcludeChat
+		if opts.Since != "" {
+			params.Since = opts.Since
+		}
+		// Deprecated singular filters (prefer the plural array forms above).
+		if opts.Type != "" {
+			params.Type = opts.Type
+		}
+		if opts.BucketID != 0 {
+			params.BucketId = opts.BucketID
+		}
+		if opts.CreatorID != 0 {
+			params.CreatorId = opts.CreatorID
+		}
 	}
 
 	resp, err := s.client.parent.gen.SearchWithResponse(ctx, s.client.accountID, params)
@@ -161,8 +250,8 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 	return &SearchListResult{Results: searchResults, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
-// Metadata returns metadata about available search scopes.
-// This includes the list of projects available for filtering.
+// Metadata returns the available search filter options: the selectable
+// recording- and file-search types and the default (unfiltered) labels.
 func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, err error) {
 	op := OperationInfo{
 		Service: "Search", Operation: "Metadata",
@@ -191,16 +280,26 @@ func (s *SearchService) Metadata(ctx context.Context) (result *SearchMetadata, e
 
 	// Convert metadata
 	metadata := &SearchMetadata{
-		Projects: make([]SearchProject, 0, len(resp.JSON200.Projects)),
-	}
-	for _, gsp := range resp.JSON200.Projects {
-		metadata.Projects = append(metadata.Projects, SearchProject{
-			ID:   derefInt64(gsp.Id),
-			Name: gsp.Name,
-		})
+		RecordingSearchTypes: searchTypesFromGenerated(resp.JSON200.RecordingSearchTypes),
+		FileSearchTypes:      searchTypesFromGenerated(resp.JSON200.FileSearchTypes),
+		DefaultCreatorLabel:  resp.JSON200.DefaultCreatorLabel,
+		DefaultBucketLabel:   resp.JSON200.DefaultBucketLabel,
+		DefaultCircleLabel:   resp.JSON200.DefaultCircleLabel,
+		DefaultFileTypeLabel: resp.JSON200.DefaultFileTypeLabel,
+		DefaultTypeLabel:     resp.JSON200.DefaultTypeLabel,
 	}
 
 	return metadata, nil
+}
+
+// searchTypesFromGenerated converts generated SearchType filter options to the
+// clean wrapper type.
+func searchTypesFromGenerated(gts []generated.SearchType) []SearchType {
+	types := make([]SearchType, 0, len(gts))
+	for _, gt := range gts {
+		types = append(types, SearchType{Key: gt.Key, Value: gt.Value})
+	}
+	return types
 }
 
 // searchResultFromGenerated converts a generated SearchResult to our clean SearchResult type.

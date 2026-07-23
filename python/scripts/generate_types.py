@@ -15,6 +15,17 @@ PYTHON_KEYWORDS = set(keyword.kwlist)
 
 
 def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> str:
+    # OpenAPI 3.1 nullable union: `type: ["string", "null"]`. Resolve the
+    # non-null base type (which may itself be a FlexInt dimension) and union it
+    # with None so present-but-null values are typed.
+    schema_type = schema.get("type")
+    if isinstance(schema_type, list) and "null" in schema_type:
+        non_null = [t for t in schema_type if t != "null"]
+        base_schema = {**schema, "type": non_null[0] if non_null else None}
+        base = schema_to_type(base_schema, schemas)
+        t = f"{base} | None"
+        return f"NotRequired[{t}]" if optional else t
+
     # types.FlexInt dimensions (rich-text attachment / upload width & height)
     # arrive float-spelled (1024.0) and Python's raw response.json() preserves
     # the float — there is no int-coercion layer — so the honest static type is

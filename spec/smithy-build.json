@@ -32,7 +32,9 @@
             "/info/contact": {
               "name": "Basecamp",
               "url": "https://github.com/basecamp/basecamp-sdk"
-            }
+            },
+            "/components/schemas/SearchType/properties/key/type": ["string", "null"],
+            "/components/schemas/SearchType/properties/key/x-go-type": "*string"
           }
         }
       }

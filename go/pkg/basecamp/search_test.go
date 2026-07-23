@@ -7,7 +7,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+
+	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
 )
 
 func searchFixturesDir() string {
@@ -158,41 +161,227 @@ func TestSearchMetadata_Unmarshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal metadata.json: %v", err)
 	}
 
-	if len(metadata.Projects) != 3 {
-		t.Errorf("expected 3 projects, got %d", len(metadata.Projects))
+	if len(metadata.RecordingSearchTypes) != 4 {
+		t.Fatalf("expected 4 recording search types, got %d", len(metadata.RecordingSearchTypes))
+	}
+	// The default "everything" option has a null key, preserved as a nil *string
+	// (not collapsed to ""), so callers can distinguish it from a real key.
+	if got := metadata.RecordingSearchTypes[0]; got.Key != nil || got.Value != "Everything" {
+		t.Errorf("expected {Key:nil Value:\"Everything\"}, got %+v", got)
+	}
+	if got := metadata.RecordingSearchTypes[1]; got.Key == nil || *got.Key != "Kanban::Card" || got.Value != "Card tables" {
+		t.Errorf("expected {Key:\"Kanban::Card\" Value:\"Card tables\"}, got %+v", got)
 	}
 
-	// Verify first project
-	p1 := metadata.Projects[0]
-	if p1.ID != 2085958499 {
-		t.Errorf("expected ID 2085958499, got %d", p1.ID)
+	if len(metadata.FileSearchTypes) != 3 {
+		t.Fatalf("expected 3 file search types, got %d", len(metadata.FileSearchTypes))
 	}
-	if p1.Name != "The Leto Laptop" {
-		t.Errorf("expected name 'The Leto Laptop', got %q", p1.Name)
+	if got := metadata.FileSearchTypes[1]; got.Key == nil || *got.Key != "Image" || got.Value != "Images" {
+		t.Errorf("expected {Key:\"Image\" Value:\"Images\"}, got %+v", got)
 	}
 
-	// Verify second project
-	p2 := metadata.Projects[1]
-	if p2.ID != 2085958500 {
-		t.Errorf("expected ID 2085958500, got %d", p2.ID)
+	if metadata.DefaultCreatorLabel != "Anyone" {
+		t.Errorf("unexpected default_creator_label: %q", metadata.DefaultCreatorLabel)
 	}
-	if p2.Name != "Marketing Campaign Q4" {
-		t.Errorf("expected name 'Marketing Campaign Q4', got %q", p2.Name)
+	if metadata.DefaultBucketLabel != "All projects" {
+		t.Errorf("unexpected default_bucket_label: %q", metadata.DefaultBucketLabel)
+	}
+	if metadata.DefaultCircleLabel != "All pings" {
+		t.Errorf("unexpected default_circle_label: %q", metadata.DefaultCircleLabel)
+	}
+	if metadata.DefaultFileTypeLabel != "All files" {
+		t.Errorf("unexpected default_file_type_label: %q", metadata.DefaultFileTypeLabel)
+	}
+	if metadata.DefaultTypeLabel != "Everything" {
+		t.Errorf("unexpected default_type_label: %q", metadata.DefaultTypeLabel)
+	}
+}
+
+// TestSearchParams_BracketedArrayWireEncoding drives the generated request
+// builder directly (no SearchService) to prove the array filters serialize as
+// bracketed repeated keys — bucket_ids[]=1&bucket_ids[]=2 — which is the only
+// form Rails' `permit(bucket_ids: [])` accepts. It asserts on the decoded query
+// (Go percent-encodes the brackets on the wire; url.Query decodes them back).
+func TestSearchParams_BracketedArrayWireEncoding(t *testing.T) {
+	params := &generated.SearchParams{
+		Q:          "hello",
+		BucketIds:  &[]int64{1, 2},
+		TypeNames:  &[]string{"Message", "Todo"},
+		CreatorIds: &[]int64{7},
 	}
 
-	// Verify third project
-	p3 := metadata.Projects[2]
-	if p3.ID != 2085958501 {
-		t.Errorf("expected ID 2085958501, got %d", p3.ID)
+	req, err := generated.NewSearchRequest("https://example.test", "195539477", params)
+	if err != nil {
+		t.Fatalf("NewSearchRequest: %v", err)
 	}
-	if p3.Name != "Internal Operations" {
-		t.Errorf("expected name 'Internal Operations', got %q", p3.Name)
+
+	values := req.URL.Query()
+
+	if got := values["bucket_ids[]"]; !reflect.DeepEqual(got, []string{"1", "2"}) {
+		t.Errorf("bucket_ids[] = %v, want [1 2]", got)
+	}
+	if got := values["type_names[]"]; !reflect.DeepEqual(got, []string{"Message", "Todo"}) {
+		t.Errorf("type_names[] = %v, want [Message Todo]", got)
+	}
+	if got := values["creator_ids[]"]; !reflect.DeepEqual(got, []string{"7"}) {
+		t.Errorf("creator_ids[] = %v, want [7]", got)
+	}
+	// Rails drops the bare and double-bracketed forms — assert their absence.
+	if _, ok := values["bucket_ids"]; ok {
+		t.Errorf("unexpected bare bucket_ids key: %v", values["bucket_ids"])
+	}
+	if _, ok := values["bucket_ids[][]"]; ok {
+		t.Errorf("unexpected double-bracket bucket_ids[][] key")
+	}
+	if got := values.Get("q"); got != "hello" {
+		t.Errorf("q = %q, want hello", got)
+	}
+}
+
+// TestSearchParams_AllFieldsWireEncoding drives the generated request builder
+// with every filter param — arrays, scalars, and the deprecated singulars —
+// and asserts each lands on the wire with the right key/value.
+func TestSearchParams_AllFieldsWireEncoding(t *testing.T) {
+	params := &generated.SearchParams{
+		Q:           "hello",
+		TypeNames:   &[]string{"Message", "Todo"},
+		BucketIds:   &[]int64{1, 2},
+		CreatorIds:  &[]int64{7},
+		FileType:    "Image",
+		ExcludeChat: true,
+		Since:       "last_30_days",
+		Sort:        "recency",
+		Type:        "Message",
+		BucketId:    9,
+		CreatorId:   3,
+	}
+
+	req, err := generated.NewSearchRequest("https://example.test", "195539477", params)
+	if err != nil {
+		t.Fatalf("NewSearchRequest: %v", err)
+	}
+	q := req.URL.Query()
+
+	checks := map[string]string{
+		"q":            "hello",
+		"file_type":    "Image",
+		"exclude_chat": "true",
+		"since":        "last_30_days",
+		"sort":         "recency",
+		"type":         "Message",
+		"bucket_id":    "9",
+		"creator_id":   "3",
+	}
+	for key, want := range checks {
+		if got := q.Get(key); got != want {
+			t.Errorf("%s = %q, want %q", key, got, want)
+		}
+	}
+	if got := q["type_names[]"]; !reflect.DeepEqual(got, []string{"Message", "Todo"}) {
+		t.Errorf("type_names[] = %v, want [Message Todo]", got)
+	}
+	if got := q["bucket_ids[]"]; !reflect.DeepEqual(got, []string{"1", "2"}) {
+		t.Errorf("bucket_ids[] = %v, want [1 2]", got)
+	}
+	if got := q["creator_ids[]"]; !reflect.DeepEqual(got, []string{"7"}) {
+		t.Errorf("creator_ids[] = %v, want [7]", got)
+	}
+}
+
+// TestSearchService_Search_AllFilters drives the full public wrapper (not just
+// the generated request) with every SearchOptions field and asserts the wire.
+func TestSearchService_Search_AllFilters(t *testing.T) {
+	fixture := loadSearchFixture(t, "results.json")
+	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		checks := map[string]string{
+			"q":            "leto",
+			"file_type":    "PDF",
+			"exclude_chat": "true",
+			"since":        "last_7_days",
+			"sort":         "recency",
+			"type":         "Document",
+			"bucket_id":    "42",
+			"creator_id":   "5",
+		}
+		for key, want := range checks {
+			if got := q.Get(key); got != want {
+				t.Errorf("%s = %q, want %q", key, got, want)
+			}
+		}
+		if got := q["bucket_ids[]"]; !reflect.DeepEqual(got, []string{"1", "2"}) {
+			t.Errorf("bucket_ids[] = %v, want [1 2]", got)
+		}
+		if got := q["type_names[]"]; !reflect.DeepEqual(got, []string{"Message"}) {
+			t.Errorf("type_names[] = %v, want [Message]", got)
+		}
+		if got := q["creator_ids[]"]; !reflect.DeepEqual(got, []string{"7"}) {
+			t.Errorf("creator_ids[] = %v, want [7]", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(fixture)
+	})
+
+	_, err := svc.Search(context.Background(), "leto", &SearchOptions{
+		TypeNames:   []string{"Message"},
+		BucketIds:   []int64{1, 2},
+		CreatorIds:  []int64{7},
+		FileType:    "PDF",
+		ExcludeChat: true,
+		Since:       "last_7_days",
+		Sort:        "recency",
+		Type:        "Document",
+		BucketID:    42,
+		CreatorID:   5,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestSearchService_Search_OmitsEmptyArrayFilters guards the wrapper against
+// leaking empty `bucket_ids[]=` params (which Rails normalizes to a bogus [0]
+// filter). Neither a nil-opts search nor a partial-filter search may emit any
+// array key that wasn't set.
+func TestSearchService_Search_OmitsEmptyArrayFilters(t *testing.T) {
+	fixture := loadSearchFixture(t, "results.json")
+
+	// (a) nil opts — no array keys at all.
+	svc := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		for _, key := range []string{"type_names[]", "bucket_ids[]", "creator_ids[]"} {
+			if q.Has(key) {
+				t.Errorf("nil opts: unexpected %s in %q", key, r.URL.RawQuery)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(fixture)
+	})
+	if _, err := svc.Search(context.Background(), "leto", nil); err != nil {
+		t.Fatalf("nil opts: %v", err)
+	}
+
+	// (b) only bucket_ids set — the other two must be absent, no empty entries.
+	svc2 := testSearchServer(t, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if got := q["bucket_ids[]"]; !reflect.DeepEqual(got, []string{"5"}) {
+			t.Errorf("bucket_ids[] = %v, want [5]", got)
+		}
+		if q.Has("type_names[]") || q.Has("creator_ids[]") {
+			t.Errorf("unexpected empty array keys in %q", r.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(fixture)
+	})
+	if _, err := svc2.Search(context.Background(), "leto", &SearchOptions{BucketIds: []int64{5}}); err != nil {
+		t.Fatalf("partial opts: %v", err)
 	}
 }
 
 func TestSearchOptions_Marshal(t *testing.T) {
 	opts := SearchOptions{
-		Sort: "created_at",
+		Sort: "recency",
 	}
 
 	out, err := json.Marshal(opts)
@@ -205,7 +394,7 @@ func TestSearchOptions_Marshal(t *testing.T) {
 		t.Fatalf("failed to unmarshal to map: %v", err)
 	}
 
-	if data["Sort"] != "created_at" {
+	if data["Sort"] != "recency" {
 		t.Errorf("unexpected Sort: %v", data["Sort"])
 	}
 }

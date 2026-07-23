@@ -27,7 +27,7 @@ class SubscriptionsService(BaseService):
         )
 
     def update(
-        self, *, recording_id: int, subscriptions: list | None = None, unsubscriptions: list | None = None
+        self, *, recording_id: int, subscriptions: list[int] | None = None, unsubscriptions: list[int] | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="subscriptions", operation="update", is_mutation=True, resource_id=recording_id),
@@ -63,7 +63,7 @@ class AsyncSubscriptionsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, recording_id: int, subscriptions: list | None = None, unsubscriptions: list | None = None
+        self, *, recording_id: int, subscriptions: list[int] | None = None, unsubscriptions: list[int] | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="subscriptions", operation="update", is_mutation=True, resource_id=recording_id),

@@ -440,7 +440,16 @@ data class CreateScheduleEntryBody(
 
 /** Options for Search. */
 data class SearchOptions(
+    val typeNames: List<String>? = null,
+    val bucketIds: List<Long>? = null,
+    val creatorIds: List<Long>? = null,
+    val fileType: String? = null,
+    val excludeChat: Boolean? = null,
+    val since: String? = null,
     val sort: String? = null,
+    val type: String? = null,
+    val bucketId: Long? = null,
+    val creatorId: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)

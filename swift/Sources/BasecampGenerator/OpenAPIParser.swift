@@ -31,7 +31,10 @@ struct PathParam {
 }
 
 struct QueryParam {
+    /// Public identifier source (trailing `[]` stripped from the wire name).
     let name: String
+    /// Raw OpenAPI parameter name, used verbatim as the URLQueryItem name.
+    let wireName: String
     let swiftType: String
     let required: Bool
     let description: String?
@@ -117,11 +120,15 @@ func parseOperation(
     let queryParams: [QueryParam] = parameters
         .filter { ($0["in"] as? String) == "query" }
         .map { param in
-            let name = param["name"] as! String
+            let wireName = param["name"] as! String
+            // Bracketed array wire names (e.g. `bucket_ids[]`) carry `[]` only on
+            // the wire key; the public identifier strips it.
+            let name = wireName.hasSuffix("[]") ? String(wireName.dropLast(2)) : wireName
             let schema = param["schema"] as? [String: Any] ?? [:]
             let type = mapQueryParamType(schema)
             return QueryParam(
                 name: name,
+                wireName: wireName,
                 swiftType: type,
                 required: param["required"] as? Bool ?? false,
                 description: param["description"] as? String
@@ -251,6 +258,9 @@ private func mapQueryParamType(_ schema: [String: Any]) -> String {
     case "integer": return "Int"
     case "boolean": return "Bool"
     case "number": return "Double"
+    case "array":
+        let items = schema["items"] as? [String: Any] ?? [:]
+        return "[\(mapQueryParamType(items))]"
     default: return "String"
     }
 }

@@ -109,7 +109,12 @@ class PeopleService(BaseService):
         )
 
     def update_project_access(
-        self, *, project_id: int, grant: list | None = None, revoke: list | None = None, create: list | None = None
+        self,
+        *,
+        project_id: int,
+        grant: list[int] | None = None,
+        revoke: list[int] | None = None,
+        create: list[dict] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="people", operation="update_project_access", is_mutation=True, project_id=project_id),
@@ -226,7 +231,12 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def update_project_access(
-        self, *, project_id: int, grant: list | None = None, revoke: list | None = None, create: list | None = None
+        self,
+        *,
+        project_id: int,
+        grant: list[int] | None = None,
+        revoke: list[int] | None = None,
+        create: list[dict] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="people", operation="update_project_access", is_mutation=True, project_id=project_id),

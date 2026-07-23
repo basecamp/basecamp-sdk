@@ -73,6 +73,67 @@ describe("SearchService", () => {
       expect(results).toHaveLength(0);
     });
 
+    it("should encode array filters as bracketed repeated keys", async () => {
+      server.use(
+        http.get(`${BASE_URL}/search.json`, ({ request }) => {
+          const url = new URL(request.url);
+          // Rails' permit(bucket_ids: []) only accepts the bracketed repeated
+          // form. Assert on the decoded query, not the raw literal brackets.
+          expect(url.searchParams.getAll("bucket_ids[]")).toEqual(["1", "2"]);
+          expect(url.searchParams.getAll("type_names[]")).toEqual([
+            "Message",
+            "Todo",
+          ]);
+          expect(url.searchParams.getAll("creator_ids[]")).toEqual(["7"]);
+          // The bare and double-bracketed forms must be absent.
+          expect(url.searchParams.has("bucket_ids")).toBe(false);
+          expect(url.searchParams.has("bucket_ids[][]")).toBe(false);
+          return HttpResponse.json([]);
+        })
+      );
+
+      const results = await client.search.search("hello", {
+        bucketIds: [1, 2],
+        typeNames: ["Message", "Todo"],
+        creatorIds: [7],
+      });
+      expect(results).toHaveLength(0);
+    });
+
+    it("should encode the full filter surface (arrays, scalars, deprecated singulars)", async () => {
+      server.use(
+        http.get(`${BASE_URL}/search.json`, ({ request }) => {
+          const p = new URL(request.url).searchParams;
+          expect(p.get("q")).toBe("hello");
+          expect(p.getAll("bucket_ids[]")).toEqual(["1", "2"]);
+          expect(p.getAll("type_names[]")).toEqual(["Message"]);
+          expect(p.getAll("creator_ids[]")).toEqual(["7"]);
+          expect(p.get("file_type")).toBe("Image");
+          expect(p.get("exclude_chat")).toBe("true");
+          expect(p.get("since")).toBe("last_30_days");
+          expect(p.get("sort")).toBe("recency");
+          // Deprecated singulars.
+          expect(p.get("type")).toBe("Message");
+          expect(p.get("bucket_id")).toBe("9");
+          expect(p.get("creator_id")).toBe("3");
+          return HttpResponse.json([]);
+        })
+      );
+
+      await client.search.search("hello", {
+        bucketIds: [1, 2],
+        typeNames: ["Message"],
+        creatorIds: [7],
+        fileType: "Image",
+        excludeChat: true,
+        since: "last_30_days",
+        sort: "recency",
+        type: "Message",
+        bucketId: 9,
+        creatorId: 3,
+      });
+    });
+
     // Note: Client-side validation removed - generated services let API validate
 
     it("should return empty array when no results", async () => {
@@ -88,12 +149,21 @@ describe("SearchService", () => {
   });
 
   describe("metadata", () => {
-    it("should return search metadata with available projects", async () => {
+    it("should return the available search filter options", async () => {
       const mockMetadata = {
-        projects: [
-          { id: 1, name: "Project A" },
-          { id: 2, name: "Project B" },
+        recording_search_types: [
+          { key: null, value: "Everything" },
+          { key: "Message", value: "Messages" },
         ],
+        file_search_types: [
+          { key: null, value: "All files" },
+          { key: "Image", value: "Images" },
+        ],
+        default_creator_label: "Anyone",
+        default_bucket_label: "All projects",
+        default_circle_label: "All pings",
+        default_file_type_label: "All files",
+        default_type_label: "Everything",
       };
 
       server.use(
@@ -103,19 +173,13 @@ describe("SearchService", () => {
       );
 
       const metadata = await client.search.metadata();
-      expect(metadata.projects).toHaveLength(2);
-      expect(metadata.projects![0]!.name).toBe("Project A");
-    });
-
-    it("should return empty projects array when no projects available", async () => {
-      server.use(
-        http.get(`${BASE_URL}/searches/metadata.json`, () => {
-          return HttpResponse.json({ projects: [] });
-        })
-      );
-
-      const metadata = await client.search.metadata();
-      expect(metadata.projects).toEqual([]);
+      expect(metadata.recording_search_types).toHaveLength(2);
+      // The default "everything" option carries a null key.
+      expect(metadata.recording_search_types![0]!.key).toBeNull();
+      expect(metadata.recording_search_types![1]!.value).toBe("Messages");
+      expect(metadata.file_search_types![1]!.key).toBe("Image");
+      expect(metadata.default_creator_label).toBe("Anyone");
+      expect(metadata.default_type_label).toBe("Everything");
     });
   });
 });

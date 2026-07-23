@@ -26,7 +26,7 @@ class SchedulesService(BaseService):
         starts_at: str | None = None,
         ends_at: str | None = None,
         description: str | None = None,
-        participant_ids: list | None = None,
+        participant_ids: list[int] | None = None,
         all_day: bool | None = None,
         notify: bool | None = None,
     ) -> dict[str, Any]:
@@ -84,10 +84,10 @@ class SchedulesService(BaseService):
         starts_at: str,
         ends_at: str,
         description: str | None = None,
-        participant_ids: list | None = None,
+        participant_ids: list[int] | None = None,
         all_day: bool | None = None,
         notify: bool | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="schedules", operation="create_entry", is_mutation=True, resource_id=schedule_id),
@@ -123,7 +123,7 @@ class AsyncSchedulesService(AsyncBaseService):
         starts_at: str | None = None,
         ends_at: str | None = None,
         description: str | None = None,
-        participant_ids: list | None = None,
+        participant_ids: list[int] | None = None,
         all_day: bool | None = None,
         notify: bool | None = None,
     ) -> dict[str, Any]:
@@ -181,10 +181,10 @@ class AsyncSchedulesService(AsyncBaseService):
         starts_at: str,
         ends_at: str,
         description: str | None = None,
-        participant_ids: list | None = None,
+        participant_ids: list[int] | None = None,
         all_day: bool | None = None,
         notify: bool | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="schedules", operation="create_entry", is_mutation=True, resource_id=schedule_id),

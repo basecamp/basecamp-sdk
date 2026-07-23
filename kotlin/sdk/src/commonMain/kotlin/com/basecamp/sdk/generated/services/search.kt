@@ -28,7 +28,16 @@ class SearchService(client: AccountClient) : BaseService(client) {
         )
         val qs = buildQueryString(
             "q" to q,
+            "type_names[]" to options?.typeNames,
+            "bucket_ids[]" to options?.bucketIds,
+            "creator_ids[]" to options?.creatorIds,
+            "file_type" to options?.fileType,
+            "exclude_chat" to options?.excludeChat,
+            "since" to options?.since,
             "sort" to options?.sort,
+            "type" to options?.type,
+            "bucket_id" to options?.bucketId,
+            "creator_id" to options?.creatorId,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/search.json" + qs, operationName = info.operation)

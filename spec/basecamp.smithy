@@ -6696,8 +6696,48 @@ structure SearchInput {
   @httpQuery("q")
   query: String
 
+  /// Recording types to include. Use `key` values from the metadata
+  /// endpoint's `recording_search_types`. Available since Basecamp 5.
+  @httpQuery("type_names[]")
+  typeNames: SearchTypeNameList
+
+  /// Project IDs to filter by. Available since Basecamp 5.
+  @httpQuery("bucket_ids[]")
+  bucketIds: SearchBucketIdList
+
+  /// Creator person IDs to filter by. Available since Basecamp 5.
+  @httpQuery("creator_ids[]")
+  creatorIds: SearchCreatorIdList
+
+  /// Filter attachments by type. Use `key` values from the metadata
+  /// endpoint's `file_search_types`.
+  @httpQuery("file_type")
+  fileType: String
+
+  /// Set to true to exclude chat results.
+  @httpQuery("exclude_chat")
+  excludeChat: Boolean
+
+  @httpQuery("since")
+  since: SearchSinceField
+
   @httpQuery("sort")
   sort: SearchSortField
+
+  /// Deprecated: prefer type_names[].
+  @deprecated(message: "Use typeNames (type_names[]) instead", since: "2026-07")
+  @httpQuery("type")
+  type: String
+
+  /// Deprecated: prefer bucket_ids[].
+  @deprecated(message: "Use bucketIds (bucket_ids[]) instead", since: "2026-07")
+  @httpQuery("bucket_id")
+  bucketId: ProjectId
+
+  /// Deprecated: prefer creator_ids[].
+  @deprecated(message: "Use creatorIds (creator_ids[]) instead", since: "2026-07")
+  @httpQuery("creator_id")
+  creatorId: PersonId
 }
 
 structure SearchOutput {
@@ -7421,8 +7461,23 @@ structure Assignable {
 
 // ===== Search Shapes =====
 
-@documentation("best_match|created_at")
+@documentation("best_match|recency")
 string SearchSortField
+
+@documentation("last_7_days|last_30_days|last_90_days|last_12_months|forever")
+string SearchSinceField
+
+list SearchTypeNameList {
+  member: String
+}
+
+list SearchBucketIdList {
+  member: ProjectId
+}
+
+list SearchCreatorIdList {
+  member: PersonId
+}
 
 list SearchResultList {
   member: SearchResult
@@ -7454,16 +7509,38 @@ structure SearchResult {
 }
 
 structure SearchMetadata {
-  projects: SearchProjectList
+  @required
+  recording_search_types: SearchTypeList
+  @required
+  file_search_types: SearchTypeList
+  @required
+  default_creator_label: String
+  @required
+  default_bucket_label: String
+  @required
+  default_circle_label: String
+  @required
+  default_file_type_label: String
+  @required
+  default_type_label: String
 }
 
-list SearchProjectList {
-  member: SearchProject
+list SearchTypeList {
+  member: SearchType
 }
 
-structure SearchProject {
-  id: ProjectId
-  name: String
+/// A selectable search filter option. `key` is the value passed back as a
+/// filter parameter (null represents the default "everything" option); `value`
+/// is the human-readable label.
+structure SearchType {
+  /// Always present on the wire; `null` for the default "everything" option.
+  /// `@required` models the presence; nullability of the value is layered on in
+  /// the OpenAPI (smithy-build.json jsonAdd -> type: ["string", "null"]) since
+  /// Smithy has no native required-and-nullable.
+  @required
+  key: String
+  @required
+  value: String
 }
 
 // ===== Template Shapes =====

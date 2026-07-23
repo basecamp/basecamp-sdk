@@ -112,6 +112,28 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
       return { resolvedIds: ids, result };
     },
   },
+
+  Search: {
+    fixtures: [],
+    call: async (ctx) => {
+      // Drives the absorbed BC5 filter surface end to end: the type_names[]
+      // array flows through the SDK's bracketed wire encoding, plus the since
+      // time filter. New params are silently ignored on BC4, accepted on BC5.
+      // Assertions prove 2xx + schema validity only (acceptance/decoding
+      // coverage) — not that the backend actually respects the filter.
+      //
+      // maxItems caps pagination: without it, requestPaginated would follow
+      // every Link page for a common term like "the" against a busy account —
+      // potentially thousands of credentialed requests. A handful of results is
+      // plenty to validate the SearchResult schema.
+      const result = await ctx.client.search.search("the", {
+        typeNames: ["Message"],
+        since: "last_30_days",
+        maxItems: 5,
+      });
+      return { resolvedIds: {}, result };
+    },
+  },
 };
 
 /**

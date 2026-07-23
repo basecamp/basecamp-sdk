@@ -111,4 +111,19 @@ class GeneratedTypesTest < Minitest::Test
     assert_equal 123, hash["id"]
     assert_not hash.key?("name")
   end
+
+  # SearchType.key is required-and-nullable: the default metadata option sends
+  # `{"key": null}`, and to_h must preserve that explicit null rather than
+  # compacting it away, so consumers can distinguish the default from a real key.
+  def test_search_type_preserves_null_key
+    default_option = Basecamp::Types::SearchType.new("key" => nil, "value" => "Everything")
+    hash = default_option.to_h
+
+    assert hash.key?("key"), "required-nullable key must stay present"
+    assert_nil hash["key"]
+    assert_equal "Everything", hash["value"]
+
+    real_option = Basecamp::Types::SearchType.new("key" => "Message", "value" => "Messages")
+    assert_equal "Message", real_option.to_h["key"]
+  end
 end

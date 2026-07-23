@@ -67,7 +67,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_entries(schedule_id:, status: nil)
         wrap_paginated(service: "schedules", operation: "list_entries", is_mutation: false, resource_id: schedule_id) do
-          params = compact_params(status: status)
+          params = compact_query_params(status: status)
           paginate("/schedules/#{schedule_id}/entries.json", params: params)
         end
       end

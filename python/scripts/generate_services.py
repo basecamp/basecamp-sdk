@@ -335,7 +335,8 @@ def schema_to_python_type(schema: dict | None) -> str:
     elif t == "boolean":
         return "bool"
     elif t == "array":
-        return "list"
+        inner = schema_to_python_type(schema.get("items"))
+        return f"list[{inner}]"
     elif t == "object":
         return "dict"
     return "str"
@@ -411,7 +412,11 @@ def parse_operation(
     query_params = []
     for p in operation.get("parameters", []):
         if p["in"] == "query":
-            snake = to_snake_case(p["name"])
+            # Bracketed array wire names (e.g. `bucket_ids[]`) keep the `[]` on
+            # the raw `name` (used as the params-dict wire key so httpx sends
+            # `bucket_ids%5B%5D=…`), but strip it for the public `python_name`
+            # kwarg identifier (`bucket_ids[]` is not a valid identifier).
+            snake = to_snake_case(re.sub(r"\[\]$", "", p["name"]))
             query_params.append({
                 "name": p["name"],
                 "python_name": safe_python_name(snake),
@@ -492,11 +497,13 @@ def group_operations(spec: dict) -> dict[str, dict]:
 
 def python_type_hint(param_type: str) -> str:
     """Map a schema type string to a Python type hint for signatures."""
+    # Parametrized list types (e.g. `list[int]`, `list[str]`) pass through.
+    if param_type.startswith("list"):
+        return param_type
     return {
         "int": "int",
         "bool": "bool",
         "str": "str",
-        "list": "list",
         "dict": "dict",
     }.get(param_type, "str")
 

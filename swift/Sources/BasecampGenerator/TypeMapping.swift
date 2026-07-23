@@ -79,9 +79,31 @@ let propertyHints: [String: String] = [
 // MARK: - Schema → Swift Type
 
 /// Maps an OpenAPI schema to a Swift type string.
+/// True when an OpenAPI schema permits an explicit JSON null
+/// (OpenAPI 3.1 `type: [..., "null"]`). Nullable controls the Swift value type
+/// (optional `T?`); it is orthogonal to `required`, which controls presence.
+/// A required-and-nullable member is `let T?` with custom Codable (see
+/// emitRequiredNullableCoding) so a missing key is rejected while an explicit
+/// null round-trips.
+func schemaIsNullable(_ schema: [String: Any]) -> Bool {
+    if let types = schema["type"] as? [Any] {
+        return types.contains { ($0 as? String) == "null" }
+    }
+    return false
+}
+
 func schemaToSwiftType(_ schema: [String: Any]) -> String {
     if let ref = schema["$ref"] as? String {
         return resolveRef(ref)
+    }
+    // OpenAPI 3.1 nullable union (type: [..., "null"]): map the non-null member
+    // so `integer | null` -> Int, `string | null` -> String, etc. The optional
+    // `?` is added by the model emitter based on nullability, not here.
+    if let types = schema["type"] as? [Any] {
+        let nonNull = types.compactMap { $0 as? String }.first { $0 != "null" }
+        var base = schema
+        base["type"] = nonNull ?? "string"
+        return schemaToSwiftType(base)
     }
     let type = schema["type"] as? String ?? "String"
     switch type {
@@ -98,13 +120,13 @@ func schemaToSwiftType(_ schema: [String: Any]) -> String {
         return "Double"
     case "array":
         if let items = schema["items"] as? [String: Any] {
-            let itemType = schemaToSwiftType(items)
+            let itemType = schemaToSwiftType(items) + (schemaIsNullable(items) ? "?" : "")
             return "[\(itemType)]"
         }
         return "[Any]"
     case "object":
         if let additionalProperties = schema["additionalProperties"] as? [String: Any] {
-            let valueType = schemaToSwiftType(additionalProperties)
+            let valueType = schemaToSwiftType(additionalProperties) + (schemaIsNullable(additionalProperties) ? "?" : "")
             return "[String: \(valueType)]"
         }
         return "[String: Any]"

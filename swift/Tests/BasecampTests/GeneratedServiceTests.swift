@@ -555,4 +555,144 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(sent.httpMethod, "DELETE")
         XCTAssertTrue(sent.url!.absoluteString.hasSuffix("/chats/42/lines/300"))
     }
+
+    // MARK: - Search array-filter wire encoding + metadata decode
+
+    func testSearchEncodesArrayFiltersAsBracketedKeys() async throws {
+        let data = try JSONSerialization.data(withJSONObject: [] as [Any])
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        _ = try await account.search.search(
+            q: "hello",
+            options: SearchSearchOptions(
+                typeNames: ["Message", "Todo"],
+                bucketIds: [1, 2],
+                creatorIds: [7]
+            )
+        )
+
+        let url = transport.lastRequest!.request.url!
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems ?? []
+        func values(_ name: String) -> [String] {
+            items.filter { $0.name == name }.compactMap { $0.value }
+        }
+        // Rails' permit(bucket_ids: []) only accepts the bracketed repeated form.
+        XCTAssertEqual(values("bucket_ids[]"), ["1", "2"])
+        XCTAssertEqual(values("type_names[]"), ["Message", "Todo"])
+        XCTAssertEqual(values("creator_ids[]"), ["7"])
+        // The bare and double-bracketed forms must be absent.
+        XCTAssertTrue(values("bucket_ids").isEmpty)
+        XCTAssertTrue(values("bucket_ids[][]").isEmpty)
+        XCTAssertEqual(values("q"), ["hello"])
+    }
+
+    func testSearchEncodesFullFilterSurface() async throws {
+        let data = try JSONSerialization.data(withJSONObject: [] as [Any])
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        _ = try await account.search.search(
+            q: "hello",
+            options: SearchSearchOptions(
+                typeNames: ["Message"],
+                bucketIds: [1, 2],
+                creatorIds: [7],
+                fileType: "Image",
+                excludeChat: true,
+                since: "last_30_days",
+                sort: "recency",
+                type: "Message",
+                bucketId: 9,
+                creatorId: 3
+            )
+        )
+
+        let url = transport.lastRequest!.request.url!
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems ?? []
+        func values(_ name: String) -> [String] {
+            items.filter { $0.name == name }.compactMap { $0.value }
+        }
+        func single(_ name: String) -> String? { values(name).first }
+
+        XCTAssertEqual(values("bucket_ids[]"), ["1", "2"])
+        XCTAssertEqual(values("type_names[]"), ["Message"])
+        XCTAssertEqual(values("creator_ids[]"), ["7"])
+        XCTAssertEqual(single("q"), "hello")
+        XCTAssertEqual(single("file_type"), "Image")
+        XCTAssertEqual(single("exclude_chat"), "true")
+        XCTAssertEqual(single("since"), "last_30_days")
+        XCTAssertEqual(single("sort"), "recency")
+        XCTAssertEqual(single("type"), "Message")
+        XCTAssertEqual(single("bucket_id"), "9")
+        XCTAssertEqual(single("creator_id"), "3")
+    }
+
+    func testSearchMetadataDecodes() async throws {
+        let json: [String: Any] = [
+            "recording_search_types": [
+                ["key": NSNull(), "value": "Everything"],
+                ["key": "Message", "value": "Messages"],
+            ],
+            "file_search_types": [
+                ["key": NSNull(), "value": "All files"],
+                ["key": "Image", "value": "Images"],
+            ],
+            "default_creator_label": "Anyone",
+            "default_bucket_label": "All projects",
+            "default_circle_label": "All pings",
+            "default_file_type_label": "All files",
+            "default_type_label": "Everything",
+        ]
+        let data = try JSONSerialization.data(withJSONObject: json)
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport)
+
+        let metadata = try await account.search.metadata()
+
+        XCTAssertEqual(metadata.recordingSearchTypes.count, 2)
+        // The default "everything" option carries a null key.
+        XCTAssertNil(metadata.recordingSearchTypes[0].key)
+        XCTAssertEqual(metadata.recordingSearchTypes[1].value, "Messages")
+        XCTAssertEqual(metadata.fileSearchTypes[1].key, "Image")
+        XCTAssertEqual(metadata.defaultCreatorLabel, "Anyone")
+        XCTAssertEqual(metadata.defaultTypeLabel, "Everything")
+    }
+
+    // SearchType.key is required-and-nullable: present on the wire, possibly null.
+    // The generated custom Codable must (1) accept explicit null, (2) reject a
+    // missing key, and (3) re-encode nil as an explicit `"key": null`.
+    func testSearchTypeKeyRequiredNullableRoundTrip() throws {
+        let decoder = JSONDecoder()
+
+        // (1) explicit null decodes to nil
+        let nullKey = try decoder.decode(SearchType.self, from: Data(#"{"key":null,"value":"Everything"}"#.utf8))
+        XCTAssertNil(nullKey.key)
+        XCTAssertEqual(nullKey.value, "Everything")
+
+        // present key decodes to the value
+        let realKey = try decoder.decode(SearchType.self, from: Data(#"{"key":"Message","value":"Messages"}"#.utf8))
+        XCTAssertEqual(realKey.key, "Message")
+
+        // (2) a MISSING key is rejected (required presence)
+        XCTAssertThrowsError(
+            try decoder.decode(SearchType.self, from: Data(#"{"value":"Everything"}"#.utf8))
+        ) { error in
+            guard case DecodingError.keyNotFound = error else {
+                return XCTFail("expected keyNotFound, got \(error)")
+            }
+        }
+
+        // (3) nil re-encodes as explicit null, not omitted
+        let encoder = JSONEncoder()
+        let nilEncoded = try encoder.encode(SearchType(key: nil, value: "Everything"))
+        let nilObject = try JSONSerialization.jsonObject(with: nilEncoded) as? [String: Any]
+        XCTAssertTrue(nilObject?.keys.contains("key") ?? false, "key must be present")
+        XCTAssertTrue(nilObject?["key"] is NSNull, "nil key must encode as JSON null")
+
+        // a present key round-trips as the string
+        let realEncoded = try encoder.encode(SearchType(key: "Message", value: "Messages"))
+        let realObject = try JSONSerialization.jsonObject(with: realEncoded) as? [String: Any]
+        XCTAssertEqual(realObject?["key"] as? String, "Message")
+    }
 }

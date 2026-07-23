@@ -1,16 +1,18 @@
 {
-  "projects": [
-    {
-      "id": 2085958499,
-      "name": "The Leto Laptop"
-    },
-    {
-      "id": 2085958500,
-      "name": "Marketing Campaign Q4"
-    },
-    {
-      "id": 2085958501,
-      "name": "Internal Operations"
-    }
-  ]
+  "recording_search_types": [
+    { "key": null, "value": "Everything" },
+    { "key": "Kanban::Card", "value": "Card tables" },
+    { "key": "Message", "value": "Messages" },
+    { "key": "Todo", "value": "To-dos" }
+  ],
+  "file_search_types": [
+    { "key": null, "value": "All files" },
+    { "key": "Image", "value": "Images" },
+    { "key": "PDF", "value": "PDFs" }
+  ],
+  "default_creator_label": "Anyone",
+  "default_bucket_label": "All projects",
+  "default_circle_label": "All pings",
+  "default_file_type_label": "All files",
+  "default_type_label": "Everything"
 }

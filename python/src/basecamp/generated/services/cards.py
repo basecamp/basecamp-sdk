@@ -25,7 +25,7 @@ class CardsService(BaseService):
         title: str | None = None,
         content: str | None = None,
         due_on: str | None = None,
-        assignee_ids: list | None = None,
+        assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cards", operation="update", is_mutation=True, resource_id=card_id),
@@ -83,7 +83,7 @@ class AsyncCardsService(AsyncBaseService):
         title: str | None = None,
         content: str | None = None,
         due_on: str | None = None,
-        assignee_ids: list | None = None,
+        assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cards", operation="update", is_mutation=True, resource_id=card_id),
