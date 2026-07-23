@@ -4,6 +4,7 @@ ruby/test/basecamp/services/wormholes_service_test.rb
 ruby/lib/basecamp/generated/types.rb
   s_3fd48deaa8600c::t_4e25a7ead25b07 4,696,720,741,4155-4204,4206,4210
   s_3fd48deaa8600c::t_b929797fe3216e 4205,4207-4209,4211
+  s_3fd48deaa8600c::t_c8cf3947f59c1c 3149,3151-3152,3155-3170,3172-3173,3178-3179,3421,3425
 ruby/lib/basecamp/client.rb
   s_3fd48deaa8600c::t_135d1040aa60b5 434-438
 ruby/README.md
