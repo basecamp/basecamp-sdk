@@ -71,7 +71,7 @@
   {
     "mode": "live",
     "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
-    "description": "Schema-validates GetMyNotifications against production BC5: bubble_ups and scheduled_bubble_ups decode as arrays, and memories decodes as the always-empty placeholder BC5 ships by contract (doc/api/sections/my_notifications.md, bc3 #11628) — see spec/api-gaps/memories-emptied-regression.md.",
+    "description": "Asserts the call succeeds and the raw body validates against the GetMyNotifications response schema on production BC5 (bubble_ups / scheduled_bubble_ups / memories are all schema-checked as arrays). It does not assert memories is empty — BC5 ships memories as an always-empty placeholder by documented contract (doc/api/sections/my_notifications.md, bc3 #11628), noted here as context; see spec/api-gaps/memories-emptied-regression.md.",
     "operation": "GetMyNotifications",
     "method": "GET",
     "path": "/my/readings.json",

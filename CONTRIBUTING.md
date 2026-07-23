@@ -410,14 +410,22 @@ default.
 cron and on `workflow_dispatch`. It is **opt-in**: the workflow no-ops with
 a clear log message if the required secrets aren't configured.
 
-The secrets are org-level (`CANARY_BASECAMP_*`), granted to this repo (an
-`<app>-canary` naming convention other app repos can mirror). Branch-gating
-comes from the `basecamp-canary` GitHub environment, not from the secrets being
-environment-scoped: a job that references an environment runs only after the
-environment's deployment-branch policy passes, and `basecamp-canary` allows
-only the default branch — so a `workflow_dispatch` from any other branch is
-refused before it can read the secrets. (No required reviewers, so scheduled
-runs never hang.) The tooling reads them under the fixed runtime env-var names:
+Provision the `CANARY_BASECAMP_*` credentials as **environment secrets on the
+`basecamp-canary` environment** — not as org- or repo-level secrets. Only
+environment secrets are scoped to the credential: an org/repo secret of the
+same name is readable by *any* workflow in this repository, so the environment
+would gate this job but not the secret. As environment secrets, they are
+readable only by a job that references `environment: basecamp-canary` and
+clears its protection rules. `CANARY_BASECAMP_*` is a naming convention other
+app repos can mirror (each on its own `<app>-canary` environment) — a shared
+convention, not a shared org secret.
+
+The environment's deployment-branch policy additionally restricts those jobs to
+the default branch, so a non-default-branch `workflow_dispatch` is normally
+refused before it runs (repo admins can bypass environment protection rules by
+default, so treat that as defense-in-depth, not an absolute gate). No required
+reviewers, so scheduled runs never hang. The tooling reads the secrets under
+the fixed runtime env-var names:
 
 - `CANARY_BASECAMP_TOKEN` → `BASECAMP_TOKEN` — OAuth token with read scope for
   the canary fixtures.

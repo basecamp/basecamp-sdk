@@ -522,8 +522,10 @@ conformance-live:
 #
 # Snapshot dirs are namespaced by backend label:
 # $$LIVE_RECORD_DIR/bc5/{wire,decode}/. The label is also the fixture-override
-# prefix (BASECAMP_BC5_* — see conformance/runner/typescript/fixtures.ts) and
-# must be a valid Backend value (bc4|bc5), so use `bc5` — production runs BC5.
+# prefix (BASECAMP_BC5_* — see conformance/runner/typescript/fixtures.ts). This
+# canary always uses `bc5` (production runs BC5); the pass below pins it as a
+# sub-make command-line variable so a caller's `make BASECAMP_BACKEND=... ` can't
+# retarget the snapshot/fixture namespace.
 conformance-canary:
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
 	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
@@ -566,8 +568,13 @@ conformance-canary:
 	esac; \
 	rm -rf -- "$$LRD"
 	@echo "==> conformance-canary: production BC5 pass"
+	@# BASECAMP_BACKEND=bc5 is passed as a sub-make command-line variable (not a
+	@# recipe-shell env prefix): a caller-supplied `make BASECAMP_BACKEND=bc4
+	@# conformance-canary` would otherwise propagate and override an env prefix,
+	@# capturing production traffic under the wrong label. A command-line variable
+	@# on the recursive make wins over that inherited override.
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	BASECAMP_LIVE=1 BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
+	BASECAMP_LIVE=1 LIVE_RECORD_DIR="$$LRD" $(MAKE) BASECAMP_BACKEND=bc5 conformance-live
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets
