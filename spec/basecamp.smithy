@@ -173,6 +173,9 @@ service Basecamp {
     UpdateCardStep,
     SetCardStepCompletion,
     RepositionCardStep,
+    CreateWormhole,
+    UpdateWormhole,
+    DeleteWormhole,
 
     // Batch 6 - People, Subscriptions (People & Access)
     ListPeople,
@@ -4705,12 +4708,112 @@ structure RepositionCardStepOutput {}
 
 // Note: Use TrashRecording to delete card steps
 
+// ===== Wormhole Operations =====
+
+/// Create a wormhole linking this card table to a column on another card table.
+///
+/// A wormhole is the only mechanism for moving a card to a different project: its
+/// id is a valid `column_id` for MoveCard, teleporting the card across projects.
+/// `destinationRecordingId` is the id of a column on another accessible card table.
+@basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json", code: 201)
+operation CreateWormhole {
+  input: CreateWormholeInput
+  output: CreateWormholeOutput
+  errors: [ValidationError, NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateWormholeInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  cardTableId: CardTableId
+
+  /// Id of the destination column (on another accessible card table) to link to.
+  @required
+  destination_recording_id: CardColumnId
+}
+
+structure CreateWormholeOutput {
+
+  wormhole: Wormhole
+}
+
+/// Update a wormhole's destination column
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/buckets/{bucketId}/card_tables/wormholes/{wormholeId}")
+operation UpdateWormhole {
+  input: UpdateWormholeInput
+  output: UpdateWormholeOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure UpdateWormholeInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  wormholeId: WormholeId
+
+  /// Id of the new destination column (on another accessible card table).
+  @required
+  destination_recording_id: CardColumnId
+}
+
+structure UpdateWormholeOutput {
+
+  wormhole: Wormhole
+}
+
+/// Delete a wormhole
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{bucketId}/card_tables/wormholes/{wormholeId}", code: 204)
+operation DeleteWormhole {
+  input: DeleteWormholeInput
+  output: DeleteWormholeOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DeleteWormholeInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  wormholeId: WormholeId
+}
+
+structure DeleteWormholeOutput {}
+
 // ===== CardTable Shapes =====
 
 long CardTableId
 long CardId
 long CardColumnId
 long CardStepId
+long WormholeId
 
 structure CardTable {
   @required
@@ -4741,10 +4844,59 @@ structure CardTable {
   creator: Person
   subscribers: PersonList
   lists: CardColumnList
+  wormholes: WormholeList
 }
 
 list CardColumnList {
   member: CardColumn
+}
+
+list WormholeList {
+  member: Wormhole
+}
+
+/// A wormhole links this card table to a column on another card table, enabling
+/// cards to move across projects. It carries the full recording representation
+/// plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
+/// point at the *source* board; `destination_url` is the only field identifying
+/// the destination column.
+structure Wormhole {
+  @required
+  id: WormholeId
+  @required
+  status: String
+  @required
+  visible_to_clients: Boolean
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  title: String
+  @required
+  inherits_status: Boolean
+  @required
+  type: String
+  @required
+  url: String
+  @required
+  app_url: String
+  bookmark_url: String
+  @required
+  parent: RecordingParent
+  @required
+  bucket: TodoBucket
+  @required
+  creator: Person
+  /// Wormhole color, or null.
+  color: String
+  /// True only while the destination column, its board, and its bucket are all
+  /// active; false once the destination is unlinked. Always emitted.
+  @required
+  linked: Boolean
+  /// URL of the destination column, or null when unlinked. Always present in the
+  /// response but nullable, so it is not @required.
+  destination_url: String
 }
 
 structure CardColumn {

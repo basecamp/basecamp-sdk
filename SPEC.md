@@ -52,7 +52,7 @@ When artifacts conflict, this precedence governs:
 |-----------|---------------|
 | **Config** | Holds validated configuration: base URL, timeouts, retry params, pagination caps. May support env-var override (see §2). |
 | **Client** | Top-level entry point. Enforces exactly-one-of auth. Owns account-independent services (authorization). |
-| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all 40 account-scoped services. |
+| **AccountClient** | Account-scoped facade. Prepends `/{accountId}` to paths. Owns all 41 account-scoped services. |
 | **Services** | One class per API resource group. Generated from OpenAPI tags. Methods map to operations. |
 | **BaseService** | Abstract base for generated services. Provides request execution, error mapping, pagination following, hooks integration. |
 | **HTTP Transport** | Executes HTTP requests. Applies auth headers, User-Agent, Content-Type. Implements retry, caching. |
@@ -67,7 +67,7 @@ Client
 └── forAccount(accountId) → AccountClient
     ├── projects (service)
     ├── todos (service)
-    ├── ... (38 more services)
+    ├── ... (39 more services)
     └── HTTP Transport
         ├── Auth Middleware
         ├── Retry Middleware
@@ -256,15 +256,15 @@ Refresh is attempted at most once per request. Implementations track this with a
 
 - **authorization** — identity lookup and account listing via Launchpad. Exposes `getInfo()` which GETs `https://launchpad.37signals.com/authorization.json` and returns `{expires_at, identity, accounts}`. Implemented in Go, Ruby, and TypeScript. Swift and Kotlin do not currently expose this service — a known gap. OAuth utility functions (PKCE, state generation, discovery, code exchange) are standalone helpers in §16, not service methods.
 
-### AccountClient-Level Services (account-scoped) — 40 services
+### AccountClient-Level Services (account-scoped) — 41 services
 
-attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, forwards, hillCharts, lineup, messageBoards, messageTypes, messages, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks
+attachments, automation, boosts, campfires, cardColumns, cardSteps, cardTables, cards, checkins, clientApprovals, clientCorrespondences, clientReplies, clientVisibility, comments, documents, events, forwards, hillCharts, lineup, messageBoards, messageTypes, messages, people, projects, recordings, reports, schedules, search, subscriptions, templates, timeline, timesheets, todolistGroups, todolists, todos, todosets, tools, uploads, vaults, webhooks, wormholes
 
-**Total surface:** 1 client-level + 40 account-scoped = 41 services.
+**Total surface:** 1 client-level + 41 account-scoped = 42 services.
 
 ### Derivation Rule `[static]`
 
-The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 40 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
+The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 41 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
 
 ### Merge-Safe Write Surface (Todos)
 
@@ -496,7 +496,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All 205 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
+All 208 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1544,7 +1544,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: 205
+- Total operations: 208
 - Idempotent: 67 (flagged with `idempotent: true`)
 - Non-idempotent: 138 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
@@ -1613,4 +1613,4 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 | TypeScript | 40 (full canonical set) |
 | Kotlin | 40 (full canonical set) |
 | Ruby | 40 (full canonical set) |
-| Go | 38 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
+| Go | 39 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
