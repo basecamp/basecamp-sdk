@@ -1,0 +1,72 @@
+spec/api-gaps/dock-tool-create-contract.md
+  s_9dca1a241a65c0::t_85e37173e26f68 112-116
+  s_9dca1a241a65c0::t_64ea5c21e37890 122
+  s_9dca1a241a65c0::t_8f9c5f76c0ef13 103-108
+  s_9dca1a241a65c0::t_7c2da3c253a5ff 26-28
+  s_9dca1a241a65c0::t_b83f64a5948978 6
+  s_9dca1a241a65c0::t_9a835575baeccb 123-127
+spec/api-gaps/dock-tool-visible-to-clients.md
+  s_9dca1a241a65c0::t_c7388bc25d36e9 1-82
+spec/api-gaps/external-links.md
+  s_9dca1a241a65c0::t_e305ec12b14868 1-9,16,18-20,24-29,65-66,68-70,77-79,93,102-103
+  s_9dca1a241a65c0::t_14c7968d39dc5e 90
+  s_9dca1a241a65c0::t_f763d887d17cc4 10-15,17,21-22,30-64,67,71-76,80-89,91-92,97,104,107
+  s_9dca1a241a65c0::t_f1593a93f846b5 23
+  s_9dca1a241a65c0::t_62ee4aea7852aa 94-96,98-101
+  s_9dca1a241a65c0::t_9bcf95ddb49d3f 106
+  s_2e17d0ef857ebe::t_bbe9fadfe4e6a6 105,108-112
+spec/api-gaps/card-table-wormholes.md
+  s_9dca1a241a65c0::t_4d4595f1756e8d 1-85
+go/pkg/basecamp/api-provenance.json
+  s_9dca1a241a65c0::t_64b2c494dde1e3 4-5
+spec/api-gaps/search-filter-additions.md
+  s_9dca1a241a65c0::t_1a416155a99974 59-60
+  s_9dca1a241a65c0::t_0c519b4fb9249b 73-75
+  s_9dca1a241a65c0::t_58cde6a4ce1efd 66-67
+  s_9dca1a241a65c0::t_e8f679cb11a6c3 3,6
+  s_9dca1a241a65c0::t_a716ee9aea4dd6 23-26
+  s_9dca1a241a65c0::t_ef006b2844601f 42-45
+spec/api-gaps/schedule-recurrence-writes.md
+  s_9dca1a241a65c0::t_14d1ea2ad4f02a 79-81
+  s_9dca1a241a65c0::t_cf7fb5a46caa57 54-58
+  s_9dca1a241a65c0::t_5fbaa4752596ab 90-93
+spec/api-provenance.json
+  s_9dca1a241a65c0::t_470f4544827d3c 4-5
+spec/api-gaps/todolist-reposition.md
+  s_9dca1a241a65c0::t_a4032834e1fde9 75-81
+  s_9dca1a241a65c0::t_b968a42505bfa1 89-90
+  s_9dca1a241a65c0::t_a1c361ad25b646 23-32
+  s_9dca1a241a65c0::t_8ee2309f8ff034 46-50
+typescript/src/generated/metadata.ts
+  s_9dca1a241a65c0::t_64b2c494dde1e3 40
+spec/api-gaps/README.md
+  s_9dca1a241a65c0::t_4d561f95e60e8f 46
+  s_9dca1a241a65c0::t_2ad5cb11cb242b 59-60
+  s_9dca1a241a65c0::t_7d924378d9aa0f 57-58
+ruby/lib/basecamp/generated/metadata.json
+  s_9dca1a241a65c0::t_64b2c494dde1e3 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3c07a68cc61860fe9e7bffce225087f844e59908",
+  "prompts": {},
+  "sessions": {
+    "s_2e17d0ef857ebe": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8d7c-b6c8-7761-8f92-f9ac5dd96187",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
