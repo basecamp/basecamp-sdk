@@ -25,8 +25,8 @@ as `UploadsService.ListVersions` — but nothing writes a version.
 
 basecamp-cli#404 hypothesized that `PUT /uploads/{id}.json` with a fresh
 `attachable_sgid` would replace the file and create a version. Verified against
-`basecamp/bc3` @ `ba105ba7` (the revision `spec/api-provenance.json` pins), it
-does not:
+`basecamp/bc3` @ `ba105ba7` (the revision `spec/api-provenance.json` pinned when
+this was verified; the pin has since advanced to `338b7a11`) — it does not:
 
 - `UploadsController#update` reads `upload_params`, which permits only
   `:base_name` and `:description`. `attachable_sgid` lives in

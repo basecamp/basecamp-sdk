@@ -9,7 +9,7 @@ live BC5 by the #11629 tooling. The historical server-side audit lived on the
 
 The SDK's conformance baseline is the pin in
 [`spec/api-provenance.json`](spec/api-provenance.json) — `bc3` `master`
-`ba105ba7` as of the 2026-07-22 sync. Contracts documented past the SDK's
+`338b7a11` as of the 2026-07-23 sync. Contracts documented past the SDK's
 modeled surface are registered in [`spec/api-gaps/`](spec/api-gaps/) until
 absorbed (see AGENTS.md §Provenance is Mandatory for the pin semantics).
 The `compatibility.bc3-four` pin stays at `9d73959a` (2026-06-12): the

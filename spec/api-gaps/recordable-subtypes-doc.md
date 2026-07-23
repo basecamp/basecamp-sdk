@@ -40,8 +40,12 @@ brief (no split into per-subtype briefs):
 The status stays `partial-coverage`: part of the subtype family has a merged
 contract awaiting absorption, part has no JSON contract at all.
 
-**Door remains excluded** from standalone API coverage and is covered (if at
-all) only as a string-typed `type` value on existing Recording responses.
+**Door** was previously excluded from standalone API coverage here (covered only
+as a string-typed `type` value on existing Recording responses). BC3 **#12375**
+(merged `60a7f598`, 2026-07-22) has since documented a door-specific list
+endpoint (full shape), a bespoke create path, and dock-tool get/rename/trash —
+so Door now has its own tracked surface. Its absorption is tracked under
+[[external-links-doors]], not here.
 
 ## Why it matters
 
@@ -81,8 +85,9 @@ Journal::Entry — there is no contract to model.
   do not model ahead of a BC3 contract.
 - Where Recording is polymorphic, extend the discriminated structure with the
   new `type` values.
-- Door is not modelled separately — appears as a string `type` value on
-  existing Recording responses, undecoded.
+- Door now has its own documented surface (list/create/get/rename/trash) and is
+  tracked under [[external-links-doors]] — model it there, not here. It still
+  also appears as a string `type` value on generic Recording responses.
 - Canary: extend the `Search` and `Activity` fixture coverage to include
   recordings of these new types if test data permits. Create operations not
   covered by canary (read-only canary scope).
