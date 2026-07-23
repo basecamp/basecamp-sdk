@@ -19,7 +19,7 @@ class MyNotificationsService(BaseService):
             params=self._compact(page=page),
         )
 
-    def mark_as_read(self, *, readables: list) -> None:
+    def mark_as_read(self, *, readables: list[str]) -> None:
         self._request_void(
             OperationInfo(service="mynotifications", operation="mark_as_read", is_mutation=True),
             "PUT",
@@ -38,7 +38,7 @@ class AsyncMyNotificationsService(AsyncBaseService):
             params=self._compact(page=page),
         )
 
-    async def mark_as_read(self, *, readables: list) -> None:
+    async def mark_as_read(self, *, readables: list[str]) -> None:
         await self._request_void(
             OperationInfo(service="mynotifications", operation="mark_as_read", is_mutation=True),
             "PUT",

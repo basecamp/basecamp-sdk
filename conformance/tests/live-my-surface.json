@@ -159,5 +159,19 @@
       { "type": "liveCallSucceeds" },
       { "type": "liveSchemaValidate" }
     ]
+  },
+  {
+    "mode": "live",
+    "name": "Search accepts the BC5 filter params (type_names[]/since) and decodes results",
+    "description": "ACCEPTANCE/DECODING coverage for the absorbed search filter surface (spec/api-gaps/search-filter-additions.md, bc3 #12361). Drives search with the new type_names[] array + since params through the SDK's bracketed wire encoding (the dispatch call in live-dispatch.ts is authoritative). New params are silently ignored on BC4, accepted on BC5. HONESTY NOTE: the available live assertions prove only 2xx + SearchResult schema validity — NOT that BC5 actually filters by the params. No result-membership assertion exists in the vocabulary (conformance/schema.json), so this canary is decoding/acceptance coverage, not proof the filter is respected.",
+    "operation": "Search",
+    "method": "GET",
+    "path": "/search.json",
+    "queryParams": { "q": "the", "type_names[]": ["Message"], "since": "last_30_days" },
+    "tags": ["live", "read-only", "bc5-additive"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
   }
 ]

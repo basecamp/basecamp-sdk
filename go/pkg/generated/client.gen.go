@@ -1928,13 +1928,13 @@ type ScheduleEntry struct {
 
 // SearchMetadata defines model for SearchMetadata.
 type SearchMetadata struct {
-	Projects []SearchProject `json:"projects,omitempty"`
-}
-
-// SearchProject defines model for SearchProject.
-type SearchProject struct {
-	Id   *int64 `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	DefaultBucketLabel   string       `json:"default_bucket_label"`
+	DefaultCircleLabel   string       `json:"default_circle_label"`
+	DefaultCreatorLabel  string       `json:"default_creator_label"`
+	DefaultFileTypeLabel string       `json:"default_file_type_label"`
+	DefaultTypeLabel     string       `json:"default_type_label"`
+	FileSearchTypes      []SearchType `json:"file_search_types"`
+	RecordingSearchTypes []SearchType `json:"recording_search_types"`
 }
 
 // SearchResponseContent defines model for SearchResponseContent.
@@ -1959,6 +1959,18 @@ type SearchResult struct {
 	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
 	Url              string          `json:"url"`
 	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+}
+
+// SearchType A selectable search filter option. `key` is the value passed back as a
+// filter parameter (null represents the default "everything" option); `value`
+// is the human-readable label.
+type SearchType struct {
+	// Key Always present on the wire; `null` for the default "everything" option.
+	// `@required` models the presence; nullability of the value is layered on in
+	// the OpenAPI (smithy-build.json jsonAdd -> type: ["string", "null"]) since
+	// Smithy has no native required-and-nullable.
+	Key   *string `json:"key"`
+	Value string  `json:"value"`
 }
 
 // SetCardColumnColorRequestContent defines model for SetCardColumnColorRequestContent.
@@ -2837,8 +2849,37 @@ type ListScheduleEntriesParams struct {
 type SearchParams struct {
 	Q string `form:"q" json:"q"`
 
-	// Sort best_match|created_at
+	// TypeNames Recording types to include. Use `key` values from the metadata
+	// endpoint's `recording_search_types`. Available since Basecamp 5.
+	TypeNames *[]string `form:"type_names[],omitempty" json:"type_names[],omitempty"`
+
+	// BucketIds Project IDs to filter by. Available since Basecamp 5.
+	BucketIds *[]int64 `form:"bucket_ids[],omitempty" json:"bucket_ids[],omitempty"`
+
+	// CreatorIds Creator person IDs to filter by. Available since Basecamp 5.
+	CreatorIds *[]int64 `form:"creator_ids[],omitempty" json:"creator_ids[],omitempty"`
+
+	// FileType Filter attachments by type. Use `key` values from the metadata
+	// endpoint's `file_search_types`.
+	FileType string `form:"file_type,omitempty" json:"file_type,omitempty"`
+
+	// ExcludeChat Set to true to exclude chat results.
+	ExcludeChat bool `form:"exclude_chat,omitempty" json:"exclude_chat,omitempty"`
+
+	// Since last_7_days|last_30_days|last_90_days|last_12_months|forever
+	Since string `form:"since,omitempty" json:"since,omitempty"`
+
+	// Sort best_match|recency
 	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
+
+	// Type Deprecated: prefer type_names[].
+	Type string `form:"type,omitempty" json:"type,omitempty"`
+
+	// BucketId Deprecated: prefer bucket_ids[].
+	BucketId int64 `form:"bucket_id,omitempty" json:"bucket_id,omitempty"`
+
+	// CreatorId Deprecated: prefer creator_ids[].
+	CreatorId int64 `form:"creator_id,omitempty" json:"creator_id,omitempty"`
 }
 
 // ListTemplatesParams defines parameters for ListTemplates.
@@ -15064,9 +15105,153 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 			}
 		}
 
+		if params.TypeNames != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "type_names[]", runtime.ParamLocationQuery, *params.TypeNames); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.BucketIds != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_ids[]", runtime.ParamLocationQuery, *params.BucketIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.CreatorIds != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "creator_ids[]", runtime.ParamLocationQuery, *params.CreatorIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FileType != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "file_type", runtime.ParamLocationQuery, params.FileType); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.ExcludeChat {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "exclude_chat", runtime.ParamLocationQuery, params.ExcludeChat); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Since != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "since", runtime.ParamLocationQuery, params.Since); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Sort != "" {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, params.Sort); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Type != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "type", runtime.ParamLocationQuery, params.Type); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.BucketId != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_id", runtime.ParamLocationQuery, params.BucketId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.CreatorId != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "creator_id", runtime.ParamLocationQuery, params.CreatorId); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err

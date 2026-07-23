@@ -141,6 +141,19 @@ module Basecamp
         kwargs.compact
       end
 
+      # Like compact_params, but also drops empty arrays. For query filters an
+      # empty array means "no filter" and must be omitted entirely: Faraday's
+      # nested encoder would otherwise emit a bare `bucket_ids[]`, which Rails
+      # normalizes into a bogus `[0]` filter instead of the unfiltered request
+      # the caller intended. Not used for request bodies, where an explicit
+      # empty array (e.g. clearing a list) can be meaningful.
+      #
+      # @param hash [Hash] the input hash
+      # @return [Hash] hash with nil values and empty arrays removed
+      def compact_query_params(**kwargs)
+        kwargs.reject { |_, value| value.nil? || value == [] }
+      end
+
       # Build a bucket (project) path.
       # @param project_id [Integer, String] the project/bucket ID
       # @param path [String] the path suffix

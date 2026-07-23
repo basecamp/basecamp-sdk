@@ -46,7 +46,7 @@ class UploadsService(BaseService):
         attachable_sgid: str,
         description: str | None = None,
         base_name: str | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="uploads", operation="create", is_mutation=True, resource_id=vault_id),
@@ -100,7 +100,7 @@ class AsyncUploadsService(AsyncBaseService):
         attachable_sgid: str,
         description: str | None = None,
         base_name: str | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="uploads", operation="create", is_mutation=True, resource_id=vault_id),

@@ -1,5 +1,30 @@
 import Foundation
 
+// MARK: - Query Item Emission
+
+/// Emits the `queryItems.append(...)` line(s) for a single query parameter.
+///
+/// Array-typed params (e.g. `bucket_ids[]`) expand into one `URLQueryItem` per
+/// element, keyed by the raw bracketed wire name, so URLComponents serializes
+/// `bucket_ids[]=1&bucket_ids[]=2`. Scalars emit a single item; Int/Bool values
+/// are stringified.
+func queryItemAppendLines(_ q: QueryParam, accessor: String, indent: String) -> [String] {
+    if q.swiftType.hasPrefix("[") {
+        // URLQueryItem(value:) wants String?; stringify every non-String
+        // element type ([Int], [Bool], [Double], …). Only [String] passes through.
+        let elementValue = q.swiftType == "[String]" ? "item" : "String(item)"
+        return [
+            "\(indent)for item in \(accessor) {",
+            "\(indent)    queryItems.append(URLQueryItem(name: \"\(q.wireName)\", value: \(elementValue)))",
+            "\(indent)}",
+        ]
+    }
+    if q.swiftType == "Int" || q.swiftType == "Bool" {
+        return ["\(indent)queryItems.append(URLQueryItem(name: \"\(q.wireName)\", value: String(\(accessor))))"]
+    }
+    return ["\(indent)queryItems.append(URLQueryItem(name: \"\(q.wireName)\", value: \(accessor)))"]
+}
+
 // MARK: - String Utilities
 
 /// Converts a snake_case string to camelCase.

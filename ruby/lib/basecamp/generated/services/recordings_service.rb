@@ -16,7 +16,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(type:, bucket: nil, status: nil, sort: nil, direction: nil)
         wrap_paginated(service: "recordings", operation: "list", is_mutation: false) do
-          params = compact_params(type: type, bucket: bucket, status: status, sort: sort, direction: direction)
+          params = compact_query_params(type: type, bucket: bucket, status: status, sort: sort, direction: direction)
           paginate("/projects/recordings.json", params: params)
         end
       end

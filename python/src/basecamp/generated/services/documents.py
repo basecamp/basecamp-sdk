@@ -40,7 +40,7 @@ class DocumentsService(BaseService):
         title: str,
         content: str | None = None,
         status: str | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="documents", operation="create", is_mutation=True, resource_id=vault_id),
@@ -81,7 +81,7 @@ class AsyncDocumentsService(AsyncBaseService):
         title: str,
         content: str | None = None,
         status: str | None = None,
-        subscriptions: list | None = None,
+        subscriptions: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="documents", operation="create", is_mutation=True, resource_id=vault_id),

@@ -204,19 +204,29 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
     lines.append("")
     lines.append("public struct \(typeName): Codable, Sendable {")
 
+    // Requiredness and nullability are independent axes:
+    //   nullable (type: [..., "null"]) -> the Swift value type is optional (T?)
+    //   required (in the schema's required set) -> presence: `let`, no init
+    //     default, and — when also nullable — custom Codable that rejects a
+    //     missing key and encodes nil as an explicit JSON null.
+    let hasRequiredNullable = orderedProps.contains { propName in
+        guard let ps = properties[propName] as? [String: Any] else { return false }
+        return requiredFields.contains(propName) && schemaIsNullable(ps)
+    }
+
     for propName in orderedProps {
         guard let propSchema = properties[propName] as? [String: Any] else { continue }
-        let swiftType = schemaToSwiftType(propSchema)
+        let baseType = schemaToSwiftType(propSchema)
         let camelName = toCamelCase(propName)
-        let isRequired = requiredFields.contains(propName)
+        let required = requiredFields.contains(propName)
+        let valueOptional = schemaIsNullable(propSchema) || !required
+        let propType = baseType + (valueOptional ? "?" : "")
 
-        if isRequired {
-            lines.append("    public let \(camelName): \(swiftType)")
-        } else {
-            lines.append("    public var \(camelName): \(swiftType)?")
-        }
+        // Required members are immutable (`let`, set at init); optional members
+        // stay `var` so callers can mutate/omit them.
+        lines.append("    public \(required ? "let" : "var") \(camelName): \(propType)")
         // Add system_label field after FlexibleInt id fields
-        if swiftType == "FlexibleInt" {
+        if baseType == "FlexibleInt" {
             lines.append("    /// Label for system actors (e.g. \"basecamp\"). Present when personable_type is \"LocalPerson\".")
             lines.append("    public var systemLabel: String?")
         }
@@ -227,14 +237,13 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         var initParams: [String] = []
         for propName in orderedProps {
             guard let propSchema = properties[propName] as? [String: Any] else { continue }
-            let swiftType = schemaToSwiftType(propSchema)
+            let baseType = schemaToSwiftType(propSchema)
             let camelName = toCamelCase(propName)
-            let isRequired = requiredFields.contains(propName)
-            if isRequired {
-                initParams.append("\(camelName): \(swiftType)")
-            } else {
-                initParams.append("\(camelName): \(swiftType)? = nil")
-            }
+            let required = requiredFields.contains(propName)
+            let valueOptional = schemaIsNullable(propSchema) || !required
+            let propType = baseType + (valueOptional ? "?" : "")
+            // Required members take no default (caller must supply presence).
+            initParams.append(required ? "\(camelName): \(propType)" : "\(camelName): \(propType) = nil")
         }
 
         if initParams.count <= 3 {
@@ -255,9 +264,88 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         lines.append("    }")
     }
 
+    // Synthesized Codable treats an optional-typed property as decodeIfPresent
+    // (missing OK) and omits nil on encode — which is wrong for a
+    // required-and-nullable member. Emit explicit coding only for such structs
+    // so every other model keeps its synthesized (unchanged) Codable.
+    if hasRequiredNullable {
+        lines.append(contentsOf: emitRequiredNullableCoding(orderedProps: orderedProps, properties: properties, requiredFields: requiredFields))
+    }
+
     lines.append("}")
     lines.append("")
     return lines.joined(separator: "\n")
+}
+
+/// Emits explicit `CodingKeys` + `init(from:)` + `encode(to:)` for a struct
+/// that has at least one required-and-nullable member. Semantics per member:
+///   - required & nullable: `decode(T?.self)` (rejects a missing key, decodes
+///     JSON null -> nil) and `encode(value)` (nil -> explicit `"key": null`).
+///   - required & non-null: `decode(T.self)` / `encode(value)`.
+///   - optional: `decodeIfPresent` / `encodeIfPresent` (missing OK, nil omitted).
+private func emitRequiredNullableCoding(orderedProps: [String], properties: [String: Any], requiredFields: Set<String>) -> [String] {
+    var lines: [String] = []
+
+    // Emits `case camel` or `case camel = "snake"`, plus the synthetic
+    // system_label key for FlexibleInt id fields.
+    func codingKeyLines() -> [String] {
+        var out: [String] = []
+        for propName in orderedProps {
+            guard let propSchema = properties[propName] as? [String: Any] else { continue }
+            let camelName = toCamelCase(propName)
+            out.append(camelName == propName ? "        case \(camelName)" : "        case \(camelName) = \"\(propName)\"")
+            if schemaToSwiftType(propSchema) == "FlexibleInt" {
+                out.append("        case systemLabel = \"system_label\"")
+            }
+        }
+        return out
+    }
+
+    lines.append("")
+    lines.append("    enum CodingKeys: String, CodingKey {")
+    lines.append(contentsOf: codingKeyLines())
+    lines.append("    }")
+
+    lines.append("")
+    lines.append("    public init(from decoder: any Decoder) throws {")
+    lines.append("        let container = try decoder.container(keyedBy: CodingKeys.self)")
+    for propName in orderedProps {
+        guard let propSchema = properties[propName] as? [String: Any] else { continue }
+        let baseType = schemaToSwiftType(propSchema)
+        let camelName = toCamelCase(propName)
+        let required = requiredFields.contains(propName)
+        let nullable = schemaIsNullable(propSchema)
+        if required && nullable {
+            // `decode(T?.self)` requires the key present but accepts null.
+            lines.append("        self.\(camelName) = try container.decode(\(baseType)?.self, forKey: .\(camelName))")
+        } else if required {
+            lines.append("        self.\(camelName) = try container.decode(\(baseType).self, forKey: .\(camelName))")
+        } else {
+            lines.append("        self.\(camelName) = try container.decodeIfPresent(\(baseType).self, forKey: .\(camelName))")
+        }
+        if baseType == "FlexibleInt" {
+            lines.append("        self.systemLabel = try container.decodeIfPresent(String.self, forKey: .systemLabel)")
+        }
+    }
+    lines.append("    }")
+
+    lines.append("")
+    lines.append("    public func encode(to encoder: any Encoder) throws {")
+    lines.append("        var container = encoder.container(keyedBy: CodingKeys.self)")
+    for propName in orderedProps {
+        guard let propSchema = properties[propName] as? [String: Any] else { continue }
+        let baseType = schemaToSwiftType(propSchema)
+        let camelName = toCamelCase(propName)
+        let required = requiredFields.contains(propName)
+        // Required (incl. required-nullable) always encodes: nil -> explicit null.
+        lines.append("        try container.\(required ? "encode" : "encodeIfPresent")(self.\(camelName), forKey: .\(camelName))")
+        if baseType == "FlexibleInt" {
+            lines.append("        try container.encodeIfPresent(self.systemLabel, forKey: .systemLabel)")
+        }
+    }
+    lines.append("    }")
+
+    return lines
 }
 
 /// Emits a Swift Codable struct for a request body.

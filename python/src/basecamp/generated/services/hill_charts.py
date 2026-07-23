@@ -19,7 +19,7 @@ class HillChartsService(BaseService):
         )
 
     def update_settings(
-        self, *, todoset_id: int, tracked: list | None = None, untracked: list | None = None
+        self, *, todoset_id: int, tracked: list[int] | None = None, untracked: list[int] | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="hillcharts", operation="update_settings", is_mutation=True, resource_id=todoset_id),
@@ -39,7 +39,7 @@ class AsyncHillChartsService(AsyncBaseService):
         )
 
     async def update_settings(
-        self, *, todoset_id: int, tracked: list | None = None, untracked: list | None = None
+        self, *, todoset_id: int, tracked: list[int] | None = None, untracked: list[int] | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="hillcharts", operation="update_settings", is_mutation=True, resource_id=todoset_id),

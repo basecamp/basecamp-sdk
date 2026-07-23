@@ -116,7 +116,10 @@ interface PathParam {
 }
 
 interface QueryParam {
+  /** Public identifier source (trailing `[]` stripped from the wire name). */
   name: string;
+  /** Raw OpenAPI parameter name, used verbatim as the query wire key. */
+  wireName: string;
   type: string;
   required: boolean;
   description?: string;
@@ -666,8 +669,13 @@ function parseOperation(
     .filter((p) => p.in === "query")
     .map((p) => {
       const enumUnion = parsePipeEnum(p.description) || parsePipeEnum(p.schema.description);
+      // Bracketed array wire names (e.g. `bucket_ids[]`) carry the `[]` only on
+      // the wire key; the public identifier strips it. See Approach A.
+      const wireName = p.name;
+      const name = wireName.replace(/\[\]$/, "");
       return {
-        name: p.name,
+        name,
+        wireName,
         type: enumUnion || schemaToTsType(p.schema),
         required: p.required || false,
         description: p.description,
@@ -1292,7 +1300,9 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
     if (hasQueryParams) {
       const queryParts = op.queryParams.map((q) => {
         const camelName = toCamelCase(q.name);
-        const key = q.name.includes("_") ? `"${q.name}"` : q.name;
+        // Wire key is the raw OpenAPI name (may carry `[]` or `_`); quote unless
+        // it is a bare identifier. openapi-fetch emits `bucket_ids[]=…` literal.
+        const key = /^[A-Za-z][A-Za-z0-9]*$/.test(q.wireName) ? q.wireName : `"${q.wireName}"`;
         const value = q.required ? camelName : `options?.${camelName}`;
         // Special-case: bucket param is number[] → join as CSV string
         if (q.name === "bucket" && !q.required) {

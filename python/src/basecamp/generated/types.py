@@ -1274,12 +1274,13 @@ class ScheduleEntry(TypedDict):
 
 
 class SearchMetadata(TypedDict):
-    projects: NotRequired[list[SearchProject]]
-
-
-class SearchProject(TypedDict):
-    id: NotRequired[int]
-    name: NotRequired[str]
+    default_bucket_label: str
+    default_circle_label: str
+    default_creator_label: str
+    default_file_type_label: str
+    default_type_label: str
+    file_search_types: list[SearchType]
+    recording_search_types: list[SearchType]
 
 
 class SearchResult(TypedDict):
@@ -1300,6 +1301,11 @@ class SearchResult(TypedDict):
     updated_at: NotRequired[str]
     url: str
     visible_to_clients: NotRequired[bool]
+
+
+class SearchType(TypedDict):
+    key: str | None
+    value: str
 
 
 class SetCardColumnColorRequestContent(TypedDict):

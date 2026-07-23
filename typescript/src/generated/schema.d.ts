@@ -4086,12 +4086,13 @@ export interface components {
             boosts_url?: string;
         };
         SearchMetadata: {
-            projects?: components["schemas"]["SearchProject"][];
-        };
-        SearchProject: {
-            /** Format: int64 */
-            id?: number;
-            name?: string;
+            recording_search_types: components["schemas"]["SearchType"][];
+            file_search_types: components["schemas"]["SearchType"][];
+            default_creator_label: string;
+            default_bucket_label: string;
+            default_circle_label: string;
+            default_file_type_label: string;
+            default_type_label: string;
         };
         SearchResponseContent: components["schemas"]["SearchResult"][];
         SearchResult: {
@@ -4113,6 +4114,21 @@ export interface components {
             content?: string;
             description?: string;
             subject?: string;
+        };
+        /**
+         * @description A selectable search filter option. `key` is the value passed back as a
+         *     filter parameter (null represents the default "everything" option); `value`
+         *     is the human-readable label.
+         */
+        SearchType: {
+            /**
+             * @description Always present on the wire; `null` for the default "everything" option.
+             *     `@required` models the presence; nullability of the value is layered on in
+             *     the OpenAPI (smithy-build.json jsonAdd -> type: ["string", "null"]) since
+             *     Smithy has no native required-and-nullable.
+             */
+            key: string | null;
+            value: string;
         };
         SetCardColumnColorRequestContent: {
             /** @description Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown */
@@ -14857,8 +14873,32 @@ export interface operations {
         parameters: {
             query: {
                 q: string;
-                /** @description best_match|created_at */
+                /**
+                 * @description Recording types to include. Use `key` values from the metadata
+                 *     endpoint's `recording_search_types`. Available since Basecamp 5.
+                 */
+                "type_names[]"?: string[];
+                /** @description Project IDs to filter by. Available since Basecamp 5. */
+                "bucket_ids[]"?: number[];
+                /** @description Creator person IDs to filter by. Available since Basecamp 5. */
+                "creator_ids[]"?: number[];
+                /**
+                 * @description Filter attachments by type. Use `key` values from the metadata
+                 *     endpoint's `file_search_types`.
+                 */
+                file_type?: string;
+                /** @description Set to true to exclude chat results. */
+                exclude_chat?: boolean;
+                /** @description last_7_days|last_30_days|last_90_days|last_12_months|forever */
+                since?: string;
+                /** @description best_match|recency */
                 sort?: string;
+                /** @description Deprecated: prefer type_names[]. */
+                type?: string;
+                /** @description Deprecated: prefer bucket_ids[]. */
+                bucket_id?: number;
+                /** @description Deprecated: prefer creator_ids[]. */
+                creator_id?: number;
             };
             header?: never;
             path?: never;

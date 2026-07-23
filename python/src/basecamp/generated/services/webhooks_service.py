@@ -17,7 +17,9 @@ class WebhooksService(BaseService):
             f"/buckets/{bucket_id}/webhooks.json",
         )
 
-    def create(self, *, bucket_id: int, payload_url: str, types: list, active: bool | None = None) -> dict[str, Any]:
+    def create(
+        self, *, bucket_id: int, payload_url: str, types: list[str], active: bool | None = None
+    ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="webhooks", operation="create", is_mutation=True, resource_id=bucket_id),
             "POST",
@@ -34,7 +36,12 @@ class WebhooksService(BaseService):
         )
 
     def update(
-        self, *, webhook_id: int, payload_url: str | None = None, types: list | None = None, active: bool | None = None
+        self,
+        *,
+        webhook_id: int,
+        payload_url: str | None = None,
+        types: list[str] | None = None,
+        active: bool | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="webhooks", operation="update", is_mutation=True, resource_id=webhook_id),
@@ -61,7 +68,7 @@ class AsyncWebhooksService(AsyncBaseService):
         )
 
     async def create(
-        self, *, bucket_id: int, payload_url: str, types: list, active: bool | None = None
+        self, *, bucket_id: int, payload_url: str, types: list[str], active: bool | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="webhooks", operation="create", is_mutation=True, resource_id=bucket_id),
@@ -79,7 +86,12 @@ class AsyncWebhooksService(AsyncBaseService):
         )
 
     async def update(
-        self, *, webhook_id: int, payload_url: str | None = None, types: list | None = None, active: bool | None = None
+        self,
+        *,
+        webhook_id: int,
+        payload_url: str | None = None,
+        types: list[str] | None = None,
+        active: bool | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="webhooks", operation="update", is_mutation=True, resource_id=webhook_id),

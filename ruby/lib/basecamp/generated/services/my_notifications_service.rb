@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_notifications(page: nil)
         with_operation(service: "mynotifications", operation: "get_my_notifications", is_mutation: false) do
-          http_get("/my/readings.json", params: compact_params(page: page)).json
+          http_get("/my/readings.json", params: compact_query_params(page: page)).json
         end
       end
 

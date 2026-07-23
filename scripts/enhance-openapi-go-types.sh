@@ -173,6 +173,25 @@ walk(
     .key = "/{accountId}/reports/users/progress/{personId}.json"
   else . end
 ) | from_entries)
+|
+# Eighth pass: array-typed query params → pointer slices (*[]T).
+# oapi-codegen serializes a non-pointer optional slice UNCONDITIONALLY, so a
+# nil/empty slice still emits an empty `foo[]=` entry. Rails parses that as an
+# array containing "" (and e.g. bucket_ids[]= normalizes to [0]), turning an
+# unfiltered request into a bogus filtered one. Forcing a pointer makes
+# oapi-codegen guard the param with `if params.X != nil`, so the hand-written
+# wrapper omits it entirely when the slice is empty.
+.paths |= map_values(
+  map_values(
+    if (type == "object") and (.parameters | type == "array") then
+      .parameters |= map(
+        if (.in == "query") and (.schema.type == "array") then
+          .schema += { "x-go-type-skip-optional-pointer": false }
+        else . end
+      )
+    else . end
+  )
+)
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"

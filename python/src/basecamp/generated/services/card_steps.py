@@ -21,7 +21,7 @@ class CardStepsService(BaseService):
         )
 
     def create(
-        self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list | None = None
+        self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list[int] | None = None
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
@@ -39,7 +39,12 @@ class CardStepsService(BaseService):
         )
 
     def update(
-        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignee_ids: list | None = None
+        self,
+        *,
+        step_id: int,
+        title: str | None = None,
+        due_on: str | None = None,
+        assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),
@@ -70,7 +75,7 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def create(
-        self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list | None = None
+        self, *, card_id: int, title: str, due_on: str | None = None, assignee_ids: list[int] | None = None
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="create", is_mutation=True, resource_id=card_id),
@@ -88,7 +93,12 @@ class AsyncCardStepsService(AsyncBaseService):
         )
 
     async def update(
-        self, *, step_id: int, title: str | None = None, due_on: str | None = None, assignee_ids: list | None = None
+        self,
+        *,
+        step_id: int,
+        title: str | None = None,
+        due_on: str | None = None,
+        assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="cardsteps", operation="update", is_mutation=True, resource_id=step_id),

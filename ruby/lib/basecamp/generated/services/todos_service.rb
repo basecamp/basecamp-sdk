@@ -14,7 +14,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(todolist_id:, status: nil, completed: nil)
         wrap_paginated(service: "todos", operation: "list", is_mutation: false, resource_id: todolist_id) do
-          params = compact_params(status: status, completed: completed)
+          params = compact_query_params(status: status, completed: completed)
           paginate("/todolists/#{todolist_id}/todos.json", params: params)
         end
       end

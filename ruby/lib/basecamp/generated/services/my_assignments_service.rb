@@ -29,7 +29,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_due_assignments(scope: nil)
         with_operation(service: "myassignments", operation: "get_my_due_assignments", is_mutation: false) do
-          http_get("/my/assignments/due.json", params: compact_params(scope: scope)).json
+          http_get("/my/assignments/due.json", params: compact_query_params(scope: scope)).json
         end
       end
     end

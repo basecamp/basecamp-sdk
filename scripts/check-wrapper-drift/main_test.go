@@ -737,7 +737,7 @@ func parentFromGenerated(g generated.Parent) Parent {
 }
 
 // TestRun_Tier3BareLiteralInSync covers the bare `Wrapper{...}` (non-pointer)
-// construction form — the shape LineupMarker, HillChartDot, SearchProject, and
+// construction form — the shape LineupMarker, HillChartDot, SearchType, and
 // CampfireLineAttachment take inside an append/index-assign. Every generated
 // tag is assigned by the literal, so the population check must pass.
 func TestRun_Tier3BareLiteralInSync(t *testing.T) {

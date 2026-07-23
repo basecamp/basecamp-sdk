@@ -396,7 +396,12 @@ class ServiceGenerator
                    .select { |p| p['in'] == 'query' }
                    .map do |p|
       {
-        name: p['name'],
+        # Strip a trailing `[]` from bracketed array wire names (e.g.
+        # `bucket_ids[]`): the kwarg and the params-hash key are both clean
+        # `bucket_ids`, and Faraday's NestedParamsEncoder re-adds the `[]` when
+        # serializing the array value (a raw `bucket_ids[]` key would double to
+        # `bucket_ids[][]=`).
+        name: p['name'].sub(/\[\]\z/, ''),
         type: schema_to_ruby_type(p['schema']),
         required: p['required'] || false,
         description: p['description']
@@ -794,7 +799,7 @@ class ServiceGenerator
     # Build params hash for query params
     if op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
-      lines << "        params = compact_params(#{param_names.join(', ')})"
+      lines << "        params = compact_query_params(#{param_names.join(', ')})"
       lines << "        paginate(#{path_expr}, params: params)"
     else
       lines << "        paginate(#{path_expr})"
@@ -808,7 +813,7 @@ class ServiceGenerator
 
     if op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
-      lines << "        params = compact_params(#{param_names.join(', ')})"
+      lines << "        params = compact_query_params(#{param_names.join(', ')})"
       lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", params: params)"
     else
       lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\")"
@@ -840,7 +845,7 @@ class ServiceGenerator
       lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr}).json"
     elsif op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
-      lines << "        http_#{http_method}(#{path_expr}, params: compact_params(#{param_names.join(', ')})).json"
+      lines << "        http_#{http_method}(#{path_expr}, params: compact_query_params(#{param_names.join(', ')})).json"
     else
       lines << "        http_#{http_method}(#{path_expr}).json"
     end

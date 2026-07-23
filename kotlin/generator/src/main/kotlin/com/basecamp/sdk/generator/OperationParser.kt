@@ -103,6 +103,14 @@ class OperationParser(private val api: OpenApiParser) {
                 val type = when (schema["type"]?.jsonPrimitive?.content) {
                     "integer" -> "Long"
                     "boolean" -> "Boolean"
+                    "array" -> {
+                        val itemType = when (schema["items"]?.jsonObject?.get("type")?.jsonPrimitive?.content) {
+                            "integer" -> "Long"
+                            "boolean" -> "Boolean"
+                            else -> "String"
+                        }
+                        "List<$itemType>"
+                    }
                     else -> "String"
                 }
                 QueryParam(
@@ -309,9 +317,10 @@ fun String.toKebabCase(): String =
         .replace(Regex("([A-Z]+)([A-Z][a-z])")) { "${it.groupValues[1]}-${it.groupValues[2]}" }
         .lowercase()
 
-/** "snake_case" → "camelCase" */
+/** "snake_case" → "camelCase" ("bucket_ids[]" → "bucketIds": a trailing
+ *  bracketed array wire suffix is stripped before the identifier transform). */
 fun String.snakeToCamelCase(): String =
-    replace(Regex("_([a-z])")) { it.groupValues[1].uppercase() }
+    removeSuffix("[]").replace(Regex("_([a-z])")) { it.groupValues[1].uppercase() }
 
 fun String.capitalize(): String =
     replaceFirstChar { it.uppercase() }

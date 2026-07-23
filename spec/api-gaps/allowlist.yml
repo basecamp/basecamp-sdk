@@ -22,8 +22,8 @@ not_api_resource:
     reason: "Transient nav state per BC3 plan §Out of scope."
     classified: 2026-05-01
 
-absorbed_under_other_brief:
-  - path: timelines/searches
-    covers_under: search-filter-additions
-    reason: "Search-within-timeline endpoint; tracked under the broader search-filter-additions brief covering BC3 Phase 3e search additions."
-    classified: 2026-05-01
+# Intentionally empty: the former `timelines/searches` record was removed in
+# SDK #399 — that route does not exist in bc3 (verified against config/routes.rb).
+# A false "existing, absorbed elsewhere" record would suppress detection if such
+# an endpoint were ever introduced. See spec/api-gaps/search-filter-additions.md.
+absorbed_under_other_brief: []

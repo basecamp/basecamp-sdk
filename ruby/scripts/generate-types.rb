@@ -182,7 +182,20 @@ if __FILE__ == $PROGRAM_NAME
       attr_name = prop_name.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '')
       puts "          \"#{prop_name}\" => @#{attr_name},"
     end
-    puts '        }.compact'
+    # A required-and-nullable field (OpenAPI 3.1 `type: [..., "null"]`) carries an
+    # explicit null that must survive to_h; plain .compact would drop it. Keep
+    # nil for exactly those keys — required-but-non-nullable fields still get
+    # dropped when nil, like any other nil. Everything else keeps .compact.
+    required_nullable = required_fields.select do |k|
+      t = properties[k] && properties[k]['type']
+      t.is_a?(Array) && t.include?('null')
+    end
+    if required_nullable.any?
+      keep_list = required_nullable.map { |k| "\"#{k}\"" }.join(', ')
+      puts "        }.reject { |k, v| v.nil? && ![#{keep_list}].include?(k) }"
+    else
+      puts '        }.compact'
+    end
     puts '      end'
     puts ''
 

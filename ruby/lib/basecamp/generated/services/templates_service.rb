@@ -12,7 +12,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(status: nil)
         wrap_paginated(service: "templates", operation: "list", is_mutation: false) do
-          params = compact_params(status: status)
+          params = compact_query_params(status: status)
           paginate("/templates.json", params: params)
         end
       end
