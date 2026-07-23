@@ -140,6 +140,9 @@ class TestAsyncWormholes:
         assert route.called
         assert wormhole["id"] == 99
         assert wormhole["linked"] is True
+        assert wormhole["destination_url"] is not None
+        body = json.loads(route.calls.last.request.content)
+        assert body == {"destination_recording_id": 1069479500}
 
     @pytest.mark.asyncio
     @respx.mock
@@ -178,6 +181,8 @@ class TestAsyncWormholes:
 
         assert route.called
         assert wormhole["id"] == 1069479400
+        body = json.loads(route.calls.last.request.content)
+        assert body == {"destination_recording_id": 1069479501}
 
     @pytest.mark.asyncio
     @respx.mock

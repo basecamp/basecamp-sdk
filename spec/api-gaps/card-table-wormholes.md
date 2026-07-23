@@ -12,8 +12,8 @@ bc3_refs:
   introduced_in: master
   routes:
     - "POST /:account_id/buckets/:bucket_id/card_tables/:card_table_id/wormholes.json"
-    - "PUT /:account_id/buckets/:bucket_id/card_tables/wormholes/:id.json"
-    - "DELETE /:account_id/buckets/:bucket_id/card_tables/wormholes/:id.json"
+    - "PUT /:account_id/buckets/:bucket_id/card_tables/wormholes/:id"
+    - "DELETE /:account_id/buckets/:bucket_id/card_tables/wormholes/:id"
   controllers:
     - app/controllers/kanban/wormholes_controller.rb
   related_existing_api:
@@ -50,8 +50,8 @@ provenance already ships the full contract
   - `POST /:account/buckets/:bucket/card_tables/:card_table/wormholes.json`
     → 201 (422 at the 4-per-board limit; 404 for an invalid, inaccessible,
     inactive, or same-board destination via a filtered `.find`).
-  - `PUT /:account/buckets/:bucket/card_tables/wormholes/:id.json` → 200 (404).
-  - `DELETE /:account/buckets/:bucket/card_tables/wormholes/:id.json`
+  - `PUT /:account/buckets/:bucket/card_tables/wormholes/:id` → 200 (404).
+  - `DELETE /:account/buckets/:bucket/card_tables/wormholes/:id`
     → 204 (403/404).
 
 Routing a move *through* an existing wormhole already worked — a wormhole id is
