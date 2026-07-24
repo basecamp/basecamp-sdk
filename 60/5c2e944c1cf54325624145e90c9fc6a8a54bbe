@@ -1,0 +1,23 @@
+go/pkg/generated/client.gen.go
+  s_366adaf25569e1::t_3e3458fca9e622 15116,15132,15148
+go/templates/client.tmpl
+  s_366adaf25569e1::t_55a66d19f301ab 383
+go/pkg/basecamp/search_test.go
+  s_366adaf25569e1::t_af48e5419c2485 241-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "605c2e944c1cf54325624145e90c9fc6a8a54bbe",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
