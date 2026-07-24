@@ -1,0 +1,19 @@
+typescript/package-lock.json
+  s_366adaf25569e1::t_407db1b4462802 2603-2605,2800-2802,2820
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f28041f1b99bd3693b7f2715a08b7bb9d4d7b665",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
