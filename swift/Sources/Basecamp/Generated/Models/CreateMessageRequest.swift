@@ -7,18 +7,21 @@ public struct CreateMessageRequest: Codable, Sendable {
     public var status: String?
     public let subject: String
     public var subscriptions: [Int]?
+    public var visibleToClients: Bool?
 
     public init(
         categoryId: Int? = nil,
         content: String? = nil,
         status: String? = nil,
         subject: String,
-        subscriptions: [Int]? = nil
+        subscriptions: [Int]? = nil,
+        visibleToClients: Bool? = nil
     ) {
         self.categoryId = categoryId
         self.content = content
         self.status = status
         self.subject = subject
         self.subscriptions = subscriptions
+        self.visibleToClients = visibleToClients
     }
 }

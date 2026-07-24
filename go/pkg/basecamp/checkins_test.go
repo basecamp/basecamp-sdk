@@ -1034,3 +1034,60 @@ func TestCheckinsService_ListAnswersByPerson_Pagination(t *testing.T) {
 		})
 	}
 }
+
+// TestCheckinsService_CreateQuestionVisibleToClients verifies the tri-state
+// visible_to_clients flag reaches the wire correctly on create: nil omits the
+// key, true is sent verbatim, and an explicit false is sent (not dropped).
+//
+// CreateQuestion builds its body as a map (not the generated struct), so this
+// also pins the flag as a top-level sibling of title/schedule — mis-nesting it
+// inside the schedule wrapper would be a silent server-side no-op.
+func TestCheckinsService_CreateQuestionVisibleToClients(t *testing.T) {
+	fixture := loadCheckinsFixture(t, "question.json")
+	tru, fls := true, false
+	cases := []struct {
+		name    string
+		value   *bool
+		present bool
+		want    bool
+	}{
+		{"nil omits the field", nil, false, false},
+		{"true is sent", &tru, true, true},
+		{"explicit false is sent, not dropped", &fls, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(201)
+				w.Write(fixture)
+			})
+
+			_, err := svc.CreateQuestion(context.Background(), 12345, &CreateQuestionRequest{
+				Title:            "How are you?",
+				Schedule:         &QuestionSchedule{Frequency: "every_day", Days: []int{1, 2, 3, 4, 5}},
+				VisibleToClients: tc.value,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// The flag must be a top-level key, never nested in the schedule wrapper.
+			if sched, ok := receivedBody["schedule"].(map[string]any); ok {
+				if _, nested := sched["visible_to_clients"]; nested {
+					t.Error("visible_to_clients must be top-level, not nested inside schedule")
+				}
+			}
+
+			val, ok := receivedBody["visible_to_clients"]
+			if ok != tc.present {
+				t.Fatalf("visible_to_clients present=%v, want %v (body=%v)", ok, tc.present, receivedBody)
+			}
+			if tc.present && val != tc.want {
+				t.Errorf("visible_to_clients=%v, want %v", val, tc.want)
+			}
+		})
+	}
+}

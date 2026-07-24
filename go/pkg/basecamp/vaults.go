@@ -188,6 +188,11 @@ type CreateDocumentRequest struct {
 	// Subscriptions controls who gets notified and subscribed.
 	// nil: field omitted (server default). &[]int64{}: subscribe nobody. &[]int64{1,2}: those people.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	// VisibleToClients sets client visibility at create time (optional, tri-state).
+	// nil omits the field so the server applies its own default visibility rule; a
+	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
+	// pointer distinguishes unset from false).
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
 // UpdateDocumentRequest specifies the parameters for updating a document.
@@ -218,6 +223,11 @@ type CreateUploadRequest struct {
 	// Subscriptions controls who gets notified and subscribed.
 	// nil: field omitted (server default). &[]int64{}: subscribe nobody. &[]int64{1,2}: those people.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	// VisibleToClients sets client visibility at create time (optional, tri-state).
+	// nil omits the field so the server applies its own default visibility rule; a
+	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
+	// pointer distinguishes unset from false).
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
 // VaultsService handles vault (folder) operations.
@@ -570,10 +580,11 @@ func (s *DocumentsService) Create(ctx context.Context, vaultID int64, req *Creat
 	}
 
 	body := generated.CreateDocumentJSONRequestBody{
-		Title:         req.Title,
-		Content:       req.Content,
-		Status:        req.Status,
-		Subscriptions: req.Subscriptions,
+		Title:            req.Title,
+		Content:          req.Content,
+		Status:           req.Status,
+		Subscriptions:    req.Subscriptions,
+		VisibleToClients: req.VisibleToClients,
 	}
 
 	resp, err := s.client.parent.gen.CreateDocumentWithResponse(ctx, s.client.accountID, vaultID, body)
@@ -853,10 +864,11 @@ func (s *UploadsService) Create(ctx context.Context, vaultID int64, req *CreateU
 	}
 
 	body := generated.CreateUploadJSONRequestBody{
-		AttachableSgid: req.AttachableSGID,
-		Description:    req.Description,
-		BaseName:       req.BaseName,
-		Subscriptions:  req.Subscriptions,
+		AttachableSgid:   req.AttachableSGID,
+		Description:      req.Description,
+		BaseName:         req.BaseName,
+		Subscriptions:    req.Subscriptions,
+		VisibleToClients: req.VisibleToClients,
 	}
 
 	resp, err := s.client.parent.gen.CreateUploadWithResponse(ctx, s.client.accountID, vaultID, body)

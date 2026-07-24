@@ -695,4 +695,50 @@ final class GeneratedServiceTests: XCTestCase {
         let realObject = try JSONSerialization.jsonObject(with: realEncoded) as? [String: Any]
         XCTAssertEqual(realObject?["key"] as? String, "Message")
     }
+
+    // visibleToClients is tri-state: nil omits the key (encodeIfPresent), true/false
+    // are sent verbatim. An explicit false must reach the wire, not be dropped. The
+    // shared generator carries this field on all six create ops; this messages
+    // coverage stands in for the other five ops.
+    private func messageResponseData() throws -> Data {
+        let responseJSON: [String: Any] = [
+            "id": 99, "subject": "Hello", "content": "<p>Body</p>",
+            "app_url": "https://3.basecamp.com/1/buckets/1/messages/99",
+            "url": "https://3.basecampapi.com/1/buckets/1/messages/99.json",
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+            "status": "active", "title": "Hello", "type": "Message",
+            "inherits_status": false, "visible_to_clients": false,
+            "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
+            "creator": ["id": 1, "name": "Test User"] as [String: Any],
+            "parent": ["id": 4, "title": "Message Board", "type": "Message::Board",
+                        "app_url": "https://3.basecamp.com/1/buckets/1/message_boards/4",
+                        "url": "https://3.basecampapi.com/1/buckets/1/message_boards/4.json"] as [String: Any],
+        ]
+        return try JSONSerialization.data(withJSONObject: responseJSON)
+    }
+
+    private func sentMessageBody(visibleToClients: Bool?) async throws -> [String: Any] {
+        let transport = MockTransport(statusCode: 201, data: try messageResponseData())
+        let account = makeTestAccountClient(transport: transport)
+        let req = CreateMessageRequest(subject: "Hello", visibleToClients: visibleToClients)
+        _ = try await account.messages.create(boardId: 200, req: req)
+        let sentBody = transport.lastRequest!.request.httpBody!
+        return try JSONSerialization.jsonObject(with: sentBody) as! [String: Any]
+    }
+
+    func testCreateMessageOmitsVisibleToClientsWhenNil() async throws {
+        let sentJSON = try await sentMessageBody(visibleToClients: nil)
+        XCTAssertNil(sentJSON["visible_to_clients"], "nil must omit the key")
+    }
+
+    func testCreateMessageSendsVisibleToClientsTrue() async throws {
+        let sentJSON = try await sentMessageBody(visibleToClients: true)
+        XCTAssertEqual(sentJSON["visible_to_clients"] as? Bool, true)
+    }
+
+    func testCreateMessageSendsVisibleToClientsFalse() async throws {
+        let sentJSON = try await sentMessageBody(visibleToClients: false)
+        XCTAssertNotNil(sentJSON["visible_to_clients"], "explicit false must be sent, not dropped")
+        XCTAssertEqual(sentJSON["visible_to_clients"] as? Bool, false)
+    }
 }

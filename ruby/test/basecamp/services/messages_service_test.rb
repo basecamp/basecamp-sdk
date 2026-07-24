@@ -99,6 +99,38 @@ class MessagesServiceTest < Minitest::Test
       body: hash_including("subscriptions" => [ 111, 222 ]))
   end
 
+  # visible_to_clients is tri-state: unset omits the key (compact_params drops nil),
+  # true/false are sent verbatim. An explicit false must reach the wire. The shared
+  # generator carries this field on all six create ops; this messages coverage plus
+  # the subscriptions/all_day precedent stands in for the other five ops.
+  def test_create_omits_visible_to_clients_when_unset
+    stub_post("/12345/message_boards/456/messages.json", response_body: sample_message)
+
+    @account.messages.create(board_id: 456, subject: "Test")
+
+    assert_requested(:post, "#{BASE_URL}/12345/message_boards/456/messages.json") do |req|
+      !JSON.parse(req.body).key?("visible_to_clients")
+    end
+  end
+
+  def test_create_sends_visible_to_clients_true
+    stub_post("/12345/message_boards/456/messages.json", response_body: sample_message)
+
+    @account.messages.create(board_id: 456, subject: "Test", visible_to_clients: true)
+
+    assert_requested(:post, "#{BASE_URL}/12345/message_boards/456/messages.json",
+      body: hash_including("visible_to_clients" => true))
+  end
+
+  def test_create_sends_visible_to_clients_false
+    stub_post("/12345/message_boards/456/messages.json", response_body: sample_message)
+
+    @account.messages.create(board_id: 456, subject: "Test", visible_to_clients: false)
+
+    assert_requested(:post, "#{BASE_URL}/12345/message_boards/456/messages.json",
+      body: hash_including("visible_to_clients" => false))
+  end
+
   def test_update
     # Generated service: /messages/{id} without .json
     updated_message = sample_message(subject: "Updated Subject")

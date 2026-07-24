@@ -27,13 +27,19 @@ class MessagesService(BaseService):
         status: str | None = None,
         category_id: int | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="messages", operation="create", is_mutation=True, resource_id=board_id),
             "POST",
             f"/message_boards/{board_id}/messages.json",
             json_body=self._compact(
-                subject=subject, content=content, status=status, category_id=category_id, subscriptions=subscriptions
+                subject=subject,
+                content=content,
+                status=status,
+                category_id=category_id,
+                subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
             ),
             operation="CreateMessage",
         )
@@ -96,13 +102,19 @@ class AsyncMessagesService(AsyncBaseService):
         status: str | None = None,
         category_id: int | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="messages", operation="create", is_mutation=True, resource_id=board_id),
             "POST",
             f"/message_boards/{board_id}/messages.json",
             json_body=self._compact(
-                subject=subject, content=content, status=status, category_id=category_id, subscriptions=subscriptions
+                subject=subject,
+                content=content,
+                status=status,
+                category_id=category_id,
+                subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
             ),
             operation="CreateMessage",
         )

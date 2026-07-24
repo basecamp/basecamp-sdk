@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-07-23"
+  version: "2026-07-24"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -1070,6 +1070,8 @@ structure CreateTodolistInput {
   name: TodolistName
 
   description: TodolistDescription
+
+  visible_to_clients: Boolean
 }
 
 structure CreateTodolistOutput {
@@ -1784,6 +1786,8 @@ structure CreateMessageInput {
   category_id: MessageTypeId
 
   subscriptions: PersonIdList
+
+  visible_to_clients: Boolean
 }
 
 structure CreateMessageOutput {
@@ -2223,6 +2227,8 @@ structure CreateDocumentInput {
   status: String
 
   subscriptions: PersonIdList
+
+  visible_to_clients: Boolean
 }
 
 structure CreateDocumentOutput {
@@ -2342,6 +2348,8 @@ structure CreateUploadInput {
   base_name: UploadBaseName
 
   subscriptions: PersonIdList
+
+  visible_to_clients: Boolean
 }
 
 structure CreateUploadOutput {
@@ -2615,6 +2623,8 @@ structure CreateScheduleEntryInput {
   notify: Boolean
 
   subscriptions: PersonIdList
+
+  visible_to_clients: Boolean
 }
 
 structure CreateScheduleEntryOutput {
@@ -6184,6 +6194,8 @@ structure CreateQuestionInput {
 
   @required
   schedule: QuestionSchedule
+
+  visible_to_clients: Boolean
 }
 
 structure CreateQuestionOutput {

@@ -173,6 +173,7 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
                 body.allDay?.let { put("all_day", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.visibleToClients?.let { put("visible_to_clients", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<ScheduleEntry>(body)

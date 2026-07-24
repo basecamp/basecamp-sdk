@@ -88,6 +88,7 @@ class SchedulesService(BaseService):
         all_day: bool | None = None,
         notify: bool | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="schedules", operation="create_entry", is_mutation=True, resource_id=schedule_id),
@@ -102,6 +103,7 @@ class SchedulesService(BaseService):
                 all_day=all_day,
                 notify=notify,
                 subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
             ),
             operation="CreateScheduleEntry",
         )
@@ -185,6 +187,7 @@ class AsyncSchedulesService(AsyncBaseService):
         all_day: bool | None = None,
         notify: bool | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="schedules", operation="create_entry", is_mutation=True, resource_id=schedule_id),
@@ -199,6 +202,7 @@ class AsyncSchedulesService(AsyncBaseService):
                 all_day=all_day,
                 notify=notify,
                 subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
             ),
             operation="CreateScheduleEntry",
         )

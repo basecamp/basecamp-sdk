@@ -119,6 +119,7 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
             httpPost("/todosets/${todosetId}/todolists.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.visibleToClients?.let { put("visible_to_clients", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Todolist>(body)
