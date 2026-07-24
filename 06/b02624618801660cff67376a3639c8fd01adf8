@@ -1,0 +1,46 @@
+swift/Tests/BasecampTests/DeprecationDocCommentTests.swift
+  s_366adaf25569e1::t_035da93bb24093 1-57
+swift/Sources/BasecampGenerator/Utilities.swift
+  s_366adaf25569e1::t_17c630bbe914e0 28-47
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_366adaf25569e1::t_e36de454b4c7d1 67
+  s_366adaf25569e1::t_1c27a5bf81f868 130-134
+python/scripts/gen_common.py
+  s_366adaf25569e1::t_5f55b8ec3ba42e 1-24
+python/tests/test_generate_deprecation.py
+  s_366adaf25569e1::t_d3bb1db82a81d3 1-52
+python/scripts/generate_services.py
+  s_366adaf25569e1::t_ac2eb79268bc46 19-23
+  s_366adaf25569e1::t_4e96a0ea206228 533
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_366adaf25569e1::t_91955fb06eba71 234
+  s_366adaf25569e1::t_4756297b736d4b 209
+swift/Package.swift
+  s_366adaf25569e1::t_a00b23ee0e5e52 30
+python/scripts/generate_types.py
+  s_366adaf25569e1::t_1aed52bea2638c 124
+  s_366adaf25569e1::t_e3014073a6964f 136-138
+  s_366adaf25569e1::t_4a8412bb95799b 13-17
+ruby/lib/basecamp/generated/metadata.json
+  s_366adaf25569e1::t_1e3dfb2a6a5008 4
+ruby/lib/basecamp/generated/types.rb
+  s_366adaf25569e1::t_0e296e439a575e 4
+typescript/src/generated/metadata.ts
+  s_366adaf25569e1::t_0258bda235af98 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "06b02624618801660cff67376a3639c8fd01adf8",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
