@@ -13,6 +13,7 @@ output-options:
   # Use custom templates that read x-basecamp-* extensions
   user-templates:
     client.tmpl: templates/client.tmpl
+    client-with-responses.tmpl: templates/client-with-responses.tmpl
     typedef.tmpl: templates/typedef.tmpl
     imports.tmpl: templates/imports.tmpl
   # Skip formatting - we'll run gofmt separately
