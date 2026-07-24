@@ -5,6 +5,7 @@ go/pkg/basecamp/vaults.go
   s_9dca1a241a65c0::t_2bd6a9bc52f4f4 191-194
 swift/Tests/BasecampTests/GeneratedServiceTests.swift
   s_9dca1a241a65c0::t_6ce4d668ee6d19 558,699-743
+  s_9dca1a241a65c0::t_379d5ee0176d49 698,744
 kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/MessagesServiceTest.kt
   s_9dca1a241a65c0::t_5ee477fc7e82a6 1-87
 python/tests/services/test_messages.py
