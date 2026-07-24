@@ -1,0 +1,90 @@
+swift/Sources/Basecamp/Generated/Models/ClientSide.swift
+  s_366adaf25569e1::t_501e0f2dfb407c 4
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_366adaf25569e1::t_501e0f2dfb407c 62-68
+swift/Sources/BasecampGenerator/OpenAPIParser.swift
+  s_366adaf25569e1::t_501e0f2dfb407c 41-43,137-139
+Makefile
+  s_366adaf25569e1::t_501e0f2dfb407c 746,754-759,786
+scripts/check-ruby-deprecation-yard.rb
+  s_366adaf25569e1::t_501e0f2dfb407c 1-47
+go/pkg/generated/client.gen.go
+  s_366adaf25569e1::t_501e0f2dfb407c 419,1619-1620,2885-2886,2890-2891,2895-2896
+python/src/basecamp/generated/types.py
+  s_366adaf25569e1::t_501e0f2dfb407c 345-346,1015
+scripts/normalize-go-deprecation-godoc.sh
+  s_366adaf25569e1::t_501e0f2dfb407c 1-49
+typescript/src/generated/schema.d.ts
+  s_366adaf25569e1::t_501e0f2dfb407c 14902-14905,14907-14910,14912-14915
+kotlin/sdk/build.gradle.kts
+  s_366adaf25569e1::t_501e0f2dfb407c 11-25,45-48
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 20
+ruby/lib/basecamp/generated/metadata.json
+  s_366adaf25569e1::t_501e0f2dfb407c 4
+ruby/scripts/generate-types.rb
+  s_366adaf25569e1::t_501e0f2dfb407c 127-132,140-152
+typescript/src/generated/services/search.ts
+  s_366adaf25569e1::t_501e0f2dfb407c 37-40,42-45,47-50
+scripts/enhance-openapi-go-types.sh
+  s_366adaf25569e1::t_501e0f2dfb407c 29-39,206-247
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_366adaf25569e1::t_501e0f2dfb407c 205-210,231-235
+swift/Sources/Basecamp/Generated/Models/Project.swift
+  s_366adaf25569e1::t_501e0f2dfb407c 16
+swift/Sources/Basecamp/Generated/Services/SearchService.swift
+  s_366adaf25569e1::t_501e0f2dfb407c 12,14,16
+python/scripts/generate_types.py
+  s_366adaf25569e1::t_501e0f2dfb407c 114-120,128-132
+python/src/basecamp/generated/services/search.py
+  s_366adaf25569e1::t_501e0f2dfb407c 29-34,79-84
+typescript/src/generated/metadata.ts
+  s_366adaf25569e1::t_501e0f2dfb407c 40
+kotlin/sdk/src/jvmTest/kotlin/com/basecamp/sdk/DeprecationDiagnosticsTest.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 1-107
+ruby/lib/basecamp/generated/types.rb
+  s_366adaf25569e1::t_501e0f2dfb407c 4,1046,2441-2442
+openapi.json
+  s_366adaf25569e1::t_501e0f2dfb407c 16497-16499,16510-16512,16523-16525,22413-22414,25496-25497
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 13,32
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/TypeEmitter.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 95-100
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 454,456,458
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/OperationParser.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 31-38,123-126,132-133,340-349
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientSide.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 13
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 95-104
+go/generate.go
+  s_366adaf25569e1::t_501e0f2dfb407c 6
+python/scripts/generate_services.py
+  s_366adaf25569e1::t_501e0f2dfb407c 420,426-427,514-533,743,757
+typescript/src/generated/openapi-stripped.json
+  s_366adaf25569e1::t_501e0f2dfb407c 14639-14641,14652-14654,14665-14667,20068-20069,23151-23152
+typescript/scripts/generate-services.ts
+  s_366adaf25569e1::t_501e0f2dfb407c 59-60,89-90,130-132,689-690,1069-1076
+scripts/check-deprecation-parity
+  s_366adaf25569e1::t_501e0f2dfb407c 1-189
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_366adaf25569e1::t_501e0f2dfb407c 59-73,98-103,180-196
+  s_366adaf25569e1::t_04df51239efbdb 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "75af01eb0681614336e4d59e689264a6d7c29938",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
