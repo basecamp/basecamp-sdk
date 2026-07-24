@@ -1,0 +1,272 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Comment.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 29
+spec/fixtures/client_replies/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 50-51
+spec/fixtures/comments/create.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 49-50
+go/pkg/basecamp/todolists.go
+  s_854ff63c351de4::t_3ada04a7b39eaf 438
+  s_854ff63c351de4::t_d1c026e0ecb3ba 39-45
+  s_854ff63c351de4::t_214d55fdacc25a 437
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 46-50
+go/pkg/basecamp/search.go
+  s_854ff63c351de4::t_5377a68372e9d0 360-362
+  s_854ff63c351de4::t_cc702687ce616f 30-39
+spec/fixtures/client_correspondences/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 54-55
+go/pkg/generated/client.gen.go
+  s_854ff63c351de4::t_d0ab1a2b871ee4 196-226,326-349,379-398,403-418,429-446,760-781,826-846,851-868,873-896,901-923,1348-1370,1689-1710,1775-1804,1931-1956,1975-2003,2164-2183,2582-2609
+python/src/basecamp/generated/types.py
+  s_854ff63c351de4::t_d0ab1a2b871ee4 150,263,311,334,360,557,604,630,651,678,807,1080,1157,1160,1274,1306,1310,1456,1727
+go/pkg/basecamp/todos.go
+  s_854ff63c351de4::t_7699343cedc288 907
+  s_854ff63c351de4::t_29217702648114 947-963
+spec/fixtures/comments/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 46-47,97-98
+spec/fixtures/forwards/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 41-42
+spec/fixtures/todolists/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 59-60
+spec/basecamp.smithy
+  s_854ff63c351de4::t_46c86d504f4960 2897-2898
+  s_854ff63c351de4::t_2ac1289585ad7a 2965-2966
+  s_854ff63c351de4::t_e324f38d64a7a3 4853-4854
+  s_854ff63c351de4::t_6e979fc6d174f0 3253-3254
+  s_854ff63c351de4::t_f9193d3adb727b 5579-5580
+  s_854ff63c351de4::t_254a2210aeb0ec 4143-4144
+  s_854ff63c351de4::t_d066578154a5a5 8283-8284
+  s_854ff63c351de4::t_7298efb3b4c7f7 1522-1523
+  s_854ff63c351de4::t_2ced6cbd21185a 3160-3161
+  s_854ff63c351de4::t_c336682741c213 6090-6099
+  s_854ff63c351de4::t_d7381983f4f887 5470-5471
+  s_854ff63c351de4::t_aeb5a3b3e62e0b 3109-3110
+  s_854ff63c351de4::t_9a914735b9c713 8248-8252
+  s_854ff63c351de4::t_56622a3aa71f81 7544-7553
+  s_854ff63c351de4::t_9e8e51456c42bf 4101-4102
+  s_854ff63c351de4::t_7f26cd6d84249e 5538-5539
+  s_854ff63c351de4::t_a338e45dddfd0f 6696-6697
+go/pkg/basecamp/checkins.go
+  s_854ff63c351de4::t_869fd7a9c213b7 893-894
+  s_854ff63c351de4::t_6bb6b354fedd1c 116-124
+spec/fixtures/todolists/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 60-61,121-122
+python/tests/services/test_uploads.py
+  s_854ff63c351de4::t_8d62b8d9278281 143-191,193-206
+  s_854ff63c351de4::t_7c1c4b46e02d45 192
+spec/fixtures/uploads/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 56-57,111-112
+spec/fixtures/forwards/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 34-35,73-74
+spec/api-gaps/README.md
+  s_854ff63c351de4::t_81f71370585d74 57
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientApproval.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 28
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientReply.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 29
+spec/fixtures/cards/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 143-144
+spec/fixtures/client_correspondences/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 49-50
+spec/fixtures/forwards/replies_list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 32-33,65-66
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_854ff63c351de4::t_d9efef789d92b6 3,7-29,40-43,46,51-56,60-105,110-114,118-122,129-130,134-148
+swift/Sources/Basecamp/Generated/Models/Todolist.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 9,39,68
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Document.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 28
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientCorrespondence.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 28
+go/pkg/basecamp/messages.go
+  s_854ff63c351de4::t_714bb1f4520412 513-514
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 17-21,28-43
+  s_854ff63c351de4::t_ec839991a840ad 22-27
+go/pkg/basecamp/recordings.go
+  s_854ff63c351de4::t_31d156a7ee524d 420-422
+  s_854ff63c351de4::t_33d7fcae862661 47-61
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ScheduleEntry.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 29
+swift/Sources/Basecamp/Generated/Models/ClientReply.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 8,26,43
+spec/fixtures/cards/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 117-118,159-160
+spec/fixtures/client_replies/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 49-50
+go/pkg/basecamp/recordings_test.go
+  s_854ff63c351de4::t_57ddd5451f39b6 116-122
+  s_854ff63c351de4::t_8746b8496651ef 176-190
+go/pkg/basecamp/gauges.go
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 26-39,54-71
+  s_854ff63c351de4::t_44f0980e81a2d2 44-53
+  s_854ff63c351de4::t_63e7a09ecf4daf 14-25
+spec/fixtures/recordings/list.json
+  s_854ff63c351de4::t_4225c656b93b83 49-64,109-124
+SPEC.md
+  s_854ff63c351de4::t_0e36cbf837654c 670-675
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ForwardReply.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 29
+go/pkg/basecamp/cards.go
+  s_854ff63c351de4::t_1c855d8c0dcb0e 89-94
+  s_854ff63c351de4::t_f1ddf0c8806022 1399-1400
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 74-88,95-109
+spec/fixtures/documents/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 50-51,101-102
+go/pkg/basecamp/schedules.go
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 79-81
+  s_854ff63c351de4::t_bc084870ed3ea8 73-78
+  s_854ff63c351de4::t_7b3270b9f4705e 656-657
+swift/Sources/Basecamp/Generated/Models/SearchResult.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 13,17,34,38,54,58
+go/pkg/basecamp/comments.go
+  s_854ff63c351de4::t_4a91da68be7914 355-356
+  s_854ff63c351de4::t_11b1017be7e893 25-30
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 31-38
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Forward.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 28
+swift/Sources/Basecamp/Generated/Models/ForwardReply.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 8,28,47
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Recording.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 30-31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Card.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 25
+spec/fixtures/forwards/reply_get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 43-44
+swift/Sources/Basecamp/Generated/Models/ClientApproval.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 7,33,58
+go/pkg/basecamp/vaults.go
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 157-161
+  s_854ff63c351de4::t_4ee92c8ec7004c 121-125
+  s_854ff63c351de4::t_51fcd2b7d381a6 151-156
+  s_854ff63c351de4::t_da3014fd864a7c 1224-1225
+  s_854ff63c351de4::t_3840ef2800b3b4 1164-1165
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todolist.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 28
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_854ff63c351de4::t_5dec703a605ee0 340
+  s_854ff63c351de4::t_8746c42e53beda 206
+  s_854ff63c351de4::t_b3ae8e231500c6 363
+go/pkg/basecamp/comments_test.go
+  s_854ff63c351de4::t_35c76f7fa3c746 165-198
+go/pkg/basecamp/gauges_test.go
+  s_854ff63c351de4::t_0c600ca4622330 1-116
+go/pkg/basecamp/search_test.go
+  s_854ff63c351de4::t_eba32096857c1a 460-482
+swift/Tests/BasecampTests/UploadsServiceExtensionsTests.swift
+  s_854ff63c351de4::t_6b7bdaea1348b1 39
+spec/fixtures/comments/get.json
+  s_854ff63c351de4::t_911a4533b24944 49-77
+spec/fixtures/schedules/entry_get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 94-95
+go/pkg/basecamp/client_approvals.go
+  s_854ff63c351de4::t_1b3fa528caae77 317-318
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 30-45,50-57
+  s_854ff63c351de4::t_5284d2ef00f9cb 46-49
+spec/fixtures/messages/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 59-60
+spec/fixtures/checkins/answers_by_person.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 50-51
+spec/fixtures/recordings/get.json
+  s_854ff63c351de4::t_4225c656b93b83 48-63
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Answer.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 26
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Upload.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 29
+ruby/lib/basecamp/generated/types.rb
+  s_854ff63c351de4::t_d0ab1a2b871ee4 4,442,446,454,489,792,796,802,830,938,942,948,972,1001,1005,1012,1032,1078,1082,1089,1111,1205,1209,1215,1241,1335,1339,1345,1370,1400,1404,1411,1433,1459,1475,1498,1520,1524,1529,1556,1821,1825,1832,1859,2660,2664,2671,2697,2898,2923-2924,2947-2948,3147,3151,3159,3189,3259,3275,3279,3298,3302,3665,3669,3677,3709,3929,3933,3941,3973
+typescript/src/generated/metadata.ts
+  s_854ff63c351de4::t_d0ab1a2b871ee4 40
+spec/fixtures/client_approvals/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 131-132
+spec/fixtures/client_approvals/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 80-81
+spec/fixtures/documents/get.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 49-50
+go/pkg/basecamp/vaults_test.go
+  s_854ff63c351de4::t_9cfaa645485231 520-548
+swift/Sources/Basecamp/Generated/Models/Comment.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 8,28,47
+spec/fixtures/messages/list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 54-55,106-107
+go/pkg/basecamp/rich_text_attachments_test.go
+  s_854ff63c351de4::t_0f5223b4cd83e5 1-139
+openapi.json
+  s_854ff63c351de4::t_d0ab1a2b871ee4 17763,21559-21564,21637,22109-22114,22149,22305-22310,22325,22399-22404,22411,22498-22503,22516,23300-23305,23317,23509-23514,23532,23607-23612,23625,23696-23702,23801-23806,23817,24710-24715,24731,25761-25766,25796,26068-26081,26538-26543,26582,26705-26718,27290-27295,27327,28305-28310,28356
+typescript/tests/services/comments.test.ts
+  s_854ff63c351de4::t_b8240bf1992743 47-103
+spec/overlays/examples.smithy
+  s_854ff63c351de4::t_99995292b97d62 15
+swift/Sources/Basecamp/Generated/Models/Gauge.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 13,34,54
+go/pkg/basecamp/client_replies.go
+  s_854ff63c351de4::t_53a4309b8e2a0c 39-43
+  s_854ff63c351de4::t_1b8c91a76617dd 219-220
+spec/fixtures/uploads/get.json
+  s_854ff63c351de4::t_82e4dd1c93d74c 55-83
+swift/Sources/Basecamp/Generated/Models/ClientCorrespondence.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 7,29,50
+swift/Sources/Basecamp/Generated/Models/Card.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 9,42,74
+typescript/src/generated/schema.d.ts
+  s_854ff63c351de4::t_d0ab1a2b871ee4 2704,2836,2887,2910,2937,3158,3210,3234,3255-3261,3293,3532,3867,3947-3958,4110,4147-4158,4327,4631
+swift/Sources/Basecamp/Generated/Models/Document.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 7,31,54
+typescript/src/generated/openapi-stripped.json
+  s_854ff63c351de4::t_d0ab1a2b871ee4 15759,19214-19219,19292,19764-19769,19804,19960-19965,19980,20054-20059,20066,20153-20158,20171,20955-20960,20972,21164-21169,21187,21262-21267,21280,21351-21357,21456-21461,21472,22365-22370,22386,23416-23421,23451,23723-23736,24193-24198,24237,24360-24373,24945-24950,24982,25960-25965,26011
+spec/fixtures/checkins/answer.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 49-50
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/CommentsServiceTest.kt
+  s_854ff63c351de4::t_41257a2d42969b 241-283
+  s_854ff63c351de4::t_a07474411444c4 14
+  s_854ff63c351de4::t_62357d3ab3865a 29,41
+ruby/test/basecamp/services/comments_service_test.rb
+  s_854ff63c351de4::t_af5053a484aeaf 73-115
+ruby/lib/basecamp/generated/metadata.json
+  s_854ff63c351de4::t_d0ab1a2b871ee4 4
+spec/fixtures/schedules/entries_list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 95-96,150-151
+spec/fixtures/search/results.json
+  s_854ff63c351de4::t_4225c656b93b83 47-62,108-123,169-184
+swift/Sources/Basecamp/Generated/Models/Upload.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 9,39,68
+swift/Sources/Basecamp/Generated/Models/Forward.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 7,30,52
+swift/Sources/Basecamp/Generated/Models/GaugeNeedle.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 6,31,55
+swift/Sources/Basecamp/Generated/Models/Recording.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 22-23,44-45,65-66
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Message.kt
+  s_854ff63c351de4::t_d0ab1a2b871ee4 30
+swift/Sources/Basecamp/Generated/Models/Answer.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 8,32,55
+go/pkg/basecamp/forwards.go
+  s_854ff63c351de4::t_6b48a10c725d73 538-539
+  s_854ff63c351de4::t_ae8c5a961f16b5 588-589
+  s_854ff63c351de4::t_fe11bc33aaf271 89-94
+  s_854ff63c351de4::t_9db9fb14311ef0 117-130
+  s_854ff63c351de4::t_e8cf1b00a0e7f9 95-104
+swift/Sources/Basecamp/Generated/Models/ScheduleEntry.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 9,37,64
+go/pkg/basecamp/client_correspondences.go
+  s_854ff63c351de4::t_504cf624fb2af4 46-53
+  s_854ff63c351de4::t_c5039ea045d7b0 239-240
+spec/fixtures/checkins/answers_list.json
+  s_854ff63c351de4::t_00dbf7d0847a0a 50-51,105-106
+swift/Sources/Basecamp/Generated/Models/Message.swift
+  s_854ff63c351de4::t_d0ab1a2b871ee4 8,33,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cd5e49c40ac6f465f16d8c648a844dd10d9044fe",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
