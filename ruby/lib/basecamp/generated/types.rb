@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-23T19:34:23Z
+# Generated: 2026-07-24T00:41:58Z
 
 require "json"
 require "time"
@@ -4225,18 +4225,20 @@ module Basecamp
     # Wormhole
     class Wormhole
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :linked, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :color, :destination_url
+      attr_accessor :app_url, :bucket, :color, :created_at, :creator, :destination_url, :id, :inherits_status, :linked, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator id inherits_status linked parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket color created_at creator destination_url id inherits_status linked parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
+        @color = data["color"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @destination_url = data["destination_url"]
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
         @linked = parse_boolean(data["linked"])
@@ -4248,16 +4250,16 @@ module Basecamp
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @bookmark_url = data["bookmark_url"]
-        @color = data["color"]
-        @destination_url = data["destination_url"]
       end
 
       def to_h
         {
           "app_url" => @app_url,
           "bucket" => @bucket,
+          "color" => @color,
           "created_at" => @created_at,
           "creator" => @creator,
+          "destination_url" => @destination_url,
           "id" => @id,
           "inherits_status" => @inherits_status,
           "linked" => @linked,
@@ -4269,9 +4271,7 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "bookmark_url" => @bookmark_url,
-          "color" => @color,
-          "destination_url" => @destination_url,
-        }.compact
+        }.reject { |k, v| v.nil? && !["color", "destination_url"].include?(k) }
       end
 
       def to_json(*args)

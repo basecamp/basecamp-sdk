@@ -28,13 +28,15 @@ type Wormhole struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
-	// Color is the wormhole color, or nil when unset. Always emitted on the wire.
-	Color *string `json:"color,omitempty"`
+	// Color is the wormhole color, or nil when unset. Always emitted on the wire,
+	// so no omitempty: a nil round-trips as an explicit null, not a dropped key.
+	Color *string `json:"color"`
 	// Linked is true only while the destination column, its board, and its bucket
 	// are all active; it becomes false once the destination is unlinked.
 	Linked bool `json:"linked"`
 	// DestinationURL is the URL of the destination column, or nil when unlinked.
-	DestinationURL *string `json:"destination_url,omitempty"`
+	// Always emitted on the wire, so no omitempty (mirrors the SearchType.Key pattern).
+	DestinationURL *string `json:"destination_url"`
 	Parent         *Parent `json:"parent,omitempty"`
 	Bucket         *Bucket `json:"bucket,omitempty"`
 	Creator        *Person `json:"creator,omitempty"`

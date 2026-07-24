@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -291,5 +292,17 @@ func TestCardTablesService_Get_DecodesWormholes(t *testing.T) {
 	}
 	if unlinked.Color != nil {
 		t.Errorf("expected nil color for unlinked wormhole, got %q", *unlinked.Color)
+	}
+
+	// destination_url and color are required-but-nullable: a nil must round-trip
+	// as an explicit null, not a dropped key (no omitempty).
+	reencoded, err := json.Marshal(unlinked)
+	if err != nil {
+		t.Fatalf("failed to re-encode wormhole: %v", err)
+	}
+	for _, key := range []string{`"destination_url":null`, `"color":null`} {
+		if !strings.Contains(string(reencoded), key) {
+			t.Errorf("expected re-encoded unlinked wormhole to contain %s, got %s", key, reencoded)
+		}
 	}
 }
