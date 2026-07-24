@@ -24,8 +24,9 @@ class SearchServiceTest < Minitest::Test
 
     assert_equal 2, result.length
     assert_equal "Quarterly Report", result[0]["title"]
-    # The optional projection array surfaces on the matching-type result.
+    # The optional projection array surfaces on each matching-type result.
     assert_equal [], result[0]["content_attachments"]
+    assert_equal [], result[1]["content_attachments"]
   end
 
   def test_search_with_sort
