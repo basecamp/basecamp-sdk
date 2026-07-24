@@ -14,6 +14,7 @@ const sampleTodolist = (id = 1) => ({
   id,
   name: "Launch list",
   description: "<p>Things to do before launch</p>",
+  description_attachments: [],
   completed: false,
   completed_ratio: "0/5",
   created_at: "2024-01-15T10:00:00Z",

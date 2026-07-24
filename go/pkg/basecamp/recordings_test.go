@@ -179,7 +179,7 @@ func TestRecording_UnmarshalGet(t *testing.T) {
 	// carries content_attachments (its content attribute) and no
 	// description_attachments.
 	if len(recording.ContentAttachments) == 0 {
-		t.Error("expected non-empty ContentAttachments for the Message recording")
+		t.Fatal("expected non-empty ContentAttachments for the Message recording")
 	}
 	if recording.DescriptionAttachments != nil {
 		t.Errorf("expected no DescriptionAttachments, got %v", recording.DescriptionAttachments)
