@@ -314,6 +314,7 @@ describe("UploadsService", () => {
             filename: "logo.png",
             download_url:
               "https://storage.3.basecamp.com/12345/blobs/abc/download/logo.png",
+            description_attachments: [],
           });
         }),
         // Hop 1: origin-rewritten to API_ORIGIN
@@ -363,6 +364,7 @@ describe("UploadsService", () => {
             id: 1069479400,
             filename: "logo.png",
             download_url: null,
+            description_attachments: [],
           });
         }),
         // No download hop should fire — this handler would record it if so
