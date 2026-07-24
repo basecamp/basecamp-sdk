@@ -74,7 +74,7 @@ type ScheduleEntry struct {
 	// embedded in the rich text Description. @required — the API always sends this
 	// array (empty when the description has no inline files). No omitempty, so on
 	// marshal a non-nil slice emits its elements ([] when empty) and a nil
-	// slice (only from manual construction) emits null; the key is never
+	// slice emits null; the key is never
 	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
 	// RichTextAttachment.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
