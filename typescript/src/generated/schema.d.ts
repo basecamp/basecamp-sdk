@@ -5502,15 +5502,6 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
             /** @description InternalServerError 500 response */
             500: {
                 headers: {

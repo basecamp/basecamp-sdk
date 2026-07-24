@@ -4,10 +4,10 @@ status: absorbed-in-sdk
 detected: 2026-07-23
 sdk_demand: medium
 smithy_refs:
-  - "CreateWormhole (spec/basecamp.smithy:4673)"
-  - "UpdateWormhole (spec/basecamp.smithy:4707)"
-  - "DeleteWormhole (spec/basecamp.smithy:4741)"
-  - "Wormhole (spec/basecamp.smithy:4816)"
+  - "CreateWormhole (spec/basecamp.smithy:4720)"
+  - "UpdateWormhole (spec/basecamp.smithy:4754)"
+  - "DeleteWormhole (spec/basecamp.smithy:4788)"
+  - "Wormhole (spec/basecamp.smithy:4863)"
 bc3_refs:
   introduced_in: master
   routes:

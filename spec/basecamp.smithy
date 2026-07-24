@@ -4754,7 +4754,7 @@ structure CreateWormholeOutput {
 operation UpdateWormhole {
   input: UpdateWormholeInput
   output: UpdateWormholeOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, InternalServerError]
 }
 
 structure UpdateWormholeInput {
