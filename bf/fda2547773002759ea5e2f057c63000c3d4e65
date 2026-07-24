@@ -1,0 +1,50 @@
+spec/api-gaps/card-table-wormholes.md
+  s_9dca1a241a65c0::t_9e3d8d0b76cf4f 1-92
+spec/api-gaps/external-links-doors.md
+  s_9dca1a241a65c0::t_3c7c245ca728fe 95-100
+spec/api-gaps/README.md
+  s_9dca1a241a65c0::t_3f794449df6342 58,60-61
+  s_3fd48deaa8600c::t_f9736113c4e4b7 73-80
+spec/api-gaps/dock-tool-visible-to-clients.md
+  s_9dca1a241a65c0::t_b3701f9c88c8cc 1-81
+go/pkg/basecamp/api-provenance.json
+  s_9dca1a241a65c0::t_654b3533c3c6de 4-5
+go/pkg/basecamp/version.go
+  s_9dca1a241a65c0::t_f1f808ca133065 7
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_9dca1a241a65c0::t_51f797e0717632 32
+python/src/basecamp/_version.py
+  s_9dca1a241a65c0::t_f2d799ec281f99 2
+ruby/lib/basecamp/version.rb
+  s_9dca1a241a65c0::t_0f4bcd85f660c3 5
+spec/api-provenance.json
+  s_9dca1a241a65c0::t_5ea56191784252 4-5
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_9dca1a241a65c0::t_01e6d7c106fba6 30
+typescript/src/client.ts
+  s_9dca1a241a65c0::t_a8492d0bf4dd0b 223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bffda2547773002759ea5e2f057c63000c3d4e65",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
