@@ -61,8 +61,10 @@ could surface it, and the live canary carried exactly that additive-only
 invariant; with BC5 having replaced BC4 in production there is no live BC4 to
 compare against, so the pairwise rule is retired and the contract is settled by
 this document. `GetMyNotifications` is still schema-validated by the
-single-backend canary, which is where new BC5 additions (`bubble_ups`,
-`scheduled_bubble_ups`) surface as extras-observed.
+single-backend canary. `bubble_ups` and `scheduled_bubble_ups` are already
+modeled in the OpenAPI response schema, so they validate normally (they are not
+reported as extras); the canary's extras-observed reporting is where *future*,
+not-yet-modeled BC5 additions would surface.
 
 ## Suggested API shape
 

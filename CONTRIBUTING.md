@@ -279,9 +279,10 @@ Optional env:
   target only** — when unset the SDK client falls back to its default origin.
   The `conformance-canary` orchestrator and the CI workflow **require** it (no
   hard-coded default), so the production BC5 origin is always explicit there.
-- `BASECAMP_BACKEND=bc5` — a `Backend` label (`bc4|bc5`) that namespaces
-  persisted snapshots and selects the `BASECAMP_BC5_*` fixture overrides. The
-  canary uses `bc5` — production runs BC5.
+- `BASECAMP_BACKEND=bc5` — the `Backend` label that namespaces persisted
+  snapshots and selects the `BASECAMP_<BACKEND>_*` fixture overrides. Unset
+  defaults to `unknown` (no per-backend overrides, discovery only); the canary
+  uses `bc5` — production runs BC5.
 - `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
   `<path>/<backend>/wire/<test>.json`. Consumed by the cross-language
   replay runners (`make conformance-*-replay`).
