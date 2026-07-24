@@ -1,0 +1,21 @@
+typescript/tests/services/uploads.test.ts
+  s_854ff63c351de4::t_27200e7bd3c239 43
+  s_854ff63c351de4::t_d13c9b1e6dff71 79-90,233-237
+  s_854ff63c351de4::t_75f7fab4e392a6 258,264,270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2f676e65aceeaa63fd96d641583a502bb31cc9e1",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
