@@ -1,0 +1,30 @@
+typescript/tests/services/search.test.ts
+  s_854ff63c351de4::t_64eb355b01cd70 54-55,72,91,94-96,116,144,167,196
+  s_854ff63c351de4::t_c4fae259d213ed 45-53,56-63,77-79
+ruby/test/basecamp/services/search_service_test.rb
+  s_854ff63c351de4::t_320b41a9e703c9 14-17,27-28
+typescript/tests/services/schedules.test.ts
+  s_854ff63c351de4::t_ab034190586948 97-98
+ruby/test/basecamp/services/recordings_service_test.rb
+  s_854ff63c351de4::t_92b8d1c2925467 28-30
+  s_854ff63c351de4::t_37d2a478662c46 67-68
+typescript/tests/services/recordings.test.ts
+  s_854ff63c351de4::t_64eb355b01cd70 52,72,97,111,135,149,167,177,189,199,211,221
+  s_854ff63c351de4::t_4a79e7caab820e 32-41,60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "11d7955ce62d227ea2acbcc443e153655323717a",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
