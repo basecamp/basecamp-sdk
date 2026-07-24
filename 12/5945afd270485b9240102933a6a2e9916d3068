@@ -1,0 +1,62 @@
+go/pkg/basecamp/vaults.go
+  s_9dca1a241a65c0::t_15782d1adc2ceb 865-869
+  s_9dca1a241a65c0::t_c3b57bf4554f60 225-228
+  s_9dca1a241a65c0::t_99583e1eea8a80 581-585
+  s_9dca1a241a65c0::t_2bd6a9bc52f4f4 191-194
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_9dca1a241a65c0::t_6ce4d668ee6d19 558-603
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/MessagesServiceTest.kt
+  s_9dca1a241a65c0::t_5ee477fc7e82a6 1-87
+python/tests/services/test_messages.py
+  s_9dca1a241a65c0::t_ffb64c72ffb24a 1-54
+go/pkg/basecamp/schedules.go
+  s_9dca1a241a65c0::t_c830c589713974 349-356
+  s_9dca1a241a65c0::t_ef8614b9ccf394 103-106
+go/pkg/basecamp/vaults_test.go
+  s_9dca1a241a65c0::t_71cfaedc8223cd 942-1059
+go/pkg/basecamp/messages.go
+  s_9dca1a241a65c0::t_01b650f62426ac 54-57
+  s_9dca1a241a65c0::t_6af110b0268800 257-261
+go/pkg/basecamp/schedules_test.go
+  s_9dca1a241a65c0::t_dbb5001e81ef7d 738-784
+go/pkg/basecamp/todolists_test.go
+  s_9dca1a241a65c0::t_05e7804a1238a5 365-409
+go/pkg/basecamp/messages_test.go
+  s_9dca1a241a65c0::t_a1938a4986eb38 494-538
+ruby/test/basecamp/services/messages_service_test.rb
+  s_9dca1a241a65c0::t_7ef9fc2334492b 102-133
+go/pkg/basecamp/todolists.go
+  s_9dca1a241a65c0::t_508c2d34a60bdf 248-250
+  s_9dca1a241a65c0::t_9c0050bfc96b67 77-80
+go/pkg/basecamp/checkins_test.go
+  s_9dca1a241a65c0::t_bc0f379815c70c 1037-1093
+typescript/tests/services/messages.test.ts
+  s_9dca1a241a65c0::t_1be495e1478236 141-166
+go/pkg/basecamp/checkins.go
+  s_9dca1a241a65c0::t_b23fce7dfb3800 360-362
+  s_9dca1a241a65c0::t_ebf118ee504402 128-131
+spec/basecamp.smithy
+  s_9dca1a241a65c0::t_9aedc53111903c 1073-1074
+  s_9dca1a241a65c0::t_c70065a7652e33 2351-2352
+  s_9dca1a241a65c0::t_64b2c494dde1e3 54
+  s_9dca1a241a65c0::t_52697f58edf571 2230-2231
+  s_9dca1a241a65c0::t_6848a5dc7f33fe 6197-6198
+  s_9dca1a241a65c0::t_bc82436c9f9977 1789-1790
+  s_9dca1a241a65c0::t_ac659d14eddcc3 2626-2627
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "125945afd270485b9240102933a6a2e9916d3068",
+  "prompts": {},
+  "sessions": {
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
