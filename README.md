@@ -162,7 +162,7 @@ All SDKs provide:
 | **Chat** | Campfires (lines, chatbots) |
 | **Scheduling** | Schedules, Timeline, Lineup, Checkins |
 | **Files** | Vaults, Documents, Uploads, Attachments |
-| **Card Tables** | CardTables, Cards, CardColumns, CardSteps |
+| **Card Tables** | CardTables, Cards, CardColumns, CardSteps, Wormholes |
 | **Client Portal** | ClientApprovals, ClientCorrespondences, ClientReplies |
 | **Automation** | Webhooks, Subscriptions, Events |
 | **Reporting** | Search, Reports, Timesheets, Recordings |

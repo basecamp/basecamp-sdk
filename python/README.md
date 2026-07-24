@@ -8,7 +8,7 @@ Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
-- **Full API coverage** — 40 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
+- **Full API coverage** — 45 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
 - **OAuth 2.0 authentication** — PKCE support, token refresh, resource-first (RFC 9728 + RFC 8414) discovery
 - **Static token authentication** — Simple setup for personal integrations
 - **Automatic retry with backoff** — Exponential backoff with jitter, respects `Retry-After` headers
@@ -289,7 +289,7 @@ token.is_expired(buffer_seconds=60)  # True if expiring within 60s
 
 ## Services
 
-All services are accessed through an `AccountClient`, obtained via `client.for_account(account_id)`.
+All services are accessed through an `AccountClient`, obtained via `client.for_account(account_id)`. The table below covers the common ones; see `basecamp/generated/services/` for the full 45-service set.
 
 | Category | Service | Accessor |
 |----------|---------|----------|
@@ -319,6 +319,7 @@ All services are accessed through an `AccountClient`, obtained via `client.for_a
 | | Cards | `account.cards` |
 | | CardColumns | `account.card_columns` |
 | | CardSteps | `account.card_steps` |
+| | Wormholes | `account.wormholes` |
 | **Client Portal** | ClientApprovals | `account.client_approvals` |
 | | ClientCorrespondences | `account.client_correspondences` |
 | | ClientReplies | `account.client_replies` |

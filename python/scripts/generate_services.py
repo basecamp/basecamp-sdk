@@ -57,6 +57,7 @@ SERVICE_SPLITS: dict[str, dict[str, list[str]]] = {
             "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
             "RepositionCardStep",
         ],
+        "Wormholes": ["CreateWormhole", "UpdateWormhole", "DeleteWormhole"],
     },
     "Files": {
         "Attachments": ["CreateAttachment"],
@@ -278,6 +279,7 @@ SIMPLE_RESOURCES = {
     "clientapprovals", "clientcorrespondence", "clientcorrespondences", "clientreply",
     "clientreplies", "forwardreply", "forwardreplies", "campfireline", "campfirelines",
     "todolistgroup", "todolistgroups", "todolistorgroup", "uploadversions",
+    "wormhole", "wormholes",
 }
 
 

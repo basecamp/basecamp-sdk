@@ -34,7 +34,11 @@
               "url": "https://github.com/basecamp/basecamp-sdk"
             },
             "/components/schemas/SearchType/properties/key/type": ["string", "null"],
-            "/components/schemas/SearchType/properties/key/x-go-type": "*string"
+            "/components/schemas/SearchType/properties/key/x-go-type": "*string",
+            "/components/schemas/Wormhole/properties/destination_url/type": ["string", "null"],
+            "/components/schemas/Wormhole/properties/destination_url/x-go-type": "*string",
+            "/components/schemas/Wormhole/properties/color/type": ["string", "null"],
+            "/components/schemas/Wormhole/properties/color/x-go-type": "*string"
           }
         }
       }

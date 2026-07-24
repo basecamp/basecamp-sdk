@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-23T17:31:39Z
+# Generated: 2026-07-24T00:41:58Z
 
 require "json"
 require "time"
@@ -693,7 +693,7 @@ module Basecamp
     # CardTable
     class CardTable
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :lists, :subscribers, :subscription_url, :wormholes
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -717,6 +717,7 @@ module Basecamp
         @lists = parse_array(data["lists"], "CardColumn")
         @subscribers = parse_array(data["subscribers"], "Person")
         @subscription_url = data["subscription_url"]
+        @wormholes = parse_array(data["wormholes"], "Wormhole")
       end
 
       def to_h
@@ -737,6 +738,7 @@ module Basecamp
           "lists" => @lists,
           "subscribers" => @subscribers,
           "subscription_url" => @subscription_url,
+          "wormholes" => @wormholes,
         }.compact
       end
 
@@ -4213,6 +4215,63 @@ module Basecamp
           "kind" => @kind,
           "recording" => @recording,
         }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Wormhole
+    class Wormhole
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :color, :created_at, :creator, :destination_url, :id, :inherits_status, :linked, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket color created_at creator destination_url id inherits_status linked parent status title type updated_at url visible_to_clients].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
+        @color = data["color"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @destination_url = data["destination_url"]
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @linked = parse_boolean(data["linked"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @status = data["status"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @bookmark_url = data["bookmark_url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "color" => @color,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "destination_url" => @destination_url,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "linked" => @linked,
+          "parent" => @parent,
+          "status" => @status,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "bookmark_url" => @bookmark_url,
+        }.reject { |k, v| v.nil? && !["color", "destination_url"].include?(k) }
       end
 
       def to_json(*args)

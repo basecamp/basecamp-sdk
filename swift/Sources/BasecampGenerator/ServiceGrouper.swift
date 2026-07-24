@@ -44,6 +44,7 @@ let serviceSplits: [String: [String: [String]]] = [
             "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
             "RepositionCardStep",
         ],
+        "Wormholes": ["CreateWormhole", "UpdateWormhole", "DeleteWormhole"],
     ],
     "Files": [
         "Attachments": ["CreateAttachment"],

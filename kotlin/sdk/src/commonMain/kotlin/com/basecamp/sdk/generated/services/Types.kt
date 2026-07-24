@@ -656,3 +656,13 @@ data class UpdateWebhookBody(
     val active: Boolean? = null
 )
 
+/** Request body for UpdateWormhole. */
+data class UpdateWormholeBody(
+    val destinationRecordingId: Long
+)
+
+/** Request body for CreateWormhole. */
+data class CreateWormholeBody(
+    val destinationRecordingId: Long
+)
+

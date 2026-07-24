@@ -239,6 +239,7 @@ class CardTable(TypedDict):
     updated_at: str
     url: str
     visible_to_clients: bool
+    wormholes: NotRequired[list[Wormhole]]
 
 
 class Chatbot(TypedDict):
@@ -528,6 +529,10 @@ class CreateWebhookRequestContent(TypedDict):
     active: NotRequired[bool]
     payload_url: str
     types: list[str]
+
+
+class CreateWormholeRequestContent(TypedDict):
+    destination_recording_id: int
 
 
 class DockItem(TypedDict):
@@ -1693,6 +1698,10 @@ class UpdateWebhookRequestContent(TypedDict):
     types: NotRequired[list[str]]
 
 
+class UpdateWormholeRequestContent(TypedDict):
+    destination_recording_id: int
+
+
 class Upload(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -1806,3 +1815,23 @@ class WebhookEvent(TypedDict):
 class WebhookLimitErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
+
+
+class Wormhole(TypedDict):
+    app_url: str
+    bookmark_url: NotRequired[str]
+    bucket: TodoBucket
+    color: str | None
+    created_at: str
+    creator: Person
+    destination_url: str | None
+    id: int
+    inherits_status: bool
+    linked: bool
+    parent: RecordingParent
+    status: str
+    title: str
+    type: str
+    updated_at: str
+    url: str
+    visible_to_clients: bool

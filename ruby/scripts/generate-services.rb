@@ -60,7 +60,8 @@ class ServiceGenerator
       'CardSteps' => %w[
         GetCardStep CreateCardStep UpdateCardStep SetCardStepCompletion
         RepositionCardStep
-      ]
+      ],
+      'Wormholes' => %w[CreateWormhole UpdateWormhole DeleteWormhole]
     },
     'Files' => {
       'Attachments' => %w[CreateAttachment],
@@ -302,6 +303,7 @@ class ServiceGenerator
     clientcorrespondences clientreply clientreplies forwardreply
     forwardreplies campfireline campfirelines todolistgroup todolistgroups
     todolistorgroup uploadversions hillchart hillcharts
+    wormhole wormholes
   ].freeze
 
   def initialize(openapi_path)

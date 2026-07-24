@@ -1027,6 +1027,356 @@
         }
       }
     },
+    "/{accountId}/buckets/{bucketId}/card_tables/wormholes/{wormholeId}": {
+      "delete": {
+        "description": "Delete a wormhole",
+        "operationId": "DeleteWormhole",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "wormholeId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "DeleteWormhole 204 response"
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Card Tables"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Update a wormhole's destination column",
+        "operationId": "UpdateWormhole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWormholeRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "wormholeId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateWormhole 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateWormholeResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Card Tables"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json": {
+      "post": {
+        "description": "Create a wormhole linking this card table to a column on another card table.\n\nA wormhole is the only mechanism for moving a card to a different project: its\nid is a valid `column_id` for MoveCard, teleporting the card across projects.\n`destinationRecordingId` is the id of a column on another accessible card table.",
+        "operationId": "CreateWormhole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWormholeRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "bucketId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          },
+          {
+            "name": "cardTableId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "CreateWormhole 201 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateWormholeResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Card Tables"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/buckets/{bucketId}/dock/tools.json": {
       "post": {
         "description": "Create a tool in a project dock",
@@ -21971,6 +22321,12 @@
             "items": {
               "$ref": "#/components/schemas/CardColumn"
             }
+          },
+          "wormholes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Wormhole"
+            }
           }
         },
         "required": [
@@ -23146,6 +23502,23 @@
       },
       "CreateWebhookResponseContent": {
         "$ref": "#/components/schemas/Webhook"
+      },
+      "CreateWormholeRequestContent": {
+        "type": "object",
+        "properties": {
+          "destination_recording_id": {
+            "type": "integer",
+            "description": "Id of the destination column (on another accessible card table) to link to.",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          }
+        },
+        "required": [
+          "destination_recording_id"
+        ]
+      },
+      "CreateWormholeResponseContent": {
+        "$ref": "#/components/schemas/Wormhole"
       },
       "DisableCardColumnOnHoldResponseContent": {
         "$ref": "#/components/schemas/CardColumn"
@@ -28101,6 +28474,23 @@
       "UpdateWebhookResponseContent": {
         "$ref": "#/components/schemas/Webhook"
       },
+      "UpdateWormholeRequestContent": {
+        "type": "object",
+        "properties": {
+          "destination_recording_id": {
+            "type": "integer",
+            "description": "Id of the new destination column (on another accessible card table).",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          }
+        },
+        "required": [
+          "destination_recording_id"
+        ]
+      },
+      "UpdateWormholeResponseContent": {
+        "$ref": "#/components/schemas/Wormhole"
+      },
       "Upload": {
         "type": "object",
         "properties": {
@@ -28535,6 +28925,104 @@
         },
         "required": [
           "error"
+        ]
+      },
+      "Wormhole": {
+        "type": "object",
+        "description": "A wormhole links this card table to a column on another card table, enabling\ncards to move across projects. It carries the full recording representation\nplus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`\npoint at the *source* board; `destination_url` is the only field identifying\nthe destination column.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "inherits_status": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TodoBucket"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"] + x-go-type \"*string\").",
+            "x-go-type": "*string"
+          },
+          "linked": {
+            "type": "boolean",
+            "description": "True only while the destination column, its board, and its bucket are all\nactive; false once the destination is unlinked. Always emitted."
+          },
+          "destination_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "URL of the destination column; always present on the wire, `null` for an\nunlinked wormhole. `@required` models the presence; the nullability of the\nvalue is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:\n[\"string\",\"null\"] + x-go-type \"*string\") since Smithy has no native\nrequired-and-nullable — exactly the SearchType.key treatment. SDKs model it\nas required-but-nullable (`string | null`, not `string | null | undefined`).",
+            "x-go-type": "*string"
+          }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "color",
+          "created_at",
+          "creator",
+          "destination_url",
+          "id",
+          "inherits_status",
+          "linked",
+          "parent",
+          "status",
+          "title",
+          "type",
+          "updated_at",
+          "url",
+          "visible_to_clients"
         ]
       }
     }

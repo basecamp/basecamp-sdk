@@ -1,7 +1,7 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-23T17:31:39Z",
+  "generated": "2026-07-23T19:34:23Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -129,6 +129,45 @@
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "UpdateWormhole": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "DeleteWormhole": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "idempotent": {
+        "natural": true
+      }
+    },
+    "CreateWormhole": {
+      "retry": {
+        "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
       }
     },
     "CreateTool": {

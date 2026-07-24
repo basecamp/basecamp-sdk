@@ -2,6 +2,7 @@ export { AccountService } from "./account.js";
 export { AttachmentsService } from "./attachments.js";
 export { BoostsService } from "./boosts.js";
 export { CardColumnsService } from "./card-columns.js";
+export { WormholesService } from "./wormholes.js";
 export { ToolsService } from "./tools.js";
 export { WebhooksService } from "./webhooks.js";
 export { CardsService } from "./cards.js";

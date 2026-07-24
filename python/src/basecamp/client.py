@@ -309,6 +309,12 @@ class AccountClient:
         return self._service("card_steps", lambda: CardStepsService(self))
 
     @property
+    def wormholes(self):
+        from basecamp.generated.services.wormholes import WormholesService
+
+        return self._service("wormholes", lambda: WormholesService(self))
+
+    @property
     def checkins(self):
         from basecamp.generated.services.checkins import CheckinsService
 

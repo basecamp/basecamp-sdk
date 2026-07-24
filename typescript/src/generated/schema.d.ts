@@ -130,6 +130,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{bucketId}/card_tables/wormholes/{wormholeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Update a wormhole's destination column */
+        put: operations["UpdateWormhole"];
+        post?: never;
+        /** @description Delete a wormhole */
+        delete: operations["DeleteWormhole"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Create a wormhole linking this card table to a column on another card table.
+         *
+         *     A wormhole is the only mechanism for moving a card to a different project: its
+         *     id is a valid `column_id` for MoveCard, teleporting the card across projects.
+         *     `destinationRecordingId` is the id of a column on another accessible card table.
+         */
+        post: operations["CreateWormhole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{bucketId}/dock/tools.json": {
         parameters: {
             query?: never;
@@ -2802,6 +2843,7 @@ export interface components {
             creator: components["schemas"]["Person"];
             subscribers?: components["schemas"]["Person"][];
             lists?: components["schemas"]["CardColumn"][];
+            wormholes?: components["schemas"]["Wormhole"][];
         };
         Chatbot: {
             /** Format: int64 */
@@ -3115,6 +3157,14 @@ export interface components {
             active?: boolean;
         };
         CreateWebhookResponseContent: components["schemas"]["Webhook"];
+        CreateWormholeRequestContent: {
+            /**
+             * Format: int64
+             * @description Id of the destination column (on another accessible card table) to link to.
+             */
+            destination_recording_id: number;
+        };
+        CreateWormholeResponseContent: components["schemas"]["Wormhole"];
         DisableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         DockItem: {
             /** Format: int64 */
@@ -4561,6 +4611,14 @@ export interface components {
             active?: boolean;
         };
         UpdateWebhookResponseContent: components["schemas"]["Webhook"];
+        UpdateWormholeRequestContent: {
+            /**
+             * Format: int64
+             * @description Id of the new destination column (on another accessible card table).
+             */
+            destination_recording_id: number;
+        };
+        UpdateWormholeResponseContent: components["schemas"]["Wormhole"];
         Upload: {
             /** Format: int64 */
             id: number;
@@ -4695,6 +4753,51 @@ export interface components {
         WebhookLimitErrorResponseContent: {
             error: string;
             message?: string;
+        };
+        /**
+         * @description A wormhole links this card table to a column on another card table, enabling
+         *     cards to move across projects. It carries the full recording representation
+         *     plus the destination-linkage fields. The wormhole's own `url`/`app_url`/`parent`
+         *     point at the *source* board; `destination_url` is the only field identifying
+         *     the destination column.
+         */
+        Wormhole: {
+            /** Format: int64 */
+            id: number;
+            status: string;
+            visible_to_clients: boolean;
+            created_at: string;
+            updated_at: string;
+            title: string;
+            inherits_status: boolean;
+            type: string;
+            url: string;
+            app_url: string;
+            bookmark_url?: string;
+            parent: components["schemas"]["RecordingParent"];
+            bucket: components["schemas"]["TodoBucket"];
+            creator: components["schemas"]["Person"];
+            /**
+             * @description Wormhole color; always emitted on the wire (`json.color recording.color`),
+             *     `null` when unset. Like destination_url, `@required` models the presence and
+             *     the nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->
+             *     type: ["string","null"] + x-go-type "*string").
+             */
+            color: string | null;
+            /**
+             * @description True only while the destination column, its board, and its bucket are all
+             *     active; false once the destination is unlinked. Always emitted.
+             */
+            linked: boolean;
+            /**
+             * @description URL of the destination column; always present on the wire, `null` for an
+             *     unlinked wormhole. `@required` models the presence; the nullability of the
+             *     value is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:
+             *     ["string","null"] + x-go-type "*string") since Smithy has no native
+             *     required-and-nullable — exactly the SearchType.key treatment. SDKs model it
+             *     as required-but-nullable (`string | null`, not `string | null | undefined`).
+             */
+            destination_url: string | null;
         };
     };
     responses: never;
@@ -5325,6 +5428,216 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateWormhole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                wormholeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWormholeRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateWormhole 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateWormholeResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteWormhole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                wormholeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteWormhole 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateWormhole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                cardTableId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWormholeRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateWormhole 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateWormholeResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

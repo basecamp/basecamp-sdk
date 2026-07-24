@@ -197,6 +197,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
       "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
       "RepositionCardStep",
     ],
+    Wormholes: ["CreateWormhole", "UpdateWormhole", "DeleteWormhole"],
   },
   Files: {
     Attachments: ["CreateAttachment"],
@@ -419,6 +420,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   CardTable: ["CardTable", "entity"],
   CardColumn: ["CardColumn", "entity"],
   CardStep: ["CardStep", "entity"],
+  Wormhole: ["Wormhole", "entity"],
   Campfire: ["Campfire", "entity"],
   CampfireLine: ["CampfireLine", "entity"],
   Chatbot: ["Chatbot", "entity"],
@@ -612,6 +614,7 @@ function isSimpleResource(resource: string): boolean {
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "hillchart", "hillcharts",
+    "wormhole", "wormholes",
   ];
   return simpleResources.includes(resource.toLowerCase());
 }

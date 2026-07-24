@@ -308,6 +308,12 @@ class AsyncAccountClient:
         return self._service("card_steps", lambda: AsyncCardStepsService(self))
 
     @property
+    def wormholes(self):
+        from basecamp.generated.services.wormholes import AsyncWormholesService
+
+        return self._service("wormholes", lambda: AsyncWormholesService(self))
+
+    @property
     def checkins(self):
         from basecamp.generated.services.checkins import AsyncCheckinsService
 
