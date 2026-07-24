@@ -13,6 +13,7 @@ const BASE_URL = "https://3.basecampapi.com/12345";
 const sampleComment = (id = 1) => ({
   id,
   content: "<p>Great work!</p>",
+  content_attachments: [],
   created_at: "2024-01-15T10:00:00Z",
   updated_at: "2024-01-15T10:00:00Z",
   creator: { id: 100, name: "Jane Doe" },

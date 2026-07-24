@@ -14,6 +14,7 @@ const sampleMessage = (id = 1) => ({
   id,
   subject: "Weekly Update",
   content: "<p>Here is the update</p>",
+  content_attachments: [],
   status: "active",
   created_at: "2024-01-15T10:00:00Z",
   updated_at: "2024-01-15T10:00:00Z",

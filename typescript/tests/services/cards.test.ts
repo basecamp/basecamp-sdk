@@ -14,6 +14,7 @@ const sampleCard = (id = 1) => ({
   id,
   title: "Design mockups",
   content: "<p>Create initial designs</p>",
+  description_attachments: [],
   due_on: "2024-03-01",
   created_at: "2024-01-15T10:00:00Z",
   updated_at: "2024-01-15T10:00:00Z",
