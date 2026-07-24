@@ -18,6 +18,7 @@ class ClientRepliesServiceTest < Minitest::Test
     {
       "id" => id,
       "content" => content,
+      "content_attachments" => [],
       "creator" => { "id" => 1, "name" => "Client User" },
       "created_at" => "2024-01-01T00:00:00Z"
     }

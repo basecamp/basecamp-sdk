@@ -28,6 +28,7 @@ class ForwardsServiceTest < Minitest::Test
       "subject" => subject,
       "from" => "client@example.com",
       "content" => "<p>I have a question about the project.</p>",
+      "content_attachments" => [],
       "created_at" => "2024-01-01T00:00:00Z"
     }
   end
@@ -36,6 +37,7 @@ class ForwardsServiceTest < Minitest::Test
     {
       "id" => id,
       "content" => content,
+      "content_attachments" => [],
       "creator" => { "id" => 1, "name" => "Test User" },
       "created_at" => "2024-01-01T00:00:00Z"
     }

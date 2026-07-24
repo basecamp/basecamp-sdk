@@ -10,7 +10,7 @@ class UploadsServiceTest < Minitest::Test
   end
 
   def test_list
-    response = [ { "id" => 1, "filename" => "report.pdf", "byte_size" => 1024 } ]
+    response = [ { "id" => 1, "filename" => "report.pdf", "byte_size" => 1024, "description_attachments" => [] } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/vaults/\d+/uploads\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -21,7 +21,7 @@ class UploadsServiceTest < Minitest::Test
   end
 
   def test_get
-    response = { "id" => 1, "filename" => "report.pdf" }
+    response = { "id" => 1, "filename" => "report.pdf", "description_attachments" => [] }
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/uploads/\d+})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -31,7 +31,7 @@ class UploadsServiceTest < Minitest::Test
   end
 
   def test_create
-    response = { "id" => 1, "filename" => "new-report.pdf" }
+    response = { "id" => 1, "filename" => "new-report.pdf", "description_attachments" => [] }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/vaults/\d+/uploads\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -44,7 +44,7 @@ class UploadsServiceTest < Minitest::Test
   end
 
   def test_create_with_subscriptions
-    response = { "id" => 2, "filename" => "report.pdf" }
+    response = { "id" => 2, "filename" => "report.pdf", "description_attachments" => [] }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/vaults/\d+/uploads\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -60,7 +60,7 @@ class UploadsServiceTest < Minitest::Test
   end
 
   def test_update
-    response = { "id" => 1, "description" => "Updated description" }
+    response = { "id" => 1, "description" => "Updated description", "description_attachments" => [] }
 
     stub_request(:put, %r{https://3\.basecampapi\.com/12345/uploads/\d+})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -70,7 +70,7 @@ class UploadsServiceTest < Minitest::Test
   end
 
   def test_list_versions
-    response = [ { "id" => 1, "version" => 1 }, { "id" => 2, "version" => 2 } ]
+    response = [ { "id" => 1, "version" => 1, "description_attachments" => [] }, { "id" => 2, "version" => 2, "description_attachments" => [] } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/uploads/\d+/versions\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
