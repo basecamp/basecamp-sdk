@@ -109,7 +109,7 @@ func TestWormholesService_Create_RequiresIDs(t *testing.T) {
 	})
 
 	if _, err := svc.Create(context.Background(), 0, wormholesTestCardTableID, wormholesTestDestColumn); err == nil {
-		t.Error("expected error for missing project ID")
+		t.Error("expected error for missing bucket ID")
 	}
 	if _, err := svc.Create(context.Background(), wormholesTestBucketID, 0, wormholesTestDestColumn); err == nil {
 		t.Error("expected error for missing card table ID")
@@ -172,7 +172,7 @@ func TestWormholesService_Update_RequiresIDs(t *testing.T) {
 	})
 
 	if _, err := svc.Update(context.Background(), 0, wormholesTestWormholeID, wormholesTestDestColumn); err == nil {
-		t.Error("expected error for missing project ID")
+		t.Error("expected error for missing bucket ID")
 	}
 	if _, err := svc.Update(context.Background(), wormholesTestBucketID, 0, wormholesTestDestColumn); err == nil {
 		t.Error("expected error for missing wormhole ID")
@@ -236,7 +236,7 @@ func TestWormholesService_Delete_RequiresIDs(t *testing.T) {
 	})
 
 	if err := svc.Delete(context.Background(), 0, wormholesTestWormholeID); err == nil {
-		t.Error("expected error for missing project ID")
+		t.Error("expected error for missing bucket ID")
 	}
 	if err := svc.Delete(context.Background(), wormholesTestBucketID, 0); err == nil {
 		t.Error("expected error for missing wormhole ID")

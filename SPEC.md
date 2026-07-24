@@ -1615,7 +1615,7 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 |-----|------------------------|
 | Swift | 45 (full canonical set) |
 | TypeScript | 45 (full canonical set) |
-| Kotlin | 45 (44 generated service classes + 1 composite wrapper = 45 public accessors) |
+| Kotlin | 45 public accessors: 44 expose generated service classes directly; `todos` exposes a composite subclass of the generated `TodosService` |
 | Ruby | 45 (full canonical set) |
 | Go | 43 as standalone accessors (folds `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
 | Python | 45 (full canonical set; sync + async) |

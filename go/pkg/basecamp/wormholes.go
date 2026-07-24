@@ -58,7 +58,7 @@ func NewWormholesService(client *AccountClient) *WormholesService {
 // A card table may hold at most four wormholes; exceeding that limit returns a
 // validation error. An invalid, inaccessible, inactive, or same-board
 // destination returns a not-found error. Returns the newly created wormhole.
-func (s *WormholesService) Create(ctx context.Context, projectID, cardTableID, destinationRecordingID int64) (result *Wormhole, err error) {
+func (s *WormholesService) Create(ctx context.Context, bucketID, cardTableID, destinationRecordingID int64) (result *Wormhole, err error) {
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Create",
 		ResourceType: "wormhole", IsMutation: true,
@@ -73,8 +73,8 @@ func (s *WormholesService) Create(ctx context.Context, projectID, cardTableID, d
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if projectID == 0 {
-		err = ErrUsage("project ID is required")
+	if bucketID == 0 {
+		err = ErrUsage("bucket ID is required")
 		return nil, err
 	}
 	if cardTableID == 0 {
@@ -90,7 +90,7 @@ func (s *WormholesService) Create(ctx context.Context, projectID, cardTableID, d
 		DestinationRecordingId: destinationRecordingID,
 	}
 
-	resp, err := s.client.parent.gen.CreateWormholeWithResponse(ctx, s.client.accountID, projectID, cardTableID, body)
+	resp, err := s.client.parent.gen.CreateWormholeWithResponse(ctx, s.client.accountID, bucketID, cardTableID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s *WormholesService) Create(ctx context.Context, projectID, cardTableID, d
 //
 // destinationRecordingID is the id of a column on another accessible card table.
 // Returns the updated wormhole.
-func (s *WormholesService) Update(ctx context.Context, projectID, wormholeID, destinationRecordingID int64) (result *Wormhole, err error) {
+func (s *WormholesService) Update(ctx context.Context, bucketID, wormholeID, destinationRecordingID int64) (result *Wormhole, err error) {
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Update",
 		ResourceType: "wormhole", IsMutation: true,
@@ -125,8 +125,8 @@ func (s *WormholesService) Update(ctx context.Context, projectID, wormholeID, de
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if projectID == 0 {
-		err = ErrUsage("project ID is required")
+	if bucketID == 0 {
+		err = ErrUsage("bucket ID is required")
 		return nil, err
 	}
 	if wormholeID == 0 {
@@ -142,7 +142,7 @@ func (s *WormholesService) Update(ctx context.Context, projectID, wormholeID, de
 		DestinationRecordingId: destinationRecordingID,
 	}
 
-	resp, err := s.client.parent.gen.UpdateWormholeWithResponse(ctx, s.client.accountID, projectID, wormholeID, body)
+	resp, err := s.client.parent.gen.UpdateWormholeWithResponse(ctx, s.client.accountID, bucketID, wormholeID, body)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (s *WormholesService) Update(ctx context.Context, projectID, wormholeID, de
 }
 
 // Delete removes a wormhole from a card table.
-func (s *WormholesService) Delete(ctx context.Context, projectID, wormholeID int64) (err error) {
+func (s *WormholesService) Delete(ctx context.Context, bucketID, wormholeID int64) (err error) {
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Delete",
 		ResourceType: "wormhole", IsMutation: true,
@@ -174,8 +174,8 @@ func (s *WormholesService) Delete(ctx context.Context, projectID, wormholeID int
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	if projectID == 0 {
-		err = ErrUsage("project ID is required")
+	if bucketID == 0 {
+		err = ErrUsage("bucket ID is required")
 		return err
 	}
 	if wormholeID == 0 {
@@ -183,7 +183,7 @@ func (s *WormholesService) Delete(ctx context.Context, projectID, wormholeID int
 		return err
 	}
 
-	resp, err := s.client.parent.gen.DeleteWormholeWithResponse(ctx, s.client.accountID, projectID, wormholeID)
+	resp, err := s.client.parent.gen.DeleteWormholeWithResponse(ctx, s.client.accountID, bucketID, wormholeID)
 	if err != nil {
 		return err
 	}
