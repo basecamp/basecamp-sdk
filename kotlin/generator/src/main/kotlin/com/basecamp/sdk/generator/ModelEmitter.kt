@@ -149,7 +149,17 @@ class ModelEmitter(private val api: OpenApiParser) {
             "string" -> if (isRequired) "String" else "String?"
             "array" -> {
                 val itemType = resolveArrayItemType(schema["items"]?.jsonObject)
-                "List<$itemType>"
+                // Rich-text companion arrays (RichTextAttachmentList) carry a
+                // documented cross-SDK presence contract (SPEC.md §10): an
+                // OPTIONAL one must stay nullable so an absent array (a
+                // non-matching projection type or a webhook-sourced item) is
+                // distinct from a present-but-empty one, matching how Go (nil),
+                // Swift/TypeScript (optional), Python (NotRequired), and Ruby
+                // (nil) already decode it. A bare `List<X> = emptyList()` would
+                // be a sentinel for absence, which SPEC.md's Optional Fields
+                // rule forbids. Other optional arrays keep the empty-list
+                // convention (no such presence contract).
+                if (!isRequired && itemType == "RichTextAttachment") "List<$itemType>?" else "List<$itemType>"
             }
             "object" -> if (isRequired) "JsonObject" else "JsonObject?"
             else -> if (isRequired) "JsonElement" else "JsonElement?"
@@ -188,12 +198,14 @@ class ModelEmitter(private val api: OpenApiParser) {
         schema["x-go-type"]?.jsonPrimitive?.content?.contains("FlexInt") == true
 
     private fun defaultValue(type: String): String = when {
+        // Nullable types (incl. a nullable List<X>?) default to null, so this
+        // must precede the List branch below.
+        type.endsWith("?") -> "null"
         type == "Boolean" -> "false"
         type == "Int" -> "0"
         type == "Long" -> "0L"
         type == "Double" -> "0.0"
         type.startsWith("List<") -> "emptyList()"
-        type.endsWith("?") -> "null"
         else -> "null"
     }
 }

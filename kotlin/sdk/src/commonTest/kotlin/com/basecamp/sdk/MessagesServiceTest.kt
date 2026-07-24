@@ -29,7 +29,7 @@ class MessagesServiceTest {
         "title": "Hello", "inherits_status": true, "type": "Message",
         "url": "https://3.basecampapi.com/1/buckets/1/messages/$id.json",
         "app_url": "https://3.basecamp.com/1/buckets/1/messages/$id",
-        "subject": "Hello", "content": "<p>Body</p>",
+        "subject": "Hello", "content": "<p>Body</p>", "content_attachments": [],
         "creator": {"id": 1, "name": "Test", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"},
         "bucket": {"id": 1, "name": "Project", "type": "Project"},
         "parent": {"id": 2, "title": "Board", "type": "Message::Board", "url": "https://3.basecampapi.com/1/buckets/1/message_boards/2.json", "app_url": "https://3.basecamp.com/1/buckets/1/message_boards/2"}

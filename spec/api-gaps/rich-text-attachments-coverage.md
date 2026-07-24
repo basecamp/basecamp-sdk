@@ -122,6 +122,18 @@ structure: `@required` for the 14 concrete always-emitting resources, optional
 array conditionally. `width`/`height` stay optional/nullable with the cross-SDK
 decode caveat recorded in SPEC.md §10 Type Fidelity.
 
+**Optional-array presence contract.** For the three optional members (Gauge and
+the SearchResult/Recording projections) an *absent* array and a *present-but-empty*
+one are distinct wire states — absent means the item is not that rich-text type
+(a non-matching projection type, or a webhook-sourced item rendered from the base
+partial), while present-empty means the matching type carries no inline files. Per
+SPEC.md's Optional Fields rule (a sentinel is not a substitute for absence), every
+SDK decodes this faithfully: Go `[]RichTextAttachment` (nil vs non-nil empty),
+Swift `[RichTextAttachment]?`, TypeScript `?: …[]`, Python `NotRequired[…]`, Ruby
+nil-vs-`[]` (`parse_array`), and Kotlin `List<RichTextAttachment>? = null` (the
+model generator emits a nullable list for optional `RichTextAttachmentList`
+members rather than the empty-list default it uses for other optional arrays).
+
 ## Implementation notes for BC3
 
 None. The JSON contract is documented (`doc/api/sections/rich_text.md`, bc3

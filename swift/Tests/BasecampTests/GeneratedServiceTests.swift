@@ -702,7 +702,7 @@ final class GeneratedServiceTests: XCTestCase {
     // coverage stands in for the other five ops.
     private func messageResponseData() throws -> Data {
         let responseJSON: [String: Any] = [
-            "id": 99, "subject": "Hello", "content": "<p>Body</p>",
+            "id": 99, "subject": "Hello", "content": "<p>Body</p>", "content_attachments": [],
             "app_url": "https://3.basecamp.com/1/buckets/1/messages/99",
             "url": "https://3.basecampapi.com/1/buckets/1/messages/99.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
