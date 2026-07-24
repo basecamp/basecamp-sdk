@@ -15756,6 +15756,7 @@
                           "title": "Launch Tasks",
                           "inherits_status": true,
                           "type": "Todolist",
+                          "description_attachments": [],
                           "url": "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
                           "app_url": "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
                           "creator": {
@@ -19210,6 +19211,12 @@
           "description": {
             "type": "string"
           },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "due_on": {
             "type": "string",
             "x-go-type": "types.Date",
@@ -19282,6 +19289,7 @@
           "bucket",
           "created_at",
           "creator",
+          "description_attachments",
           "id",
           "inherits_status",
           "parent",
@@ -19753,6 +19761,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "subject": {
             "type": "string"
           },
@@ -19787,6 +19801,7 @@
         "required": [
           "app_url",
           "bucket",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -19942,6 +19957,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "subject": {
             "type": "string"
           },
@@ -19956,6 +19977,7 @@
         "required": [
           "app_url",
           "bucket",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -20029,12 +20051,19 @@
           },
           "content": {
             "type": "string"
+          },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
           }
         },
         "required": [
           "app_url",
           "bucket",
           "content",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -20121,6 +20150,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "boosts_count": {
             "type": "integer",
             "format": "int32"
@@ -20133,6 +20168,7 @@
           "app_url",
           "bucket",
           "content",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -20916,6 +20952,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "boosts_count": {
             "type": "integer",
             "format": "int32"
@@ -20927,6 +20969,7 @@
         "required": [
           "app_url",
           "bucket",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -21118,6 +21161,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "subject": {
             "type": "string"
           },
@@ -21135,6 +21184,7 @@
         "required": [
           "app_url",
           "bucket",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -21209,6 +21259,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "boosts_count": {
             "type": "integer",
             "format": "int32"
@@ -21221,6 +21277,7 @@
           "app_url",
           "bucket",
           "content",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -21290,6 +21347,13 @@
           },
           "description": {
             "type": "string"
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "Optional (no `@required`): the type-specific partial renders the\ncompanion array only when the gauge has needles (bc3 `if\ngauge.any_needles?`), so a needle-less gauge omits the key entirely.\nNon-nullable — never served as JSON `null`."
           },
           "enabled": {
             "type": "boolean"
@@ -21389,6 +21453,12 @@
           "description": {
             "type": "string"
           },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "color": {
             "type": "string"
           },
@@ -21399,6 +21469,7 @@
         },
         "required": [
           "created_at",
+          "description_attachments",
           "id",
           "updated_at"
         ]
@@ -22291,6 +22362,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "category": {
             "$ref": "#/components/schemas/MessageType"
           },
@@ -22306,6 +22383,7 @@
           "app_url",
           "bucket",
           "content",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -23335,6 +23413,12 @@
           "content": {
             "type": "string"
           },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "group_on": {
             "type": "string",
             "x-go-type": "types.Date",
@@ -23364,6 +23448,7 @@
           "app_url",
           "bucket",
           "content",
+          "content_attachments",
           "created_at",
           "creator",
           "id",
@@ -23634,6 +23719,20 @@
           },
           "content": {
             "type": "string"
+          },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "Rich-text companion arrays carried through the generic recording\nprojection (`to_recordable_partial_path` renders the full type-specific\npartial). A given recording is one type, so it carries only the array\nmatching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo/Card); a\nwebhook-sourced recording (base partial) carries neither. Optional (no\n`@required`), non-nullable."
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "See `content_attachments` — the description-attribute companion array."
           },
           "comments_count": {
             "type": "integer",
@@ -24091,6 +24190,12 @@
           "description": {
             "type": "string"
           },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "all_day": {
             "type": "boolean"
           },
@@ -24129,6 +24234,7 @@
           "bucket",
           "created_at",
           "creator",
+          "description_attachments",
           "id",
           "inherits_status",
           "parent",
@@ -24250,6 +24356,20 @@
           },
           "description": {
             "type": "string"
+          },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable. Distinct\nfrom the generic `attachments` key (the recording's aggregate downloadable\nfiles), which is a separate projection concern and not modeled here."
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "See `content_attachments` — the description-attribute companion array."
           },
           "subject": {
             "type": "string"
@@ -24822,6 +24942,12 @@
           "description": {
             "type": "string"
           },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "completed": {
             "type": "boolean"
           },
@@ -24853,6 +24979,7 @@
           "bucket",
           "created_at",
           "creator",
+          "description_attachments",
           "id",
           "inherits_status",
           "name",
@@ -25830,6 +25957,12 @@
           "description": {
             "type": "string"
           },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
           "content_type": {
             "type": "string"
           },
@@ -25875,6 +26008,7 @@
           "bucket",
           "created_at",
           "creator",
+          "description_attachments",
           "id",
           "inherits_status",
           "parent",

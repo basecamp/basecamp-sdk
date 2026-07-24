@@ -52,5 +52,33 @@
   "width": 1024.0,
   "height": 768.0,
   "download_url": "https://3.basecampapi.com/999999999/blobs/abcd1234/download/logo.png",
-  "filename": "logo.png"
+  "filename": "logo.png",
+  "description_attachments": [
+    {
+      "id": 1069480020,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01",
+      "filename": "brand-guide.png",
+      "content_type": "image/png",
+      "byte_size": 512000,
+      "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/download/brand-guide.png",
+      "width": 1024.0,
+      "height": 768,
+      "previewable": true,
+      "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/previews/brand-guide.png",
+      "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMAY6BkVU--upl0ad01/thumbnails/brand-guide.png"
+    },
+    {
+      "id": 1069480021,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02",
+      "filename": "specs.pdf",
+      "content_type": "application/pdf",
+      "byte_size": 2097152,
+      "download_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/download/specs.pdf",
+      "width": null,
+      "height": null,
+      "previewable": false,
+      "preview_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/previews/specs.pdf",
+      "thumbnail_url": "https://3.basecampapi.com/999999999/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAyMQY6BkVU--upl0ad02/thumbnails/specs.pdf"
+    }
+  ]
 }

@@ -1519,6 +1519,8 @@ structure Todolist {
   @required
   creator: Person
   description: TodolistDescription
+  @required
+  description_attachments: RichTextAttachmentList
   completed: Boolean
   completed_ratio: String
   @required
@@ -2892,6 +2894,8 @@ structure Comment {
   creator: Person
   @required
   content: CommentContent
+  @required
+  content_attachments: RichTextAttachmentList
   boosts_count: Integer
   boosts_url: String
 }
@@ -2958,6 +2962,8 @@ structure Message {
   subject: MessageSubject
   @required
   content: MessageContent
+  @required
+  content_attachments: RichTextAttachmentList
   category: MessageType
   boosts_count: Integer
   boosts_url: String
@@ -3100,6 +3106,8 @@ structure Document {
   @required
   creator: Person
   content: DocumentContent
+  @required
+  content_attachments: RichTextAttachmentList
   boosts_count: Integer
   boosts_url: String
 }
@@ -3149,6 +3157,8 @@ structure Upload {
   @required
   creator: Person
   description: UploadDescription
+  @required
+  description_attachments: RichTextAttachmentList
   content_type: String
   byte_size: Long
   width: Integer
@@ -3240,6 +3250,8 @@ structure ScheduleEntry {
   @required
   summary: ScheduleEntrySummary
   description: ScheduleEntryDescription
+  @required
+  description_attachments: RichTextAttachmentList
   all_day: Boolean
   starts_at: ISO8601Timestamp
   ends_at: ISO8601Timestamp
@@ -4086,6 +4098,8 @@ structure Forward {
   creator: Person
   content: String
   @required
+  content_attachments: RichTextAttachmentList
+  @required
   subject: String
   from: String
   replies_count: Integer
@@ -4126,6 +4140,8 @@ structure ForwardReply {
   creator: Person
   @required
   content: String
+  @required
+  content_attachments: RichTextAttachmentList
   boosts_count: Integer
   boosts_url: String
 }
@@ -4834,6 +4850,8 @@ structure Card {
   position: Integer
   content: String
   description: String
+  @required
+  description_attachments: RichTextAttachmentList
   due_on: ISO8601Date
   completed: Boolean
   completed_at: ISO8601Timestamp
@@ -5449,6 +5467,8 @@ structure ClientApproval {
   @required
   creator: Person
   content: String
+  @required
+  content_attachments: RichTextAttachmentList
   subject: String
   due_on: ISO8601Date
   replies_count: Integer
@@ -5515,6 +5535,8 @@ structure ClientCorrespondence {
   creator: Person
   content: String
   @required
+  content_attachments: RichTextAttachmentList
+  @required
   subject: String
   replies_count: Integer
   replies_url: String
@@ -5554,6 +5576,8 @@ structure ClientReply {
   creator: Person
   @required
   content: String
+  @required
+  content_attachments: RichTextAttachmentList
 }
 
 structure RecordingBucket {
@@ -6063,6 +6087,16 @@ structure Recording {
   app_url: String
   bookmark_url: String
   content: String
+  /// Rich-text companion arrays carried through the generic recording
+  /// projection (`to_recordable_partial_path` renders the full type-specific
+  /// partial). A given recording is one type, so it carries only the array
+  /// matching its rich-text attribute (`content_attachments` for a
+  /// Comment/Message, `description_attachments` for a Todo/Card); a
+  /// webhook-sourced recording (base partial) carries neither. Optional (no
+  /// `@required`), non-nullable.
+  content_attachments: RichTextAttachmentList
+  /// See `content_attachments` — the description-attribute companion array.
+  description_attachments: RichTextAttachmentList
   comments_count: Integer
   comments_url: String
   subscription_url: String
@@ -6659,6 +6693,8 @@ structure QuestionAnswer {
   comments_url: String
   @required
   content: String
+  @required
+  content_attachments: RichTextAttachmentList
   group_on: ISO8601Date
   @required
   parent: RecordingParent
@@ -7505,6 +7541,16 @@ structure SearchResult {
   creator: Person
   content: String
   description: String
+  /// Rich-text companion arrays carried through the polymorphic search
+  /// projection. A given result is one recording type, so it carries only
+  /// the array matching its rich-text attribute (`content_attachments` for a
+  /// Comment/Message, `description_attachments` for a Todo); a webhook-sourced
+  /// result carries neither. Optional (no `@required`), non-nullable. Distinct
+  /// from the generic `attachments` key (the recording's aggregate downloadable
+  /// files), which is a separate projection concern and not modeled here.
+  content_attachments: RichTextAttachmentList
+  /// See `content_attachments` — the description-attribute companion array.
+  description_attachments: RichTextAttachmentList
   subject: String
 }
 
@@ -8199,6 +8245,11 @@ structure Gauge {
   bucket: RecordingBucket
   creator: Person
   description: String
+  /// Optional (no `@required`): the type-specific partial renders the
+  /// companion array only when the gauge has needles (bc3 `if
+  /// gauge.any_needles?`), so a needle-less gauge omits the key entirely.
+  /// Non-nullable — never served as JSON `null`.
+  description_attachments: RichTextAttachmentList
   enabled: Boolean
   last_needle_color: String
   last_needle_position: Integer
@@ -8229,6 +8280,8 @@ structure GaugeNeedle {
   bucket: RecordingBucket
   creator: Person
   description: String
+  @required
+  description_attachments: RichTextAttachmentList
   color: String
   position: Integer
 }

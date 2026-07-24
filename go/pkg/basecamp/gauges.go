@@ -11,50 +11,64 @@ import (
 
 // Gauge represents a gauge (progress indicator) on a project.
 type Gauge struct {
-	ID                     int64     `json:"id"`
-	Title                  string    `json:"title,omitempty"`
-	Description            string    `json:"description,omitempty"`
-	Enabled                bool      `json:"enabled,omitempty"`
-	Status                 string    `json:"status,omitempty"`
-	LastNeedleColor        string    `json:"last_needle_color,omitempty"`
-	LastNeedlePosition     int32     `json:"last_needle_position,omitempty"`
-	PreviousNeedlePosition int32     `json:"previous_needle_position,omitempty"`
-	InheritsStatus         bool      `json:"inherits_status,omitempty"`
-	VisibleToClients       bool      `json:"visible_to_clients,omitempty"`
-	Type                   string    `json:"type,omitempty"`
-	URL                    string    `json:"url,omitempty"`
-	AppURL                 string    `json:"app_url,omitempty"`
-	BookmarkURL            string    `json:"bookmark_url,omitempty"`
-	Creator                *Person   `json:"creator,omitempty"`
-	Bucket                 *Bucket   `json:"bucket,omitempty"`
-	CreatedAt              time.Time `json:"created_at"`
-	UpdatedAt              time.Time `json:"updated_at"`
+	ID          int64  `json:"id"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	// DescriptionAttachments holds structured metadata for the downloadable
+	// files embedded in the rich text Description. Optional: the API renders
+	// this array only when the gauge has needles, so it is absent (nil) for a
+	// needle-less gauge. omitempty matches the codebase optional-array
+	// convention (Assignees, Steps) and, since the member is non-nullable,
+	// never emits an invalid "description_attachments": null. Decodes directly
+	// (RichTextAttachment.UnmarshalJSON runs per element). See RichTextAttachment.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	Enabled                bool                 `json:"enabled,omitempty"`
+	Status                 string               `json:"status,omitempty"`
+	LastNeedleColor        string               `json:"last_needle_color,omitempty"`
+	LastNeedlePosition     int32                `json:"last_needle_position,omitempty"`
+	PreviousNeedlePosition int32                `json:"previous_needle_position,omitempty"`
+	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
+	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
+	Type                   string               `json:"type,omitempty"`
+	URL                    string               `json:"url,omitempty"`
+	AppURL                 string               `json:"app_url,omitempty"`
+	BookmarkURL            string               `json:"bookmark_url,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
+	Bucket                 *Bucket              `json:"bucket,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	UpdatedAt              time.Time            `json:"updated_at"`
 }
 
 // GaugeNeedle represents a single needle (progress update) on a gauge.
 type GaugeNeedle struct {
-	ID               int64     `json:"id"`
-	Title            string    `json:"title,omitempty"`
-	Description      string    `json:"description,omitempty"`
-	Position         int32     `json:"position,omitempty"`
-	Color            string    `json:"color,omitempty"`
-	Status           string    `json:"status,omitempty"`
-	InheritsStatus   bool      `json:"inherits_status,omitempty"`
-	VisibleToClients bool      `json:"visible_to_clients,omitempty"`
-	CommentsCount    int32     `json:"comments_count,omitempty"`
-	BoostsCount      int32     `json:"boosts_count,omitempty"`
-	Type             string    `json:"type,omitempty"`
-	URL              string    `json:"url,omitempty"`
-	AppURL           string    `json:"app_url,omitempty"`
-	BookmarkURL      string    `json:"bookmark_url,omitempty"`
-	CommentsURL      string    `json:"comments_url,omitempty"`
-	BoostsURL        string    `json:"boosts_url,omitempty"`
-	SubscriptionURL  string    `json:"subscription_url,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID          int64  `json:"id"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	// DescriptionAttachments holds structured metadata for the downloadable
+	// files embedded in the rich text Description. Always sent by the API
+	// (empty when none); not omitempty so absent (nil) vs empty ([]) survives
+	// re-encoding. Decodes directly (RichTextAttachment.UnmarshalJSON runs per
+	// element). See RichTextAttachment.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	Position               int32                `json:"position,omitempty"`
+	Color                  string               `json:"color,omitempty"`
+	Status                 string               `json:"status,omitempty"`
+	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
+	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	Type                   string               `json:"type,omitempty"`
+	URL                    string               `json:"url,omitempty"`
+	AppURL                 string               `json:"app_url,omitempty"`
+	BookmarkURL            string               `json:"bookmark_url,omitempty"`
+	CommentsURL            string               `json:"comments_url,omitempty"`
+	BoostsURL              string               `json:"boosts_url,omitempty"`
+	SubscriptionURL        string               `json:"subscription_url,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
+	Bucket                 *Bucket              `json:"bucket,omitempty"`
+	Parent                 *Parent              `json:"parent,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	UpdatedAt              time.Time            `json:"updated_at"`
 }
 
 // CreateGaugeNeedleRequest specifies parameters for creating a gauge needle.

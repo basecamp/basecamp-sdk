@@ -11,6 +11,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CommentsServiceTest {
@@ -25,7 +26,7 @@ class CommentsServiceTest {
         }
     }
 
-    private fun commentJson(id: Long, content: String) = """{
+    private fun commentJson(id: Long, content: String, attachments: String = "[]") = """{
         "id": $id,
         "status": "active",
         "visible_to_clients": false,
@@ -37,6 +38,7 @@ class CommentsServiceTest {
         "url": "https://3.basecampapi.com/12345/buckets/1/comments/$id.json",
         "app_url": "https://3.basecamp.com/12345/buckets/1/comments/$id",
         "content": "$content",
+        "content_attachments": $attachments,
         "parent": {"id": 100, "title": "Parent", "type": "Todo", "url": "https://3.basecampapi.com/12345/buckets/1/todos/100.json", "app_url": "https://3.basecamp.com/12345/buckets/1/todos/100"},
         "bucket": {"id": 1, "name": "Project", "type": "Project"},
         "creator": {"id": 1, "name": "Test User", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z"}
@@ -233,6 +235,49 @@ class CommentsServiceTest {
         } catch (e: BasecampException.Auth) {
             assertEquals("Authentication required", e.message)
         }
+
+        client.close()
+    }
+
+    // -- Attachment dimension decode (SPEC.md §10 Type Fidelity) --
+    //
+    // A Comment's rich-text content is paired with a content_attachments array
+    // whose pixel dimensions arrive float-spelled (1024.0) for images and null
+    // for non-image blobs. The generated RichTextAttachment gives width/height a
+    // nullable `Int?` decoded through FlexibleIntSerializer, so Kotlin decodes
+    // both faithfully — matching Go/Swift/Ruby: a served null stays null (not a
+    // sentinel 0), and a float-spelled 1024.0 becomes 1024.
+
+    private fun attachmentJson(id: Long, filename: String, contentType: String, width: String, height: String) = """{
+        "id": $id, "sgid": "BAh-$id", "filename": "$filename",
+        "content_type": "$contentType", "byte_size": 284111,
+        "download_url": "https://3.basecampapi.com/12345/buckets/1/blobs/$id/download/$filename",
+        "width": $width, "height": $height, "previewable": true,
+        "preview_url": "https://3.basecampapi.com/12345/buckets/1/blobs/$id/previews/$filename",
+        "thumbnail_url": "https://3.basecampapi.com/12345/buckets/1/blobs/$id/thumbnails/$filename"
+    }"""
+
+    @Test
+    fun contentAttachmentDimensionsDecodeFaithfully() = runTest {
+        val image = attachmentJson(1069480010, "celebration.png", "image/png", "1024.0", "768")
+        val blob = attachmentJson(1069480011, "notes.pdf", "application/pdf", "null", "null")
+        val client = mockClient { _ ->
+            respond(
+                content = commentJson(77, "Great work!", attachments = "[$image, $blob]"),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val comment = client.forAccount("12345").comments.get(commentId = 77)
+        assertEquals(2, comment.contentAttachments.size)
+
+        // The BC3 API's float-spelled 1024.0 decodes to the integer 1024.
+        assertEquals(1024, comment.contentAttachments[0].width)
+        assertEquals(768, comment.contentAttachments[0].height)
+        // A non-image blob's null dimensions decode to null, not a sentinel 0.
+        assertNull(comment.contentAttachments[1].width)
+        assertNull(comment.contentAttachments[1].height)
 
         client.close()
     }

@@ -140,3 +140,68 @@ class TestAsyncDownload:
             assert "download_url" in str(exc_info.value)
             assert metadata_route.call_count == 1
             assert len(router.calls) == 1
+
+
+class TestDescriptionAttachments:
+    @respx.mock
+    def test_get_preserves_dimension_float_and_none(self):
+        """An Upload's rich-text description is paired with a
+        description_attachments array. Pixel dimensions arrive float-spelled
+        (1024.0) for images and null for non-image blobs. The service returns the
+        parsed response dict, so httpx/json preserves both the float and None
+        verbatim — Python performs no int coercion. The generated TypedDict types
+        these honestly as ``NotRequired[Optional[int | float]]`` (the schema is
+        nullable and the FlexInt dimension may arrive as a float), so both the
+        float value and None below are within the declared type. See SPEC.md §10
+        Type Fidelity.
+        """
+        upload = {
+            "id": 77,
+            "filename": "logo.png",
+            "description": "Company logo",
+            "download_url": "https://3.basecampapi.com/12345/blobs/abc/download/logo.png",
+            "description_attachments": [
+                {
+                    "id": 1069480020,
+                    "sgid": "BAh-img",
+                    "filename": "brand-guide.png",
+                    "content_type": "image/png",
+                    "byte_size": 512000,
+                    "download_url": "https://3.basecampapi.com/12345/buckets/1/blobs/img/download/brand-guide.png",
+                    "width": 1024.0,
+                    "height": 768,
+                    "previewable": True,
+                    "preview_url": "https://3.basecampapi.com/12345/buckets/1/blobs/img/previews/brand-guide.png",
+                    "thumbnail_url": "https://3.basecampapi.com/12345/buckets/1/blobs/img/thumbnails/brand-guide.png",
+                },
+                {
+                    "id": 1069480021,
+                    "sgid": "BAh-pdf",
+                    "filename": "specs.pdf",
+                    "content_type": "application/pdf",
+                    "byte_size": 2097152,
+                    "download_url": "https://3.basecampapi.com/12345/buckets/1/blobs/pdf/download/specs.pdf",
+                    "width": None,
+                    "height": None,
+                    "previewable": False,
+                    "preview_url": "https://3.basecampapi.com/12345/buckets/1/blobs/pdf/previews/specs.pdf",
+                    "thumbnail_url": "https://3.basecampapi.com/12345/buckets/1/blobs/pdf/thumbnails/specs.pdf",
+                },
+            ],
+        }
+        respx.get("https://3.basecampapi.com/12345/uploads/77").mock(return_value=httpx.Response(200, json=upload))
+
+        c = Client(access_token="test-token")
+        result = c.for_account("12345").uploads.get(upload_id=77)
+        attachments = result["description_attachments"]
+        assert len(attachments) == 2
+
+        # Float-spelled 1024.0 is preserved verbatim, as a Python float — the
+        # runtime performs no integer coercion (unlike Go's FlexInt).
+        assert attachments[0]["width"] == 1024
+        assert isinstance(attachments[0]["width"], float)
+        assert attachments[0]["height"] == 768
+        # None is preserved verbatim, matching the TypedDict's
+        # NotRequired[Optional[int | float]] width/height type.
+        assert attachments[1]["width"] is None
+        assert attachments[1]["height"] is None

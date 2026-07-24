@@ -47,7 +47,8 @@
       "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
       "can_manage_projects": true,
       "can_manage_people": true
-    }
+    },
+    "content_attachments": []
   },
   {
     "id": 1069479460,
@@ -101,6 +102,7 @@
       },
       "can_manage_projects": true,
       "can_manage_people": false
-    }
+    },
+    "content_attachments": []
   }
 ]

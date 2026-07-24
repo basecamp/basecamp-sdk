@@ -147,6 +147,7 @@ class Card(TypedDict):
     created_at: str
     creator: Person
     description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
     due_on: NotRequired[str]
     id: int
     inherits_status: bool
@@ -259,6 +260,7 @@ class ClientApproval(TypedDict):
     bookmark_url: NotRequired[str]
     bucket: RecordingBucket
     content: NotRequired[str]
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     due_on: NotRequired[str]
@@ -306,6 +308,7 @@ class ClientCorrespondence(TypedDict):
     bookmark_url: NotRequired[str]
     bucket: RecordingBucket
     content: NotRequired[str]
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     id: int
@@ -328,6 +331,7 @@ class ClientReply(TypedDict):
     bookmark_url: NotRequired[str]
     bucket: RecordingBucket
     content: str
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     id: int
@@ -353,6 +357,7 @@ class Comment(TypedDict):
     boosts_url: NotRequired[str]
     bucket: TodoBucket
     content: str
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     id: int
@@ -549,6 +554,7 @@ class Document(TypedDict):
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     content: NotRequired[str]
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     id: int
@@ -595,6 +601,7 @@ class Forward(TypedDict):
     bookmark_url: NotRequired[str]
     bucket: TodoBucket
     content: NotRequired[str]
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     from_: NotRequired[str]
@@ -620,6 +627,7 @@ class ForwardReply(TypedDict):
     boosts_url: NotRequired[str]
     bucket: TodoBucket
     content: str
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     id: int
@@ -640,6 +648,7 @@ class Gauge(TypedDict):
     created_at: str
     creator: NotRequired[Person]
     description: NotRequired[str]
+    description_attachments: NotRequired[list[RichTextAttachment]]
     enabled: NotRequired[bool]
     id: int
     inherits_status: NotRequired[bool]
@@ -666,6 +675,7 @@ class GaugeNeedle(TypedDict):
     created_at: str
     creator: NotRequired[Person]
     description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
     id: int
     inherits_status: NotRequired[bool]
     parent: NotRequired[RecordingParent]
@@ -794,6 +804,7 @@ class Message(TypedDict):
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     content: str
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     id: int
@@ -1066,6 +1077,7 @@ class QuestionAnswer(TypedDict):
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     content: str
+    content_attachments: list[RichTextAttachment]
     created_at: str
     creator: Person
     group_on: NotRequired[str]
@@ -1142,8 +1154,10 @@ class Recording(TypedDict):
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     content: NotRequired[str]
+    content_attachments: NotRequired[list[RichTextAttachment]]
     created_at: str
     creator: Person
+    description_attachments: NotRequired[list[RichTextAttachment]]
     id: int
     inherits_status: bool
     parent: RecordingParent
@@ -1257,6 +1271,7 @@ class ScheduleEntry(TypedDict):
     created_at: str
     creator: Person
     description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
     ends_at: NotRequired[str]
     id: int
     inherits_status: bool
@@ -1288,9 +1303,11 @@ class SearchResult(TypedDict):
     bookmark_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
     content: NotRequired[str]
+    content_attachments: NotRequired[list[RichTextAttachment]]
     created_at: NotRequired[str]
     creator: NotRequired[Person]
     description: NotRequired[str]
+    description_attachments: NotRequired[list[RichTextAttachment]]
     id: int
     inherits_status: NotRequired[bool]
     parent: NotRequired[RecordingParent]
@@ -1436,6 +1453,7 @@ class Todolist(TypedDict):
     created_at: str
     creator: Person
     description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
     groups_url: NotRequired[str]
     id: int
     inherits_status: bool
@@ -1706,6 +1724,7 @@ class Upload(TypedDict):
     created_at: str
     creator: Person
     description: NotRequired[str]
+    description_attachments: list[RichTextAttachment]
     download_url: NotRequired[str]
     filename: NotRequired[str]
     height: NotRequired[int | float]

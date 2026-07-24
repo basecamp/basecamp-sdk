@@ -36,6 +36,7 @@ private func uploadMetadataJSON(
         "type": "Upload",
         "inherits_status": false,
         "visible_to_clients": false,
+        "description_attachments": [],
         "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
         "creator": ["id": 1, "name": "Test User"] as [String: Any],
         "parent": [

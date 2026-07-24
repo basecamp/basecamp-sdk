@@ -6,6 +6,7 @@ public struct ScheduleEntry: Codable, Sendable {
     public let bucket: TodoBucket
     public let createdAt: String
     public let creator: Person
+    public let descriptionAttachments: [RichTextAttachment]
     public let id: Int
     public let inheritsStatus: Bool
     public let parent: RecordingParent
@@ -33,6 +34,7 @@ public struct ScheduleEntry: Codable, Sendable {
         bucket: TodoBucket,
         createdAt: String,
         creator: Person,
+        descriptionAttachments: [RichTextAttachment],
         id: Int,
         inheritsStatus: Bool,
         parent: RecordingParent,
@@ -59,6 +61,7 @@ public struct ScheduleEntry: Codable, Sendable {
         self.bucket = bucket
         self.createdAt = createdAt
         self.creator = creator
+        self.descriptionAttachments = descriptionAttachments
         self.id = id
         self.inheritsStatus = inheritsStatus
         self.parent = parent

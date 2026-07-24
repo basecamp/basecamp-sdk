@@ -22,6 +22,7 @@ data class Card(
     val type: String,
     val url: String,
     @SerialName("app_url") val appUrl: String,
+    @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>,
     val parent: RecordingParent,
     val bucket: TodoBucket,
     val creator: Person,

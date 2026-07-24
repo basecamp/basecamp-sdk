@@ -86,17 +86,22 @@ type Forward struct {
 	InheritsStatus   bool      `json:"inherits_status"`
 	Subject          string    `json:"subject"`
 	Content          string    `json:"content"`
-	From             string    `json:"from"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url,omitempty"`
-	SubscriptionURL  string    `json:"subscription_url,omitempty"`
-	RepliesCount     int       `json:"replies_count,omitempty"`
-	RepliesURL       string    `json:"replies_url,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. Always sent by the API (empty when
+	// none); not omitempty so absent (nil) vs empty ([]) survives re-encoding.
+	// See RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	From               string               `json:"from"`
+	Type               string               `json:"type"`
+	URL                string               `json:"url"`
+	AppURL             string               `json:"app_url"`
+	BookmarkURL        string               `json:"bookmark_url,omitempty"`
+	SubscriptionURL    string               `json:"subscription_url,omitempty"`
+	RepliesCount       int                  `json:"replies_count,omitempty"`
+	RepliesURL         string               `json:"replies_url,omitempty"`
+	Parent             *Parent              `json:"parent,omitempty"`
+	Bucket             *Bucket              `json:"bucket,omitempty"`
+	Creator            *Person              `json:"creator,omitempty"`
 }
 
 // ForwardReply represents a reply to a forwarded email.
@@ -109,15 +114,20 @@ type ForwardReply struct {
 	Title            string    `json:"title,omitempty"`
 	InheritsStatus   bool      `json:"inherits_status"`
 	Content          string    `json:"content"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url,omitempty"`
-	BoostsCount      int       `json:"boosts_count,omitempty"`
-	BoostsURL        string    `json:"boosts_url,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. Always sent by the API (empty when
+	// none); not omitempty so absent (nil) vs empty ([]) survives re-encoding.
+	// See RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	Type               string               `json:"type"`
+	URL                string               `json:"url"`
+	AppURL             string               `json:"app_url"`
+	BookmarkURL        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int                  `json:"boosts_count,omitempty"`
+	BoostsURL          string               `json:"boosts_url,omitempty"`
+	Parent             *Parent              `json:"parent,omitempty"`
+	Bucket             *Bucket              `json:"bucket,omitempty"`
+	Creator            *Person              `json:"creator,omitempty"`
 }
 
 // CreateForwardReplyRequest specifies the parameters for creating a reply to a forward.
@@ -525,6 +535,8 @@ func forwardFromGenerated(gf generated.Forward) Forward {
 		f.Creator = &creator
 	}
 
+	f.ContentAttachments = richTextAttachmentsFromGenerated(gf.ContentAttachments)
+
 	return f
 }
 
@@ -572,6 +584,8 @@ func forwardReplyFromGenerated(gr generated.ForwardReply) ForwardReply {
 		creator := personFromGenerated(gr.Creator)
 		r.Creator = &creator
 	}
+
+	r.ContentAttachments = richTextAttachmentsFromGenerated(gr.ContentAttachments)
 
 	return r
 }
