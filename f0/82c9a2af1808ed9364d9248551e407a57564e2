@@ -1,0 +1,25 @@
+spec/api-gaps/dock-tool-visible-to-clients.md
+  s_9dca1a241a65c0::t_b3701f9c88c8cc 1-81
+spec/api-gaps/README.md
+  s_9dca1a241a65c0::t_3f794449df6342 58,60-61
+spec/api-gaps/card-table-wormholes.md
+  s_9dca1a241a65c0::t_9e3d8d0b76cf4f 1-92
+spec/api-gaps/external-links-doors.md
+  s_9dca1a241a65c0::t_3c7c245ca728fe 95-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f082c9a2af1808ed9364d9248551e407a57564e2",
+  "prompts": {},
+  "sessions": {
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
