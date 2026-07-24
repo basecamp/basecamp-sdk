@@ -4,6 +4,7 @@ import Foundation
 public struct Wormhole: Codable, Sendable {
     public let appUrl: String
     public let bucket: TodoBucket
+    public let color: String?
     public let createdAt: String
     public let creator: Person
     public let destinationUrl: String?
@@ -18,11 +19,11 @@ public struct Wormhole: Codable, Sendable {
     public let url: String
     public let visibleToClients: Bool
     public var bookmarkUrl: String?
-    public var color: String?
 
     public init(
         appUrl: String,
         bucket: TodoBucket,
+        color: String?,
         createdAt: String,
         creator: Person,
         destinationUrl: String?,
@@ -36,11 +37,11 @@ public struct Wormhole: Codable, Sendable {
         updatedAt: String,
         url: String,
         visibleToClients: Bool,
-        bookmarkUrl: String? = nil,
-        color: String? = nil
+        bookmarkUrl: String? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
+        self.color = color
         self.createdAt = createdAt
         self.creator = creator
         self.destinationUrl = destinationUrl
@@ -55,12 +56,12 @@ public struct Wormhole: Codable, Sendable {
         self.url = url
         self.visibleToClients = visibleToClients
         self.bookmarkUrl = bookmarkUrl
-        self.color = color
     }
 
     enum CodingKeys: String, CodingKey {
         case appUrl
         case bucket
+        case color
         case createdAt
         case creator
         case destinationUrl
@@ -75,13 +76,13 @@ public struct Wormhole: Codable, Sendable {
         case url
         case visibleToClients
         case bookmarkUrl
-        case color
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.appUrl = try container.decode(String.self, forKey: .appUrl)
         self.bucket = try container.decode(TodoBucket.self, forKey: .bucket)
+        self.color = try container.decode(String?.self, forKey: .color)
         self.createdAt = try container.decode(String.self, forKey: .createdAt)
         self.creator = try container.decode(Person.self, forKey: .creator)
         self.destinationUrl = try container.decode(String?.self, forKey: .destinationUrl)
@@ -96,13 +97,13 @@ public struct Wormhole: Codable, Sendable {
         self.url = try container.decode(String.self, forKey: .url)
         self.visibleToClients = try container.decode(Bool.self, forKey: .visibleToClients)
         self.bookmarkUrl = try container.decodeIfPresent(String.self, forKey: .bookmarkUrl)
-        self.color = try container.decodeIfPresent(String.self, forKey: .color)
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.appUrl, forKey: .appUrl)
         try container.encode(self.bucket, forKey: .bucket)
+        try container.encode(self.color, forKey: .color)
         try container.encode(self.createdAt, forKey: .createdAt)
         try container.encode(self.creator, forKey: .creator)
         try container.encode(self.destinationUrl, forKey: .destinationUrl)
@@ -117,6 +118,5 @@ public struct Wormhole: Codable, Sendable {
         try container.encode(self.url, forKey: .url)
         try container.encode(self.visibleToClients, forKey: .visibleToClients)
         try container.encodeIfPresent(self.bookmarkUrl, forKey: .bookmarkUrl)
-        try container.encodeIfPresent(self.color, forKey: .color)
     }
 }

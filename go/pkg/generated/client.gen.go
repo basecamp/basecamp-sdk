@@ -2709,9 +2709,11 @@ type Wormhole struct {
 	BookmarkUrl string     `json:"bookmark_url,omitempty"`
 	Bucket      TodoBucket `json:"bucket"`
 
-	// Color Wormhole color, or null. Optional string, matching the repo-wide color
-	// convention (CardColumn.color et al.); a server null decodes as absent.
-	Color     string    `json:"color,omitempty"`
+	// Color Wormhole color; always emitted on the wire (`json.color recording.color`),
+	// `null` when unset. Like destination_url, `@required` models the presence and
+	// the nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->
+	// type: ["string","null"] + x-go-type "*string").
+	Color     *string   `json:"color"`
 	CreatedAt time.Time `json:"created_at"`
 	Creator   Person    `json:"creator"`
 

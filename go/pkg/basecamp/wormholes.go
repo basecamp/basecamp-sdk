@@ -28,7 +28,8 @@ type Wormhole struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
-	Color            string    `json:"color,omitempty"`
+	// Color is the wormhole color, or nil when unset. Always emitted on the wire.
+	Color *string `json:"color,omitempty"`
 	// Linked is true only while the destination column, its board, and its bucket
 	// are all active; it becomes false once the destination is unlinked.
 	Linked bool `json:"linked"`
@@ -198,7 +199,6 @@ func wormholeFromGenerated(gw generated.Wormhole) Wormhole {
 		URL:              gw.Url,
 		AppURL:           gw.AppUrl,
 		BookmarkURL:      gw.BookmarkUrl,
-		Color:            gw.Color,
 		Linked:           gw.Linked,
 		CreatedAt:        gw.CreatedAt,
 		UpdatedAt:        gw.UpdatedAt,
@@ -208,8 +208,13 @@ func wormholeFromGenerated(gw generated.Wormhole) Wormhole {
 		w.ID = gw.Id
 	}
 
-	// destination_url is modeled as a nullable string (x-go-type "*string"), so the
-	// generated field is already *string — nil for an unlinked wormhole, set otherwise.
+	// color and destination_url are modeled as nullable strings (x-go-type
+	// "*string"), so the generated fields are already *string — nil when unset,
+	// set otherwise. Copy the value so the clean type doesn't alias gw.
+	if gw.Color != nil {
+		s := *gw.Color
+		w.Color = &s
+	}
 	if gw.DestinationUrl != nil {
 		s := *gw.DestinationUrl
 		w.DestinationURL = &s

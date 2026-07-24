@@ -312,9 +312,6 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   CreateCardStep: "create",
   UpdateCardStep: "update",
   SetCardStepCompletion: "setCompletion",
-  CreateWormhole: "create",
-  UpdateWormhole: "update",
-  DeleteWormhole: "delete",
   GetQuestionnaire: "getQuestionnaire",
   GetQuestion: "getQuestion",
   GetAnswer: "getAnswer",
@@ -617,6 +614,7 @@ function isSimpleResource(resource: string): boolean {
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "hillchart", "hillcharts",
+    "wormhole", "wormholes",
   ];
   return simpleResources.includes(resource.toLowerCase());
 }

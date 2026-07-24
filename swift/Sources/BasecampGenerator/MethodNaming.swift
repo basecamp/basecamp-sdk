@@ -44,9 +44,6 @@ let methodNameOverrides: [String: String] = [
     "CreateCardStep": "create",
     "UpdateCardStep": "update",
     "SetCardStepCompletion": "setCompletion",
-    "CreateWormhole": "create",
-    "UpdateWormhole": "update",
-    "DeleteWormhole": "delete",
     "GetQuestionnaire": "getQuestionnaire",
     "GetQuestion": "getQuestion",
     "GetAnswer": "getAnswer",
@@ -160,6 +157,7 @@ private let simpleResources: Set<String> = [
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "hillchart", "hillcharts",
+    "wormhole", "wormholes",
 ]
 
 /// Extracts the method name for an operationId.

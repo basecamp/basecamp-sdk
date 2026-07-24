@@ -146,9 +146,6 @@ METHOD_NAME_OVERRIDES = {
     "CreateCardStep": "create",
     "UpdateCardStep": "update",
     "SetCardStepCompletion": "set_completion",
-    "CreateWormhole": "create",
-    "UpdateWormhole": "update",
-    "DeleteWormhole": "delete",
     "GetQuestionnaire": "get_questionnaire",
     "GetQuestion": "get_question",
     "GetAnswer": "get_answer",
@@ -282,6 +279,7 @@ SIMPLE_RESOURCES = {
     "clientapprovals", "clientcorrespondence", "clientcorrespondences", "clientreply",
     "clientreplies", "forwardreply", "forwardreplies", "campfireline", "campfirelines",
     "todolistgroup", "todolistgroups", "todolistorgroup", "uploadversions",
+    "wormhole", "wormholes",
 }
 
 

@@ -25,8 +25,8 @@ data class Wormhole(
     val parent: RecordingParent,
     val bucket: TodoBucket,
     val creator: Person,
+    val color: String?,
     val linked: Boolean,
     @SerialName("destination_url") val destinationUrl: String?,
-    @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val color: String? = null
+    @SerialName("bookmark_url") val bookmarkUrl: String? = null
 )

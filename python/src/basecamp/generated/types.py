@@ -1821,7 +1821,7 @@ class Wormhole(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
     bucket: TodoBucket
-    color: NotRequired[str]
+    color: str | None
     created_at: str
     creator: Person
     destination_url: str | None

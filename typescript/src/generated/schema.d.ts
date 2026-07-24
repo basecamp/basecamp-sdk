@@ -4778,10 +4778,12 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             /**
-             * @description Wormhole color, or null. Optional string, matching the repo-wide color
-             *     convention (CardColumn.color et al.); a server null decodes as absent.
+             * @description Wormhole color; always emitted on the wire (`json.color recording.color`),
+             *     `null` when unset. Like destination_url, `@required` models the presence and
+             *     the nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->
+             *     type: ["string","null"] + x-go-type "*string").
              */
-            color?: string;
+            color: string | null;
             /**
              * @description True only while the destination column, its board, and its bucket are all
              *     active; false once the destination is unlinked. Always emitted.

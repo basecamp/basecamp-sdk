@@ -26618,8 +26618,12 @@
             "$ref": "#/components/schemas/Person"
           },
           "color": {
-            "type": "string",
-            "description": "Wormhole color, or null. Optional string, matching the repo-wide color\nconvention (CardColumn.color et al.); a server null decodes as absent."
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"] + x-go-type \"*string\").",
+            "x-go-type": "*string"
           },
           "linked": {
             "type": "boolean",
@@ -26637,6 +26641,7 @@
         "required": [
           "app_url",
           "bucket",
+          "color",
           "created_at",
           "creator",
           "destination_url",
