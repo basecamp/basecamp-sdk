@@ -9,7 +9,7 @@ Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 ## Features
 
 - Full Swift 6 concurrency support (strict `Sendable` throughout)
-- 39 services covering the complete Basecamp API
+- 45 services covering the complete Basecamp API
 - Async/await API with structured concurrency
 - ETag-based HTTP caching (opt-in)
 - Automatic retry with exponential backoff

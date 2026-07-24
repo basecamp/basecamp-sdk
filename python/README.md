@@ -8,7 +8,7 @@ Official Python SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Features
 
-- **Full API coverage** — 41 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
+- **Full API coverage** — 45 generated services covering projects, todos, messages, schedules, campfires, card tables, and more
 - **OAuth 2.0 authentication** — PKCE support, token refresh, resource-first (RFC 9728 + RFC 8414) discovery
 - **Static token authentication** — Simple setup for personal integrations
 - **Automatic retry with backoff** — Exponential backoff with jitter, respects `Retry-After` headers

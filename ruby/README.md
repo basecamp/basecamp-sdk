@@ -179,7 +179,7 @@ aborts before an oversized body is buffered.
 
 ## Services
 
-The SDK provides 38 services covering the complete Basecamp API:
+The SDK provides 45 services covering the complete Basecamp API:
 
 | Service | Description |
 |---------|-------------|
