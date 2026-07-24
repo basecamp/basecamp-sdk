@@ -201,6 +201,7 @@ class TestDescriptionAttachments:
         assert attachments[0]["width"] == 1024
         assert isinstance(attachments[0]["width"], float)
         assert attachments[0]["height"] == 768
-        # None is preserved verbatim despite the TypedDict's declared width type.
+        # None is preserved verbatim, matching the TypedDict's
+        # NotRequired[Optional[int | float]] width/height type.
         assert attachments[1]["width"] is None
         assert attachments[1]["height"] is None

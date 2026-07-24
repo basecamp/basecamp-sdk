@@ -96,7 +96,7 @@ describe("CommentsService", () => {
       // Float-spelled 1024.0 is preserved as the number 1024.
       expect(attachments[0]!.width).toBe(1024);
       expect(attachments[0]!.height).toBe(768);
-      // null is preserved verbatim despite the static `width?: number` type.
+      // null is preserved verbatim, matching the static `width?: number | null`.
       expect(attachments[1]!.width).toBeNull();
       expect(attachments[1]!.height).toBeNull();
     });
