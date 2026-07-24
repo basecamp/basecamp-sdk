@@ -1,0 +1,33 @@
+ruby/README.md
+  s_3fd48deaa8600c::t_cbebea150c99cf 182
+AGENTS.md
+  s_3fd48deaa8600c::t_cbebea150c99cf 12
+swift/README.md
+  s_3fd48deaa8600c::t_cbebea150c99cf 124-125
+python/README.md
+  s_3fd48deaa8600c::t_1fced7b6213205 292
+SPEC.md
+  s_3fd48deaa8600c::t_cbebea150c99cf 70,1613-1617
+kotlin/README.md
+  s_3fd48deaa8600c::t_1fced7b6213205 220-221
+  s_3fd48deaa8600c::t_cbebea150c99cf 13
+swift/Tests/BasecampTests/WormholesServiceTests.swift
+  s_3fd48deaa8600c::t_4c87bff5678512 25-26,28,31
+  s_3fd48deaa8600c::t_08aca77f1b87dc 165,168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "01b3e030cd1496cf82f9741bdcd8ed9c133fe9dc",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
