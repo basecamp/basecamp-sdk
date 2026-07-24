@@ -1,0 +1,45 @@
+python/scripts/generate_services.py
+  s_366adaf25569e1::t_515c65edc87bc1 529-532
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_366adaf25569e1::t_c870ce12e66e2f 124-132
+scripts/enhance-openapi-go-types.sh
+  s_366adaf25569e1::t_1228276253741f 36,40-46
+  s_366adaf25569e1::t_9a0543c8b937d9 227-233,236
+  s_854ff63c351de4::t_921a1e026eff67 47
+ruby/lib/basecamp/generated/metadata.json
+  s_366adaf25569e1::t_b69aa954231854 4
+ruby/lib/basecamp/generated/types.rb
+  s_366adaf25569e1::t_b69aa954231854 4
+typescript/src/generated/metadata.ts
+  s_366adaf25569e1::t_b69aa954231854 40
+scripts/check-ruby-deprecation-yard.rb
+  s_366adaf25569e1::t_572d6c07624912 20-36,39-40
+scripts/check-deprecation-parity
+  s_366adaf25569e1::t_449eb8c57016ef 154-158,161-162,164
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/OperationParser.kt
+  s_366adaf25569e1::t_1d241c1e7d0c53 348-350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "88222791750d1cddbd3b17d4bf17e1dfc021fdd9",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
