@@ -1,0 +1,46 @@
+go/pkg/basecamp/url-routes.json
+  s_3fd48deaa8600c::t_4e25a7ead25b07 120-162
+go/pkg/generated/client.gen.go
+  s_3fd48deaa8600c::t_4e25a7ead25b07 309,740-752,2551-2563,2702-2734,2973-2978,3513-3525,4380-4437,7800-7969,17700-17702,18867-18879,19949,19954,19960,19968,19976,19983,19986,19989-19990,19995,20003,20011,20018,20021,20024-20025,20031,20039,20047,20054,20057-20162,26838-26880,29757-29912,29914-29919,29921-29926,29928-29933,29935,29937-29938
+  s_3fd48deaa8600c::t_2b6db55c1814c1 29913,29920,29927,29934,29936,29939
+go/pkg/basecamp/cards.go
+  s_3fd48deaa8600c::t_9f2e319e0b8eef 1237-1240
+  s_3fd48deaa8600c::t_a6c7222ff2f891 31
+  s_3fd48deaa8600c::t_031e9d55ceac7f 524-528
+  s_a618386d403ce1::t_96aee09971a473 1241-1243
+go/pkg/basecamp/wormholes.go
+  s_3fd48deaa8600c::t_7c4931e45d2adf 1-244
+go/pkg/basecamp/client.go
+  s_3fd48deaa8600c::t_f7ed6f9f96a489 1279-1286
+  s_3fd48deaa8600c::t_63ab94e44b660e 100
+  s_a618386d403ce1::t_962df733c1d8e9 1287-1288
+go/README.md
+  s_3fd48deaa8600c::t_8e0e701891b0f1 257
+go/pkg/basecamp/wormholes_test.go
+  s_3fd48deaa8600c::t_8e1e8b86ece716 1-49,51-135,137-251,253-292
+  s_3fd48deaa8600c::t_53a38de779b454 50,136,252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "2a551d3c8e906cefa623921d301e3e14a86259f1",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_a618386d403ce1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4121bbf-bef7-4540-8793-33e4627797a4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
