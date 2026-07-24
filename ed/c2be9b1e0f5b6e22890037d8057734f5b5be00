@@ -1,0 +1,67 @@
+typescript/tests/services/forwards.test.ts
+  s_854ff63c351de4::t_6b682cbf778fb0 42,87,118,148,175,200-207
+  s_854ff63c351de4::t_469639082aa84a 63,76,108,138,166,193
+typescript/tests/services/uploads.test.ts
+  s_854ff63c351de4::t_6b682cbf778fb0 40-41,48,62,85,99,122,136-143,154-158,161-171,201,213-214,218-221,223,239-253,259,271,297-298,302-311
+  s_854ff63c351de4::t_469639082aa84a 115,194
+typescript/tests/services/documents.test.ts
+  s_854ff63c351de4::t_6b682cbf778fb0 43,57,80,94,116,130-137,148-152,155-165,195,212-215,217
+  s_854ff63c351de4::t_469639082aa84a 35,109,188
+go/pkg/basecamp/rich_text_attachments_test.go
+  s_854ff63c351de4::t_18880984c5860c 117-125
+  s_854ff63c351de4::t_01e941969d689a 56-64
+  s_854ff63c351de4::t_bdae69a16d10f0 154-183
+go/pkg/basecamp/gauges_test.go
+  s_854ff63c351de4::t_6c31e0c62178ce 92,98,100-101,105-110,113,116-126
+go/pkg/basecamp/search_test.go
+  s_854ff63c351de4::t_d2eb64cfcf0a88 466-467,470,474,477,481
+go/pkg/basecamp/recordings.go
+  s_854ff63c351de4::t_d4b11e26a9c1df 61-66
+  s_854ff63c351de4::t_397f909736f43e 51-60
+  s_854ff63c351de4::t_ec05fd54cc0d94 425-426
+go/pkg/basecamp/search.go
+  s_854ff63c351de4::t_fe679cb6dfffa2 362-363
+  s_854ff63c351de4::t_7df8bc03f2e430 34-41
+typescript/tests/services/schedules.test.ts
+  s_854ff63c351de4::t_469639082aa84a 116
+  s_854ff63c351de4::t_6b682cbf778fb0 42,56,72-81,87,101,125,149,164-171,187-193,230,255-260,282,297-299,301
+typescript/tests/services/client-approvals.test.ts
+  s_854ff63c351de4::t_92a74bf918ad19 41,96,121
+  s_854ff63c351de4::t_6b682cbf778fb0 36-39,45-46,56,71,93-94,100-101,116-119,131,148
+typescript/tests/services/client-replies.test.ts
+  s_854ff63c351de4::t_92a74bf918ad19 39,57,106
+  s_854ff63c351de4::t_6b682cbf778fb0 36-37,54-55,66,74-76,83,115-119,125,131-133,142
+go/pkg/basecamp/todos.go
+  s_854ff63c351de4::t_c14e458e24ef6d 964-978
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_854ff63c351de4::t_a8bd3700af862c 7-8,10-31
+  s_854ff63c351de4::t_8fc4b04504b797 133-141
+typescript/tests/services/checkins.test.ts
+  s_854ff63c351de4::t_6b682cbf778fb0 49,74-75,94,130,136,170,180-181,225,231,256-257,273,311,352-353,372,388
+  s_854ff63c351de4::t_92a74bf918ad19 264,304,341
+go/pkg/basecamp/gauges.go
+  s_854ff63c351de4::t_d4b11e26a9c1df 26-40
+  s_854ff63c351de4::t_fe111dd6527dff 19-23,25
+go/pkg/basecamp/recordings_test.go
+  s_854ff63c351de4::t_988e1611350f02 118-125
+  s_854ff63c351de4::t_bd26a4dfcd598a 182-188,192,194
+typescript/tests/services/client-correspondences.test.ts
+  s_854ff63c351de4::t_6b682cbf778fb0 36-39,44-45,60-63,68-69,78,93,115-116,121-122,124-128,134,149
+  s_854ff63c351de4::t_92a74bf918ad19 41,65,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "edc2be9b1e0f5b6e22890037d8057734f5b5be00",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
