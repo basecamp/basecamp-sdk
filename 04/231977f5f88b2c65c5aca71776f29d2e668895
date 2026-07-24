@@ -1,0 +1,19 @@
+kotlin/sdk/src/jvmTest/kotlin/com/basecamp/sdk/DeprecationDiagnosticsTest.kt
+  s_366adaf25569e1::t_6fc9bdfc8f4f57 44-48,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "04231977f5f88b2c65c5aca71776f29d2e668895",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
