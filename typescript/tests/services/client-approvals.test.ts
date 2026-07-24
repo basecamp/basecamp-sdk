@@ -118,7 +118,6 @@ describe("ClientApprovalsService", () => {
             bookmark_url:
               "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
             content: "<p>Looks great!</p>",
-            content_attachments: [],
             approved: true,
             creator: { id: 888, name: "Client User" },
           },
