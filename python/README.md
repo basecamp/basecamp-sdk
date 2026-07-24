@@ -289,7 +289,7 @@ token.is_expired(buffer_seconds=60)  # True if expiring within 60s
 
 ## Services
 
-All services are accessed through an `AccountClient`, obtained via `client.for_account(account_id)`.
+All services are accessed through an `AccountClient`, obtained via `client.for_account(account_id)`. The table below covers the common ones; see `basecamp/generated/services/` for the full 45-service set.
 
 | Category | Service | Accessor |
 |----------|---------|----------|

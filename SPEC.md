@@ -67,7 +67,7 @@ Client
 └── forAccount(accountId) → AccountClient
     ├── projects (service)
     ├── todos (service)
-    ├── ... (44 more services)
+    ├── ... (43 more services)
     └── HTTP Transport
         ├── Auth Middleware
         ├── Retry Middleware
@@ -1610,7 +1610,8 @@ For ASCII text (all conformance test fixtures today), these are equivalent.
 | SDK | Account-scoped services |
 |-----|------------------------|
 | Swift | 45 (full canonical set) |
-| TypeScript | 40 (full canonical set) |
-| Kotlin | 40 (full canonical set) |
-| Ruby | 40 (full canonical set) |
-| Go | 39 as standalone services (missing standalone `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
+| TypeScript | 45 (full canonical set) |
+| Kotlin | 45 (44 generated service classes + 1 composite wrapper = 45 public accessors) |
+| Ruby | 45 (full canonical set) |
+| Go | 43 as standalone accessors (folds `automation`; `clientVisibility` ops exist on `RecordingsService` rather than as a separate service). Hand-written service wrappers around generated OpenAPI client — not fully generated. |
+| Python | 45 (full canonical set; sync + async) |
