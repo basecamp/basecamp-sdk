@@ -10,6 +10,7 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
     public let startsAt: String
     public var subscriptions: [Int]?
     public let summary: String
+    public var visibleToClients: Bool?
 
     public init(
         allDay: Bool? = nil,
@@ -19,7 +20,8 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
         participantIds: [Int]? = nil,
         startsAt: String,
         subscriptions: [Int]? = nil,
-        summary: String
+        summary: String,
+        visibleToClients: Bool? = nil
     ) {
         self.allDay = allDay
         self.description = description
@@ -29,5 +31,6 @@ public struct CreateScheduleEntryRequest: Codable, Sendable {
         self.startsAt = startsAt
         self.subscriptions = subscriptions
         self.summary = summary
+        self.visibleToClients = visibleToClients
     }
 }

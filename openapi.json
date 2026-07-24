@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-07-23",
+    "version": "2026-07-24",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -22657,6 +22657,10 @@
               "format": "int64"
             },
             "x-go-type-skip-optional-pointer": false
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -22762,6 +22766,10 @@
               "format": "int64"
             },
             "x-go-type-skip-optional-pointer": false
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -22853,6 +22861,10 @@
           },
           "schedule": {
             "$ref": "#/components/schemas/QuestionSchedule"
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -22924,6 +22936,10 @@
               "type": "integer",
               "format": "int64"
             },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "visible_to_clients": {
+            "type": "boolean",
             "x-go-type-skip-optional-pointer": false
           }
         },
@@ -23052,6 +23068,10 @@
           },
           "description": {
             "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
@@ -23098,6 +23118,10 @@
               "type": "integer",
               "format": "int64"
             },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "visible_to_clients": {
+            "type": "boolean",
             "x-go-type-skip-optional-pointer": false
           }
         },

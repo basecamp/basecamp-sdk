@@ -407,6 +407,7 @@ class CreateDocumentRequestContent(TypedDict):
     status: NotRequired[str]
     subscriptions: NotRequired[list[int]]
     title: str
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateEventBoostRequestContent(TypedDict):
@@ -434,6 +435,7 @@ class CreateMessageRequestContent(TypedDict):
     status: NotRequired[str]
     subject: str
     subscriptions: NotRequired[list[int]]
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateMessageTypeRequestContent(TypedDict):
@@ -460,6 +462,7 @@ class CreateProjectRequestContent(TypedDict):
 class CreateQuestionRequestContent(TypedDict):
     schedule: QuestionSchedule
     title: str
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateRecordingBoostRequestContent(TypedDict):
@@ -475,6 +478,7 @@ class CreateScheduleEntryRequestContent(TypedDict):
     starts_at: str
     subscriptions: NotRequired[list[int]]
     summary: str
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateTemplateRequestContent(TypedDict):
@@ -506,6 +510,7 @@ class CreateTodolistGroupRequestContent(TypedDict):
 class CreateTodolistRequestContent(TypedDict):
     description: NotRequired[str]
     name: str
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateToolRequestContent(TypedDict):
@@ -518,6 +523,7 @@ class CreateUploadRequestContent(TypedDict):
     base_name: NotRequired[str]
     description: NotRequired[str]
     subscriptions: NotRequired[list[int]]
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateVaultRequestContent(TypedDict):

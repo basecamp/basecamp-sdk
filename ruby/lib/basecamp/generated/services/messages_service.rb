@@ -26,10 +26,11 @@ module Basecamp
       # @param status [String, nil] active|drafted
       # @param category_id [Integer, nil] category id
       # @param subscriptions [Array, nil] subscriptions
+      # @param visible_to_clients [Boolean, nil] visible to clients
       # @return [Hash] response data
-      def create(board_id:, subject:, content: nil, status: nil, category_id: nil, subscriptions: nil)
+      def create(board_id:, subject:, content: nil, status: nil, category_id: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "messages", operation: "create", is_mutation: true, resource_id: board_id) do
-          http_post("/message_boards/#{board_id}/messages.json", body: compact_params(subject: subject, content: content, status: status, category_id: category_id, subscriptions: subscriptions)).json
+          http_post("/message_boards/#{board_id}/messages.json", body: compact_params(subject: subject, content: content, status: status, category_id: category_id, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
         end
       end
 

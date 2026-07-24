@@ -133,6 +133,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             httpPost("/questionnaires/${questionnaireId}/questions.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("title", kotlinx.serialization.json.JsonPrimitive(body.title))
                 put("schedule", body.schedule)
+                body.visibleToClients?.let { put("visible_to_clients", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Question>(body)

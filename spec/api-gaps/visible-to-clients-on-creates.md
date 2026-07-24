@@ -1,11 +1,19 @@
 ---
 gap: visible-to-clients-on-creates
-status: addressed-in-bc3-pr-12382
+status: absorbed-in-sdk
 detected: 2026-07-22
 sdk_demand: medium
-# #12382 is the originating PR (six content creates); #12386 folded the same
-# create-time visible_to_clients into dock tool create (CreateTool).
-bc3_pr: "12382, 12386"
+# #12382 documents create-time visible_to_clients on the six content creates,
+# absorbed here. The dock-tool (CreateTool) extension (#12386) does NOT carry
+# the field yet and is tracked separately — see dock-tool-visible-to-clients.
+bc3_pr: 12382
+smithy_refs:
+  - "CreateDocumentInput.visible_to_clients (spec/basecamp.smithy:2231)"
+  - "CreateMessageInput.visible_to_clients (spec/basecamp.smithy:1790)"
+  - "CreateQuestionInput.visible_to_clients (spec/basecamp.smithy:6198)"
+  - "CreateScheduleEntryInput.visible_to_clients (spec/basecamp.smithy:2627)"
+  - "CreateTodolistInput.visible_to_clients (spec/basecamp.smithy:1074)"
+  - "CreateUploadInput.visible_to_clients (spec/basecamp.smithy:2352)"
 bc3_refs:
   routes:
     - POST /:account_id/vaults/:vault_id/documents.json
@@ -14,7 +22,6 @@ bc3_refs:
     - POST /:account_id/schedules/:schedule_id/entries.json
     - POST /:account_id/todosets/:todoset_id/todolists.json
     - POST /:account_id/vaults/:vault_id/uploads.json
-    - POST /:account_id/buckets/:bucket_id/dock/tools.json
   controllers:
     - app/controllers/documents_controller.rb
     - app/controllers/messages_controller.rb
@@ -22,7 +29,6 @@ bc3_refs:
     - app/controllers/schedules/entries_controller.rb
     - app/controllers/todolists_controller.rb
     - app/controllers/uploads_controller.rb
-    - app/controllers/docks/tools_controller.rb
   related_existing_api:
     - CreateDocument
     - CreateMessage
@@ -30,7 +36,6 @@ bc3_refs:
     - CreateScheduleEntry
     - CreateTodolist
     - CreateUpload
-    - CreateTool
 ---
 
 # Create-time `visible_to_clients` on content creates
@@ -51,14 +56,16 @@ vault).
 
 BC3 **#12386** ("Honor create-time `visible_to_clients` on dock tool creates",
 merged `bee714c74`, 2026-07-23) extends the same top-level `visible_to_clients`
-create param to **dock tool creation** (`POST /:account_id/buckets/:bucket_id/dock/tools.json`,
-`CreateTool`). It takes effect only for the tool types that manage their own
-visibility — `Chat::Transcript` and `Kanban::Board` — which otherwise start
-hidden from clients; all other tool types ignore it. `CreateTool` is already
-modeled (see [[dock-tool-create-contract]]) but does not carry this field yet.
+create param to **dock tool creation** (`CreateTool`), effective only for
+`Chat::Transcript` / `Kanban::Board`. That extension is **out of scope for this
+entry** and is tracked separately in
+[[dock-tool-visible-to-clients]] — `CreateToolInput` does not carry the field.
 
-None of the corresponding Smithy `Create*Input` structures model this field
-today:
+**This entry is now `absorbed-in-sdk`** for the six content creates: each of the
+six `Create*Input` structures gained an optional top-level
+`visible_to_clients: Boolean` member (see `smithy_refs`), fanned out to all six
+SDKs, with tri-state transport coverage (omitted / `true` / explicit `false`
+sent-not-dropped):
 
 - `CreateDocumentInput`
 - `CreateMessageInput`
@@ -66,8 +73,6 @@ today:
 - `CreateScheduleEntryInput`
 - `CreateTodolistInput`
 - `CreateUploadInput`
-- `CreateToolInput` (dock tools, #12386; effective for `Chat::Transcript` /
-  `Kanban::Board` only)
 
 The related `cloud_files.md` / `google_documents.md` doc changes (refined
 further in #12388, which just shows `visible_to_clients` in the create
@@ -83,41 +88,38 @@ and a window where content is visible under the wrong policy.
 
 ## Suggested API shape
 
-An additive optional top-level `visible_to_clients` boolean on each of the
-seven create request bodies (sibling of the wrapped resource object). Response
-shape unchanged.
+Delivered: an additive optional top-level `visible_to_clients` boolean on each
+of the six content-create request bodies (sibling of the wrapped resource
+object). Response shape unchanged.
 
 ## Implementation notes for BC3
 
-- Already merged: #12382 (six content creates) + #12386 (dock tool create).
+- Already merged: #12382 (six content creates). #12386 (dock tool create) is
+  tracked in [[dock-tool-visible-to-clients]].
 - The param is permitted at the top level of the create request, not inside the
-  wrapped `document`/`message`/etc. object — confirm the exact permit location
-  per controller before absorption.
-- Default when omitted (content creates): `false` (hidden) for team callers; a
-  client caller always creates client-visible records; folder-nested vault items
-  inherit the folder's visibility. For dock tools it only takes effect for
-  `Chat::Transcript` / `Kanban::Board`; other tool types ignore it.
+  wrapped `document`/`message`/etc. object — for the map-bodied question create
+  it is a top-level sibling of `title`/`schedule`, never nested in the schedule
+  wrapper (a silent server no-op).
+- Default when omitted: `false` (hidden) for team callers; a client caller
+  always creates client-visible records; folder-nested vault items inherit the
+  folder's visibility.
 
 ## SDK absorption plan when this lands
 
-- Add an optional top-level `visible_to_clients: Boolean` member to each of the
-  seven `Create*Input` structures (the six content creates + `CreateToolInput`).
-  Use the snake_case wire name directly as the Smithy member name (matching
-  existing body members like `attachable_sgid`); a camelCase `visibleToClients`
-  member would emit the wrong JSON key. Confirm per controller whether it is
-  permitted at the top level vs. inside the wrapped params object; the docs show
-  it as a top-level sibling.
-- Regenerate all six SDKs; add create-with-visibility coverage.
-- No new operations or tags — all seven creates already exist and are tagged.
-- Response shape is unchanged.
+Absorbed. Each of the six `Create*Input` structures gained an optional top-level
+`visible_to_clients: Boolean` member (snake_case wire name used directly as the
+Smithy member name, matching body members like `attachable_sgid`, so the
+generated JSON key is correct). The field fans out to all six SDKs via
+`make generate`; Go's hand-written create wrappers gained the field and
+pass-through, including the map-bodied `CreateQuestion` (top-level key). No new
+operations or tags — all six creates already exist and are tagged; response
+shape unchanged. Coverage: tri-state transport tests (omitted omits the key /
+`true` sent / explicit `false` sent-not-dropped) for all six Go ops plus a
+messages body-flow test per other SDK.
 
 ## Compatibility
 
-Additive optional param. For the **six content creates** it is silently ignored
-on BC4 and honored on BC5 — no invariant violation. **`CreateTool` is the
-exception:** its current request shape already fails against `four` with 400
-because it cannot emit the BC4-required `source_recording_id` (see
-[[dock-tool-create-contract]] — the tool_type contract is BC5-only), so BC4
-never reaches the point of silently ignoring `visible_to_clients` on that
-operation. The "silently ignored on BC4" statement therefore applies to the six
-content creates, not to `CreateTool`.
+Additive optional param on the six content creates: silently ignored on BC4 and
+honored on BC5 — no invariant violation. (The `CreateTool` extension has a
+different BC4 story because its request shape is already BC5-only; that is
+covered in [[dock-tool-visible-to-clients]] and [[dock-tool-create-contract]].)

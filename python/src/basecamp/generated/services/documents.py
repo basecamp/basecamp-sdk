@@ -41,12 +41,19 @@ class DocumentsService(BaseService):
         content: str | None = None,
         status: str | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="documents", operation="create", is_mutation=True, resource_id=vault_id),
             "POST",
             f"/vaults/{vault_id}/documents.json",
-            json_body=self._compact(title=title, content=content, status=status, subscriptions=subscriptions),
+            json_body=self._compact(
+                title=title,
+                content=content,
+                status=status,
+                subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
+            ),
             operation="CreateDocument",
         )
 
@@ -82,11 +89,18 @@ class AsyncDocumentsService(AsyncBaseService):
         content: str | None = None,
         status: str | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="documents", operation="create", is_mutation=True, resource_id=vault_id),
             "POST",
             f"/vaults/{vault_id}/documents.json",
-            json_body=self._compact(title=title, content=content, status=status, subscriptions=subscriptions),
+            json_body=self._compact(
+                title=title,
+                content=content,
+                status=status,
+                subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
+            ),
             operation="CreateDocument",
         )

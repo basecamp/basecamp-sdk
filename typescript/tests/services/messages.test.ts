@@ -138,6 +138,32 @@ describe("MessagesService", () => {
       });
       expect(message.id).toBe(99);
     });
+
+    // visibleToClients is tri-state: undefined omits the key, true/false are sent
+    // verbatim. An explicit false must reach the wire (not be dropped). The shared
+    // generator carries this field on all six create ops; the all_day precedent and
+    // this messages coverage stand in for the other five ops.
+    it("should send visible_to_clients tri-state in request body", async () => {
+      const boardId = 200;
+      let capturedBody: Record<string, unknown> = {};
+
+      server.use(
+        http.post(`${BASE_URL}/message_boards/${boardId}/messages.json`, async ({ request }) => {
+          capturedBody = (await request.json()) as Record<string, unknown>;
+          return HttpResponse.json(sampleMessage(99), { status: 201 });
+        })
+      );
+
+      await client.messages.create(boardId, { subject: "Test" });
+      expect("visible_to_clients" in capturedBody).toBe(false);
+
+      await client.messages.create(boardId, { subject: "Test", visibleToClients: true });
+      expect(capturedBody.visible_to_clients).toBe(true);
+
+      await client.messages.create(boardId, { subject: "Test", visibleToClients: false });
+      expect("visible_to_clients" in capturedBody).toBe(true);
+      expect(capturedBody.visible_to_clients).toBe(false);
+    });
   });
 
   describe("update", () => {

@@ -75,6 +75,8 @@ export interface CreateEntryScheduleRequest {
   notify?: boolean;
   /** Subscriptions */
   subscriptions?: number[];
+  /** Visible to clients */
+  visibleToClients?: boolean;
 }
 
 
@@ -330,6 +332,7 @@ export class SchedulesService extends BaseService {
             all_day: req.allDay,
             notify: req.notify,
             subscriptions: req.subscriptions,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );

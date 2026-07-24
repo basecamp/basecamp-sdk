@@ -51,6 +51,8 @@ export interface CreateUploadRequest {
   baseName?: string;
   /** Subscriptions */
   subscriptions?: number[];
+  /** Visible to clients */
+  visibleToClients?: boolean;
 }
 
 
@@ -222,6 +224,7 @@ export class UploadsService extends BaseService {
             description: req.description,
             base_name: req.baseName,
             subscriptions: req.subscriptions,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );

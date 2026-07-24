@@ -2983,6 +2983,7 @@ export interface components {
             /** @description active|drafted */
             status?: string;
             subscriptions?: number[];
+            visible_to_clients?: boolean;
         };
         CreateDocumentResponseContent: components["schemas"]["Document"];
         CreateEventBoostRequestContent: {
@@ -3013,6 +3014,7 @@ export interface components {
             /** Format: int64 */
             category_id?: number;
             subscriptions?: number[];
+            visible_to_clients?: boolean;
         };
         CreateMessageResponseContent: components["schemas"]["Message"];
         CreateMessageTypeRequestContent: {
@@ -3042,6 +3044,7 @@ export interface components {
         CreateQuestionRequestContent: {
             title: string;
             schedule: components["schemas"]["QuestionSchedule"];
+            visible_to_clients?: boolean;
         };
         CreateQuestionResponseContent: components["schemas"]["Question"];
         CreateRecordingBoostRequestContent: {
@@ -3057,6 +3060,7 @@ export interface components {
             all_day?: boolean;
             notify?: boolean;
             subscriptions?: number[];
+            visible_to_clients?: boolean;
         };
         CreateScheduleEntryResponseContent: components["schemas"]["ScheduleEntry"];
         CreateTemplateRequestContent: {
@@ -3089,6 +3093,7 @@ export interface components {
         CreateTodolistRequestContent: {
             name: string;
             description?: string;
+            visible_to_clients?: boolean;
         };
         CreateTodolistResponseContent: components["schemas"]["Todolist"];
         CreateToolRequestContent: {
@@ -3103,6 +3108,7 @@ export interface components {
             description?: string;
             base_name?: string;
             subscriptions?: number[];
+            visible_to_clients?: boolean;
         };
         CreateUploadResponseContent: components["schemas"]["Upload"];
         CreateVaultRequestContent: {

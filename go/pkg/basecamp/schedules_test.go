@@ -735,3 +735,50 @@ func TestSchedulesService_CreateEntryPartial(t *testing.T) {
 		t.Errorf("expected notify to be omitted when not set, but it was present: %v", receivedBody["notify"])
 	}
 }
+
+// TestSchedulesService_CreateEntryVisibleToClients verifies the tri-state
+// visible_to_clients flag reaches the wire correctly on create: nil omits the
+// key, true is sent verbatim, and an explicit false is sent (not dropped).
+func TestSchedulesService_CreateEntryVisibleToClients(t *testing.T) {
+	fixture := loadSchedulesFixture(t, "entry_get.json")
+	tru, fls := true, false
+	cases := []struct {
+		name    string
+		value   *bool
+		present bool
+		want    bool
+	}{
+		{"nil omits the field", nil, false, false},
+		{"true is sent", &tru, true, true},
+		{"explicit false is sent, not dropped", &fls, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			svc := testSchedulesServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(201)
+				w.Write(fixture)
+			})
+
+			_, err := svc.CreateEntry(context.Background(), 12345, &CreateScheduleEntryRequest{
+				Summary:          "Meeting",
+				StartsAt:         "2024-01-15T09:00:00Z",
+				EndsAt:           "2024-01-15T10:00:00Z",
+				VisibleToClients: tc.value,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			val, ok := receivedBody["visible_to_clients"]
+			if ok != tc.present {
+				t.Fatalf("visible_to_clients present=%v, want %v (body=%v)", ok, tc.present, receivedBody)
+			}
+			if tc.present && val != tc.want {
+				t.Errorf("visible_to_clients=%v, want %v", val, tc.want)
+			}
+		})
+	}
+}

@@ -53,6 +53,8 @@ export interface CreateQuestionCheckinRequest {
   title: string;
   /** Schedule */
   schedule: components["schemas"]["QuestionSchedule"];
+  /** Visible to clients */
+  visibleToClients?: boolean;
 }
 
 /**
@@ -305,6 +307,7 @@ export class CheckinsService extends BaseService {
           body: {
             title: req.title,
             schedule: req.schedule,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );

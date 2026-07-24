@@ -100,6 +100,11 @@ type CreateScheduleEntryRequest struct {
 	// Subscriptions controls who gets notified and subscribed.
 	// nil: field omitted (server default). &[]int64{}: subscribe nobody. &[]int64{1,2}: those people.
 	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	// VisibleToClients sets client visibility at create time (optional, tri-state).
+	// nil omits the field so the server applies its own default visibility rule; a
+	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
+	// pointer distinguishes unset from false).
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
 // UpdateScheduleEntryRequest specifies the parameters for updating a schedule entry.
@@ -342,13 +347,14 @@ func (s *SchedulesService) CreateEntry(ctx context.Context, scheduleID int64, re
 	}
 
 	body := generated.CreateScheduleEntryJSONRequestBody{
-		Summary:        req.Summary,
-		StartsAt:       startsAt,
-		EndsAt:         endsAt,
-		Description:    req.Description,
-		ParticipantIds: req.ParticipantIDs,
-		AllDay:         req.AllDay,
-		Subscriptions:  req.Subscriptions,
+		Summary:          req.Summary,
+		StartsAt:         startsAt,
+		EndsAt:           endsAt,
+		Description:      req.Description,
+		ParticipantIds:   req.ParticipantIDs,
+		AllDay:           req.AllDay,
+		Subscriptions:    req.Subscriptions,
+		VisibleToClients: req.VisibleToClients,
 	}
 	if req.Notify {
 		body.Notify = &req.Notify

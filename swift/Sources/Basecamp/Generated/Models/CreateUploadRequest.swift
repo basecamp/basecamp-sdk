@@ -6,16 +6,19 @@ public struct CreateUploadRequest: Codable, Sendable {
     public var baseName: String?
     public var description: String?
     public var subscriptions: [Int]?
+    public var visibleToClients: Bool?
 
     public init(
         attachableSgid: String,
         baseName: String? = nil,
         description: String? = nil,
-        subscriptions: [Int]? = nil
+        subscriptions: [Int]? = nil,
+        visibleToClients: Bool? = nil
     ) {
         self.attachableSgid = attachableSgid
         self.baseName = baseName
         self.description = description
         self.subscriptions = subscriptions
+        self.visibleToClients = visibleToClients
     }
 }

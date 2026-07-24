@@ -49,14 +49,16 @@ class CheckinsService(BaseService):
             f"/questionnaires/{questionnaire_id}/questions.json",
         )
 
-    def create_question(self, *, questionnaire_id: int, title: str, schedule: dict) -> dict[str, Any]:
+    def create_question(
+        self, *, questionnaire_id: int, title: str, schedule: dict, visible_to_clients: bool | None = None
+    ) -> dict[str, Any]:
         return self._request(
             OperationInfo(
                 service="checkins", operation="create_question", is_mutation=True, resource_id=questionnaire_id
             ),
             "POST",
             f"/questionnaires/{questionnaire_id}/questions.json",
-            json_body=self._compact(title=title, schedule=schedule),
+            json_body=self._compact(title=title, schedule=schedule, visible_to_clients=visible_to_clients),
             operation="CreateQuestion",
         )
 
@@ -176,14 +178,16 @@ class AsyncCheckinsService(AsyncBaseService):
             f"/questionnaires/{questionnaire_id}/questions.json",
         )
 
-    async def create_question(self, *, questionnaire_id: int, title: str, schedule: dict) -> dict[str, Any]:
+    async def create_question(
+        self, *, questionnaire_id: int, title: str, schedule: dict, visible_to_clients: bool | None = None
+    ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(
                 service="checkins", operation="create_question", is_mutation=True, resource_id=questionnaire_id
             ),
             "POST",
             f"/questionnaires/{questionnaire_id}/questions.json",
-            json_body=self._compact(title=title, schedule=schedule),
+            json_body=self._compact(title=title, schedule=schedule, visible_to_clients=visible_to_clients),
             operation="CreateQuestion",
         )
 

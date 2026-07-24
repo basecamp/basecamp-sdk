@@ -92,7 +92,12 @@ the contract is now documented and must be tracked to keep detection honest.
   (`url`, `service`, `description`).
 - Model **create** carefully: the 302/no-JSON-body contract does not fit the
   standard "create returns the resource" mold — the operation returns no
-  usable body, so the SDK surface must not promise one.
+  usable body, so the SDK surface must not promise one. The wire operation
+  should model only the 302/empty response; a create-and-discover convenience
+  (create, then `type=Door` list to find the new door's id) is a **separately
+  sanctioned composite** — it needs explicit composite treatment, conformance
+  coverage, and a defined answer for ambiguous concurrent/duplicate creates,
+  not something the plain create operation implies.
 - Get/rename/trash reuse the existing dock-tool GetTool/UpdateTool/DeleteTool
   operations.
 - Add `Door` to the `RecordingType` documented enum.

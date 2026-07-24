@@ -53,10 +53,11 @@ module Basecamp
       # @param todoset_id [Integer] todoset id ID
       # @param name [String] name
       # @param description [String, nil] description
+      # @param visible_to_clients [Boolean, nil] visible to clients
       # @return [Hash] response data
-      def create(todoset_id:, name:, description: nil)
+      def create(todoset_id:, name:, description: nil, visible_to_clients: nil)
         with_operation(service: "todolists", operation: "create", is_mutation: true, resource_id: todoset_id) do
-          http_post("/todosets/#{todoset_id}/todolists.json", body: compact_params(name: name, description: description)).json
+          http_post("/todosets/#{todoset_id}/todolists.json", body: compact_params(name: name, description: description, visible_to_clients: visible_to_clients)).json
         end
       end
     end

@@ -146,7 +146,8 @@ data class UpdateAnswerBody(
 /** Request body for CreateQuestion. */
 data class CreateQuestionBody(
     val title: String,
-    val schedule: JsonObject
+    val schedule: JsonObject,
+    val visibleToClients: Boolean? = null
 )
 
 /** Request body for UpdateQuestion. */
@@ -212,7 +213,8 @@ data class CreateDocumentBody(
     val title: String,
     val content: String? = null,
     val status: String? = null,
-    val subscriptions: List<Long>? = null
+    val subscriptions: List<Long>? = null,
+    val visibleToClients: Boolean? = null
 )
 
 /** Request body for CreateForwardReply. */
@@ -299,7 +301,8 @@ data class CreateMessageBody(
     val content: String? = null,
     val status: String? = null,
     val categoryId: Long? = null,
-    val subscriptions: List<Long>? = null
+    val subscriptions: List<Long>? = null,
+    val visibleToClients: Boolean? = null
 )
 
 /** Request body for UpdateMessage. */
@@ -435,7 +438,8 @@ data class CreateScheduleEntryBody(
     val participantIds: List<Long>? = null,
     val allDay: Boolean? = null,
     val notify: Boolean? = null,
-    val subscriptions: List<Long>? = null
+    val subscriptions: List<Long>? = null,
+    val visibleToClients: Boolean? = null
 )
 
 /** Options for Search. */
@@ -562,7 +566,8 @@ data class ListTodolistsOptions(
 /** Request body for CreateTodolist. */
 data class CreateTodolistBody(
     val name: String,
-    val description: String? = null
+    val description: String? = null,
+    val visibleToClients: Boolean? = null
 )
 
 /** Options for ListTodos. */
@@ -629,7 +634,8 @@ data class CreateUploadBody(
     val attachableSgid: String,
     val description: String? = null,
     val baseName: String? = null,
-    val subscriptions: List<Long>? = null
+    val subscriptions: List<Long>? = null,
+    val visibleToClients: Boolean? = null
 )
 
 /** Request body for UpdateVault. */

@@ -43,12 +43,14 @@ class TodolistsService(BaseService):
             params=self._compact(status=status),
         )
 
-    def create(self, *, todoset_id: int, name: str, description: str | None = None) -> dict[str, Any]:
+    def create(
+        self, *, todoset_id: int, name: str, description: str | None = None, visible_to_clients: bool | None = None
+    ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="todolists", operation="create", is_mutation=True, resource_id=todoset_id),
             "POST",
             f"/todosets/{todoset_id}/todolists.json",
-            json_body=self._compact(name=name, description=description),
+            json_body=self._compact(name=name, description=description, visible_to_clients=visible_to_clients),
             operation="CreateTodolist",
         )
 
@@ -86,11 +88,13 @@ class AsyncTodolistsService(AsyncBaseService):
             params=self._compact(status=status),
         )
 
-    async def create(self, *, todoset_id: int, name: str, description: str | None = None) -> dict[str, Any]:
+    async def create(
+        self, *, todoset_id: int, name: str, description: str | None = None, visible_to_clients: bool | None = None
+    ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="todolists", operation="create", is_mutation=True, resource_id=todoset_id),
             "POST",
             f"/todosets/{todoset_id}/todolists.json",
-            json_body=self._compact(name=name, description=description),
+            json_body=self._compact(name=name, description=description, visible_to_clients=visible_to_clients),
             operation="CreateTodolist",
         )

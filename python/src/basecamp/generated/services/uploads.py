@@ -47,6 +47,7 @@ class UploadsService(BaseService):
         description: str | None = None,
         base_name: str | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="uploads", operation="create", is_mutation=True, resource_id=vault_id),
@@ -57,6 +58,7 @@ class UploadsService(BaseService):
                 description=description,
                 base_name=base_name,
                 subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
             ),
             operation="CreateUpload",
         )
@@ -101,6 +103,7 @@ class AsyncUploadsService(AsyncBaseService):
         description: str | None = None,
         base_name: str | None = None,
         subscriptions: list[int] | None = None,
+        visible_to_clients: bool | None = None,
     ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="uploads", operation="create", is_mutation=True, resource_id=vault_id),
@@ -111,6 +114,7 @@ class AsyncUploadsService(AsyncBaseService):
                 description=description,
                 base_name=base_name,
                 subscriptions=subscriptions,
+                visible_to_clients=visible_to_clients,
             ),
             operation="CreateUpload",
         )
