@@ -1,0 +1,21 @@
+go/go.mod
+  s_366adaf25569e1::t_dd22fe7fcf1510 22
+go/go.sum
+  s_366adaf25569e1::t_6979c8dc9e1fa9 25,27-29,79,189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bdce1971ad5f9272618ba0b2591931a33a6f7124",
+  "prompts": {},
+  "sessions": {
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
