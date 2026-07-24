@@ -92,7 +92,8 @@
         "can_manage_projects": true,
         "can_manage_people": true
       }
-    ]
+    ],
+    "description_attachments": []
   },
   {
     "id": 1069479410,
@@ -146,6 +147,7 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "participants": []
+    "participants": [],
+    "description_attachments": []
   }
 ]

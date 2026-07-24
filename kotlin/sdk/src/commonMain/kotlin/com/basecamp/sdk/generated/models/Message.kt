@@ -27,6 +27,7 @@ data class Message(
     val creator: Person,
     val subject: String,
     val content: String,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     @SerialName("comments_count") val commentsCount: Int = 0,

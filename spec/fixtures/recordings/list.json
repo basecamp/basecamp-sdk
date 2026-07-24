@@ -46,7 +46,22 @@
       },
       "can_manage_projects": true,
       "can_manage_people": true
-    }
+    },
+    "content_attachments": [
+      {
+        "id": 1069481050,
+        "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA50--pr0j0050",
+        "filename": "diagram-50.png",
+        "content_type": "image/png",
+        "byte_size": 204800,
+        "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA50--pr0j0050/download/diagram-50.png",
+        "width": 1024.0,
+        "height": 768,
+        "previewable": true,
+        "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA50--pr0j0050/previews/diagram-50.png",
+        "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA50--pr0j0050/thumbnails/diagram-50.png"
+      }
+    ]
   },
   {
     "id": 1069479400,
@@ -91,6 +106,21 @@
         "id": 1033447817,
         "name": "Honcho Design"
       }
-    }
+    },
+    "content_attachments": [
+      {
+        "id": 1069481051,
+        "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA51--pr0j0051",
+        "filename": "diagram-51.png",
+        "content_type": "image/png",
+        "byte_size": 204800,
+        "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA51--pr0j0051/download/diagram-51.png",
+        "width": 1024.0,
+        "height": 768,
+        "previewable": true,
+        "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA51--pr0j0051/previews/diagram-51.png",
+        "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA51--pr0j0051/thumbnails/diagram-51.png"
+      }
+    ]
   }
 ]

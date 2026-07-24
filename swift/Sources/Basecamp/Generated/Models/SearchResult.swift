@@ -10,9 +10,11 @@ public struct SearchResult: Codable, Sendable {
     public var bookmarkUrl: String?
     public var bucket: RecordingBucket?
     public var content: String?
+    public var contentAttachments: [RichTextAttachment]?
     public var createdAt: String?
     public var creator: Person?
     public var description: String?
+    public var descriptionAttachments: [RichTextAttachment]?
     public var inheritsStatus: Bool?
     public var parent: RecordingParent?
     public var status: String?
@@ -29,9 +31,11 @@ public struct SearchResult: Codable, Sendable {
         bookmarkUrl: String? = nil,
         bucket: RecordingBucket? = nil,
         content: String? = nil,
+        contentAttachments: [RichTextAttachment]? = nil,
         createdAt: String? = nil,
         creator: Person? = nil,
         description: String? = nil,
+        descriptionAttachments: [RichTextAttachment]? = nil,
         inheritsStatus: Bool? = nil,
         parent: RecordingParent? = nil,
         status: String? = nil,
@@ -47,9 +51,11 @@ public struct SearchResult: Codable, Sendable {
         self.bookmarkUrl = bookmarkUrl
         self.bucket = bucket
         self.content = content
+        self.contentAttachments = contentAttachments
         self.createdAt = createdAt
         self.creator = creator
         self.description = description
+        self.descriptionAttachments = descriptionAttachments
         self.inheritsStatus = inheritsStatus
         self.parent = parent
         self.status = status

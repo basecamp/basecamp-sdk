@@ -44,7 +44,22 @@
       "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
       "can_manage_projects": true,
       "can_manage_people": true
-    }
+    },
+    "content_attachments": [
+      {
+        "id": 1069481030,
+        "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030",
+        "filename": "diagram-30.png",
+        "content_type": "image/png",
+        "byte_size": 204800,
+        "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/download/diagram-30.png",
+        "width": 1024.0,
+        "height": 768,
+        "previewable": true,
+        "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/previews/diagram-30.png",
+        "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA30--pr0j0030/thumbnails/diagram-30.png"
+      }
+    ]
   },
   {
     "id": 1069479400,
@@ -90,7 +105,22 @@
       "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMtkkT4=--avatar",
       "can_manage_projects": true,
       "can_manage_people": true
-    }
+    },
+    "description_attachments": [
+      {
+        "id": 1069481031,
+        "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031",
+        "filename": "diagram-31.png",
+        "content_type": "image/png",
+        "byte_size": 204800,
+        "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031/download/diagram-31.png",
+        "width": 1024.0,
+        "height": 768,
+        "previewable": true,
+        "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031/previews/diagram-31.png",
+        "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA31--pr0j0031/thumbnails/diagram-31.png"
+      }
+    ]
   },
   {
     "id": 1069479450,
@@ -136,6 +166,21 @@
       "avatar_url": "https://3.basecamp-static.com/195539477/people/BAhpBMpkkT4=--avatar",
       "can_manage_projects": true,
       "can_manage_people": true
-    }
+    },
+    "content_attachments": [
+      {
+        "id": 1069481032,
+        "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032",
+        "filename": "diagram-32.png",
+        "content_type": "image/png",
+        "byte_size": 204800,
+        "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032/download/diagram-32.png",
+        "width": 1024.0,
+        "height": 768,
+        "previewable": true,
+        "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032/previews/diagram-32.png",
+        "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA32--pr0j0032/thumbnails/diagram-32.png"
+      }
+    ]
   }
 ]

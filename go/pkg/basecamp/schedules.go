@@ -70,10 +70,15 @@ type ScheduleEntry struct {
 	EndsAt           types.FlexibleTime `json:"ends_at"`
 	AllDay           bool               `json:"all_day"`
 	Description      string             `json:"description"`
-	Parent           *Parent            `json:"parent,omitempty"`
-	Bucket           *Bucket            `json:"bucket,omitempty"`
-	Creator          *Person            `json:"creator,omitempty"`
-	Participants     []Person           `json:"participants,omitempty"`
+	// DescriptionAttachments holds structured metadata for the downloadable
+	// files embedded in the rich text Description. Always sent by the API
+	// (empty when none); not omitempty so absent (nil) vs empty ([]) survives
+	// re-encoding. See RichTextAttachment.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	Parent                 *Parent              `json:"parent,omitempty"`
+	Bucket                 *Bucket              `json:"bucket,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
+	Participants           []Person             `json:"participants,omitempty"`
 }
 
 // CreateScheduleEntryRequest specifies the parameters for creating a schedule entry.
@@ -647,6 +652,8 @@ func scheduleEntryFromGenerated(ge generated.ScheduleEntry) ScheduleEntry {
 			e.Participants = append(e.Participants, personFromGenerated(gp))
 		}
 	}
+
+	e.DescriptionAttachments = richTextAttachmentsFromGenerated(ge.DescriptionAttachments)
 
 	return e
 }

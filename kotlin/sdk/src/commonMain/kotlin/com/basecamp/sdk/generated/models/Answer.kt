@@ -23,6 +23,7 @@ data class Answer(
     val url: String,
     @SerialName("app_url") val appUrl: String,
     val content: String,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>,
     val parent: RecordingParent,
     val bucket: RecordingBucket,
     val creator: Person,

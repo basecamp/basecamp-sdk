@@ -25,6 +25,7 @@ data class Todolist(
     val parent: TodoParent,
     val bucket: TodoBucket,
     val creator: Person,
+    @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>,
     val name: String,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,

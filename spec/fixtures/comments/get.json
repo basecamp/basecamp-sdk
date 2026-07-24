@@ -46,5 +46,33 @@
     "can_manage_projects": true,
     "can_manage_people": true
   },
-  "content": "<div>I just want to echo what just about everyone already said. This is a big one for us, and I can't wait to get going. I'll be spinning up the project shortly!</div>"
+  "content": "<div>I just want to echo what just about everyone already said. This is a big one for us, and I can't wait to get going. I'll be spinning up the project shortly!</div>",
+  "content_attachments": [
+    {
+      "id": 1069480010,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1",
+      "filename": "celebration.png",
+      "content_type": "image/png",
+      "byte_size": 284111,
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/download/celebration.png",
+      "width": 1024.0,
+      "height": 768,
+      "previewable": true,
+      "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/previews/celebration.png",
+      "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMAY6BkVU--c0mm3nt1/thumbnails/celebration.png"
+    },
+    {
+      "id": 1069480011,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2",
+      "filename": "notes.pdf",
+      "content_type": "application/pdf",
+      "byte_size": 1048576,
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/download/notes.pdf",
+      "width": null,
+      "height": null,
+      "previewable": false,
+      "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/previews/notes.pdf",
+      "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvMTA2OTQ4MDAxMQY6BkVU--c0mm3nt2/thumbnails/notes.pdf"
+    }
+  ]
 }

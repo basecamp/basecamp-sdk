@@ -44,12 +44,21 @@ type Recording struct {
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
 	Content          string    `json:"content,omitempty"`
-	CommentsCount    int       `json:"comments_count,omitempty"`
-	CommentsURL      string    `json:"comments_url,omitempty"`
-	SubscriptionURL  string    `json:"subscription_url,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// ContentAttachments and DescriptionAttachments are the rich text companion
+	// arrays carried through the generic recording projection. A given recording
+	// is one type, so it carries only the array matching its rich text attribute
+	// (ContentAttachments for a Comment/Message, DescriptionAttachments for a
+	// Todo/Card); a webhook-sourced recording carries neither. Optional, so
+	// omitempty matches the non-nullable member (never emits an invalid null).
+	// See RichTextAttachment.
+	ContentAttachments     []RichTextAttachment `json:"content_attachments,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	CommentsCount          int                  `json:"comments_count,omitempty"`
+	CommentsURL            string               `json:"comments_url,omitempty"`
+	SubscriptionURL        string               `json:"subscription_url,omitempty"`
+	Parent                 *Parent              `json:"parent,omitempty"`
+	Bucket                 *Bucket              `json:"bucket,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
 }
 
 // DefaultRecordingLimit is the default number of recordings to return when no limit is specified.
@@ -407,6 +416,9 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		creator := personFromGenerated(gr.Creator)
 		r.Creator = &creator
 	}
+
+	r.ContentAttachments = richTextAttachmentsFromGenerated(gr.ContentAttachments)
+	r.DescriptionAttachments = richTextAttachmentsFromGenerated(gr.DescriptionAttachments)
 
 	return r
 }

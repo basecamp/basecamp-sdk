@@ -91,5 +91,6 @@
       "can_manage_projects": true,
       "can_manage_people": true
     }
-  ]
+  ],
+  "description_attachments": []
 }

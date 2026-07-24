@@ -46,5 +46,6 @@
     "can_manage_projects": true,
     "can_manage_people": true
   },
-  "content": "<div>This document contains the project overview and key milestones.</div>"
+  "content": "<div>This document contains the project overview and key milestones.</div>",
+  "content_attachments": []
 }

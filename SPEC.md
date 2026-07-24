@@ -667,8 +667,12 @@ All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin
 
 ### Nullable Numeric Dimensions (rich-text attachment width/height)
 
-Rich-text `*_attachments` elements (e.g. `Todo.description_attachments`, per the
-`RichTextAttachment` schema) always emit `width` and `height` keys, but the
+Rich-text `*_attachments` elements — the companion array the API pairs with
+every rich-text attribute, spanning 18 modeled emitters (`Todo`, 14 concrete
+resources, `GaugeNeedle`, and the polymorphic `SearchResult`/`Recording`
+projections; three are optional — `Gauge`, `SearchResult`, `Recording` — the
+rest `@required`), all sharing the `RichTextAttachment` schema — always emit
+`width` and `height` keys, but the
 **value is `null` for non-image blobs**, and the BC3 API may serialize a present
 dimension **float-spelled** (`1024.0`). These two members are deliberately
 optional/nullable in the schema (not `@required`, and marked `nullable: true` in

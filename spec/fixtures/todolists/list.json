@@ -57,7 +57,8 @@
     "name": "Hardware",
     "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/todos.json",
     "groups_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479519/groups.json",
-    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519/todos"
+    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479519/todos",
+    "description_attachments": []
   },
   {
     "id": 1069479522,
@@ -117,6 +118,7 @@
     "name": "Software",
     "todos_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479522/todos.json",
     "groups_url": "https://3.basecampapi.com/195539477/buckets/2085958500/todolists/1069479522/groups.json",
-    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479522/todos"
+    "app_todos_url": "https://3.basecamp.com/195539477/buckets/2085958500/todolists/1069479522/todos",
+    "description_attachments": []
   }
 ]

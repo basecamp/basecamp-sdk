@@ -54,7 +54,7 @@ making the absorption journey publicly auditable.
 | [dock-tool-create-contract](dock-tool-create-contract.md) | absorbed-in-sdk | launch | medium |
 | [upload-new-version](upload-new-version.md) | no-json-contract | post-train | medium |
 | [todolist-reposition](todolist-reposition.md) | absorbed-in-sdk | pre-BC5 | medium |
-| [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | addressed-in-bc3-pr-9980 | n/a | medium |
+| [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | absorbed-in-sdk | n/a | medium |
 | [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | addressed-in-bc3-pr-12382 | post-train | medium |
 | [external-links-doors](external-links-doors.md) | addressed-in-bc3-pr-12375 | post-train | low |
 

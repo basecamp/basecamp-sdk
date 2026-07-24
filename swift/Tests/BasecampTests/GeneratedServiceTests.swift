@@ -203,7 +203,7 @@ final class GeneratedServiceTests: XCTestCase {
 
     func testUpdateCommentSendsPUT() async throws {
         let responseJSON: [String: Any] = [
-            "id": 10, "content": "Updated comment",
+            "id": 10, "content": "Updated comment", "content_attachments": [],
             "app_url": "https://3.basecamp.com/1/buckets/1/comments/10",
             "url": "https://3.basecampapi.com/1/buckets/1/comments/10.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
@@ -337,7 +337,7 @@ final class GeneratedServiceTests: XCTestCase {
 
     func testCommentsServiceGet() async throws {
         let responseJSON: [String: Any] = [
-            "id": 7, "content": "Great idea!",
+            "id": 7, "content": "Great idea!", "content_attachments": [],
             "app_url": "https://3.basecamp.com/1/buckets/1/comments/7",
             "url": "https://3.basecampapi.com/1/buckets/1/comments/7.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
@@ -360,7 +360,7 @@ final class GeneratedServiceTests: XCTestCase {
 
     func testMessagesServiceGet() async throws {
         let responseJSON: [String: Any] = [
-            "id": 3, "subject": "Weekly Update", "content": "Here's what happened...",
+            "id": 3, "subject": "Weekly Update", "content": "Here's what happened...", "content_attachments": [],
             "app_url": "https://3.basecamp.com/1/buckets/1/messages/3",
             "url": "https://3.basecampapi.com/1/buckets/1/messages/3.json",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",

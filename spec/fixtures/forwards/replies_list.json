@@ -29,7 +29,8 @@
       "title": "Project Manager",
       "admin": false,
       "owner": false
-    }
+    },
+    "content_attachments": []
   },
   {
     "id": 1069479410,
@@ -61,6 +62,7 @@
       "title": "Chief Strategist",
       "admin": true,
       "owner": true
-    }
+    },
+    "content_attachments": []
   }
 ]

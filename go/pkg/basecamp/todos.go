@@ -904,12 +904,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	// distinction the same way as CompletionSubscribers: the API always
 	// sends the array, so a server-sent [] becomes a non-nil zero-length
 	// slice and an absent property stays nil.
-	if gt.DescriptionAttachments != nil {
-		t.DescriptionAttachments = make([]RichTextAttachment, 0, len(gt.DescriptionAttachments))
-		for _, ga := range gt.DescriptionAttachments {
-			t.DescriptionAttachments = append(t.DescriptionAttachments, richTextAttachmentFromGenerated(ga))
-		}
-	}
+	t.DescriptionAttachments = richTextAttachmentsFromGenerated(gt.DescriptionAttachments)
 
 	// BC5: convert embedded steps
 	if len(gt.Steps) > 0 {
@@ -948,4 +943,21 @@ func richTextAttachmentFromGenerated(ga generated.RichTextAttachment) RichTextAt
 		a.Height = &h
 	}
 	return a
+}
+
+// richTextAttachmentsFromGenerated converts a slice of generated
+// RichTextAttachment to the public type, preserving the nil-vs-empty
+// distinction the API relies on: a nil input (the property was absent) stays
+// nil, and a non-nil input (server-sent, possibly empty) becomes a non-nil
+// slice of the same length. Shared by every resource that pairs a rich text
+// attribute with a companion attachments array.
+func richTextAttachmentsFromGenerated(gas []generated.RichTextAttachment) []RichTextAttachment {
+	if gas == nil {
+		return nil
+	}
+	attachments := make([]RichTextAttachment, 0, len(gas))
+	for _, ga := range gas {
+		attachments = append(attachments, richTextAttachmentFromGenerated(ga))
+	}
+	return attachments
 }

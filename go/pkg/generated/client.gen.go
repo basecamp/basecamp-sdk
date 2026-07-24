@@ -193,36 +193,37 @@ type CampfireLineAttachment struct {
 
 // Card defines model for Card.
 type Card struct {
-	AppUrl                string          `json:"app_url"`
-	Assignees             []Person        `json:"assignees,omitempty"`
-	BookmarkUrl           string          `json:"bookmark_url,omitempty"`
-	BoostsCount           int32           `json:"boosts_count,omitempty"`
-	BoostsUrl             string          `json:"boosts_url,omitempty"`
-	Bucket                TodoBucket      `json:"bucket"`
-	CommentsCount         int32           `json:"comments_count,omitempty"`
-	CommentsUrl           string          `json:"comments_url,omitempty"`
-	Completed             bool            `json:"completed,omitempty"`
-	CompletedAt           time.Time       `json:"completed_at,omitempty"`
-	Completer             Person          `json:"completer,omitempty"`
-	CompletionSubscribers []Person        `json:"completion_subscribers,omitempty"`
-	CompletionUrl         string          `json:"completion_url,omitempty"`
-	Content               string          `json:"content,omitempty"`
-	CreatedAt             time.Time       `json:"created_at"`
-	Creator               Person          `json:"creator"`
-	Description           string          `json:"description,omitempty"`
-	DueOn                 types.Date      `json:"due_on,omitempty"`
-	Id                    int64           `json:"id"`
-	InheritsStatus        bool            `json:"inherits_status"`
-	Parent                RecordingParent `json:"parent"`
-	Position              int32           `json:"position,omitempty"`
-	Status                string          `json:"status"`
-	Steps                 []CardStep      `json:"steps,omitempty"`
-	SubscriptionUrl       string          `json:"subscription_url,omitempty"`
-	Title                 string          `json:"title"`
-	Type                  string          `json:"type"`
-	UpdatedAt             time.Time       `json:"updated_at"`
-	Url                   string          `json:"url"`
-	VisibleToClients      bool            `json:"visible_to_clients"`
+	AppUrl                 string               `json:"app_url"`
+	Assignees              []Person             `json:"assignees,omitempty"`
+	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	CommentsUrl            string               `json:"comments_url,omitempty"`
+	Completed              bool                 `json:"completed,omitempty"`
+	CompletedAt            time.Time            `json:"completed_at,omitempty"`
+	Completer              Person               `json:"completer,omitempty"`
+	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
+	CompletionUrl          string               `json:"completion_url,omitempty"`
+	Content                string               `json:"content,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            string               `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	DueOn                  types.Date           `json:"due_on,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Parent                 RecordingParent      `json:"parent"`
+	Position               int32                `json:"position,omitempty"`
+	Status                 string               `json:"status"`
+	Steps                  []CardStep           `json:"steps,omitempty"`
+	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	Title                  string               `json:"title"`
+	Type                   string               `json:"type"`
+	UpdatedAt              time.Time            `json:"updated_at"`
+	Url                    string               `json:"url"`
+	VisibleToClients       bool                 `json:"visible_to_clients"`
 }
 
 // CardColumn defines model for CardColumn.
@@ -322,29 +323,30 @@ type Chatbot struct {
 
 // ClientApproval defines model for ClientApproval.
 type ClientApproval struct {
-	AppUrl           string                   `json:"app_url"`
-	ApprovalStatus   string                   `json:"approval_status,omitempty"`
-	Approver         Person                   `json:"approver,omitempty"`
-	BookmarkUrl      string                   `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket          `json:"bucket"`
-	Content          string                   `json:"content,omitempty"`
-	CreatedAt        time.Time                `json:"created_at"`
-	Creator          Person                   `json:"creator"`
-	DueOn            types.Date               `json:"due_on,omitempty"`
-	Id               int64                    `json:"id"`
-	InheritsStatus   bool                     `json:"inherits_status"`
-	Parent           RecordingParent          `json:"parent"`
-	RepliesCount     int32                    `json:"replies_count,omitempty"`
-	RepliesUrl       string                   `json:"replies_url,omitempty"`
-	Responses        []ClientApprovalResponse `json:"responses,omitempty"`
-	Status           string                   `json:"status"`
-	Subject          string                   `json:"subject,omitempty"`
-	SubscriptionUrl  string                   `json:"subscription_url,omitempty"`
-	Title            string                   `json:"title"`
-	Type             string                   `json:"type"`
-	UpdatedAt        time.Time                `json:"updated_at"`
-	Url              string                   `json:"url"`
-	VisibleToClients bool                     `json:"visible_to_clients"`
+	AppUrl             string                   `json:"app_url"`
+	ApprovalStatus     string                   `json:"approval_status,omitempty"`
+	Approver           Person                   `json:"approver,omitempty"`
+	BookmarkUrl        string                   `json:"bookmark_url,omitempty"`
+	Bucket             RecordingBucket          `json:"bucket"`
+	Content            string                   `json:"content,omitempty"`
+	ContentAttachments []RichTextAttachment     `json:"content_attachments"`
+	CreatedAt          time.Time                `json:"created_at"`
+	Creator            Person                   `json:"creator"`
+	DueOn              types.Date               `json:"due_on,omitempty"`
+	Id                 int64                    `json:"id"`
+	InheritsStatus     bool                     `json:"inherits_status"`
+	Parent             RecordingParent          `json:"parent"`
+	RepliesCount       int32                    `json:"replies_count,omitempty"`
+	RepliesUrl         string                   `json:"replies_url,omitempty"`
+	Responses          []ClientApprovalResponse `json:"responses,omitempty"`
+	Status             string                   `json:"status"`
+	Subject            string                   `json:"subject,omitempty"`
+	SubscriptionUrl    string                   `json:"subscription_url,omitempty"`
+	Title              string                   `json:"title"`
+	Type               string                   `json:"type"`
+	UpdatedAt          time.Time                `json:"updated_at"`
+	Url                string                   `json:"url"`
+	VisibleToClients   bool                     `json:"visible_to_clients"`
 }
 
 // ClientApprovalResponse defines model for ClientApprovalResponse.
@@ -374,44 +376,46 @@ type ClientCompany struct {
 
 // ClientCorrespondence defines model for ClientCorrespondence.
 type ClientCorrespondence struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	RepliesCount     int32           `json:"replies_count,omitempty"`
-	RepliesUrl       string          `json:"replies_url,omitempty"`
-	Status           string          `json:"status"`
-	Subject          string          `json:"subject"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	Bucket             RecordingBucket      `json:"bucket"`
+	Content            string               `json:"content,omitempty"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	RepliesCount       int32                `json:"replies_count,omitempty"`
+	RepliesUrl         string               `json:"replies_url,omitempty"`
+	Status             string               `json:"status"`
+	Subject            string               `json:"subject"`
+	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // ClientReply defines model for ClientReply.
 type ClientReply struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket"`
-	Content          string          `json:"content"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	Bucket             RecordingBucket      `json:"bucket"`
+	Content            string               `json:"content"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	Status             string               `json:"status"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // ClientSide This shape is deprecated since 2024-01: Use Client Visibility feature instead
@@ -422,23 +426,24 @@ type ClientSide struct {
 
 // Comment defines model for Comment.
 type Comment struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Content          string          `json:"content"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int32                `json:"boosts_count,omitempty"`
+	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	Bucket             TodoBucket           `json:"bucket"`
+	Content            string               `json:"content"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	Status             string               `json:"status"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // CreateAnswerResponseContent defines model for CreateAnswerResponseContent.
@@ -752,27 +757,28 @@ type DockItem struct {
 
 // Document defines model for Document.
 type Document struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int32                `json:"boosts_count,omitempty"`
+	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	Bucket             TodoBucket           `json:"bucket"`
+	CommentsCount      int32                `json:"comments_count,omitempty"`
+	CommentsUrl        string               `json:"comments_url,omitempty"`
+	Content            string               `json:"content,omitempty"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	Position           int32                `json:"position,omitempty"`
+	Status             string               `json:"status"`
+	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
@@ -817,95 +823,104 @@ type ForbiddenErrorResponseContent struct {
 
 // Forward defines model for Forward.
 type Forward struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	From             string          `json:"from,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	RepliesCount     int32           `json:"replies_count,omitempty"`
-	RepliesUrl       string          `json:"replies_url,omitempty"`
-	Status           string          `json:"status"`
-	Subject          string          `json:"subject"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	Bucket             TodoBucket           `json:"bucket"`
+	Content            string               `json:"content,omitempty"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	From               string               `json:"from,omitempty"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	RepliesCount       int32                `json:"replies_count,omitempty"`
+	RepliesUrl         string               `json:"replies_url,omitempty"`
+	Status             string               `json:"status"`
+	Subject            string               `json:"subject"`
+	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // ForwardReply defines model for ForwardReply.
 type ForwardReply struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Content          string          `json:"content"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int32                `json:"boosts_count,omitempty"`
+	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	Bucket             TodoBucket           `json:"bucket"`
+	Content            string               `json:"content"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	Status             string               `json:"status"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // Gauge defines model for Gauge.
 type Gauge struct {
-	AppUrl                 string          `json:"app_url,omitempty"`
-	BookmarkUrl            string          `json:"bookmark_url,omitempty"`
-	Bucket                 RecordingBucket `json:"bucket,omitempty"`
-	CreatedAt              time.Time       `json:"created_at"`
-	Creator                Person          `json:"creator,omitempty"`
-	Description            string          `json:"description,omitempty"`
-	Enabled                bool            `json:"enabled,omitempty"`
-	Id                     int64           `json:"id"`
-	InheritsStatus         bool            `json:"inherits_status,omitempty"`
-	LastNeedleColor        string          `json:"last_needle_color,omitempty"`
-	LastNeedlePosition     int32           `json:"last_needle_position,omitempty"`
-	PreviousNeedlePosition int32           `json:"previous_needle_position,omitempty"`
-	Status                 string          `json:"status,omitempty"`
-	Title                  string          `json:"title,omitempty"`
-	Type                   string          `json:"type,omitempty"`
-	UpdatedAt              time.Time       `json:"updated_at"`
-	Url                    string          `json:"url,omitempty"`
-	VisibleToClients       bool            `json:"visible_to_clients,omitempty"`
+	AppUrl      string          `json:"app_url,omitempty"`
+	BookmarkUrl string          `json:"bookmark_url,omitempty"`
+	Bucket      RecordingBucket `json:"bucket,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	Creator     Person          `json:"creator,omitempty"`
+	Description string          `json:"description,omitempty"`
+
+	// DescriptionAttachments Optional (no `@required`): the type-specific partial renders the
+	// companion array only when the gauge has needles (bc3 `if
+	// gauge.any_needles?`), so a needle-less gauge omits the key entirely.
+	// Non-nullable — never served as JSON `null`.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	Enabled                bool                 `json:"enabled,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
+	LastNeedleColor        string               `json:"last_needle_color,omitempty"`
+	LastNeedlePosition     int32                `json:"last_needle_position,omitempty"`
+	PreviousNeedlePosition int32                `json:"previous_needle_position,omitempty"`
+	Status                 string               `json:"status,omitempty"`
+	Title                  string               `json:"title,omitempty"`
+	Type                   string               `json:"type,omitempty"`
+	UpdatedAt              time.Time            `json:"updated_at"`
+	Url                    string               `json:"url,omitempty"`
+	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
 }
 
 // GaugeNeedle defines model for GaugeNeedle.
 type GaugeNeedle struct {
-	AppUrl           string          `json:"app_url,omitempty"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
-	Color            string          `json:"color,omitempty"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator,omitempty"`
-	Description      string          `json:"description,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title,omitempty"`
-	Type             string          `json:"type,omitempty"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url,omitempty"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	AppUrl                 string               `json:"app_url,omitempty"`
+	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	Bucket                 RecordingBucket      `json:"bucket,omitempty"`
+	Color                  string               `json:"color,omitempty"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	CommentsUrl            string               `json:"comments_url,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator,omitempty"`
+	Description            string               `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
+	Parent                 RecordingParent      `json:"parent,omitempty"`
+	Position               int32                `json:"position,omitempty"`
+	Status                 string               `json:"status,omitempty"`
+	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	Title                  string               `json:"title,omitempty"`
+	Type                   string               `json:"type,omitempty"`
+	UpdatedAt              time.Time            `json:"updated_at"`
+	Url                    string               `json:"url,omitempty"`
+	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
 }
 
 // GaugeNeedlePayload defines model for GaugeNeedlePayload.
@@ -1330,28 +1345,29 @@ type MarkAsReadRequestContent struct {
 
 // Message defines model for Message.
 type Message struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	Category         MessageType     `json:"category,omitempty"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	Content          string          `json:"content"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	Subject          string          `json:"subject"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int32                `json:"boosts_count,omitempty"`
+	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	Bucket             TodoBucket           `json:"bucket"`
+	Category           MessageType          `json:"category,omitempty"`
+	CommentsCount      int32                `json:"comments_count,omitempty"`
+	CommentsUrl        string               `json:"comments_url,omitempty"`
+	Content            string               `json:"content"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	Status             string               `json:"status"`
+	Subject            string               `json:"subject"`
+	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // MessageBoard defines model for MessageBoard.
@@ -1670,27 +1686,28 @@ type Question struct {
 
 // QuestionAnswer defines model for QuestionAnswer.
 type QuestionAnswer struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	Content          string          `json:"content"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	GroupOn          types.Date      `json:"group_on,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl             string               `json:"app_url"`
+	BookmarkUrl        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int32                `json:"boosts_count,omitempty"`
+	BoostsUrl          string               `json:"boosts_url,omitempty"`
+	Bucket             RecordingBucket      `json:"bucket"`
+	CommentsCount      int32                `json:"comments_count,omitempty"`
+	CommentsUrl        string               `json:"comments_url,omitempty"`
+	Content            string               `json:"content"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+	GroupOn            types.Date           `json:"group_on,omitempty"`
+	Id                 int64                `json:"id"`
+	InheritsStatus     bool                 `json:"inherits_status"`
+	Parent             RecordingParent      `json:"parent"`
+	Status             string               `json:"status"`
+	SubscriptionUrl    string               `json:"subscription_url,omitempty"`
+	Title              string               `json:"title"`
+	Type               string               `json:"type"`
+	UpdatedAt          time.Time            `json:"updated_at"`
+	Url                string               `json:"url"`
+	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
 // QuestionAnswerPayload defines model for QuestionAnswerPayload.
@@ -1755,24 +1772,36 @@ type RateLimitErrorResponseContent struct {
 
 // Recording defines model for Recording.
 type Recording struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Status           string          `json:"status"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
+	AppUrl        string          `json:"app_url"`
+	BookmarkUrl   string          `json:"bookmark_url,omitempty"`
+	Bucket        RecordingBucket `json:"bucket"`
+	CommentsCount int32           `json:"comments_count,omitempty"`
+	CommentsUrl   string          `json:"comments_url,omitempty"`
+	Content       string          `json:"content,omitempty"`
+
+	// ContentAttachments Rich-text companion arrays carried through the generic recording
+	// projection (`to_recordable_partial_path` renders the full type-specific
+	// partial). A given recording is one type, so it carries only the array
+	// matching its rich-text attribute (`content_attachments` for a
+	// Comment/Message, `description_attachments` for a Todo/Card); a
+	// webhook-sourced recording (base partial) carries neither. Optional (no
+	// `@required`), non-nullable.
+	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
+	CreatedAt          time.Time            `json:"created_at"`
+	Creator            Person               `json:"creator"`
+
+	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Parent                 RecordingParent      `json:"parent"`
+	Status                 string               `json:"status"`
+	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	Title                  string               `json:"title"`
+	Type                   string               `json:"type"`
+	UpdatedAt              time.Time            `json:"updated_at"`
+	Url                    string               `json:"url"`
+	VisibleToClients       bool                 `json:"visible_to_clients"`
 }
 
 // RecordingBucket defines model for RecordingBucket.
@@ -1899,31 +1928,32 @@ type ScheduleAttributes struct {
 
 // ScheduleEntry defines model for ScheduleEntry.
 type ScheduleEntry struct {
-	AllDay           bool               `json:"all_day,omitempty"`
-	AppUrl           string             `json:"app_url"`
-	BookmarkUrl      string             `json:"bookmark_url,omitempty"`
-	BoostsCount      int32              `json:"boosts_count,omitempty"`
-	BoostsUrl        string             `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket         `json:"bucket"`
-	CommentsCount    int32              `json:"comments_count,omitempty"`
-	CommentsUrl      string             `json:"comments_url,omitempty"`
-	CreatedAt        time.Time          `json:"created_at"`
-	Creator          Person             `json:"creator"`
-	Description      string             `json:"description,omitempty"`
-	EndsAt           types.FlexibleTime `json:"ends_at,omitempty"`
-	Id               int64              `json:"id"`
-	InheritsStatus   bool               `json:"inherits_status"`
-	Parent           RecordingParent    `json:"parent"`
-	Participants     []Person           `json:"participants,omitempty"`
-	StartsAt         types.FlexibleTime `json:"starts_at,omitempty"`
-	Status           string             `json:"status"`
-	SubscriptionUrl  string             `json:"subscription_url,omitempty"`
-	Summary          string             `json:"summary"`
-	Title            string             `json:"title"`
-	Type             string             `json:"type"`
-	UpdatedAt        time.Time          `json:"updated_at"`
-	Url              string             `json:"url"`
-	VisibleToClients bool               `json:"visible_to_clients"`
+	AllDay                 bool                 `json:"all_day,omitempty"`
+	AppUrl                 string               `json:"app_url"`
+	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	CommentsUrl            string               `json:"comments_url,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            string               `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	EndsAt                 types.FlexibleTime   `json:"ends_at,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Parent                 RecordingParent      `json:"parent"`
+	Participants           []Person             `json:"participants,omitempty"`
+	StartsAt               types.FlexibleTime   `json:"starts_at,omitempty"`
+	Status                 string               `json:"status"`
+	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	Summary                string               `json:"summary"`
+	Title                  string               `json:"title"`
+	Type                   string               `json:"type"`
+	UpdatedAt              time.Time            `json:"updated_at"`
+	Url                    string               `json:"url"`
+	VisibleToClients       bool                 `json:"visible_to_clients"`
 }
 
 // SearchMetadata defines model for SearchMetadata.
@@ -1942,23 +1972,35 @@ type SearchResponseContent = []SearchResult
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	Bucket           RecordingBucket `json:"bucket,omitempty"`
-	Content          string          `json:"content,omitempty"`
-	CreatedAt        time.Time       `json:"created_at,omitempty"`
-	Creator          Person          `json:"creator,omitempty"`
-	Description      string          `json:"description,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status,omitempty"`
-	Parent           RecordingParent `json:"parent,omitempty"`
-	Status           string          `json:"status,omitempty"`
-	Subject          string          `json:"subject,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at,omitempty"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients,omitempty"`
+	AppUrl      string          `json:"app_url"`
+	BookmarkUrl string          `json:"bookmark_url,omitempty"`
+	Bucket      RecordingBucket `json:"bucket,omitempty"`
+	Content     string          `json:"content,omitempty"`
+
+	// ContentAttachments Rich-text companion arrays carried through the polymorphic search
+	// projection. A given result is one recording type, so it carries only
+	// the array matching its rich-text attribute (`content_attachments` for a
+	// Comment/Message, `description_attachments` for a Todo); a webhook-sourced
+	// result carries neither. Optional (no `@required`), non-nullable. Distinct
+	// from the generic `attachments` key (the recording's aggregate downloadable
+	// files), which is a separate projection concern and not modeled here.
+	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
+	CreatedAt          time.Time            `json:"created_at,omitempty"`
+	Creator            Person               `json:"creator,omitempty"`
+	Description        string               `json:"description,omitempty"`
+
+	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
+	Parent                 RecordingParent      `json:"parent,omitempty"`
+	Status                 string               `json:"status,omitempty"`
+	Subject                string               `json:"subject,omitempty"`
+	Title                  string               `json:"title"`
+	Type                   string               `json:"type"`
+	UpdatedAt              time.Time            `json:"updated_at,omitempty"`
+	Url                    string               `json:"url"`
+	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
 }
 
 // SearchType A selectable search filter option. `key` is the value passed back as a
@@ -2119,25 +2161,26 @@ type TodoParent struct {
 
 // Todolist defines model for Todolist.
 type Todolist struct {
-	AppTodosUrl    string     `json:"app_todos_url,omitempty"`
-	AppUrl         string     `json:"app_url"`
-	BookmarkUrl    string     `json:"bookmark_url,omitempty"`
-	BoostsCount    int32      `json:"boosts_count,omitempty"`
-	BoostsUrl      string     `json:"boosts_url,omitempty"`
-	Bucket         TodoBucket `json:"bucket"`
-	CommentsCount  int32      `json:"comments_count,omitempty"`
-	CommentsUrl    string     `json:"comments_url,omitempty"`
-	Completed      bool       `json:"completed,omitempty"`
-	CompletedRatio string     `json:"completed_ratio,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	Creator        Person     `json:"creator"`
-	Description    string     `json:"description,omitempty"`
-	GroupsUrl      string     `json:"groups_url,omitempty"`
-	Id             int64      `json:"id"`
-	InheritsStatus bool       `json:"inherits_status"`
-	Name           string     `json:"name"`
-	Parent         TodoParent `json:"parent"`
-	Position       int32      `json:"position,omitempty"`
+	AppTodosUrl            string               `json:"app_todos_url,omitempty"`
+	AppUrl                 string               `json:"app_url"`
+	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	CommentsUrl            string               `json:"comments_url,omitempty"`
+	Completed              bool                 `json:"completed,omitempty"`
+	CompletedRatio         string               `json:"completed_ratio,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            string               `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	GroupsUrl              string               `json:"groups_url,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Name                   string               `json:"name"`
+	Parent                 TodoParent           `json:"parent"`
+	Position               int32                `json:"position,omitempty"`
 
 	// Status active|archived|trashed
 	Status           string    `json:"status"`
@@ -2536,33 +2579,34 @@ type UpdateWebhookResponseContent = Webhook
 
 // Upload defines model for Upload.
 type Upload struct {
-	AppUrl           string          `json:"app_url"`
-	BookmarkUrl      string          `json:"bookmark_url,omitempty"`
-	BoostsCount      int32           `json:"boosts_count,omitempty"`
-	BoostsUrl        string          `json:"boosts_url,omitempty"`
-	Bucket           TodoBucket      `json:"bucket"`
-	ByteSize         int64           `json:"byte_size,omitempty"`
-	CommentsCount    int32           `json:"comments_count,omitempty"`
-	CommentsUrl      string          `json:"comments_url,omitempty"`
-	ContentType      string          `json:"content_type,omitempty"`
-	CreatedAt        time.Time       `json:"created_at"`
-	Creator          Person          `json:"creator"`
-	Description      string          `json:"description,omitempty"`
-	DownloadUrl      string          `json:"download_url,omitempty"`
-	Filename         string          `json:"filename,omitempty"`
-	Height           types.FlexInt   `json:"height,omitempty"`
-	Id               int64           `json:"id"`
-	InheritsStatus   bool            `json:"inherits_status"`
-	Parent           RecordingParent `json:"parent"`
-	Position         int32           `json:"position,omitempty"`
-	Status           string          `json:"status"`
-	SubscriptionUrl  string          `json:"subscription_url,omitempty"`
-	Title            string          `json:"title"`
-	Type             string          `json:"type"`
-	UpdatedAt        time.Time       `json:"updated_at"`
-	Url              string          `json:"url"`
-	VisibleToClients bool            `json:"visible_to_clients"`
-	Width            types.FlexInt   `json:"width,omitempty"`
+	AppUrl                 string               `json:"app_url"`
+	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
+	BoostsCount            int32                `json:"boosts_count,omitempty"`
+	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	Bucket                 TodoBucket           `json:"bucket"`
+	ByteSize               int64                `json:"byte_size,omitempty"`
+	CommentsCount          int32                `json:"comments_count,omitempty"`
+	CommentsUrl            string               `json:"comments_url,omitempty"`
+	ContentType            string               `json:"content_type,omitempty"`
+	CreatedAt              time.Time            `json:"created_at"`
+	Creator                Person               `json:"creator"`
+	Description            string               `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	DownloadUrl            string               `json:"download_url,omitempty"`
+	Filename               string               `json:"filename,omitempty"`
+	Height                 types.FlexInt        `json:"height,omitempty"`
+	Id                     int64                `json:"id"`
+	InheritsStatus         bool                 `json:"inherits_status"`
+	Parent                 RecordingParent      `json:"parent"`
+	Position               int32                `json:"position,omitempty"`
+	Status                 string               `json:"status"`
+	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
+	Title                  string               `json:"title"`
+	Type                   string               `json:"type"`
+	UpdatedAt              time.Time            `json:"updated_at"`
+	Url                    string               `json:"url"`
+	VisibleToClients       bool                 `json:"visible_to_clients"`
+	Width                  types.FlexInt        `json:"width,omitempty"`
 }
 
 // ValidationErrorResponseContent defines model for ValidationErrorResponseContent.

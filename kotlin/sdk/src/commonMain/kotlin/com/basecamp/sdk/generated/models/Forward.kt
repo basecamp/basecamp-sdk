@@ -25,6 +25,7 @@ data class Forward(
     val parent: RecordingParent,
     val bucket: TodoBucket,
     val creator: Person,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>,
     val subject: String,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,

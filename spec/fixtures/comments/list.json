@@ -43,7 +43,8 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "content": "<div>Yeah! Great job everyone! Super excited to get going!</div>"
+    "content": "<div>Yeah! Great job everyone! Super excited to get going!</div>",
+    "content_attachments": []
   },
   {
     "id": 1069479361,
@@ -93,6 +94,7 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "content": "<div>I just want to echo what just about everyone already said. This is a big one for us, and I can't wait to get going. I'll be spinning up the project shortly!</div>"
+    "content": "<div>I just want to echo what just about everyone already said. This is a big one for us, and I can't wait to get going. I'll be spinning up the project shortly!</div>",
+    "content_attachments": []
   }
 ]

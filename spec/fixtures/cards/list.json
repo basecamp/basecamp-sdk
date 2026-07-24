@@ -114,7 +114,8 @@
         },
         "assignees": []
       }
-    ]
+    ],
+    "description_attachments": []
   },
   {
     "id": 1069479351,
@@ -155,6 +156,7 @@
     },
     "assignees": [],
     "completion_subscribers": [],
-    "steps": []
+    "steps": [],
+    "description_attachments": []
   }
 ]
