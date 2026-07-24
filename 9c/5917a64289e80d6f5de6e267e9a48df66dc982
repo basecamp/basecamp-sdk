@@ -1,0 +1,21 @@
+python/tests/services/test_uploads.py
+  s_854ff63c351de4::t_318cd1dccb007f 204-205
+typescript/tests/services/comments.test.ts
+  s_854ff63c351de4::t_daab6362715794 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9c5917a64289e80d6f5de6e267e9a48df66dc982",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
