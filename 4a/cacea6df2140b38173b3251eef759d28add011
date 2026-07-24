@@ -1,0 +1,147 @@
+python/src/basecamp/generated/services/documents.py
+  s_9dca1a241a65c0::t_8408c26240ac05 44,50-56,92,98-104
+ruby/lib/basecamp/generated/services/messages_service.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 29,31,33
+go/pkg/basecamp/todolists.go
+  s_9dca1a241a65c0::t_508c2d34a60bdf 248-250
+  s_9dca1a241a65c0::t_9c0050bfc96b67 77-80
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/MessagesServiceTest.kt
+  s_9dca1a241a65c0::t_5ee477fc7e82a6 1-87
+go/pkg/basecamp/messages.go
+  s_9dca1a241a65c0::t_01b650f62426ac 54-57
+  s_9dca1a241a65c0::t_6af110b0268800 257-261
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/schedules.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 176
+typescript/src/generated/metadata.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 40
+typescript/tests/services/messages.test.ts
+  s_9dca1a241a65c0::t_1be495e1478236 141-166
+ruby/test/basecamp/services/messages_service_test.rb
+  s_9dca1a241a65c0::t_7ef9fc2334492b 102-133
+ruby/lib/basecamp/generated/services/checkins_service.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 61,63,65
+ruby/lib/basecamp/generated/services/documents_service.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 45,47,49
+python/src/basecamp/generated/services/todolists.py
+  s_9dca1a241a65c0::t_8408c26240ac05 46-48,53,91-93,98
+swift/Sources/Basecamp/Generated/Models/CreateUploadRequest.swift
+  s_9dca1a241a65c0::t_8408c26240ac05 9,15-16,22
+typescript/src/generated/schema.d.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 2986,3017,3047,3063,3096,3111
+spec/api-gaps/visible-to-clients-on-creates.md
+  s_9dca1a241a65c0::t_ee10eed5bcd052 3,6-16
+  s_9dca1a241a65c0::t_4d2b53e3887965 59-62,64-68
+  s_9dca1a241a65c0::t_1021fd5907fcc4 91-93,97-98,100-105,109-118,122-125
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 85,87,89
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 121
+go/pkg/basecamp/vaults_test.go
+  s_9dca1a241a65c0::t_71cfaedc8223cd 942-1059
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_9dca1a241a65c0::t_379d5ee0176d49 698
+  s_9dca1a241a65c0::t_6ce4d668ee6d19 699-743
+typescript/src/generated/services/uploads.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 54-55,227
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolists.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 122
+swift/Sources/Basecamp/Generated/Models/CreateScheduleEntryRequest.swift
+  s_9dca1a241a65c0::t_8408c26240ac05 13,23-24,34
+python/src/basecamp/generated/types.py
+  s_9dca1a241a65c0::t_8408c26240ac05 410,438,465,481,513,526
+typescript/src/generated/services/todolists.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 54-55,230
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/documents.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 100
+python/src/basecamp/generated/services/uploads.py
+  s_9dca1a241a65c0::t_8408c26240ac05 50,61,106,117
+ruby/lib/basecamp/generated/types.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 4
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/messages.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 61
+typescript/src/generated/openapi-stripped.json
+  s_9dca1a241a65c0::t_8408c26240ac05 20315-20318,20424-20427,20519-20522,20595-20598,20726-20729,20777-20780
+  s_9dca1a241a65c0::t_8d7f8b5380ac76 5
+ruby/lib/basecamp/generated/services/uploads_service.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 54,56,58
+python/tests/services/test_messages.py
+  s_9dca1a241a65c0::t_ffb64c72ffb24a 1-54
+typescript/src/generated/services/schedules.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 78-79,335
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 149-150,216-217,304-305,441-442,569-570,637-638
+typescript/src/generated/services/messages.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 44-45,141
+typescript/src/generated/services/documents.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 48-49,191
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_9dca1a241a65c0::t_8408c26240ac05 56,58,60
+openapi.json
+  s_9dca1a241a65c0::t_8408c26240ac05 22660-22663,22769-22772,22864-22867,22940-22943,23071-23074,23122-23125
+  s_9dca1a241a65c0::t_b1d6e745d24449 5
+go/pkg/basecamp/vaults.go
+  s_9dca1a241a65c0::t_99583e1eea8a80 581-585
+  s_9dca1a241a65c0::t_2bd6a9bc52f4f4 191-194
+  s_9dca1a241a65c0::t_c3b57bf4554f60 225-228
+  s_9dca1a241a65c0::t_15782d1adc2ceb 865-869
+swift/Sources/Basecamp/Generated/Models/CreateQuestionRequest.swift
+  s_9dca1a241a65c0::t_8408c26240ac05 7,9,12
+python/src/basecamp/generated/services/messages.py
+  s_9dca1a241a65c0::t_8408c26240ac05 30,37-42,105,112-117
+go/pkg/generated/client.gen.go
+  s_9dca1a241a65c0::t_8408c26240ac05 523-526,574-577,619-621,637-645,695-697,717-721
+go/pkg/basecamp/messages_test.go
+  s_9dca1a241a65c0::t_a1938a4986eb38 494-538
+go/pkg/basecamp/schedules_test.go
+  s_9dca1a241a65c0::t_dbb5001e81ef7d 738-784
+ruby/lib/basecamp/generated/metadata.json
+  s_9dca1a241a65c0::t_8408c26240ac05 4
+swift/Sources/Basecamp/Generated/Models/CreateDocumentRequest.swift
+  s_9dca1a241a65c0::t_8408c26240ac05 9,15-16,22
+python/src/basecamp/generated/services/schedules.py
+  s_9dca1a241a65c0::t_8408c26240ac05 91,106,190,205
+go/pkg/basecamp/checkins_test.go
+  s_9dca1a241a65c0::t_bc0f379815c70c 1037-1093
+typescript/src/generated/services/checkins.ts
+  s_9dca1a241a65c0::t_8408c26240ac05 56-57,310
+python/src/basecamp/generated/services/checkins.py
+  s_9dca1a241a65c0::t_8408c26240ac05 52-54,61,181-183,190
+go/pkg/basecamp/schedules.go
+  s_9dca1a241a65c0::t_c830c589713974 349-356
+  s_9dca1a241a65c0::t_ef8614b9ccf394 103-106
+swift/Sources/Basecamp/Generated/Models/CreateTodolistRequest.swift
+  s_9dca1a241a65c0::t_8408c26240ac05 7,9,12
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/checkins.kt
+  s_9dca1a241a65c0::t_8408c26240ac05 136
+go/pkg/basecamp/todolists_test.go
+  s_9dca1a241a65c0::t_05e7804a1238a5 365-409
+go/pkg/basecamp/checkins.go
+  s_9dca1a241a65c0::t_b23fce7dfb3800 360-362
+  s_9dca1a241a65c0::t_ebf118ee504402 128-131
+spec/basecamp.smithy
+  s_9dca1a241a65c0::t_ac659d14eddcc3 2626-2627
+  s_9dca1a241a65c0::t_9aedc53111903c 1073-1074
+  s_9dca1a241a65c0::t_6848a5dc7f33fe 6197-6198
+  s_9dca1a241a65c0::t_52697f58edf571 2230-2231
+  s_9dca1a241a65c0::t_bc82436c9f9977 1789-1790
+  s_9dca1a241a65c0::t_c70065a7652e33 2351-2352
+  s_9dca1a241a65c0::t_e912673f6d1fc8 54
+swift/Sources/Basecamp/Generated/Models/CreateMessageRequest.swift
+  s_9dca1a241a65c0::t_8408c26240ac05 10,17-18,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4acacea6df2140b38173b3251eef759d28add011",
+  "prompts": {},
+  "sessions": {
+    "s_9dca1a241a65c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1cbd7955-2db4-4c67-9f37-c56a2a40b99e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
