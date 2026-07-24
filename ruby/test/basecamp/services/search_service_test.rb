@@ -11,8 +11,10 @@ class SearchServiceTest < Minitest::Test
 
   def test_search
     results = [
-      { "id" => 1, "title" => "Quarterly Report", "type" => "Message" },
-      { "id" => 2, "title" => "Q1 Report Draft", "type" => "Document" }
+      # The search projection carries the matching type's rich-text companion
+      # array; a Message result surfaces content_attachments.
+      { "id" => 1, "title" => "Quarterly Report", "type" => "Message", "content_attachments" => [] },
+      { "id" => 2, "title" => "Q1 Report Draft", "type" => "Document", "content_attachments" => [] }
     ]
     stub_request(:get, "https://3.basecampapi.com/12345/search.json")
       .with(query: { q: "quarterly report" })
@@ -22,6 +24,8 @@ class SearchServiceTest < Minitest::Test
 
     assert_equal 2, result.length
     assert_equal "Quarterly Report", result[0]["title"]
+    # The optional projection array surfaces on the matching-type result.
+    assert_equal [], result[0]["content_attachments"]
   end
 
   def test_search_with_sort

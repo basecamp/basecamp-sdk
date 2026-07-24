@@ -94,6 +94,8 @@ describe("SchedulesService", () => {
       expect(result).toHaveLength(2);
       expect(result[0].summary).toBe("Team Meeting");
       expect(result[1].summary).toBe("Project Review");
+      // The required description_attachments array round-trips through the list.
+      expect(result[0].description_attachments).toEqual([]);
     });
 
     it("should return empty array when no entries", async () => {

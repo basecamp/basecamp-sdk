@@ -25,6 +25,9 @@ class RecordingsServiceTest < Minitest::Test
       "title" => title,
       "status" => "active",
       "type" => "Todo",
+      # The generic recording projection carries the matching type's rich-text
+      # companion array; a Todo recording surfaces description_attachments.
+      "description_attachments" => [],
       "created_at" => "2024-01-01T00:00:00Z"
     }
   end
@@ -61,6 +64,8 @@ class RecordingsServiceTest < Minitest::Test
 
     assert_equal 456, result["id"]
     assert_equal "Test Recording", result["title"]
+    # The optional projection array surfaces on the matching-type recording.
+    assert_equal [], result["description_attachments"]
   end
 
   def test_archive
