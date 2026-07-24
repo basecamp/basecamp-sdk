@@ -126,4 +126,22 @@ class GeneratedTypesTest < Minitest::Test
     real_option = Basecamp::Types::SearchType.new("key" => "Message", "value" => "Messages")
     assert_equal "Message", real_option.to_h["key"]
   end
+
+  # Wormhole.color and Wormhole.destination_url are required-and-nullable: the bc3
+  # jbuilder always emits them, null when unset/unlinked. to_h must preserve those
+  # explicit nulls (the destination_url is the only field identifying the target),
+  # not compact them away. Guards against a stale regeneration of the Wormhole block.
+  def test_wormhole_preserves_null_color_and_destination_url
+    unlinked = Basecamp::Types::Wormhole.new("id" => 1, "linked" => false, "color" => nil, "destination_url" => nil)
+    hash = unlinked.to_h
+
+    assert hash.key?("color"), "required-nullable color must stay present"
+    assert_nil hash["color"]
+    assert hash.key?("destination_url"), "required-nullable destination_url must stay present"
+    assert_nil hash["destination_url"]
+
+    linked = Basecamp::Types::Wormhole.new("id" => 2, "linked" => true, "color" => "#f5d76e", "destination_url" => "https://example.com/col.json")
+    assert_equal "#f5d76e", linked.to_h["color"]
+    assert_equal "https://example.com/col.json", linked.to_h["destination_url"]
+  end
 end

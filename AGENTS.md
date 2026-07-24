@@ -6,11 +6,11 @@
 |-----------|--------|---------|
 | **Smithy Spec** | 208 operations | Single source of truth for all APIs |
 | **Go SDK** | Production-ready | Full generated client + service wrappers |
-| **TypeScript SDK** | Production-ready | 38 generated services, openapi-fetch based |
-| **Ruby SDK** | Production-ready | 38 generated services |
-| **Swift SDK** | Production-ready | 39 generated services, URLSession-based |
-| **Kotlin SDK** | Production-ready | 39 generated services, Ktor/KMP-based |
-| **Python SDK** | Production-ready | 41 generated services, httpx-based |
+| **TypeScript SDK** | Production-ready | 45 generated services, openapi-fetch based |
+| **Ruby SDK** | Production-ready | 45 generated services |
+| **Swift SDK** | Production-ready | 45 generated services, URLSession-based |
+| **Kotlin SDK** | Production-ready | 44 generated services, Ktor/KMP-based |
+| **Python SDK** | Production-ready | 45 generated services, httpx-based |
 
 All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
 
@@ -31,7 +31,7 @@ Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 | **Kotlin** | Ktor via `BaseService` | `sdk/src/commonMain/kotlin/.../generated/services/*.kt` |
 | **Python** | httpx via `HttpClient` | `src/basecamp/generated/services/*.py` |
 
-All 208 operations across 39+ services are generated. Hand-written code is limited to infrastructure:
+All 208 operations across the ~45-service per-SDK layer are generated. Hand-written code is limited to infrastructure:
 
 | Purpose | TypeScript | Ruby | Swift | Kotlin | Python |
 |---------|-----------|------|-------|--------|--------|
