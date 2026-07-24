@@ -46,5 +46,6 @@
     "can_manage_projects": true,
     "can_manage_people": true
   },
-  "content": "<div>Hi Leto team, this it's Annie. I'll be your day to day contact for the project, so keep me on your speed dial (or speed email, perhaps more accurately!) Feel free to reach out to me with any questions at all, and I'll be posting up some outlines, timelines, etc. very shortly.</div>"
+  "content": "<div>Hi Leto team, this it's Annie. I'll be your day to day contact for the project, so keep me on your speed dial (or speed email, perhaps more accurately!) Feel free to reach out to me with any questions at all, and I'll be posting up some outlines, timelines, etc. very shortly.</div>",
+  "content_attachments": []
 }

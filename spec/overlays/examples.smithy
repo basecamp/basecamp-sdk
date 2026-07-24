@@ -12,7 +12,7 @@ apply GetTodolistOrGroup @examples([
     output: { result: { todolist: {
       id: 987654, status: "active", name: "Launch Tasks",
       visible_to_clients: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z",
-      title: "Launch Tasks", inherits_status: true, type: "Todolist",
+      title: "Launch Tasks", inherits_status: true, type: "Todolist", description_attachments: [],
       url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
       app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },

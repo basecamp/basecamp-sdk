@@ -31,7 +31,8 @@
       "title": "Chief Strategist",
       "admin": true,
       "owner": true
-    }
+    },
+    "content_attachments": []
   },
   {
     "id": 1069479390,
@@ -69,6 +70,7 @@
         "id": 1033447817,
         "name": "Honcho Design"
       }
-    }
+    },
+    "content_attachments": []
   }
 ]

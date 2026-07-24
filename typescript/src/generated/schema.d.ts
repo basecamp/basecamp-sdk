@@ -2701,6 +2701,7 @@ export interface components {
             position?: number;
             content?: string;
             description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
             due_on?: string;
             completed?: boolean;
             completed_at?: string;
@@ -2832,6 +2833,7 @@ export interface components {
             bucket: components["schemas"]["RecordingBucket"];
             creator: components["schemas"]["Person"];
             content?: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             subject?: string;
             due_on?: string;
             /** Format: int32 */
@@ -2882,6 +2884,7 @@ export interface components {
             bucket: components["schemas"]["RecordingBucket"];
             creator: components["schemas"]["Person"];
             content?: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             subject: string;
             /** Format: int32 */
             replies_count?: number;
@@ -2904,6 +2907,7 @@ export interface components {
             bucket: components["schemas"]["RecordingBucket"];
             creator: components["schemas"]["Person"];
             content: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
         };
         /**
          * @deprecated
@@ -2930,6 +2934,7 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             content: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -3156,6 +3161,7 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             content?: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -3207,6 +3213,7 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             content?: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             subject: string;
             from?: string;
             /** Format: int32 */
@@ -3230,6 +3237,7 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             content: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             /** Format: int32 */
             boosts_count?: number;
             boosts_url?: string;
@@ -3250,6 +3258,13 @@ export interface components {
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
             description?: string;
+            /**
+             * @description Optional (no `@required`): the type-specific partial renders the
+             *     companion array only when the gauge has needles (bc3 `if
+             *     gauge.any_needles?`), so a needle-less gauge omits the key entirely.
+             *     Non-nullable — never served as JSON `null`.
+             */
+            description_attachments?: components["schemas"]["RichTextAttachment"][];
             enabled?: boolean;
             last_needle_color?: string;
             /** Format: int32 */
@@ -3281,6 +3296,7 @@ export interface components {
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
             description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
             color?: string;
             /** Format: int32 */
             position?: number;
@@ -3519,6 +3535,7 @@ export interface components {
             creator: components["schemas"]["Person"];
             subject: string;
             content: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             category?: components["schemas"]["MessageType"];
             /** Format: int32 */
             boosts_count?: number;
@@ -3853,6 +3870,7 @@ export interface components {
             comments_count?: number;
             comments_url?: string;
             content: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
             group_on?: string;
             parent: components["schemas"]["RecordingParent"];
             bucket: components["schemas"]["RecordingBucket"];
@@ -3932,6 +3950,18 @@ export interface components {
             app_url: string;
             bookmark_url?: string;
             content?: string;
+            /**
+             * @description Rich-text companion arrays carried through the generic recording
+             *     projection (`to_recordable_partial_path` renders the full type-specific
+             *     partial). A given recording is one type, so it carries only the array
+             *     matching its rich-text attribute (`content_attachments` for a
+             *     Comment/Message, `description_attachments` for a Todo/Card); a
+             *     webhook-sourced recording (base partial) carries neither. Optional (no
+             *     `@required`), non-nullable.
+             */
+            content_attachments?: components["schemas"]["RichTextAttachment"][];
+            /** @description See `content_attachments` — the description-attribute companion array. */
+            description_attachments?: components["schemas"]["RichTextAttachment"][];
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
@@ -4083,6 +4113,7 @@ export interface components {
             creator: components["schemas"]["Person"];
             summary: string;
             description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
             all_day?: boolean;
             starts_at?: string;
             ends_at?: string;
@@ -4119,6 +4150,18 @@ export interface components {
             creator?: components["schemas"]["Person"];
             content?: string;
             description?: string;
+            /**
+             * @description Rich-text companion arrays carried through the polymorphic search
+             *     projection. A given result is one recording type, so it carries only
+             *     the array matching its rich-text attribute (`content_attachments` for a
+             *     Comment/Message, `description_attachments` for a Todo); a webhook-sourced
+             *     result carries neither. Optional (no `@required`), non-nullable. Distinct
+             *     from the generic `attachments` key (the recording's aggregate downloadable
+             *     files), which is a separate projection concern and not modeled here.
+             */
+            content_attachments?: components["schemas"]["RichTextAttachment"][];
+            /** @description See `content_attachments` — the description-attribute companion array. */
+            description_attachments?: components["schemas"]["RichTextAttachment"][];
             subject?: string;
         };
         /**
@@ -4287,6 +4330,7 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
             completed?: boolean;
             completed_ratio?: string;
             name: string;
@@ -4590,6 +4634,7 @@ export interface components {
             bucket: components["schemas"]["TodoBucket"];
             creator: components["schemas"]["Person"];
             description?: string;
+            description_attachments: components["schemas"]["RichTextAttachment"][];
             content_type?: string;
             /** Format: int64 */
             byte_size?: number;

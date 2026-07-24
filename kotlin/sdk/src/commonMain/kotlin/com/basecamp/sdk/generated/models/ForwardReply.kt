@@ -26,6 +26,7 @@ data class ForwardReply(
     val bucket: TodoBucket,
     val creator: Person,
     val content: String,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,
     @SerialName("boosts_url") val boostsUrl: String? = null

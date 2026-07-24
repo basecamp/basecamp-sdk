@@ -47,6 +47,7 @@
       "can_manage_projects": false,
       "can_manage_people": false
     },
-    "content": "<div>Hi all - we're excited to get started too.</div>"
+    "content": "<div>Hi all - we're excited to get started too.</div>",
+    "content_attachments": []
   }
 ]

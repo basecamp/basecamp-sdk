@@ -3,6 +3,7 @@ import Foundation
 
 public struct GaugeNeedle: Codable, Sendable {
     public let createdAt: String
+    public let descriptionAttachments: [RichTextAttachment]
     public let id: Int
     public let updatedAt: String
     public var appUrl: String?
@@ -27,6 +28,7 @@ public struct GaugeNeedle: Codable, Sendable {
 
     public init(
         createdAt: String,
+        descriptionAttachments: [RichTextAttachment],
         id: Int,
         updatedAt: String,
         appUrl: String? = nil,
@@ -50,6 +52,7 @@ public struct GaugeNeedle: Codable, Sendable {
         visibleToClients: Bool? = nil
     ) {
         self.createdAt = createdAt
+        self.descriptionAttachments = descriptionAttachments
         self.id = id
         self.updatedAt = updatedAt
         self.appUrl = appUrl

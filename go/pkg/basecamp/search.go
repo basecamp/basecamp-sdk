@@ -27,7 +27,16 @@ type SearchResult struct {
 	Creator          *Person   `json:"creator,omitempty"`
 	Content          string    `json:"content,omitempty"`
 	Description      string    `json:"description,omitempty"`
-	Subject          string    `json:"subject,omitempty"`
+	// ContentAttachments and DescriptionAttachments are the rich text companion
+	// arrays carried through the polymorphic search projection. A given result
+	// is one recording type, so it carries only the array matching its rich text
+	// attribute (ContentAttachments for a Comment/Message, DescriptionAttachments
+	// for a Todo); a webhook-sourced result carries neither. Optional, so
+	// omitempty matches the non-nullable member (never emits an invalid null).
+	// See RichTextAttachment.
+	ContentAttachments     []RichTextAttachment `json:"content_attachments,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	Subject                string               `json:"subject,omitempty"`
 }
 
 // SearchMetadata represents the available search filter options returned by
@@ -347,6 +356,9 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		creator := personFromGenerated(gsr.Creator)
 		sr.Creator = &creator
 	}
+
+	sr.ContentAttachments = richTextAttachmentsFromGenerated(gsr.ContentAttachments)
+	sr.DescriptionAttachments = richTextAttachmentsFromGenerated(gsr.DescriptionAttachments)
 
 	return sr
 }

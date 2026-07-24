@@ -5,6 +5,7 @@ public struct Answer: Codable, Sendable {
     public let appUrl: String
     public let bucket: RecordingBucket
     public let content: String
+    public let contentAttachments: [RichTextAttachment]
     public let createdAt: String
     public let creator: Person
     public let id: Int
@@ -28,6 +29,7 @@ public struct Answer: Codable, Sendable {
         appUrl: String,
         bucket: RecordingBucket,
         content: String,
+        contentAttachments: [RichTextAttachment],
         createdAt: String,
         creator: Person,
         id: Int,
@@ -50,6 +52,7 @@ public struct Answer: Codable, Sendable {
         self.appUrl = appUrl
         self.bucket = bucket
         self.content = content
+        self.contentAttachments = contentAttachments
         self.createdAt = createdAt
         self.creator = creator
         self.id = id

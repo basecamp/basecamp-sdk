@@ -47,7 +47,8 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "content": "<div>This document contains the project overview and key milestones.</div>"
+    "content": "<div>This document contains the project overview and key milestones.</div>",
+    "content_attachments": []
   },
   {
     "id": 1069479301,
@@ -97,6 +98,7 @@
       "can_manage_projects": true,
       "can_manage_people": true
     },
-    "content": "<div>Notes from the kickoff meeting.</div>"
+    "content": "<div>Notes from the kickoff meeting.</div>",
+    "content_attachments": []
   }
 ]

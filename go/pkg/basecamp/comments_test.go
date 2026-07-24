@@ -162,6 +162,40 @@ func TestComment_UnmarshalGet(t *testing.T) {
 	if !comment.Creator.Employee {
 		t.Error("expected Creator.Employee to be true")
 	}
+
+	// ContentAttachments: the two-entry representative decodes directly into
+	// the public Comment, so RichTextAttachment.UnmarshalJSON runs per element.
+	// The image carries a float-spelled dimension (1024.0 -> 1024) and a plain
+	// int height; the non-image blob carries null dimensions (-> nil).
+	if len(comment.ContentAttachments) != 2 {
+		t.Fatalf("expected 2 content attachments, got %d", len(comment.ContentAttachments))
+	}
+	img := comment.ContentAttachments[0]
+	if img.ID != 1069480010 {
+		t.Errorf("expected image attachment ID 1069480010, got %d", img.ID)
+	}
+	if img.Filename != "celebration.png" || img.ContentType != "image/png" {
+		t.Errorf("unexpected image attachment: %+v", img)
+	}
+	if img.Width == nil || *img.Width != 1024 {
+		t.Errorf("expected image Width 1024 (float-spelled 1024.0), got %v", img.Width)
+	}
+	if img.Height == nil || *img.Height != 768 {
+		t.Errorf("expected image Height 768, got %v", img.Height)
+	}
+	if !img.Previewable {
+		t.Error("expected image attachment to be previewable")
+	}
+	blob := comment.ContentAttachments[1]
+	if blob.ID != 1069480011 || blob.ContentType != "application/pdf" {
+		t.Errorf("unexpected blob attachment: %+v", blob)
+	}
+	if blob.Width != nil || blob.Height != nil {
+		t.Errorf("expected nil dimensions for non-image blob, got width=%v height=%v", blob.Width, blob.Height)
+	}
+	if blob.Previewable {
+		t.Error("expected non-image blob to not be previewable")
+	}
 }
 
 func TestCreateCommentRequest_Marshal(t *testing.T) {

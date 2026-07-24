@@ -27,6 +27,8 @@ data class Recording(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     val content: String? = null,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment> = emptyList(),
+    @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment> = emptyList(),
     @SerialName("comments_count") val commentsCount: Int = 0,
     @SerialName("comments_url") val commentsUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null

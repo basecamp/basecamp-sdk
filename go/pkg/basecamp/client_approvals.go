@@ -27,29 +27,34 @@ type ClientApprovalListOptions struct {
 
 // ClientApproval represents a Basecamp client approval request.
 type ClientApproval struct {
-	ID               int64                    `json:"id"`
-	Status           string                   `json:"status"`
-	VisibleToClients bool                     `json:"visible_to_clients"`
-	CreatedAt        time.Time                `json:"created_at"`
-	UpdatedAt        time.Time                `json:"updated_at"`
-	Title            string                   `json:"title"`
-	InheritsStatus   bool                     `json:"inherits_status"`
-	Type             string                   `json:"type"`
-	URL              string                   `json:"url"`
-	AppURL           string                   `json:"app_url"`
-	BookmarkURL      string                   `json:"bookmark_url"`
-	SubscriptionURL  string                   `json:"subscription_url"`
-	Parent           *Parent                  `json:"parent,omitempty"`
-	Bucket           *Bucket                  `json:"bucket,omitempty"`
-	Creator          *Person                  `json:"creator,omitempty"`
-	Content          string                   `json:"content"`
-	Subject          string                   `json:"subject"`
-	DueOn            *string                  `json:"due_on,omitempty"`
-	RepliesCount     int                      `json:"replies_count"`
-	RepliesURL       string                   `json:"replies_url"`
-	ApprovalStatus   string                   `json:"approval_status"`
-	Approver         *Person                  `json:"approver,omitempty"`
-	Responses        []ClientApprovalResponse `json:"responses,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	SubscriptionURL  string    `json:"subscription_url"`
+	Parent           *Parent   `json:"parent,omitempty"`
+	Bucket           *Bucket   `json:"bucket,omitempty"`
+	Creator          *Person   `json:"creator,omitempty"`
+	Content          string    `json:"content"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. Always sent by the API (empty when
+	// none); not omitempty so absent (nil) vs empty ([]) survives re-encoding.
+	// See RichTextAttachment.
+	ContentAttachments []RichTextAttachment     `json:"content_attachments"`
+	Subject            string                   `json:"subject"`
+	DueOn              *string                  `json:"due_on,omitempty"`
+	RepliesCount       int                      `json:"replies_count"`
+	RepliesURL         string                   `json:"replies_url"`
+	ApprovalStatus     string                   `json:"approval_status"`
+	Approver           *Person                  `json:"approver,omitempty"`
+	Responses          []ClientApprovalResponse `json:"responses,omitempty"`
 }
 
 // ClientApprovalResponse represents a response to a client approval.
@@ -308,6 +313,8 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 			a.Responses = append(a.Responses, resp)
 		}
 	}
+
+	a.ContentAttachments = richTextAttachmentsFromGenerated(ga.ContentAttachments)
 
 	return a
 }

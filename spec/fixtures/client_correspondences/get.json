@@ -46,5 +46,6 @@
   "content": "<div>Hi everyone! Welcome to the Basecamp that we'll be using to collaborate and manage the Leto Locator project.</div>",
   "subject": "Project kickoff!",
   "replies_count": 5,
-  "replies_url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/recordings/1069479566/replies.json"
+  "replies_url": "https://3.basecampapi.com/195539477/buckets/2085958500/client/recordings/1069479566/replies.json",
+  "content_attachments": []
 }

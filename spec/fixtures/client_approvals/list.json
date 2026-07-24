@@ -77,6 +77,7 @@
       },
       "can_manage_projects": false,
       "can_manage_people": false
-    }
+    },
+    "content_attachments": []
   }
 ]

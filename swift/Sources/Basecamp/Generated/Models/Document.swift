@@ -4,6 +4,7 @@ import Foundation
 public struct Document: Codable, Sendable {
     public let appUrl: String
     public let bucket: TodoBucket
+    public let contentAttachments: [RichTextAttachment]
     public let createdAt: String
     public let creator: Person
     public let id: Int
@@ -27,6 +28,7 @@ public struct Document: Codable, Sendable {
     public init(
         appUrl: String,
         bucket: TodoBucket,
+        contentAttachments: [RichTextAttachment],
         createdAt: String,
         creator: Person,
         id: Int,
@@ -49,6 +51,7 @@ public struct Document: Codable, Sendable {
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
+        self.contentAttachments = contentAttachments
         self.createdAt = createdAt
         self.creator = creator
         self.id = id

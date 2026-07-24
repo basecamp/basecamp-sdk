@@ -71,37 +71,42 @@ type CardColumnOnHold struct {
 
 // Card represents a card in a card table column.
 type Card struct {
-	ID                    int64      `json:"id"`
-	Status                string     `json:"status"`
-	VisibleToClients      bool       `json:"visible_to_clients"`
-	CreatedAt             time.Time  `json:"created_at"`
-	UpdatedAt             time.Time  `json:"updated_at"`
-	Title                 string     `json:"title"`
-	InheritsStatus        bool       `json:"inherits_status"`
-	Type                  string     `json:"type"`
-	URL                   string     `json:"url"`
-	AppURL                string     `json:"app_url"`
-	BookmarkURL           string     `json:"bookmark_url"`
-	SubscriptionURL       string     `json:"subscription_url,omitempty"`
-	Position              int        `json:"position"`
-	Content               string     `json:"content,omitempty"`
-	Description           string     `json:"description,omitempty"`
-	DueOn                 string     `json:"due_on,omitempty"`
-	Completed             bool       `json:"completed"`
-	CompletedAt           *time.Time `json:"completed_at,omitempty"`
-	CommentsCount         int        `json:"comments_count"`
-	BoostsCount           int        `json:"boosts_count"`
-	BoostsURL             string     `json:"boosts_url,omitempty"`
-	CommentsURL           string     `json:"comments_url,omitempty"`
-	CommentCount          int        `json:"comment_count"`
-	CompletionURL         string     `json:"completion_url,omitempty"`
-	Parent                *Parent    `json:"parent,omitempty"`
-	Bucket                *Bucket    `json:"bucket,omitempty"`
-	Creator               *Person    `json:"creator,omitempty"`
-	Completer             *Person    `json:"completer,omitempty"`
-	Assignees             []Person   `json:"assignees,omitempty"`
-	CompletionSubscribers []Person   `json:"completion_subscribers,omitempty"`
-	Steps                 []CardStep `json:"steps,omitempty"`
+	ID               int64     `json:"id"`
+	Status           string    `json:"status"`
+	VisibleToClients bool      `json:"visible_to_clients"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	Title            string    `json:"title"`
+	InheritsStatus   bool      `json:"inherits_status"`
+	Type             string    `json:"type"`
+	URL              string    `json:"url"`
+	AppURL           string    `json:"app_url"`
+	BookmarkURL      string    `json:"bookmark_url"`
+	SubscriptionURL  string    `json:"subscription_url,omitempty"`
+	Position         int       `json:"position"`
+	Content          string    `json:"content,omitempty"`
+	Description      string    `json:"description,omitempty"`
+	// DescriptionAttachments holds structured metadata for the downloadable
+	// files embedded in the rich text Description. Always sent by the API
+	// (empty when none); not omitempty so absent (nil) vs empty ([]) survives
+	// re-encoding. See RichTextAttachment.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	DueOn                  string               `json:"due_on,omitempty"`
+	Completed              bool                 `json:"completed"`
+	CompletedAt            *time.Time           `json:"completed_at,omitempty"`
+	CommentsCount          int                  `json:"comments_count"`
+	BoostsCount            int                  `json:"boosts_count"`
+	BoostsURL              string               `json:"boosts_url,omitempty"`
+	CommentsURL            string               `json:"comments_url,omitempty"`
+	CommentCount           int                  `json:"comment_count"`
+	CompletionURL          string               `json:"completion_url,omitempty"`
+	Parent                 *Parent              `json:"parent,omitempty"`
+	Bucket                 *Bucket              `json:"bucket,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
+	Completer              *Person              `json:"completer,omitempty"`
+	Assignees              []Person             `json:"assignees,omitempty"`
+	CompletionSubscribers  []Person             `json:"completion_subscribers,omitempty"`
+	Steps                  []CardStep           `json:"steps,omitempty"`
 }
 
 // CardStep represents a step (checklist item) on a card.
@@ -1390,6 +1395,8 @@ func cardFromGenerated(gc generated.Card) Card {
 			c.Steps = append(c.Steps, cardStepFromGenerated(gs))
 		}
 	}
+
+	c.DescriptionAttachments = richTextAttachmentsFromGenerated(gc.DescriptionAttachments)
 
 	return c
 }
