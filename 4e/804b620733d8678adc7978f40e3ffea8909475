@@ -1,0 +1,41 @@
+ruby/test/basecamp/services/client_correspondences_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 22
+ruby/test/basecamp/services/client_replies_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 21
+ruby/test/basecamp/services/forwards_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 31,40
+ruby/test/basecamp/services/cards_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 22
+ruby/test/basecamp/services/comments_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 22
+ruby/test/basecamp/services/schedules_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 31
+ruby/test/basecamp/services/documents_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 22
+ruby/test/basecamp/services/uploads_service_test.rb
+  s_854ff63c351de4::t_f68507dda639f7 13,24,34,47,63,73
+ruby/test/basecamp/services/client_approvals_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 23
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_854ff63c351de4::t_f68507dda639f7 19,30,40,51,61
+ruby/test/basecamp/services/checkins_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 39
+ruby/test/basecamp/services/messages_service_test.rb
+  s_854ff63c351de4::t_a1e4a98b0e1cfc 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4e804b620733d8678adc7978f40e3ffea8909475",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
