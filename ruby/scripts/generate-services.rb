@@ -147,9 +147,6 @@ class ServiceGenerator
     'CreateCardStep' => 'create',
     'UpdateCardStep' => 'update',
     'SetCardStepCompletion' => 'set_completion',
-    'CreateWormhole' => 'create',
-    'UpdateWormhole' => 'update',
-    'DeleteWormhole' => 'delete',
     'GetQuestionnaire' => 'get_questionnaire',
     'GetQuestion' => 'get_question',
     'GetAnswer' => 'get_answer',
@@ -306,6 +303,7 @@ class ServiceGenerator
     clientcorrespondences clientreply clientreplies forwardreply
     forwardreplies campfireline campfirelines todolistgroup todolistgroups
     todolistorgroup uploadversions hillchart hillcharts
+    wormhole wormholes
   ].freeze
 
   def initialize(openapi_path)

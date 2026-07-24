@@ -275,8 +275,8 @@ func TestCardTablesService_Get_DecodesWormholes(t *testing.T) {
 	if linked.DestinationURL == nil {
 		t.Fatal("expected linked wormhole to carry a destination URL")
 	}
-	if linked.Color != "#f5d76e" {
-		t.Errorf("expected color to decode, got %q", linked.Color)
+	if linked.Color == nil || *linked.Color != "#f5d76e" {
+		t.Errorf("expected color to decode, got %v", linked.Color)
 	}
 	if linked.Bucket == nil || linked.Creator == nil || linked.Parent == nil {
 		t.Error("expected recording associations to decode")
@@ -288,5 +288,8 @@ func TestCardTablesService_Get_DecodesWormholes(t *testing.T) {
 	}
 	if unlinked.DestinationURL != nil {
 		t.Errorf("expected nil destination URL for unlinked wormhole, got %q", *unlinked.DestinationURL)
+	}
+	if unlinked.Color != nil {
+		t.Errorf("expected nil color for unlinked wormhole, got %q", *unlinked.Color)
 	}
 }

@@ -173,9 +173,6 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "CreateCardStep" to "create",
     "UpdateCardStep" to "update",
     "SetCardStepCompletion" to "setCompletion",
-    "CreateWormhole" to "create",
-    "UpdateWormhole" to "update",
-    "DeleteWormhole" to "delete",
     "GetQuestionnaire" to "getQuestionnaire",
     "GetQuestion" to "getQuestion",
     "GetAnswer" to "getAnswer",
@@ -344,4 +341,5 @@ val SIMPLE_RESOURCES = setOf(
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "hillchart", "hillcharts",
+    "wormhole", "wormholes",
 )
