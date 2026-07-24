@@ -1,0 +1,51 @@
+go/pkg/basecamp/wormholes.go
+  s_3fd48deaa8600c::t_c02c4744d08c7d 31-32
+  s_3fd48deaa8600c::t_b6ab29bf076d9d 211-217
+typescript/src/generated/openapi-stripped.json
+  s_3fd48deaa8600c::t_837ee8542e3b41 26621-26626,26644
+python/src/basecamp/generated/types.py
+  s_3fd48deaa8600c::t_837ee8542e3b41 1824
+typescript/src/generated/schema.d.ts
+  s_3fd48deaa8600c::t_837ee8542e3b41 4781-4784,4786
+python/scripts/generate_services.py
+  s_3fd48deaa8600c::t_ad7d16776b2d31 282
+typescript/scripts/generate-services.ts
+  s_3fd48deaa8600c::t_ad7d16776b2d31 617
+go/pkg/generated/client.gen.go
+  s_3fd48deaa8600c::t_837ee8542e3b41 2712-2716
+ruby/scripts/generate-services.rb
+  s_3fd48deaa8600c::t_ad7d16776b2d31 306
+spec/basecamp.smithy
+  s_3fd48deaa8600c::t_3c43ee14bb4a93 4891-4895
+openapi.json
+  s_3fd48deaa8600c::t_837ee8542e3b41 28999-29004,29022
+spec/smithy-build.json
+  s_3fd48deaa8600c::t_42f4059a3e1df7 39-41
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_3fd48deaa8600c::t_ad7d16776b2d31 160
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Wormhole.kt
+  s_3fd48deaa8600c::t_837ee8542e3b41 28,31
+go/pkg/basecamp/wormholes_test.go
+  s_3fd48deaa8600c::t_2e0b3edb20bba8 278-279,292-293
+  s_3fd48deaa8600c::t_7af6c857f7baa0 294
+swift/Sources/Basecamp/Generated/Models/Wormhole.swift
+  s_3fd48deaa8600c::t_837ee8542e3b41 7,26,40,44,64,85,106
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_3fd48deaa8600c::t_ad7d16776b2d31 344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6dc292faea110566084376bde16187bc4a6f1ce6",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
