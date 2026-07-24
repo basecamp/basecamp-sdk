@@ -1,0 +1,43 @@
+go/pkg/basecamp/messages.go
+  s_854ff63c351de4::t_545244bb9f4e70 26
+go/pkg/basecamp/checkins.go
+  s_854ff63c351de4::t_545244bb9f4e70 120
+go/pkg/basecamp/vaults.go
+  s_854ff63c351de4::t_545244bb9f4e70 125,158
+go/pkg/basecamp/gauges.go
+  s_854ff63c351de4::t_545244bb9f4e70 52
+go/pkg/basecamp/client_approvals.go
+  s_854ff63c351de4::t_545244bb9f4e70 50
+go/pkg/basecamp/forwards.go
+  s_854ff63c351de4::t_545244bb9f4e70 93,124
+go/pkg/basecamp/cards.go
+  s_854ff63c351de4::t_545244bb9f4e70 93
+go/pkg/basecamp/client_correspondences.go
+  s_854ff63c351de4::t_545244bb9f4e70 50
+go/pkg/basecamp/todos.go
+  s_854ff63c351de4::t_545244bb9f4e70 40
+go/pkg/basecamp/client_replies.go
+  s_854ff63c351de4::t_545244bb9f4e70 43
+go/pkg/basecamp/todolists.go
+  s_854ff63c351de4::t_545244bb9f4e70 43
+go/pkg/basecamp/schedules.go
+  s_854ff63c351de4::t_545244bb9f4e70 77
+go/pkg/basecamp/comments.go
+  s_854ff63c351de4::t_545244bb9f4e70 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f5024e24e1fe7a407ddc3bf2daae7a89b19d52ff",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
