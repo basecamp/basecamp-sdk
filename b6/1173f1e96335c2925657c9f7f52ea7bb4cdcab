@@ -1,0 +1,47 @@
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_854ff63c351de4::t_ebc15ac9353885 125-136
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RecordingsServiceTest.kt
+  s_854ff63c351de4::t_97c258a4008e05 1-49,57-66,74,77-89,97-107
+  s_854ff63c351de4::t_5ee1f72b27da49 50-56,67-73,75-76,90-96
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_854ff63c351de4::t_7c2c878a64a7cf 705
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_854ff63c351de4::t_9c4fa7eb19a81a 152-162
+  s_854ff63c351de4::t_082a2630db042c 201-203
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Recording.kt
+  s_1b437abfa07167::t_188ef37ba0f4e5 30-31
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/MessagesServiceTest.kt
+  s_366adaf25569e1::t_8e3e3435912552 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b61173f1e96335c2925657c9f7f52ea7bb4cdcab",
+  "prompts": {},
+  "sessions": {
+    "s_1b437abfa07167": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda71db0-eea3-4445-8ffe-bf40bead5715",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_366adaf25569e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "874b2147-2d41-4944-b0ce-5202cc20611e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
