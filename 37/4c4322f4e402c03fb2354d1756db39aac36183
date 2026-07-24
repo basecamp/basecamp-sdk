@@ -173,6 +173,7 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Upload.kt
   s_854ff63c351de4::t_d0ab1a2b871ee4 29
 ruby/lib/basecamp/generated/types.rb
   s_854ff63c351de4::t_d0ab1a2b871ee4 442,446,454,489,792,796,802,830,938,942,948,972,1001,1005,1012,1032,1078,1082,1089,1111,1205,1209,1215,1241,1335,1339,1345,1370,1400,1404,1411,1433,1459,1475,1498,1520,1524,1529,1556,1821,1825,1832,1859,2660,2664,2671,2697,2898,2923-2924,2947-2948,3147,3151,3159,3189,3259,3275,3279,3298,3302,3665,3669,3677,3709,3929,3933,3941,3973
+  s_854ff63c351de4::t_4a4c82e6213c50 4
 spec/fixtures/client_approvals/get.json
   s_854ff63c351de4::t_00dbf7d0847a0a 131-132
 spec/fixtures/client_approvals/list.json
@@ -249,6 +250,10 @@ spec/fixtures/checkins/answers_list.json
   s_854ff63c351de4::t_00dbf7d0847a0a 50-51,105-106
 swift/Sources/Basecamp/Generated/Models/Message.swift
   s_854ff63c351de4::t_d0ab1a2b871ee4 8,33,57
+ruby/lib/basecamp/generated/metadata.json
+  s_854ff63c351de4::t_4a4c82e6213c50 4
+typescript/src/generated/metadata.ts
+  s_854ff63c351de4::t_4a4c82e6213c50 40
 ---
 {
   "schema_version": "authorship/3.0.0",
