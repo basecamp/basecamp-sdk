@@ -55,8 +55,10 @@ making the absorption journey publicly auditable.
 | [upload-new-version](upload-new-version.md) | no-json-contract | post-train | medium |
 | [todolist-reposition](todolist-reposition.md) | absorbed-in-sdk | pre-BC5 | medium |
 | [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | addressed-in-bc3-pr-9980 | n/a | medium |
-| [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | addressed-in-bc3-pr-12382 | post-train | medium |
+| [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | absorbed-in-sdk | post-train | medium |
 | [external-links-doors](external-links-doors.md) | addressed-in-bc3-pr-12375 | post-train | low |
+| [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | addressed-in-bc3-pr-12386 | post-train | low |
+| [card-table-wormholes](card-table-wormholes.md) | addressed-in-bc3-pr-12144 | post-train | low |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -68,6 +70,14 @@ making the absorption journey publicly auditable.
 > `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
 > classification record (Stacks — renamed Folders in the product — are
 > web-only on both `four` and `master`).
+>
+> Provenance pin advanced to `ca1d34bc` (2026-07-24) as part of absorbing the
+> create-time `visible_to_clients` contract. The single commit past #403's
+> `338b7a11` pin — bc3 #12398 ("Disable Vips support for Matlib files":
+> `config/initializers/vips.rb`, its loader-policy test, and `bin/test-in-container`)
+> — is a reviewed no-op for the SDK: an image-loader security policy and a
+> container test script, with no route, controller, doc, or modeled API contract
+> change.
 
 The detector also maintains [`allowlist.yml`](allowlist.yml) for routes
 classified as not-an-API-resource or absorbed under another entry. Allowlist
