@@ -1,0 +1,47 @@
+go/pkg/basecamp/forwards.go
+  s_854ff63c351de4::t_d34183c877b7a8 90-95,121-126
+go/pkg/basecamp/schedules.go
+  s_854ff63c351de4::t_d34183c877b7a8 73-79
+go/pkg/basecamp/cards.go
+  s_854ff63c351de4::t_d34183c877b7a8 89-95
+go/pkg/basecamp/checkins.go
+  s_854ff63c351de4::t_d34183c877b7a8 117-122
+python/tests/services/test_uploads.py
+  s_854ff63c351de4::t_758d223ebc6d15 19
+go/pkg/basecamp/client_approvals.go
+  s_854ff63c351de4::t_d34183c877b7a8 47-52
+go/pkg/basecamp/messages.go
+  s_854ff63c351de4::t_d34183c877b7a8 23-28
+go/pkg/basecamp/todolists.go
+  s_854ff63c351de4::t_d34183c877b7a8 39-45
+go/pkg/basecamp/vaults.go
+  s_854ff63c351de4::t_d34183c877b7a8 122-127,154-160
+go/pkg/basecamp/gauges.go
+  s_854ff63c351de4::t_d34183c877b7a8 48-54
+typescript/tests/services/schedules.test.ts
+  s_854ff63c351de4::t_354c0f3feabd5c 76,82
+go/pkg/basecamp/todos.go
+  s_854ff63c351de4::t_d34183c877b7a8 36-42
+go/pkg/basecamp/comments.go
+  s_854ff63c351de4::t_d34183c877b7a8 26-31
+go/pkg/basecamp/client_correspondences.go
+  s_854ff63c351de4::t_d34183c877b7a8 47-52
+go/pkg/basecamp/client_replies.go
+  s_854ff63c351de4::t_d34183c877b7a8 40-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "89a8c06089719a5e730a7618d7a1ff4f9c4c3ded",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
