@@ -21,11 +21,11 @@ no changes under `doc/api/` or the API controllers/views.
 - **BC3 plan owns**: server-side audit, jbuilder + controller + doc
   additions, BC4 compat verification, regenerating live-server doc
   snapshots, eventually opening Smithy PRs in this repo.
-- **This SDK plan owns**: live canary against both backends, schema +
-  pairwise validation on raw wire bytes, additive Smithy absorption per
-  BC3 deliverable, the API-gap detector that catches anything BC3 hasn't
-  registered, the bucket-flat parity lint, the API gap registry at
-  [`spec/api-gaps/`](spec/api-gaps/).
+- **This SDK plan owns**: the single-backend live canary against production
+  BC5, schema validation on raw wire bytes plus 4-language decode
+  consistency, additive Smithy absorption per BC3 deliverable, the API-gap
+  detector that catches anything BC3 hasn't registered, the bucket-flat
+  parity lint, the API gap registry at [`spec/api-gaps/`](spec/api-gaps/).
 
 ## Lifecycle per gap
 
@@ -52,15 +52,17 @@ third, surfaced by a live failure, settled by BC5's release replacing BC4:
    `json.memories @bubble_ups`, **closed unmerged** — superseded by the train;
    the alias never shipped and never will. Filed as
    [`spec/api-gaps/memories-emptied-regression.md`](spec/api-gaps/memories-emptied-regression.md)
-   (status `addressed-in-bc3-pr-11628`). PR #308's live canary encodes the
-   additive-only invariant
+   (status `addressed-in-bc3-pr-11628`). **Pairwise enforcement is retired**:
+   PR #308's live canary encoded an additive-only invariant
    (`pairwiseSupersetArray: ["memories"]` on `GetMyNotifications`) with a
-   `pairwiseDeltaAllowed: ["memories"]` waiver that is now **permanent** —
-   the machine-readable record of the accepted BC4→BC5 delta; that canary
-   surface lives on #308's branch (`conformance/tests/live-my-surface.json`),
-   not here. Retire the waiver only if BC4 empties `memories` or BC5's
-   documented contract changes. (There is no commit `64acf34` — the
-   once-assumed alias is counterfactual.)
+   `pairwiseDeltaAllowed: ["memories"]` waiver, but BC5 replaced BC4 in
+   production — there is no live BC4 backend to compare against, so the
+   pairwise machinery was removed. The `memories: []` *contract* still
+   stands; it is now settled by documentation rather than a live canary
+   rule. `GetMyNotifications` remains schema-validated by the single-backend
+   canary. The pairwise engine is recoverable from git history (PR #308) if a
+   reachable legacy backend ever warrants restoring it. (There is no commit
+   `64acf34` — the once-assumed alias is counterfactual.)
 2. Longstanding `app_todoslists_url` typo at
    `app/views/api/todosets/_todoset.json.jbuilder:28` — unchanged by the
    train: post-train `master` still carries **only the typo**, no
@@ -88,7 +90,7 @@ These records live on in the registry and this SDK plan's §8.
   (post-train; the historical `tmp/api_audit.md` inventory lived on
   `five+api`)
 - SDK-side absorption status: [`spec/api-gaps/README.md`](spec/api-gaps/README.md)
-- Live canary results: `make check-bc5-compat` against current refs
+- Live canary results: `make conformance-canary` against production BC5
 - Cross-team alignment status: this file
 
 — The basecamp-sdk team

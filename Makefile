@@ -384,7 +384,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live check-bc5-compat oauth-fixtures-check
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check
 
 # Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
 # version is reproducible without a global install; the schema is separate from
@@ -509,29 +509,27 @@ conformance-live:
 	WIRE_REPLAY_DIR="$$LRD" $(MAKE) conformance-kotlin-replay
 	@echo "==> conformance-live: capture + replay complete for backend $$BASECAMP_BACKEND"
 
-# Top-level orchestrator: full canary against BC4 then BC5, then pairwise comparison.
+# Top-level live canary: a single-backend conformance pass against production
+# BC5. BC5 replaced BC4 in production, so there is one live backend — capture
+# BC5 wire snapshots through the typed surface, schema-validate, and 4-language
+# decode-replay. The former pairwise BC4↔BC5 comparison is retired (no live BC4
+# to compare against); see COORDINATION.md.
 #
 # Required env:
-#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BC5_HOST (BC5 backend origin)
+#   BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BASECAMP_HOST (production BC5 origin)
 # Optional env:
-#   BASECAMP_HOST (BC4 backend origin; defaults to https://3.basecampapi.com)
 #   LIVE_RECORD_DIR (snapshot root; defaults to tmp/live-canary)
 #
-# Snapshot dirs are per-backend: $$LIVE_RECORD_DIR/{bc4,bc5}/{wire,decode}/.
-# The TS runner writes to `$$LIVE_RECORD_DIR/$$BASECAMP_BACKEND/wire/`, so the
-# orchestrator distinguishes runs by switching BASECAMP_BACKEND and the host
-# while reusing one snapshot root.
-#
-# Each pass must pass per-backend (TS schema validation + 4-language decode).
-# After both, the pairwise script applies the additive-only invariant to BC4
-# vs BC5 snapshots, reports all violations outside pairwiseDeltaAllowed, and
-# exits non-zero if any are found.
-#
-# Account state must be identical across the two runs — see CONTRIBUTING.md.
-check-bc5-compat:
+# Snapshot dirs are namespaced by backend label:
+# $$LIVE_RECORD_DIR/bc5/{wire,decode}/. The label is also the fixture-override
+# prefix (BASECAMP_BC5_* — see conformance/runner/typescript/fixtures.ts). This
+# canary always uses `bc5` (production runs BC5); the pass below pins it as a
+# sub-make command-line variable so a caller's `make BASECAMP_BACKEND=... ` can't
+# retarget the snapshot/fixture namespace.
+conformance-canary:
 	@test -n "$$BASECAMP_TOKEN" || (echo "BASECAMP_TOKEN is required" >&2; exit 2)
 	@test -n "$$BASECAMP_ACCOUNT_ID" || (echo "BASECAMP_ACCOUNT_ID is required" >&2; exit 2)
-	@test -n "$$BC5_HOST" || (echo "BC5_HOST is required (BC5 backend origin, e.g. https://5.basecampapi.com)" >&2; exit 2)
+	@test -n "$$BASECAMP_HOST" || (echo "BASECAMP_HOST is required (production BC5 origin, e.g. https://3.basecampapi.com)" >&2; exit 2)
 	@# Defaults resolve in the recipe shell, NOT via target-specific `?=`:
 	@# make 3.81 (macOS /usr/bin/make) leaks target-specific `?=` into a
 	@# global override that clobbers the caller's environment to empty for
@@ -569,16 +567,14 @@ check-bc5-compat:
 	  "$$LRD_CHECK"/*) echo "ERROR: refusing rm -rf on LIVE_RECORD_DIR='$$LRD_ORIG' — it is the repo checkout or one of its ancestors" >&2; exit 2 ;; \
 	esac; \
 	rm -rf -- "$$LRD"
-	@echo "==> check-bc5-compat: BC4 pass"
+	@echo "==> conformance-canary: production BC5 pass"
+	@# BASECAMP_BACKEND=bc5 is passed as a sub-make command-line variable (not a
+	@# recipe-shell env prefix): a caller-supplied `make BASECAMP_BACKEND=bc4
+	@# conformance-canary` would otherwise propagate and override an env prefix,
+	@# capturing production traffic under the wrong label. A command-line variable
+	@# on the recursive make wins over that inherited override.
 	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	BC4_HOST="$${BASECAMP_HOST:-https://3.basecampapi.com}"; \
-	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC4_HOST" BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
-	@echo "==> check-bc5-compat: BC5 pass"
-	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	BASECAMP_LIVE=1 BASECAMP_HOST="$$BC5_HOST" BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR="$$LRD" $(MAKE) conformance-live
-	@echo "==> check-bc5-compat: pairwise BC4↔BC5 comparison"
-	@LRD="$${LIVE_RECORD_DIR:-tmp/live-canary}"; \
-	./scripts/compare-canary-runs.sh "$$LRD/bc4/wire" "$$LRD/bc5/wire"
+	BASECAMP_LIVE=1 LIVE_RECORD_DIR="$$LRD" $(MAKE) BASECAMP_BACKEND=bc5 conformance-live
 
 #------------------------------------------------------------------------------
 # Kotlin SDK targets
@@ -747,7 +743,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-compare-canary
+.PHONY: check-bucket-flat-parity validate-api-gaps
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -758,15 +754,6 @@ check-bucket-flat-parity:
 # Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
 validate-api-gaps:
 	@./scripts/validate-api-gaps.sh
-
-# Network-free regression tests for the pairwise compare script (filename
-# scheme, missing-snapshot hard-fail, memories waiver scoping, pairwiseEqual
-# key-order, empty-paths guard).
-#
-# Requires bash >= 4.4 on PATH (`env bash`): both scripts guard for it and
-# fail with a clear message; macOS ships 3.2 at /bin/bash — brew install bash.
-check-compare-canary:
-	@./scripts/test-compare-canary-runs.sh
 
 #------------------------------------------------------------------------------
 # Combined targets
@@ -790,7 +777,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-compare-canary
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

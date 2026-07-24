@@ -202,43 +202,8 @@
       "additionalProperties": { "type": "string" }
     },
     "pairwiseAssertions": {
-      "type": "array",
-      "description": "Rules that compare a BC4 wire snapshot to a BC5 wire snapshot of the same operation. Paths are dotted, relative to each snapshot body — equivalent to `pages[0].body.<path>` for single-page bodies; use explicit `pages[N].body.<path>` to address a specific page or `pages[*].body.<path>` to aggregate across pages. The empty path `\"\"` addresses the body root. These rules enforce the canary's additive-only invariant: BC5 must not regress fields/keys/values that BC4 emitted.",
-      "items": {
-        "type": "object",
-        "required": ["type", "paths"],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "pairwiseSupersetArray",
-              "pairwiseSupersetKeys",
-              "pairwiseEqual",
-              "pairwiseDeltaAllowed"
-            ],
-            "description": "pairwiseSupersetArray: BC5 array length at each path must be >= BC4's. pairwiseSupersetKeys: BC5 object's keys at each path must be a superset of BC4's keys. pairwiseEqual: BC5 value at each path must equal BC4's (use sparingly; intended for type discriminators). pairwiseDeltaAllowed: paths where divergence is explicitly accepted; requires `reason`."
-          },
-          "paths": {
-            "type": "array",
-            "minItems": 1,
-            "items": { "type": "string" },
-            "description": "Dotted-path identifiers. Empty string \"\" addresses the body root. At least one path is required — an empty array is a meaningless rule and is rejected (the compare script would otherwise risk treating it as the body root)."
-          },
-          "reason": {
-            "type": "string",
-            "description": "Free-form justification. Required for `pairwiseDeltaAllowed` (a public compatibility report indexes accepted divergences). Recommended for other rule types so the reader of a future failure knows the invariant being enforced."
-          }
-        },
-        "allOf": [
-          {
-            "if": { "properties": { "type": { "const": "pairwiseDeltaAllowed" } } },
-            "then": {
-              "required": ["reason"],
-              "properties": { "reason": { "minLength": 1 } }
-            }
-          }
-        ]
-      }
+      "not": {},
+      "description": "RETIRED and rejected. The pairwise BC4↔BC5 compare engine (scripts/compare-canary-runs.sh) was removed when BC5 replaced BC4 in production — there is no live BC4 backend to compare against; see COORDINATION.md. This property is explicitly disallowed so a fixture cannot declare pairwise rules that would validate but silently never run (nothing enforces them anymore). Recoverable from git history (PR #308) if a reachable legacy backend ever warrants restoring the engine and this definition."
     },
     "tags": {
       "type": "array",
