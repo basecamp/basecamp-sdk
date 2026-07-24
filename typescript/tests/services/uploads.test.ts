@@ -40,6 +40,7 @@ describe("UploadsService", () => {
         download_url:
           "https://3.basecampapi.com/12345/blobs/abcd/download/report.pdf",
         status: "active",
+        description_attachments: [],
       };
 
       server.use(
@@ -75,8 +76,18 @@ describe("UploadsService", () => {
   describe("list", () => {
     it("should return uploads in a vault", async () => {
       const uploads = [
-        { id: 7001, filename: "file1.pdf", status: "active" },
-        { id: 7002, filename: "file2.xlsx", status: "active" },
+        {
+          id: 7001,
+          filename: "file1.pdf",
+          status: "active",
+          description_attachments: [],
+        },
+        {
+          id: 7002,
+          filename: "file2.xlsx",
+          status: "active",
+          description_attachments: [],
+        },
       ];
 
       server.use(
@@ -219,7 +230,11 @@ describe("UploadsService", () => {
             description?: string;
             base_name?: string;
           };
-          return HttpResponse.json({ id: 7001, title: "Test" });
+          return HttpResponse.json({
+            id: 7001,
+            title: "Test",
+            description_attachments: [],
+          });
         }),
       );
 
@@ -240,16 +255,19 @@ describe("UploadsService", () => {
           id: 7001,
           filename: "file_v3.pdf",
           created_at: "2024-03-15T10:00:00Z",
+          description_attachments: [],
         },
         {
           id: 7001,
           filename: "file_v2.pdf",
           created_at: "2024-02-10T10:00:00Z",
+          description_attachments: [],
         },
         {
           id: 7001,
           filename: "file_v1.pdf",
           created_at: "2024-01-05T10:00:00Z",
+          description_attachments: [],
         },
       ];
 
