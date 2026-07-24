@@ -275,17 +275,21 @@ Optional env:
 
 - `BASECAMP_HOST` — backend **origin** only (e.g. `https://3.basecampapi.com`);
   the runner appends `/{accountId}` to mirror `createBasecampClient`'s
-  default URL composition.
-- `BASECAMP_BACKEND=bc4|bc5` — namespaces persisted snapshots so BC4 and
-  BC5 runs don't collide.
+  default URL composition. Optional **for the bare `conformance-typescript-live`
+  target only** — when unset the SDK client falls back to its default origin.
+  The `conformance-canary` orchestrator and the CI workflow **require** it (no
+  hard-coded default), so the production BC5 origin is always explicit there.
+- `BASECAMP_BACKEND=bc5` — the `Backend` label that namespaces persisted
+  snapshots and selects the `BASECAMP_<BACKEND>_*` fixture overrides. Unset
+  defaults to `unknown` (no per-backend overrides, discovery only); the canary
+  uses `bc5` — production runs BC5.
 - `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
   `<path>/<backend>/wire/<test>.json`. Consumed by the cross-language
-  replay runners (`make conformance-*-replay`) and by the pairwise
-  BC4↔BC5 comparison (`scripts/compare-canary-runs.sh`).
-- `BASECAMP_BC4_PROJECT_ID` / `BASECAMP_BC5_PROJECT_ID` /
-  `BASECAMP_PROJECT_ID` etc. — explicit fixture-IDs override the runner's
-  discovery walk. Same pattern applies for `TODOSET_ID`, `TODOLIST_ID`,
-  `TODO_ID`.
+  replay runners (`make conformance-*-replay`).
+- `BASECAMP_BC5_PROJECT_ID` / `BASECAMP_PROJECT_ID` etc. — explicit
+  fixture-IDs override the runner's discovery walk. The `BASECAMP_<BACKEND>_*`
+  form keys off `BASECAMP_BACKEND` (`bc5` for the canary). Same pattern applies
+  for `TODOSET_ID`, `TODOLIST_ID`, `TODO_ID`.
 
 Tests skip with a clear `skipReason` when a fixture-ID can't be resolved
 (no env override, no discovery match) — they don't fail.
@@ -336,13 +340,13 @@ Two-stage flow:
 BASECAMP_LIVE=1 \
 BASECAMP_TOKEN=<token> \
 BASECAMP_ACCOUNT_ID=<account> \
-BASECAMP_BACKEND=bc4 \
+BASECAMP_BACKEND=bc5 \
 LIVE_RECORD_DIR=tmp/canary \
 make conformance-typescript-live
 
 # Step 2: each language replays those snapshots through its SDK (offline).
 for lang in ruby python go kotlin; do
-  WIRE_REPLAY_DIR=tmp/canary BASECAMP_BACKEND=bc4 \
+  WIRE_REPLAY_DIR=tmp/canary BASECAMP_BACKEND=bc5 \
     make conformance-$lang-replay
 done
 ```
@@ -364,122 +368,75 @@ added to:
 
 Each runner's coverage gate refuses to start until all five are in place.
 
-### Pairwise BC4↔BC5 comparison
-
-Per-backend schema validation is necessary but not sufficient. With every
-new BC5 field marked optional, a regression where BC4 emits `memories:
-[item, item]` and BC5 emits `memories: []` would pass per-backend schema
-checks — yet that's exactly the additive-only invariant the canary should
-catch. The pairwise comparison closes that loop.
-
-Each live test in `conformance/tests/live-my-surface.json` can carry
-`pairwiseAssertions`, which apply to a matched pair of BC4 and BC5 wire
-snapshots for the same operation. Four rule types:
-
-- `pairwiseSupersetArray` — BC5 array length at each path must be ≥ BC4's.
-  Catches "this array shrank between backends".
-- `pairwiseSupersetKeys` — BC5 object's keys at each path must be a superset
-  of BC4's keys. Catches "this field disappeared".
-- `pairwiseEqual` — BC5 value at each path must equal BC4's. Use sparingly;
-  most useful for type-discriminator fields.
-- `pairwiseDeltaAllowed` — paths where divergence is explicitly accepted.
-  The listed paths are skipped by the other three rules for this operation.
-  `reason` is **required** — a public compatibility report indexes accepted
-  divergences.
-
-Path syntax (dotted identifiers, evaluated against each snapshot):
-
-- `""` (empty string) addresses the body root.
-- `foo.bar` is shorthand for `pages[0].body.foo.bar` — single-page bodies.
-- `pages[N].body.X` addresses a specific page in multi-page snapshots.
-- `pages[*].body.X` aggregates across pages into a list (each page's value
-  becomes one element of the result). `pairwiseEqual` compares that list as
-  a single value. `pairwiseSupersetArray` compares the **total item count
-  across pages** (a page missing the field contributes 0; any non-null
-  non-array page value is invalid), so a field dropped on every page fails
-  even when page counts match, and redistribution across page boundaries
-  with the total preserved passes. `pairwiseSupersetKeys` does **not**
-  support `pages[*]` — the aggregate is a list, not an object, and the rule
-  flags it as an invalid target; address a specific page
-  (`pages[N].body.X`) for keys checks on paginated endpoints.
-
-Example — the canonical `memories` canary on `GetMyNotifications`:
-
-```json
-"pairwiseAssertions": [
-  {
-    "type": "pairwiseSupersetArray",
-    "paths": ["memories"],
-    "reason": "Additive-only invariant: BC5 memories[] should remain a superset of BC4's. PERMANENTLY waived by the pairwiseDeltaAllowed entry below — bc3 documents memories as an always-empty placeholder on BC5 (doc/api/sections/my_notifications.md). See spec/api-gaps/memories-emptied-regression.md."
-  },
-  {
-    "type": "pairwiseDeltaAllowed",
-    "paths": ["memories"],
-    "reason": "PERMANENT documented contract divergence: BC5 ships `json.memories []` by contract — doc/api/sections/my_notifications.md (bc3 #11628) codifies memories as an always-empty placeholder superseded by bubble_ups. The once-planned alias (`json.memories @bubble_ups`, bc3 #10947) never shipped; #10947 is closed unmerged. Not a pending regression — this entry is the machine-readable record of an accepted BC4→BC5 subtractive delta. Retire only if BC4 (the four branch) empties memories too (the superset rule then passes clean) or BC5's documented contract changes. Tracked in spec/api-gaps/memories-emptied-regression.md."
-  }
-]
-```
-
-BC5 ships `memories: []` permanently by documented contract —
-`doc/api/sections/my_notifications.md` (bc3 #11628) codifies memories as an
-always-empty placeholder superseded by `bubble_ups`. The superset rule stays
-as the encoded additive-only invariant; the `pairwiseDeltaAllowed` entry is
-the machine-readable record of the accepted delta, feeding the public
-compatibility report. Retire the waiver only if BC4 (the four branch) empties
-memories too — the superset rule then passes clean — or BC5's documented
-contract changes.
+> **Historical note — pairwise BC4↔BC5 comparison (retired).** An earlier
+> canary captured snapshots from two live backends (BC4 and BC5) and asserted
+> BC5 was an additive superset of BC4, encoded as `pairwiseAssertions` in the
+> fixture and applied by `scripts/compare-canary-runs.sh`. **BC5 replaced BC4
+> in production**, so there is no live BC4 backend left to compare against —
+> the pairwise machinery is retired. Its one live rule (the `memories`
+> additive-only waiver) is settled by documented contract; see
+> [`COORDINATION.md`](COORDINATION.md) and
+> [`spec/api-gaps/memories-emptied-regression.md`](spec/api-gaps/memories-emptied-regression.md).
+> The pairwise engine remains recoverable from git history (PR #308) if a
+> reachable legacy backend ever warrants restoring it.
 
 ### Orchestrator
 
-`make check-bc5-compat` threads the two-backend capture plus pairwise
-comparison together:
+`make conformance-canary` runs the full single-backend canary against
+production BC5 — capture, schema-validate, and 4-language decode-replay in
+one pass:
 
 ```bash
 BASECAMP_TOKEN=<token> \
 BASECAMP_ACCOUNT_ID=<account> \
-BC5_HOST=https://5.basecampapi.com \
-make check-bc5-compat
+BASECAMP_HOST=https://3.basecampapi.com \
+make conformance-canary
 ```
 
-What it runs, in order:
+What it runs:
 
-1. `BASECAMP_BACKEND=bc4 LIVE_RECORD_DIR=tmp/live-canary make conformance-live`
-   — TS captures wire snapshots from BC4 (defaulting `BASECAMP_HOST` to
-   `https://3.basecampapi.com`), then Ruby/Python/Go/Kotlin replay-decode.
-2. `BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR=tmp/live-canary make conformance-live`
-   — same against the BC5 origin set via `BC5_HOST`.
-3. `./scripts/compare-canary-runs.sh tmp/live-canary/bc4/wire tmp/live-canary/bc5/wire`
-   — applies pairwise rules. Reports all violations outside
-   `pairwiseDeltaAllowed` and exits non-zero if any are found.
+1. Clears `LIVE_RECORD_DIR` (default `tmp/live-canary`, behind a hardened
+   `rm -rf` guard).
+2. `BASECAMP_BACKEND=bc5 LIVE_RECORD_DIR=tmp/live-canary make
+   conformance-live` — TS captures wire snapshots from production BC5, then
+   Ruby/Python/Go/Kotlin replay-decode.
 
-Override `LIVE_RECORD_DIR` (default `tmp/live-canary`) or `BASECAMP_HOST`
-(default `https://3.basecampapi.com`) on the make line.
-
-**Identical account state across both runs is mandatory.** The pairwise
-rules assume the BC4 and BC5 backends see the same projects, the same
-todosets, the same reading list, etc. Without that, `unreads`/`reads`
-arrays drift naturally between captures and pairwise asserts will false-fail.
-Use a dedicated test account with stable, equivalent fixtures (e.g. a
-sandbox account snapshot replicated to each backend).
+Override `LIVE_RECORD_DIR` (default `tmp/live-canary`) on the make line.
+`BASECAMP_HOST` is required — the production origin has no safe hard-coded
+default.
 
 ### Scheduled CI
 
-`.github/workflows/live-canary.yml` runs `check-bc5-compat` nightly via
-cron and on `workflow_dispatch`. It is **opt-in**: the workflow no-ops
-with a clear log message if the required repo secrets aren't configured.
+`.github/workflows/live-canary.yml` runs `conformance-canary` nightly via
+cron and on `workflow_dispatch`. It is **opt-in**: the workflow no-ops with
+a clear log message if the required secrets aren't configured.
 
-Required secrets:
+Provision the `CANARY_BASECAMP_*` credentials as **environment secrets on the
+`basecamp-canary` environment** — not as org- or repo-level secrets. Only
+environment secrets are scoped to the credential: an org/repo secret of the
+same name is readable by *any* workflow in this repository, so the environment
+would gate this job but not the secret. As environment secrets, they are
+readable only by a job that references `environment: basecamp-canary` and
+clears its protection rules. `CANARY_BASECAMP_*` is a naming convention other
+app repos can mirror (each on its own `<app>-canary` environment) — a shared
+convention, not a shared org secret.
 
-- `BASECAMP_TOKEN` — OAuth token with read scope for the canary fixtures.
-- `BASECAMP_ACCOUNT_ID` — the numeric account ID used on both backends.
-- `BC5_HOST` — origin of the BC5 backend.
+The environment's deployment-branch policy additionally restricts those jobs to
+the default branch, so a non-default-branch `workflow_dispatch` is normally
+refused before it runs (repo admins can bypass environment protection rules by
+default, so treat that as defense-in-depth, not an absolute gate). No required
+reviewers, so scheduled runs never hang. The tooling reads the secrets under
+the fixed runtime env-var names:
 
-Optional:
+- `CANARY_BASECAMP_TOKEN` → `BASECAMP_TOKEN` — OAuth token with read scope for
+  the canary fixtures.
+- `CANARY_BASECAMP_ACCOUNT_ID` → `BASECAMP_ACCOUNT_ID` — the numeric account ID.
+- `CANARY_BASECAMP_HOST` → `BASECAMP_HOST` — origin of the production BC5 backend.
 
-- `BASECAMP_HOST` — origin of the BC4 backend; defaults to `https://3.basecampapi.com`.
-
-Snapshots are uploaded as a workflow artifact (`live-canary-<run-id>`,
+Decode results are uploaded as a workflow artifact (`live-canary-<run-id>`,
 14-day retention) so failures can be inspected post-hoc without rerunning.
+Wire snapshots are deliberately excluded — they carry raw response bodies
+from a live account.
 
 ## API gap registry (`spec/api-gaps/`)
 

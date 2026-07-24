@@ -1,31 +1,40 @@
 name: Live Canary
 
-# Runs the BC4↔BC5 live compatibility canary against real Basecamp backends.
+# Runs the single-backend live conformance canary against production Basecamp
+# (BC5). BC5 replaced BC4 in production, so there is one live backend: this
+# canary captures BC5 wire snapshots through the typed surface, schema-validates
+# them, and decode-replays across four languages. Forward-compat additions
+# surface as "extras observed", never as failures.
 #
 # Triggers
 # --------
 # - workflow_dispatch: manual run, useful for ad-hoc verification.
-# - schedule: nightly cron at 09:00 UTC. Catches server-side drift between
-#   the BC4 (master) baseline and the BC5 (five) branch over time.
+# - schedule: nightly cron at 09:00 UTC. Catches server-side drift on BC5
+#   over time.
 #
-# Required secrets (configured at repo level)
-# -------------------------------------------
-#   BASECAMP_TOKEN       OAuth token for both backends. Must have read scope
-#                        on the canary's read-only fixture set.
-#   BASECAMP_ACCOUNT_ID  The numeric account ID used to compose the per-backend
-#                        base URL. Same on both backends — the canary requires
-#                        identical account state across BC4 and BC5 for
-#                        pairwise rules to be meaningful.
-#   BC5_HOST             Origin of the BC5 backend (e.g. https://5.basecampapi.com).
+# Required secrets — ENVIRONMENT secrets on the basecamp-canary environment
+# -------------------------------------------------------------------------
+# Provision these as *environment* secrets on basecamp-canary, NOT as org- or
+# repo-level secrets. Only environment secrets are scoped to the credential:
+# an org/repo secret of the same name would be readable by ANY workflow in this
+# repository, so the environment would gate this job but not the secret itself.
+# As environment secrets, they are readable only by a job that references
+# `environment: basecamp-canary` and clears its protection rules (below).
+# `CANARY_BASECAMP_*` is a naming convention other app repos can mirror
+# (each on its own <app>-canary environment) — a shared convention, not a
+# shared org secret.
+#   CANARY_BASECAMP_TOKEN       OAuth token with read scope on the canary's
+#                               read-only fixture set. Read as BASECAMP_TOKEN.
+#   CANARY_BASECAMP_ACCOUNT_ID  Numeric account ID used to compose the base URL.
+#                               Read as BASECAMP_ACCOUNT_ID.
+#   CANARY_BASECAMP_HOST        Origin of the production BC5 backend
+#                               (e.g. https://3.basecampapi.com). Read as
+#                               BASECAMP_HOST. No hard-coded default — the
+#                               production origin comes from the secret.
 #
-# Optional secret (defaults)
-# --------------------------
-#   BASECAMP_HOST        Origin of the BC4 backend. Defaults to
-#                        https://3.basecampapi.com when unset.
-#
-# The job no-ops with a clear log message if BASECAMP_TOKEN is unset (e.g.
-# when running from a fork without secrets). It does not fail the run —
-# missing secrets are operator-controllable state.
+# The job no-ops with a clear log message if the secrets are unset (e.g. when
+# running from a fork, or before the environment secrets are provisioned). It
+# does not fail the run — missing secrets are operator-controllable state.
 on:
   workflow_dispatch:
   schedule:
@@ -34,13 +43,23 @@ on:
 permissions: {}
 
 concurrency:
-  group: live-canary
+  group: basecamp-canary
   cancel-in-progress: false
 
 jobs:
   canary:
-    name: BC4↔BC5 canary
+    name: BC5 live canary
     runs-on: ubuntu-latest
+    # Binds the job to the basecamp-canary environment. The credential scoping
+    # comes from the CANARY_BASECAMP_* values being *environment* secrets on
+    # this environment (see header) — only a job that references it can read
+    # them. The environment's deployment-branch policy additionally restricts
+    # those jobs to the default branch, so a non-default-branch workflow_dispatch
+    # is normally refused before it runs. (That branch gate is not absolute:
+    # GitHub lets repo admins bypass environment protection rules by default.)
+    # Scheduled runs are always default-branch.
+    # No required reviewers: a scheduled run has no approver and would hang.
+    environment: basecamp-canary
     permissions:
       contents: read
     timeout-minutes: 30
@@ -52,13 +71,13 @@ jobs:
       - name: Check for canary secrets
         id: secrets
         env:
-          BASECAMP_TOKEN: ${{ secrets.BASECAMP_TOKEN }}
-          BASECAMP_ACCOUNT_ID: ${{ secrets.BASECAMP_ACCOUNT_ID }}
-          BC5_HOST: ${{ secrets.BC5_HOST }}
+          BASECAMP_TOKEN: ${{ secrets.CANARY_BASECAMP_TOKEN }}
+          BASECAMP_ACCOUNT_ID: ${{ secrets.CANARY_BASECAMP_ACCOUNT_ID }}
+          BASECAMP_HOST: ${{ secrets.CANARY_BASECAMP_HOST }}
         run: |
-          if [ -z "$BASECAMP_TOKEN" ] || [ -z "$BASECAMP_ACCOUNT_ID" ] || [ -z "$BC5_HOST" ]; then
+          if [ -z "$BASECAMP_TOKEN" ] || [ -z "$BASECAMP_ACCOUNT_ID" ] || [ -z "$BASECAMP_HOST" ]; then
             echo "Canary secrets not configured; skipping live run."
-            echo "Required: BASECAMP_TOKEN, BASECAMP_ACCOUNT_ID, BC5_HOST."
+            echo "Required: CANARY_BASECAMP_TOKEN, CANARY_BASECAMP_ACCOUNT_ID, CANARY_BASECAMP_HOST."
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
@@ -113,19 +132,14 @@ jobs:
           npm ci
           npm run build
 
-      - name: Run live canary against BC4 + BC5 with pairwise comparison
+      - name: Run live conformance canary against BC5
         if: steps.secrets.outputs.configured == 'true'
         env:
-          BASECAMP_TOKEN: ${{ secrets.BASECAMP_TOKEN }}
-          BASECAMP_ACCOUNT_ID: ${{ secrets.BASECAMP_ACCOUNT_ID }}
-          # Default the BC4 origin here: an unset optional secret expands to ''.
-          # The Makefile's recipe-shell ${BASECAMP_HOST:-...} default would also
-          # catch the empty string, but defaulting explicitly keeps the workflow
-          # self-describing about which BC4 origin a run used.
-          BASECAMP_HOST: ${{ secrets.BASECAMP_HOST || 'https://3.basecampapi.com' }}
-          BC5_HOST: ${{ secrets.BC5_HOST }}
+          BASECAMP_TOKEN: ${{ secrets.CANARY_BASECAMP_TOKEN }}
+          BASECAMP_ACCOUNT_ID: ${{ secrets.CANARY_BASECAMP_ACCOUNT_ID }}
+          BASECAMP_HOST: ${{ secrets.CANARY_BASECAMP_HOST }}
           LIVE_RECORD_DIR: tmp/live-canary
-        run: make check-bc5-compat
+        run: make conformance-canary
 
       # Deliberately EXCLUDES the wire/ trees: wire snapshots carry raw
       # response bodies and captured headers from a live account, which must
