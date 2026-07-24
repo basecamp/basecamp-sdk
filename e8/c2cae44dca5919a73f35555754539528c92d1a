@@ -1,0 +1,31 @@
+SPEC.md
+  s_3fd48deaa8600c::t_74a690d8f3ca3a 55,70,259,261,263,267,1407-1408,1612
+ruby/test/basecamp/generated_types_test.rb
+  s_3fd48deaa8600c::t_3f13fe60ce2511 129-146
+swift/README.md
+  s_3fd48deaa8600c::t_74a690d8f3ca3a 12
+AGENTS.md
+  s_3fd48deaa8600c::t_74a690d8f3ca3a 9-13,34
+kotlin/README.md
+  s_3fd48deaa8600c::t_74a690d8f3ca3a 13
+python/README.md
+  s_3fd48deaa8600c::t_74a690d8f3ca3a 11
+ruby/README.md
+  s_3fd48deaa8600c::t_74a690d8f3ca3a 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e8c2cae44dca5919a73f35555754539528c92d1a",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
