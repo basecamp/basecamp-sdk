@@ -58,10 +58,11 @@ module Basecamp
       # @param questionnaire_id [Integer] questionnaire id ID
       # @param title [String] title
       # @param schedule [Hash] schedule
+      # @param visible_to_clients [Boolean, nil] visible to clients
       # @return [Hash] response data
-      def create_question(questionnaire_id:, title:, schedule:)
+      def create_question(questionnaire_id:, title:, schedule:, visible_to_clients: nil)
         with_operation(service: "checkins", operation: "create_question", is_mutation: true, resource_id: questionnaire_id) do
-          http_post("/questionnaires/#{questionnaire_id}/questions.json", body: compact_params(title: title, schedule: schedule)).json
+          http_post("/questionnaires/#{questionnaire_id}/questions.json", body: compact_params(title: title, schedule: schedule, visible_to_clients: visible_to_clients)).json
         end
       end
 

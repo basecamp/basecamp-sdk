@@ -939,6 +939,124 @@ func TestUploadsService_Download_Success(t *testing.T) {
 	}
 }
 
+// testDocumentsServer creates an httptest.Server and a DocumentsService wired to it.
+func testDocumentsServer(t *testing.T, handler http.HandlerFunc) *DocumentsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Documents()
+}
+
+// testUploadsServer creates an httptest.Server and an UploadsService wired to it.
+func testUploadsServer(t *testing.T, handler http.HandlerFunc) *UploadsService {
+	t.Helper()
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token)
+	account := client.ForAccount("99999")
+	return account.Uploads()
+}
+
+// TestDocumentsService_CreateVisibleToClients verifies the tri-state
+// visible_to_clients flag reaches the wire correctly on create: nil omits the
+// key, true is sent verbatim, and an explicit false is sent (not dropped).
+func TestDocumentsService_CreateVisibleToClients(t *testing.T) {
+	fixture := loadDocumentsFixture(t, "get.json")
+	tru, fls := true, false
+	cases := []struct {
+		name    string
+		value   *bool
+		present bool
+		want    bool
+	}{
+		{"nil omits the field", nil, false, false},
+		{"true is sent", &tru, true, true},
+		{"explicit false is sent, not dropped", &fls, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			svc := testDocumentsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(201)
+				w.Write(fixture)
+			})
+
+			_, err := svc.Create(context.Background(), 200, &CreateDocumentRequest{
+				Title:            "Overview",
+				VisibleToClients: tc.value,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			val, ok := receivedBody["visible_to_clients"]
+			if ok != tc.present {
+				t.Fatalf("visible_to_clients present=%v, want %v (body=%v)", ok, tc.present, receivedBody)
+			}
+			if tc.present && val != tc.want {
+				t.Errorf("visible_to_clients=%v, want %v", val, tc.want)
+			}
+		})
+	}
+}
+
+// TestUploadsService_CreateVisibleToClients verifies the tri-state
+// visible_to_clients flag reaches the wire correctly on create: nil omits the
+// key, true is sent verbatim, and an explicit false is sent (not dropped).
+func TestUploadsService_CreateVisibleToClients(t *testing.T) {
+	fixture := loadUploadsFixture(t, "get.json")
+	tru, fls := true, false
+	cases := []struct {
+		name    string
+		value   *bool
+		present bool
+		want    bool
+	}{
+		{"nil omits the field", nil, false, false},
+		{"true is sent", &tru, true, true},
+		{"explicit false is sent, not dropped", &fls, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			svc := testUploadsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(201)
+				w.Write(fixture)
+			})
+
+			_, err := svc.Create(context.Background(), 200, &CreateUploadRequest{
+				AttachableSGID:   "test-sgid",
+				VisibleToClients: tc.value,
+			})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			val, ok := receivedBody["visible_to_clients"]
+			if ok != tc.present {
+				t.Fatalf("visible_to_clients present=%v, want %v (body=%v)", ok, tc.present, receivedBody)
+			}
+			if tc.present && val != tc.want {
+				t.Errorf("visible_to_clients=%v, want %v", val, tc.want)
+			}
+		})
+	}
+}
+
 func TestUploadsService_Download_DirectBody(t *testing.T) {
 	// URL path filename deliberately differs from metadata filename so the
 	// assertion proves the metadata-filename override is in effect on the

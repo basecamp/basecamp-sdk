@@ -41,6 +41,8 @@ export interface CreateMessageRequest {
   categoryId?: number;
   /** Subscriptions */
   subscriptions?: number[];
+  /** Visible to clients */
+  visibleToClients?: boolean;
 }
 
 /**
@@ -136,6 +138,7 @@ export class MessagesService extends BaseService {
             status: req.status,
             category_id: req.categoryId,
             subscriptions: req.subscriptions,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );

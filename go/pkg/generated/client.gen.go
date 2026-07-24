@@ -520,9 +520,10 @@ type CreateDocumentRequestContent struct {
 	Content string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status        string   `json:"status,omitempty"`
-	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
-	Title         string   `json:"title"`
+	Status           string   `json:"status,omitempty"`
+	Subscriptions    *[]int64 `json:"subscriptions,omitempty"`
+	Title            string   `json:"title"`
+	VisibleToClients *bool    `json:"visible_to_clients,omitempty"`
 }
 
 // CreateDocumentResponseContent defines model for CreateDocumentResponseContent.
@@ -570,9 +571,10 @@ type CreateMessageRequestContent struct {
 	Content    string `json:"content,omitempty"`
 
 	// Status active|drafted
-	Status        string   `json:"status,omitempty"`
-	Subject       string   `json:"subject"`
-	Subscriptions *[]int64 `json:"subscriptions,omitempty"`
+	Status           string   `json:"status,omitempty"`
+	Subject          string   `json:"subject"`
+	Subscriptions    *[]int64 `json:"subscriptions,omitempty"`
+	VisibleToClients *bool    `json:"visible_to_clients,omitempty"`
 }
 
 // CreateMessageResponseContent defines model for CreateMessageResponseContent.
@@ -614,8 +616,9 @@ type CreateProjectResponseContent = Project
 
 // CreateQuestionRequestContent defines model for CreateQuestionRequestContent.
 type CreateQuestionRequestContent struct {
-	Schedule QuestionSchedule `json:"schedule"`
-	Title    string           `json:"title"`
+	Schedule         QuestionSchedule `json:"schedule"`
+	Title            string           `json:"title"`
+	VisibleToClients *bool            `json:"visible_to_clients,omitempty"`
 }
 
 // CreateQuestionResponseContent defines model for CreateQuestionResponseContent.
@@ -631,14 +634,15 @@ type CreateRecordingBoostResponseContent = Boost
 
 // CreateScheduleEntryRequestContent defines model for CreateScheduleEntryRequestContent.
 type CreateScheduleEntryRequestContent struct {
-	AllDay         *bool     `json:"all_day,omitempty"`
-	Description    string    `json:"description,omitempty"`
-	EndsAt         time.Time `json:"ends_at"`
-	Notify         *bool     `json:"notify,omitempty"`
-	ParticipantIds []int64   `json:"participant_ids,omitempty"`
-	StartsAt       time.Time `json:"starts_at"`
-	Subscriptions  *[]int64  `json:"subscriptions,omitempty"`
-	Summary        string    `json:"summary"`
+	AllDay           *bool     `json:"all_day,omitempty"`
+	Description      string    `json:"description,omitempty"`
+	EndsAt           time.Time `json:"ends_at"`
+	Notify           *bool     `json:"notify,omitempty"`
+	ParticipantIds   []int64   `json:"participant_ids,omitempty"`
+	StartsAt         time.Time `json:"starts_at"`
+	Subscriptions    *[]int64  `json:"subscriptions,omitempty"`
+	Summary          string    `json:"summary"`
+	VisibleToClients *bool     `json:"visible_to_clients,omitempty"`
 }
 
 // CreateScheduleEntryResponseContent defines model for CreateScheduleEntryResponseContent.
@@ -688,8 +692,9 @@ type CreateTodolistGroupResponseContent = TodolistGroup
 
 // CreateTodolistRequestContent defines model for CreateTodolistRequestContent.
 type CreateTodolistRequestContent struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
+	Description      string `json:"description,omitempty"`
+	Name             string `json:"name"`
+	VisibleToClients *bool  `json:"visible_to_clients,omitempty"`
 }
 
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
@@ -709,10 +714,11 @@ type CreateToolResponseContent = Tool
 
 // CreateUploadRequestContent defines model for CreateUploadRequestContent.
 type CreateUploadRequestContent struct {
-	AttachableSgid string   `json:"attachable_sgid"`
-	BaseName       string   `json:"base_name,omitempty"`
-	Description    string   `json:"description,omitempty"`
-	Subscriptions  *[]int64 `json:"subscriptions,omitempty"`
+	AttachableSgid   string   `json:"attachable_sgid"`
+	BaseName         string   `json:"base_name,omitempty"`
+	Description      string   `json:"description,omitempty"`
+	Subscriptions    *[]int64 `json:"subscriptions,omitempty"`
+	VisibleToClients *bool    `json:"visible_to_clients,omitempty"`
 }
 
 // CreateUploadResponseContent defines model for CreateUploadResponseContent.

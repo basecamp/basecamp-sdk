@@ -74,6 +74,11 @@ type CreateTodolistRequest struct {
 	Name string `json:"name"`
 	// Description is an optional description (can include HTML).
 	Description string `json:"description,omitempty"`
+	// VisibleToClients sets client visibility at create time (optional, tri-state).
+	// nil omits the field so the server applies its own default visibility rule; a
+	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
+	// pointer distinguishes unset from false).
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
 // UpdateTodolistRequest specifies the parameters for updating a todolist.
@@ -241,8 +246,9 @@ func (s *TodolistsService) Create(ctx context.Context, todosetID int64, req *Cre
 	}
 
 	body := generated.CreateTodolistJSONRequestBody{
-		Name:        req.Name,
-		Description: req.Description,
+		Name:             req.Name,
+		Description:      req.Description,
+		VisibleToClients: req.VisibleToClients,
 	}
 
 	resp, err := s.client.parent.gen.CreateTodolistWithResponse(ctx, s.client.accountID, todosetID, body)

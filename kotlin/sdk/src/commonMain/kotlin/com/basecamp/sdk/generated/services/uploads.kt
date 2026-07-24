@@ -118,6 +118,7 @@ class UploadsService(client: AccountClient) : BaseService(client) {
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.baseName?.let { put("base_name", kotlinx.serialization.json.JsonPrimitive(it)) }
                 body.subscriptions?.let { put("subscriptions", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.visibleToClients?.let { put("visible_to_clients", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Upload>(body)

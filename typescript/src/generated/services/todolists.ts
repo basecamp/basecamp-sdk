@@ -51,6 +51,8 @@ export interface CreateTodolistRequest {
   name: string;
   /** Rich text description (HTML) */
   description?: string;
+  /** Visible to clients */
+  visibleToClients?: boolean;
 }
 
 
@@ -225,6 +227,7 @@ export class TodolistsService extends BaseService {
           body: {
             name: req.name,
             description: req.description,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );

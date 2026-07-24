@@ -45,6 +45,8 @@ export interface CreateDocumentRequest {
   status?: "active" | "drafted";
   /** Subscriptions */
   subscriptions?: number[];
+  /** Visible to clients */
+  visibleToClients?: boolean;
 }
 
 
@@ -186,6 +188,7 @@ export class DocumentsService extends BaseService {
             content: req.content,
             status: req.status,
             subscriptions: req.subscriptions,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );

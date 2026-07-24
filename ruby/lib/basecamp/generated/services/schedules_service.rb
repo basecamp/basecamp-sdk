@@ -82,10 +82,11 @@ module Basecamp
       # @param all_day [Boolean, nil] all day
       # @param notify [Boolean, nil] notify
       # @param subscriptions [Array, nil] subscriptions
+      # @param visible_to_clients [Boolean, nil] visible to clients
       # @return [Hash] response data
-      def create_entry(schedule_id:, summary:, starts_at:, ends_at:, description: nil, participant_ids: nil, all_day: nil, notify: nil, subscriptions: nil)
+      def create_entry(schedule_id:, summary:, starts_at:, ends_at:, description: nil, participant_ids: nil, all_day: nil, notify: nil, subscriptions: nil, visible_to_clients: nil)
         with_operation(service: "schedules", operation: "create_entry", is_mutation: true, resource_id: schedule_id) do
-          http_post("/schedules/#{schedule_id}/entries.json", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, subscriptions: subscriptions)).json
+          http_post("/schedules/#{schedule_id}/entries.json", body: compact_params(summary: summary, starts_at: starts_at, ends_at: ends_at, description: description, participant_ids: participant_ids, all_day: all_day, notify: notify, subscriptions: subscriptions, visible_to_clients: visible_to_clients)).json
         end
       end
     end

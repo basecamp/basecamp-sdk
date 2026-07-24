@@ -125,6 +125,11 @@ type CreateQuestionRequest struct {
 	Title string `json:"title"`
 	// Schedule is the question schedule configuration (required).
 	Schedule *QuestionSchedule `json:"schedule"`
+	// VisibleToClients sets client visibility at create time (optional, tri-state).
+	// nil omits the field so the server applies its own default visibility rule; a
+	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
+	// pointer distinguishes unset from false).
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
 // UpdateQuestionRequest specifies the parameters for updating a question.
@@ -352,6 +357,9 @@ func (s *CheckinsService) CreateQuestion(ctx context.Context, questionnaireID in
 	body := map[string]any{
 		"title":    req.Title,
 		"schedule": questionScheduleToMap(req.Schedule),
+	}
+	if req.VisibleToClients != nil {
+		body["visible_to_clients"] = *req.VisibleToClients
 	}
 
 	bodyReader, err := marshalBody(body)
