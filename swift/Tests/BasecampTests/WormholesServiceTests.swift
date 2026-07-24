@@ -20,12 +20,15 @@ final class WormholesServiceTests: XCTestCase {
             "parent": ["id": 10, "title": "Development Board", "type": "Kanban::Board", "app_url": "a", "url": "u"] as [String: Any],
             "bucket": ["id": 1, "name": "Project", "type": "Project"] as [String: Any],
             "creator": ["id": 1, "name": "Test User"] as [String: Any],
-            "color": "#f5d76e",
             "linked": linked,
         ]
+        // color and destination_url are required-but-nullable: an unlinked wormhole
+        // carries an explicit null for both, exercising the nullable decode path.
         if linked {
+            json["color"] = "#f5d76e"
             json["destination_url"] = "https://3.basecampapi.com/1/buckets/2/card_tables/columns/500.json"
         } else {
+            json["color"] = NSNull()
             json["destination_url"] = NSNull()
         }
         return json
@@ -159,7 +162,9 @@ final class WormholesServiceTests: XCTestCase {
         XCTAssertEqual(cardTable.wormholes?.count, 2)
         XCTAssertEqual(cardTable.wormholes?[0].linked, true)
         XCTAssertNotNil(cardTable.wormholes?[0].destinationUrl)
+        XCTAssertNotNil(cardTable.wormholes?[0].color)
         XCTAssertEqual(cardTable.wormholes?[1].linked, false)
         XCTAssertNil(cardTable.wormholes?[1].destinationUrl)
+        XCTAssertNil(cardTable.wormholes?[1].color)
     }
 }

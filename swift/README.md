@@ -121,6 +121,8 @@ let client = BasecampClient(
 
 ## Services
 
+The SDK exposes 45 account-scoped services. The tables below group the common ones; see `Sources/Basecamp/Generated/Services/` for the full set.
+
 ### Projects & Organization
 
 | Service | Description |
