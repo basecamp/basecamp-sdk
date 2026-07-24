@@ -1,0 +1,26 @@
+go.work.sum
+  s_3fd48deaa8600c::t_e6c966e3b972e8 64,93,144
+  s_3fd48deaa8600c::t_8bd2dae281e096 51,168,189,192
+go/go.mod
+  s_3fd48deaa8600c::t_e6c966e3b972e8 21,36
+  s_3fd48deaa8600c::t_8bd2dae281e096 31-32
+  s_3fd48deaa8600c::t_2980b56787b6bc 24-25
+go/go.sum
+  s_3fd48deaa8600c::t_70cf7257d7470f 18-19,26-27,33-38,83-86,112-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0df1bb48bec540f12e5887b62844d6cca9a9aa31",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
