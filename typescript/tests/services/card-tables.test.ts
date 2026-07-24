@@ -61,6 +61,8 @@ describe("CardTablesService", () => {
         http.get(`${BASE_URL}/card_tables/${cardTableId}`, () => {
           return HttpResponse.json({
             ...sampleCardTable(cardTableId),
+            // Card-table columns live under `lists`; `wormholes` is its sibling.
+            lists: [{ id: 100, title: "To Do", cards_count: 0 }],
             wormholes: [
               {
                 id: 1069479400,

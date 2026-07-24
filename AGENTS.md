@@ -9,7 +9,7 @@
 | **TypeScript SDK** | Production-ready | 45 generated services, openapi-fetch based |
 | **Ruby SDK** | Production-ready | 45 generated services |
 | **Swift SDK** | Production-ready | 45 generated services, URLSession-based |
-| **Kotlin SDK** | Production-ready | 45 accessors (44 generated classes direct + a `todos` composite subclass), Ktor/KMP-based |
+| **Kotlin SDK** | Production-ready | 45 accessors over 45 generated service classes (`todos` exposes a composite subclass of the generated `TodosService`), Ktor/KMP-based |
 | **Python SDK** | Production-ready | 45 generated services, httpx-based |
 
 All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
