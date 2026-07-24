@@ -4,10 +4,10 @@ status: absorbed-in-sdk
 detected: 2026-07-23
 sdk_demand: medium
 smithy_refs:
-  - "CreateWormhole (spec/basecamp.smithy:4720)"
-  - "UpdateWormhole (spec/basecamp.smithy:4754)"
-  - "DeleteWormhole (spec/basecamp.smithy:4788)"
-  - "Wormhole (spec/basecamp.smithy:4863)"
+  - "CreateWormhole (spec/basecamp.smithy:4730)"
+  - "UpdateWormhole (spec/basecamp.smithy:4764)"
+  - "DeleteWormhole (spec/basecamp.smithy:4798)"
+  - "Wormhole (spec/basecamp.smithy:4873)"
 bc3_refs:
   introduced_in: master
   routes:
@@ -27,11 +27,11 @@ bc3_refs:
 > **Additive BC5 surface.** Unlike the contract-change entries
 > ([dock-tool-create-contract](dock-tool-create-contract.md),
 > [memories-emptied-regression](memories-emptied-regression.md)), this records
-> new BC5 surface the SDKs could not express. The server contract is fully
-> shipped and present in the pinned bc3 provenance (`338b7a11`, 2026-07-23; it
-> also predates that pin, having landed by `ba105ba7`, 2026-07-22);
-> `absorbed-in-sdk` means the SDK absorbed it without a provenance bump
-> (basecamp-sdk#397).
+> new BC5 surface the SDKs could not express. The server contract shipped in
+> BC3 **#12144** (`e41d2e33da`, merged 2026-07-09) and is present in the pinned
+> bc3 provenance (`ca1d34bc`, 2026-07-24); BC3 **#12385** (`90631fbf`) later
+> documented the cross-project move recipe. `absorbed-in-sdk` means the SDK
+> absorbed the contract without a provenance bump (basecamp-sdk#397).
 
 ## What's missing
 
@@ -85,7 +85,7 @@ destination column, its board, and its bucket are all active);
 
 None. The contract is shipped, documented
 (`doc/api/sections/card_table_wormholes.md`), and inside the pinned provenance
-(`338b7a11`). No upstream doc or route work remains.
+(`ca1d34bc`). No upstream doc or route work remains.
 
 ## SDK absorption plan when this lands
 
@@ -95,4 +95,4 @@ service split across all six SDKs, the hand-written Go layer
 (`go/pkg/basecamp/wormholes.go`), client wiring, and per-language tests
 (CRUD happy + error paths, plus a linked/unlinked `wormholes[]` decode). No
 `spec/api-provenance.json` SHA bump — the contract was already present at the
-pinned `338b7a11` (and earlier). No further SDK change is needed.
+pinned `ca1d34bc` (and earlier). No further SDK change is needed.
