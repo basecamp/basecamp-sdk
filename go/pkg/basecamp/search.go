@@ -31,12 +31,14 @@ type SearchResult struct {
 	// arrays carried through the polymorphic search projection. A given result
 	// is one recording type, so it carries only the array matching its rich text
 	// attribute (ContentAttachments for a Comment/Message, DescriptionAttachments
-	// for a Todo); a webhook-sourced result carries neither. Optional, so
-	// omitempty matches the non-nullable member (never emits an invalid null).
-	// See RichTextAttachment.
-	ContentAttachments     []RichTextAttachment `json:"content_attachments,omitempty"`
-	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	Subject                string               `json:"subject,omitempty"`
+	// for a Todo); a webhook-sourced result carries neither. Optional and
+	// non-nullable; modeled as a pointer to a slice with omitempty so all three
+	// wire states round-trip faithfully — nil pointer (absent) is omitted, a
+	// non-nil pointer to an empty slice re-encodes as [], and a populated one as
+	// the list. See Recording for the same contract and RichTextAttachment.
+	ContentAttachments     *[]RichTextAttachment `json:"content_attachments,omitempty"`
+	DescriptionAttachments *[]RichTextAttachment `json:"description_attachments,omitempty"`
+	Subject                string                `json:"subject,omitempty"`
 }
 
 // SearchMetadata represents the available search filter options returned by
@@ -357,8 +359,8 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		sr.Creator = &creator
 	}
 
-	sr.ContentAttachments = richTextAttachmentsFromGenerated(gsr.ContentAttachments)
-	sr.DescriptionAttachments = richTextAttachmentsFromGenerated(gsr.DescriptionAttachments)
+	sr.ContentAttachments = richTextAttachmentsPtrFromGenerated(gsr.ContentAttachments)
+	sr.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gsr.DescriptionAttachments)
 
 	return sr
 }

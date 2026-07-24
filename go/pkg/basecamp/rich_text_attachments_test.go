@@ -53,6 +53,15 @@ func richTextAttachmentsFixture() []generated.RichTextAttachment {
 	}
 }
 
+// derefAttachments dereferences an optional projection array pointer for the
+// converter table; the fixture always produces a non-nil pointer.
+func derefAttachments(p *[]RichTextAttachment) []RichTextAttachment {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
 // assertRichTextAttachmentsConverted verifies the shared fixture converted to
 // the public type with the always-emitted fields carried through and both
 // dimension forms narrowed faithfully (present -> *int32, null -> nil).
@@ -105,10 +114,15 @@ func TestRichTextAttachments_ConverterPropagation(t *testing.T) {
 		{"ClientCorrespondence", clientCorrespondenceFromGenerated(generated.ClientCorrespondence{ContentAttachments: fix}).ContentAttachments},
 		{"ClientReply", clientReplyFromGenerated(generated.ClientReply{ContentAttachments: fix}).ContentAttachments},
 		{"QuestionAnswer", questionAnswerFromGenerated(generated.QuestionAnswer{ContentAttachments: fix}).ContentAttachments},
-		{"SearchResult.content", searchResultFromGenerated(generated.SearchResult{ContentAttachments: fix}).ContentAttachments},
-		{"SearchResult.description", searchResultFromGenerated(generated.SearchResult{DescriptionAttachments: fix}).DescriptionAttachments},
-		{"Recording.content", recordingFromGenerated(generated.Recording{ContentAttachments: fix}).ContentAttachments},
-		{"Recording.description", recordingFromGenerated(generated.Recording{DescriptionAttachments: fix}).DescriptionAttachments},
+		// The projection arrays are optional and modeled as *[]RichTextAttachment;
+		// the fixture is non-nil so the converter yields a non-nil pointer, safe
+		// to dereference. The pointer's nil-vs-non-nil presence contract is
+		// covered separately (Recording in recordings_test.go, Gauge in
+		// gauges_test.go).
+		{"SearchResult.content", derefAttachments(searchResultFromGenerated(generated.SearchResult{ContentAttachments: fix}).ContentAttachments)},
+		{"SearchResult.description", derefAttachments(searchResultFromGenerated(generated.SearchResult{DescriptionAttachments: fix}).DescriptionAttachments)},
+		{"Recording.content", derefAttachments(recordingFromGenerated(generated.Recording{ContentAttachments: fix}).ContentAttachments)},
+		{"Recording.description", derefAttachments(recordingFromGenerated(generated.Recording{DescriptionAttachments: fix}).DescriptionAttachments)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -136,4 +150,34 @@ func TestRichTextAttachments_NilVsEmpty(t *testing.T) {
 	if c.ContentAttachments != nil {
 		t.Errorf("expected nil ContentAttachments for absent property, got %v", c.ContentAttachments)
 	}
+}
+
+// TestRichTextAttachments_OptionalPointerPresence pins the *[]RichTextAttachment
+// presence contract for the optional projection arrays (via the shared pointer
+// helper on the Recording converter): absent stays a nil pointer, present-empty
+// becomes a non-nil pointer to a zero-length slice, and populated a non-nil
+// pointer to the converted slice — so all three wire states stay distinguishable
+// in both directions (see the marshal round-trip in gauges_test.go).
+func TestRichTextAttachments_OptionalPointerPresence(t *testing.T) {
+	// Absent -> nil pointer.
+	absent := recordingFromGenerated(generated.Recording{})
+	if absent.ContentAttachments != nil {
+		t.Errorf("expected nil ContentAttachments pointer for absent property, got %v", absent.ContentAttachments)
+	}
+
+	// Present but empty -> non-nil pointer to a zero-length slice.
+	empty := recordingFromGenerated(generated.Recording{ContentAttachments: []generated.RichTextAttachment{}})
+	if empty.ContentAttachments == nil {
+		t.Fatal("expected non-nil ContentAttachments pointer for server-sent []")
+	}
+	if len(*empty.ContentAttachments) != 0 {
+		t.Errorf("expected 0 attachments, got %d", len(*empty.ContentAttachments))
+	}
+
+	// Populated -> non-nil pointer to the converted slice.
+	populated := recordingFromGenerated(generated.Recording{ContentAttachments: richTextAttachmentsFixture()})
+	if populated.ContentAttachments == nil {
+		t.Fatal("expected non-nil ContentAttachments pointer for populated array")
+	}
+	assertRichTextAttachmentsConverted(t, *populated.ContentAttachments)
 }

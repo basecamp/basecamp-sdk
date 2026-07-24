@@ -89,28 +89,40 @@ func TestGauge_DescriptionAttachments_PresenceContract(t *testing.T) {
 		t.Errorf("expected nil DescriptionAttachments for absent key, got %v", absent.DescriptionAttachments)
 	}
 
-	// Present but empty -> non-nil zero-length slice.
+	// Present but empty -> non-nil pointer to a zero-length slice.
 	var empty Gauge
 	if err := json.Unmarshal([]byte(`{"id": 7, "type": "Gauge", "description_attachments": []}`), &empty); err != nil {
 		t.Fatalf("failed to unmarshal gauge with empty array: %v", err)
 	}
 	if empty.DescriptionAttachments == nil {
-		t.Error("expected non-nil DescriptionAttachments for server-sent []")
+		t.Fatal("expected non-nil DescriptionAttachments pointer for server-sent []")
 	}
-	if len(empty.DescriptionAttachments) != 0 {
-		t.Errorf("expected 0 attachments, got %d", len(empty.DescriptionAttachments))
+	if len(*empty.DescriptionAttachments) != 0 {
+		t.Errorf("expected 0 attachments, got %d", len(*empty.DescriptionAttachments))
 	}
 }
 
-// TestGauge_MarshalOmitsAbsentAttachments pins the omitempty choice on Gauge's
-// optional, non-nullable array: a nil array must be omitted on re-encode, never
-// emitted as an invalid "description_attachments": null.
-func TestGauge_MarshalOmitsAbsentAttachments(t *testing.T) {
+// TestGauge_MarshalRoundTripsPresence pins the *[]RichTextAttachment choice on
+// Gauge's optional, non-nullable array: an absent (nil-pointer) array is omitted
+// on re-encode — never an invalid "description_attachments": null — while a
+// present-but-empty array re-encodes as [], staying distinct from absent.
+func TestGauge_MarshalRoundTripsPresence(t *testing.T) {
+	// Absent (nil pointer): key omitted entirely.
 	data, err := json.Marshal(Gauge{ID: 7})
 	if err != nil {
-		t.Fatalf("failed to marshal gauge: %v", err)
+		t.Fatalf("failed to marshal needle-less gauge: %v", err)
 	}
 	if strings.Contains(string(data), "description_attachments") {
-		t.Errorf("expected absent (nil) description_attachments to be omitted, got %s", data)
+		t.Errorf("expected absent description_attachments to be omitted, got %s", data)
+	}
+
+	// Present but empty (non-nil pointer to empty slice): encodes as [].
+	empty := []RichTextAttachment{}
+	data, err = json.Marshal(Gauge{ID: 7, DescriptionAttachments: &empty})
+	if err != nil {
+		t.Fatalf("failed to marshal gauge with empty attachments: %v", err)
+	}
+	if !strings.Contains(string(data), `"description_attachments":[]`) {
+		t.Errorf("expected present-empty description_attachments to encode as [], got %s", data)
 	}
 }

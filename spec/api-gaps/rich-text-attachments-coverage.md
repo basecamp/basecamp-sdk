@@ -4,29 +4,31 @@ status: absorbed-in-sdk
 detected: 2026-07-22
 sdk_demand: medium
 bc3_pr: 9980
+# Referenced by shape/member name (grep-navigable in spec/basecamp.smithy)
+# rather than line number, which drifts as the spec grows.
 smithy_refs:
-  - "RichTextAttachment (spec/basecamp.smithy:1309)"
-  - "RichTextAttachmentList (spec/basecamp.smithy:1299)"
-  - "Todo$description_attachments (spec/basecamp.smithy:1284)"
-  - "Todolist$description_attachments (spec/basecamp.smithy:1523)"
-  - "Comment$content_attachments (spec/basecamp.smithy:2898)"
-  - "Message$content_attachments (spec/basecamp.smithy:2966)"
-  - "Document$content_attachments (spec/basecamp.smithy:3110)"
-  - "Upload$description_attachments (spec/basecamp.smithy:3161)"
-  - "ScheduleEntry$description_attachments (spec/basecamp.smithy:3254)"
-  - "Forward$content_attachments (spec/basecamp.smithy:4101)"
-  - "ForwardReply$content_attachments (spec/basecamp.smithy:4144)"
-  - "Card$description_attachments (spec/basecamp.smithy:4854)"
-  - "ClientApproval$content_attachments (spec/basecamp.smithy:5471)"
-  - "ClientCorrespondence$content_attachments (spec/basecamp.smithy:5538)"
-  - "ClientReply$content_attachments (spec/basecamp.smithy:5580)"
-  - "Recording$content_attachments (spec/basecamp.smithy:6097)"
-  - "Recording$description_attachments (spec/basecamp.smithy:6099)"
-  - "QuestionAnswer$content_attachments (spec/basecamp.smithy:6697)"
-  - "SearchResult$content_attachments (spec/basecamp.smithy:7551)"
-  - "SearchResult$description_attachments (spec/basecamp.smithy:7553)"
-  - "Gauge$description_attachments (spec/basecamp.smithy:8252)"
-  - "GaugeNeedle$description_attachments (spec/basecamp.smithy:8284)"
+  - "RichTextAttachment (spec/basecamp.smithy)"
+  - "RichTextAttachmentList (spec/basecamp.smithy)"
+  - "Todo$description_attachments (spec/basecamp.smithy)"
+  - "Todolist$description_attachments (spec/basecamp.smithy)"
+  - "Comment$content_attachments (spec/basecamp.smithy)"
+  - "Message$content_attachments (spec/basecamp.smithy)"
+  - "Document$content_attachments (spec/basecamp.smithy)"
+  - "Upload$description_attachments (spec/basecamp.smithy)"
+  - "ScheduleEntry$description_attachments (spec/basecamp.smithy)"
+  - "Forward$content_attachments (spec/basecamp.smithy)"
+  - "ForwardReply$content_attachments (spec/basecamp.smithy)"
+  - "Card$description_attachments (spec/basecamp.smithy)"
+  - "ClientApproval$content_attachments (spec/basecamp.smithy)"
+  - "ClientCorrespondence$content_attachments (spec/basecamp.smithy)"
+  - "ClientReply$content_attachments (spec/basecamp.smithy)"
+  - "Recording$content_attachments (spec/basecamp.smithy)"
+  - "Recording$description_attachments (spec/basecamp.smithy)"
+  - "QuestionAnswer$content_attachments (spec/basecamp.smithy)"
+  - "SearchResult$content_attachments (spec/basecamp.smithy)"
+  - "SearchResult$description_attachments (spec/basecamp.smithy)"
+  - "Gauge$description_attachments (spec/basecamp.smithy)"
+  - "GaugeNeedle$description_attachments (spec/basecamp.smithy)"
 bc3_refs:
   introduced_in: three
   routes:
@@ -128,11 +130,15 @@ one are distinct wire states — absent means the item is not that rich-text typ
 (a non-matching projection type, or a webhook-sourced item rendered from the base
 partial), while present-empty means the matching type carries no inline files. Per
 SPEC.md's Optional Fields rule (a sentinel is not a substitute for absence), every
-SDK decodes this faithfully: Go `[]RichTextAttachment` (nil vs non-nil empty),
-Swift `[RichTextAttachment]?`, TypeScript `?: …[]`, Python `NotRequired[…]`, Ruby
-nil-vs-`[]` (`parse_array`), and Kotlin `List<RichTextAttachment>? = null` (the
-model generator emits a nullable list for optional `RichTextAttachmentList`
-members rather than the empty-list default it uses for other optional arrays).
+SDK models these as nullable/optional so all three wire states — absent,
+present-empty, populated — round-trip faithfully in both directions: Go
+`*[]RichTextAttachment` (nil pointer omitted, non-nil pointer to `[]` re-encodes as
+`[]`), Swift `[RichTextAttachment]?`, TypeScript `?: …[]`, Python `NotRequired[…]`,
+Ruby nil-vs-`[]` (`parse_array`), and Kotlin `List<RichTextAttachment>? = null`
+(the model generator emits a nullable list for optional `RichTextAttachmentList`
+members rather than the empty-list default it uses for other optional arrays). The
+14 concrete `@required` members are always present, so they stay a plain
+non-optional list in each SDK.
 
 ## Implementation notes for BC3
 

@@ -33,8 +33,10 @@ describe("ClientRepliesService", () => {
           type: "Client::Reply",
           url: "https://3.basecampapi.com/12345/client/replies/10.json",
           app_url: "https://3.basecamp.com/12345/client/replies/10",
-          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          bookmark_url:
+            "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
           content: "<p>Thanks for the update!</p>",
+          content_attachments: [],
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 888, name: "Client User" },
         },
@@ -49,8 +51,10 @@ describe("ClientRepliesService", () => {
           type: "Client::Reply",
           url: "https://3.basecampapi.com/12345/client/replies/11.json",
           app_url: "https://3.basecamp.com/12345/client/replies/11",
-          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          bookmark_url:
+            "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
           content: "<p>Looking forward to the next milestone.</p>",
+          content_attachments: [],
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 888, name: "Client User" },
         },
@@ -59,7 +63,7 @@ describe("ClientRepliesService", () => {
       server.use(
         http.get(`${BASE_URL}/client/recordings/100/replies.json`, () => {
           return HttpResponse.json(mockReplies);
-        })
+        }),
       );
 
       const replies = await client.clientReplies.list(100);
@@ -67,14 +71,16 @@ describe("ClientRepliesService", () => {
       expect(replies).toHaveLength(2);
       expect(replies[0].content).toBe("<p>Thanks for the update!</p>");
       expect(replies[0].creator?.name).toBe("Client User");
-      expect(replies[1].content).toBe("<p>Looking forward to the next milestone.</p>");
+      expect(replies[1].content).toBe(
+        "<p>Looking forward to the next milestone.</p>",
+      );
     });
 
     it("should return empty array when no replies exist", async () => {
       server.use(
         http.get(`${BASE_URL}/client/recordings/100/replies.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const replies = await client.clientReplies.list(100);
@@ -97,6 +103,7 @@ describe("ClientRepliesService", () => {
         app_url: "https://3.basecamp.com/12345/client/replies/10",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
         content: "<p>Thanks for the update! This looks great.</p>",
+        content_attachments: [],
         parent: {
           id: 100,
           title: "Project Kickoff",
@@ -105,19 +112,25 @@ describe("ClientRepliesService", () => {
           app_url: "https://3.basecamp.com/12345/client/correspondences/100",
         },
         bucket: { id: 1, name: "Test Project", type: "Project" },
-        creator: { id: 888, name: "Client User", email_address: "client@example.com" },
+        creator: {
+          id: 888,
+          name: "Client User",
+          email_address: "client@example.com",
+        },
       };
 
       server.use(
         http.get(`${BASE_URL}/client/recordings/100/replies/10`, () => {
           return HttpResponse.json(mockReply);
-        })
+        }),
       );
 
       const reply = await client.clientReplies.get(100, 10);
 
       expect(reply.id).toBe(10);
-      expect(reply.content).toBe("<p>Thanks for the update! This looks great.</p>");
+      expect(reply.content).toBe(
+        "<p>Thanks for the update! This looks great.</p>",
+      );
       expect(reply.parent?.title).toBe("Project Kickoff");
       expect(reply.creator?.name).toBe("Client User");
     });
@@ -126,7 +139,7 @@ describe("ClientRepliesService", () => {
       server.use(
         http.get(`${BASE_URL}/client/recordings/100/replies/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       try {

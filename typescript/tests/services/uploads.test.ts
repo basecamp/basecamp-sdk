@@ -37,14 +37,15 @@ describe("UploadsService", () => {
         filename: "report.pdf",
         content_type: "application/pdf",
         byte_size: 1024000,
-        download_url: "https://3.basecampapi.com/12345/blobs/abcd/download/report.pdf",
+        download_url:
+          "https://3.basecampapi.com/12345/blobs/abcd/download/report.pdf",
         status: "active",
       };
 
       server.use(
         http.get(`${BASE_URL}/uploads/7001`, () => {
           return HttpResponse.json(upload);
-        })
+        }),
       );
 
       const result = await service.get(7001);
@@ -58,7 +59,7 @@ describe("UploadsService", () => {
       server.use(
         http.get(`${BASE_URL}/uploads/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.get(9999)).rejects.toThrow(BasecampError);
@@ -81,7 +82,7 @@ describe("UploadsService", () => {
       server.use(
         http.get(`${BASE_URL}/vaults/1001/uploads.json`, () => {
           return HttpResponse.json(uploads);
-        })
+        }),
       );
 
       const result = await service.list(1001);
@@ -95,7 +96,7 @@ describe("UploadsService", () => {
       server.use(
         http.get(`${BASE_URL}/vaults/1001/uploads.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const result = await service.list(1001);
@@ -111,13 +112,14 @@ describe("UploadsService", () => {
         title: "presentation.pptx",
         filename: "presentation.pptx",
         description: "Q4 Presentation",
+        description_attachments: [],
         status: "active",
       };
 
       server.use(
         http.post(`${BASE_URL}/vaults/1001/uploads.json`, () => {
           return HttpResponse.json(newUpload);
-        })
+        }),
       );
 
       const result = await service.create(1001, {
@@ -131,11 +133,14 @@ describe("UploadsService", () => {
 
     it("should pass subscriptions in request body", async () => {
       server.use(
-        http.post(`${BASE_URL}/vaults/1001/uploads.json`, async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          expect(body.subscriptions).toEqual([111, 222]);
-          return HttpResponse.json({ id: 8002, title: "Test" });
-        })
+        http.post(
+          `${BASE_URL}/vaults/1001/uploads.json`,
+          async ({ request }) => {
+            const body = (await request.json()) as Record<string, unknown>;
+            expect(body.subscriptions).toEqual([111, 222]);
+            return HttpResponse.json({ id: 8002, title: "Test" });
+          },
+        ),
       );
 
       const result = await service.create(1001, {
@@ -146,13 +151,24 @@ describe("UploadsService", () => {
     });
 
     it("should send all fields in request body", async () => {
-      let capturedBody: { attachable_sgid?: string; description?: string; base_name?: string } | null = null;
+      let capturedBody: {
+        attachable_sgid?: string;
+        description?: string;
+        base_name?: string;
+      } | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/vaults/1001/uploads.json`, async ({ request }) => {
-          capturedBody = (await request.json()) as { attachable_sgid?: string; description?: string; base_name?: string };
-          return HttpResponse.json({ id: 1, title: "Test" });
-        })
+        http.post(
+          `${BASE_URL}/vaults/1001/uploads.json`,
+          async ({ request }) => {
+            capturedBody = (await request.json()) as {
+              attachable_sgid?: string;
+              description?: string;
+              base_name?: string;
+            };
+            return HttpResponse.json({ id: 1, title: "Test" });
+          },
+        ),
       );
 
       await service.create(1001, {
@@ -175,13 +191,14 @@ describe("UploadsService", () => {
         id: 7001,
         title: "new-name.pdf",
         description: "Updated description",
+        description_attachments: [],
         status: "active",
       };
 
       server.use(
         http.put(`${BASE_URL}/uploads/7001`, () => {
           return HttpResponse.json(updatedUpload);
-        })
+        }),
       );
 
       const result = await service.update(7001, {
@@ -193,13 +210,17 @@ describe("UploadsService", () => {
     });
 
     it("should send updated fields in request body", async () => {
-      let capturedBody: { description?: string; base_name?: string } | null = null;
+      let capturedBody: { description?: string; base_name?: string } | null =
+        null;
 
       server.use(
         http.put(`${BASE_URL}/uploads/7001`, async ({ request }) => {
-          capturedBody = (await request.json()) as { description?: string; base_name?: string };
+          capturedBody = (await request.json()) as {
+            description?: string;
+            base_name?: string;
+          };
           return HttpResponse.json({ id: 7001, title: "Test" });
-        })
+        }),
       );
 
       await service.update(7001, {
@@ -215,15 +236,27 @@ describe("UploadsService", () => {
   describe("listVersions", () => {
     it("should return upload versions", async () => {
       const uploads = [
-        { id: 7001, filename: "file_v3.pdf", created_at: "2024-03-15T10:00:00Z" },
-        { id: 7001, filename: "file_v2.pdf", created_at: "2024-02-10T10:00:00Z" },
-        { id: 7001, filename: "file_v1.pdf", created_at: "2024-01-05T10:00:00Z" },
+        {
+          id: 7001,
+          filename: "file_v3.pdf",
+          created_at: "2024-03-15T10:00:00Z",
+        },
+        {
+          id: 7001,
+          filename: "file_v2.pdf",
+          created_at: "2024-02-10T10:00:00Z",
+        },
+        {
+          id: 7001,
+          filename: "file_v1.pdf",
+          created_at: "2024-01-05T10:00:00Z",
+        },
       ];
 
       server.use(
         http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
           return HttpResponse.json(uploads);
-        })
+        }),
       );
 
       const result = await service.listVersions(7001);
@@ -235,7 +268,7 @@ describe("UploadsService", () => {
       server.use(
         http.get(`${BASE_URL}/uploads/7001/versions.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const result = await service.listVersions(7001);
@@ -261,17 +294,21 @@ describe("UploadsService", () => {
           return HttpResponse.json({
             id: 1069479400,
             filename: "logo.png",
-            download_url: "https://storage.3.basecamp.com/12345/blobs/abc/download/logo.png",
+            download_url:
+              "https://storage.3.basecamp.com/12345/blobs/abc/download/logo.png",
           });
         }),
         // Hop 1: origin-rewritten to API_ORIGIN
-        http.get(`${API_ORIGIN}/12345/blobs/abc/download/logo.png`, ({ request }) => {
-          authorizationHeaders.push(request.headers.get("authorization"));
-          return new HttpResponse(null, {
-            status: 302,
-            headers: { Location: SIGNED_URL },
-          });
-        }),
+        http.get(
+          `${API_ORIGIN}/12345/blobs/abc/download/logo.png`,
+          ({ request }) => {
+            authorizationHeaders.push(request.headers.get("authorization"));
+            return new HttpResponse(null, {
+              status: 302,
+              headers: { Location: SIGNED_URL },
+            });
+          },
+        ),
         // Hop 2: signed URL (no auth)
         http.get(SIGNED_URL, ({ request }) => {
           authorizationHeaders.push(request.headers.get("authorization"));
@@ -328,4 +365,3 @@ describe("UploadsService", () => {
     });
   });
 });
-

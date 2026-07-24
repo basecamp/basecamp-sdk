@@ -115,10 +115,14 @@ func TestRecording_UnmarshalList(t *testing.T) {
 	}
 
 	// End-to-end projection proof: each Message recording carries its
-	// content_attachments companion array through the wire.
-	if len(r1.ContentAttachments) == 0 || len(r2.ContentAttachments) == 0 {
-		t.Errorf("expected both recordings to carry ContentAttachments, got %d and %d",
-			len(r1.ContentAttachments), len(r2.ContentAttachments))
+	// content_attachments companion array through the wire (a non-nil pointer).
+	if r1.ContentAttachments == nil || r2.ContentAttachments == nil {
+		t.Fatalf("expected both recordings to carry ContentAttachments, got %v and %v",
+			r1.ContentAttachments, r2.ContentAttachments)
+	}
+	if len(*r1.ContentAttachments) == 0 || len(*r2.ContentAttachments) == 0 {
+		t.Errorf("expected both recordings' ContentAttachments to be populated, got %d and %d",
+			len(*r1.ContentAttachments), len(*r2.ContentAttachments))
 	}
 }
 
@@ -175,16 +179,19 @@ func TestRecording_UnmarshalGet(t *testing.T) {
 	}
 
 	// End-to-end projection proof: the generic recording projection carries the
-	// recording's rich text companion array through the wire. This Message
-	// carries content_attachments (its content attribute) and no
-	// description_attachments.
-	if len(recording.ContentAttachments) == 0 {
+	// recording's rich text companion array through the wire (a non-nil pointer).
+	// This Message carries content_attachments (its content attribute) and no
+	// description_attachments (a nil pointer, absent).
+	if recording.ContentAttachments == nil {
+		t.Fatal("expected non-nil ContentAttachments for the Message recording")
+	}
+	if len(*recording.ContentAttachments) == 0 {
 		t.Fatal("expected non-empty ContentAttachments for the Message recording")
 	}
 	if recording.DescriptionAttachments != nil {
-		t.Errorf("expected no DescriptionAttachments, got %v", recording.DescriptionAttachments)
+		t.Errorf("expected nil (absent) DescriptionAttachments, got %v", recording.DescriptionAttachments)
 	}
-	att := recording.ContentAttachments[0]
+	att := (*recording.ContentAttachments)[0]
 	if att.ContentType != "image/png" || att.Width == nil || *att.Width != 1024 {
 		t.Errorf("unexpected content attachment (float-spelled width should narrow to 1024): %+v", att)
 	}

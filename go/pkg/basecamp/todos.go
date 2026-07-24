@@ -961,3 +961,18 @@ func richTextAttachmentsFromGenerated(gas []generated.RichTextAttachment) []Rich
 	}
 	return attachments
 }
+
+// richTextAttachmentsPtrFromGenerated is the pointer-to-slice variant used by
+// the optional rich text companion arrays on the polymorphic projections
+// (SearchResult, Recording). A nil input (the property was absent) yields a nil
+// pointer so re-encoding omits the key; a non-nil input (server-sent, possibly
+// empty) yields a non-nil pointer so a present-but-empty array re-encodes as []
+// rather than collapsing into absence. This keeps all three wire states —
+// absent, present-empty, populated — distinguishable in both directions.
+func richTextAttachmentsPtrFromGenerated(gas []generated.RichTextAttachment) *[]RichTextAttachment {
+	if gas == nil {
+		return nil
+	}
+	attachments := richTextAttachmentsFromGenerated(gas)
+	return &attachments
+}
