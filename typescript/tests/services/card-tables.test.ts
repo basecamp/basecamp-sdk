@@ -13,7 +13,7 @@ const BASE_URL = "https://3.basecampapi.com/12345";
 const sampleCardTable = (id = 1) => ({
   id,
   title: "Card Table",
-  columns: [],
+  lists: [],
   created_at: "2024-01-15T10:00:00Z",
   updated_at: "2024-01-15T10:00:00Z",
 });
