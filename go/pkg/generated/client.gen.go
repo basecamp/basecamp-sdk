@@ -15113,7 +15113,7 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 			}
 		}
 
-		if params.TypeNames != nil {
+		if params.TypeNames != nil && len(*params.TypeNames) > 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "type_names[]", runtime.ParamLocationQuery, *params.TypeNames); err != nil {
 				return nil, err
@@ -15129,7 +15129,7 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.BucketIds != nil {
+		if params.BucketIds != nil && len(*params.BucketIds) > 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "bucket_ids[]", runtime.ParamLocationQuery, *params.BucketIds); err != nil {
 				return nil, err
@@ -15145,7 +15145,7 @@ func NewSearchRequest(server string, accountId string, params *SearchParams) (*h
 
 		}
 
-		if params.CreatorIds != nil {
+		if params.CreatorIds != nil && len(*params.CreatorIds) > 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "creator_ids[]", runtime.ParamLocationQuery, *params.CreatorIds); err != nil {
 				return nil, err

@@ -238,6 +238,39 @@ func TestSearchParams_BracketedArrayWireEncoding(t *testing.T) {
 	}
 }
 
+// TestSearchParams_EmptyArraysOmitted proves the generated request builder
+// omits an array filter that is a non-nil pointer to an *empty* slice, rather
+// than serializing a bogus bracketed key. A direct generated-client caller can
+// set `&generated.SearchParams{BucketIds: &[]int64{}}`; without the len>0 guard
+// the builder would emit `bucket_ids[]=`, which Rails' `permit(bucket_ids: [])`
+// normalizes into a spurious `[0]` filter. The public SearchService wrapper is
+// safe (it sets the pointer only when len>0), but the generated client is the
+// lower boundary this test pins.
+func TestSearchParams_EmptyArraysOmitted(t *testing.T) {
+	params := &generated.SearchParams{
+		Q:          "hello",
+		TypeNames:  &[]string{},
+		BucketIds:  &[]int64{},
+		CreatorIds: &[]int64{},
+	}
+
+	req, err := generated.NewSearchRequest("https://example.test", "195539477", params)
+	if err != nil {
+		t.Fatalf("NewSearchRequest: %v", err)
+	}
+	values := req.URL.Query()
+
+	for _, key := range []string{"type_names[]", "bucket_ids[]", "creator_ids[]"} {
+		if _, ok := values[key]; ok {
+			t.Errorf("empty array filter %q should be omitted, got %v", key, values[key])
+		}
+	}
+	// The non-array field still serializes.
+	if got := values.Get("q"); got != "hello" {
+		t.Errorf("q = %q, want hello", got)
+	}
+}
+
 // TestSearchParams_AllFieldsWireEncoding drives the generated request builder
 // with every filter param — arrays, scalars, and the deprecated singulars —
 // and asserts each lands on the wire with the right key/value.
