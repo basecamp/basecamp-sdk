@@ -73,11 +73,13 @@ describe("SchedulesService", () => {
           id: 4101,
           summary: "Team Meeting",
           starts_at: "2024-12-15T09:00:00Z",
+          description_attachments: [],
         },
         {
           id: 4102,
           summary: "Project Review",
           starts_at: "2024-12-16T14:00:00Z",
+          description_attachments: [],
         },
       ];
 

@@ -16,6 +16,7 @@ def _metadata(upload_id: int = 1069479400, *, download_url, filename="report.pdf
         "id": upload_id,
         "filename": filename,
         "download_url": download_url,
+        "description_attachments": [],
     }
 
 

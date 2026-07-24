@@ -36,11 +36,13 @@ type Todolist struct {
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	Description      string    `json:"description"`
-	// DescriptionAttachments holds structured metadata for the downloadable
-	// files embedded in the rich text Description. The API always sends this
-	// array (empty when the description has no inline files), so a non-nil
-	// zero-length slice means an empty list and nil means absent. Not
-	// omitempty so re-encoding keeps it visible (nil→null, empty→[]).
+	// DescriptionAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Description. @required — the API always sends this
+	// array (empty when the description has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice (only from manual construction) emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
 	Completed              bool                 `json:"completed"`
 	CompletedRatio         string               `json:"completed_ratio"`

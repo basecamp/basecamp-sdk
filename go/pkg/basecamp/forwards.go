@@ -87,9 +87,12 @@ type Forward struct {
 	Subject          string    `json:"subject"`
 	Content          string    `json:"content"`
 	// ContentAttachments holds structured metadata for the downloadable files
-	// embedded in the rich text Content. Always sent by the API (empty when
-	// none); not omitempty so absent (nil) vs empty ([]) survives re-encoding.
-	// See RichTextAttachment.
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice (only from manual construction) emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	From               string               `json:"from"`
 	Type               string               `json:"type"`
@@ -115,9 +118,12 @@ type ForwardReply struct {
 	InheritsStatus   bool      `json:"inherits_status"`
 	Content          string    `json:"content"`
 	// ContentAttachments holds structured metadata for the downloadable files
-	// embedded in the rich text Content. Always sent by the API (empty when
-	// none); not omitempty so absent (nil) vs empty ([]) survives re-encoding.
-	// See RichTextAttachment.
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice (only from manual construction) emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
 	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 	Type               string               `json:"type"`
 	URL                string               `json:"url"`

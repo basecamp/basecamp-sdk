@@ -33,14 +33,13 @@ type Todo struct {
 	Creator          *Person   `json:"creator,omitempty"`
 	Content          string    `json:"content"`
 	Description      string    `json:"description"`
-	// DescriptionAttachments holds structured metadata for the
-	// downloadable files embedded in the rich text Description. Like
-	// CompletionSubscribers it distinguishes present-but-empty from
-	// absent: the API always sends this array (empty when the description
-	// has no inline files), so a non-nil zero-length slice means an empty
-	// list and nil means the property was absent. Deliberately not
-	// omitempty so re-encoding keeps the field visible either way (nil
-	// marshals as null, empty as []) instead of dropping it.
+	// DescriptionAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Description. @required — the API always sends this
+	// array (empty when the description has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice (only from manual construction) emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
 	StartsOn               string               `json:"starts_on,omitempty"`
 	DueOn                  string               `json:"due_on,omitempty"`
