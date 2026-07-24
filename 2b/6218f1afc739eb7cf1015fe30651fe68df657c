@@ -1,0 +1,27 @@
+typescript/tests/services/todolists.test.ts
+  s_854ff63c351de4::t_43e4d1a7d71a2a 17
+go/pkg/basecamp/recordings_test.go
+  s_854ff63c351de4::t_c5736662e64d81 182
+typescript/tests/services/messages.test.ts
+  s_854ff63c351de4::t_baf8e7c80d3ff5 17
+typescript/tests/services/cards.test.ts
+  s_854ff63c351de4::t_96211c436f127a 17
+typescript/tests/services/comments.test.ts
+  s_854ff63c351de4::t_6810bc4c2a7e98 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2b6218f1afc739eb7cf1015fe30651fe68df657c",
+  "prompts": {},
+  "sessions": {
+    "s_854ff63c351de4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f270cc5-31dd-4a3e-942c-ca738560712a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
