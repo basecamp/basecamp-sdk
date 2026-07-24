@@ -1082,16 +1082,6 @@
               }
             }
           },
-          "422": {
-            "description": "ValidationError 422 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
-                }
-              }
-            }
-          },
           "500": {
             "description": "InternalServerError 500 response",
             "content": {
