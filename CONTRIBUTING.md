@@ -281,8 +281,9 @@ Optional env:
   hard-coded default), so the production BC5 origin is always explicit there.
 - `BASECAMP_BACKEND=bc5` — the `Backend` label that namespaces persisted
   snapshots and selects the `BASECAMP_<BACKEND>_*` fixture overrides. Unset
-  defaults to `unknown` (no per-backend overrides, discovery only); the canary
-  uses `bc5` — production runs BC5.
+  defaults to `unknown`, which disables only those per-backend overrides;
+  generic `BASECAMP_<FIXTURE>` overrides (and then discovery) still apply. The
+  canary uses `bc5` — production runs BC5.
 - `LIVE_RECORD_DIR=<path>` — persists wire snapshots to
   `<path>/<backend>/wire/<test>.json`. Consumed by the cross-language
   replay runners (`make conformance-*-replay`).
