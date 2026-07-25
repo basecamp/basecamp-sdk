@@ -361,10 +361,34 @@ rescue Timeout::Error
   failures << "alternative-nullability validation hung"
 end
 
+# allOf type constraints INTERSECT: a property declared in two allOf branches
+# with conflicting types must satisfy both. A value matching only one branch
+# fails (union would have wrongly accepted it).
+INTERSECT_OPENAPI = {
+  "components" => { "schemas" => {
+    "IntersectTarget" => { "allOf" => [
+      { "type" => "object", "required" => ["f"], "properties" => { "f" => { "type" => "string" } } },
+      { "type" => "object", "properties" => { "f" => { "type" => "integer" } } },
+    ] },
+  } },
+}.freeze
+
+begin
+  out, status = run_synthetic(
+    openapi: INTERSECT_OPENAPI,
+    manifest: { "targets" => [{ "id" => "isect", "fixture" => "isect.json", "pointer" => "", "schema" => "IntersectTarget" }],
+                "covered_schemas" => { "IntersectTarget" => ["isect"] }, "excluded_schemas" => {} },
+    fixtures: { "isect.json" => { "f" => "x" } },
+  )
+  expect_fail(failures, "allOf type constraints intersect (conflicting branch)", out, status, "expected integer, got string")
+rescue Timeout::Error
+  failures << "allOf type-intersection validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 11 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 12 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"

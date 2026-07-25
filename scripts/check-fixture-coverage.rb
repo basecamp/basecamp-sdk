@@ -160,20 +160,31 @@ end
 def merged_constraints(schema, components, visited = Set.new, depth = 0)
   req = []
   props = {}
-  types = Set.new
+  types = Set.new       # union of all declared types (for messages + concrete_for?)
+  type_sets = []        # per-conjunctive-part declared type-sets — a value must
+                        # satisfy EVERY one (allOf/$ref are a conjunction, so their
+                        # type constraints INTERSECT, not union).
   # `$ref`(+siblings) and allOf form a CONJUNCTION: null is allowed only if every
   # part allows it, so a part that imposes a non-nullable type FORBIDS null. We
   # accumulate `forbids_null` (OR) and return its negation as the nullable flag.
   forbids_null = false
   items = nil
   alt_groups = []
-  return [req, props, types, true, items, alt_groups] if depth > 40 || !schema.is_a?(Hash)
+  return [req, props, types, true, items, alt_groups, type_sets] if depth > 40 || !schema.is_a?(Hash)
+
+  # When the same property is constrained by more than one conjunctive part
+  # (e.g. declared in two allOf branches), conjoin the schemas so the field must
+  # satisfy ALL of them — not just the first seen.
+  add_prop = lambda do |k, v|
+    props[k] = props.key?(k) ? { "allOf" => [props[k], v] } : v
+  end
 
   absorb = lambda do |sub|
-    r2, p2, t2, sub_nullable, i2, a2 = merged_constraints(sub, components, visited, depth + 1)
+    r2, p2, t2, sub_nullable, i2, a2, ts2 = merged_constraints(sub, components, visited, depth + 1)
     req.concat(r2)
-    p2.each { |k, v| props[k] ||= v }
+    p2.each { |k, v| add_prop.call(k, v) }
     types.merge(t2)
+    type_sets.concat(ts2)
     forbids_null ||= !sub_nullable
     items ||= i2
     alt_groups.concat(a2)
@@ -188,9 +199,10 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
 
   t, nn = allowed_types(schema)
   types.merge(t)
+  type_sets << t unless t.empty?
   # A node that imposes a concrete type but does not permit null forbids null.
   forbids_null ||= (!t.empty? && !nn)
-  (schema["properties"] || {}).each { |k, v| props[k] ||= v }
+  (schema["properties"] || {}).each { |k, v| add_prop.call(k, v) }
   (schema["required"] || []).each { |r| req << r }
   items ||= schema["items"]
   (schema["allOf"] || []).each { |sub| absorb.call(sub) }
@@ -211,7 +223,7 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
     forbids_null ||= !group_allows_null
   end
 
-  [req, props, types, !forbids_null, items, alt_groups]
+  [req, props, types, !forbids_null, items, alt_groups, type_sets]
 end
 
 # Composition-aware validation of `value` against `schema`. Reports
@@ -225,11 +237,16 @@ def instance_errors(prefix, value, schema, components, depth = 0)
   return [] if depth > 60
   return [] if value.nil? # optional-null tolerated; required-/element-null handled in context
 
-  req, props, types, _nullable, items, alt_groups = merged_constraints(schema, components)
+  req, props, _types, _nullable, items, alt_groups, type_sets = merged_constraints(schema, components)
 
-  unless type_matches?(types, value)
+  # The value must satisfy EVERY conjunctive part's declared type (allOf/$ref
+  # intersect their type constraints — a value matching only one contradictory
+  # branch fails).
+  type_sets.each do |ts|
+    next if type_matches?(ts, value)
+
     label = prefix.empty? ? "(root)" : prefix
-    return ["#{label}: expected #{types.to_a.sort.join('|')}, got #{json_type(value)}"]
+    return ["#{label}: expected #{ts.to_a.sort.join('|')}, got #{json_type(value)}"]
   end
 
   errs = []
