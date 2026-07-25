@@ -5,9 +5,9 @@ detected: 2026-07-22
 sdk_demand: low
 bc3_pr: 12375
 smithy_refs:
-  - "RecordingType Door enum value (spec/basecamp.smithy:6063)"
-  - "Recording.position/description/service (spec/basecamp.smithy:6078)"
-  - "DoorService (spec/basecamp.smithy:6142)"
+  - "Door in the documented recording type string (spec/basecamp.smithy:6223)"
+  - "Recording.position/description/service (spec/basecamp.smithy:6282-6293)"
+  - "DoorService (spec/basecamp.smithy:6309)"
 bc3_refs:
   routes:
     - GET /:account_id/projects/recordings.json?type=Door
