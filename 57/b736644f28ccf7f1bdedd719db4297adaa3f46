@@ -1,0 +1,23 @@
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_12b5d47878a75a::t_e7e01437b581b5 355-384
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_12b5d47878a75a::t_ab7db65be5db17 28,61
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_12b5d47878a75a::t_24fb419887c9a6 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "57b736644f28ccf7f1bdedd719db4297adaa3f46",
+  "prompts": {},
+  "sessions": {
+    "s_12b5d47878a75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b4396bd-4c1e-4c3f-9532-b12c43c6b813",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
