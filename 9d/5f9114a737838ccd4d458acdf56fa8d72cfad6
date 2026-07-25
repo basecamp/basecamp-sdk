@@ -1,0 +1,26 @@
+ruby/scripts/generate-services.rb
+  s_12b5d47878a75a::t_a534dd665ef177 708-709
+ruby/test/basecamp/services/schedules_service_test.rb
+  s_12b5d47878a75a::t_474fd3e26104f1 136-154
+  s_12b5d47878a75a::t_d2f485b4e44541 169-184
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_12b5d47878a75a::t_0535804949a04d 89-143
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_12b5d47878a75a::t_ab7db65be5db17 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9d5f9114a737838ccd4d458acdf56fa8d72cfad6",
+  "prompts": {},
+  "sessions": {
+    "s_12b5d47878a75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b4396bd-4c1e-4c3f-9532-b12c43c6b813",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
