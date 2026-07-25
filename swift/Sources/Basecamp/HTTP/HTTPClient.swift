@@ -18,6 +18,11 @@ package final class HTTPClient: Sendable {
     private static let maxJitterMs: UInt64 = 100
     private static let defaultBaseDelayMs: UInt64 = 1_000
 
+    /// HTTP methods that are naturally idempotent and therefore always
+    /// retry-eligible (SPEC §7). Hoisted to a static constant so the retry gate
+    /// on the hot path does not allocate a `Set` per request.
+    private static let retryableMethods: Set<String> = ["GET", "HEAD", "PUT", "DELETE"]
+
     package init(
         transport: any Transport,
         authStrategy: any AuthStrategy,
@@ -39,13 +44,17 @@ package final class HTTPClient: Sendable {
     ///   - url: Full URL string.
     ///   - body: Optional request body data.
     ///   - retryConfig: Optional per-operation retry configuration.
+    ///   - idempotent: Whether the operation's effect is idempotent. Retries are
+    ///     gated on this so non-idempotent POSTs are attempted exactly once; the
+    ///     default is `false` so a caller that omits it never over-retries.
     /// - Returns: A tuple of (data, HTTPURLResponse).
     package func performRequest(
         method: String,
         url: String,
         body: Data? = nil,
         contentType: String? = nil,
-        retryConfig: RetryConfig? = nil
+        retryConfig: RetryConfig? = nil,
+        idempotent: Bool = false
     ) async throws -> (Data, HTTPURLResponse) {
         let effectiveConfig = retryConfig ?? .default
 
@@ -73,8 +82,14 @@ package final class HTTPClient: Sendable {
             request.setValue(etag, forHTTPHeaderField: "If-None-Match")
         }
 
-        // Retry loop
-        let maxAttempts = max(config.enableRetry ? effectiveConfig.maxAttempts : 1, 1)
+        // Retry loop — gated on operation idempotency (SPEC §7). An operation is
+        // retry-eligible iff its method is naturally idempotent OR the operation
+        // is explicitly marked idempotent. Allowlisting the naturally-idempotent
+        // methods (rather than excluding POST) keeps PATCH/OPTIONS and any future
+        // method fail-closed. This single gate covers both retry paths below: the
+        // status retry and the network-error retry key off `attempt < maxAttempts`.
+        let retryable = Self.retryableMethods.contains(method.uppercased()) || idempotent
+        let maxAttempts = max((config.enableRetry && retryable) ? effectiveConfig.maxAttempts : 1, 1)
 
         for attempt in 1...maxAttempts {
             let info = RequestInfo(method: method, url: url, attempt: attempt)
