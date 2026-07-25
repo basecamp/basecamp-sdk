@@ -52,8 +52,9 @@ bc3_refs:
 > file metadata (documented in upstream `doc/api/sections/rich_text.md`,
 > addressed by bc3 #9980). The gap was SDK-side: the SDK modeled the rich-text
 > *strings* but not their companion attachment arrays. #400 shipped the first
-> slice (`Todo.description_attachments`); **#405 completes coverage across every
-> modeled rich-text decode path** and flips this entry to `absorbed-in-sdk`.
+> slice (`Todo.description_attachments`); **#408 (closes #405) completes
+> coverage across every modeled rich-text decode path** and flips this entry to
+> `absorbed-in-sdk`.
 > This is absorption, not a provenance sync — the contract was already within
 > the current pin, so no repin.
 
@@ -91,7 +92,7 @@ SDK decodes now carries its companion array, reusing `RichTextAttachment` +
 
 - **Generic `attachments` key on SearchResult** (`searches/show:25`): the
   recording's aggregate downloadable files, a *different* projection concern, not
-  a rich-text companion array. Not modeled; tracked separately if demanded.
+  a rich-text companion array. Not modeled; tracked in #428.
 - **everything/aggregates endpoints** (`everything/*`, which also render full
   partials): **unmodeled in the SDK** — no decode path exists to carry an array
   into. Covered by the separate `everything-aggregates.md` gap
@@ -158,7 +159,7 @@ Complete. Shipped in two increments, both reusing `RichTextAttachment`:
    float-tolerant dimension representation — Go `types.FlexInt`, Kotlin
    `FlexibleIntSerializer` on a nullable `Int?`, Swift `Int32?`, Python
    `int | float`, Ruby nilable — is documented in SPEC.md §10 Type Fidelity.
-2. **#405 (this PR):** `content_attachments` / `description_attachments` on the
+2. **#408 (merged #405):** `content_attachments` / `description_attachments` on the
    remaining 17 structures (19 members) — 14 concrete `@required`, Gauge and the
    two polymorphic projections (SearchResult, Recording) optional/non-nullable —
    reusing `RichTextAttachment` and the same per-SDK decode assertions unchanged.
