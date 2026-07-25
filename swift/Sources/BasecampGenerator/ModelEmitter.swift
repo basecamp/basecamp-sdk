@@ -202,6 +202,12 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
     lines.append("// @generated from OpenAPI spec \u{2014} do not edit directly")
     lines.append("import Foundation")
     lines.append("")
+    // Documentation-only deprecation (see #406): a `///` doc comment on the
+    // whole struct, no `@available`, so the generated code does not warn on its
+    // own references.
+    if schema["deprecated"] as? Bool == true {
+        lines += deprecationDocLines(reason: (schema["x-deprecated-reason"] as? String) ?? "deprecated", indent: "")
+    }
     lines.append("public struct \(typeName): Codable, Sendable {")
 
     // Requiredness and nullability are independent axes:
@@ -222,6 +228,11 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
         let valueOptional = schemaIsNullable(propSchema) || !required
         let propType = baseType + (valueOptional ? "?" : "")
 
+        // Documentation-only deprecation (see #406): `///` doc comment on the
+        // property, no `@available`.
+        if propSchema["deprecated"] as? Bool == true {
+            lines += deprecationDocLines(reason: (propSchema["x-deprecated-reason"] as? String) ?? "deprecated", indent: "    ")
+        }
         // Required members are immutable (`let`, set at init); optional members
         // stay `var` so callers can mutate/omit them.
         lines.append("    public \(required ? "let" : "var") \(camelName): \(propType)")

@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+#
+# check-deprecation-parity — assert @deprecated propagation across all six SDKs.
+#
+# The five deprecated source sites (see #406) must each carry the
+# language-appropriate marker, in the right signal class:
+#   * Kotlin   — compiler warning  (@Deprecated at property read sites)
+#   * TS / Go  — editor / static   (@deprecated JSDoc / // Deprecated: godoc)
+#   * Swift/Ruby/Python — documentation only (/// , YARD, docstring/comment)
+#
+# It also pins the negative space: the clean controls (the `search` method, the
+# plural replacements typeNames/bucketIds/creatorIds, and an unrelated field)
+# must stay unmarked, and no emitter may produce a doubled "Deprecated:
+# Deprecated:" marker.
+#
+# Exit non-zero on any violation. Wired into `make check`.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+fail=0
+pass=0
+
+# assert_contains <file> <fixed-string> <description>
+assert_contains() {
+    if grep -Fq -- "$2" "$1" 2>/dev/null; then
+        pass=$((pass + 1))
+    else
+        echo "  FAIL: $3"
+        echo "        expected to find in $1:"
+        echo "          $2"
+        fail=$((fail + 1))
+    fi
+}
+
+# assert_absent <file> <fixed-string> <description>
+assert_absent() {
+    if grep -Fq -- "$2" "$1" 2>/dev/null; then
+        echo "  FAIL: $3"
+        echo "        unexpected string present in $1:"
+        echo "          $2"
+        fail=$((fail + 1))
+    else
+        pass=$((pass + 1))
+    fi
+}
+
+# assert_count <file> <extended-regex> <expected-n> <description>
+assert_count() {
+    local n
+    n=$(grep -Ec -- "$2" "$1" 2>/dev/null || true)
+    if [[ "$n" == "$3" ]]; then
+        pass=$((pass + 1))
+    else
+        echo "  FAIL: $4 (expected $3 match(es) of /$2/ in $1, got $n)"
+        fail=$((fail + 1))
+    fi
+}
+
+echo "==> Checking deprecation parity across six SDKs"
+
+# ---- Go (editor/static: // Deprecated: godoc) --------------------------------
+GO=go/pkg/generated/client.gen.go
+assert_contains "$GO" "// Deprecated: prefer type_names[]." "Go: search 'type' param marker"
+assert_contains "$GO" "// Deprecated: prefer bucket_ids[]." "Go: search 'bucket_id' param marker"
+assert_contains "$GO" "// Deprecated: prefer creator_ids[]." "Go: search 'creator_id' param marker"
+assert_contains "$GO" "// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Go: ClientSide type + clientside property marker"
+# Exactly 5: 3 params + ClientSide type + clientside property. A control field
+# gaining a marker would bump this count.
+assert_count "$GO" "^[[:space:]]*// Deprecated:" 5 "Go: exactly five deprecation markers (controls clean)"
+
+# ---- TypeScript (editor/static: @deprecated JSDoc) ---------------------------
+TS_SVC=typescript/src/generated/services/search.ts
+assert_contains "$TS_SVC" "@deprecated prefer type_names[]." "TS: search 'type' option marker"
+assert_contains "$TS_SVC" "@deprecated prefer bucket_ids[]." "TS: search 'bucketId' option marker"
+assert_contains "$TS_SVC" "@deprecated prefer creator_ids[]." "TS: search 'creatorId' option marker"
+assert_count "$TS_SVC" "@deprecated" 3 "TS: exactly three option markers (controls clean)"
+# openapi-typescript output (schema.d.ts): ClientSide type + clientside property
+# (from the component/property `deprecated`), plus the 3 search params in the
+# paths section (from the param-level `deprecated: true` hoisted for Go). Five.
+assert_count typescript/src/generated/schema.d.ts "@deprecated" 5 "TS: ClientSide + property + 3 param markers (openapi-typescript)"
+assert_contains typescript/src/generated/schema.d.ts "This shape is deprecated since 2024-01: Use Client Visibility feature instead" "TS: ClientSide type reason (openapi-typescript)"
+
+# ---- Swift (documentation only: /// doc comment, no @available) --------------
+SW_SVC=swift/Sources/Basecamp/Generated/Services/SearchService.swift
+assert_contains "$SW_SVC" "/// Deprecated: prefer type_names[]." "Swift: search 'type' option marker"
+assert_contains "$SW_SVC" "/// Deprecated: prefer bucket_ids[]." "Swift: search 'bucketId' option marker"
+assert_contains "$SW_SVC" "/// Deprecated: prefer creator_ids[]." "Swift: search 'creatorId' option marker"
+assert_count "$SW_SVC" "/// Deprecated:" 3 "Swift: exactly three option markers (controls clean)"
+assert_contains swift/Sources/Basecamp/Generated/Models/ClientSide.swift "/// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Swift: ClientSide struct marker"
+assert_contains swift/Sources/Basecamp/Generated/Models/Project.swift "/// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Swift: clientside property marker"
+# Documentation only — no availability attribute anywhere in generated Swift.
+assert_absent "$SW_SVC" "@available(*, deprecated" "Swift: no @available (doc-only signal class)"
+
+# ---- Kotlin (compiler warning: @Deprecated) ----------------------------------
+KT_TYPES=kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+assert_contains "$KT_TYPES" '@Deprecated("prefer type_names[].")' "Kotlin: search 'type' option marker"
+assert_contains "$KT_TYPES" '@Deprecated("prefer bucket_ids[].")' "Kotlin: search 'bucketId' option marker"
+assert_contains "$KT_TYPES" '@Deprecated("prefer creator_ids[].")' "Kotlin: search 'creatorId' option marker"
+assert_count "$KT_TYPES" "@Deprecated\(" 3 "Kotlin: exactly three option markers (controls clean)"
+assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientSide.kt '@Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")' "Kotlin: ClientSide class marker"
+assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt '@Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")' "Kotlin: clientside property marker"
+# Zero-generator-warning suppressions (generic, conditional).
+assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt '@Suppress("DEPRECATION")' "Kotlin: model @Suppress for deprecated-type reference"
+assert_contains kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt '@Suppress("DEPRECATION")' "Kotlin: search service @Suppress for deprecated-param reads"
+# Control: the search function itself is not deprecated (only suppressed).
+assert_absent kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/search.kt "@Deprecated(" "Kotlin: search function is not itself deprecated"
+
+# ---- Ruby (documentation only: YARD) -----------------------------------------
+RB_SVC=ruby/lib/basecamp/generated/services/search_service.rb
+assert_contains "$RB_SVC" "@param type [String, nil] Deprecated: prefer type_names[]." "Ruby: search 'type' param doc"
+assert_contains "$RB_SVC" "@param bucket_id [Integer, nil] Deprecated: prefer bucket_ids[]." "Ruby: search 'bucket_id' param doc"
+assert_contains "$RB_SVC" "@param creator_id [Integer, nil] Deprecated: prefer creator_ids[]." "Ruby: search 'creator_id' param doc"
+
+# ---- Python (documentation only: docstrings / source comment) ----------------
+PY_SVC=python/src/basecamp/generated/services/search.py
+# Present on both the sync and async search methods.
+assert_count "$PY_SVC" "^ +- type: prefer type_names\[\]\." 2 "Python: search docstring (sync + async)"
+assert_contains python/src/basecamp/generated/types.py '"""Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead"""' "Python: ClientSide TypedDict docstring"
+assert_contains python/src/basecamp/generated/types.py "# deprecated (source-only): This shape is deprecated since 2024-01: Use Client Visibility feature instead" "Python: clientside source-only comment"
+
+# ---- Control: the plural replacements and search method stay clean -----------
+# The exact-count assertions above already prove no field beyond the three
+# deprecated singulars is marked (a marked plural would bump the count). These
+# add positive controls: the replacement fields are present as plain
+# declarations, and the search method itself is not deprecated.
+#
+# assert_field_undeprecated <file> <field-decl-regex> <description>: the line
+# declaring the field must exist and must not be immediately preceded by a
+# deprecation marker.
+assert_field_undeprecated() {
+    if awk -v pat="$2" '
+        /(@[Dd]eprecated|\/\/\/? Deprecated:)/ { marker = NR; next }
+        $0 ~ pat {
+            found = 1
+            if (marker == NR - 1) { bad = 1 }
+        }
+        END { exit (found && !bad) ? 0 : 1 }
+    ' "$1" 2>/dev/null; then
+        pass=$((pass + 1))
+    else
+        echo "  FAIL: $3 (field missing, or marked deprecated, in $1)"
+        fail=$((fail + 1))
+    fi
+}
+assert_field_undeprecated "$KT_TYPES" "val typeNames:" "Kotlin control: typeNames replacement is present and unmarked"
+assert_field_undeprecated "$KT_TYPES" "val bucketIds:" "Kotlin control: bucketIds replacement is present and unmarked"
+assert_field_undeprecated "$KT_TYPES" "val creatorIds:" "Kotlin control: creatorIds replacement is present and unmarked"
+assert_field_undeprecated "$KT_TYPES" "val fileType:" "Kotlin control: unrelated field (fileType) is unmarked"
+assert_field_undeprecated "$SW_SVC" "public var typeNames:" "Swift control: typeNames replacement is present and unmarked"
+
+# ---- No doubled markers ------------------------------------------------------
+# Capture into a variable rather than piping grep into `grep -q`: under
+# `set -o pipefail`, `grep -q` closing the pipe early can SIGPIPE the recursive
+# grep, and the pipeline's non-zero status would mask a real match into the
+# "clean" branch. Testing the captured output avoids that.
+doubled=$(grep -rIn "Deprecated: Deprecated:" \
+        go/pkg/generated typescript/src/generated swift/Sources/Basecamp/Generated \
+        ruby/lib/basecamp/generated python/src/basecamp/generated kotlin/sdk/src/commonMain \
+        2>/dev/null || true)
+if [[ -n "$doubled" ]]; then
+    echo "  FAIL: doubled 'Deprecated: Deprecated:' marker found:"
+    echo "$doubled"
+    fail=$((fail + 1))
+else
+    pass=$((pass + 1))
+fi
+
+# ---- Ruby YARD registry: docstrings actually attach --------------------------
+# Parse the generated types with YARD and assert the deprecation attaches to the
+# clientside attribute and the ClientSide class (a text grep can't prove the
+# grouped-attr_accessor @!attribute directive bound correctly).
+if command -v ruby >/dev/null 2>&1; then
+    if (cd ruby && bundle exec ruby "$ROOT/scripts/check-ruby-deprecation-yard.rb"); then
+        pass=$((pass + 1))
+    else
+        echo "  FAIL: Ruby YARD registry check"
+        fail=$((fail + 1))
+    fi
+else
+    echo "  WARN: ruby not found; skipping YARD registry check"
+fi
+
+echo ""
+if [[ "$fail" -eq 0 ]]; then
+    echo "==> Deprecation parity clean ($pass checks passed)"
+    exit 0
+else
+    echo "==> Deprecation parity FAILED ($fail failure(s), $pass passed)"
+    exit 1
+fi

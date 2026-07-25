@@ -346,6 +346,8 @@ class ClientReply(TypedDict):
 
 
 class ClientSide(TypedDict):
+    """Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead"""
+
     app_url: NotRequired[str]
     url: NotRequired[str]
 
@@ -1021,6 +1023,7 @@ class Project(TypedDict):
     bookmarked: NotRequired[bool]
     client_company: NotRequired[ClientCompany]
     clients_enabled: NotRequired[bool]
+    # deprecated (source-only): This shape is deprecated since 2024-01: Use Client Visibility feature instead
     clientside: NotRequired[ClientSide]
     created_at: str
     description: NotRequired[str]

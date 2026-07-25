@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
  *
  * @generated from OpenAPI spec — do not edit directly
  */
+@Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")
 @Serializable
 data class ClientSide(
     val url: String? = null,

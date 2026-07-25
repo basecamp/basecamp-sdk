@@ -28,7 +28,14 @@ data class ParsedOperation(
 )
 
 data class PathParam(val name: String, val type: String, val description: String?)
-data class QueryParam(val name: String, val type: String, val required: Boolean, val description: String?)
+data class QueryParam(
+    val name: String,
+    val type: String,
+    val required: Boolean,
+    val description: String?,
+    val deprecated: Boolean = false,
+    val deprecationReason: String? = null,
+)
 data class BodyProperty(val name: String, val type: String, val required: Boolean, val description: String?, val formatHint: String?)
 
 data class ServiceDefinition(
@@ -113,11 +120,17 @@ class OperationParser(private val api: OpenApiParser) {
                     }
                     else -> "String"
                 }
+                val deprecated = (param["deprecated"]?.jsonPrimitive?.booleanOrNull ?: false) ||
+                    (schema["deprecated"]?.jsonPrimitive?.booleanOrNull ?: false)
+                val deprecationReason = param["x-deprecated-reason"]?.jsonPrimitive?.content
+                    ?: schema["x-deprecated-reason"]?.jsonPrimitive?.content
                 QueryParam(
                     name,
                     type,
                     param["required"]?.jsonPrimitive?.boolean ?: false,
                     param["description"]?.jsonPrimitive?.content,
+                    deprecated,
+                    deprecationReason,
                 )
             }
 
@@ -324,3 +337,16 @@ fun String.snakeToCamelCase(): String =
 
 fun String.capitalize(): String =
     replaceFirstChar { it.uppercase() }
+
+/** Render a string as a Kotlin double-quoted literal, escaping the characters
+ *  that would otherwise break the literal. Used for @Deprecated("...") reasons. */
+fun kotlinStringLiteral(value: String): String {
+    val escaped = value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("$", "\\$")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+    return "\"$escaped\""
+}

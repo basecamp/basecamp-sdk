@@ -38,6 +38,9 @@ struct QueryParam {
     let swiftType: String
     let required: Bool
     let description: String?
+    let deprecated: Bool
+    /// Normalized deprecation reason (see scripts/check-deprecation-parity).
+    let deprecationReason: String?
 }
 
 struct BodyProperty {
@@ -131,7 +134,9 @@ func parseOperation(
                 wireName: wireName,
                 swiftType: type,
                 required: param["required"] as? Bool ?? false,
-                description: param["description"] as? String
+                description: param["description"] as? String,
+                deprecated: (param["deprecated"] as? Bool) ?? (schema["deprecated"] as? Bool) ?? false,
+                deprecationReason: (param["x-deprecated-reason"] as? String) ?? (schema["x-deprecated-reason"] as? String)
             )
         }
 

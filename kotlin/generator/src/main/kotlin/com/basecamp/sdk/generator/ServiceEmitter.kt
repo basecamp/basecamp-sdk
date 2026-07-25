@@ -92,6 +92,16 @@ class ServiceEmitter(private val api: OpenApiParser) {
         }
         sb.appendLine("     */")
 
+        // A function that reads a deprecated query param (e.g. search reads
+        // options?.type/bucketId/creatorId) would itself emit DEPRECATION
+        // warnings on the generated SDK's own code. Suppress at the function
+        // level, keyed on "operation has >=1 deprecated param" rather than the
+        // literal operation name, to hold the zero-generator-warning invariant.
+        // See #406.
+        if (op.queryParams.any { it.deprecated }) {
+            sb.appendLine("    @Suppress(\"DEPRECATION\")")
+        }
+
         // Method signature
         sb.appendLine("    suspend fun ${op.methodName}($params): $returnType {")
 

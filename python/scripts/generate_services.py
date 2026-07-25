@@ -16,6 +16,11 @@ import re
 import sys
 from pathlib import Path
 
+# Make the shared generator helper importable whether this file is run as a
+# script (its dir is already sys.path[0]) or loaded via importlib in tests.
+sys.path.insert(0, str(Path(__file__).parent))
+from gen_common import escape_py_string  # noqa: E402
+
 METHODS = ("get", "post", "put", "patch", "delete")
 
 # Tag to service name mapping overrides
@@ -417,11 +422,14 @@ def parse_operation(
             # `bucket_ids%5B%5D=…`), but strip it for the public `python_name`
             # kwarg identifier (`bucket_ids[]` is not a valid identifier).
             snake = to_snake_case(re.sub(r"\[\]$", "", p["name"]))
+            schema = p.get("schema") or {}
             query_params.append({
                 "name": p["name"],
                 "python_name": safe_python_name(snake),
                 "type": schema_to_python_type(p.get("schema")),
                 "required": p.get("required", False),
+                "deprecated": bool(p.get("deprecated") or schema.get("deprecated")),
+                "deprecation_reason": p.get("x-deprecated-reason") or schema.get("x-deprecated-reason"),
             })
 
     # Body params
@@ -506,6 +514,26 @@ def python_type_hint(param_type: str) -> str:
         "str": "str",
         "dict": "dict",
     }.get(param_type, "str")
+
+
+def deprecation_docstring(op: dict) -> list[str]:
+    """Emit a method docstring flagging deprecated query params.
+
+    Documentation-only (see #406): a TypedDict/kwarg has no per-parameter
+    deprecation directive, and an RST ``.. deprecated::`` inside a ``:param:``
+    is malformed, so this is a real prose docstring listing each deprecated
+    parameter and its replacement. Emitted only when the operation has at least
+    one deprecated param, keyed on that flag rather than a specific method name.
+    """
+    deprecated = [q for q in op["query_params"] if q.get("deprecated")]
+    if not deprecated:
+        return []
+    lines = ['        """Deprecated parameters (prefer the replacement):', ""]
+    for q in deprecated:
+        reason = escape_py_string(q.get("deprecation_reason") or "deprecated")
+        lines.append(f"        - {q['name']}: {reason}")
+    lines.append('        """')
+    return lines
 
 
 def build_params(op: dict) -> list[str]:
@@ -717,6 +745,7 @@ def generate_service_file(service: dict) -> str:
         ret = return_type(op)
         sig_params = ", ".join(["self"] + ([f"*, {', '.join(params)}"] if params else []))
         lines.append(f"    def {op['method_name']}({sig_params}) -> {ret}:")
+        lines.extend(deprecation_docstring(op))
         body = generate_method_body(op, name, is_async=False)
         lines.extend(body)
 
@@ -730,6 +759,7 @@ def generate_service_file(service: dict) -> str:
         ret = return_type(op)
         sig_params = ", ".join(["self"] + ([f"*, {', '.join(params)}"] if params else []))
         lines.append(f"    async def {op['method_name']}({sig_params}) -> {ret}:")
+        lines.extend(deprecation_docstring(op))
         body = generate_method_body(op, name, is_async=True)
         lines.extend(body)
 

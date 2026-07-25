@@ -56,6 +56,8 @@ interface Parameter {
   in: "path" | "query" | "header";
   description?: string;
   required?: boolean;
+  deprecated?: boolean;
+  "x-deprecated-reason"?: string;
   schema: Schema;
 }
 
@@ -84,6 +86,8 @@ interface Schema {
   required?: string[];
   items?: Schema;
   "x-go-type"?: string;
+  deprecated?: boolean;
+  "x-deprecated-reason"?: string;
 }
 
 interface ParsedOperation {
@@ -123,6 +127,9 @@ interface QueryParam {
   type: string;
   required: boolean;
   description?: string;
+  deprecated?: boolean;
+  /** Normalized deprecation reason (see scripts/check-deprecation-parity). */
+  deprecationReason?: string;
 }
 
 interface BodyProperty {
@@ -679,6 +686,8 @@ function parseOperation(
         type: enumUnion || schemaToTsType(p.schema),
         required: p.required || false,
         description: p.description,
+        deprecated: p.deprecated || p.schema.deprecated || false,
+        deprecationReason: p["x-deprecated-reason"] || p.schema["x-deprecated-reason"],
       };
     });
 
@@ -1057,6 +1066,14 @@ function generateRequestInterfaces(service: ServiceDefinition): string[] {
         if (param.name === "bucket" && param.type === "string") {
           lines.push(`  /** Project IDs to filter by */`);
           lines.push(`  ${toCamelCase(param.name)}?: number[];`);
+        } else if (param.deprecated) {
+          // @deprecated is an editor/static-analysis signal (IDE strikethrough +
+          // suggestion diagnostic), not a tsc compile warning. See #406.
+          lines.push(`  /**`);
+          lines.push(`   * ${desc}`);
+          lines.push(`   * @deprecated ${param.deprecationReason || "deprecated"}`);
+          lines.push(`   */`);
+          lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);
         } else {
           lines.push(`  /** ${desc} */`);
           lines.push(`  ${toCamelCase(param.name)}?: ${param.type};`);

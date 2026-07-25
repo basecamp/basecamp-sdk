@@ -124,6 +124,12 @@ if __FILE__ == $PROGRAM_NAME
 
     puts ''
     puts "    # #{name}"
+    # Documentation-only deprecation (see #406): YARD marks a whole class/method,
+    # not individual params, so a class-level @deprecated tag documents a wholly
+    # deprecated type.
+    if schema['deprecated']
+      puts "    # @deprecated #{schema['x-deprecated-reason'] || 'deprecated'}"
+    end
     puts "    class #{name}"
     puts '      include TypeHelpers'
 
@@ -131,6 +137,19 @@ if __FILE__ == $PROGRAM_NAME
     # Add system_label for schemas with flexible integer fields
     has_flexible = ordered_props.any? { |k| properties[k]['x-go-type']&.include?('FlexibleInt64') }
     attr_names << 'system_label' if has_flexible
+
+    # Per-attribute deprecation. The accessors are declared in one grouped
+    # attr_accessor, so a bare comment would wrongly document every attribute;
+    # a YARD @!attribute directive scopes the @deprecated tag to just this one.
+    ordered_props.each do |k|
+      ps = properties[k]
+      next unless ps['deprecated']
+
+      ruby_name = k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '')
+      puts "      # @!attribute [rw] #{ruby_name}"
+      puts "      #   @deprecated #{ps['x-deprecated-reason'] || 'deprecated'}"
+    end
+
     puts "      attr_accessor #{attr_names.map { |n| ":#{n}" }.join(", ")}"
 
     unless required_props.empty?

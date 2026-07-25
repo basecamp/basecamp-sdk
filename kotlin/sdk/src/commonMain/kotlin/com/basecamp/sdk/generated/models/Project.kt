@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
  *
  * @generated from OpenAPI spec — do not edit directly
  */
+@Suppress("DEPRECATION")
 @Serializable
 data class Project(
     val id: Long,
@@ -28,5 +29,6 @@ data class Project(
     val dock: List<DockItem> = emptyList(),
     val bookmarked: Boolean = false,
     @SerialName("client_company") val clientCompany: ClientCompany? = null,
+    @Deprecated("This shape is deprecated since 2024-01: Use Client Visibility feature instead")
     val clientside: ClientSide? = null
 )

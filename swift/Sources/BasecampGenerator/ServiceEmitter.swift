@@ -59,6 +59,13 @@ private func emitOptionsStructs(_ service: ServiceDefinition) -> [String] {
 
         for param in optionalQueryParams {
             let camelName = toCamelCase(param.name)
+            // Documentation-only deprecation: `@available(*, deprecated)` would
+            // warn on the generator's own init/service reads and Swift has no
+            // per-line suppression, so this is a `///` doc comment (surfaced in
+            // Xcode QuickHelp), not an availability attribute. See #406.
+            if param.deprecated {
+                lines += deprecationDocLines(reason: param.deprecationReason ?? "deprecated", indent: "    ")
+            }
             lines.append("    public var \(camelName): \(param.swiftType)?")
         }
 
@@ -113,6 +120,19 @@ private func emitMethod(_ op: ParsedOperation, serviceName: String, schemas: [St
     // Build method signature
     let (paramString, hasOptions, hasRequest, _) = buildSignature(op, resourceName: resourceName, serviceName: serviceName)
     let returnType = buildReturnType(op, serviceName: serviceName, schemas: schemas)
+
+    // Required query params are emitted directly in the signature (optional ones
+    // live on the options struct and carry their own /// marker). A deprecated
+    // *required* param therefore needs a method-level `- Parameter` doc note to
+    // preserve the all-query-parameter propagation guarantee (documentation
+    // only — no @available). See #406.
+    for q in op.queryParams where q.required && q.deprecated {
+        lines += deprecationDocLines(
+            reason: q.deprecationReason ?? "deprecated",
+            indent: "    ",
+            leader: "- Parameter \(toCamelCase(q.name)): Deprecated: ",
+        )
+    }
 
     // Method signature
     if returnType == "Void" {

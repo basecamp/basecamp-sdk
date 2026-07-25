@@ -34,11 +34,20 @@ endpoint's `file_search_types`. */
   since?: "last_7_days" | "last_30_days" | "last_90_days" | "last_12_months" | "forever";
   /** Filter by sort */
   sort?: "best_match" | "recency";
-  /** Deprecated: prefer type_names[]. */
+  /**
+   * Deprecated: prefer type_names[].
+   * @deprecated prefer type_names[].
+   */
   type?: string;
-  /** Deprecated: prefer bucket_ids[]. */
+  /**
+   * Deprecated: prefer bucket_ids[].
+   * @deprecated prefer bucket_ids[].
+   */
   bucketId?: number;
-  /** Deprecated: prefer creator_ids[]. */
+  /**
+   * Deprecated: prefer creator_ids[].
+   * @deprecated prefer creator_ids[].
+   */
   creatorId?: number;
 }
 

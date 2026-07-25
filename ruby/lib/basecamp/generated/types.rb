@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-24T20:00:38Z
+# Generated: 2026-07-25T03:15:23Z
 
 require "json"
 require "time"
@@ -1051,6 +1051,7 @@ module Basecamp
     end
 
     # ClientSide
+    # @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
     class ClientSide
       include TypeHelpers
       attr_accessor :app_url, :url
@@ -2459,6 +2460,8 @@ module Basecamp
     # Project
     class Project
       include TypeHelpers
+      # @!attribute [rw] clientside
+      #   @deprecated This shape is deprecated since 2024-01: Use Client Visibility feature instead
       attr_accessor :app_url, :created_at, :id, :name, :status, :updated_at, :url, :bookmark_url, :bookmarked, :client_company, :clients_enabled, :clientside, :description, :dock, :end_date, :purpose, :start_date
 
       # @return [Array<Symbol>]

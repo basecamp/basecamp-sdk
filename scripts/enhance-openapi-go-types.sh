@@ -26,6 +26,25 @@ if [[ ! -f "$INPUT_FILE" ]]; then
 fi
 
 jq '
+# normalize_deprecation_reason strips exactly one leading "Deprecated:"
+# (case-insensitive) plus following whitespace and trims, so oapi-codegen can
+# prepend its own "// Deprecated: " once instead of producing a doubled
+# "// Deprecated: Deprecated: ..." marker. Mirrors the resolver rule shared by
+# every SDK generator (see scripts/check-deprecation-parity).
+def normalize_deprecation_reason:
+  (. // "")
+  | sub("^\\s*Deprecated:\\s*"; ""; "i")
+  | sub("^\\s+"; "")
+  | sub("\\s+$"; "");
+
+# mark_deprecated_query_param hoists deprecated + normalized x-deprecated-reason
+# onto a single query parameter object (a no-op for non-deprecated params).
+def mark_deprecated_query_param:
+  if (.in == "query") and ((.deprecated == true) or (.schema.deprecated == true)) then
+    .deprecated = true
+    | .["x-deprecated-reason"] = ((.description // .schema.description // "deprecated") | normalize_deprecation_reason)
+  else . end;
+
 # First pass: add x-go-type extensions for timestamps, dates, and ids
 walk(
   if type == "object" then
@@ -191,6 +210,50 @@ walk(
       )
     else . end
   )
+)
+|
+# Ninth pass: hoist normalized x-deprecated-reason so oapi-codegen (v2.8.0) emits
+# a precise "// Deprecated: <reason>" godoc instead of its generic fallback. Data-
+# driven, not keyed on specific names:
+#   * query params — any deprecated query param (deprecated on the param or its
+#     schema). Reason priority: param.description -> schema.description -> generic.
+#   * component schemas — any deprecated component. Reason: its own description.
+#   * $ref-sibling deprecated properties — reason resolves to the referenced
+#     component description (the property carries no local description).
+# See scripts/check-deprecation-parity for the shared cross-SDK contract.
+( .components.schemas ) as $schemas
+|
+.paths |= map_values(
+  # Path-item-level (shared) parameters — inherited by every method on the path.
+  ( if (.parameters | type == "array") then
+      .parameters |= map(mark_deprecated_query_param)
+    else . end )
+  |
+  # Operation-level parameters (the .parameters array is skipped here since it is
+  # not an object, so it is not double-processed).
+  map_values(
+    if (type == "object") and (.parameters | type == "array") then
+      .parameters |= map(mark_deprecated_query_param)
+    else . end
+  )
+)
+|
+.components.schemas |= map_values(
+  ( if .deprecated == true then
+      .["x-deprecated-reason"] = ((.description // "deprecated") | normalize_deprecation_reason)
+    else . end )
+  |
+  ( if (.properties? // {} | length) > 0 then
+      .properties |= map_values(
+        if .deprecated == true then
+          .["x-deprecated-reason"] = (
+            ( .description
+              // ( if has("$ref") then ($schemas[(.["$ref"] | sub(".*/"; ""))].description) else null end )
+              // "deprecated"
+            ) | normalize_deprecation_reason )
+        else . end
+      )
+    else . end )
 )
 ' "$INPUT_FILE" > "${OUTPUT_FILE}.tmp"
 

@@ -9,8 +9,11 @@ public struct SearchSearchOptions: Sendable {
     public var excludeChat: Bool?
     public var since: String?
     public var sort: String?
+    /// Deprecated: prefer type_names[].
     public var type: String?
+    /// Deprecated: prefer bucket_ids[].
     public var bucketId: Int?
+    /// Deprecated: prefer creator_ids[].
     public var creatorId: Int?
     public var maxItems: Int?
 

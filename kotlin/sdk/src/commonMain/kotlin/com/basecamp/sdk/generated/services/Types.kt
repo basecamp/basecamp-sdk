@@ -451,8 +451,11 @@ data class SearchOptions(
     val excludeChat: Boolean? = null,
     val since: String? = null,
     val sort: String? = null,
+    @Deprecated("prefer type_names[].")
     val type: String? = null,
+    @Deprecated("prefer bucket_ids[].")
     val bucketId: Long? = null,
+    @Deprecated("prefer creator_ids[].")
     val creatorId: Long? = null,
     val maxItems: Int? = null
 ) {

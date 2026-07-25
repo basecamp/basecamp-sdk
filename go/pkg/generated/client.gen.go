@@ -420,7 +420,7 @@ type ClientReply struct {
 
 // ClientSide This shape is deprecated since 2024-01: Use Client Visibility feature instead
 //
-// Deprecated: this type has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead
 type ClientSide struct {
 	AppUrl string `json:"app_url,omitempty"`
 	Url    string `json:"url,omitempty"`
@@ -1632,7 +1632,8 @@ type Project struct {
 	ClientsEnabled bool          `json:"clients_enabled,omitempty"`
 
 	// Clientside This shape is deprecated since 2024-01: Use Client Visibility feature instead
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	//
+	// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead
 	Clientside  ClientSide `json:"clientside,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 	Description string     `json:"description,omitempty"`
@@ -2925,12 +2926,18 @@ type SearchParams struct {
 	Sort string `form:"sort,omitempty" json:"sort,omitempty"`
 
 	// Type Deprecated: prefer type_names[].
+	//
+	// Deprecated: prefer type_names[].
 	Type string `form:"type,omitempty" json:"type,omitempty"`
 
 	// BucketId Deprecated: prefer bucket_ids[].
+	//
+	// Deprecated: prefer bucket_ids[].
 	BucketId int64 `form:"bucket_id,omitempty" json:"bucket_id,omitempty"`
 
 	// CreatorId Deprecated: prefer creator_ids[].
+	//
+	// Deprecated: prefer creator_ids[].
 	CreatorId int64 `form:"creator_id,omitempty" json:"creator_id,omitempty"`
 }
 
