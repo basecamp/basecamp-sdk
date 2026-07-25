@@ -75,6 +75,12 @@ jobs:
       - name: Check auth-routable consumer invariants
         run: ../scripts/check-auth-routable-consumers.sh
 
+      - name: Check idempotency classification parity across SDKs
+        # Repo-wide bash+jq check (jq is preinstalled on ubuntu runners). Runs
+        # from repo root regardless of this job's `working-directory: go`.
+        working-directory: .
+        run: ./scripts/check-idempotency-parity
+
       - name: Test with coverage
         run: |
           # Measure coverage for hand-written code only (generated code is excluded)
@@ -275,6 +281,14 @@ jobs:
 
       - name: Test
         run: swift test
+
+      - name: Check generated code drift
+        # Generation needs only the swift toolchain, so the freshness gate keys
+        # off `make swift-check-drift` (HAS_SWIFT-gated), the single source of
+        # truth. This job defaults to `working-directory: swift`; the make
+        # target must run from repo root.
+        working-directory: .
+        run: make swift-check-drift
   test-kotlin:
     name: Kotlin Tests
     runs-on: ubuntu-latest
