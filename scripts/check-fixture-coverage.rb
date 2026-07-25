@@ -112,6 +112,10 @@ def allowed_types(schema)
     members = t.compact
     [Set.new(members - ["null"]), members.include?("null")]
   when String
+    # OpenAPI 3.1 scalar null type: the value must be null, so it imposes no
+    # non-null type constraint and IS nullable.
+    return [Set.new, true] if t == "null"
+
     [Set.new([t]), schema["nullable"] == true]
   else
     [Set.new, schema["nullable"] == true]
@@ -151,12 +155,15 @@ end
 # Merges a schema's effective constraints across `$ref` (including 3.1
 # `$ref`-with-siblings) and `allOf`, returning
 # [required(Array), properties(Hash), types(Set), nullable(bool), items(schema),
-#  alt_groups(Array of branch-arrays)].
-# `allOf` is a conjunction (merged into required/properties). `anyOf`/`oneOf` are
-# alternatives: their branches are NOT merged (that would over-require) but each
-# group is collected so validation can require at least one branch to match —
-# including groups inherited through `$ref` and `allOf`. `visited` (component
-# names) + depth guard terminate reference/composition cycles.
+#  alt_groups(Array of branch-arrays), type_sets(Array of Sets)].
+# `allOf` is a conjunction: required is unioned, and properties AND array `items`
+# constrained by more than one branch are conjoined (allOf-wrapped) so a value
+# must satisfy all of them; `type_sets` holds each part's declared type-set (a
+# value must match every one). `anyOf`/`oneOf` are alternatives: their branches
+# are NOT merged (that would over-require) but each group is collected so
+# validation can require at least one branch to match — including groups
+# inherited through `$ref` and `allOf`. `visited` (component names) + depth guard
+# terminate reference/composition cycles.
 def merged_constraints(schema, components, visited = Set.new, depth = 0)
   req = []
   props = {}
@@ -172,11 +179,14 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
   alt_groups = []
   return [req, props, types, true, items, alt_groups, type_sets] if depth > 40 || !schema.is_a?(Hash)
 
-  # When the same property is constrained by more than one conjunctive part
-  # (e.g. declared in two allOf branches), conjoin the schemas so the field must
-  # satisfy ALL of them — not just the first seen.
+  # When the same property (or array `items`) is constrained by more than one
+  # conjunctive part (e.g. declared in two allOf branches), conjoin the schemas
+  # so the value must satisfy ALL of them — not just the first seen.
   add_prop = lambda do |k, v|
     props[k] = props.key?(k) ? { "allOf" => [props[k], v] } : v
+  end
+  add_items = lambda do |i|
+    items = items ? { "allOf" => [items, i] } : i
   end
 
   absorb = lambda do |sub|
@@ -186,7 +196,7 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
     types.merge(t2)
     type_sets.concat(ts2)
     forbids_null ||= !sub_nullable
-    items ||= i2
+    add_items.call(i2) if i2
     alt_groups.concat(a2)
   end
 
@@ -204,7 +214,7 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
   forbids_null ||= (!t.empty? && !nn)
   (schema["properties"] || {}).each { |k, v| add_prop.call(k, v) }
   (schema["required"] || []).each { |r| req << r }
-  items ||= schema["items"]
+  add_items.call(schema["items"]) if schema["items"]
   (schema["allOf"] || []).each { |sub| absorb.call(sub) }
   %w[anyOf oneOf].each do |key|
     alt_groups << schema[key] if schema[key].is_a?(Array) && !schema[key].empty?

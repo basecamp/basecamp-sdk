@@ -391,10 +391,54 @@ rescue Timeout::Error
   failures << "allOf type-intersection validation hung"
 end
 
+# allOf conjoins array `items` from every branch: an element must satisfy all
+# item schemas, not just the first branch's.
+ITEMS_ALLOF_OPENAPI = {
+  "components" => { "schemas" => {
+    "ItemsTarget" => { "allOf" => [
+      { "type" => "object", "required" => ["xs"],
+        "properties" => { "xs" => { "type" => "array", "items" => { "type" => "string" } } } },
+      { "type" => "object",
+        "properties" => { "xs" => { "type" => "array", "items" => { "type" => "integer" } } } },
+    ] },
+  } },
+}.freeze
+
+begin
+  out, status = run_synthetic(
+    openapi: ITEMS_ALLOF_OPENAPI,
+    manifest: { "targets" => [{ "id" => "items", "fixture" => "items.json", "pointer" => "", "schema" => "ItemsTarget" }],
+                "covered_schemas" => { "ItemsTarget" => ["items"] }, "excluded_schemas" => {} },
+    fixtures: { "items.json" => { "xs" => ["hello"] } },
+  )
+  expect_fail(failures, "allOf conjoins array items across branches", out, status, "expected integer, got string")
+rescue Timeout::Error
+  failures << "allOf items-conjoin validation hung"
+end
+
+# OpenAPI 3.1 scalar `type: "null"`: a required field so typed accepts null.
+NULL_TYPE_OPENAPI = {
+  "components" => { "schemas" => {
+    "NullTypeTarget" => { "type" => "object", "required" => ["n"], "properties" => { "n" => { "type" => "null" } } },
+  } },
+}.freeze
+
+begin
+  out, status = run_synthetic(
+    openapi: NULL_TYPE_OPENAPI,
+    manifest: { "targets" => [{ "id" => "nt", "fixture" => "nt.json", "pointer" => "", "schema" => "NullTypeTarget" }],
+                "covered_schemas" => { "NullTypeTarget" => ["nt"] }, "excluded_schemas" => {} },
+    fixtures: { "nt.json" => { "n" => nil } },
+  )
+  expect_pass(failures, 'scalar type:"null" required field accepts null', out, status)
+rescue Timeout::Error
+  failures << "null-type validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 12 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 14 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
