@@ -1,0 +1,63 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Webhook.kt
+  s_1a48c423686368::t_025cc5ff838210 22-23
+Makefile
+  s_1a48c423686368::t_0872cf0aa85c39 796
+  s_1a48c423686368::t_1bbd3c6dbfc95a 746
+  s_1a48c423686368::t_f92882a9bd331b 768-773
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ScheduleEntry.kt
+  s_1a48c423686368::t_025cc5ff838210 38
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/QuestionSchedule.kt
+  s_1a48c423686368::t_025cc5ff838210 16
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_1a48c423686368::t_a856eefdef539a 194-202
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
+  s_1a48c423686368::t_025cc5ff838210 39-40,44
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/EventDetails.kt
+  s_1a48c423686368::t_025cc5ff838210 15-17
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Card.kt
+  s_1a48c423686368::t_025cc5ff838210 41-43
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardTable.kt
+  s_1a48c423686368::t_025cc5ff838210 29-31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/HillChart.kt
+  s_1a48c423686368::t_025cc5ff838210 20
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/WormholesServiceTest.kt
+  s_1a48c423686368::t_188ea5f4e72149 279-284
+scripts/check-kotlin-optional-arrays.sh
+  s_1a48c423686368::t_b4dfb2db9f82c6 1-14
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt
+  s_1a48c423686368::t_025cc5ff838210 29
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardStep.kt
+  s_1a48c423686368::t_025cc5ff838210 34
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CampfireLine.kt
+  s_1a48c423686368::t_025cc5ff838210 30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Subscription.kt
+  s_1a48c423686368::t_025cc5ff838210 18
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Template.kt
+  s_1a48c423686368::t_025cc5ff838210 23
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodosService.kt
+  s_1a48c423686368::t_bea9da12441799 97-98
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardColumn.kt
+  s_1a48c423686368::t_025cc5ff838210 35
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_1a48c423686368::t_5c1015b9938b2d 138-139
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientApproval.kt
+  s_1a48c423686368::t_025cc5ff838210 38
+scripts/check-kotlin-optional-arrays.rb
+  s_1a48c423686368::t_178dd74bdd511e 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "df162fe5f449f80507ebe124ffea5ff1f55bc66a",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
