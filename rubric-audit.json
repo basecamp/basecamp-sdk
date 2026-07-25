@@ -13,7 +13,7 @@
     },
     "1B.4": {
       "pass": true,
-      "note": "Optional fields use pointers (Go), optional chaining (TS), nilable (Ruby)"
+      "note": "Optional fields preserve absent-vs-present across all six SDKs: Go pointers (*T / *[]T), TS optional chaining (?: T), Ruby nilable (nil vs value), Python NotRequired[T], Swift optionals (T?), Kotlin nullable (T? = null, incl. List<T>? = null for optional arrays). Go accepts one encode-only edge: an optional slice with `omitempty` re-encodes a non-nil empty slice as absent (the decode distinction nil-vs-empty is preserved; only re-serialization collapses it), a deliberate ergonomic trade-off rather than the blanket *[]T sweep. *[]T is used only where rich-text projections need the wire distinction round-tripped in both directions."
     },
     "1B.5": {
       "pass": true,
