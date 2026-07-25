@@ -152,6 +152,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 	op := OperationInfo{
 		Service: "Timesheet", Operation: "ProjectReport",
 		ResourceType: "timesheet_entry", IsMutation: false,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {

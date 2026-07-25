@@ -104,6 +104,7 @@ func (s *WebhooksService) List(ctx context.Context, bucketID int64, opts *Webhoo
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "List",
 		ResourceType: "webhook", IsMutation: false,
+		ProjectID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -209,6 +210,7 @@ func (s *WebhooksService) Create(ctx context.Context, bucketID int64, req *Creat
 	op := OperationInfo{
 		Service: "Webhooks", Operation: "Create",
 		ResourceType: "webhook", IsMutation: true,
+		ProjectID: bucketID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {

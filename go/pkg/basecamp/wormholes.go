@@ -62,6 +62,7 @@ func (s *WormholesService) Create(ctx context.Context, bucketID, cardTableID, de
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Create",
 		ResourceType: "wormhole", IsMutation: true,
+		ProjectID:  bucketID,
 		ResourceID: cardTableID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
@@ -114,6 +115,7 @@ func (s *WormholesService) Update(ctx context.Context, bucketID, wormholeID, des
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Update",
 		ResourceType: "wormhole", IsMutation: true,
+		ProjectID:  bucketID,
 		ResourceID: wormholeID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
@@ -163,6 +165,7 @@ func (s *WormholesService) Delete(ctx context.Context, bucketID, wormholeID int6
 	op := OperationInfo{
 		Service: "Wormholes", Operation: "Delete",
 		ResourceType: "wormhole", IsMutation: true,
+		ProjectID:  bucketID,
 		ResourceID: wormholeID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {

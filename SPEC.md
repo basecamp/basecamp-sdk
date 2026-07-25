@@ -782,7 +782,7 @@ RECORD OperationInfo
   operation     : String     -- full operationId, e.g., "ListProjects", "GetTodo", "CreateProject"
   resource_type : String     -- e.g., "todo", "project"
   is_mutation   : Boolean    -- true for POST, PUT, DELETE
-  project_id    : Integer?   -- if operation is project-scoped (Go omits this field)
+  project_id    : Integer?   -- if operation is project-scoped
   resource_id   : Integer?   -- if operation targets a specific resource
 END
 ```

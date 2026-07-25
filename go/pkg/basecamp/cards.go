@@ -760,6 +760,7 @@ func (s *CardColumnsService) SetColor(ctx context.Context, bucketID, columnID in
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "SetColor",
 		ResourceType: "card_column", IsMutation: true,
+		ProjectID:  bucketID,
 		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
@@ -802,6 +803,7 @@ func (s *CardColumnsService) EnableOnHold(ctx context.Context, bucketID, columnI
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "EnableOnHold",
 		ResourceType: "card_column", IsMutation: true,
+		ProjectID:  bucketID,
 		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
@@ -835,6 +837,7 @@ func (s *CardColumnsService) DisableOnHold(ctx context.Context, bucketID, column
 	op := OperationInfo{
 		Service: "CardColumns", Operation: "DisableOnHold",
 		ResourceType: "card_column", IsMutation: true,
+		ProjectID:  bucketID,
 		ResourceID: columnID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
