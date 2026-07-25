@@ -16,13 +16,16 @@
 #   * Non-Go SDKs' idempotent set == the 69.
 #   * Go's Idempotent:true set     == the 169 (idempotent ∪ readonly).
 #
-# Go is checked THREE ways, because the retry gate consumes an inline call-site
+# Go is checked FOUR ways, because the retry gate consumes an inline call-site
 # boolean (doWithRetry(…, true, "Op", …)) that is rendered INDEPENDENTLY from
 # the operationMetadata table. The call-site boolean is the load-bearing value
 # for retry, so both must be pinned and proven equal:
 #   (1) operationMetadata Idempotent:true set == 169
 #   (2) unique ops passed as doWithRetry(…, true, "Op", …) == 169
 #   (3) sets (1) and (2) are equal
+#   (4) no idempotent op carries a doWithRetry(…, false, "Op", …) call-site
+#       (assertion (2) sorts -u, so one variant regressing true→false could
+#        otherwise hide behind a sibling's true — see the call-site comments)
 #
 # TypeScript is additionally checked on its `.natural`-gated set (the retry gate
 # is `if (opMeta?.idempotent?.natural)`, typescript/src/client.ts): that set must
@@ -154,7 +157,7 @@ jq -r '.operations | to_entries[] | select(.value.idempotent.natural == true) | 
     | sort > "$WORK/ts_natural"
 compare "TypeScript .natural-gated set == 69" "$WORK/idempotent69" "$WORK/ts_natural"
 
-# ---- Go (client.gen.go) — three assertions -----------------------------------
+# ---- Go (client.gen.go) — four assertions -----------------------------------
 GO=go/pkg/generated/client.gen.go
 # (1) operationMetadata table, Idempotent:true.
 awk '/var operationMetadata = map\[string\]OperationMetadata\{/{f=1} f; /^\}/{if(f)f=0}' "$GO" \
