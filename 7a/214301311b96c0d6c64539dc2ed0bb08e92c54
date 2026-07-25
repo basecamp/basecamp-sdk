@@ -1,0 +1,19 @@
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_8a8548e8866958::t_bbf835433cf60a 231,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7a214301311b96c0d6c64539dc2ed0bb08e92c54",
+  "prompts": {},
+  "sessions": {
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
