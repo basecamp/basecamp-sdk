@@ -197,7 +197,7 @@ func (s *MyNotificationsService) MarkAsRead(ctx context.Context, readables []str
 func (s *MyNotificationsService) BubbleUps(ctx context.Context, page int32) (result *BubbleUpsResult, err error) {
 	op := OperationInfo{
 		Service: "MyNotifications", Operation: "BubbleUps",
-		ResourceType: "notification", IsMutation: false,
+		ResourceType: "bubble_up", IsMutation: false,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
