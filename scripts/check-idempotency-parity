@@ -156,6 +156,24 @@ grep -oE '\}, true, "[[:alnum:]]+",' "$GO" \
 compare "Go doWithRetry(…, true, …) call-site set == 169" "$WORK/union169" "$WORK/go_callsite"
 # (3) table and call-site sets agree.
 compare "Go table set == call-site set" "$WORK/go_table" "$WORK/go_callsite"
+# (4) No idempotent op may carry a `false` doWithRetry call-site. Assertion (2)
+# sorts -u, which collapses an op's multiple call-sites (a typed method + its
+# WithBody sibling both render a doWithRetry call for the same op); a single
+# variant regressing true→false would otherwise hide behind a sibling's true.
+# So separately assert the set of ops passed as doWithRetry(…, false, …) is
+# disjoint from the 169. (Today there are zero `false` call-sites — non-
+# idempotent ops bypass doWithRetry entirely — so this guards a future regression.)
+grep -oE '\}, false, "[[:alnum:]]+",' "$GO" \
+    | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort -u > "$WORK/go_false_callsite"
+go_false_idempotent=$(comm -12 "$WORK/union169" "$WORK/go_false_callsite")
+if [[ -z "$go_false_idempotent" ]]; then
+    pass=$((pass + 1))
+else
+    fail=$((fail + 1))
+    echo "  FAIL: Go idempotent ops must not have a false doWithRetry call-site"
+    echo "        idempotent ops dispatched with a non-retrying call-site:"
+    echo "$go_false_idempotent" | sed 's/^/          /'
+fi
 
 echo ""
 if [[ "$fail" -eq 0 ]]; then
