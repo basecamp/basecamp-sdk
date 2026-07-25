@@ -443,10 +443,30 @@ rescue Timeout::Error
   failures << "null-type validation hung"
 end
 
+# OpenAPI 3.1 union `type: ["null"]` (array form with only null) must keep its
+# null-only constraint too — a non-null value fails, null passes.
+NULL_ARRAY_TYPE_OPENAPI = {
+  "components" => { "schemas" => {
+    "NullArrTarget" => { "type" => "object", "required" => ["n"], "properties" => { "n" => { "type" => ["null"] } } },
+  } },
+}.freeze
+
+begin
+  m = { "targets" => [{ "id" => "na", "fixture" => "na.json", "pointer" => "", "schema" => "NullArrTarget" }],
+        "covered_schemas" => { "NullArrTarget" => ["na"] }, "excluded_schemas" => {} }
+  out, status = run_synthetic(openapi: NULL_ARRAY_TYPE_OPENAPI, manifest: m, fixtures: { "na.json" => { "n" => nil } })
+  expect_pass(failures, 'type:["null"] required field accepts null', out, status)
+
+  out, status = run_synthetic(openapi: NULL_ARRAY_TYPE_OPENAPI, manifest: m, fixtures: { "na.json" => { "n" => "x" } })
+  expect_fail(failures, 'type:["null"] rejects a non-null value', out, status, "expected null, got string")
+rescue Timeout::Error
+  failures << "null-array-type validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 15 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 17 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"

@@ -130,7 +130,11 @@ def allowed_types(schema)
   case t
   when Array
     members = t.compact
-    [Set.new(members - ["null"]), members.include?("null")]
+    non_null = members - ["null"]
+    # A union of only ["null"] still constrains the value to null — keep "null"
+    # as the type so a non-null value fails (an empty set would be unconstrained).
+    types = non_null.empty? ? Set.new(["null"]) : Set.new(non_null)
+    [types, members.include?("null")]
   when String
     # OpenAPI 3.1 scalar null type: the value must BE null — a real "null" type
     # constraint (so a non-null value fails), and it is nullable. Returning an
