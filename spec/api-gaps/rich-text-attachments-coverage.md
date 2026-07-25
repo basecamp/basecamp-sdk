@@ -159,7 +159,7 @@ Complete. Shipped in two increments, both reusing `RichTextAttachment`:
    float-tolerant dimension representation — Go `types.FlexInt`, Kotlin
    `FlexibleIntSerializer` on a nullable `Int?`, Swift `Int32?`, Python
    `int | float`, Ruby nilable — is documented in SPEC.md §10 Type Fidelity.
-2. **#408 (merged #405):** `content_attachments` / `description_attachments` on the
+2. **#408 (closes #405):** `content_attachments` / `description_attachments` on the
    remaining 17 structures (19 members) — 14 concrete `@required`, Gauge and the
    two polymorphic projections (SearchResult, Recording) optional/non-nullable —
    reusing `RichTextAttachment` and the same per-SDK decode assertions unchanged.
