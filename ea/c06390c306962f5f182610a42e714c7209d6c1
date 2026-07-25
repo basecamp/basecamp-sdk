@@ -1,0 +1,33 @@
+typescript/tests/services/todolists.test.ts
+  s_12b5d47878a75a::t_b430a93ae16d80 60-84
+  s_12b5d47878a75a::t_3412e3b3050135 153-177
+  s_12b5d47878a75a::t_c4ef816218e12e 10
+typescript/src/generated/services/todolists.ts
+  s_12b5d47878a75a::t_ab7db65be5db17 86,117
+typescript/scripts/generate-services.ts
+  s_8d633484dc870e::t_0e3cfd3b38fc1b 1299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "eac06390c306962f5f182610a42e714c7209d6c1",
+  "prompts": {},
+  "sessions": {
+    "s_12b5d47878a75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b4396bd-4c1e-4c3f-9532-b12c43c6b813",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
