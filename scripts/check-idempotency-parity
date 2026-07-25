@@ -37,6 +37,11 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Stable byte-wise collation for every sort/comm below — a non-C locale can
+# order the same op names differently than `comm` expects, yielding false
+# diffs (or masking real ones). Matches scripts/check-kotlin-service-drift.sh.
+export LC_ALL=C
+
 if ! command -v jq >/dev/null 2>&1; then
     echo "ERROR: jq is required" >&2
     exit 2
