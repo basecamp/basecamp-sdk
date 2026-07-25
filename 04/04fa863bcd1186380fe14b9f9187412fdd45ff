@@ -1,0 +1,21 @@
+spec/basecamp.smithy
+  s_3fd48deaa8600c::t_d8f61a86e801ca 4783
+spec/api-gaps/card-table-wormholes.md
+  s_3fd48deaa8600c::t_4aad8151aa3582 7-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0404fa863bcd1186380fe14b9f9187412fdd45ff",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
