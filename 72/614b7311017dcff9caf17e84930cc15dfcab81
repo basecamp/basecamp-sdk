@@ -1,0 +1,25 @@
+spec/fixtures/manifest.yaml
+  s_1a48c423686368::t_d770a000fb9568 52-68
+.github/workflows/test.yml
+  s_1a48c423686368::t_7ffc6a9d533cc7 48-65
+AGENTS.md
+  s_1a48c423686368::t_93f30e84b6f2a8 319-325
+scripts/check-fixture-coverage.rb
+  s_1a48c423686368::t_1f15dac49bac22 8-12,14-21,24-26,30,46-48,62-63,76-211,242-243,263-271,274-275,282-283,293,316-318,321,324-326,351,356-357,361-373,396-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "72614b7311017dcff9caf17e84930cc15dfcab81",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
