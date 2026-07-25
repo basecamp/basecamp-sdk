@@ -1,0 +1,21 @@
+scripts/check-idempotency-parity
+  s_9d1ce63adbac84::t_c15287bfc1847c 45-46
+scripts/check-swift-service-drift.sh
+  s_9d1ce63adbac84::t_b2f5e7d3f5798d 26-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7d1df0232d84ee7462c4633fe57a141173f5f29c",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
