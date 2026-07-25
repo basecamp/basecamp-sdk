@@ -1,0 +1,46 @@
+python/tests/services/test_tools.py
+  s_8a8548e8866958::t_3be0a23151a010 12-20
+  s_8a8548e8866958::t_3835d57b6ca950 138-152
+  s_8a8548e8866958::t_9cd01f1d1f345a 70-85
+  s_8d633484dc870e::t_85ac566b0197dc 69,136-137,153
+python/src/basecamp/generated/services/webhooks_service.py
+  s_8a8548e8866958::t_93a0b50526d75c 16,24,66,74
+python/src/basecamp/generated/services/tools.py
+  s_8a8548e8866958::t_93a0b50526d75c 16,76
+python/tests/services/test_wormholes_service.py
+  s_8a8548e8866958::t_9bef0e329803ae 20-27
+  s_8a8548e8866958::t_f5929f563ea855 176-191
+  s_8a8548e8866958::t_8574cc6547b559 62-78
+  s_8a8548e8866958::t_b2c065df9f6037 13
+  s_8d633484dc870e::t_724ebf2e230016 61,174-175,192
+python/src/basecamp/generated/services/card_columns.py
+  s_8a8548e8866958::t_93a0b50526d75c 16-22,31-37,45-51,115-121,130-136,144-150
+python/src/basecamp/generated/services/wormholes.py
+  s_8a8548e8866958::t_93a0b50526d75c 16-18,27-29,37-43,54-56,65-67,75-81
+python/scripts/generate_services.py
+  s_8a8548e8866958::t_e6cfe4b0aa1360 588,590
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7494e866e1b4cdc843b3dfaf83a1be23048a79ea",
+  "prompts": {},
+  "sessions": {
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
