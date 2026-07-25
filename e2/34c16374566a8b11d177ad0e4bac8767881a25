@@ -1,0 +1,33 @@
+ruby/lib/basecamp/generated/services/card_columns_service.rb
+  s_8a8548e8866958::t_93a0b50526d75c 16,26,36
+ruby/lib/basecamp/generated/services/webhooks_service.rb
+  s_8a8548e8866958::t_93a0b50526d75c 14,26
+ruby/test/basecamp/services/wormholes_service_test.rb
+  s_8a8548e8866958::t_2e65f2b738a391 141-155
+  s_8a8548e8866958::t_97e0bf17c30a81 46-65,156
+ruby/lib/basecamp/generated/services/wormholes_service.rb
+  s_8a8548e8866958::t_93a0b50526d75c 16,26,38
+ruby/scripts/generate-services.rb
+  s_8a8548e8866958::t_b5f6b9c261f72d 707-708,710
+ruby/lib/basecamp/generated/services/tools_service.rb
+  s_8a8548e8866958::t_93a0b50526d75c 16
+ruby/test/basecamp/services/webhooks_service_test.rb
+  s_8a8548e8866958::t_b551dd2e0b88c3 23-40,112
+  s_8a8548e8866958::t_f0e705ce8c2e22 97-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e234c16374566a8b11d177ad0e4bac8767881a25",
+  "prompts": {},
+  "sessions": {
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
