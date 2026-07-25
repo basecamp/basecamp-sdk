@@ -1,0 +1,49 @@
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_bcf6f711949cbe::t_970a562a2dcb44 216-289
+swift/Sources/BasecampGenerator/BehaviorModel.swift
+  s_bcf6f711949cbe::t_23c79dadd24988 47-48
+  s_bcf6f711949cbe::t_3330d2ea5c359d 30
+  s_68fb2483e203ea::t_c862253d165790 11
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_bcf6f711949cbe::t_f864141e93e21e 55-56
+  s_bcf6f711949cbe::t_7cd423b2ff002a 110-111
+  s_bcf6f711949cbe::t_a69a4a0ed1cd24 244-245
+  s_bcf6f711949cbe::t_6e8df07acfbd93 163-164
+swift/Tests/BasecampTests/IdempotencyMetadataTests.swift
+  s_bcf6f711949cbe::t_1186e278ab456f 1-68
+swift/Tests/BasecampTests/RetryTests.swift
+  s_bcf6f711949cbe::t_5d212de6c8cac8 313-520
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_bcf6f711949cbe::t_1b0eafb0a8a955 42-44,51-52
+  s_bcf6f711949cbe::t_47da2661c3d427 80-88
+SPEC.md
+  s_bcf6f711949cbe::t_cd1944e766014b 407
+  s_bcf6f711949cbe::t_2ca27f2752988f 398
+  s_bcf6f711949cbe::t_35fe7e4d56a680 1568
+swift/Sources/BasecampGenerator/MetadataEmitter.swift
+  s_bcf6f711949cbe::t_297971014bb37d 25-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7c308635a0b4583679ba89e511c9c4a0b89c5792",
+  "prompts": {},
+  "sessions": {
+    "s_68fb2483e203ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "783556f9-5db7-4d65-bc06-ab6ad72d3368",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_bcf6f711949cbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "737d2c86-3535-44d7-a909-ce30b15cedd4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
