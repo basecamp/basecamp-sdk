@@ -31,7 +31,9 @@ class WebhooksServiceTest < Minitest::Test
     # Paginated operations fire hooks on iteration, so drain the enumerator.
     account.webhooks.list(bucket_id: 1).to_a
 
-    info = events.find { |e| e[:event] == :on_operation_start }[:info]
+    event = events.find { |e| e[:event] == :on_operation_start }
+    assert event, "Expected on_operation_start to fire"
+    info = event[:info]
     assert_equal "webhooks", info.service
     assert_equal "list", info.operation
     assert_equal 1, info.project_id

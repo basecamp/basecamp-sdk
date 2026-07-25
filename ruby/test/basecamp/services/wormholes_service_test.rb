@@ -56,7 +56,9 @@ class WormholesServiceTest < Minitest::Test
       destination_recording_id: 1069479500
     )
 
-    info = events.find { |e| e[:event] == :on_operation_start }[:info]
+    event = events.find { |e| e[:event] == :on_operation_start }
+    assert event, "Expected on_operation_start to fire"
+    info = event[:info]
     assert_equal "wormholes", info.service
     assert_equal "create", info.operation
     assert_equal 2085958499, info.project_id
