@@ -380,7 +380,7 @@ func New{{$opid}}Request{{if .HasBody}}WithBody{{end}}(server string{{genParamAr
     if params != nil {
         queryValues := queryURL.Query()
             {{range $paramIdx, $param := .QueryParams}}
-            {{if .HasOptionalPointer}} if params.{{.GoName}} != nil { {{end}}
+            {{if .HasOptionalPointer}} if params.{{.GoName}} != nil{{if .Schema.ArrayType}} && len(*params.{{.GoName}}) > 0{{end}} { {{end}}
             {{if and (not .Required) (not .HasOptionalPointer)}}
             {{if eq .Schema.GoType "string"}}if params.{{.GoName}} != "" {
             {{else if or (eq .Schema.GoType "int") (eq .Schema.GoType "int32") (eq .Schema.GoType "int64") (eq .Schema.GoType "float32") (eq .Schema.GoType "float64")}}if params.{{.GoName}} != 0 {
