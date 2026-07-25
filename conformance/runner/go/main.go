@@ -477,6 +477,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest{Content: content})
 		return operationResult{err: err}
 
+	case "CompleteTodo":
+		todoID := getInt64Param(tc.PathParams, "todoId")
+		err := account.Todos().Complete(ctx, todoID)
+		return operationResult{err: err}
+
 	case "UpdateTodo":
 		todoID := getInt64Param(tc.PathParams, "todoId")
 		req := &basecamp.UpdateTodoRequest{

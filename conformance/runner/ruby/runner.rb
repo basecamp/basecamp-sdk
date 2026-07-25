@@ -197,6 +197,7 @@ TestResult = Struct.new(:name, :passed, :message)
 RUBY_SKIPS = Set.new([
   "PUT operation is naturally idempotent",
   "DELETE operation is naturally idempotent",
+  "POST operation retries when marked idempotent",
   "Total count header is accessible",
   "Missing X-Total-Count returns zero",
   "Pagination stops at maxPages safety cap",
@@ -209,6 +210,7 @@ DOWNLOAD_RETRY_SKIP = "Ruby SDK download path uses http.get_no_retry; retry on 5
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
+  "POST operation retries when marked idempotent" => "Ruby SDK only retries GET",
   "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",
