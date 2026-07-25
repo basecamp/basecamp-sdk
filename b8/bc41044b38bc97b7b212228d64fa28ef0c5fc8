@@ -1,0 +1,27 @@
+conformance/runner/ruby/schema-walker.rb
+  s_1a48c423686368::t_d3e704110fbe68 33-35
+scripts/check-fixture-coverage.rb
+  s_1a48c423686368::t_9c1e7dc64a5e1c 12-14,23-24,31-34,43-51,60-63,70-71,115,143-147,149-150,153-158,162-168,174,177,179,182,201-202,204-209,225-251,257,272,274,285,395
+Makefile
+  s_1a48c423686368::t_ac21cd6afdad49 769-773,776
+scripts/test-check-fixture-coverage.rb
+  s_1a48c423686368::t_4b64690f319d84 1-138
+.github/workflows/test.yml
+  s_1a48c423686368::t_15e87da66f6f4a 66-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b8bc41044b38bc97b7b212228d64fa28ef0c5fc8",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
