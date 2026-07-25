@@ -1,0 +1,20 @@
+conformance/runner/typescript/live-dispatch.ts
+  s_8d633484dc870e::t_b7f26c2e4010d6 159,163,167,171,175,179,183,187,191
+  s_8d633484dc870e::t_1de40f3235c9dc 154-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b0037275fb5f0c32bd160c26687765e8cf86437a",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
