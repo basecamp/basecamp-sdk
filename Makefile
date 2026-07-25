@@ -623,7 +623,7 @@ gradle-stop:
 HAS_SWIFT := $(shell command -v swift 2>/dev/null)
 IS_MACOS  := $(filter Darwin,$(shell uname -s))
 
-.PHONY: swift-build swift-test swift-check swift-clean swift-generate
+.PHONY: swift-build swift-test swift-check swift-check-drift swift-clean swift-generate
 
 # Build Swift SDK (macOS only — SDK requires Apple platforms)
 swift-build:
@@ -647,6 +647,14 @@ ifdef IS_MACOS
 	@$(MAKE) -C swift check
 else
 	@echo "SKIP: swift-check (macOS only)"
+endif
+
+# Check for drift between generated Swift code and the OpenAPI spec (macOS only)
+swift-check-drift:
+ifdef IS_MACOS
+	@scripts/check-swift-service-drift.sh
+else
+	@echo "SKIP: swift-check-drift (macOS only)"
 endif
 
 # Regenerate Swift SDK services from OpenAPI spec (needs swift on any platform)
@@ -787,7 +795,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -845,6 +853,7 @@ help:
 	@echo "  swift-build      Build Swift SDK"
 	@echo "  swift-test       Run Swift tests"
 	@echo "  swift-check      Run all Swift checks"
+	@echo "  swift-check-drift    Check generated Swift code drift vs OpenAPI spec"
 	@echo "  swift-clean      Remove Swift build artifacts"
 	@echo ""
 	@echo "Conformance:"

@@ -275,6 +275,9 @@ jobs:
 
       - name: Test
         run: swift test
+
+      - name: Check generated code drift
+        run: ../scripts/check-swift-service-drift.sh
   test-kotlin:
     name: Kotlin Tests
     runs-on: ubuntu-latest
