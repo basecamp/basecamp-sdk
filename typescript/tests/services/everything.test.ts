@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
+import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -329,6 +330,27 @@ describe("EverythingService", () => {
       expect(result[0].due_on).toBe("2024-02-01");
       expect(result[1].due_on).toBe("2024-02-14");
       expect(result[0].due_on! < result[1].due_on!).toBe(true);
+    });
+  });
+
+  describe("error propagation", () => {
+    const cases: Array<[string, string, () => Promise<unknown>]> = [
+      ["everythingMessages", "/messages.json", () => client.everything.everythingMessages()],
+      ["everythingComments", "/comments.json", () => client.everything.everythingComments()],
+      ["everythingCheckins", "/checkins.json", () => client.everything.everythingCheckins()],
+      ["everythingForwards", "/forwards.json", () => client.everything.everythingForwards()],
+      ["everythingBoosts", "/boosts.json", () => client.everything.everythingBoosts()],
+      ["everythingFiles", "/files.json", () => client.everything.everythingFiles()],
+      ["everythingOverdueTodos", "/todos/overdue.json", () => client.everything.everythingOverdueTodos()],
+      ["everythingOverdueCards", "/cards/overdue.json", () => client.everything.everythingOverdueCards()],
+    ];
+
+    it.each(cases)("%s propagates a 4xx as a BasecampError", async (_name, path, call) => {
+      server.use(
+        http.get(`${BASE_URL}${path}`, () => HttpResponse.json({ error: "Not found" }, { status: 404 }))
+      );
+
+      await expect(call()).rejects.toThrow(BasecampError);
     });
   });
 });

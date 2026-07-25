@@ -323,4 +323,25 @@ class EverythingServiceTest < Minitest::Test
     # Oldest-first ordering
     assert result[0]["due_on"] < result[1]["due_on"]
   end
+
+  # Every flat-family operation must surface a canonical 4xx as a typed error.
+  def test_flat_family_operations_propagate_not_found
+    calls = {
+      "/12345/messages.json" => -> { @account.everything.get_everything_messages.to_a },
+      "/12345/comments.json" => -> { @account.everything.get_everything_comments.to_a },
+      "/12345/checkins.json" => -> { @account.everything.get_everything_checkins.to_a },
+      "/12345/forwards.json" => -> { @account.everything.get_everything_forwards.to_a },
+      "/12345/boosts.json" => -> { @account.everything.get_everything_boosts.to_a },
+      "/12345/files.json" => -> { @account.everything.get_everything_files(kind: nil, people_ids: nil).to_a },
+      "/12345/todos/overdue.json" => -> { @account.everything.get_everything_overdue_todos.to_a },
+      "/12345/cards/overdue.json" => -> { @account.everything.get_everything_overdue_cards.to_a }
+    }
+
+    calls.each do |path, call|
+      stub_get(path, response_body: "", status: 404)
+      assert_raises(Basecamp::NotFoundError, "expected #{path} to raise NotFoundError") do
+        call.call
+      end
+    end
+  end
 end

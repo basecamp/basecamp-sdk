@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
 from basecamp import Client
+from basecamp.errors import NotFoundError
 
 # Canonical heterogeneous feed: a full Upload recording, a Basecamp Document
 # recording, and a rich-text Attachment envelope in a single non-empty array.
@@ -370,3 +372,29 @@ class TestEverythingOverdueFeeds:
 
         assert route.call_count == 1
         assert len(result) == 2
+
+
+# Every flat-family operation must surface a canonical 4xx as a typed error.
+_FLAT_ERROR_CASES = [
+    ("messages.json", lambda acct: acct.everything.get_everything_messages()),
+    ("comments.json", lambda acct: acct.everything.get_everything_comments()),
+    ("checkins.json", lambda acct: acct.everything.get_everything_checkins()),
+    ("forwards.json", lambda acct: acct.everything.get_everything_forwards()),
+    ("boosts.json", lambda acct: acct.everything.get_everything_boosts()),
+    ("files.json", lambda acct: acct.everything.get_everything_files(kind=None, people_ids=None)),
+    ("todos/overdue.json", lambda acct: acct.everything.get_everything_overdue_todos()),
+    ("cards/overdue.json", lambda acct: acct.everything.get_everything_overdue_cards()),
+]
+
+
+class TestEverythingErrorPropagation:
+    @pytest.mark.parametrize("path, call", _FLAT_ERROR_CASES)
+    @respx.mock
+    def test_flat_family_propagates_not_found(self, path, call):
+        respx.get(f"https://3.basecampapi.com/12345/{path}").mock(
+            return_value=httpx.Response(404, json={"error": "Not found"})
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        with pytest.raises(NotFoundError):
+            call(account)
