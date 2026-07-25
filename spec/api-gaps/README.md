@@ -71,13 +71,20 @@ making the absorption journey publicly auditable.
 > classification record (Stacks — renamed Folders in the product — are
 > web-only on both `four` and `master`).
 >
-> Provenance pin advanced to `ca1d34bc` (2026-07-24) as part of absorbing the
-> create-time `visible_to_clients` contract. The single commit past #403's
-> `338b7a11` pin — bc3 #12398 ("Disable Vips support for Matlib files":
-> `config/initializers/vips.rb`, its loader-policy test, and `bin/test-in-container`)
-> — is a reviewed no-op for the SDK: an image-loader security policy and a
-> container test script, with no route, controller, doc, or modeled API contract
-> change.
+> Provenance pin advanced to `640389c2` (2026-07-25). The `ca1d34bc..d7bc88da`
+> sub-range — 30 commits — is a reviewed no-op for the SDK: **26** UI/CSS/JS/lexxy
+> commits (including their PR merge commits #12208/#12399/#12400/#12401); the
+> **3** duplicate-cookie migration code commits (`88cb86d2a`, `52f1e9974`,
+> `7d86f1d06`) that touch only `app/controllers/concerns/authenticate/by_cookie.rb`
+> (a session-cookie concern) and its test; and the **1** merge commit of the
+> cookie PR (#12335, `d7bc88da`). The remaining `d7bc88da..640389c2` step is a
+> **single** commit — BC3 **#12383** ("Add My Bookmarks JSON API", `640389c2`) —
+> which **is** a real, net-new API surface (paginated `GET /my/bookmarks.json`
+> plus `GET`/`POST`(201)/`DELETE`(204) `/recordings/{id}/bookmark.json`, the two
+> mutations idempotent). It is registered as a gap in
+> [`my-bookmarks.md`](my-bookmarks.md) (`addressed-in-bc3-pr-12383`); SDK
+> absorption is a tracked follow-up. The pin **date advances** to 2026-07-25,
+> so the SDK spec/API version bumps with this sync.
 
 The detector also maintains [`allowlist.yml`](allowlist.yml) for routes
 classified as not-an-API-resource or absorbed under another entry. Allowlist

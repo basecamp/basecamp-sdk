@@ -51,11 +51,14 @@ on the existing create/update endpoints:
   endpoint — it redirects to the entry's first occurrence, like Get a
   schedule entry does.
 
-**Server-hang warning**: never send `week_instance: 0`. BC3 currently spins
-computing occurrences for it (open BC3 **#12362**, "Reject recurrence
-schedules whose occurrences can't be computed", adds the rejection). Until
-#12362 merges, an SDK-side guard or enum constraint must make `0`
-unrepresentable.
+**`week_instance: 0` now rejected server-side**: BC3 **#12362**
+(`ec17b83c`, "Reject recurrence schedules whose occurrences can't be
+computed") merged and now rejects `week_instance: 0` (and other
+uncomputable schedules) at create time — previously it spun a worker
+indefinitely. An SDK-side guard is therefore **no longer mandatory**; `0`
+is a normal validation error on the wire, not a hang. Modeling `frequency`
+as an enum and bounding the recurrence integers remains good hygiene, but
+it is no longer load-bearing for hang avoidance.
 
 ## Why it matters
 
@@ -76,9 +79,10 @@ side already models `recurrence_schedule`).
 ## Implementation notes for BC3
 
 - Shipped in docs — `schedules/entries_controller.rb` handles the params.
-- #12362 (open) is the server-side guard for uncomputable schedules
-  (`week_instance: 0` et al.); silent-discard-on-invalid on create is
-  documented, not a bug.
+- #12362 (`ec17b83c`, merged) is the server-side guard for uncomputable
+  schedules (`week_instance: 0` et al.); it now rejects them at create time.
+  Silent-discard-on-invalid on create for *other* invalid recurrence shapes
+  is documented, not a bug.
 
 ## SDK absorption plan when this lands
 
@@ -87,8 +91,10 @@ side already models `recurrence_schedule`).
   before modeling, probe a live BC5 create with each frequency family and
   diff the echoed `recurrence_schedule` against the doc (the derived-fields
   and silent-discard semantics make doc-only modeling risky).
-- Model `frequency` as an enum (nine values above); constrain or guard
-  `week_instance` so `0` can't be sent while BC3 #12362 is open.
+- Model `frequency` as an enum (nine values above). BC3 #12362
+  (`ec17b83c`) has merged, so `week_instance: 0` is now a server-side
+  validation error rather than a hang; an SDK-side guard is optional
+  hygiene, no longer a hard requirement.
 - Status flips to `absorbed-in-sdk` with the absorption PR (which adds the
   Smithy refs).
 - Pairwise check: BC4 accepts the same create/update routes but recurrence

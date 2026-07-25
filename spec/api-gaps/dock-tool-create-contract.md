@@ -3,6 +3,7 @@ gap: dock-tool-create-contract
 status: absorbed-in-sdk
 detected: 2026-05-25
 sdk_demand: medium
+bc3_pr: 12366
 smithy_refs:
   - "CreateTool (spec/basecamp.smithy:6874)"
 bc3_refs:
@@ -22,8 +23,9 @@ bc3_refs:
 > this entry records a live BC4→BC5 *contract change* on an existing route,
 > not new BC5 surface awaiting coverage. `absorbed-in-sdk` here means the SDK
 > absorbed the new create-by-type contract (basecamp-sdk#327, merged
-> 2026-07-22); upstream documentation still describes the removed contract
-> (tracked as bc3#12364).
+> 2026-07-22). The upstream doc tail is also closed: bc3#12366
+> (`8f938281`) rewrote `doc/api/sections/tools.md` for the `tool_type`
+> contract (superseding the earlier bc3#12364 tracking note).
 
 ## What's missing
 
@@ -51,9 +53,10 @@ but the request contract flipped between BC4 and BC5:
   the reporter's raw bucket-scoped clone request still succeeded — the
   reporter caught the contract mid-flip.
 
-What's missing, precisely: upstream `doc/api/sections/tools.md` (canonical
-since repatriation `056a356ee0`; synced to bc3-api) still documents the
-removed clone contract. The compatibility posture itself is settled by
+What was missing, precisely: upstream `doc/api/sections/tools.md` (canonical
+since repatriation `056a356ee0`; synced to bc3-api) documented the removed
+clone contract until bc3#12366 (`8f938281`) rewrote it for the `tool_type`
+contract. The compatibility posture itself is settled by
 release: **BC5 replaced BC4 in production, so there is no live BC4 backend**
 — `four` survives as the wire-format reference (`compatibility.bc3-four`)
 for BC4-era clients, not as a server anyone can call.
@@ -104,16 +107,17 @@ release (no live BC4 backend); the remaining tail is documentation.
 
 ## Implementation notes for BC3
 
-One upstream item, standalone (BC3 #11628/#11629 are merged, so this is a
-new follow-up, not an addition to that train): rewrite the create section of
-`doc/api/sections/tools.md` for `tool_type` + optional `title` (syncs to
-bc3-api). The current text documents a contract that 404s on `master` —
-tracked as bc3#12364. (A `four` compatibility shim is moot: BC5 replaced BC4
-at release, so there is no live BC4 backend to shim.)
+The one upstream item is now closed: bc3#12366 (`8f938281`) rewrote the
+create section of `doc/api/sections/tools.md` for `tool_type` + optional
+`title` (syncs to bc3-api), replacing the text that documented a contract
+which 404s on `master` (the earlier bc3#12364 tracking note is superseded).
+(A `four` compatibility shim is moot: BC5 replaced BC4 at release, so there
+is no live BC4 backend to shim.)
 
 ## SDK absorption plan when this lands
 
 Absorbed: basecamp-sdk#327 (CloneTool → CreateTool rename, bucket-scoped
 endpoint, `{tool_type, title?}` body, per-SDK create signatures + tests +
-conformance) merged 2026-07-22. The only remaining tail is the upstream doc
-rewrite (bc3#12364); no further SDK change is needed.
+conformance) merged 2026-07-22. The upstream doc rewrite (bc3#12366,
+`8f938281`) has since landed, closing the last tail; no further SDK change
+is needed.
