@@ -1,0 +1,35 @@
+python/tests/services/test_todolists_service.py
+  s_12b5d47878a75a::t_6dd2b47c449ebd 13,18-23
+  s_12b5d47878a75a::t_c3a45a478f95e5 80-156
+  s_8d633484dc870e::t_b89f5ad5a1fa57 24-25
+python/src/basecamp/generated/services/schedules.py
+  s_12b5d47878a75a::t_ab7db65be5db17 51-53,152-154
+python/tests/services/test_schedules_service.py
+  s_12b5d47878a75a::t_a05987f3719ff4 1-63
+python/scripts/generate_services.py
+  s_12b5d47878a75a::t_ff0dd46bf11c53 590-595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e0a956de31df08daf8049e36f3141218f4af0535",
+  "prompts": {},
+  "sessions": {
+    "s_12b5d47878a75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b4396bd-4c1e-4c3f-9532-b12c43c6b813",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
