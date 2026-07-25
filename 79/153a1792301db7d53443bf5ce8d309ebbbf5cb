@@ -1,0 +1,34 @@
+typescript/src/generated/services/webhooks.ts
+  s_8a8548e8866958::t_93a0b50526d75c 78,115
+typescript/tests/services/wormholes.test.ts
+  s_8a8548e8866958::t_96c20864208388 101-132
+  s_8a8548e8866958::t_dacc210207ae14 9
+typescript/scripts/generate-services.ts
+  s_8a8548e8866958::t_991889c3b01d07 1296
+  s_8a8548e8866958::t_64f28e12625b6a 1294,1299
+typescript/tests/services/webhooks.test.ts
+  s_8a8548e8866958::t_dc62695980e8ad 11
+  s_8a8548e8866958::t_340f99bb4c5d81 76-102
+typescript/src/generated/services/card-columns.ts
+  s_8a8548e8866958::t_93a0b50526d75c 91,126,158
+typescript/src/generated/services/wormholes.ts
+  s_8a8548e8866958::t_93a0b50526d75c 63,98,130
+typescript/src/generated/services/tools.ts
+  s_8a8548e8866958::t_93a0b50526d75c 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "79153a1792301db7d53443bf5ce8d309ebbbf5cb",
+  "prompts": {},
+  "sessions": {
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
