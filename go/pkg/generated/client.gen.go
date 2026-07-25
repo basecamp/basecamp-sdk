@@ -419,6 +419,8 @@ type ClientReply struct {
 }
 
 // ClientSide This shape is deprecated since 2024-01: Use Client Visibility feature instead
+//
+// Deprecated: this type has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 type ClientSide struct {
 	AppUrl string `json:"app_url,omitempty"`
 	Url    string `json:"url,omitempty"`
@@ -2231,12 +2233,12 @@ type TodolistOrGroup struct {
 	union json.RawMessage
 }
 
-// TodolistOrGroup0 defines model for .
+// TodolistOrGroup0 defines model for TodolistOrGroup.0.
 type TodolistOrGroup0 struct {
 	Todolist Todolist `json:"todolist"`
 }
 
-// TodolistOrGroup1 defines model for .
+// TodolistOrGroup1 defines model for TodolistOrGroup.1.
 type TodolistOrGroup1 struct {
 	Group TodolistGroup `json:"group"`
 }
@@ -28833,6 +28835,9 @@ func ParseRemoveAccountLogoResponse(rsp *http.Response) (*RemoveAccountLogoRespo
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -28880,6 +28885,9 @@ func ParseUpdateAccountLogoResponse(rsp *http.Response) (*UpdateAccountLogoRespo
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -29056,6 +29064,9 @@ func ParseDeleteBoostResponse(rsp *http.Response) (*DeleteBoostResponse, error) 
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -29645,6 +29656,9 @@ func ParseMoveCardResponse(rsp *http.Response) (*MoveCardResponse, error) {
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -29699,6 +29713,9 @@ func ParseRepositionCardStepResponse(rsp *http.Response) (*RepositionCardStepRes
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -30044,6 +30061,9 @@ func ParseUnsubscribeFromCardColumnResponse(rsp *http.Response) (*UnsubscribeFro
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -30091,6 +30111,9 @@ func ParseSubscribeToCardColumnResponse(rsp *http.Response) (*SubscribeToCardCol
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -30436,6 +30459,9 @@ func ParseMoveCardColumnResponse(rsp *http.Response) (*MoveCardColumnResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -30605,6 +30631,9 @@ func ParseDeleteMessageTypeResponse(rsp *http.Response) (*DeleteMessageTypeRespo
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -30990,6 +31019,9 @@ func ParseDeleteChatbotResponse(rsp *http.Response) (*DeleteChatbotResponse, err
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -31267,6 +31299,9 @@ func ParseDeleteCampfireLineResponse(rsp *http.Response) (*DeleteCampfireLineRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -31368,6 +31403,9 @@ func ParseUpdateCampfireLineResponse(rsp *http.Response) (*UpdateCampfireLineRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32037,6 +32075,9 @@ func ParseDeleteToolResponse(rsp *http.Response) (*DeleteToolResponse, error) {
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32314,6 +32355,9 @@ func ParseDestroyGaugeNeedleResponse(rsp *http.Response) (*DestroyGaugeNeedleRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32875,6 +32919,9 @@ func ParseCreateLineupMarkerResponse(rsp *http.Response) (*CreateLineupMarkerRes
 	}
 
 	switch {
+	case rsp.StatusCode == 201:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32929,6 +32976,9 @@ func ParseDeleteLineupMarkerResponse(rsp *http.Response) (*DeleteLineupMarkerRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -32976,6 +33026,9 @@ func ParseUpdateLineupMarkerResponse(rsp *http.Response) (*UpdateLineupMarkerRes
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -33624,6 +33677,9 @@ func ParseUpdateMyProfileResponse(rsp *http.Response) (*UpdateMyProfileResponse,
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -33772,6 +33828,9 @@ func ParseMarkAsReadResponse(rsp *http.Response) (*MarkAsReadResponse, error) {
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -33927,6 +33986,9 @@ func ParseDisableOutOfOfficeResponse(rsp *http.Response) (*DisableOutOfOfficeRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -34258,6 +34320,9 @@ func ParseTrashProjectResponse(rsp *http.Response) (*TrashProjectResponse, error
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -34420,6 +34485,9 @@ func ParseToggleGaugeResponse(rsp *http.Response) (*ToggleGaugeResponse, error) 
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -34880,6 +34948,9 @@ func ParseUpdateAnswerResponse(rsp *http.Response) (*UpdateAnswerResponse, error
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -35631,6 +35702,9 @@ func ParseUnpinMessageResponse(rsp *http.Response) (*UnpinMessageResponse, error
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -35678,6 +35752,9 @@ func ParsePinMessageResponse(rsp *http.Response) (*PinMessageResponse, error) {
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36246,6 +36323,9 @@ func ParseUnarchiveRecordingResponse(rsp *http.Response) (*UnarchiveRecordingRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36300,6 +36380,9 @@ func ParseArchiveRecordingResponse(rsp *http.Response) (*ArchiveRecordingRespons
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36354,6 +36437,9 @@ func ParseTrashRecordingResponse(rsp *http.Response) (*TrashRecordingResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36408,6 +36494,9 @@ func ParseUnsubscribeResponse(rsp *http.Response) (*UnsubscribeResponse, error) 
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36746,6 +36835,9 @@ func ParseDisableToolResponse(rsp *http.Response) (*DisableToolResponse, error) 
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36793,6 +36885,9 @@ func ParseEnableToolResponse(rsp *http.Response) (*EnableToolResponse, error) {
 	}
 
 	switch {
+	case rsp.StatusCode == 201:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -36847,6 +36942,9 @@ func ParseRepositionToolResponse(rsp *http.Response) (*RepositionToolResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -37969,6 +38067,9 @@ func ParseDeleteTemplateResponse(rsp *http.Response) (*DeleteTemplateResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -38361,6 +38462,9 @@ func ParseRepositionTodolistGroupResponse(rsp *http.Response) (*RepositionTodoli
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -38760,6 +38864,9 @@ func ParseTrashTodoResponse(rsp *http.Response) (*TrashTodoResponse, error) {
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -38922,6 +39029,9 @@ func ParseUncompleteTodoResponse(rsp *http.Response) (*UncompleteTodoResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -38969,6 +39079,9 @@ func ParseCompleteTodoResponse(rsp *http.Response) (*CompleteTodoResponse, error
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -39023,6 +39136,9 @@ func ParseRepositionTodoResponse(rsp *http.Response) (*RepositionTodoResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 200:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -39077,6 +39193,9 @@ func ParseRepositionTodolistResponse(rsp *http.Response) (*RepositionTodolistRes
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -40044,6 +40163,9 @@ func ParseDeleteWebhookResponse(rsp *http.Response) (*DeleteWebhookResponse, err
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
