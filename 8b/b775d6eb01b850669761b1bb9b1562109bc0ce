@@ -1,0 +1,27 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_9d1ce63adbac84::t_7d70080ab368b4 399-428
+  s_9d1ce63adbac84::t_65ffaa8f8af2b1 3
+go/pkg/basecamp/todos_test.go
+  s_9d1ce63adbac84::t_0de152ef7ee7ad 1792-1823
+typescript/tests/services/todos.test.ts
+  s_9d1ce63adbac84::t_a64f08321aa8e7 425-453
+python/tests/services/test_todos.py
+  s_9d1ce63adbac84::t_453d97130275cd 343-377
+  s_9d1ce63adbac84::t_c39cd840189495 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8bb775d6eb01b850669761b1bb9b1562109bc0ce",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
