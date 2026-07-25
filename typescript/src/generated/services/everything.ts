@@ -195,7 +195,7 @@ export class EverythingService extends BaseService {
   }
 
   /**
-   * Get every file recording across all accessible projects, newest-first
+   * Get every file recording across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
    * @returns All EverythingFile across all pages, with .meta.totalCount
    *
@@ -223,7 +223,7 @@ export class EverythingService extends BaseService {
   }
 
   /**
-   * Get every inbox forward across all accessible projects, newest-first
+   * Get every inbox forward across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
    * @returns All Recording across all pages, with .meta.totalCount
    *

@@ -45,7 +45,7 @@ module Basecamp
         end
       end
 
-      # Get every file recording across all accessible projects, newest-first
+      # Get every file recording across all accessible projects, newest-first (paginated).
       # @param kind [String, nil] Filter by file kind: all (default), images, pdfs, documents, or videos.
       # @param people_ids [Array, nil] Restrict to files created by the given people (repeatable).
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
@@ -57,7 +57,7 @@ module Basecamp
         end
       end
 
-      # Get every inbox forward across all accessible projects, newest-first
+      # Get every inbox forward across all accessible projects, newest-first (paginated).
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
       def get_everything_forwards(page: nil)

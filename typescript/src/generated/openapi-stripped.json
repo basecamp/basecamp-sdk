@@ -6433,7 +6433,7 @@
     },
     "/files.json": {
       "get": {
-        "description": "Get every file recording across all accessible projects, newest-first\n(paginated). Heterogeneous: uploads and Basecamp documents carry their\nstandard recording shapes, while rich-text attachments are wrapped in a\nrecording envelope plus an `attachable_sgid` and blob metadata. Modeled as\nan optional-field superset (EverythingFile) so one element type decodes any\nvariant.",
+        "description": "Get every file recording across all accessible projects, newest-first (paginated).\nHeterogeneous: uploads and Basecamp documents carry their\nstandard recording shapes, while rich-text attachments are wrapped in a\nrecording envelope plus an `attachable_sgid` and blob metadata. Modeled as\nan optional-field superset (EverythingFile) so one element type decodes any\nvariant.",
         "operationId": "GetEverythingFiles",
         "parameters": [
           {
@@ -6545,7 +6545,7 @@
     },
     "/forwards.json": {
       "get": {
-        "description": "Get every inbox forward across all accessible projects, newest-first\n(paginated). Each item embeds its `bucket`.",
+        "description": "Get every inbox forward across all accessible projects, newest-first (paginated).\nEach item embeds its `bucket`.",
         "operationId": "GetEverythingForwards",
         "parameters": [
           {

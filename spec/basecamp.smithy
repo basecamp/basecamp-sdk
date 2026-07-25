@@ -8836,8 +8836,8 @@ structure GetEverythingCheckinsOutput {
   recordings: RecordingList
 }
 
-/// Get every inbox forward across all accessible projects, newest-first
-/// (paginated). Each item embeds its `bucket`.
+/// Get every inbox forward across all accessible projects, newest-first (paginated).
+/// Each item embeds its `bucket`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
@@ -8888,8 +8888,8 @@ structure GetEverythingBoostsOutput {
   boosts: BoostList
 }
 
-/// Get every file recording across all accessible projects, newest-first
-/// (paginated). Heterogeneous: uploads and Basecamp documents carry their
+/// Get every file recording across all accessible projects, newest-first (paginated).
+/// Heterogeneous: uploads and Basecamp documents carry their
 /// standard recording shapes, while rich-text attachments are wrapped in a
 /// recording envelope plus an `attachable_sgid` and blob metadata. Modeled as
 /// an optional-field superset (EverythingFile) so one element type decodes any

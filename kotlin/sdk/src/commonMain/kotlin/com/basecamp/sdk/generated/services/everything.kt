@@ -101,7 +101,7 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get every file recording across all accessible projects, newest-first
+     * Get every file recording across all accessible projects, newest-first (paginated).
      * @param options Optional query parameters and pagination control
      */
     suspend fun everythingFiles(options: GetEverythingFilesOptions? = null): ListResult<EverythingFile> {
@@ -126,7 +126,7 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get every inbox forward across all accessible projects, newest-first
+     * Get every inbox forward across all accessible projects, newest-first (paginated).
      * @param options Optional query parameters and pagination control
      */
     suspend fun everythingForwards(options: GetEverythingForwardsOptions? = null): ListResult<Recording> {
