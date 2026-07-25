@@ -8326,7 +8326,7 @@
     },
     "/my/readings/bubble_ups.json": {
       "get": {
-        "description": "Get the current user's current and scheduled bubble-ups as a paginated\nlist (50 per page). Current bubble-ups are returned first, ordered by most\nrecently bubbled up; scheduled bubble-ups follow, ordered by scheduled\nbubble-up time. Each item uses the same notification object shape as\nGetMyNotifications.",
+        "description": "Get the current user's current and scheduled bubble-ups (paginated, 50 per page).\nCurrent bubble-ups are returned first, ordered by most recently bubbled up;\nscheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item\nuses the same notification object shape as GetMyNotifications.",
         "operationId": "GetBubbleUps",
         "parameters": [
           {

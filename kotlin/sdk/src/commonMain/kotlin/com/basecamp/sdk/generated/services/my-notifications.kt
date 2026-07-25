@@ -37,7 +37,7 @@ class MyNotificationsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get the current user's current and scheduled bubble-ups as a paginated
+     * Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
      * @param options Optional query parameters and pagination control
      */
     suspend fun bubbleUps(options: GetBubbleUpsOptions? = null): ListResult<Notification> {

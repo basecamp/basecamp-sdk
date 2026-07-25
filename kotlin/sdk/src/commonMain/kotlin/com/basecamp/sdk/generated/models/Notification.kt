@@ -34,8 +34,8 @@ data class Notification(
     @SerialName("bubble_up_at") val bubbleUpAt: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     val subscribed: Boolean = false,
-    @SerialName("previewable_attachments") val previewableAttachments: List<PreviewableAttachment> = emptyList(),
-    val participants: List<Person> = emptyList(),
+    @SerialName("previewable_attachments") val previewableAttachments: List<PreviewableAttachment>? = null,
+    val participants: List<Person>? = null,
     val named: Boolean = false,
     @SerialName("image_url") val imageUrl: String? = null
 )

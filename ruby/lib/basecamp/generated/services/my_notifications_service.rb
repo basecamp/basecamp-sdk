@@ -20,7 +20,7 @@ module Basecamp
         end
       end
 
-      # Get the current user's current and scheduled bubble-ups as a paginated
+      # Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
       # @param page [Integer, nil] Page number. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
       def get_bubble_ups(page: nil)

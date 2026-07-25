@@ -85,7 +85,7 @@ export class MyNotificationsService extends BaseService {
   }
 
   /**
-   * Get the current user's current and scheduled bubble-ups as a paginated
+   * Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
    * @param options - Optional query parameters
    * @returns All Notification across all pages, with .meta.totalCount
    *

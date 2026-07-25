@@ -1176,11 +1176,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get the current user's current and scheduled bubble-ups as a paginated
-         *     list (50 per page). Current bubble-ups are returned first, ordered by most
-         *     recently bubbled up; scheduled bubble-ups follow, ordered by scheduled
-         *     bubble-up time. Each item uses the same notification object shape as
-         *     GetMyNotifications.
+         * @description Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
+         *     Current bubble-ups are returned first, ordered by most recently bubbled up;
+         *     scheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item
+         *     uses the same notification object shape as GetMyNotifications.
          */
         get: operations["GetBubbleUps"];
         put?: never;
