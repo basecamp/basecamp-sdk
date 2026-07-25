@@ -490,14 +490,14 @@ func (s *EverythingService) OverdueCards(ctx context.Context) (result []Card, er
 // BucketTodosGroup is one project's slice of a filtered to-do listing: the
 // parent project and the matching to-dos (each carrying its steps).
 type BucketTodosGroup struct {
-	Bucket *Bucket `json:"bucket,omitempty"`
-	Todos  []Todo  `json:"todos,omitempty"`
+	Bucket Bucket `json:"bucket"`
+	Todos  []Todo `json:"todos"`
 }
 
 // BucketCardsGroup is one project's slice of a filtered card listing.
 type BucketCardsGroup struct {
-	Bucket *Bucket `json:"bucket,omitempty"`
-	Cards  []Card  `json:"cards,omitempty"`
+	Bucket Bucket `json:"bucket"`
+	Cards  []Card `json:"cards"`
 }
 
 // BucketTodosGroupsPage is a page-followed list of to-do bucket groups.
@@ -513,9 +513,9 @@ type BucketCardsGroupsPage struct {
 }
 
 func bucketTodosGroupFromGenerated(g generated.BucketTodosGroup) BucketTodosGroup {
-	grp := BucketTodosGroup{}
-	if g.Bucket.Id != 0 || g.Bucket.Name != "" {
-		grp.Bucket = &Bucket{ID: g.Bucket.Id, Name: g.Bucket.Name, Type: g.Bucket.Type}
+	grp := BucketTodosGroup{
+		Bucket: Bucket{ID: g.Bucket.Id, Name: g.Bucket.Name, Type: g.Bucket.Type},
+		Todos:  make([]Todo, 0, len(g.Todos)),
 	}
 	for _, gt := range g.Todos {
 		grp.Todos = append(grp.Todos, todoFromGenerated(gt))
@@ -524,9 +524,9 @@ func bucketTodosGroupFromGenerated(g generated.BucketTodosGroup) BucketTodosGrou
 }
 
 func bucketCardsGroupFromGenerated(g generated.BucketCardsGroup) BucketCardsGroup {
-	grp := BucketCardsGroup{}
-	if g.Bucket.Id != 0 || g.Bucket.Name != "" {
-		grp.Bucket = &Bucket{ID: g.Bucket.Id, Name: g.Bucket.Name, Type: g.Bucket.Type}
+	grp := BucketCardsGroup{
+		Bucket: Bucket{ID: g.Bucket.Id, Name: g.Bucket.Name, Type: g.Bucket.Type},
+		Cards:  make([]Card, 0, len(g.Cards)),
 	}
 	for _, gc := range g.Cards {
 		grp.Cards = append(grp.Cards, cardFromGenerated(gc))
