@@ -1,0 +1,19 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_9d1ce63adbac84::t_75e8b3ca79681a 403-405,407-408,431-438
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5c98535918db0eb9e85293711e5e31acb3c9e981",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
