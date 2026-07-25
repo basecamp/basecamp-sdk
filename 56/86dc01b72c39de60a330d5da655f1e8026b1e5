@@ -1,0 +1,20 @@
+typescript/tests/services/card-tables.test.ts
+  s_3fd48deaa8600c::t_2e12c3be743500 21-44
+  s_3fd48deaa8600c::t_5a47af5354e6b2 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5686dc01b72c39de60a330d5da655f1e8026b1e5",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

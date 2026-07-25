@@ -1,0 +1,21 @@
+go/pkg/generated/client.gen.go
+  s_3fd48deaa8600c::t_1dd448f18aab4e 29845-29847
+ruby/lib/basecamp/generated/types.rb
+  s_3fd48deaa8600c::t_1dd448f18aab4e 4,442,446,454,489,794,798,804,832,940,944,950,974,1003,1007,1014,1034,1080,1084,1091,1113,1207,1211,1217,1243,1337,1341,1347,1372,1402,1406,1413,1435,1461,1477,1500,1522,1526,1531,1558,1823,1827,1834,1861,2662,2666,2673,2699,2900,2925-2926,2949-2950,3149,3153,3161,3191,3261,3277,3281,3300,3304,3667,3671,3679,3711,3931,3935,3943,3975
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a3e2c36bc81c8bc101ecce1856ef39746b0b3be3",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

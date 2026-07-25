@@ -1,0 +1,19 @@
+spec/api-gaps/card-table-wormholes.md
+  s_3fd48deaa8600c::t_f1b6918b06d102 7-10,30-34,88,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cc7018fa32a71ccd30ba4c4716c99e1bdf30d26c",
+  "prompts": {},
+  "sessions": {
+    "s_3fd48deaa8600c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c64c5a43-9adb-4c0a-836e-4e1a309c0f3d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
