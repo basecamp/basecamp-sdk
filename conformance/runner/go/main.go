@@ -238,6 +238,21 @@ type operationResult struct {
 }
 
 func runTest(tc TestCase) TestResult {
+	// Enforce the schema's mockResponses oneOf at runtime: exactly one of
+	// `status` or `networkError` per entry. `make conformance` does not
+	// schema-validate fixtures, so without this a malformed entry could panic
+	// on WriteHeader(0) or silently pass — fail loudly instead.
+	for i, mr := range tc.MockResponses {
+		hasStatus := mr.Status != 0
+		if hasStatus == mr.NetworkError {
+			return TestResult{
+				Name:    tc.Name,
+				Passed:  false,
+				Message: fmt.Sprintf("mockResponses[%d] must set exactly one of status or networkError (got status=%d, networkError=%t)", i, mr.Status, mr.NetworkError),
+			}
+		}
+	}
+
 	// Track request count and timing with mutex protection
 	var mu sync.Mutex
 	var requestCount int

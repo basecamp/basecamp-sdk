@@ -172,6 +172,20 @@ class TestRunner:
     def run(self) -> TestResult:
         self._tracker.reset()
 
+        # Enforce the schema's mockResponses oneOf at runtime: exactly one of
+        # `status` or `networkError` per entry. Fixtures are not schema-validated
+        # by `make conformance`, so a malformed entry would otherwise be served
+        # as a normal HTTP response — fail loudly instead.
+        for i, r in enumerate(self._test.get("mockResponses", [])):
+            has_status = "status" in r
+            has_network_error = r.get("networkError") is True
+            if has_status == has_network_error:
+                return TestResult(
+                    self._test["name"],
+                    False,
+                    f"mockResponses[{i}] must set exactly one of status or networkError",
+                )
+
         with respx.mock:
             self._setup_mock_responses()
 

@@ -98,15 +98,16 @@ const MULTI_HOP_OPERATIONS = new Set(["DownloadURL", "UploadsDownload"]);
  * Recognize a genuine transport-level failure (fetch rejection). The TS SDK
  * does not wrap these into a BasecampError, so the raw error surfaces: MSW's
  * HttpResponse.error() rejects with a TypeError ("Failed to fetch"); undici
- * variants say "fetch failed". Match by type and message so the errorType
- * assertion can classify it as "network" without accepting arbitrary errors.
+ * variants say "fetch failed". Match on the message only — an arbitrary
+ * TypeError from an unrelated runner/SDK bug must NOT be misclassified as a
+ * transport failure (that would let an `errorType: "network"` assertion pass
+ * while hiding a real regression).
  */
 function isNetworkRejection(err: unknown): boolean {
-  if (err instanceof TypeError) return true;
-  if (err instanceof Error) {
-    return /failed to fetch|fetch failed|network|socket|econn/i.test(err.message);
-  }
-  return false;
+  if (!(err instanceof Error)) return false;
+  return /failed to fetch|fetch failed|network(?: request)? failed|socket|econn/i.test(
+    err.message,
+  );
 }
 
 // =============================================================================
@@ -359,6 +360,20 @@ function installMockHandlers(tc: TestCase): {
   requestBodies: () => unknown[];
   requestHeaders: () => Record<string, string>[];
 } {
+  // Enforce the schema's mockResponses oneOf at runtime: exactly one of
+  // `status` or `networkError` per entry. This runner does not schema-validate
+  // fixtures, so without this a malformed entry could be served as `status ??
+  // 200` (a false positive) — fail loudly instead.
+  tc.mockResponses.forEach((mock, i) => {
+    const hasStatus = mock.status !== undefined;
+    const hasNetworkError = mock.networkError === true;
+    if (hasStatus === hasNetworkError) {
+      throw new Error(
+        `[${tc.name}] mockResponses[${i}] must set exactly one of status or networkError (got status=${String(mock.status)}, networkError=${String(mock.networkError)})`,
+      );
+    }
+  });
+
   let responseIndex = 0;
   const times: number[] = [];
   const paths: string[] = [];

@@ -231,6 +231,19 @@ class TestRunner
 
   def run
     @tracker.reset!
+
+    # Enforce the schema's mockResponses oneOf at runtime: exactly one of
+    # `status` or `networkError` per entry. Fixtures are not schema-validated by
+    # `make conformance`, so a malformed entry (neither/both) would otherwise
+    # slip through — fail loudly instead.
+    (@test["mockResponses"] || []).each_with_index do |r, i|
+      has_status = r.key?("status")
+      has_network_error = r["networkError"] == true
+      if has_status == has_network_error
+        return TestResult.new(@test["name"], false, "mockResponses[#{i}] must set exactly one of status or networkError")
+      end
+    end
+
     setup_mock_responses
 
     begin

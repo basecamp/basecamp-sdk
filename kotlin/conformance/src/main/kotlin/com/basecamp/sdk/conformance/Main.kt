@@ -167,6 +167,16 @@ data class DispatchResult(
 )
 
 private fun runTest(tc: TestCase): TestResult {
+    // Enforce the schema's mockResponses oneOf at runtime: exactly one of
+    // `status` or `networkError` per entry. Fixtures are not schema-validated by
+    // `make conformance`, so without this a malformed entry could be served as
+    // `status ?: 200` (a false positive) — fail loudly instead.
+    tc.mockResponses.forEachIndexed { i, mr ->
+        if ((mr.status != null) == mr.networkError) {
+            return TestResult(false, "mockResponses[$i] must set exactly one of status or networkError (got status=${mr.status}, networkError=${mr.networkError})")
+        }
+    }
+
     // Track requests
     val requestCounter = AtomicInteger(0)
     val requestTimes = mutableListOf<Long>()
