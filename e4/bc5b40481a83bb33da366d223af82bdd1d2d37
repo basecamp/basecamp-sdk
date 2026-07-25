@@ -1,0 +1,50 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/webhooks.kt
+  s_8a8548e8866958::t_93a0b50526d75c 26-27,47-48
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/WebhooksServiceTest.kt
+  s_8a8548e8866958::t_3b1abbcb6eb0d2 76-103
+  s_8a8548e8866958::t_4e510d42ec5ce1 15-16
+  s_8d633484dc870e::t_73056df85b6db3 75,104-107
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_8a8548e8866958::t_685b47d7493a76 109-111
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/wormholes.kt
+  s_8a8548e8866958::t_93a0b50526d75c 27,50,70
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/card-columns.kt
+  s_8a8548e8866958::t_93a0b50526d75c 27,50,71
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/tools.kt
+  s_8a8548e8866958::t_93a0b50526d75c 26-27
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/WormholesServiceTest.kt
+  s_8a8548e8866958::t_b753dc6d26f9d9 86-118
+  s_60b254bfab738a::t_58eeb6c22207f1 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e4bc5b40481a83bb33da366d223af82bdd1d2d37",
+  "prompts": {},
+  "sessions": {
+    "s_60b254bfab738a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eaf61ecb-b9ae-4891-8ccd-0cc675658e44",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
