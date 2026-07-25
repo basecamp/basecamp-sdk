@@ -12,8 +12,9 @@
       "note": "Request/response types generated from OpenAPI schema"
     },
     "1B.4": {
-      "pass": true,
-      "note": "Optional fields preserve absent-vs-present across all six SDKs: Go pointers (*T / *[]T), TS optional chaining (?: T), Ruby nilable (nil vs value), Python NotRequired[T], Swift optionals (T?), Kotlin nullable (T? = null, incl. List<T>? = null for optional arrays). Go accepts one encode-only edge: an optional slice with `omitempty` re-encodes a non-nil empty slice as absent (the decode distinction nil-vs-empty is preserved; only re-serialization collapses it), a deliberate ergonomic trade-off rather than the blanket *[]T sweep. *[]T is used only where rich-text projections need the wire distinction round-tripped in both directions."
+      "pass": false,
+      "issue": 436,
+      "note": "Partially met. Optional OBJECT/REF/ARRAY and nullable-typed fields preserve absence across all six SDKs: Go pointers (*T / *[]T), TS optional chaining (?: T), Ruby nilable, Python NotRequired[T], Swift optionals (T?), Kotlin nullable (T? = null, incl. List<T>? = null for optional arrays after #433, pinned by check-kotlin-optional-arrays). NOT yet met for optional non-array SCALARS: Kotlin emits them with zero-value sentinels (Boolean = false, Int = 0, Long = 0L), which SPEC.md's Optional Fields rule explicitly forbids (0/'' are not substitutes for absence). Go/Ruby/Swift additionally collapse optional scalar/nil zero-values on RE-ENCODE only (decode faithful; omitempty / compact / synthesized-encoder — documented in SPEC.md §10). Tracked in #436. Go's *[]T is used only where rich-text projections need the wire distinction round-tripped both directions; not a blanket sweep."
     },
     "1B.5": {
       "pass": true,
