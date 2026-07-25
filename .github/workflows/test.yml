@@ -60,11 +60,17 @@ jobs:
         with:
           ruby-version: "3.3"
 
+      # Run under LC_ALL=C so CI actually exercises the non-UTF-8-locale path
+      # (the reads are pinned to UTF-8; this proves it stays that way).
       - name: Check fixture completeness + coverage invariant
         run: ruby scripts/check-fixture-coverage.rb
+        env:
+          LC_ALL: C
 
-      - name: Fixture-guard self-test (negative cases)
+      - name: Fixture-guard self-test (negative + synthetic cases)
         run: ruby scripts/test-check-fixture-coverage.rb
+        env:
+          LC_ALL: C
 
   test-go:
     name: Go Tests

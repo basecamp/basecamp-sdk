@@ -6,12 +6,13 @@
 # Validates spec/fixtures/manifest.yaml:
 #   1. Every `targets` entry resolves — fixture exists, JSON pointer selects a
 #      concrete instance, the named schema is a real component — and the selected
-#      instance both (a) carries every required field of its schema (the
-#      recursive $ref/array/required walk, reused from the conformance walker)
-#      and (b) matches the schema's declared types and nullability (no required
-#      field null against a non-nullable schema, no null array element against a
-#      non-nullable item schema, no wrong container/scalar type; a float is
-#      accepted for an integer field only when mathematically integral).
+#      instance validates against its schema: every required field present and
+#      non-null (unless the field schema is nullable), and every present value's
+#      JSON type matches the declared type (a float is accepted for an integer
+#      field only when mathematically integral; a null array element fails a
+#      non-nullable item schema). Validation is composition-aware — it merges
+#      `$ref` (including 3.1 `$ref`-with-siblings) and `allOf`, so a composed
+#      target whose required fields live in a branch is still enforced.
 #   2. The coverage invariant: every schema in `covered_schemas` has >= 1 active
 #      target that resolves to a concrete instance whose declared root schema is
 #      that component (the concrete-instance rule — transitive reachability and
@@ -20,13 +21,14 @@
 #   3. Inventory completeness: every RichTextAttachment-emitting component schema
 #      (the #408 class this guard exists to protect) must be either covered or
 #      excluded — so the inventory can't silently shrink by dropping a schema.
-#      Emitter discovery resolves `$ref` and `allOf`/`anyOf`/`oneOf` so an
-#      indirectly-declared companion array can't slip the net.
+#      Emitter discovery follows `$ref` (with siblings), traverses component-level
+#      `allOf`/`anyOf`/`oneOf`, and resolves aliased array items, guarding cycles.
 #   4. `excluded_schemas` entries each carry a reason + tracking issue, name real
 #      components, and do not overlap `covered_schemas`.
 #
-# Reuses conformance/runner/ruby/schema-walker.rb for the required-field walk.
-# The type/nullability walk is additional (the walker checks presence only).
+# Uses conformance/runner/ruby/schema-walker.rb only for `find_response_schema`
+# (operation-entry response-schema lookup). The required/type/nullability walk is
+# implemented here because it must be composition-aware, which the walker is not.
 # Wired into `make check` in the scripts/validate-api-gaps.rb style (stdlib only).
 #
 # Paths default to the repo layout but honour FIXTURE_MANIFEST / FIXTURE_OPENAPI
@@ -89,30 +91,18 @@ def resolve_pointer(doc, pointer)
   [current, true]
 end
 
-# --- Schema helpers (local; the walker keeps its resolver private) -------------
+# --- Schema helpers ------------------------------------------------------------
 
-def resolve_ref(schema, components)
-  seen = {}
-  current = schema
-  while current.is_a?(Hash) && current["$ref"].is_a?(String)
-    ref = current["$ref"]
-    break if seen[ref]
+# Ruby name of a `$ref`, or nil.
+def ref_name(schema)
+  return nil unless schema.is_a?(Hash) && schema["$ref"].is_a?(String)
 
-    seen[ref] = true
-    m = ref.match(%r{\A(?:openapi\.json)?#/components/schemas/(.+)\z})
-    break unless m
-
-    nxt = components[m[1]]
-    break unless nxt
-
-    current = nxt
-  end
-  current
+  schema["$ref"].match(%r{/components/schemas/(.+)\z})&.captures&.first
 end
 
-# Returns [Set(declared non-null json-type strings), nullable?]. Handles OpenAPI
-# 3.1 null-union (`type: [X, "null"]`) and 3.0 `nullable: true`. An empty set
-# means the type is unconstrained/compositional — skip type checks.
+# Returns [Set(declared non-null json-type strings), nullable?] for a single
+# schema node (no traversal). Handles OpenAPI 3.1 null-union (`type:[X,"null"]`)
+# and 3.0 `nullable:true`. An empty set means the node declares no type.
 def allowed_types(schema)
   return [Set.new, false] unless schema.is_a?(Hash)
 
@@ -158,55 +148,91 @@ def type_matches?(types, value)
   false
 end
 
-# Recursive type/nullability validation. Reports (prefix-tagged) errors for:
-#   - a present value whose JSON type contradicts the declared type;
-#   - a REQUIRED object field present as null against a non-nullable schema;
-#   - a null ARRAY ELEMENT against a non-nullable item schema.
-# Optional object-field nulls are tolerated: the OpenAPI generated from Smithy
+# Merges a schema's effective constraints across `$ref` (including 3.1
+# `$ref`-with-siblings) and `allOf`, returning
+# [required(Array), properties(Hash), types(Set), nullable(bool), items(schema)].
+# `anyOf`/`oneOf` are alternatives, so their required/properties are NOT merged
+# (that would over-require). `visited` (component names) + depth guard terminate
+# reference/composition cycles.
+def merged_constraints(schema, components, visited = Set.new, depth = 0)
+  req = []
+  props = {}
+  types = Set.new
+  nullable = false
+  items = nil
+  return [req, props, types, nullable, items] if depth > 40 || !schema.is_a?(Hash)
+
+  absorb = lambda do |sub|
+    r2, p2, t2, n2, i2 = merged_constraints(sub, components, visited, depth + 1)
+    req.concat(r2)
+    p2.each { |k, v| props[k] ||= v }
+    types.merge(t2)
+    nullable ||= n2
+    items ||= i2
+  end
+
+  name = ref_name(schema)
+  if name && !visited.include?(name)
+    visited << name
+    absorb.call(components[name])
+    # fall through to local keywords (OpenAPI 3.1 permits $ref siblings)
+  end
+
+  t, nn = allowed_types(schema)
+  types.merge(t)
+  nullable ||= nn
+  (schema["properties"] || {}).each { |k, v| props[k] ||= v }
+  (schema["required"] || []).each { |r| req << r }
+  items ||= schema["items"]
+  (schema["allOf"] || []).each { |sub| absorb.call(sub) }
+
+  [req, props, types, nullable, items]
+end
+
+# Composition-aware validation of `value` against `schema`. Reports
+# (path-tagged) errors for a missing required field, a required field present as
+# null against a non-nullable schema, a null array element against a non-nullable
+# item schema, and a present value whose JSON type contradicts the declared type.
+# Optional object-field nulls are tolerated: the Smithy-derived OpenAPI
 # under-marks some nullable optionals (e.g. Person.bio/location are `type:string`
-# yet the wire sends null), so flagging them would be a false positive, not a
-# fixture defect.
-def type_errors(prefix, value, schema, components, depth = 0)
-  return [] if depth > 20
+# yet the wire sends null), so flagging them would be a false positive.
+def instance_errors(prefix, value, schema, components, depth = 0)
+  return [] if depth > 60
+  return [] if value.nil? # optional-null tolerated; required-/element-null handled in context
 
-  resolved = resolve_ref(schema, components)
-  return [] unless resolved.is_a?(Hash)
-  return [] if value.nil? # object-field optional-null tolerated (see note above)
+  req, props, types, _nullable, items = merged_constraints(schema, components)
 
-  types, = allowed_types(resolved)
   unless type_matches?(types, value)
     label = prefix.empty? ? "(root)" : prefix
     return ["#{label}: expected #{types.to_a.sort.join('|')}, got #{json_type(value)}"]
   end
 
   errs = []
-  if value.is_a?(Hash) && resolved["properties"].is_a?(Hash)
-    props = resolved["properties"]
-    (resolved["required"] || []).each do |rk|
-      next unless value.key?(rk) && value[rk].nil?
-
-      _, nullable = allowed_types(resolve_ref(props[rk] || {}, components))
-      next if nullable
-
+  if value.is_a?(Hash)
+    req.uniq.each do |rk|
       field = prefix.empty? ? rk : "#{prefix}/#{rk}"
-      errs << "#{field}: required field is null but its schema is not nullable"
+      if !value.key?(rk)
+        errs << "missing required field `#{field}`"
+      elsif value[rk].nil?
+        _, _, _, field_nullable, = merged_constraints(props[rk] || {}, components)
+        errs << "#{field}: required field is null but its schema is not nullable" unless field_nullable
+      end
     end
     value.each do |k, v|
       next unless props.key?(k)
 
       child = prefix.empty? ? k : "#{prefix}/#{k}"
-      errs.concat(type_errors(child, v, props[k], components, depth + 1))
+      errs.concat(instance_errors(child, v, props[k], components, depth + 1))
     end
-  elsif value.is_a?(Array) && resolved["items"]
-    items = resolved["items"]
-    _, item_nullable = allowed_types(resolve_ref(items, components))
+  elsif value.is_a?(Array) && items
+    _, _, _, item_nullable, = merged_constraints(items, components)
     value.each_with_index do |item, i|
       ip = "#{prefix}[#{i}]"
       if item.nil?
         errs << "#{ip}: null array element but the item schema is not nullable" unless item_nullable
         next
       end
-      errs.concat(type_errors(ip, item, items, components, depth + 1))
+      errs.concat(instance_errors(ip, item, items, components, depth + 1))
     end
   end
 
@@ -214,7 +240,7 @@ def type_errors(prefix, value, schema, components, depth = 0)
 end
 
 def concrete_for?(schema_name, instance, components)
-  types, = allowed_types(components[schema_name] || {})
+  _, _, types, = merged_constraints({ "$ref" => "#/components/schemas/#{schema_name}" }, components)
   if types.include?("array")
     instance.is_a?(Array) && !instance.empty?
   else
@@ -222,27 +248,22 @@ def concrete_for?(schema_name, instance, components)
   end
 end
 
-# Ruby name of a `$ref`, or nil.
-def ref_name(schema)
-  return nil unless schema.is_a?(Hash) && schema["$ref"].is_a?(String)
-
-  schema["$ref"].match(%r{/components/schemas/(.+)\z})&.captures&.first
-end
-
-# True when `schema` denotes (through $ref chains AND allOf/anyOf/oneOf
-# composition) the RichTextAttachment component — so an alias
+# True when `schema` denotes (through `$ref` chains + siblings and
+# allOf/anyOf/oneOf composition) the RichTextAttachment component — so an alias
 # (`{$ref: SomeAlias}` -> RichTextAttachment) or a composed item schema is still
-# recognized. `visited` tracks resolved component names to terminate ref cycles.
+# recognized. `visited` (component names) terminates ref cycles.
 def rich_text_attachment?(schema, components, visited = Set.new, depth = 0)
   return false if depth > 40 || !schema.is_a?(Hash)
 
   name = ref_name(schema)
   if name
     return true if name == "RichTextAttachment"
-    return false if visited.include?(name)
 
-    visited << name
-    return rich_text_attachment?(components[name], components, visited, depth + 1)
+    unless visited.include?(name)
+      visited << name
+      return true if rich_text_attachment?(components[name], components, visited, depth + 1)
+    end
+    # fall through to local keywords ($ref siblings)
   end
 
   %w[allOf anyOf oneOf].each do |key|
@@ -254,17 +275,17 @@ def rich_text_attachment?(schema, components, visited = Set.new, depth = 0)
 end
 
 # True when `schema` is (or composes/refs) an array whose items resolve to the
-# RichTextAttachment component. Follows $ref chains and allOf/anyOf/oneOf on both
-# the array schema and its items; `visited` guards ref cycles.
+# RichTextAttachment component. Follows `$ref` (with siblings) and
+# allOf/anyOf/oneOf on both the array schema and its items; `visited` guards
+# cycles.
 def references_rich_text_array?(schema, components, visited = Set.new, depth = 0)
   return false if depth > 40 || !schema.is_a?(Hash)
 
   name = ref_name(schema)
-  if name
-    return false if visited.include?(name)
-
+  if name && !visited.include?(name)
     visited << name
-    return references_rich_text_array?(components[name], components, visited, depth + 1)
+    return true if references_rich_text_array?(components[name], components, visited, depth + 1)
+    # fall through to local keywords ($ref siblings)
   end
 
   t = schema["type"]
@@ -280,18 +301,17 @@ def references_rich_text_array?(schema, components, visited = Set.new, depth = 0
   false
 end
 
-# Collects every property schema of a component, following $ref and traversing
-# component-level allOf/anyOf/oneOf so properties inherited through composition
-# are seen. `visited` guards ref cycles.
+# Collects every property schema of a component, following `$ref` (with siblings)
+# and traversing component-level allOf/anyOf/oneOf so composed/inherited
+# properties are seen. `visited` (component names) guards ref cycles.
 def collect_property_schemas(schema, components, out, visited = Set.new, depth = 0)
   return if depth > 40 || !schema.is_a?(Hash)
 
   name = ref_name(schema)
-  if name
-    return if visited.include?(name)
-
+  if name && !visited.include?(name)
     visited << name
-    return collect_property_schemas(components[name], components, out, visited, depth + 1)
+    collect_property_schemas(components[name], components, out, visited, depth + 1)
+    # fall through to local keywords ($ref siblings)
   end
 
   (schema["properties"] || {}).each_value { |ps| out << ps }
@@ -307,7 +327,8 @@ end
 # NOT an independent emitter: covering its target covers it, and if that target
 # is itself an emitter it is caught directly. Skipping these keeps the emitter
 # set to the concrete decode types (the ~40 `*ResponseContent` response
-# envelopes are pure aliases of already-covered components).
+# envelopes are pure aliases of already-covered components). A `$ref` WITH local
+# structure (3.1 siblings) is not a pure alias and is still examined.
 def pure_ref_alias?(schema)
   schema.is_a?(Hash) && schema.key?("$ref") &&
     (schema.keys - %w[$ref description title]).empty?
@@ -430,10 +451,7 @@ targets.each_with_index do |entry, i|
   resolved_root[id] = { name: root_schema_name, concrete: concrete }
 
   where = pointer.empty? ? fixture_rel : "#{fixture_rel} at pointer `#{pointer}`"
-  walker.missing_required(instance, schema).each do |path|
-    fail_with(errors, "target `#{id}`: #{where} missing required field `#{path}`")
-  end
-  type_errors("", instance, schema, components).each do |msg|
+  instance_errors("", instance, schema, components).each do |msg|
     fail_with(errors, "target `#{id}`: #{where} #{msg}")
   end
 end

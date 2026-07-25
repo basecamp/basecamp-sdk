@@ -16,7 +16,7 @@ _FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures"
 
 
 def load_fixture(rel: str) -> dict:
-    return json.loads((_FIXTURES / rel).read_text())
+    return json.loads((_FIXTURES / rel).read_text(encoding="utf-8"))
 
 
 def _metadata(upload_id: int = 1069479400, *, download_url, filename="report.pdf") -> dict:

@@ -19,7 +19,7 @@ _FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures"
 
 
 def load_fixture(rel: str) -> dict:
-    return json.loads((_FIXTURES / rel).read_text())
+    return json.loads((_FIXTURES / rel).read_text(encoding="utf-8"))
 
 
 def _todo(todo_id: int = 42, **overrides) -> dict:

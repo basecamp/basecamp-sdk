@@ -37,6 +37,31 @@ def run_checker(manifest:, openapi: REAL_OPENAPI, fixtures: REAL_FIXTURES)
   Open3.capture2e(env, "ruby", CHECKER)
 end
 
+# Like run_checker but spawns with a retained PID so a hung child can actually be
+# killed on timeout (Open3.capture2e's cleanup would block waiting for the
+# child). Raises Timeout::Error after `seconds`, having KILLed and reaped the
+# process. Returns [combined_output, Process::Status].
+def run_checker_killable(manifest:, openapi:, fixtures:, seconds: 30)
+  env = { "FIXTURE_MANIFEST" => manifest, "FIXTURE_OPENAPI" => openapi, "FIXTURE_DIR" => fixtures }
+  reader, writer = IO.pipe
+  pid = Process.spawn(env, "ruby", CHECKER, out: writer, err: writer)
+  writer.close
+  out = +""
+  pump = Thread.new { out = reader.read }
+  status = nil
+  begin
+    Timeout.timeout(seconds) { _, status = Process.wait2(pid) }
+  rescue Timeout::Error
+    Process.kill("KILL", pid)
+    Process.wait(pid)
+    raise
+  ensure
+    pump.join
+    reader.close
+  end
+  [out, status]
+end
+
 failures = []
 
 def expect_pass(failures, label, out, status)
@@ -151,6 +176,11 @@ SYNTHETIC_OPENAPI = {
     "AliasedItemEmitter" => { "type" => "object",
                               "properties" => { "description_attachments" => { "type" => "array",
                                                                               "items" => { "$ref" => "#/components/schemas/RTAAlias" } } } },
+    # (2b) Emitter declared as a $ref WITH sibling local properties (OpenAPI 3.1)
+    # — the local content_attachments must be seen despite the $ref.
+    "SiblingEmitter" => { "$ref" => "#/components/schemas/Base",
+                          "properties" => { "content_attachments" => { "type" => "array",
+                                                                       "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } } } },
     # (3a) Component-level composition cycle (no rich text) — must terminate.
     "CycleA" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleB" }] },
     "CycleB" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleA" }] },
@@ -164,23 +194,58 @@ SYNTHETIC_OPENAPI = {
 
 EMPTY_MANIFEST = { "targets" => [], "covered_schemas" => {}, "excluded_schemas" => {} }.freeze
 
-def run_synthetic(openapi:, manifest:)
+# A composed COVERED target: ComposedTarget's required fields (base_field, extra)
+# live in $ref + allOf branches, and it is a rich-text emitter. An empty-object
+# fixture must fail composition-aware required validation.
+COMPOSED_OPENAPI = {
+  "components" => { "schemas" => {
+    "RichTextAttachment" => { "type" => "object", "properties" => { "id" => { "type" => "integer" } } },
+    "Base" => { "type" => "object", "required" => ["base_field"],
+                "properties" => { "base_field" => { "type" => "string" } } },
+    "ComposedTarget" => { "allOf" => [
+      { "$ref" => "#/components/schemas/Base" },
+      { "type" => "object", "required" => ["extra"],
+        "properties" => { "extra" => { "type" => "string" },
+                          "content_attachments" => { "type" => "array",
+                                                    "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } } } },
+    ] },
+  } },
+}.freeze
+
+COMPOSED_MANIFEST = {
+  "targets" => [{ "id" => "composed", "fixture" => "composed.json", "pointer" => "", "schema" => "ComposedTarget" }],
+  "covered_schemas" => { "ComposedTarget" => ["composed"] },
+  "excluded_schemas" => {},
+}.freeze
+
+# Writes openapi + manifest (+ optional fixture files) to a tmp tree and runs the
+# checker there, killably (so a cycle that hangs discovery is terminated, not
+# left blocking the suite).
+def run_synthetic(openapi:, manifest:, fixtures: {})
   Dir.mktmpdir("fixture-cov-synthetic") do |dir|
     op = File.join(dir, "openapi.json")
     mf = File.join(dir, "manifest.yaml")
+    fx = File.join(dir, "fixtures")
+    FileUtils.mkdir_p(fx)
     File.write(op, JSON.generate(openapi))
     File.write(mf, YAML.dump(manifest))
-    Timeout.timeout(30) { run_checker(manifest: mf, openapi: op, fixtures: dir) }
+    fixtures.each do |rel, data|
+      p = File.join(fx, rel)
+      FileUtils.mkdir_p(File.dirname(p))
+      File.write(p, JSON.generate(data))
+    end
+    run_checker_killable(manifest: mf, openapi: op, fixtures: fx)
   end
 end
 
 begin
   out, status = run_synthetic(openapi: SYNTHETIC_OPENAPI, manifest: EMPTY_MANIFEST)
-  # (1) + (2): both indirect emitters must be discovered and flagged as unaccounted.
+  # Indirect emitters must all be discovered and flagged as unaccounted.
   expect_fail(failures, "component-level allOf emitter discovered", out, status, "`AllOfEmitter`")
   expect_fail(failures, "aliased RichTextAttachment item discovered", out, status, "`AliasedItemEmitter`")
-  # (3): the cycle components must NOT be misclassified as emitters, and — proven
-  # by the run returning at all under Timeout — discovery terminated safely.
+  expect_fail(failures, "$ref-with-siblings emitter discovered", out, status, "`SiblingEmitter`")
+  # The cycle components must NOT be misclassified as emitters, and — proven by
+  # the run returning at all under the killable timeout — discovery terminated.
   if out.include?("`CycleA`") || out.include?("`SelfRefItem`") || out.include?("`CycleItemHolder`")
     failures << "cycle components should not be flagged as emitters:\n#{out}"
   end
@@ -188,10 +253,23 @@ rescue Timeout::Error
   failures << "emitter discovery did not terminate on a reference/composition cycle (hung)"
 end
 
+# Composition-aware required validation: an empty fixture for a composed covered
+# target must fail on the required fields contributed by its $ref/allOf branches.
+begin
+  out, status = run_synthetic(openapi: COMPOSED_OPENAPI, manifest: COMPOSED_MANIFEST,
+                              fixtures: { "composed.json" => {} })
+  expect_fail(failures, "composed covered target with empty fixture fails", out, status, "missing required field")
+  %w[base_field extra].each do |f|
+    failures << "composed-target test did not report missing `#{f}`:\n#{out}" unless out.include?("`#{f}`")
+  end
+rescue Timeout::Error
+  failures << "composed-target validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 3 synthetic emitter cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 5 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
