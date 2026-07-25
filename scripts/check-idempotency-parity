@@ -48,7 +48,14 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Explicit template so this works identically under GNU and BSD/macOS mktemp.
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/idempotency-parity.XXXXXX")"
+# Fail fast if mktemp fails (this script omits `set -e` to accumulate parity
+# mismatches): an empty $WORK would turn `> "$WORK/…"` into a write to the
+# filesystem root.
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/idempotency-parity.XXXXXX")" || exit 2
+if [[ -z "$WORK" || ! -d "$WORK" ]]; then
+    echo "ERROR: could not create a temp directory" >&2
+    exit 2
+fi
 trap 'rm -rf "$WORK"' EXIT
 
 fail=0
