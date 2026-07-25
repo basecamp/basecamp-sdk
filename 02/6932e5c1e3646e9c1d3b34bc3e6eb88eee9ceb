@@ -1,0 +1,20 @@
+spec/api-gaps/rich-text-attachments-coverage.md
+  s_1a48c423686368::t_dc3a6eb25e6d22 55-57
+  s_1a48c423686368::t_6754607b2359c7 95,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "026932e5c1e3646e9c1d3b34bc3e6eb88eee9ceb",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
