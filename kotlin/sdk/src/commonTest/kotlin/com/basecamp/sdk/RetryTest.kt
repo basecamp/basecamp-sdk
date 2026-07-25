@@ -1,5 +1,6 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.todos
 import com.basecamp.sdk.http.BasecampHttpClient
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
@@ -393,6 +394,36 @@ class RetryTest {
         assertEquals(2, retryDelays.size)
         assertTrue(retryDelays[0] > 0, "First retry delay should be positive")
         assertTrue(retryDelays[1] > retryDelays[0], "Second retry delay should be larger (exponential)")
+        client.close()
+    }
+
+    @Test
+    fun retriesIdempotentPostThroughGeneratedService() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            if (requestCount == 1) {
+                respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+            } else {
+                respond(content = "", status = HttpStatusCode.NoContent)
+            }
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        // CompleteTodo is a POST flagged idempotent in metadata. The existing
+        // retryForIdempotentOperationWithMetadata test uses PUT/UpdateProject,
+        // which is retried via the method allowlist (method in IDEMPOTENT_METHODS)
+        // — it does NOT exercise the POST metadata gate. Driving the generated
+        // service (account.todos.complete) does, so this fails if CompleteTodo's
+        // metadata idempotent flag is flipped off. Regression guard for #439 / #417.
+        account.todos.complete(todoId = 100)
+
+        assertEquals(2, requestCount)
         client.close()
     }
 }
