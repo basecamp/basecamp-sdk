@@ -176,6 +176,56 @@ walk(
   "x-go-type-skip-optional-pointer": true
 }
 |
+# Fifth-b pass: override starts_at/ends_at on TimelineEventData to use
+# types.FlexibleTime. Same all-day date-only wire form as ScheduleEntry: the
+# schedule_entry_* timeline events carry a date ("2006-01-02") when all_day is
+# true, which time.Time cannot parse. Overrides the first pass _at to time.Time.
+.components.schemas.TimelineEventData.properties.starts_at += {
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
+|
+.components.schemas.TimelineEventData.properties.ends_at += {
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
+|
+# Fifth-c pass: TimelineAttachment width/height → nullable *types.FlexInt
+# The attachment/blob variant serializes pixel dimensions float-spelled (1024.0)
+# and null for non-image blobs, exactly like RichTextAttachment. Keep the
+# optional pointer and mark nullable so the present-null value types faithfully.
+.components.schemas.TimelineAttachment.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  }
+)
+|
+# Fifth-e pass: TimelineAttachment presence-faithful optional scalars.
+# The optional-field superset populates only one variant per instance, so its
+# optional timestamps and booleans must round-trip presence: a plain time.Time
+# re-marshals absent fields as the zero time (0001-01-01T00:00:00Z) and a plain
+# bool with omitempty drops an explicit false. Make them pointers so nil (absent)
+# omits and an explicit value (including false) is preserved. created_at/updated_at
+# keep the time.Time x-go-type but drop skip-optional-pointer so they become
+# *time.Time.
+.components.schemas.TimelineAttachment.properties |= (
+  (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.previewable // empty) += { "x-go-type-skip-optional-pointer": false }
+)
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.

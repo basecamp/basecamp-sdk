@@ -4265,10 +4265,91 @@ export interface components {
             app_url?: string;
             dock?: components["schemas"]["DockItem"][];
         };
+        /**
+         * @description A single timeline-event attachment. This is an optional-field superset over
+         *     two wire variants — a full Upload recording (upload-kind recordings) and a
+         *     rich-text attachment/blob partial (all other recordings) — so one element
+         *     type decodes either. Every field is optional; a given instance populates
+         *     only the fields of the variant it represents. Unknown fields are ignored by
+         *     every SDK decoder, so the superset need not enumerate every Upload field.
+         */
+        TimelineAttachment: {
+            /**
+             * Format: int64
+             * @description Attachment or upload-recording id.
+             */
+            id?: number;
+            /** @description MIME type of the file. */
+            content_type?: string;
+            /**
+             * Format: int64
+             * @description Size of the file in bytes.
+             */
+            byte_size?: number;
+            /** @description Original filename. */
+            filename?: string;
+            /** @description Authenticated download URL for the file. */
+            download_url?: string;
+            /**
+             * Format: int32
+             * @description Pixel width; null for non-image blobs and may be float-spelled (1024.0).
+             */
+            width?: number | null;
+            /**
+             * Format: int32
+             * @description Pixel height; null for non-image blobs and may be float-spelled (1024.0).
+             */
+            height?: number | null;
+            /** @description Recording type, e.g. "Upload" (upload-recording variant). */
+            type?: string;
+            /** @description Title of the upload recording. */
+            title?: string;
+            /** @description Publication status of the upload recording (e.g. "active"). */
+            status?: string;
+            /** @description When the upload recording was created. */
+            created_at?: string;
+            /** @description When the upload recording was last updated. */
+            updated_at?: string;
+            /** @description API URL of the upload recording. */
+            url?: string;
+            /** @description Web URL of the upload recording. */
+            app_url?: string;
+            /** @description Web download URL (upload-recording variant). */
+            app_download_url?: string;
+            /** @description Whether the upload recording is visible to clients. */
+            visible_to_clients?: boolean;
+            /** @description Signed global id of the attachable (attachment variant). */
+            attachable_sgid?: string;
+            /** @description Signed global id of the attachment (attachment variant). */
+            sgid?: string;
+            /** @description URL to poll attachment processing status (attachment variant). */
+            status_url?: string;
+            /** @description Caption text, if any (attachment variant). */
+            caption?: string;
+            /** @description Storage key of the underlying blob (attachment variant). */
+            key?: string;
+            /** @description Whether the blob can be previewed (attachment variant). */
+            previewable?: boolean;
+            /** @description Full-size preview URL (attachment variant). */
+            preview_url?: string;
+            /** @description Thumbnail preview URL (attachment variant). */
+            thumbnail_url?: string;
+        };
         TimelineEvent: {
             /** Format: int64 */
             id?: number;
             created_at?: string;
+            /**
+             * @description What kind of activity the event records. Open, non-exhaustive vocabulary —
+             *     BC3 documents "common values include" and adds new kinds over time, so
+             *     treat unrecognized values as valid. Common values include message_created,
+             *     comment_created, todo_created, todo_completed, upload_created,
+             *     document_created, google_document_created, schedule_entry_created,
+             *     schedule_entry_rescheduled, question_created, question_answer_created,
+             *     chat_transcript_rollup, kanban_card_created, kanban_card_completed,
+             *     inbox_forward_created, client_correspondence_created, dock_created, and
+             *     project_access_changed.
+             */
             kind?: string;
             /** Format: int64 */
             parent_recording_id?: number;
@@ -4279,7 +4360,34 @@ export interface components {
             target?: string;
             title?: string;
             summary_excerpt?: string;
+            /**
+             * @description Avatar URLs of participants — populated for chat_transcript_rollup events
+             *     (the people summarized in the rollup); an empty array otherwise.
+             */
+            avatars_sample?: string[];
             bucket?: components["schemas"]["TodoBucket"];
+            data?: components["schemas"]["TimelineEventData"];
+            /**
+             * @description Files attached to the event's recording, when it has any. Heterogeneous:
+             *     an upload-kind recording contributes its full Upload shape, while other
+             *     recordings contribute rich-text attachment/blob partials. Modeled as an
+             *     optional-field superset so a single element type decodes either variant;
+             *     consumers should treat the per-variant fields as present-or-absent.
+             */
+            attachments?: components["schemas"]["TimelineAttachment"][];
+        };
+        /**
+         * @description Schedule-entry timing carried on schedule_entry_* timeline events. starts_at
+         *     and ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed
+         *     entries, or a bare date (YYYY-MM-DD) when all_day is true. Modeled as
+         *     ISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass
+         *     mapping them to types.FlexibleTime so date-only values decode; the other
+         *     SDKs type them as plain strings.
+         */
+        TimelineEventData: {
+            all_day?: boolean;
+            starts_at?: string;
+            ends_at?: string;
         };
         TimesheetEntry: {
             /** Format: int64 */

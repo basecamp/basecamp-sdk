@@ -835,4 +835,119 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
     func onOperationStart(_ info: OperationInfo) {
         lock.withLock { _operationStarts.append(info) }
     }
+
+    // MARK: - Activity timeline additive fields (avatars_sample, data, heterogeneous attachments)
+
+    // Proves runtime decode of the additive TimelineEvent fields through the full
+    // service lifecycle (.convertFromSnakeCase): a populated avatars_sample, a
+    // schedule-entry `data` payload with all-day date-only bounds, and BOTH
+    // attachment shapes — a full Upload recording and a rich-text blob partial —
+    // in a single heterogeneous array, each carrying real per-variant fields.
+    func testProjectTimelineDecodesAdditiveFields() async throws {
+        let fixture = """
+        [
+          {
+            "id": 1,
+            "created_at": "2024-03-15T10:30:00Z",
+            "kind": "chat_transcript_rollup",
+            "avatars_sample": [
+              "https://3.basecampapi.com/1/people/aaa/avatar",
+              "https://3.basecampapi.com/1/people/bbb/avatar"
+            ]
+          },
+          {
+            "id": 2,
+            "created_at": "2024-03-15T10:31:00Z",
+            "kind": "schedule_entry_created",
+            "avatars_sample": [],
+            "data": {
+              "all_day": true,
+              "starts_at": "2025-10-30",
+              "ends_at": "2025-10-30"
+            }
+          },
+          {
+            "id": 3,
+            "created_at": "2024-03-15T10:32:00Z",
+            "kind": "upload_created",
+            "avatars_sample": [],
+            "attachments": [
+              {
+                "id": 900,
+                "type": "Upload",
+                "status": "active",
+                "visible_to_clients": false,
+                "title": "Diagram",
+                "filename": "diagram.png",
+                "content_type": "image/png",
+                "byte_size": 20480,
+                "width": 1024.0,
+                "height": 768.0,
+                "url": "https://3.basecampapi.com/1/buckets/2/uploads/900.json",
+                "app_url": "https://3.basecamp.com/1/buckets/2/uploads/900",
+                "download_url": "https://3.basecampapi.com/1/buckets/2/uploads/900/download/diagram.png",
+                "app_download_url": "https://3.basecamp.com/1/buckets/2/uploads/900/download"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "created_at": "2024-03-15T10:33:00Z",
+            "kind": "comment_created",
+            "avatars_sample": [],
+            "attachments": [
+              {
+                "id": 500,
+                "attachable_sgid": "sgid-attachable-500",
+                "sgid": "sgid-500",
+                "status_url": "https://3.basecampapi.com/1/attachments/sgid-500/status.json",
+                "caption": "See attached",
+                "filename": "notes.pdf",
+                "content_type": "application/pdf",
+                "byte_size": 4096,
+                "key": "blobkey500",
+                "width": null,
+                "height": null,
+                "previewable": true,
+                "download_url": "https://3.basecampapi.com/1/blobs/blobkey500/download/notes.pdf",
+                "preview_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/full",
+                "thumbnail_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/card"
+              }
+            ]
+          }
+        ]
+        """
+        let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8),
+                                      headers: ["X-Total-Count": "4"])
+        let account = makeTestAccountClient(transport: transport)
+
+        let events = try await account.timeline.projectTimeline(projectId: 2)
+        XCTAssertEqual(events.count, 4)
+
+        // events[0]: populated avatars_sample
+        XCTAssertEqual(events[0].avatarsSample?.count, 2)
+
+        // events[1]: schedule-entry data payload with all-day date-only bounds
+        XCTAssertNotNil(events[1].data)
+        XCTAssertEqual(events[1].data?.allDay, true)
+        XCTAssertEqual(events[1].data?.startsAt, "2025-10-30")
+        XCTAssertEqual(events[1].data?.endsAt, "2025-10-30")
+
+        // events[2]: full Upload recording attachment
+        XCTAssertEqual(events[2].attachments?.count, 1)
+        let upload = events[2].attachments![0]
+        XCTAssertEqual(upload.type, "Upload")
+        XCTAssertEqual(upload.filename, "diagram.png")
+        XCTAssertNotNil(upload.appDownloadUrl)
+        XCTAssertEqual(upload.width, 1024)
+
+        // events[3]: rich-text attachment/blob partial (distinct per-variant fields)
+        XCTAssertEqual(events[3].attachments?.count, 1)
+        let blob = events[3].attachments![0]
+        XCTAssertEqual(blob.attachableSgid, "sgid-attachable-500")
+        XCTAssertEqual(blob.caption, "See attached")
+        XCTAssertEqual(blob.key, "blobkey500")
+        XCTAssertEqual(blob.previewable, true)
+        XCTAssertNil(blob.width)
+    }
 }

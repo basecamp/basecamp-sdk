@@ -1,9 +1,13 @@
 ---
 gap: activity-timeline
-status: addressed-in-bc3-pr-11629
+status: absorbed-in-sdk
 detected: 2026-05-01
 sdk_demand: high
 bc3_pr: 11629
+smithy_refs:
+  - "TimelineEvent.kind/avatars_sample/data/attachments (spec/basecamp.smithy:7479)"
+  - "TimelineEventData (spec/basecamp.smithy:7527)"
+  - "TimelineAttachment (spec/basecamp.smithy:7543)"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3d
@@ -51,31 +55,49 @@ timeline rewrite and were never modeled here.
 
 Activity feeds are a primary integration surface for dashboards, audit logs,
 and "what's new since I last checked" tooling. The SDK already models all
-three routes (`GetProgressReport`, `GetProjectTimeline`, `GetPersonProgress`
-at `spec/basecamp.smithy:7084`, `:7105`, `:7130`, including the person-route
-`{person, events}` object wrapper), so consumers can call them today — but the
-event payload's typed surface lags the merged doc, leaving fields to be
-consumed untyped.
+three routes (operations `GetProgressReport`, `GetProjectTimeline`,
+`GetPersonProgress` in `spec/basecamp.smithy`, including the person-route
+`{person, events}` object wrapper), so consumers can call them today. This
+absorption closes the remaining gap: the event payload's typed surface now
+matches the merged doc.
 
 ## Suggested API shape
 
 The remaining absorption is additive fields on the event shape, per the merged
-`doc/api/sections/timeline.md`:
+`doc/api/sections/timeline.md` (the doc table is explicitly non-exhaustive —
+"common values include" — and the live payload emits kinds the table omits,
+e.g. `project_access_changed`, `dock_created`, `google_document_created`):
 
-- `kind` — a 15-value vocabulary: `message_created`, `comment_created`,
-  `todo_created`, `todo_completed`, `upload_created`, `document_created`,
-  `schedule_entry_created`, `schedule_entry_rescheduled`, `question_created`,
-  `question_answer_created`, `chat_transcript_rollup`, `kanban_card_created`,
-  `kanban_card_completed`, `inbox_forward_created`,
-  `client_correspondence_created`.
-- `data` — event-specific payload; for `schedule_entry_created` /
-  `schedule_entry_rescheduled` it carries `{all_day, starts_at, ends_at}`.
-- `avatars_sample` — array of avatar URLs (used by chat rollups to show
-  participants).
-- `attachments` — array of attached files, if any.
+- `kind` — kept as an **open, non-exhaustive string** (documentation only, no
+  closed enum). BC3 adds new kinds over time, so a closed enum would reject
+  valid future values. Documented common values include `message_created`,
+  `comment_created`, `todo_created`, `todo_completed`, `upload_created`,
+  `document_created`, `google_document_created`, `schedule_entry_created`,
+  `schedule_entry_rescheduled`, `question_created`, `question_answer_created`,
+  `chat_transcript_rollup`, `kanban_card_created`, `kanban_card_completed`,
+  `inbox_forward_created`, `client_correspondence_created`, `dock_created`, and
+  `project_access_changed`.
+- `data` — event-specific payload; present only for `schedule_entry_created` /
+  `schedule_entry_rescheduled`, carrying `{all_day, starts_at, ends_at}`. Per
+  the bc3 view (`starts_at_date_or_time`), `starts_at`/`ends_at` are
+  **date-or-timestamp**: a full ISO 8601 timestamp for timed entries, or a bare
+  date (`YYYY-MM-DD`) when `all_day` is true — so they are **not** plain
+  timestamps. Modeled as `ISO8601Timestamp` (mirroring `ScheduleEntry`), with
+  the Go enhancement mapping them to `types.FlexibleTime`; the other SDKs type
+  them as plain strings.
+- `avatars_sample` — array of avatar URLs (populated for chat rollups).
+- `attachments` — **heterogeneous**, per the bc3 view
+  (`api/timelines/events/_event.json.jbuilder`): an upload-kind recording
+  contributes its full `uploads/upload` shape, while every other recording
+  contributes a rich-text `attachments/attachment` (+ `blobs/blob`) partial.
+  These variants share no required field set, so "reuse the existing attachment
+  shape" is false. Modeled as an **optional-field superset struct**
+  (`TimelineAttachment`) whose per-variant fields are all optional, so one
+  element type decodes either variant (the cross-cutting untagged-polymorphism
+  default; a union was not needed).
 - Plus the documented envelope fields (`parent_recording_id`, `action`,
   `target`, `title`, `summary_excerpt`, `bucket`, `creator`, `url`,
-  `app_url`).
+  `app_url`), already modeled.
 
 ## Implementation notes for BC3
 
@@ -86,12 +108,22 @@ against live BC5 by the doc tooling from #11629.
 
 ## SDK absorption plan when this lands
 
+Absorbed (basecamp-sdk PR-2 of the post-#401 follow-up program).
+
 - No new operations — `GetProgressReport`, `GetProjectTimeline`, and
-  `GetPersonProgress` already exist with the correct paths and the
+  `GetPersonProgress` already existed with the correct paths and the
   person-route object wrapper.
-- Extend the timeline event shape with the additive fields above: the `kind`
-  vocabulary (model as an open string enum — BC3 says "common values
-  include", so treat it as non-exhaustive), the `data` struct for
-  schedule-entry events, `avatars_sample`, and `attachments`.
-- Canary fixture: `GetProgressReport` exercises the account feed; pairwise
-  check is structural (the routes exist on both BC4 and BC5).
+- Extended `TimelineEvent` with the additive fields: documented `kind` as an
+  open string (no closed enum), added `TimelineEventData` (`ISO8601Timestamp`
+  starts_at/ends_at + Go `FlexibleTime` enhancement for all-day date-only
+  values), `avatars_sample` (`StringList`), and the heterogeneous
+  `attachments` array as the optional-field superset `TimelineAttachment`.
+- **Runtime decode proof:** every SDK has a non-empty, per-variant response
+  test that decodes BOTH attachment variants (a full Upload recording and a
+  rich-text attachment/blob partial) in one array, plus the `data` all-day
+  date-only payload and a non-empty `avatars_sample` — Go (`timeline_test.go`),
+  TS, Ruby, Python, Kotlin, and Swift. Empty-array / generator-shape checks
+  were treated as insufficient.
+- Canary fixture: `GetProgressReport` exercises the account feed and validates
+  statically (the live canary is dormant); the pairwise check is structural
+  (the routes exist on both BC4 and BC5).

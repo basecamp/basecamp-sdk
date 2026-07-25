@@ -1371,12 +1371,42 @@ class Template(TypedDict):
     url: NotRequired[str]
 
 
+class TimelineAttachment(TypedDict):
+    app_download_url: NotRequired[str]
+    app_url: NotRequired[str]
+    attachable_sgid: NotRequired[str]
+    byte_size: NotRequired[int]
+    caption: NotRequired[str]
+    content_type: NotRequired[str]
+    created_at: NotRequired[str]
+    download_url: NotRequired[str]
+    filename: NotRequired[str]
+    height: NotRequired[Optional[int | float]]
+    id: NotRequired[int]
+    key: NotRequired[str]
+    preview_url: NotRequired[str]
+    previewable: NotRequired[bool]
+    sgid: NotRequired[str]
+    status: NotRequired[str]
+    status_url: NotRequired[str]
+    thumbnail_url: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
+    updated_at: NotRequired[str]
+    url: NotRequired[str]
+    visible_to_clients: NotRequired[bool]
+    width: NotRequired[Optional[int | float]]
+
+
 class TimelineEvent(TypedDict):
     action: NotRequired[str]
     app_url: NotRequired[str]
+    attachments: NotRequired[list[TimelineAttachment]]
+    avatars_sample: NotRequired[list[str]]
     bucket: NotRequired[TodoBucket]
     created_at: NotRequired[str]
     creator: NotRequired[Person]
+    data: NotRequired[TimelineEventData]
     id: NotRequired[int]
     kind: NotRequired[str]
     parent_recording_id: NotRequired[int]
@@ -1384,6 +1414,12 @@ class TimelineEvent(TypedDict):
     target: NotRequired[str]
     title: NotRequired[str]
     url: NotRequired[str]
+
+
+class TimelineEventData(TypedDict):
+    all_day: NotRequired[bool]
+    ends_at: NotRequired[str]
+    starts_at: NotRequired[str]
 
 
 class TimesheetEntry(TypedDict):

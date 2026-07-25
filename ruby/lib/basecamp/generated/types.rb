@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-26T17:22:47Z
+# Generated: 2026-07-26T17:29:02Z
 
 require "json"
 require "time"
@@ -3418,17 +3418,86 @@ module Basecamp
       end
     end
 
+    # TimelineAttachment
+    class TimelineAttachment
+      include TypeHelpers
+      attr_accessor :app_download_url, :app_url, :attachable_sgid, :byte_size, :caption, :content_type, :created_at, :download_url, :filename, :height, :id, :key, :preview_url, :previewable, :sgid, :status, :status_url, :thumbnail_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
+
+      def initialize(data = {})
+        @app_download_url = data["app_download_url"]
+        @app_url = data["app_url"]
+        @attachable_sgid = data["attachable_sgid"]
+        @byte_size = parse_integer(data["byte_size"])
+        @caption = data["caption"]
+        @content_type = data["content_type"]
+        @created_at = parse_datetime(data["created_at"])
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @height = parse_integer(data["height"])
+        @id = parse_integer(data["id"])
+        @key = data["key"]
+        @preview_url = data["preview_url"]
+        @previewable = parse_boolean(data["previewable"])
+        @sgid = data["sgid"]
+        @status = data["status"]
+        @status_url = data["status_url"]
+        @thumbnail_url = data["thumbnail_url"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @width = parse_integer(data["width"])
+      end
+
+      def to_h
+        {
+          "app_download_url" => @app_download_url,
+          "app_url" => @app_url,
+          "attachable_sgid" => @attachable_sgid,
+          "byte_size" => @byte_size,
+          "caption" => @caption,
+          "content_type" => @content_type,
+          "created_at" => @created_at,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "height" => @height,
+          "id" => @id,
+          "key" => @key,
+          "preview_url" => @preview_url,
+          "previewable" => @previewable,
+          "sgid" => @sgid,
+          "status" => @status,
+          "status_url" => @status_url,
+          "thumbnail_url" => @thumbnail_url,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # TimelineEvent
     class TimelineEvent
       include TypeHelpers
-      attr_accessor :action, :app_url, :bucket, :created_at, :creator, :id, :kind, :parent_recording_id, :summary_excerpt, :target, :title, :url
+      attr_accessor :action, :app_url, :attachments, :avatars_sample, :bucket, :created_at, :creator, :data, :id, :kind, :parent_recording_id, :summary_excerpt, :target, :title, :url
 
       def initialize(data = {})
         @action = data["action"]
         @app_url = data["app_url"]
+        @attachments = parse_array(data["attachments"], "TimelineAttachment")
+        @avatars_sample = data["avatars_sample"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
+        @data = parse_type(data["data"], "TimelineEventData")
         @id = parse_integer(data["id"])
         @kind = data["kind"]
         @parent_recording_id = parse_integer(data["parent_recording_id"])
@@ -3442,9 +3511,12 @@ module Basecamp
         {
           "action" => @action,
           "app_url" => @app_url,
+          "attachments" => @attachments,
+          "avatars_sample" => @avatars_sample,
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
+          "data" => @data,
           "id" => @id,
           "kind" => @kind,
           "parent_recording_id" => @parent_recording_id,
@@ -3452,6 +3524,30 @@ module Basecamp
           "target" => @target,
           "title" => @title,
           "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # TimelineEventData
+    class TimelineEventData
+      include TypeHelpers
+      attr_accessor :all_day, :ends_at, :starts_at
+
+      def initialize(data = {})
+        @all_day = parse_boolean(data["all_day"])
+        @ends_at = data["ends_at"]
+        @starts_at = data["starts_at"]
+      end
+
+      def to_h
+        {
+          "all_day" => @all_day,
+          "ends_at" => @ends_at,
+          "starts_at" => @starts_at,
         }.compact
       end
 

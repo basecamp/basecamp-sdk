@@ -23,5 +23,8 @@ data class TimelineEvent(
     val target: String? = null,
     val title: String? = null,
     @SerialName("summary_excerpt") val summaryExcerpt: String? = null,
-    val bucket: TodoBucket? = null
+    @SerialName("avatars_sample") val avatarsSample: List<String>? = null,
+    val bucket: TodoBucket? = null,
+    val data: TimelineEventData? = null,
+    val attachments: List<TimelineAttachment>? = null
 )

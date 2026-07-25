@@ -82,6 +82,185 @@ func TestTimelineEvent_Unmarshal(t *testing.T) {
 	}
 }
 
+// TestTimelineEvent_AdditiveFields exercises runtime decode of the additive
+// fields: a non-empty avatars_sample, the schedule-entry data payload with a
+// date-only (all_day) starts_at/ends_at, and BOTH heterogeneous attachment
+// variants — a full Upload recording and a rich-text attachment/blob partial —
+// in a single non-empty array. Empty arrays / shape-only tests do not prove
+// polymorphic decode, so both variants carry real per-variant fields here.
+func TestTimelineEvent_AdditiveFields(t *testing.T) {
+	data := `[
+		{
+			"id": 1,
+			"created_at": "2024-03-15T10:30:00Z",
+			"kind": "chat_transcript_rollup",
+			"avatars_sample": [
+				"https://3.basecampapi.com/1/people/aaa/avatar",
+				"https://3.basecampapi.com/1/people/bbb/avatar"
+			]
+		},
+		{
+			"id": 2,
+			"created_at": "2024-03-15T10:31:00Z",
+			"kind": "schedule_entry_created",
+			"avatars_sample": [],
+			"data": {
+				"all_day": true,
+				"starts_at": "2025-10-30",
+				"ends_at": "2025-10-30"
+			}
+		},
+		{
+			"id": 3,
+			"created_at": "2024-03-15T10:32:00Z",
+			"kind": "upload_created",
+			"avatars_sample": [],
+			"attachments": [
+				{
+					"id": 900,
+					"type": "Upload",
+					"status": "active",
+					"visible_to_clients": false,
+					"title": "Diagram",
+					"filename": "diagram.png",
+					"content_type": "image/png",
+					"byte_size": 20480,
+					"width": 1024.0,
+					"height": 768.0,
+					"url": "https://3.basecampapi.com/1/buckets/2/uploads/900.json",
+					"app_url": "https://3.basecamp.com/1/buckets/2/uploads/900",
+					"download_url": "https://3.basecampapi.com/1/buckets/2/uploads/900/download/diagram.png",
+					"app_download_url": "https://3.basecamp.com/1/buckets/2/uploads/900/download"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"created_at": "2024-03-15T10:33:00Z",
+			"kind": "comment_created",
+			"avatars_sample": [],
+			"attachments": [
+				{
+					"id": 500,
+					"attachable_sgid": "sgid-attachable-500",
+					"sgid": "sgid-500",
+					"status_url": "https://3.basecampapi.com/1/attachments/sgid-500/status.json",
+					"caption": "See attached",
+					"filename": "notes.pdf",
+					"content_type": "application/pdf",
+					"byte_size": 4096,
+					"key": "blobkey500",
+					"width": null,
+					"height": null,
+					"previewable": true,
+					"download_url": "https://3.basecampapi.com/1/blobs/blobkey500/download/notes.pdf",
+					"preview_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/full",
+					"thumbnail_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/card"
+				}
+			]
+		}
+	]`
+
+	var events []TimelineEvent
+	if err := json.Unmarshal([]byte(data), &events); err != nil {
+		t.Fatalf("failed to unmarshal timeline events: %v", err)
+	}
+	if len(events) != 4 {
+		t.Fatalf("expected 4 events, got %d", len(events))
+	}
+
+	// avatars_sample non-empty
+	if got := events[0].AvatarsSample; len(got) != 2 || got[0] == "" {
+		t.Errorf("expected 2 avatar URLs, got %v", got)
+	}
+
+	// data with date-only all-day timing (FlexibleTime accepts date-only)
+	ev := events[1]
+	if ev.Data == nil {
+		t.Fatal("expected data on schedule_entry_created event")
+	}
+	if !ev.Data.AllDay {
+		t.Error("expected all_day true")
+	}
+	wantDate := time.Date(2025, 10, 30, 0, 0, 0, 0, time.UTC)
+	if !ev.Data.StartsAt.Equal(wantDate) {
+		t.Errorf("expected StartsAt %v, got %v", wantDate, ev.Data.StartsAt)
+	}
+	if !ev.Data.EndsAt.Equal(wantDate) {
+		t.Errorf("expected EndsAt %v, got %v", wantDate, ev.Data.EndsAt)
+	}
+
+	// Upload-recording attachment variant
+	up := events[2].Attachments
+	if len(up) != 1 {
+		t.Fatalf("expected 1 upload attachment, got %d", len(up))
+	}
+	if up[0].Type != "Upload" || up[0].Filename != "diagram.png" || up[0].AppDownloadURL == "" {
+		t.Errorf("upload variant fields not decoded: %+v", up[0])
+	}
+	if up[0].Width == nil || *up[0].Width != 1024 {
+		t.Errorf("expected float-spelled width 1024, got %v", up[0].Width)
+	}
+	if up[0].AttachableSGID != "" {
+		t.Errorf("upload variant should not carry attachable_sgid, got %q", up[0].AttachableSGID)
+	}
+
+	// Rich-text attachment/blob variant
+	att := events[3].Attachments
+	if len(att) != 1 {
+		t.Fatalf("expected 1 blob attachment, got %d", len(att))
+	}
+	if att[0].AttachableSGID != "sgid-attachable-500" || att[0].Caption != "See attached" || att[0].Key != "blobkey500" {
+		t.Errorf("attachment variant fields not decoded: %+v", att[0])
+	}
+	if att[0].Previewable == nil || !*att[0].Previewable || att[0].ThumbnailURL == "" {
+		t.Errorf("attachment variant preview fields not decoded: %+v", att[0])
+	}
+	if att[0].Width != nil || att[0].Height != nil {
+		t.Errorf("expected nil width/height for non-image blob, got w=%v h=%v", att[0].Width, att[0].Height)
+	}
+	// Presence-faithful: the attachment variant carries no upload timestamps or
+	// visibility, so those pointers stay nil (and re-marshal omits them).
+	if att[0].CreatedAt != nil || att[0].VisibleToClients != nil {
+		t.Errorf("expected nil upload-variant fields on attachment, got created_at=%v visible=%v", att[0].CreatedAt, att[0].VisibleToClients)
+	}
+}
+
+// TestTimelineAttachment_PresenceFaithfulRoundTrip verifies that re-marshaling a
+// decoded attachment-variant superset omits the absent upload-variant fields
+// (no fabricated zero timestamp, no dropped explicit false) — the reason the
+// optional timestamps/booleans are pointers.
+func TestTimelineAttachment_PresenceFaithfulRoundTrip(t *testing.T) {
+	// Attachment variant: explicit previewable:false, no created_at/updated_at,
+	// no visible_to_clients.
+	src := `{"id":500,"attachable_sgid":"sgid-500","filename":"notes.pdf","previewable":false}`
+	var a TimelineAttachment
+	if err := json.Unmarshal([]byte(src), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if a.Previewable == nil || *a.Previewable != false {
+		t.Fatalf("expected explicit previewable=false preserved, got %v", a.Previewable)
+	}
+	out, err := json.Marshal(a)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var round map[string]any
+	if err := json.Unmarshal(out, &round); err != nil {
+		t.Fatalf("re-unmarshal: %v", err)
+	}
+	// Absent upload-variant fields must NOT be fabricated on re-marshal.
+	for _, k := range []string{"created_at", "updated_at", "visible_to_clients"} {
+		if _, present := round[k]; present {
+			t.Errorf("re-marshal fabricated absent field %q: %s", k, out)
+		}
+	}
+	// Explicit false must survive the round trip (not dropped by omitempty).
+	if v, ok := round["previewable"]; !ok || v != false {
+		t.Errorf("re-marshal dropped explicit previewable=false: %s", out)
+	}
+}
+
 // wrappedPaginationHandler serves wrapped {person, events} responses with Link headers.
 type wrappedPaginationHandler struct {
 	pageSize  int

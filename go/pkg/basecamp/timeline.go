@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
+	"github.com/basecamp/basecamp-sdk/go/pkg/types"
 )
 
 // DefaultTimelineLimit is the default number of timeline events to return when no limit is specified.
@@ -15,18 +16,86 @@ const DefaultTimelineLimit = 100
 
 // TimelineEvent represents an activity event in the timeline.
 type TimelineEvent struct {
-	ID                int64     `json:"id"`
-	CreatedAt         time.Time `json:"created_at"`
-	Kind              string    `json:"kind"`
-	ParentRecordingID int64     `json:"parent_recording_id"`
-	URL               string    `json:"url"`
-	AppURL            string    `json:"app_url"`
-	Creator           *Person   `json:"creator,omitempty"`
-	Action            string    `json:"action"`
-	Target            string    `json:"target"`
-	Title             string    `json:"title"`
-	SummaryExcerpt    string    `json:"summary_excerpt"`
-	Bucket            *Bucket   `json:"bucket,omitempty"`
+	ID        int64     `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	// Kind is an open, non-exhaustive vocabulary (BC3 adds new kinds over time);
+	// treat unrecognized values as valid. Common values include message_created,
+	// todo_created, todo_completed, upload_created, schedule_entry_created,
+	// chat_transcript_rollup, dock_created, and project_access_changed.
+	Kind              string  `json:"kind"`
+	ParentRecordingID int64   `json:"parent_recording_id"`
+	URL               string  `json:"url"`
+	AppURL            string  `json:"app_url"`
+	Creator           *Person `json:"creator,omitempty"`
+	Action            string  `json:"action"`
+	Target            string  `json:"target"`
+	Title             string  `json:"title"`
+	SummaryExcerpt    string  `json:"summary_excerpt"`
+	// AvatarsSample holds avatar URLs of participants, populated for
+	// chat_transcript_rollup events and empty otherwise.
+	AvatarsSample []string `json:"avatars_sample,omitempty"`
+	Bucket        *Bucket  `json:"bucket,omitempty"`
+	// Data carries schedule-entry timing, present only for schedule_entry_created
+	// and schedule_entry_rescheduled events.
+	Data *TimelineEventData `json:"data,omitempty"`
+	// Attachments holds files attached to the event's recording. It is
+	// heterogeneous: an upload-kind recording contributes its full Upload shape,
+	// other recordings contribute rich-text attachment/blob partials. Each
+	// element is an optional-field superset; only the fields of the variant it
+	// represents are populated.
+	Attachments []TimelineAttachment `json:"attachments,omitempty"`
+}
+
+// TimelineEventData carries schedule-entry timing for schedule_entry_* events.
+// StartsAt and EndsAt are date-or-timestamp (types.FlexibleTime): a full ISO
+// 8601 timestamp for timed entries, or a bare date when AllDay is true.
+type TimelineEventData struct {
+	AllDay   bool               `json:"all_day"`
+	StartsAt types.FlexibleTime `json:"starts_at"`
+	EndsAt   types.FlexibleTime `json:"ends_at"`
+}
+
+// TimelineAttachment is a single timeline-event attachment: an optional-field
+// superset over two wire variants — a full Upload recording (upload-kind
+// recordings) and a rich-text attachment/blob partial (all other recordings).
+// Only the fields of the variant an instance represents are populated.
+type TimelineAttachment struct {
+	ID int64 `json:"id,omitempty"`
+
+	// Shared by both variants.
+	ContentType string `json:"content_type,omitempty"`
+	ByteSize    int64  `json:"byte_size,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	DownloadURL string `json:"download_url,omitempty"`
+	// Width and Height are null for non-image blobs and may be float-spelled
+	// (1024.0) on the wire; narrowed to *int32 here (nil when absent/null).
+	Width  *int32 `json:"width,omitempty"`
+	Height *int32 `json:"height,omitempty"`
+
+	// Upload-recording variant. CreatedAt/UpdatedAt/VisibleToClients are
+	// pointers so an absent field (this instance is the attachment variant)
+	// stays nil and round-trips as omitted rather than a fabricated zero
+	// timestamp or a dropped explicit false.
+	Type             string     `json:"type,omitempty"`
+	Title            string     `json:"title,omitempty"`
+	Status           string     `json:"status,omitempty"`
+	CreatedAt        *time.Time `json:"created_at,omitempty"`
+	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
+	RecordingURL     string     `json:"url,omitempty"`
+	AppURL           string     `json:"app_url,omitempty"`
+	AppDownloadURL   string     `json:"app_download_url,omitempty"`
+	VisibleToClients *bool      `json:"visible_to_clients,omitempty"`
+
+	// Rich-text attachment/blob variant. Previewable is a pointer for the same
+	// presence-faithful reason as VisibleToClients.
+	AttachableSGID string `json:"attachable_sgid,omitempty"`
+	SGID           string `json:"sgid,omitempty"`
+	StatusURL      string `json:"status_url,omitempty"`
+	Caption        string `json:"caption,omitempty"`
+	Key            string `json:"key,omitempty"`
+	Previewable    *bool  `json:"previewable,omitempty"`
+	PreviewURL     string `json:"preview_url,omitempty"`
+	ThumbnailURL   string `json:"thumbnail_url,omitempty"`
 }
 
 // TimelineListOptions specifies options for listing timeline events.
@@ -400,5 +469,82 @@ func timelineEventFromGenerated(ge generated.TimelineEvent) TimelineEvent {
 		}
 	}
 
+	if ge.AvatarsSample != nil {
+		e.AvatarsSample = append([]string(nil), ge.AvatarsSample...)
+	}
+
+	// data is present only on schedule_entry_* events. Detect a populated
+	// payload via the timing fields so an absent object stays nil.
+	if !ge.Data.StartsAt.IsZero() || !ge.Data.EndsAt.IsZero() || ge.Data.AllDay {
+		e.Data = &TimelineEventData{
+			AllDay:   ge.Data.AllDay,
+			StartsAt: ge.Data.StartsAt,
+			EndsAt:   ge.Data.EndsAt,
+		}
+	}
+
+	if ge.Attachments != nil {
+		e.Attachments = make([]TimelineAttachment, 0, len(ge.Attachments))
+		for _, ga := range ge.Attachments {
+			e.Attachments = append(e.Attachments, timelineAttachmentFromGenerated(ga))
+		}
+	}
+
 	return e
+}
+
+// UnmarshalJSON routes decoding through the generated TimelineAttachment so the
+// public struct handles the float-encoded integers (1024.0) and null dimensions
+// the BC3 API emits for width/height. Mirrors RichTextAttachment.UnmarshalJSON.
+// Because TimelineEvent has no custom UnmarshalJSON, its Attachments elements
+// invoke this automatically on direct decode.
+func (a *TimelineAttachment) UnmarshalJSON(data []byte) error {
+	var ga generated.TimelineAttachment
+	if err := json.Unmarshal(data, &ga); err != nil {
+		return err
+	}
+	*a = timelineAttachmentFromGenerated(ga)
+	return nil
+}
+
+// timelineAttachmentFromGenerated converts a generated TimelineAttachment (the
+// optional-field superset) to the clean public type. Width and Height are
+// optional/nullable *types.FlexInt in the generated type; a nil pointer leaves
+// the public *int32 nil, and a present value is narrowed to int32.
+func timelineAttachmentFromGenerated(ga generated.TimelineAttachment) TimelineAttachment {
+	a := TimelineAttachment{
+		ContentType:      ga.ContentType,
+		ByteSize:         ga.ByteSize,
+		Filename:         ga.Filename,
+		DownloadURL:      ga.DownloadUrl,
+		Type:             ga.Type,
+		Title:            ga.Title,
+		Status:           ga.Status,
+		CreatedAt:        ga.CreatedAt,
+		UpdatedAt:        ga.UpdatedAt,
+		RecordingURL:     ga.Url,
+		AppURL:           ga.AppUrl,
+		AppDownloadURL:   ga.AppDownloadUrl,
+		VisibleToClients: ga.VisibleToClients,
+		AttachableSGID:   ga.AttachableSgid,
+		SGID:             ga.Sgid,
+		StatusURL:        ga.StatusUrl,
+		Caption:          ga.Caption,
+		Key:              ga.Key,
+		Previewable:      ga.Previewable,
+		PreviewURL:       ga.PreviewUrl,
+		ThumbnailURL:     ga.ThumbnailUrl,
+	}
+	if ga.Id != nil {
+		a.ID = *ga.Id
+	}
+	if ga.Width != nil {
+		w := int32(*ga.Width)
+		a.Width = &w
+	}
+	if ga.Height != nil {
+		h := int32(*ga.Height)
+		a.Height = &h
+	}
+	return a
 }
