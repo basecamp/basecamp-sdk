@@ -29842,6 +29842,9 @@ func ParseDeleteWormholeResponse(rsp *http.Response) (*DeleteWormholeResponse, e
 	}
 
 	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest UnauthorizedErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
