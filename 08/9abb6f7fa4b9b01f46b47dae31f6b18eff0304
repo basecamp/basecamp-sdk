@@ -1,0 +1,22 @@
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_bcf6f711949cbe::t_456446452d33fc 21-25
+  s_bcf6f711949cbe::t_f1a6b865c24d60 91
+swift/Sources/BasecampGenerator/MetadataEmitter.swift
+  s_bcf6f711949cbe::t_99fb1730d75917 27-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "089abb6f7fa4b9b01f46b47dae31f6b18eff0304",
+  "prompts": {},
+  "sessions": {
+    "s_bcf6f711949cbe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "737d2c86-3535-44d7-a909-ce30b15cedd4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
