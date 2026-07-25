@@ -1,0 +1,25 @@
+scripts/check-fixture-coverage.rb
+  s_1a48c423686368::t_e20ebee038564a 37-56
+  s_1a48c423686368::t_e1f591cb94d509 135-138
+spec/fixtures/manifest.yaml
+  s_1a48c423686368::t_b8e9943588393c 75-79
+scripts/test-check-fixture-coverage.rb
+  s_1a48c423686368::t_8eef895c0f88ef 434-441
+  s_1a48c423686368::t_8ca08a88540f20 449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a5c6effcb84fd8c6049fe320c81feeac1c09b24a",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
