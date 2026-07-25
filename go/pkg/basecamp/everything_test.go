@@ -185,10 +185,10 @@ func TestEverythingService_Files_Filters(t *testing.T) {
 	}
 }
 
-// TestEverythingService_Messages_ForwardsPage verifies that a positive page is
-// forwarded as the ?page= query param (regression: previously page>1 silently
-// fetched page 1). Also covers the Files kind+page combination.
-func TestEverythingService_Messages_ForwardsPage(t *testing.T) {
+// TestEverythingService_Messages_PassesPageParam verifies that a positive page
+// is sent as the ?page= query param (regression: previously page>1 silently
+// fetched page 1).
+func TestEverythingService_Messages_PassesPageParam(t *testing.T) {
 	var captured string
 	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		captured = r.URL.RawQuery
@@ -204,7 +204,9 @@ func TestEverythingService_Messages_ForwardsPage(t *testing.T) {
 	}
 }
 
-func TestEverythingService_Files_ForwardsPageAndKind(t *testing.T) {
+// TestEverythingService_Files_PassesPageAndKindParams verifies the Files feed
+// sends the kind, people_ids[], and page query params (not the forwards feed).
+func TestEverythingService_Files_PassesPageAndKindParams(t *testing.T) {
 	var captured string
 	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		captured = r.URL.RawQuery

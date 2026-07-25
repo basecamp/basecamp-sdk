@@ -415,6 +415,7 @@ export {
 // Boosts service - generated
 export {
   BoostsService,
+  type Boost,
   type ListForRecordingBoostOptions,
   type CreateForRecordingBoostRequest,
   type ListForEventBoostOptions,
