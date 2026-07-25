@@ -12,6 +12,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WebhooksServiceTest {
@@ -66,6 +68,39 @@ class WebhooksServiceTest {
         assertEquals(true, webhooks[0].active)
         assertEquals(11L, webhooks[1].id)
         assertEquals(false, webhooks[1].active)
+
+        client.close()
+    }
+
+    @Test
+    fun listEmitsBucketProjectScopeWithNullResourceId() = runTest {
+        var capturedInfo: OperationInfo? = null
+        val hooks = object : BasecampHooks {
+            override fun onOperationStart(info: OperationInfo) {
+                if (info.operation == "ListWebhooks") capturedInfo = info
+            }
+        }
+        val engine = MockEngine { _ ->
+            respond(
+                content = """[${webhookJson(10, "https://example.com/hook1")}]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(
+                    HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                    "X-Total-Count" to listOf("1"),
+                ),
+            )
+        }
+        val client = testBasecampClient {
+            accessToken("test-token")
+            this.engine = engine
+            this.hooks = hooks
+        }
+
+        client.forAccount("12345").webhooks.list(bucketId = 1)
+
+        assertNotNull(capturedInfo)
+        assertEquals(1L, capturedInfo!!.projectId)
+        assertNull(capturedInfo!!.resourceId)
 
         client.close()
     }

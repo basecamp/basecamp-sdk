@@ -106,9 +106,9 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine("    suspend fun ${op.methodName}($params): $returnType {")
 
         // Build OperationInfo
-        val projectParam = op.pathParams.find { it.name == "projectId" }
-        val resourceParam = op.pathParams.findLast { it.name != "projectId" && it.name.endsWith("Id") }
-        val projectArg = if (projectParam != null) "projectId" else "null"
+        val projectParam = op.pathParams.find { it.name == "projectId" || it.name == "bucketId" }
+        val resourceParam = op.pathParams.findLast { it.name != "projectId" && it.name != "bucketId" && it.name.endsWith("Id") }
+        val projectArg = if (projectParam != null) projectParam.name.snakeToCamelCase() else "null"
         val resourceArg = if (resourceParam != null) resourceParam.name.snakeToCamelCase() else "null"
 
         sb.appendLine("        val info = OperationInfo(")
