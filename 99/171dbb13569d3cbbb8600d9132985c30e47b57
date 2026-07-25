@@ -1,0 +1,99 @@
+openapi.json
+  s_8d633484dc870e::t_5512a011cbb15c 26915-27044,27062-27063,27091-27097,27100-27134
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineAttachment.kt
+  s_8d633484dc870e::t_5512a011cbb15c 1-42
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEventData.kt
+  s_8d633484dc870e::t_5512a011cbb15c 1-18
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_5512a011cbb15c 40
+spec/api-gaps/activity-timeline.md
+  s_8d633484dc870e::t_0adc72b1991766 67-97,100
+  s_8d633484dc870e::t_3331a5b130871b 3,7-10
+  s_8d633484dc870e::t_327a807797ed4b 111-112,114,116-129
+  s_8d633484dc870e::t_9af9faaadbc6af 58-62
+python/tests/services/test_timeline.py
+  s_8d633484dc870e::t_28da759a91d754 1-119
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TimelineDecodeTest.kt
+  s_8d633484dc870e::t_97fcdc88b2661c 1-122
+conformance/tests/live-my-surface.json
+  s_8d633484dc870e::t_6c4cd0e0958846 4-14
+  s_20c69161b1ea93::t_533a99da0ce4f8 2-3
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_5512a011cbb15c 24570-24699,24717-24718,24746-24752,24755-24789
+swift/Sources/Basecamp/Generated/Models/TimelineEventData.swift
+  s_8d633484dc870e::t_5512a011cbb15c 1-8
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_5512a011cbb15c 4,3419-3484,3488,3493-3494,3498,3512-3513,3517,3533-3550,3552-3555
+  s_8d633484dc870e::t_aa4a6390661c56 3551,3556
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_5512a011cbb15c 1369-1395,1399-1400,1404,1414-1417
+  s_8d633484dc870e::t_6e1e09f0dd28c7 1418-1419
+go/pkg/basecamp/timeline_test.go
+  s_8d633484dc870e::t_6a603d2e9c9f78 186-190
+  s_1b437abfa07167::t_55a7b065fd8832 85-185,191-223
+spec/basecamp.smithy
+  s_8d633484dc870e::t_31d8ea1de6baee 7482-7491,7493,7502-7506,7508-7598
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_095da6389f51ac 179-181,183-213
+  s_8d633484dc870e::t_d55a3ddf93dbb5 182
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_5512a011cbb15c 2080-2159,2162-2214
+ruby/test/basecamp/services/timeline_service_test.rb
+  s_8d633484dc870e::t_4d0dddf8bdb885 39-129,131-141
+  s_8d633484dc870e::t_2d8da445a09c98 130
+go/pkg/basecamp/timeline.go
+  s_8d633484dc870e::t_55f6b03378ce2e 21-24,34-94
+  s_8d633484dc870e::t_57234a65e8f3c7 473
+  s_8d633484dc870e::t_898e6f71c865f4 467-472,474-487,490,505-544
+  s_8d633484dc870e::t_60b480b882b1a7 491-504,545
+  s_8d633484dc870e::t_72eb4e541bfca0 19-20,25-33
+  s_8d633484dc870e::t_a5a23d4e2f0cc7 11
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_8d633484dc870e::t_8efc188e999773 777-891
+swift/Sources/Basecamp/Generated/Models/TimelineAttachment.swift
+  s_8d633484dc870e::t_5512a011cbb15c 1-29
+swift/Sources/Basecamp/Generated/Models/TimelineEvent.swift
+  s_8d633484dc870e::t_5512a011cbb15c 7-8,12
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_5512a011cbb15c 4218-4287,4292-4302,4313-4317,4319-4340
+spec/api-gaps/README.md
+  s_8d633484dc870e::t_4fa854e2c4f107 43
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEvent.kt
+  s_8d633484dc870e::t_5512a011cbb15c 26-29
+typescript/tests/services/timeline.test.ts
+  s_8d633484dc870e::t_ae001c65766c00 57-167
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_5512a011cbb15c 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "99171dbb13569d3cbbb8600d9132985c30e47b57",
+  "prompts": {},
+  "sessions": {
+    "s_1b437abfa07167": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda71db0-eea3-4445-8ffe-bf40bead5715",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_20c69161b1ea93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "649fc5a9-6fbe-4157-8851-aab0e7b97f32",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
