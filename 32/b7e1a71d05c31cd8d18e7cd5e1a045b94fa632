@@ -1,0 +1,42 @@
+spec/api-gaps/README.md
+  s_8d633484dc870e::t_416a855c1655cb 75-78,80-83
+  s_8d633484dc870e::t_30113ce6325131 74,79
+spec/api-provenance.json
+  s_8d633484dc870e::t_48165f50965f84 4
+spec/api-gaps/schedule-recurrence-writes.md
+  s_8d633484dc870e::t_35d03657e752af 94-97
+  s_8d633484dc870e::t_e9e91ac32ee081 54-61
+  s_8d633484dc870e::t_dd799c7a1b846e 82-85
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_8bb7ddb88b6efd 40
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_8bb7ddb88b6efd 4
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_8bb7ddb88b6efd 4
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_8d633484dc870e::t_8bb7ddb88b6efd 231,289
+go/pkg/basecamp/api-provenance.json
+  s_8d633484dc870e::t_7aa8347bdcb333 4
+spec/api-gaps/dock-tool-create-contract.md
+  s_8d633484dc870e::t_b9346510089d6f 56-59
+  s_8d633484dc870e::t_660e936628d447 110-115
+  s_8d633484dc870e::t_efc16e052c8c6b 121-123
+  s_8d633484dc870e::t_6dfb03f5c94352 6
+  s_8d633484dc870e::t_010c9811573ff0 26-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "32b7e1a71d05c31cd8d18e7cd5e1a045b94fa632",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
