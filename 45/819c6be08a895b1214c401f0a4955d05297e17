@@ -1,0 +1,21 @@
+ruby/test/basecamp/services/webhooks_service_test.rb
+  s_8a8548e8866958::t_a8d2e8376066ab 34-36
+ruby/test/basecamp/services/wormholes_service_test.rb
+  s_8a8548e8866958::t_f3cb97b79a3692 59-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "45819c6be08a895b1214c401f0a4955d05297e17",
+  "prompts": {},
+  "sessions": {
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
