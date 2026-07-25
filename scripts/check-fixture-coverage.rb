@@ -198,6 +198,19 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
     alt_groups << schema[key] if schema[key].is_a?(Array) && !schema[key].empty?
   end
 
+  # An anyOf/oneOf group (local or inherited via $ref/allOf) permits null only if
+  # at least one branch does; if every branch forbids null, the group forbids it
+  # (the value must satisfy some branch). Conjoin that with the surrounding
+  # $ref/allOf constraints. Branch nullability is computed with a FRESH visited
+  # set so outer traversal state can't short-circuit it.
+  alt_groups.each do |branches|
+    group_allows_null = branches.any? do |branch|
+      _, _, _, branch_nullable, = merged_constraints(branch, components, Set.new, depth + 1)
+      branch_nullable
+    end
+    forbids_null ||= !group_allows_null
+  end
+
   [req, props, types, !forbids_null, items, alt_groups]
 end
 

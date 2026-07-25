@@ -328,10 +328,43 @@ rescue Timeout::Error
   failures << "allOf-nullability validation hung"
 end
 
+# anyOf/oneOf nullability: a required field typed only by non-null alternatives
+# must REJECT null (no branch permits it); an explicitly-nullable alternative
+# must ACCEPT it. This is the path {}-fails / matching-object-passes can't reach.
+ALT_NULL_OPENAPI = {
+  "components" => { "schemas" => {
+    "AltNullReject" => { "type" => "object", "required" => ["f"], "properties" => {
+      "f" => { "oneOf" => [{ "type" => "string" }, { "type" => "integer" }] },
+    } },
+    "AltNullAccept" => { "type" => "object", "required" => ["f"], "properties" => {
+      "f" => { "oneOf" => [{ "type" => "string", "nullable" => true }, { "type" => "integer" }] },
+    } },
+  } },
+}.freeze
+
+def alt_null_manifest(schema, id)
+  { "targets" => [{ "id" => id, "fixture" => "#{id}.json", "pointer" => "", "schema" => schema }],
+    "covered_schemas" => { schema => [id] },
+    "excluded_schemas" => {} }
+end
+
+begin
+  out, status = run_synthetic(openapi: ALT_NULL_OPENAPI, manifest: alt_null_manifest("AltNullReject", "reject"),
+                              fixtures: { "reject.json" => { "f" => nil } })
+  expect_fail(failures, "anyOf/oneOf: non-null alternatives reject required null", out, status,
+              "required field is null but its schema is not nullable")
+
+  out, status = run_synthetic(openapi: ALT_NULL_OPENAPI, manifest: alt_null_manifest("AltNullAccept", "accept"),
+                              fixtures: { "accept.json" => { "f" => nil } })
+  expect_pass(failures, "anyOf/oneOf: an explicitly-nullable alternative accepts null", out, status)
+rescue Timeout::Error
+  failures << "alternative-nullability validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 9 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 11 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
