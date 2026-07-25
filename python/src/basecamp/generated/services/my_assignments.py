@@ -19,13 +19,13 @@ class MyAssignmentsService(BaseService):
         )
 
     def get_my_completed_assignments(self) -> ListResult:
-        return self._request_paginated(
+        return self._request_list(
             OperationInfo(service="myassignments", operation="get_my_completed_assignments", is_mutation=False),
             "/my/assignments/completed.json",
         )
 
     def get_my_due_assignments(self, *, scope: str | None = None) -> ListResult:
-        return self._request_paginated(
+        return self._request_list(
             OperationInfo(service="myassignments", operation="get_my_due_assignments", is_mutation=False),
             "/my/assignments/due.json",
             params=self._compact(scope=scope),
@@ -41,13 +41,13 @@ class AsyncMyAssignmentsService(AsyncBaseService):
         )
 
     async def get_my_completed_assignments(self) -> ListResult:
-        return await self._request_paginated(
+        return await self._request_list(
             OperationInfo(service="myassignments", operation="get_my_completed_assignments", is_mutation=False),
             "/my/assignments/completed.json",
         )
 
     async def get_my_due_assignments(self, *, scope: str | None = None) -> ListResult:
-        return await self._request_paginated(
+        return await self._request_list(
             OperationInfo(service="myassignments", operation="get_my_due_assignments", is_mutation=False),
             "/my/assignments/due.json",
             params=self._compact(scope=scope),

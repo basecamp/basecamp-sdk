@@ -19,7 +19,7 @@ class EverythingService(BaseService):
         )
 
     def get_everything_overdue_cards(self) -> ListResult:
-        return self._request_paginated(
+        return self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_cards", is_mutation=False),
             "/cards/overdue.json",
         )
@@ -62,7 +62,7 @@ class EverythingService(BaseService):
         )
 
     def get_everything_overdue_todos(self) -> ListResult:
-        return self._request_paginated(
+        return self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
         )
@@ -77,7 +77,7 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_overdue_cards(self) -> ListResult:
-        return await self._request_paginated(
+        return await self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_cards", is_mutation=False),
             "/cards/overdue.json",
         )
@@ -120,7 +120,7 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_overdue_todos(self) -> ListResult:
-        return await self._request_paginated(
+        return await self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
         )

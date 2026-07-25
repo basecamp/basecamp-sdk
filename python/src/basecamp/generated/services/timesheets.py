@@ -41,7 +41,7 @@ class TimesheetsService(BaseService):
         )
 
     def report(self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None) -> ListResult:
-        return self._request_paginated(
+        return self._request_list(
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
             "/reports/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
@@ -105,7 +105,7 @@ class AsyncTimesheetsService(AsyncBaseService):
     async def report(
         self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None
     ) -> ListResult:
-        return await self._request_paginated(
+        return await self._request_list(
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
             "/reports/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},

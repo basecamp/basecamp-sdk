@@ -125,7 +125,7 @@ class PeopleService(BaseService):
         )
 
     def list_assignable(self) -> ListResult:
-        return self._request_paginated(
+        return self._request_list(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
             "/reports/todos/assigned.json",
         )
@@ -246,7 +246,7 @@ class AsyncPeopleService(AsyncBaseService):
         )
 
     async def list_assignable(self) -> ListResult:
-        return await self._request_paginated(
+        return await self._request_list(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
             "/reports/todos/assigned.json",
         )

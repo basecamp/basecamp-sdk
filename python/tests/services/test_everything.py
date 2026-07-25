@@ -350,3 +350,23 @@ class TestEverythingOverdueFeeds:
         assert result[0]["type"] == "Kanban::Card"
         assert result[0]["due_on"] == "2024-02-01"
         assert result[0]["due_on"] < result[1]["due_on"]
+
+    @respx.mock
+    def test_overdue_todos_does_not_follow_link_header(self):
+        # The overdue feeds are complete, unpaginated arrays. Even if the server
+        # advertises a next page via a Link header, the SDK must issue exactly one
+        # request and return only that response — matching the other SDKs' plain
+        # full-array decode (no Link-following).
+        route = respx.get("https://3.basecampapi.com/12345/todos/overdue.json").mock(
+            return_value=httpx.Response(
+                200,
+                json=_OVERDUE_TODOS_FEED,
+                headers={"Link": '<https://3.basecampapi.com/12345/todos/overdue.json?page=2>; rel="next"'},
+            )
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_overdue_todos()
+
+        assert route.call_count == 1
+        assert len(result) == 2
