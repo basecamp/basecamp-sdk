@@ -1550,7 +1550,7 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 - Total operations: 226
 - Idempotent: 69 (flagged with `idempotent: true`)
-- Non-idempotent: 148 (no `idempotent` field, or not present)
+- Non-idempotent: 157 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---
