@@ -52,8 +52,14 @@ def run_checker_killable(manifest:, openapi:, fixtures:, seconds: 30)
   begin
     Timeout.timeout(seconds) { _, status = Process.wait2(pid) }
   rescue Timeout::Error
-    Process.kill("KILL", pid)
-    Process.wait(pid)
+    # Timeout can fire just after wait2 already reaped the child, so the kill/
+    # reap may hit an already-gone process — tolerate ESRCH/ECHILD.
+    begin
+      Process.kill("KILL", pid)
+      Process.wait(pid)
+    rescue Errno::ESRCH, Errno::ECHILD
+      # already exited/reaped
+    end
     raise
   ensure
     pump.join
