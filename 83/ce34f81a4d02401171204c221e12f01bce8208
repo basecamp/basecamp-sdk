@@ -1,0 +1,85 @@
+ruby/test/basecamp/services/checkins_service_test.rb
+  s_1a48c423686368::t_0b1ac2ff08e2e9 35-37
+  s_1a48c423686368::t_fa9edd5ffbb324 105
+  s_1a48c423686368::t_6327ddb8e7532b 115
+ruby/test/basecamp/services/messages_service_test.rb
+  s_1a48c423686368::t_23cc37fc287f93 53-54
+  s_1a48c423686368::t_83ce49ed349a4f 19-21
+  s_1a48c423686368::t_73d0dc71227b87 31
+ruby/test/basecamp/services/client_correspondences_service_test.rb
+  s_1a48c423686368::t_944f25cf828305 40-41
+  s_1a48c423686368::t_5ea4b5d170d7b0 17-19
+  s_1a48c423686368::t_d7a9fa22f13272 29
+ruby/test/basecamp/services/client_replies_service_test.rb
+  s_1a48c423686368::t_9b14aa90d2ed43 40-41
+  s_1a48c423686368::t_f246e3d7be1b76 17-19
+  s_1a48c423686368::t_c38bef83079e3b 29
+ruby/test/test_helper.rb
+  s_1a48c423686368::t_3e50334b49ee2a 187-193
+typescript/tests/services/cards.test.ts
+  s_1a48c423686368::t_40db0f1fa09e61 10
+  s_1a48c423686368::t_eac4d147c456f0 70
+  s_1a48c423686368::t_8e033bf54514e6 14-17
+ruby/test/basecamp/services/forwards_service_test.rb
+  s_1a48c423686368::t_4a8da053ce7bb8 84
+  s_1a48c423686368::t_6709e68148810d 25-27,30-32
+  s_1a48c423686368::t_41cf4a13b44437 63
+  s_1a48c423686368::t_1b862bec502160 74
+  s_1a48c423686368::t_558a98190dc074 52
+ruby/test/basecamp/services/recordings_service_test.rb
+  s_1a48c423686368::t_539abc1009da65 40
+  s_1a48c423686368::t_c14556ff5581f3 61-66
+  s_1a48c423686368::t_84e90fc4b9145e 22-28
+typescript/tests/services/todolists.test.ts
+  s_1a48c423686368::t_a7e9bdd951d84e 10
+  s_1a48c423686368::t_0d84847d63f217 42
+  s_1a48c423686368::t_6a4d33fa7d79b3 14-17
+python/tests/services/test_todos.py
+  s_1a48c423686368::t_90eefb6765d2db 6,18-23,26-30,39
+typescript/tests/services/comments.test.ts
+  s_1a48c423686368::t_a0ad6bd5c2a25a 42
+  s_1a48c423686368::t_1ee32ae4803cfd 10,14-17
+ruby/test/basecamp/services/schedules_service_test.rb
+  s_1a48c423686368::t_f8286490569361 56-57
+  s_1a48c423686368::t_249e1160b55054 27-29
+  s_1a48c423686368::t_97e6cf465eac9c 48
+ruby/test/basecamp/services/comments_service_test.rb
+  s_1a48c423686368::t_3573252a69ac91 30
+  s_1a48c423686368::t_e0f44eda0edeeb 41
+  s_1a48c423686368::t_ce0b7ef12266a4 18-20
+typescript/tests/services/client-visibility.test.ts
+  s_1a48c423686368::t_d393ca338989e4 9,13-16
+python/tests/services/test_uploads.py
+  s_1a48c423686368::t_65f34ed5bec76c 5-7,15-20,23,25
+ruby/test/basecamp/services/cards_service_test.rb
+  s_1a48c423686368::t_fe9a63006e9ad9 17-19
+  s_1a48c423686368::t_fce58a06e070c4 40
+  s_1a48c423686368::t_bef940daaf1f06 29
+ruby/test/basecamp/services/client_approvals_service_test.rb
+  s_1a48c423686368::t_9deff0fa767285 17-19
+  s_1a48c423686368::t_2b82fa916e297e 29
+  s_1a48c423686368::t_68cbf5eb67f877 40-41
+ruby/test/basecamp/services/documents_service_test.rb
+  s_1a48c423686368::t_2e52c8922211b7 40
+  s_1a48c423686368::t_df1a3fc6d1413a 29
+  s_1a48c423686368::t_abbd50226860e4 17-19
+typescript/tests/services/messages.test.ts
+  s_1a48c423686368::t_655515b779bbbb 86
+  s_1a48c423686368::t_53efaab91f85bf 10,14-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "83ce34f81a4d02401171204c221e12f01bce8208",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
