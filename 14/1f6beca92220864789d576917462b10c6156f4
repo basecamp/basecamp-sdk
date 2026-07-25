@@ -1,0 +1,145 @@
+spec/api-provenance.json
+  s_8d633484dc870e::t_48165f50965f84 4
+spec/api-gaps/dock-tool-create-contract.md
+  s_8d633484dc870e::t_660e936628d447 110-115
+  s_8d633484dc870e::t_010c9811573ff0 26-28
+  s_8d633484dc870e::t_6dfb03f5c94352 6
+  s_8d633484dc870e::t_efc16e052c8c6b 121-123
+  s_8d633484dc870e::t_b9346510089d6f 56-59
+spec/api-gaps/schedule-recurrence-writes.md
+  s_8d633484dc870e::t_dd799c7a1b846e 82-85
+  s_8d633484dc870e::t_e9e91ac32ee081 54-61
+  s_8d633484dc870e::t_35d03657e752af 94-97
+go/pkg/basecamp/api-provenance.json
+  s_8d633484dc870e::t_7aa8347bdcb333 4
+spec/api-gaps/README.md
+  s_8d633484dc870e::t_30113ce6325131 74,79
+  s_8d633484dc870e::t_6396b4bc671dae 60
+  s_8d633484dc870e::t_4fa854e2c4f107 43
+go/pkg/basecamp/tools_test.go
+  s_8d633484dc870e::t_a55813a69f0894 174-229
+python/src/basecamp/generated/services/tools.py
+  s_8d633484dc870e::t_ec6b094bb9ee11 14-16,21,76-78,83
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_ec6b094bb9ee11 718-720
+  s_8d633484dc870e::t_5512a011cbb15c 2094-2173,2176-2228
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_ec6b094bb9ee11 21115-21119
+  s_8d633484dc870e::t_5512a011cbb15c 24910-25039,25057-25058,25086-25092,25095-25129
+typescript/tests/services/tools.test.ts
+  s_8d633484dc870e::t_36fa3431969eb6 120-149
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/tools.kt
+  s_8d633484dc870e::t_ec6b094bb9ee11 33
+go/pkg/basecamp/tools.go
+  s_8d633484dc870e::t_504dc3fa3d0ada 116-120
+  s_8d633484dc870e::t_2ebdf0b9bb8fb6 30-36
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_8d633484dc870e::t_ec6b094bb9ee11 616-617
+openapi.json
+  s_8d633484dc870e::t_ec6b094bb9ee11 23493-23497
+  s_8d633484dc870e::t_5512a011cbb15c 27288-27417,27435-27436,27464-27470,27473-27507
+ruby/lib/basecamp/generated/services/tools_service.rb
+  s_8d633484dc870e::t_ec6b094bb9ee11 14,16,18
+python/tests/services/test_tools.py
+  s_8d633484dc870e::t_0b547a762af890 61-80
+  s_8d633484dc870e::t_343600b9c58fb6 60
+ruby/test/basecamp/services/tools_service_test.rb
+  s_8d633484dc870e::t_83395525e0937e 45-81
+typescript/src/generated/services/tools.ts
+  s_8d633484dc870e::t_ec6b094bb9ee11 26-27,88
+spec/api-gaps/dock-tool-visible-to-clients.md
+  s_8d633484dc870e::t_540a522e6193c1 45-47,49-52
+  s_8d633484dc870e::t_e2493e6cc830b7 79-86
+  s_8d633484dc870e::t_b1b079e646f6f9 3,7
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_8d633484dc870e::t_fe7f1833b33665 469-501
+  s_8d633484dc870e::t_8efc188e999773 777-891
+swift/Sources/Basecamp/Generated/Models/CreateToolRequest.swift
+  s_8d633484dc870e::t_ec6b094bb9ee11 7,9,12
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_ec6b094bb9ee11 527
+  s_8d633484dc870e::t_5512a011cbb15c 1374-1400,1404-1405,1409,1419-1422
+  s_8d633484dc870e::t_6e1e09f0dd28c7 1423-1424
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ToolsServiceTest.kt
+  s_8d633484dc870e::t_e9eeb7c4585864 97-127
+spec/basecamp.smithy
+  s_8d633484dc870e::t_fd7f509e30ab3d 7225-7227
+  s_8d633484dc870e::t_31d8ea1de6baee 7643-7652,7654,7663-7667,7669-7759
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_ec6b094bb9ee11 3151-3152
+  s_8d633484dc870e::t_5512a011cbb15c 4268-4337,4342-4352,4363-4367,4369-4390
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineAttachment.kt
+  s_8d633484dc870e::t_5512a011cbb15c 1-42
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEventData.kt
+  s_8d633484dc870e::t_5512a011cbb15c 1-18
+spec/api-gaps/activity-timeline.md
+  s_8d633484dc870e::t_0adc72b1991766 67-97,100
+  s_8d633484dc870e::t_3331a5b130871b 3,7-10
+  s_8d633484dc870e::t_327a807797ed4b 111-112,114,116-129
+  s_8d633484dc870e::t_9af9faaadbc6af 58-62
+python/tests/services/test_timeline.py
+  s_8d633484dc870e::t_28da759a91d754 1-119
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TimelineDecodeTest.kt
+  s_8d633484dc870e::t_97fcdc88b2661c 1-122
+conformance/tests/live-my-surface.json
+  s_8d633484dc870e::t_6c4cd0e0958846 4-14
+  s_20c69161b1ea93::t_533a99da0ce4f8 2-3
+swift/Sources/Basecamp/Generated/Models/TimelineEventData.swift
+  s_8d633484dc870e::t_5512a011cbb15c 1-8
+go/pkg/basecamp/timeline_test.go
+  s_8d633484dc870e::t_6a603d2e9c9f78 186-190
+  s_1b437abfa07167::t_55a7b065fd8832 85-185,191-223
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_095da6389f51ac 179-181,183-213
+  s_8d633484dc870e::t_d55a3ddf93dbb5 182
+ruby/test/basecamp/services/timeline_service_test.rb
+  s_8d633484dc870e::t_4d0dddf8bdb885 39-129,131-141
+  s_8d633484dc870e::t_2d8da445a09c98 130
+go/pkg/basecamp/timeline.go
+  s_8d633484dc870e::t_55f6b03378ce2e 21-24,34-94
+  s_8d633484dc870e::t_57234a65e8f3c7 473
+  s_8d633484dc870e::t_898e6f71c865f4 467-472,474-487,490,505-544
+  s_8d633484dc870e::t_60b480b882b1a7 491-504,545
+  s_8d633484dc870e::t_72eb4e541bfca0 19-20,25-33
+  s_8d633484dc870e::t_a5a23d4e2f0cc7 11
+swift/Sources/Basecamp/Generated/Models/TimelineAttachment.swift
+  s_8d633484dc870e::t_5512a011cbb15c 1-29
+swift/Sources/Basecamp/Generated/Models/TimelineEvent.swift
+  s_8d633484dc870e::t_5512a011cbb15c 7-8,12
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEvent.kt
+  s_8d633484dc870e::t_5512a011cbb15c 26-29
+typescript/tests/services/timeline.test.ts
+  s_8d633484dc870e::t_ae001c65766c00 57-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "141f6beca92220864789d576917462b10c6156f4",
+  "prompts": {},
+  "sessions": {
+    "s_1b437abfa07167": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda71db0-eea3-4445-8ffe-bf40bead5715",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_20c69161b1ea93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "649fc5a9-6fbe-4157-8851-aab0e7b97f32",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
