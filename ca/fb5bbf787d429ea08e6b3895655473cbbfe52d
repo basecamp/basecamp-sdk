@@ -1,0 +1,26 @@
+.github/workflows/test.yml
+  s_12b5d47878a75a::t_7629eb921186fe 278-280
+scripts/check-swift-service-drift.sh
+  s_12b5d47878a75a::t_0bd2e3b99c474f 1-42
+Makefile
+  s_12b5d47878a75a::t_6dc114101bce30 798
+  s_12b5d47878a75a::t_aa3f2242c8c43d 652-659
+  s_12b5d47878a75a::t_526ef42e59e8d1 856
+  s_12b5d47878a75a::t_1c93771b7cd503 626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cafb5bbf787d429ea08e6b3895655473cbbfe52d",
+  "prompts": {},
+  "sessions": {
+    "s_12b5d47878a75a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b4396bd-4c1e-4c3f-9532-b12c43c6b813",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
