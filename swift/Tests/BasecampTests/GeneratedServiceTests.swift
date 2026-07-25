@@ -335,6 +335,23 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(transport.lastRequest!.request.httpMethod, "POST")
     }
 
+    // ListWebhooks is a bucket-scoped collection op: operation metadata carries
+    // projectId == bucket id and NO resourceId (there's no deeper target id).
+    func testListWebhooksEmitsProjectScopeWithoutResourceId() async throws {
+        let spy = SpyHooks()
+        let data = try JSONSerialization.data(withJSONObject: [] as [Any])
+        let transport = MockTransport(statusCode: 200, data: data, headers: ["X-Total-Count": "0"])
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        _ = try await account.webhooks.list(bucketId: 7)
+
+        XCTAssertEqual(spy.operationStarts.count, 1)
+        let info = spy.operationStarts.first!
+        XCTAssertEqual(info.operation, "ListWebhooks")
+        XCTAssertEqual(info.projectId, 7, "projectId should be the bucket id")
+        XCTAssertNil(info.resourceId, "collection op has no deeper resource id")
+    }
+
     func testCommentsServiceGet() async throws {
         let responseJSON: [String: Any] = [
             "id": 7, "content": "Great idea!", "content_attachments": [],
@@ -740,5 +757,19 @@ final class GeneratedServiceTests: XCTestCase {
         let sentJSON = try await sentMessageBody(visibleToClients: false)
         XCTAssertNotNil(sentJSON["visible_to_clients"], "explicit false must be sent, not dropped")
         XCTAssertEqual(sentJSON["visible_to_clients"] as? Bool, false)
+    }
+}
+
+/// Records operation-start callbacks so tests can assert emitted metadata.
+private final class SpyHooks: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _operationStarts: [OperationInfo] = []
+
+    var operationStarts: [OperationInfo] {
+        lock.withLock { _operationStarts }
+    }
+
+    func onOperationStart(_ info: OperationInfo) {
+        lock.withLock { _operationStarts.append(info) }
     }
 }

@@ -83,6 +83,40 @@ class WormholesServiceTest {
     }
 
     @Test
+    fun createEmitsBucketProjectScopeWithCardTableResourceId() = runTest {
+        var capturedInfo: OperationInfo? = null
+        val hooks = object : BasecampHooks {
+            override fun onOperationStart(info: OperationInfo) {
+                if (info.operation == "CreateWormhole") capturedInfo = info
+            }
+        }
+        val engine = MockEngine { _ ->
+            respond(
+                content = wormholeJson(99),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+        val client = testBasecampClient {
+            accessToken("test-token")
+            this.engine = engine
+            this.hooks = hooks
+        }
+
+        client.forAccount("12345").wormholes.create(
+            bucketId = 2085958499,
+            cardTableId = 1069479345,
+            body = CreateWormholeBody(destinationRecordingId = 1069479500),
+        )
+
+        assertNotNull(capturedInfo)
+        assertEquals(2085958499L, capturedInfo!!.projectId)
+        assertEquals(1069479345L, capturedInfo!!.resourceId)
+
+        client.close()
+    }
+
+    @Test
     fun createValidationErrorAtLimitThrows() = runTest {
         val client = mockClient { _ ->
             respond(

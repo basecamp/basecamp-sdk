@@ -73,7 +73,7 @@ export class ToolsService extends BaseService {
         operation: "CreateTool",
         resourceType: "tool",
         isMutation: true,
-        resourceId: bucketId,
+        projectId: bucketId,
       },
       () =>
         this.client.POST("/buckets/{bucketId}/dock/tools.json", {

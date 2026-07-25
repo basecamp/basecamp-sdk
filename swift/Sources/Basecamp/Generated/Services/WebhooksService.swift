@@ -13,7 +13,7 @@ public struct ListWebhookOptions: Sendable {
 public final class WebhooksService: BaseService, @unchecked Sendable {
     public func create(bucketId: Int, req: CreateWebhookRequest) async throws -> Webhook {
         return try await request(
-            OperationInfo(service: "Webhooks", operation: "CreateWebhook", resourceType: "webhook", isMutation: true, resourceId: bucketId),
+            OperationInfo(service: "Webhooks", operation: "CreateWebhook", resourceType: "webhook", isMutation: true, projectId: bucketId),
             method: "POST",
             path: "/buckets/\(bucketId)/webhooks.json",
             body: req,
@@ -41,7 +41,7 @@ public final class WebhooksService: BaseService, @unchecked Sendable {
 
     public func list(bucketId: Int, options: ListWebhookOptions? = nil) async throws -> ListResult<Webhook> {
         return try await requestPaginated(
-            OperationInfo(service: "Webhooks", operation: "ListWebhooks", resourceType: "webhook", isMutation: false, resourceId: bucketId),
+            OperationInfo(service: "Webhooks", operation: "ListWebhooks", resourceType: "webhook", isMutation: false, projectId: bucketId),
             path: "/buckets/\(bucketId)/webhooks.json",
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListWebhooks")

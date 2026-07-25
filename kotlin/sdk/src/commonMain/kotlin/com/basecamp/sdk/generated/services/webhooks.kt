@@ -23,8 +23,8 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
             operation = "ListWebhooks",
             resourceType = "webhook",
             isMutation = false,
-            projectId = null,
-            resourceId = bucketId,
+            projectId = bucketId,
+            resourceId = null,
         )
         return requestPaginated(info, options, {
             httpGet("/buckets/${bucketId}/webhooks.json", operationName = info.operation)
@@ -44,8 +44,8 @@ class WebhooksService(client: AccountClient) : BaseService(client) {
             operation = "CreateWebhook",
             resourceType = "webhook",
             isMutation = true,
-            projectId = null,
-            resourceId = bucketId,
+            projectId = bucketId,
+            resourceId = null,
         )
         return request(info, {
             httpPost("/buckets/${bucketId}/webhooks.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {

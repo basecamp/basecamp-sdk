@@ -135,8 +135,11 @@ func TestToolsServiceCreatePostsToBucketDock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create() error = %v; request path = %s; want bucket %d dock tools endpoint", err, capturedPath, bucketID)
 	}
-	if capturedOp.ResourceID != bucketID {
-		t.Fatalf("Create() operation ResourceID = %d, want destination bucket %d", capturedOp.ResourceID, bucketID)
+	if capturedOp.ProjectID != bucketID {
+		t.Fatalf("Create() operation ProjectID = %d, want destination bucket %d", capturedOp.ProjectID, bucketID)
+	}
+	if capturedOp.ResourceID != 0 {
+		t.Fatalf("Create() operation ResourceID = %d, want 0 (bucket is project scope, not a resource)", capturedOp.ResourceID)
 	}
 }
 

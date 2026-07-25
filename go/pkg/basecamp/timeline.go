@@ -152,6 +152,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	op := OperationInfo{
 		Service: "Timeline", Operation: "ProjectTimeline",
 		ResourceType: "timeline_event", IsMutation: false,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {

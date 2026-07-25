@@ -88,6 +88,7 @@ export class CardColumnsService extends BaseService {
         operation: "SetCardColumnColor",
         resourceType: "card_column_color",
         isMutation: true,
+        projectId: bucketId,
         resourceId: columnId,
       },
       () =>
@@ -122,6 +123,7 @@ export class CardColumnsService extends BaseService {
         operation: "EnableCardColumnOnHold",
         resourceType: "card_column_on_hold",
         isMutation: true,
+        projectId: bucketId,
         resourceId: columnId,
       },
       () =>
@@ -153,6 +155,7 @@ export class CardColumnsService extends BaseService {
         operation: "DisableCardColumnOnHold",
         resourceType: "card_column_on_hold",
         isMutation: true,
+        projectId: bucketId,
         resourceId: columnId,
       },
       () =>

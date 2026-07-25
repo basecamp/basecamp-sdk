@@ -20,6 +20,26 @@ class WebhooksServiceTest < Minitest::Test
     assert_equal "https://example.com/webhook", result.first["payload_url"]
   end
 
+  def test_list_operation_metadata
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+
+    response = [ { "id" => 1, "payload_url" => "https://example.com/webhook", "active" => true } ]
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/buckets/\d+/webhooks\.json})
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    # Paginated operations fire hooks on iteration, so drain the enumerator.
+    account.webhooks.list(bucket_id: 1).to_a
+
+    event = events.find { |e| e[:event] == :on_operation_start }
+    assert event, "Expected on_operation_start to fire"
+    info = event[:info]
+    assert_equal "webhooks", info.service
+    assert_equal "list", info.operation
+    assert_equal 1, info.project_id
+    assert_nil info.resource_id
+  end
+
   def test_get
     response = { "id" => 1, "payload_url" => "https://example.com/webhook" }
 
@@ -75,5 +95,21 @@ class WebhooksServiceTest < Minitest::Test
     assert_equal 1230, delivery["id"]
     assert_equal "todo_created", delivery["request"]["body"]["kind"]
     assert_equal 200, delivery["response"]["code"]
+  end
+
+  private
+
+  # Captures the OperationInfo passed to on_operation_start so tests can
+  # assert the metadata emitted by the real generated service call.
+  class CapturingHooks
+    include Basecamp::Hooks
+
+    def initialize(events)
+      @events = events
+    end
+
+    def on_operation_start(info)
+      @events << { event: :on_operation_start, info: info }
+    end
   end
 end

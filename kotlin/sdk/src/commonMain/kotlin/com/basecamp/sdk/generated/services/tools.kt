@@ -23,8 +23,8 @@ class ToolsService(client: AccountClient) : BaseService(client) {
             operation = "CreateTool",
             resourceType = "tool",
             isMutation = true,
-            projectId = null,
-            resourceId = bucketId,
+            projectId = bucketId,
+            resourceId = null,
         )
         return request(info, {
             httpPost("/buckets/${bucketId}/dock/tools.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {

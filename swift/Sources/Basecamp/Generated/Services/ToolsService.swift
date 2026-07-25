@@ -4,7 +4,7 @@ import Foundation
 public final class ToolsService: BaseService, @unchecked Sendable {
     public func create(bucketId: Int, req: CreateToolRequest) async throws -> Tool {
         return try await request(
-            OperationInfo(service: "Tools", operation: "CreateTool", resourceType: "tool", isMutation: true, resourceId: bucketId),
+            OperationInfo(service: "Tools", operation: "CreateTool", resourceType: "tool", isMutation: true, projectId: bucketId),
             method: "POST",
             path: "/buckets/\(bucketId)/dock/tools.json",
             body: req,
