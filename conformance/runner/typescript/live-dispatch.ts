@@ -118,30 +118,32 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     },
   },
 
-  // Everything aggregates — flat family (one canary per group).
+  // Everything aggregates — flat family (one canary per group). The paginated
+  // roots pass maxItems so live mode samples each account-wide feed instead of
+  // following every Link page; the overdue lists are unpaginated (no options).
   GetEverythingMessages: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingMessages() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingMessages({ maxItems: 5 }) }),
   },
   GetEverythingComments: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingComments() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingComments({ maxItems: 5 }) }),
   },
   GetEverythingCheckins: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingCheckins() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingCheckins({ maxItems: 5 }) }),
   },
   GetEverythingForwards: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingForwards() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingForwards({ maxItems: 5 }) }),
   },
   GetEverythingBoosts: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingBoosts() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingBoosts({ maxItems: 5 }) }),
   },
   GetEverythingFiles: {
     fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingFiles() }),
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingFiles({ maxItems: 5 }) }),
   },
   GetEverythingOverdueTodos: {
     fixtures: [],
