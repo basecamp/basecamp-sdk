@@ -310,6 +310,214 @@ final class RetryTests: XCTestCase {
         XCTAssertEqual(counter.value, 2, "Should exhaust all retry attempts")
     }
 
+    // MARK: - Idempotency Gate (Layer A: transport)
+
+    /// A retryable config used by the idempotency-gate tests. Fast + deterministic.
+    private static let gateConfig = RetryConfig(
+        maxAttempts: 3, baseDelayMs: 1, backoff: .constant, retryOn: [429, 503]
+    )
+
+    func testNonIdempotentPostNotRetriedOn503() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            counter.increment()
+            return (Data(), HTTPURLResponse(
+                url: request.url!, statusCode: 503,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        let (_, response) = try await account.httpClient.performRequest(
+            method: "POST",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            body: Data("{}".utf8),
+            retryConfig: Self.gateConfig,
+            idempotent: false
+        )
+
+        XCTAssertEqual(response.statusCode, 503)
+        XCTAssertEqual(counter.value, 1, "Non-idempotent POST must not retry on 503")
+    }
+
+    func testNonIdempotentPostNotRetriedOn429() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            counter.increment()
+            return (Data(), HTTPURLResponse(
+                url: request.url!, statusCode: 429,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        let (_, response) = try await account.httpClient.performRequest(
+            method: "POST",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            body: Data("{}".utf8),
+            retryConfig: Self.gateConfig,
+            idempotent: false
+        )
+
+        XCTAssertEqual(response.statusCode, 429)
+        XCTAssertEqual(counter.value, 1, "Non-idempotent POST must not retry on 429")
+    }
+
+    func testIdempotentPostRetriedOn503() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            let statusCode = count < 2 ? 503 : 200
+            return (Data("{}".utf8), HTTPURLResponse(
+                url: request.url!, statusCode: statusCode,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        let (_, response) = try await account.httpClient.performRequest(
+            method: "POST",
+            url: "https://3.basecampapi.com/999999999/buckets/1/todos/1/completion.json",
+            body: Data("{}".utf8),
+            retryConfig: Self.gateConfig,
+            idempotent: true
+        )
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(counter.value, 2, "Idempotent POST must keep retrying on 503")
+    }
+
+    func testNonIdempotentPostNotRetriedOnNetworkError() async throws {
+        let counter = Counter()
+        let transport = MockTransport { _ in
+            counter.increment()
+            throw URLError(.networkConnectionLost)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        do {
+            _ = try await account.httpClient.performRequest(
+                method: "POST",
+                url: "https://3.basecampapi.com/999999999/projects.json",
+                body: Data("{}".utf8),
+                retryConfig: Self.gateConfig,
+                idempotent: false
+            )
+            XCTFail("Expected network error")
+        } catch let error as BasecampError {
+            guard case .network = error else {
+                return XCTFail("Expected .network error, got \(error)")
+            }
+        }
+
+        XCTAssertEqual(counter.value, 1, "Non-idempotent POST must not retry on network error")
+    }
+
+    func testUnknownMethodPatchNotRetried() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            counter.increment()
+            return (Data(), HTTPURLResponse(
+                url: request.url!, statusCode: 503,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        // PATCH is not in the naturally-idempotent allowlist and the operation
+        // is not flagged idempotent, so the method gate must be fail-closed.
+        let (_, response) = try await account.httpClient.performRequest(
+            method: "PATCH",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            body: Data("{}".utf8),
+            retryConfig: Self.gateConfig,
+            idempotent: false
+        )
+
+        XCTAssertEqual(response.statusCode, 503)
+        XCTAssertEqual(counter.value, 1, "PATCH must not retry — method gate is fail-closed")
+    }
+
+    /// Regression: naturally-idempotent GET still retries regardless of the flag.
+    func testGetRetriesOn503RegardlessOfIdempotentFlag() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            let statusCode = count < 2 ? 503 : 200
+            return (Data("{}".utf8), HTTPURLResponse(
+                url: request.url!, statusCode: statusCode,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        let (_, response) = try await account.httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: Self.gateConfig,
+            idempotent: false
+        )
+
+        XCTAssertEqual(response.statusCode, 200)
+        XCTAssertEqual(counter.value, 2, "GET retries via the method gate; idempotent flag is irrelevant")
+    }
+
+    // MARK: - Idempotency Gate (Layer B: BaseService → Metadata → transport)
+
+    /// Non-idempotent POST driven through a generated service must make a single
+    /// attempt — proving `Metadata.isIdempotent` reaches the transport as `false`.
+    func testGeneratedNonIdempotentPostNotRetried() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            counter.increment()
+            return (Data(), HTTPURLResponse(
+                url: request.url!, statusCode: 503,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        do {
+            _ = try await account.projects.create(req: CreateProjectRequest(name: "Test"))
+            XCTFail("Expected 503 error")
+        } catch let error as BasecampError {
+            guard case .api = error else {
+                return XCTFail("Expected .api error, got \(error)")
+            }
+        }
+
+        XCTAssertEqual(transport.requests.count, 1, "CreateProject (non-idempotent POST) must not retry")
+    }
+
+    /// Idempotent POST driven through its generated service must retry —
+    /// proving `Metadata.isIdempotent` wires `true` through `BaseService`.
+    /// Must be an idempotent POST (CompleteTodo), not a PUT: a PUT would only
+    /// exercise the method gate and would not prove the metadata lookup.
+    func testGeneratedIdempotentPostRetries() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            let statusCode = count < 2 ? 503 : 204
+            return (Data(), HTTPURLResponse(
+                url: request.url!, statusCode: statusCode,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        try await account.todos.complete(todoId: 1)
+
+        XCTAssertEqual(transport.requests.count, 2, "CompleteTodo (idempotent POST) must retry through BaseService")
+    }
+
     // MARK: - Auth Header
 
     func testAuthHeaderIncludesToken() async throws {

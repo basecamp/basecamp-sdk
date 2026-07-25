@@ -52,7 +52,8 @@ open class BaseService: @unchecked Sendable {
             let url = try buildURL(path)
 
             let (data, response) = try await accountClient.httpClient.performRequest(
-                method: method, url: url, body: bodyData, contentType: contentType, retryConfig: retryConfig
+                method: method, url: url, body: bodyData, contentType: contentType,
+                retryConfig: retryConfig, idempotent: Metadata.isIdempotent(for: info.operation)
             )
 
             let durationMs = millisSince(startTime)
@@ -106,7 +107,8 @@ open class BaseService: @unchecked Sendable {
             let url = try buildURL(path)
 
             let (data, response) = try await accountClient.httpClient.performRequest(
-                method: method, url: url, body: bodyData, contentType: contentType, retryConfig: retryConfig
+                method: method, url: url, body: bodyData, contentType: contentType,
+                retryConfig: retryConfig, idempotent: Metadata.isIdempotent(for: info.operation)
             )
 
             let durationMs = millisSince(startTime)
@@ -158,7 +160,8 @@ open class BaseService: @unchecked Sendable {
             }
 
             let (data, response) = try await accountClient.httpClient.performRequest(
-                method: "GET", url: urlString, retryConfig: retryConfig
+                method: "GET", url: urlString, retryConfig: retryConfig,
+                idempotent: Metadata.isIdempotent(for: info.operation)
             )
 
             guard response.statusCode >= 200 && response.statusCode < 300 else {
@@ -238,7 +241,8 @@ open class BaseService: @unchecked Sendable {
             }
 
             let (data, response) = try await accountClient.httpClient.performRequest(
-                method: "GET", url: urlString, retryConfig: retryConfig
+                method: "GET", url: urlString, retryConfig: retryConfig,
+                idempotent: Metadata.isIdempotent(for: info.operation)
             )
 
             guard response.statusCode >= 200 && response.statusCode < 300 else {
