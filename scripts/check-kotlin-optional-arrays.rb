@@ -40,7 +40,9 @@ unless File.file?(OPENAPI_FILE)
   exit 2
 end
 
-components = JSON.parse(File.read(OPENAPI_FILE)).dig("components", "schemas") || {}
+# Read as UTF-8 regardless of process locale (LC_ALL=C would otherwise read as
+# US-ASCII and choke on the spec's / generated code's UTF-8 bytes).
+components = JSON.parse(File.read(OPENAPI_FILE, encoding: "UTF-8")).dig("components", "schemas") || {}
 
 errors = []
 
@@ -86,7 +88,7 @@ files.each do |path|
   required_fields = component ? (component["required"] || []) : nil
   known_props = component ? (component["properties"] || {}) : nil
 
-  File.foreach(path).with_index(1) do |line, lineno|
+  File.foreach(path, encoding: "UTF-8").with_index(1) do |line, lineno|
     parsed = parse_array_property(line)
     next unless parsed
 
