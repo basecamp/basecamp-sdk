@@ -157,6 +157,7 @@ go/pkg/basecamp/my_notifications_test.go
 python/src/basecamp/generated/metadata.json
   s_8d633484dc870e::t_d85e36ff1ab941 611-617
   s_8d633484dc870e::t_2570efbea27e5d 607-610
+  s_8d633484dc870e::t_a27a89589ed0c9 618-621
 go/pkg/basecamp/url-routes.json
   s_8d633484dc870e::t_d85e36ff1ab941 1024-1035
   s_8d633484dc870e::t_4d882d2375c112 1023
@@ -167,6 +168,7 @@ python/src/basecamp/generated/services/my_notifications.py
 behavior-model.json
   s_8d633484dc870e::t_d85e36ff1ab941 624-631
   s_8d633484dc870e::t_d1b9a306be7a74 616-623
+  s_8d633484dc870e::t_a27a89589ed0c9 632-639
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/my-notifications.kt
   s_8d633484dc870e::t_d85e36ff1ab941 30,39-58
   s_8d633484dc870e::t_980dd121b46224 59-61
