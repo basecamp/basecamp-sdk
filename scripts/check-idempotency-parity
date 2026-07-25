@@ -54,6 +54,16 @@ pass=0
 compare() {
     local label="$1" expected="$2" actual="$3"
     local missing extra
+    # Fail closed: every set in this check is non-empty (69 or 169 ops). An
+    # empty file means an extraction (grep/jq/awk/sed) matched nothing — a
+    # broken adapter, not a real "empty == empty" match — so `comm` producing
+    # no diff must not be counted as a pass.
+    if [[ ! -s "$expected" || ! -s "$actual" ]]; then
+        fail=$((fail + 1))
+        echo "  FAIL: $label"
+        echo "        internal error: empty operation set (expected=$(wc -l < "$expected" | tr -d ' '), actual=$(wc -l < "$actual" | tr -d ' ')) — an extraction matched nothing"
+        return
+    fi
     missing=$(comm -23 "$expected" "$actual")   # in source of truth, absent from SDK
     extra=$(comm -13 "$expected" "$actual")      # in SDK, not in source of truth
     if [[ -z "$missing" && -z "$extra" ]]; then
