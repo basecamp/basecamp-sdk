@@ -92,7 +92,12 @@ class TypeEmitter {
         val lines = mutableListOf<String>()
         for (q in optionalParams) {
             val camelName = q.name.snakeToCamelCase()
-            lines += "    val $camelName: ${q.type}? = null"
+            // Compiler-level deprecation (see #406): @Deprecated on the property
+            // warns at read sites. It binds to the property (it cannot target a
+            // VALUE_PARAMETER), so the named-constructor-arg call site stays
+            // unflagged — documented as unsupported, parallel to Swift.
+            val annotation = if (q.deprecated) "    @Deprecated(${kotlinStringLiteral(q.deprecationReason ?: "deprecated")})\n" else ""
+            lines += "$annotation    val $camelName: ${q.type}? = null"
         }
         if (hasPagination) {
             lines += "    val maxItems: Int? = null"

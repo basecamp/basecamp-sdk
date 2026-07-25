@@ -743,13 +743,23 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
 # consumers shouldn't need to enumerate projects to reach account-wide data.
 check-bucket-flat-parity:
 	@./scripts/check-bucket-flat-parity.sh
+
+# Verify @deprecated propagates to all six SDKs in the right signal class
+# (compiler=Kotlin; editor=TS/Go; doc-only=Ruby/Python/Swift), that the clean
+# controls stay unmarked, and that no doubled "Deprecated: Deprecated:" slips in.
+# Depends on rb-build: the Ruby YARD-registry sub-check runs `bundle exec`, so
+# the gems (YARD) must be installed first — otherwise a direct invocation or a
+# parallel `make -j check` that schedules this before rb-check would fail on a
+# clean checkout.
+check-deprecation-parity: rb-build
+	@./scripts/check-deprecation-parity
 
 # Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
 validate-api-gaps:
@@ -777,7 +787,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

@@ -13,6 +13,7 @@ public struct Project: Codable, Sendable {
     public var bookmarked: Bool?
     public var clientCompany: ClientCompany?
     public var clientsEnabled: Bool?
+    /// Deprecated: This shape is deprecated since 2024-01: Use Client Visibility feature instead
     public var clientside: ClientSide?
     public var description: String?
     public var dock: [DockItem]?

@@ -14944,11 +14944,20 @@ export interface operations {
                 since?: string;
                 /** @description best_match|recency */
                 sort?: string;
-                /** @description Deprecated: prefer type_names[]. */
+                /**
+                 * @deprecated
+                 * @description Deprecated: prefer type_names[].
+                 */
                 type?: string;
-                /** @description Deprecated: prefer bucket_ids[]. */
+                /**
+                 * @deprecated
+                 * @description Deprecated: prefer bucket_ids[].
+                 */
                 bucket_id?: number;
-                /** @description Deprecated: prefer creator_ids[]. */
+                /**
+                 * @deprecated
+                 * @description Deprecated: prefer creator_ids[].
+                 */
                 creator_id?: number;
             };
             header?: never;

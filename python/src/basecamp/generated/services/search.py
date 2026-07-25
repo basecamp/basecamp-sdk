@@ -26,6 +26,12 @@ class SearchService(BaseService):
         bucket_id: int | None = None,
         creator_id: int | None = None,
     ) -> ListResult:
+        """Deprecated parameters (prefer the replacement):
+
+        - type: prefer type_names[].
+        - bucket_id: prefer bucket_ids[].
+        - creator_id: prefer creator_ids[].
+        """
         return self._request_paginated(
             OperationInfo(service="search", operation="search", is_mutation=False),
             "/search.json",
@@ -70,6 +76,12 @@ class AsyncSearchService(AsyncBaseService):
         bucket_id: int | None = None,
         creator_id: int | None = None,
     ) -> ListResult:
+        """Deprecated parameters (prefer the replacement):
+
+        - type: prefer type_names[].
+        - bucket_id: prefer bucket_ids[].
+        - creator_id: prefer creator_ids[].
+        """
         return await self._request_paginated(
             OperationInfo(service="search", operation="search", is_mutation=False),
             "/search.json",

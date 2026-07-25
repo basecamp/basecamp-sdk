@@ -56,6 +56,21 @@ class ModelEmitter(private val api: OpenApiParser) {
         lines += " *"
         lines += " * @generated from OpenAPI spec — do not edit directly"
         lines += " */"
+        // A model that references a deprecated component type warns merely by
+        // declaring the field — annotating the property does NOT suppress the
+        // deprecated-TYPE-reference warning — so suppress at the type level.
+        // Conditional on actually referencing a deprecated component, not keyed
+        // on any specific model, to hold the zero-generator-warning invariant.
+        // See #406.
+        val referencesDeprecatedType = properties.any { (_, ps) -> referencesDeprecatedComponent(ps.jsonObject) }
+        if (referencesDeprecatedType) {
+            lines += "@Suppress(\"DEPRECATION\")"
+        }
+        // A wholly deprecated type gets a class-level @Deprecated (compiler
+        // warning at use sites).
+        if (schema["deprecated"]?.jsonPrimitive?.booleanOrNull == true) {
+            lines += "@Deprecated(${kotlinStringLiteral(schema["x-deprecated-reason"]?.jsonPrimitive?.content ?: "deprecated")})"
+        }
         lines += "@Serializable"
         lines += "data class $typeName("
 
@@ -80,6 +95,12 @@ class ModelEmitter(private val api: OpenApiParser) {
             val isFlexibleInt = isFlexInt(propObj)
 
             val propLine = buildString {
+                // Compiler-level deprecation on the property (see #406). The
+                // class-level @Suppress above absorbs the deprecated-type-
+                // reference warning; this marks the property for consumers.
+                if (propObj["deprecated"]?.jsonPrimitive?.booleanOrNull == true) {
+                    append("    @Deprecated(${kotlinStringLiteral(propObj["x-deprecated-reason"]?.jsonPrimitive?.content ?: "deprecated")})\n")
+                }
                 if (isFlexible) {
                     append("    @Serializable(with = FlexibleLongSerializer::class)\n")
                 }
@@ -164,6 +185,24 @@ class ModelEmitter(private val api: OpenApiParser) {
             "object" -> if (isRequired) "JsonObject" else "JsonObject?"
             else -> if (isRequired) "JsonElement" else "JsonElement?"
         }
+    }
+
+    /** True when a property's type resolves to a component schema marked
+     *  `deprecated: true` (directly or as an array element). Declaring a field of
+     *  such a type warns at the declaration site regardless of any @Deprecated on
+     *  the property, so the owning data class needs a type-level @Suppress. */
+    private fun referencesDeprecatedComponent(propObj: JsonObject): Boolean {
+        val refName = componentRefName(propObj) ?: return false
+        val refSchema = api.getSchema(refName) ?: return false
+        return refSchema["deprecated"]?.jsonPrimitive?.booleanOrNull == true
+    }
+
+    /** The referenced component name for a property that is a `$ref` or an array
+     *  of `$ref`, else null. */
+    private fun componentRefName(propObj: JsonObject): String? {
+        propObj["\$ref"]?.jsonPrimitive?.content?.let { return api.resolveRef(it) }
+        propObj["items"]?.jsonObject?.get("\$ref")?.jsonPrimitive?.content?.let { return api.resolveRef(it) }
+        return null
     }
 
     private fun resolveArrayItemType(items: JsonObject?): String {

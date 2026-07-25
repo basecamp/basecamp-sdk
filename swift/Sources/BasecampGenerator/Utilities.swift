@@ -25,6 +25,26 @@ func queryItemAppendLines(_ q: QueryParam, accessor: String, indent: String) -> 
     return ["\(indent)queryItems.append(URLQueryItem(name: \"\(q.wireName)\", value: \(accessor)))"]
 }
 
+// MARK: - Deprecation Doc Comments
+
+/// Renders a deprecation `reason` as one or more `///` doc-comment lines (#406).
+///
+/// A reason can be sourced from a multi-line OpenAPI description; interpolating
+/// it into a single `///` line would leave any continuation on an un-commented
+/// source line and break compilation. Splitting on line boundaries and
+/// prefixing every line with `///` keeps the emitted Swift valid for any reason.
+/// `leader` precedes the first reason line (e.g. `"Deprecated: "` or
+/// `"- Parameter foo: Deprecated: "`); continuation lines carry no leader.
+func deprecationDocLines(reason: String, indent: String, leader: String = "Deprecated: ") -> [String] {
+    let reasonLines = reason.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    let first = reasonLines.first ?? ""
+    var out = ["\(indent)/// \(leader)\(first)"]
+    for line in reasonLines.dropFirst() {
+        out.append(line.isEmpty ? "\(indent)///" : "\(indent)/// \(line)")
+    }
+    return out
+}
+
 // MARK: - String Utilities
 
 /// Converts a snake_case string to camelCase.

@@ -17,6 +17,7 @@ class SearchService(client: AccountClient) : BaseService(client) {
      * @param q q
      * @param options Optional query parameters and pagination control
      */
+    @Suppress("DEPRECATION")
     suspend fun search(q: String, options: SearchOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Search",

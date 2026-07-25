@@ -14636,7 +14636,9 @@
               "type": "string",
               "deprecated": true,
               "description": "Deprecated: prefer type_names[].\nThis shape is deprecated since 2026-07: Use typeNames (type_names[]) instead"
-            }
+            },
+            "deprecated": true,
+            "x-deprecated-reason": "prefer type_names[]."
           },
           {
             "name": "bucket_id",
@@ -14647,7 +14649,9 @@
               "deprecated": true,
               "description": "Deprecated: prefer bucket_ids[].\nThis shape is deprecated since 2026-07: Use bucketIds (bucket_ids[]) instead",
               "format": "int64"
-            }
+            },
+            "deprecated": true,
+            "x-deprecated-reason": "prefer bucket_ids[]."
           },
           {
             "name": "creator_id",
@@ -14658,7 +14662,9 @@
               "deprecated": true,
               "description": "Deprecated: prefer creator_ids[].\nThis shape is deprecated since 2026-07: Use creatorIds (creator_ids[]) instead",
               "format": "int64"
-            }
+            },
+            "deprecated": true,
+            "x-deprecated-reason": "prefer creator_ids[]."
           }
         ],
         "responses": {
@@ -20088,7 +20094,8 @@
           "app_url": {
             "type": "string"
           }
-        }
+        },
+        "x-deprecated-reason": "This shape is deprecated since 2024-01: Use Client Visibility feature instead"
       },
       "Comment": {
         "type": "object",
@@ -23219,7 +23226,8 @@
           },
           "clientside": {
             "$ref": "#/components/schemas/ClientSide",
-            "deprecated": true
+            "deprecated": true,
+            "x-deprecated-reason": "This shape is deprecated since 2024-01: Use Client Visibility feature instead"
           }
         },
         "required": [

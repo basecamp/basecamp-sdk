@@ -10,6 +10,11 @@ import keyword
 import sys
 from pathlib import Path
 
+# Make the shared generator helper importable whether this file is run as a
+# script (its dir is already sys.path[0]) or loaded via importlib in tests.
+sys.path.insert(0, str(Path(__file__).parent))
+from gen_common import escape_py_string  # noqa: E402
+
 # Python keywords that can't be used as field names in TypedDicts
 PYTHON_KEYWORDS = set(keyword.kwlist)
 
@@ -111,6 +116,13 @@ def main() -> None:
 
         lines.append("")
         lines.append(f"class {name}(TypedDict):")
+        # Documentation-only deprecation (see #406): a real class docstring for a
+        # wholly deprecated TypedDict. TypedDicts have no runtime docstring hook
+        # for individual fields, so per-field deprecation is a source-only comment
+        # below.
+        if schema.get("deprecated"):
+            reason = escape_py_string(schema.get("x-deprecated-reason") or "deprecated")
+            lines.append(f'    """Deprecated: {reason}"""')
 
         for prop_name in sorted(props):
             prop = props[prop_name]
@@ -118,6 +130,13 @@ def main() -> None:
             py_type = schema_to_type(prop, schemas, optional=is_optional)
             # Escape Python keywords by appending underscore
             field_name = f"{prop_name}_" if prop_name in PYTHON_KEYWORDS else prop_name
+            # TypedDict fields carry no directive; label deprecation honestly as a
+            # source-only comment (see #406).
+            if prop.get("deprecated"):
+                # escape_py_string collapses control chars to escapes, so a
+                # multi-line reason stays a single `#` comment line.
+                reason = escape_py_string(prop.get("x-deprecated-reason") or "deprecated")
+                lines.append(f"    # deprecated (source-only): {reason}")
             lines.append(f"    {field_name}: {py_type}")
             # Add system_label field after id for flexible integer fields
             # (system actors like LocalPerson have non-numeric labels as id)

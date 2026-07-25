@@ -27,7 +27,7 @@ let package = Package(
         ),
         .testTarget(
             name: "BasecampTests",
-            dependencies: ["Basecamp"],
+            dependencies: ["Basecamp", "BasecampGenerator"],
             path: "Tests/BasecampTests",
             resources: [
                 .copy("Fixtures"),

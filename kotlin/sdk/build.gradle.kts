@@ -8,7 +8,21 @@ group = "com.basecamp"
 version = "0.8.0"
 
 kotlin {
-    jvm()
+    jvm {
+        // Enforce the zero-generator-origin-deprecation-warning invariant (#406):
+        // the generated common+jvm main sources compile with all warnings
+        // (including DEPRECATION) promoted to errors. The generic
+        // ModelEmitter/ServiceEmitter @Suppress("DEPRECATION") annotations must
+        // hold for this to pass; a regression (e.g. a new deprecated-type
+        // reference without suppression) then fails the build.
+        compilations.named("main") {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    allWarningsAsErrors.set(true)
+                }
+            }
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
@@ -28,6 +42,10 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.junit.jupiter)
+            // Drives the deprecation diagnostic fixture (#406): compiles source
+            // snippets against the SDK classpath at test time and asserts the
+            // compiler's diagnostics, rather than just "it compiles".
+            implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
         }
     }
 }
