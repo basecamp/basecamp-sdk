@@ -86,7 +86,12 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     call: async (ctx) => {
       // Backs the type=Door external-links canary; validates the door shape
       // (external url + service + description) against the Recording schema.
-      const result = await ctx.client.recordings.list("Door");
+      //
+      // maxItems caps pagination: without it, requestPaginated would follow every
+      // Link page for an account with many Door recordings — potentially a large
+      // number of credentialed requests and an oversized snapshot. A handful of
+      // rows is plenty to validate the Recording (Door) schema.
+      const result = await ctx.client.recordings.list("Door", { maxItems: 5 });
       return { resolvedIds: {}, result };
     },
   },

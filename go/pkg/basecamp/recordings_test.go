@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -289,7 +292,10 @@ func TestRecordingType_Constants(t *testing.T) {
 
 // TestRecording_UnmarshalDoor verifies that a type=Door recording (external
 // link) decodes with the full door shape — the outside url, the service struct,
-// the description, and the position — through the shared Recording projection.
+// the description, and the position. The fixture is driven through the real
+// RecordingsService.List pipeline (generated decode -> recordingFromGenerated)
+// so it fails if the generated Door fields or the converter assignments regress,
+// not merely if the hand-written Recording type can decode the JSON.
 func TestRecording_UnmarshalDoor(t *testing.T) {
 	data := `[
 		{
@@ -317,14 +323,30 @@ func TestRecording_UnmarshalDoor(t *testing.T) {
 		}
 	]`
 
-	var recordings []Recording
-	if err := json.Unmarshal([]byte(data), &recordings); err != nil {
-		t.Fatalf("failed to unmarshal door recording: %v", err)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/projects/recordings.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("type"); got != "Door" {
+			t.Errorf("expected type=Door query, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(data))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	result, err := client.ForAccount("99999").Recordings().List(context.Background(), "Door", nil)
+	if err != nil {
+		t.Fatalf("List(Door) failed: %v", err)
 	}
-	if len(recordings) != 1 {
-		t.Fatalf("expected 1 recording, got %d", len(recordings))
+	if len(result.Recordings) != 1 {
+		t.Fatalf("expected 1 recording, got %d", len(result.Recordings))
 	}
-	d := recordings[0]
+	d := result.Recordings[0]
 	if d.Type != "Door" {
 		t.Errorf("expected type Door, got %q", d.Type)
 	}
