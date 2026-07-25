@@ -4,7 +4,7 @@
 
 | Component | Status | Details |
 |-----------|--------|---------|
-| **Smithy Spec** | 217 operations | Single source of truth for all APIs |
+| **Smithy Spec** | 226 operations | Single source of truth for all APIs |
 | **Go SDK** | Production-ready | Full generated client + service wrappers |
 | **TypeScript SDK** | Production-ready | 46 generated services, openapi-fetch based |
 | **Ruby SDK** | Production-ready | 46 generated services |
@@ -31,7 +31,7 @@ Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 | **Kotlin** | Ktor via `BaseService` | `sdk/src/commonMain/kotlin/.../generated/services/*.kt` |
 | **Python** | httpx via `HttpClient` | `src/basecamp/generated/services/*.py` |
 
-All 217 operations across the ~46-service per-SDK layer are generated. Hand-written code is limited to infrastructure:
+All 226 operations across the ~46-service per-SDK layer are generated. Hand-written code is limited to infrastructure:
 
 | Purpose | TypeScript | Ruby | Swift | Kotlin | Python |
 |---------|-----------|------|-------|--------|--------|
