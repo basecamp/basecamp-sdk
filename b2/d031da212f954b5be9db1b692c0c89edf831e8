@@ -1,0 +1,22 @@
+rubric-audit.json
+  s_1a48c423686368::t_539e0c6ac0fb0d 17
+scripts/check-kotlin-optional-arrays.rb
+  s_1a48c423686368::t_bb0794f6e8c5a0 43-45
+  s_1a48c423686368::t_551826744b2fd6 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b2d031da212f954b5be9db1b692c0c89edf831e8",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
