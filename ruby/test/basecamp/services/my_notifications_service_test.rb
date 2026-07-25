@@ -47,4 +47,12 @@ class MyNotificationsServiceTest < Minitest::Test
     assert_equal "Message", result[0]["type"]
     assert_equal "2026-08-01T00:00:00Z", result[1]["bubble_up_at"]
   end
+
+  def test_get_bubble_ups_propagates_not_found
+    stub_get("/12345/my/readings/bubble_ups.json", response_body: "", status: 404)
+
+    assert_raises(Basecamp::NotFoundError) do
+      @account.my_notifications.get_bubble_ups.to_a
+    end
+  end
 end

@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
+import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -188,6 +189,16 @@ describe("MyNotificationsService", () => {
       expect(result[0]!.title).toBe("We won Leto!");
       expect((result[0] as Record<string, unknown>).type).toBe("Message");
       expect((result[1] as Record<string, unknown>).bubble_up_at).toBe("2026-08-01T00:00:00Z");
+    });
+
+    it("should propagate a 4xx as a BasecampError", async () => {
+      server.use(
+        http.get(`${BASE_URL}/my/readings/bubble_ups.json`, () => {
+          return HttpResponse.json({ error: "Not found" }, { status: 404 });
+        })
+      );
+
+      await expect(client.myNotifications.bubbleUps()).rejects.toThrow(BasecampError);
     });
   });
 });

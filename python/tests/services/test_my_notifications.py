@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 import respx
 
 from basecamp import Client
@@ -52,3 +53,16 @@ class TestSyncMyNotifications:
         assert result[0]["title"] == "We won Leto!"
         assert result[0]["type"] == "Message"
         assert result[1]["bubble_up_at"] == "2026-08-01T00:00:00Z"
+
+    @respx.mock
+    def test_get_bubble_ups_propagates_not_found(self):
+        respx.get("https://3.basecampapi.com/12345/my/readings/bubble_ups.json").mock(
+            return_value=httpx.Response(404, json={"error": "Not found"})
+        )
+
+        from basecamp.errors import NotFoundError
+        from basecamp.generated.services.my_notifications import MyNotificationsService
+
+        account = Client(access_token="test-token").for_account("12345")
+        with pytest.raises(NotFoundError):
+            MyNotificationsService(account).get_bubble_ups()
