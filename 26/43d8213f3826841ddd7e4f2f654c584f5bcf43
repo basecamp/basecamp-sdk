@@ -30,6 +30,7 @@ ruby/test/basecamp/services/timeline_service_test.rb
 python/src/basecamp/generated/types.py
   s_8d633484dc870e::t_5512a011cbb15c 1374-1400,1404-1405,1409,1419-1422
   s_8d633484dc870e::t_5cb99b87244fc8 1417-1418
+  s_8d633484dc870e::t_6e1e09f0dd28c7 1423-1424
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEvent.kt
   s_8d633484dc870e::t_5512a011cbb15c 26-29
 swift/Sources/Basecamp/Generated/Models/TimelineEventData.swift
@@ -40,6 +41,8 @@ ruby/lib/basecamp/generated/types.rb
   s_8d633484dc870e::t_ff31002eafb2fe 3421-3486,3490,3495-3496,3500,3514-3515,3519,3535-3552,3554-3557
   s_8d633484dc870e::t_4581d64e95934d 4
   s_8d633484dc870e::t_1e26001466cfd6 3553,3558
+  s_8d633484dc870e::t_5512a011cbb15c 3421-3486,3490,3495-3496,3500,3514-3515,3519,3535-3552,3554-3557
+  s_8d633484dc870e::t_aa4a6390661c56 3553,3558
 scripts/enhance-openapi-go-types.sh
   s_8d633484dc870e::t_095da6389f51ac 179-181,183-213
   s_8d633484dc870e::t_781f0e5fae1139 214-228
@@ -68,7 +71,7 @@ typescript/src/generated/metadata.ts
 go/pkg/basecamp/timeline_test.go
   s_8d633484dc870e::t_cf70663a42030b 216,221-260
   s_8d633484dc870e::t_6a603d2e9c9f78 186-190
-  s_1b437abfa07167::t_55a7b065fd8832 85-185,191-215,217-220,261-263
+  s_1b437abfa07167::t_55a7b065fd8832 85-185,191-215,217-220,217-221,261-263,262-263
 ruby/lib/basecamp/generated/metadata.json
   s_8d633484dc870e::t_4581d64e95934d 4
 ---
