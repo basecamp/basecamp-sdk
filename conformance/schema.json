@@ -83,7 +83,9 @@
         "properties": {
           "status": {
             "type": "integer",
-            "description": "HTTP status code. Exactly one of `status` or `networkError` must be set per entry."
+            "minimum": 100,
+            "maximum": 599,
+            "description": "HTTP status code (a real 1xx–5xx code). Exactly one of `status` or `networkError` must be set per entry. Constraining the range keeps 0 out, which some runners (e.g. Go) use as the 'status not set' sentinel."
           },
           "networkError": {
             "type": "boolean",
