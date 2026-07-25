@@ -43,6 +43,26 @@ class WormholesServiceTest < Minitest::Test
     assert_not_nil wormhole["destination_url"]
   end
 
+  def test_create_wormhole_operation_metadata
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+
+    stub_post("/12345/buckets/2085958499/card_tables/1069479345/wormholes.json",
+              response_body: sample_wormhole(id: 99))
+
+    account.wormholes.create(
+      bucket_id: 2085958499,
+      card_table_id: 1069479345,
+      destination_recording_id: 1069479500
+    )
+
+    info = events.find { |e| e[:event] == :on_operation_start }[:info]
+    assert_equal "wormholes", info.service
+    assert_equal "create", info.operation
+    assert_equal 2085958499, info.project_id
+    assert_equal 1069479345, info.resource_id
+  end
+
   def test_create_wormhole_raises_validation_error_at_limit
     stub_post("/12345/buckets/2085958499/card_tables/1069479345/wormholes.json",
               response_body: { "error" => "Limit reached" }, status: 422)
@@ -116,6 +136,22 @@ class WormholesServiceTest < Minitest::Test
 
     assert_raises(Basecamp::NotFoundError) do
       @account.wormholes.delete(bucket_id: 2085958499, wormhole_id: 999)
+    end
+  end
+
+  private
+
+  # Captures the OperationInfo passed to on_operation_start so tests can
+  # assert the metadata emitted by the real generated service call.
+  class CapturingHooks
+    include Basecamp::Hooks
+
+    def initialize(events)
+      @events = events
+    end
+
+    def on_operation_start(info)
+      @events << { event: :on_operation_start, info: info }
     end
   end
 end
