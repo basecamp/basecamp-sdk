@@ -49,11 +49,11 @@ class SchedulesServiceTest < Minitest::Test
   end
 
   def test_get_entry
-    stub_get("/12345/schedule_entries/789", response_body: sample_entry)
+    stub_get("/12345/schedule_entries/789", response_body: sample_entry(id: 789))
 
     result = @account.schedules.get_entry(entry_id: 789)
 
-    assert_equal 1_069_479_400, result["id"]
+    assert_equal 789, result["id"]
     assert_equal "Project Kickoff Meeting", result["summary"]
   end
 

@@ -46,11 +46,11 @@ class MessagesServiceTest < Minitest::Test
 
   def test_get
     # Generated service: /messages/{id} without .json
-    stub_get("/12345/messages/789", response_body: sample_message)
+    stub_get("/12345/messages/789", response_body: sample_message(id: 789))
 
     result = @account.messages.get(message_id: 789)
 
-    assert_equal 1_069_479_351, result["id"]
+    assert_equal 789, result["id"]
     assert_equal "We won Leto!", result["subject"]
   end
 

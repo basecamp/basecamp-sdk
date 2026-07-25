@@ -15,10 +15,11 @@
 #
 # Each `targets` entry is one of:
 #
-#   operation entry  — { id, operation: <operationId> }
+#   operation entry  — { id, operation: <operationId>, fixture: <path> } (pointer optional, defaults "")
 #     Validates the COMPLETE response body of `operation` (response-schema
 #     lookup prefers 200, then any 2xx, then default) against the fixture named
-#     by `fixture` (pointer defaults to "").
+#     by `fixture`. `fixture` is required — the operation supplies the schema,
+#     the fixture supplies the body to validate against it.
 #
 #   pointer entry    — { id, fixture, pointer, schema }
 #     Validates the object selected by JSON pointer `pointer` within `fixture`
