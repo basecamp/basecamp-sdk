@@ -9,6 +9,15 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client, ValidationError
+from basecamp.hooks import BasecampHooks, OperationInfo
+
+
+class _RecordingHooks(BasecampHooks):
+    def __init__(self) -> None:
+        self.operations: list[OperationInfo] = []
+
+    def on_operation_start(self, info: OperationInfo) -> None:
+        self.operations.append(info)
 
 
 def _tool(tool_id: int = 800, *, title: str = "Message Board") -> dict:
@@ -56,6 +65,23 @@ class TestSyncTools:
 
         assert route.called
         assert json.loads(route.calls[0].request.content) == {"tool_type": "Message::Board"}
+
+    @respx.mock
+    def test_create_operation_metadata_scopes_project_with_null_resource(self):
+        respx.post("https://3.basecampapi.com/12345/buckets/456/dock/tools.json").mock(
+            return_value=httpx.Response(201, json=_tool())
+        )
+
+        hooks = _RecordingHooks()
+        account = Client(access_token="test-token", hooks=hooks).for_account("12345")
+        account.tools.create(bucket_id=456, tool_type="Message::Board")
+
+        assert len(hooks.operations) == 1
+        info = hooks.operations[0]
+        assert info.service == "tools"
+        assert info.operation == "create"
+        assert info.project_id == 456
+        assert info.resource_id is None
 
     @respx.mock
     def test_create_raises_validation_error_on_422(self):
@@ -106,6 +132,24 @@ class TestAsyncTools:
 
         assert route.called
         assert json.loads(route.calls[0].request.content) == {"tool_type": "Message::Board"}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_create_operation_metadata_scopes_project_with_null_resource(self):
+        respx.post("https://3.basecampapi.com/12345/buckets/456/dock/tools.json").mock(
+            return_value=httpx.Response(201, json=_tool())
+        )
+
+        hooks = _RecordingHooks()
+        account = AsyncClient(access_token="test-token", hooks=hooks).for_account("12345")
+        await account.tools.create(bucket_id=456, tool_type="Message::Board")
+
+        assert len(hooks.operations) == 1
+        info = hooks.operations[0]
+        assert info.service == "tools"
+        assert info.operation == "create"
+        assert info.project_id == 456
+        assert info.resource_id is None
 
     @pytest.mark.asyncio
     @respx.mock

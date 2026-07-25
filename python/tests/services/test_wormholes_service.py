@@ -10,10 +10,19 @@ import respx
 
 from basecamp import AsyncClient, Client
 from basecamp.errors import ForbiddenError, NotFoundError, ValidationError
+from basecamp.hooks import BasecampHooks, OperationInfo
 
 CREATE_URL = "https://3.basecampapi.com/12345/buckets/2085958499/card_tables/1069479345/wormholes.json"
 WORMHOLE_URL = "https://3.basecampapi.com/12345/buckets/2085958499/card_tables/wormholes/1069479400"
 MISSING_URL = "https://3.basecampapi.com/12345/buckets/2085958499/card_tables/wormholes/999"
+
+
+class _RecordingHooks(BasecampHooks):
+    def __init__(self) -> None:
+        self.operations: list[OperationInfo] = []
+
+    def on_operation_start(self, info: OperationInfo) -> None:
+        self.operations.append(info)
 
 
 def _wormhole(wormhole_id: int = 1069479400, linked: bool = True) -> dict:
@@ -48,6 +57,24 @@ class TestSyncWormholes:
         assert wormhole["destination_url"] is not None
         body = json.loads(route.calls.last.request.content)
         assert body == {"destination_recording_id": 1069479500}
+
+    @respx.mock
+    def test_create_operation_metadata_scopes_project_and_resource(self):
+        respx.post(CREATE_URL).mock(return_value=httpx.Response(201, json=_wormhole(99)))
+
+        hooks = _RecordingHooks()
+        c = Client(access_token="test-token", hooks=hooks)
+        c.for_account("12345").wormholes.create(
+            bucket_id=2085958499, card_table_id=1069479345, destination_recording_id=1069479500
+        )
+        c.close()
+
+        assert len(hooks.operations) == 1
+        info = hooks.operations[0]
+        assert info.service == "wormholes"
+        assert info.operation == "create"
+        assert info.project_id == 2085958499
+        assert info.resource_id == 1069479345
 
     @respx.mock
     def test_create_validation_error_at_limit(self):
@@ -143,6 +170,25 @@ class TestAsyncWormholes:
         assert wormhole["destination_url"] is not None
         body = json.loads(route.calls.last.request.content)
         assert body == {"destination_recording_id": 1069479500}
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_create_operation_metadata_scopes_project_and_resource(self):
+        respx.post(CREATE_URL).mock(return_value=httpx.Response(201, json=_wormhole(99)))
+
+        hooks = _RecordingHooks()
+        c = AsyncClient(access_token="test-token", hooks=hooks)
+        await c.for_account("12345").wormholes.create(
+            bucket_id=2085958499, card_table_id=1069479345, destination_recording_id=1069479500
+        )
+        await c.close()
+
+        assert len(hooks.operations) == 1
+        info = hooks.operations[0]
+        assert info.service == "wormholes"
+        assert info.operation == "create"
+        assert info.project_id == 2085958499
+        assert info.resource_id == 1069479345
 
     @pytest.mark.asyncio
     @respx.mock

@@ -13,7 +13,7 @@ from basecamp.hooks import OperationInfo
 class ToolsService(BaseService):
     def create(self, *, bucket_id: int, tool_type: str, title: str | None = None) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="tools", operation="create", is_mutation=True, resource_id=bucket_id),
+            OperationInfo(service="tools", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
             f"/buckets/{bucket_id}/dock/tools.json",
             json_body=self._compact(tool_type=tool_type, title=title),
@@ -73,7 +73,7 @@ class ToolsService(BaseService):
 class AsyncToolsService(AsyncBaseService):
     async def create(self, *, bucket_id: int, tool_type: str, title: str | None = None) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="tools", operation="create", is_mutation=True, resource_id=bucket_id),
+            OperationInfo(service="tools", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
             f"/buckets/{bucket_id}/dock/tools.json",
             json_body=self._compact(tool_type=tool_type, title=title),
