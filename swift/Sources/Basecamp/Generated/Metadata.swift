@@ -228,6 +228,7 @@ enum Metadata {
         "DeleteTemplate",
         "DeleteTool",
         "DeleteWebhook",
+        "DeleteWormhole",
         "DestroyGaugeNeedle",
         "DisableCardColumnOnHold",
         "DisableOutOfOffice",
@@ -285,6 +286,7 @@ enum Metadata {
         "UpdateUpload",
         "UpdateVault",
         "UpdateWebhook",
+        "UpdateWormhole",
     ]
 
     static func isIdempotent(for operationId: String) -> Bool {
