@@ -136,8 +136,8 @@ present-empty, populated — round-trip faithfully in both directions: Go
 `*[]RichTextAttachment` (nil pointer omitted, non-nil pointer to `[]` re-encodes as
 `[]`), Swift `[RichTextAttachment]?`, TypeScript `?: …[]`, Python `NotRequired[…]`,
 Ruby nil-vs-`[]` (`parse_array`), and Kotlin `List<RichTextAttachment>? = null`
-(the model generator emits a nullable list for optional `RichTextAttachmentList`
-members rather than the empty-list default it uses for other optional arrays). The
+(the model generator emits `List<T>? = null` for *every* optional array, so an
+absent array is distinct from a present-but-empty one). The
 14 concrete `@required` members are always present, so they stay a plain
 non-optional list in each SDK.
 

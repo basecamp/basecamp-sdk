@@ -15,5 +15,5 @@ data class Subscription(
     val subscribed: Boolean,
     val count: Int,
     val url: String,
-    val subscribers: List<Person> = emptyList()
+    val subscribers: List<Person>? = null
 )

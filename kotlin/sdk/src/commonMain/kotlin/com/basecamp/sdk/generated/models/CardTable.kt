@@ -26,7 +26,7 @@ data class CardTable(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val subscribers: List<Person> = emptyList(),
-    val lists: List<CardColumn> = emptyList(),
-    val wormholes: List<Wormhole> = emptyList()
+    val subscribers: List<Person>? = null,
+    val lists: List<CardColumn>? = null,
+    val wormholes: List<Wormhole>? = null
 )

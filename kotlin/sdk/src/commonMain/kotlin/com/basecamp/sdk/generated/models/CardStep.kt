@@ -31,6 +31,6 @@ data class CardStep(
     val completed: Boolean = false,
     @SerialName("completed_at") val completedAt: String? = null,
     val completer: Person? = null,
-    val assignees: List<Person> = emptyList(),
+    val assignees: List<Person>? = null,
     @SerialName("completion_url") val completionUrl: String? = null
 )

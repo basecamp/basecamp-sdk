@@ -20,5 +20,5 @@ data class Template(
     val description: String? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
-    val dock: List<DockItem> = emptyList()
+    val dock: List<DockItem>? = null
 )

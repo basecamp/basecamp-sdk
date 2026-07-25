@@ -310,11 +310,12 @@ class WormholesServiceTest {
         val account = client.forAccount("12345")
         val cardTable = account.cardTables.get(cardTableId = 1069479345)
 
-        assertEquals(2, cardTable.wormholes.size)
-        assertTrue(cardTable.wormholes[0].linked)
-        assertNotNull(cardTable.wormholes[0].destinationUrl)
-        assertTrue(!cardTable.wormholes[1].linked)
-        assertNull(cardTable.wormholes[1].destinationUrl)
+        val wormholes = assertNotNull(cardTable.wormholes)
+        assertEquals(2, wormholes.size)
+        assertTrue(wormholes[0].linked)
+        assertNotNull(wormholes[0].destinationUrl)
+        assertTrue(!wormholes[1].linked)
+        assertNull(wormholes[1].destinationUrl)
 
         client.close()
     }
