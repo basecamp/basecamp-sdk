@@ -309,8 +309,18 @@ Use `make sync-status` to see upstream diffs since last sync.
 
 ### Every Changed Field/Path Requires
 
-1. **Existing tests updated** — every test stubbing a changed path must be updated
+1. **Existing tests updated** — every test stubbing a changed path must be updated.
+   Inline stubs may omit unrelated response fields, but every response stub for a
+   changed path must include any newly required or behaviorally changed field.
 2. **New field tests** — at least one test fixture should include new fields to verify they flow through
+
+> **Automated backstop.** The shared JSON fixtures under `spec/fixtures/` are
+> guarded by `make check-fixture-coverage` (`spec/fixtures/manifest.yaml`): every
+> manifest'd fixture must carry all required fields of its schema, and every
+> `covered_schemas` entry must keep a concrete representative. A new required
+> field on a covered schema is therefore forced into a fixture. This guard covers
+> only the manifest'd shared fixtures — one-off inline stubs remain the reviewer's
+> responsibility under the rule above.
 
 ### Pre-Merge Verification
 

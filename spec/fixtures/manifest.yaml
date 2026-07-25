@@ -1,0 +1,168 @@
+# Fixture-completeness manifest + coverage invariant.
+#
+# Purpose: guarantee that every schema in `covered_schemas` has at least one
+# live, validated representative among the shared JSON fixtures — so that when a
+# NEW required (or behaviorally-changed) field is added to a covered schema, a
+# fixture is forced to carry it and the guard catches the omission. A checker
+# that validated only whatever entries happen to exist cannot make that
+# guarantee; the coverage invariant closes the gap.
+#
+# Enforced by scripts/check-fixture-coverage.rb (wired into `make check`). The
+# checker reuses conformance/runner/ruby/schema-walker.rb for the recursive
+# required-field / $ref / array walk — it does not reimplement validation.
+#
+# --- Entry semantics -----------------------------------------------------------
+#
+# Each `targets` entry is one of:
+#
+#   operation entry  — { id, operation: <operationId> }
+#     Validates the COMPLETE response body of `operation` (response-schema
+#     lookup prefers 200, then any 2xx, then default) against the fixture named
+#     by `fixture` (pointer defaults to "").
+#
+#   pointer entry    — { id, fixture, pointer, schema }
+#     Validates the object selected by JSON pointer `pointer` within `fixture`
+#     against the explicit component `schema`. Use this whenever the response
+#     schema cannot be inferred from an operation, or the discriminator lies:
+#       * recordings/get.json declares type "Message" on the wire but MUST
+#         validate as the generic Recording projection, not Message.
+#       * search/results.json elements declare type "Todo"/"Message"/… but MUST
+#         validate as SearchResult.
+#       * a `/content_attachments/0` element is a RichTextAttachment, not the
+#         array's parent schema.
+#     `pointer: ""` selects the whole document. `schema` names a component under
+#     components/schemas.
+#
+# --- Coverage invariant --------------------------------------------------------
+#
+# `covered_schemas` maps each schema this guard promises to keep represented to
+# the target id(s) that represent it. The checker enforces, per covered schema:
+#   * >= 1 non-excluded (active) target maps to it;
+#   * the concrete-instance rule: at least one mapped active target resolves to
+#     a concrete, non-null instance whose DECLARED ROOT schema is that component.
+#     Transitive reachability and empty arrays do NOT count — a Todo fixture with
+#     "description_attachments": [] reaches RichTextAttachment but instantiates
+#     none, so it does not cover it; a populated element (pointer
+#     .../content_attachments/0 declared RichTextAttachment) does.
+#
+# `excluded_schemas` records schemas deliberately NOT covered this round, each
+# with a reason + tracking issue. Exclusions do NOT satisfy coverage.
+#
+# A missing fixture, unresolvable pointer, unknown schema, or covered schema
+# with no active concrete representative -> the check FAILS.
+
+targets:
+  # 15 concrete resource GETs — pointer "" -> component schema.
+  - id: comment-get
+    fixture: comments/get.json
+    pointer: ""
+    schema: Comment
+  - id: message-get
+    fixture: messages/get.json
+    pointer: ""
+    schema: Message
+  - id: document-get
+    fixture: documents/get.json
+    pointer: ""
+    schema: Document
+  - id: card-get
+    fixture: cards/get.json
+    pointer: ""
+    schema: Card
+  - id: todolist-get
+    fixture: todolists/get.json
+    pointer: ""
+    schema: Todolist
+  - id: upload-get
+    fixture: uploads/get.json
+    pointer: ""
+    schema: Upload
+  - id: schedule-entry-get
+    fixture: schedules/entry_get.json
+    pointer: ""
+    schema: ScheduleEntry
+  - id: forward-get
+    fixture: forwards/get.json
+    pointer: ""
+    schema: Forward
+  - id: forward-reply-get
+    fixture: forwards/reply_get.json
+    pointer: ""
+    schema: ForwardReply
+  - id: client-approval-get
+    fixture: client_approvals/get.json
+    pointer: ""
+    schema: ClientApproval
+  - id: client-correspondence-get
+    fixture: client_correspondences/get.json
+    pointer: ""
+    schema: ClientCorrespondence
+  - id: client-reply-get
+    fixture: client_replies/get.json
+    pointer: ""
+    schema: ClientReply
+  - id: question-answer-get
+    fixture: checkins/answer.json
+    pointer: ""
+    schema: QuestionAnswer
+  - id: recording-get
+    # Discriminator lies: wire type is "Message"; validate as generic Recording.
+    fixture: recordings/get.json
+    pointer: ""
+    schema: Recording
+  - id: todo-get
+    fixture: todos/get.json
+    pointer: ""
+    schema: Todo
+
+  # Polymorphic search projection: element declares its recording type, but
+  # validates as SearchResult.
+  - id: search-result-0
+    fixture: search/results.json
+    pointer: "/0"
+    schema: SearchResult
+
+  # Two concrete RichTextAttachment instances (populated elements, not empty
+  # arrays) — the only way to cover RichTextAttachment per the concrete-instance
+  # rule.
+  - id: richtext-comment-0
+    fixture: comments/get.json
+    pointer: "/content_attachments/0"
+    schema: RichTextAttachment
+  - id: richtext-upload-0
+    fixture: uploads/get.json
+    pointer: "/description_attachments/0"
+    schema: RichTextAttachment
+
+covered_schemas:
+  Comment: [comment-get]
+  Message: [message-get]
+  Document: [document-get]
+  Card: [card-get]
+  Todolist: [todolist-get]
+  Upload: [upload-get]
+  ScheduleEntry: [schedule-entry-get]
+  Forward: [forward-get]
+  ForwardReply: [forward-reply-get]
+  ClientApproval: [client-approval-get]
+  ClientCorrespondence: [client-correspondence-get]
+  ClientReply: [client-reply-get]
+  QuestionAnswer: [question-answer-get]
+  Recording: [recording-get]
+  Todo: [todo-get]
+  SearchResult: [search-result-0]
+  RichTextAttachment: [richtext-comment-0, richtext-upload-0]
+
+excluded_schemas:
+  Gauge:
+    reason: >-
+      No shared JSON fixture. Gauge is exercised only inline in
+      go/pkg/basecamp/gauges_test.go, so its optional non-nullable
+      description_attachments array has no manifest'd representative.
+    issue: 429
+  GaugeNeedle:
+    reason: >-
+      No shared JSON fixture (same Gauge inline-only situation). GaugeNeedle
+      carries a @required description_attachments array not represented in any
+      shared fixture.
+    issue: 429

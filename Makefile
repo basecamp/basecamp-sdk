@@ -743,7 +743,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -764,6 +764,13 @@ check-deprecation-parity: rb-build
 # Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
 validate-api-gaps:
 	@./scripts/validate-api-gaps.sh
+
+# Fixture-completeness guard: every spec/fixtures/manifest.yaml target validates
+# against its schema, and every covered schema keeps a concrete active
+# representative — so a new required field on a covered schema is forced into a
+# fixture. Reuses the conformance schema-walker.
+check-fixture-coverage:
+	@./scripts/check-fixture-coverage.sh
 
 #------------------------------------------------------------------------------
 # Combined targets
@@ -787,7 +794,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -900,6 +907,6 @@ help:
 	@echo ""
 	@echo "Combined:"
 	@echo "  generate         Regenerate every machine-derived artifact (Smithy + per-language SDKs + provenance)"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + Actions lint)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + fixture-coverage + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"
