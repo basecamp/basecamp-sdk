@@ -22,15 +22,23 @@ type Comment struct {
 	Title            string    `json:"title,omitempty"`
 	InheritsStatus   bool      `json:"inherits_status"`
 	Content          string    `json:"content"`
-	Type             string    `json:"type"`
-	URL              string    `json:"url"`
-	AppURL           string    `json:"app_url"`
-	BookmarkURL      string    `json:"bookmark_url,omitempty"`
-	BoostsCount      int       `json:"boosts_count,omitempty"`
-	BoostsURL        string    `json:"boosts_url,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	Type               string               `json:"type"`
+	URL                string               `json:"url"`
+	AppURL             string               `json:"app_url"`
+	BookmarkURL        string               `json:"bookmark_url,omitempty"`
+	BoostsCount        int                  `json:"boosts_count,omitempty"`
+	BoostsURL          string               `json:"boosts_url,omitempty"`
+	Parent             *Parent              `json:"parent,omitempty"`
+	Bucket             *Bucket              `json:"bucket,omitempty"`
+	Creator            *Person              `json:"creator,omitempty"`
 }
 
 // CreateCommentRequest specifies the parameters for creating a comment.
@@ -346,6 +354,8 @@ func commentFromGenerated(gc generated.Comment) Comment {
 		creator := personFromGenerated(gc.Creator)
 		c.Creator = &creator
 	}
+
+	c.ContentAttachments = richTextAttachmentsFromGenerated(gc.ContentAttachments)
 
 	return c
 }

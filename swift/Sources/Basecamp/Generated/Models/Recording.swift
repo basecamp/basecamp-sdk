@@ -19,6 +19,8 @@ public struct Recording: Codable, Sendable {
     public var commentsCount: Int32?
     public var commentsUrl: String?
     public var content: String?
+    public var contentAttachments: [RichTextAttachment]?
+    public var descriptionAttachments: [RichTextAttachment]?
     public var subscriptionUrl: String?
 
     public init(
@@ -39,6 +41,8 @@ public struct Recording: Codable, Sendable {
         commentsCount: Int32? = nil,
         commentsUrl: String? = nil,
         content: String? = nil,
+        contentAttachments: [RichTextAttachment]? = nil,
+        descriptionAttachments: [RichTextAttachment]? = nil,
         subscriptionUrl: String? = nil
     ) {
         self.appUrl = appUrl
@@ -58,6 +62,8 @@ public struct Recording: Codable, Sendable {
         self.commentsCount = commentsCount
         self.commentsUrl = commentsUrl
         self.content = content
+        self.contentAttachments = contentAttachments
+        self.descriptionAttachments = descriptionAttachments
         self.subscriptionUrl = subscriptionUrl
     }
 }

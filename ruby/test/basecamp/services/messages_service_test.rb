@@ -21,6 +21,7 @@ class MessagesServiceTest < Minitest::Test
       "id" => id,
       "subject" => subject,
       "content" => "<p>Message content</p>",
+      "content_attachments" => [],
       "status" => "active",
       "created_at" => "2024-01-01T00:00:00Z",
       "creator" => { "id" => 1, "name" => "Test User" }

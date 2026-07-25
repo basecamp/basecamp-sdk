@@ -10,6 +10,7 @@ public struct Gauge: Codable, Sendable {
     public var bucket: RecordingBucket?
     public var creator: Person?
     public var description: String?
+    public var descriptionAttachments: [RichTextAttachment]?
     public var enabled: Bool?
     public var inheritsStatus: Bool?
     public var lastNeedleColor: String?
@@ -30,6 +31,7 @@ public struct Gauge: Codable, Sendable {
         bucket: RecordingBucket? = nil,
         creator: Person? = nil,
         description: String? = nil,
+        descriptionAttachments: [RichTextAttachment]? = nil,
         enabled: Bool? = nil,
         inheritsStatus: Bool? = nil,
         lastNeedleColor: String? = nil,
@@ -49,6 +51,7 @@ public struct Gauge: Codable, Sendable {
         self.bucket = bucket
         self.creator = creator
         self.description = description
+        self.descriptionAttachments = descriptionAttachments
         self.enabled = enabled
         self.inheritsStatus = inheritsStatus
         self.lastNeedleColor = lastNeedleColor

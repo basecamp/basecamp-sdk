@@ -45,5 +45,20 @@
     },
     "can_manage_projects": true,
     "can_manage_people": true
-  }
+  },
+  "content_attachments": [
+    {
+      "id": 1069481040,
+      "sgid": "BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA40--pr0j0040",
+      "filename": "diagram-40.png",
+      "content_type": "image/png",
+      "byte_size": 204800,
+      "download_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA40--pr0j0040/download/diagram-40.png",
+      "width": 1024.0,
+      "height": 768,
+      "previewable": true,
+      "preview_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA40--pr0j0040/previews/diagram-40.png",
+      "thumbnail_url": "https://3.basecampapi.com/195539477/buckets/2085958499/blobs/BAh7CEkiCGdpZAY6BkVUSSIsZ2lkOi8vYmMzL0FjdGl2ZVN0b3JhZ2U6OkJsb2IvJTA40--pr0j0040/thumbnails/diagram-40.png"
+    }
+  ]
 }

@@ -26,6 +26,7 @@ data class ScheduleEntry(
     val bucket: TodoBucket,
     val creator: Person,
     val summary: String,
+    @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     @SerialName("comments_count") val commentsCount: Int = 0,

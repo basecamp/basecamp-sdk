@@ -33,14 +33,13 @@ type Todo struct {
 	Creator          *Person   `json:"creator,omitempty"`
 	Content          string    `json:"content"`
 	Description      string    `json:"description"`
-	// DescriptionAttachments holds structured metadata for the
-	// downloadable files embedded in the rich text Description. Like
-	// CompletionSubscribers it distinguishes present-but-empty from
-	// absent: the API always sends this array (empty when the description
-	// has no inline files), so a non-nil zero-length slice means an empty
-	// list and nil means the property was absent. Deliberately not
-	// omitempty so re-encoding keeps the field visible either way (nil
-	// marshals as null, empty as []) instead of dropping it.
+	// DescriptionAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Description. @required — the API always sends this
+	// array (empty when the description has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
 	StartsOn               string               `json:"starts_on,omitempty"`
 	DueOn                  string               `json:"due_on,omitempty"`
@@ -904,12 +903,7 @@ func todoFromGenerated(gt generated.Todo) Todo {
 	// distinction the same way as CompletionSubscribers: the API always
 	// sends the array, so a server-sent [] becomes a non-nil zero-length
 	// slice and an absent property stays nil.
-	if gt.DescriptionAttachments != nil {
-		t.DescriptionAttachments = make([]RichTextAttachment, 0, len(gt.DescriptionAttachments))
-		for _, ga := range gt.DescriptionAttachments {
-			t.DescriptionAttachments = append(t.DescriptionAttachments, richTextAttachmentFromGenerated(ga))
-		}
-	}
+	t.DescriptionAttachments = richTextAttachmentsFromGenerated(gt.DescriptionAttachments)
 
 	// BC5: convert embedded steps
 	if len(gt.Steps) > 0 {
@@ -948,4 +942,36 @@ func richTextAttachmentFromGenerated(ga generated.RichTextAttachment) RichTextAt
 		a.Height = &h
 	}
 	return a
+}
+
+// richTextAttachmentsFromGenerated converts a slice of generated
+// RichTextAttachment to the public type, preserving the nil-vs-empty
+// distinction the API relies on: a nil input (the property was absent) stays
+// nil, and a non-nil input (server-sent, possibly empty) becomes a non-nil
+// slice of the same length. Shared by every resource that pairs a rich text
+// attribute with a companion attachments array.
+func richTextAttachmentsFromGenerated(gas []generated.RichTextAttachment) []RichTextAttachment {
+	if gas == nil {
+		return nil
+	}
+	attachments := make([]RichTextAttachment, 0, len(gas))
+	for _, ga := range gas {
+		attachments = append(attachments, richTextAttachmentFromGenerated(ga))
+	}
+	return attachments
+}
+
+// richTextAttachmentsPtrFromGenerated is the pointer-to-slice variant used by
+// the optional rich text companion arrays on the polymorphic projections
+// (SearchResult, Recording). A nil input (the property was absent) yields a nil
+// pointer so re-encoding omits the key; a non-nil input (server-sent, possibly
+// empty) yields a non-nil pointer so a present-but-empty array re-encodes as []
+// rather than collapsing into absence. This keeps all three wire states —
+// absent, present-empty, populated — distinguishable in both directions.
+func richTextAttachmentsPtrFromGenerated(gas []generated.RichTextAttachment) *[]RichTextAttachment {
+	if gas == nil {
+		return nil
+	}
+	attachments := richTextAttachmentsFromGenerated(gas)
+	return &attachments
 }

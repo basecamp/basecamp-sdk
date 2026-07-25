@@ -25,6 +25,7 @@ data class ClientApproval(
     val parent: RecordingParent,
     val bucket: RecordingBucket,
     val creator: Person,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     val content: String? = null,

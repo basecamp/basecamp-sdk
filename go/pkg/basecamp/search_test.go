@@ -457,6 +457,31 @@ func TestSearchService_Search_BestMatchSort(t *testing.T) {
 	if len(result.Results) != 3 {
 		t.Errorf("expected 3 results, got %d", len(result.Results))
 	}
+
+	// End-to-end projection proof: the polymorphic search projection carries a
+	// result's rich text companion array through the wire and searchResultFromGenerated.
+	// A given result carries only the array matching its type — content_attachments
+	// for a Comment/Message, description_attachments for a Todo.
+	for _, r := range result.Results {
+		// The arrays are optional projection members (*[]RichTextAttachment): the
+		// matching type carries a non-nil pointer, the other stays nil (absent).
+		switch r.Type {
+		case "Comment", "Message":
+			if r.ContentAttachments == nil || len(*r.ContentAttachments) == 0 {
+				t.Errorf("%s result: expected non-empty ContentAttachments", r.Type)
+			}
+			if r.DescriptionAttachments != nil {
+				t.Errorf("%s result: expected nil DescriptionAttachments, got %v", r.Type, r.DescriptionAttachments)
+			}
+		case "Todo":
+			if r.DescriptionAttachments == nil || len(*r.DescriptionAttachments) == 0 {
+				t.Errorf("Todo result: expected non-empty DescriptionAttachments")
+			}
+			if r.ContentAttachments != nil {
+				t.Errorf("Todo result: expected nil ContentAttachments, got %v", r.ContentAttachments)
+			}
+		}
+	}
 }
 
 func TestSearchService_Search_NoSort(t *testing.T) {

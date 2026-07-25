@@ -32,6 +32,7 @@ describe("DocumentsService", () => {
         id: 5001,
         title: "Meeting Notes",
         content: "<p>Notes from the meeting...</p>",
+        content_attachments: [],
         status: "active",
         comments_count: 3,
       };
@@ -39,7 +40,7 @@ describe("DocumentsService", () => {
       server.use(
         http.get(`${BASE_URL}/documents/5001`, () => {
           return HttpResponse.json(document);
-        })
+        }),
       );
 
       const result = await service.get(5001);
@@ -53,7 +54,7 @@ describe("DocumentsService", () => {
       server.use(
         http.get(`${BASE_URL}/documents/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.get(9999)).rejects.toThrow(BasecampError);
@@ -76,7 +77,7 @@ describe("DocumentsService", () => {
       server.use(
         http.get(`${BASE_URL}/vaults/1001/documents.json`, () => {
           return HttpResponse.json(documents);
-        })
+        }),
       );
 
       const result = await service.list(1001);
@@ -90,7 +91,7 @@ describe("DocumentsService", () => {
       server.use(
         http.get(`${BASE_URL}/vaults/1001/documents.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const result = await service.list(1001);
@@ -105,13 +106,14 @@ describe("DocumentsService", () => {
         id: 6001,
         title: "New Document",
         content: "<p>Content here</p>",
+        content_attachments: [],
         status: "active",
       };
 
       server.use(
         http.post(`${BASE_URL}/vaults/1001/documents.json`, () => {
           return HttpResponse.json(newDocument);
-        })
+        }),
       );
 
       const result = await service.create(1001, {
@@ -125,11 +127,14 @@ describe("DocumentsService", () => {
 
     it("should pass subscriptions in request body", async () => {
       server.use(
-        http.post(`${BASE_URL}/vaults/1001/documents.json`, async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          expect(body.subscriptions).toEqual([111, 222]);
-          return HttpResponse.json({ id: 6002, title: "Test" });
-        })
+        http.post(
+          `${BASE_URL}/vaults/1001/documents.json`,
+          async ({ request }) => {
+            const body = (await request.json()) as Record<string, unknown>;
+            expect(body.subscriptions).toEqual([111, 222]);
+            return HttpResponse.json({ id: 6002, title: "Test" });
+          },
+        ),
       );
 
       const result = await service.create(1001, {
@@ -140,13 +145,24 @@ describe("DocumentsService", () => {
     });
 
     it("should send all fields in request body", async () => {
-      let capturedBody: { title?: string; content?: string; status?: string } | null = null;
+      let capturedBody: {
+        title?: string;
+        content?: string;
+        status?: string;
+      } | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/vaults/1001/documents.json`, async ({ request }) => {
-          capturedBody = (await request.json()) as { title?: string; content?: string; status?: string };
-          return HttpResponse.json({ id: 1, title: "Test" });
-        })
+        http.post(
+          `${BASE_URL}/vaults/1001/documents.json`,
+          async ({ request }) => {
+            capturedBody = (await request.json()) as {
+              title?: string;
+              content?: string;
+              status?: string;
+            };
+            return HttpResponse.json({ id: 1, title: "Test" });
+          },
+        ),
       );
 
       await service.create(1001, {
@@ -169,13 +185,14 @@ describe("DocumentsService", () => {
         id: 5001,
         title: "Updated Title",
         content: "<p>Updated content</p>",
+        content_attachments: [],
         status: "active",
       };
 
       server.use(
         http.put(`${BASE_URL}/documents/5001`, () => {
           return HttpResponse.json(updatedDocument);
-        })
+        }),
       );
 
       const result = await service.update(5001, {
@@ -192,9 +209,12 @@ describe("DocumentsService", () => {
 
       server.use(
         http.put(`${BASE_URL}/documents/5001`, async ({ request }) => {
-          capturedBody = (await request.json()) as { title?: string; content?: string };
+          capturedBody = (await request.json()) as {
+            title?: string;
+            content?: string;
+          };
           return HttpResponse.json({ id: 5001, title: "Updated" });
-        })
+        }),
       );
 
       await service.update(5001, { title: "New Title" });

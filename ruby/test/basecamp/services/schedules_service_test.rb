@@ -28,6 +28,7 @@ class SchedulesServiceTest < Minitest::Test
     {
       "id" => id,
       "summary" => summary,
+      "description_attachments" => [],
       "starts_at" => "2024-12-15T09:00:00Z",
       "ends_at" => "2024-12-15T10:00:00Z",
       "all_day" => false

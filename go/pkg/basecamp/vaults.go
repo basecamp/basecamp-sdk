@@ -118,6 +118,14 @@ type Document struct {
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	Content          string    `json:"content"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 }
 
 // Upload represents a Basecamp uploaded file in a vault.
@@ -143,12 +151,20 @@ type Upload struct {
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	Description      string    `json:"description"`
-	ContentType      string    `json:"content_type"`
-	ByteSize         int64     `json:"byte_size"`
-	Width            int       `json:"width,omitempty"`
-	Height           int       `json:"height,omitempty"`
-	DownloadURL      string    `json:"download_url"`
-	Filename         string    `json:"filename"`
+	// DescriptionAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Description. @required — the API always sends this
+	// array (empty when the description has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	ContentType            string               `json:"content_type"`
+	ByteSize               int64                `json:"byte_size"`
+	Width                  int                  `json:"width,omitempty"`
+	Height                 int                  `json:"height,omitempty"`
+	DownloadURL            string               `json:"download_url"`
+	Filename               string               `json:"filename"`
 }
 
 // UnmarshalJSON decodes an Upload from JSON, handling the BC3 API's
@@ -1163,6 +1179,8 @@ func documentFromGenerated(gd generated.Document) Document {
 		d.Creator = &creator
 	}
 
+	d.ContentAttachments = richTextAttachmentsFromGenerated(gd.ContentAttachments)
+
 	return d
 }
 
@@ -1220,6 +1238,8 @@ func uploadFromGenerated(gu generated.Upload) Upload {
 		creator := personFromGenerated(gu.Creator)
 		u.Creator = &creator
 	}
+
+	u.DescriptionAttachments = richTextAttachmentsFromGenerated(gu.DescriptionAttachments)
 
 	return u
 }

@@ -16,7 +16,7 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_list
-    response = [ { "id" => 1, "name" => "Sprint Tasks", "completed_ratio" => "3/10" } ]
+    response = [ { "id" => 1, "name" => "Sprint Tasks", "completed_ratio" => "3/10", "description_attachments" => [] } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todosets/\d+/todolists\.json})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -27,7 +27,7 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_list_with_status
-    response = [ { "id" => 1, "name" => "Archived List", "status" => "archived" } ]
+    response = [ { "id" => 1, "name" => "Archived List", "status" => "archived", "description_attachments" => [] } ]
 
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todosets/\d+/todolists\.json\?status=archived})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -37,7 +37,7 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_get
-    response = { "id" => 2, "name" => "Sprint Tasks" }
+    response = { "id" => 2, "name" => "Sprint Tasks", "description_attachments" => [] }
 
     # Generated service uses /todolists/{id} without .json
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
@@ -48,7 +48,7 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_create
-    response = { "id" => 1, "name" => "New List" }
+    response = { "id" => 1, "name" => "New List", "description_attachments" => [] }
 
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/todosets/\d+/todolists\.json})
       .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
@@ -58,7 +58,7 @@ class TodolistsServiceTest < Minitest::Test
   end
 
   def test_update
-    response = { "id" => 2, "name" => "Updated List" }
+    response = { "id" => 2, "name" => "Updated List", "description_attachments" => [] }
 
     # Generated service uses /todolists/{id} without .json
     stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})

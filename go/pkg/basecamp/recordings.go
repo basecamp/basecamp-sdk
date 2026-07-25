@@ -44,12 +44,26 @@ type Recording struct {
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
 	Content          string    `json:"content,omitempty"`
-	CommentsCount    int       `json:"comments_count,omitempty"`
-	CommentsURL      string    `json:"comments_url,omitempty"`
-	SubscriptionURL  string    `json:"subscription_url,omitempty"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// ContentAttachments and DescriptionAttachments are the rich text companion
+	// arrays carried through the generic recording projection. A given recording
+	// is one type, so it carries only the array matching its rich text attribute
+	// (ContentAttachments for a Comment/Message, DescriptionAttachments for a
+	// Todo/Card); a webhook-sourced recording carries neither. These are
+	// optional and non-nullable, and their absent-vs-present-empty distinction
+	// is meaningful (a matching type with no inline files serves an empty [],
+	// while a non-matching/webhook recording omits the key). Modeled as a
+	// pointer to a slice with omitempty so all three wire states round-trip
+	// faithfully: nil pointer (absent) is omitted, a non-nil pointer to an
+	// empty slice re-encodes as [], and a populated one as the list — matching
+	// the nullable/optional modeling in every other SDK. See RichTextAttachment.
+	ContentAttachments     *[]RichTextAttachment `json:"content_attachments,omitempty"`
+	DescriptionAttachments *[]RichTextAttachment `json:"description_attachments,omitempty"`
+	CommentsCount          int                   `json:"comments_count,omitempty"`
+	CommentsURL            string                `json:"comments_url,omitempty"`
+	SubscriptionURL        string                `json:"subscription_url,omitempty"`
+	Parent                 *Parent               `json:"parent,omitempty"`
+	Bucket                 *Bucket               `json:"bucket,omitempty"`
+	Creator                *Person               `json:"creator,omitempty"`
 }
 
 // DefaultRecordingLimit is the default number of recordings to return when no limit is specified.
@@ -407,6 +421,9 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		creator := personFromGenerated(gr.Creator)
 		r.Creator = &creator
 	}
+
+	r.ContentAttachments = richTextAttachmentsPtrFromGenerated(gr.ContentAttachments)
+	r.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gr.DescriptionAttachments)
 
 	return r
 }

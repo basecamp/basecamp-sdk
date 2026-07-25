@@ -33,12 +33,16 @@ describe("ClientCorrespondencesService", () => {
           type: "Client::Correspondence",
           url: "https://3.basecampapi.com/12345/client/correspondences/1.json",
           app_url: "https://3.basecamp.com/12345/client/correspondences/1",
-          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          subscription_url: "https://3.basecampapi.com/12345/recordings/1/subscription.json",
+          bookmark_url:
+            "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          subscription_url:
+            "https://3.basecampapi.com/12345/recordings/1/subscription.json",
           content: "<p>Welcome to the project!</p>",
+          content_attachments: [],
           subject: "Project Kickoff",
           replies_count: 3,
-          replies_url: "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
+          replies_url:
+            "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 999, name: "Test User" },
         },
@@ -53,12 +57,16 @@ describe("ClientCorrespondencesService", () => {
           type: "Client::Correspondence",
           url: "https://3.basecampapi.com/12345/client/correspondences/2.json",
           app_url: "https://3.basecamp.com/12345/client/correspondences/2",
-          bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-          subscription_url: "https://3.basecampapi.com/12345/recordings/2/subscription.json",
+          bookmark_url:
+            "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
+          subscription_url:
+            "https://3.basecampapi.com/12345/recordings/2/subscription.json",
           content: "<p>Here's the weekly progress update</p>",
+          content_attachments: [],
           subject: "Weekly Update",
           replies_count: 1,
-          replies_url: "https://3.basecampapi.com/12345/client/recordings/2/replies.json",
+          replies_url:
+            "https://3.basecampapi.com/12345/client/recordings/2/replies.json",
           bucket: { id: 1, name: "Test Project", type: "Project" },
           creator: { id: 999, name: "Test User" },
         },
@@ -67,7 +75,7 @@ describe("ClientCorrespondencesService", () => {
       server.use(
         http.get(`${BASE_URL}/client/correspondences.json`, () => {
           return HttpResponse.json(mockCorrespondences);
-        })
+        }),
       );
 
       const correspondences = await client.clientCorrespondences.list(1);
@@ -82,7 +90,7 @@ describe("ClientCorrespondencesService", () => {
       server.use(
         http.get(`${BASE_URL}/client/correspondences.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const correspondences = await client.clientCorrespondences.list(1);
@@ -104,19 +112,26 @@ describe("ClientCorrespondencesService", () => {
         url: "https://3.basecampapi.com/12345/client/correspondences/1.json",
         app_url: "https://3.basecamp.com/12345/client/correspondences/1",
         bookmark_url: "https://3.basecampapi.com/12345/my/bookmarks/BAh7.json",
-        subscription_url: "https://3.basecampapi.com/12345/recordings/1/subscription.json",
+        subscription_url:
+          "https://3.basecampapi.com/12345/recordings/1/subscription.json",
         content: "<p>Welcome to the project! We're excited to get started.</p>",
+        content_attachments: [],
         subject: "Project Kickoff",
         replies_count: 3,
-        replies_url: "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
+        replies_url:
+          "https://3.basecampapi.com/12345/client/recordings/1/replies.json",
         bucket: { id: 1, name: "Test Project", type: "Project" },
-        creator: { id: 999, name: "Test User", email_address: "test@example.com" },
+        creator: {
+          id: 999,
+          name: "Test User",
+          email_address: "test@example.com",
+        },
       };
 
       server.use(
         http.get(`${BASE_URL}/client/correspondences/1`, () => {
           return HttpResponse.json(mockCorrespondence);
-        })
+        }),
       );
 
       const correspondence = await client.clientCorrespondences.get(1);
@@ -131,7 +146,7 @@ describe("ClientCorrespondencesService", () => {
       server.use(
         http.get(`${BASE_URL}/client/correspondences/999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       try {

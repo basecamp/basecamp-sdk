@@ -36,6 +36,14 @@ type ClientReply struct {
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	Content          string    `json:"content"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
 }
 
 // ClientReplyListResult contains the results from listing client replies.
@@ -210,6 +218,8 @@ func clientReplyFromGenerated(gr generated.ClientReply) ClientReply {
 		creator := personFromGenerated(gr.Creator)
 		r.Creator = &creator
 	}
+
+	r.ContentAttachments = richTextAttachmentsFromGenerated(gr.ContentAttachments)
 
 	return r
 }

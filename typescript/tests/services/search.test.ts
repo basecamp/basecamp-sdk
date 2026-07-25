@@ -42,6 +42,25 @@ describe("SearchService", () => {
           status: "active",
           url: "https://example.com/2",
           app_url: "https://basecamp.com/2",
+          // The search projection carries the matching type's rich-text
+          // companion array; a Message result surfaces content_attachments.
+          content_attachments: [
+            {
+              id: 900,
+              sgid: "BAh-img",
+              filename: "diagram.png",
+              content_type: "image/png",
+              byte_size: 2048,
+              download_url:
+                "https://example.com/blobs/img/download/diagram.png",
+              width: 1024.0,
+              height: 768,
+              previewable: true,
+              preview_url: "https://example.com/blobs/img/previews/diagram.png",
+              thumbnail_url:
+                "https://example.com/blobs/img/thumbnails/diagram.png",
+            },
+          ],
         },
       ];
 
@@ -50,11 +69,14 @@ describe("SearchService", () => {
           const url = new URL(request.url);
           expect(url.searchParams.get("q")).toBe("project");
           return HttpResponse.json(mockResults);
-        })
+        }),
       );
 
       const results = await client.search.search("project");
       expect(results).toHaveLength(2);
+      // The optional projection array surfaces on the matching-type result.
+      expect(results[1]!.content_attachments).toHaveLength(1);
+      expect(results[1]!.content_attachments![0]!.width).toBe(1024);
       expect(results[0]!.title).toBe("Project Plan");
       expect(results[1]!.type).toBe("Message");
     });
@@ -66,10 +88,12 @@ describe("SearchService", () => {
           expect(url.searchParams.get("q")).toBe("test");
           expect(url.searchParams.get("sort")).toBe("best_match");
           return HttpResponse.json([]);
-        })
+        }),
       );
 
-      const results = await client.search.search("test", { sort: "best_match" });
+      const results = await client.search.search("test", {
+        sort: "best_match",
+      });
       expect(results).toHaveLength(0);
     });
 
@@ -89,7 +113,7 @@ describe("SearchService", () => {
           expect(url.searchParams.has("bucket_ids")).toBe(false);
           expect(url.searchParams.has("bucket_ids[][]")).toBe(false);
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const results = await client.search.search("hello", {
@@ -117,7 +141,7 @@ describe("SearchService", () => {
           expect(p.get("bucket_id")).toBe("9");
           expect(p.get("creator_id")).toBe("3");
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       await client.search.search("hello", {
@@ -140,7 +164,7 @@ describe("SearchService", () => {
       server.use(
         http.get(`${BASE_URL}/search.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const results = await client.search.search("nonexistent");
@@ -169,7 +193,7 @@ describe("SearchService", () => {
       server.use(
         http.get(`${BASE_URL}/searches/metadata.json`, () => {
           return HttpResponse.json(mockMetadata);
-        })
+        }),
       );
 
       const metadata = await client.search.metadata();

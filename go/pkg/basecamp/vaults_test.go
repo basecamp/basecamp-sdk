@@ -517,6 +517,35 @@ func TestUpload_UnmarshalGet(t *testing.T) {
 	if upload.Creator.Name != "Victor Cooper" {
 		t.Errorf("expected Creator.Name 'Victor Cooper', got %q", upload.Creator.Name)
 	}
+
+	// DescriptionAttachments: the two-entry representative decodes through
+	// Upload's custom UnmarshalJSON (which delegates to uploadFromGenerated),
+	// so the generated FlexInt dimensions narrow into *int32. The image carries
+	// a float-spelled dimension (1024.0 -> 1024); the non-image blob carries
+	// null dimensions (-> nil).
+	if len(upload.DescriptionAttachments) != 2 {
+		t.Fatalf("expected 2 description attachments, got %d", len(upload.DescriptionAttachments))
+	}
+	img := upload.DescriptionAttachments[0]
+	if img.ID != 1069480020 {
+		t.Errorf("expected image attachment ID 1069480020, got %d", img.ID)
+	}
+	if img.Filename != "brand-guide.png" || img.ContentType != "image/png" {
+		t.Errorf("unexpected image attachment: %+v", img)
+	}
+	if img.Width == nil || *img.Width != 1024 {
+		t.Errorf("expected image Width 1024 (float-spelled 1024.0), got %v", img.Width)
+	}
+	if img.Height == nil || *img.Height != 768 {
+		t.Errorf("expected image Height 768, got %v", img.Height)
+	}
+	blob := upload.DescriptionAttachments[1]
+	if blob.ID != 1069480021 || blob.ContentType != "application/pdf" {
+		t.Errorf("unexpected blob attachment: %+v", blob)
+	}
+	if blob.Width != nil || blob.Height != nil {
+		t.Errorf("expected nil dimensions for non-image blob, got width=%v height=%v", blob.Width, blob.Height)
+	}
 }
 
 func TestUpload_UnmarshalList(t *testing.T) {

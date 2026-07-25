@@ -19,6 +19,7 @@ class DocumentsServiceTest < Minitest::Test
       "id" => id,
       "title" => title,
       "content" => "<p>Notes from today's meeting...</p>",
+      "content_attachments" => [],
       "status" => "active",
       "comments_count" => 2,
       "created_at" => "2024-01-01T00:00:00Z"

@@ -43,9 +43,17 @@ type ClientCorrespondence struct {
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	Content          string    `json:"content"`
-	Subject          string    `json:"subject"`
-	RepliesCount     int       `json:"replies_count"`
-	RepliesURL       string    `json:"replies_url"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	Subject            string               `json:"subject"`
+	RepliesCount       int                  `json:"replies_count"`
+	RepliesURL         string               `json:"replies_url"`
 }
 
 // ClientCorrespondenceListResult contains the results from listing client correspondences.
@@ -230,6 +238,8 @@ func clientCorrespondenceFromGenerated(gc generated.ClientCorrespondence) Client
 		creator := personFromGenerated(gc.Creator)
 		c.Creator = &creator
 	}
+
+	c.ContentAttachments = richTextAttachmentsFromGenerated(gc.ContentAttachments)
 
 	return c
 }

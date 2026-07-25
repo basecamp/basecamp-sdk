@@ -20,6 +20,7 @@ class ClientApprovalsServiceTest < Minitest::Test
       "subject" => subject,
       "approval_status" => "pending",
       "content" => "<p>Please review the attached designs.</p>",
+      "content_attachments" => [],
       "created_at" => "2024-01-01T00:00:00Z"
     }
   end

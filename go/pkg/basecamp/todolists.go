@@ -36,12 +36,20 @@ type Todolist struct {
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
 	Description      string    `json:"description"`
-	Completed        bool      `json:"completed"`
-	CompletedRatio   string    `json:"completed_ratio"`
-	Name             string    `json:"name"`
-	TodosURL         string    `json:"todos_url"`
-	GroupsURL        string    `json:"groups_url"`
-	AppTodosURL      string    `json:"app_todos_url"`
+	// DescriptionAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Description. @required — the API always sends this
+	// array (empty when the description has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments"`
+	Completed              bool                 `json:"completed"`
+	CompletedRatio         string               `json:"completed_ratio"`
+	Name                   string               `json:"name"`
+	TodosURL               string               `json:"todos_url"`
+	GroupsURL              string               `json:"groups_url"`
+	AppTodosURL            string               `json:"app_todos_url"`
 }
 
 // TodolistListOptions specifies options for listing todolists.
@@ -433,6 +441,8 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		creator := personFromGenerated(gtl.Creator)
 		tl.Creator = &creator
 	}
+
+	tl.DescriptionAttachments = richTextAttachmentsFromGenerated(gtl.DescriptionAttachments)
 
 	return tl
 }

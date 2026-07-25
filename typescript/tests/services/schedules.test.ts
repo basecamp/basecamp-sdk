@@ -39,7 +39,7 @@ describe("SchedulesService", () => {
       server.use(
         http.get(`${BASE_URL}/schedules/4001`, () => {
           return HttpResponse.json(schedule);
-        })
+        }),
       );
 
       const result = await service.get(4001);
@@ -53,7 +53,7 @@ describe("SchedulesService", () => {
       server.use(
         http.get(`${BASE_URL}/schedules/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.get(9999)).rejects.toThrow(BasecampError);
@@ -69,14 +69,24 @@ describe("SchedulesService", () => {
   describe("listEntries", () => {
     it("should return schedule entries", async () => {
       const entries = [
-        { id: 4101, summary: "Team Meeting", starts_at: "2024-12-15T09:00:00Z" },
-        { id: 4102, summary: "Project Review", starts_at: "2024-12-16T14:00:00Z" },
+        {
+          id: 4101,
+          summary: "Team Meeting",
+          starts_at: "2024-12-15T09:00:00Z",
+          description_attachments: [],
+        },
+        {
+          id: 4102,
+          summary: "Project Review",
+          starts_at: "2024-12-16T14:00:00Z",
+          description_attachments: [],
+        },
       ];
 
       server.use(
         http.get(`${BASE_URL}/schedules/4001/entries.json`, () => {
           return HttpResponse.json(entries);
-        })
+        }),
       );
 
       const result = await service.listEntries(4001);
@@ -84,13 +94,15 @@ describe("SchedulesService", () => {
       expect(result).toHaveLength(2);
       expect(result[0].summary).toBe("Team Meeting");
       expect(result[1].summary).toBe("Project Review");
+      // The required description_attachments array round-trips through the list.
+      expect(result[0].description_attachments).toEqual([]);
     });
 
     it("should return empty array when no entries", async () => {
       server.use(
         http.get(`${BASE_URL}/schedules/4001/entries.json`, () => {
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       const result = await service.listEntries(4001);
@@ -105,6 +117,7 @@ describe("SchedulesService", () => {
         id: 4101,
         summary: "Team Meeting",
         description: "<p>Weekly sync</p>",
+        description_attachments: [],
         starts_at: "2024-12-15T09:00:00Z",
         ends_at: "2024-12-15T10:00:00Z",
         all_day: false,
@@ -113,7 +126,7 @@ describe("SchedulesService", () => {
       server.use(
         http.get(`${BASE_URL}/schedule_entries/4101`, () => {
           return HttpResponse.json(entry);
-        })
+        }),
       );
 
       const result = await service.getEntry(4101);
@@ -137,7 +150,7 @@ describe("SchedulesService", () => {
       server.use(
         http.post(`${BASE_URL}/schedules/4001/entries.json`, () => {
           return HttpResponse.json(newEntry);
-        })
+        }),
       );
 
       const result = await service.createEntry(4001, {
@@ -152,11 +165,14 @@ describe("SchedulesService", () => {
 
     it("should pass subscriptions in request body", async () => {
       server.use(
-        http.post(`${BASE_URL}/schedules/4001/entries.json`, async ({ request }) => {
-          const body = (await request.json()) as Record<string, unknown>;
-          expect(body.subscriptions).toEqual([111, 222]);
-          return HttpResponse.json({ id: 4202, summary: "Test" });
-        })
+        http.post(
+          `${BASE_URL}/schedules/4001/entries.json`,
+          async ({ request }) => {
+            const body = (await request.json()) as Record<string, unknown>;
+            expect(body.subscriptions).toEqual([111, 222]);
+            return HttpResponse.json({ id: 4202, summary: "Test" });
+          },
+        ),
       );
 
       const result = await service.createEntry(4001, {
@@ -172,10 +188,13 @@ describe("SchedulesService", () => {
       let capturedBody: Record<string, unknown> | null = null;
 
       server.use(
-        http.post(`${BASE_URL}/schedules/4001/entries.json`, async ({ request }) => {
-          capturedBody = (await request.json()) as Record<string, unknown>;
-          return HttpResponse.json({ id: 1, summary: "Test" });
-        })
+        http.post(
+          `${BASE_URL}/schedules/4001/entries.json`,
+          async ({ request }) => {
+            capturedBody = (await request.json()) as Record<string, unknown>;
+            return HttpResponse.json({ id: 1, summary: "Test" });
+          },
+        ),
       );
 
       await service.createEntry(4001, {
@@ -212,7 +231,7 @@ describe("SchedulesService", () => {
       server.use(
         http.put(`${BASE_URL}/schedule_entries/4101`, () => {
           return HttpResponse.json(updatedEntry);
-        })
+        }),
       );
 
       const result = await service.updateEntry(4101, {
@@ -237,9 +256,12 @@ describe("SchedulesService", () => {
       };
 
       server.use(
-        http.get(`${BASE_URL}/schedule_entries/4101/occurrences/2024-12-22`, () => {
-          return HttpResponse.json(entry);
-        })
+        http.get(
+          `${BASE_URL}/schedule_entries/4101/occurrences/2024-12-22`,
+          () => {
+            return HttpResponse.json(entry);
+          },
+        ),
       );
 
       const result = await service.getEntryOccurrence(4101, "2024-12-22");
@@ -261,7 +283,7 @@ describe("SchedulesService", () => {
       server.use(
         http.put(`${BASE_URL}/schedules/4001`, () => {
           return HttpResponse.json(schedule);
-        })
+        }),
       );
 
       const result = await service.updateSettings(4001, {
@@ -276,9 +298,11 @@ describe("SchedulesService", () => {
 
       server.use(
         http.put(`${BASE_URL}/schedules/4001`, async ({ request }) => {
-          capturedBody = (await request.json()) as { include_due_assignments?: boolean };
+          capturedBody = (await request.json()) as {
+            include_due_assignments?: boolean;
+          };
           return HttpResponse.json({ id: 4001, title: "Schedule" });
-        })
+        }),
       );
 
       await service.updateSettings(4001, { includeDueAssignments: true });

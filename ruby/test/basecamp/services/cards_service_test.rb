@@ -19,6 +19,7 @@ class CardsServiceTest < Minitest::Test
       "id" => id,
       "title" => title,
       "content" => "<p>Card description</p>",
+      "description_attachments" => [],
       "due_on" => "2024-12-31",
       "completed" => false,
       "assignees" => []

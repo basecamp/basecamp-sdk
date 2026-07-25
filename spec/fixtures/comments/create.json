@@ -46,5 +46,6 @@
     "can_manage_projects": true,
     "can_manage_people": true
   },
-  "content": "<div><em>Wow!</em> That is cool.</div>"
+  "content": "<div><em>Wow!</em> That is cool.</div>",
+  "content_attachments": []
 }

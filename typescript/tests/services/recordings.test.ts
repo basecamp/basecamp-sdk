@@ -29,7 +29,16 @@ describe("RecordingsService", () => {
   describe("list", () => {
     it("should list recordings by type and return ListResult", async () => {
       const recordings = [
-        { id: 1001, type: "Todo", title: "Task 1", status: "active" },
+        {
+          id: 1001,
+          type: "Todo",
+          title: "Task 1",
+          status: "active",
+          // The generic recording projection carries the matching type's
+          // rich-text companion array; a Todo recording surfaces
+          // description_attachments (empty here — the Todo has no inline files).
+          description_attachments: [],
+        },
         { id: 1002, type: "Todo", title: "Task 2", status: "active" },
       ];
 
@@ -40,7 +49,7 @@ describe("RecordingsService", () => {
           return HttpResponse.json(recordings, {
             headers: { "X-Total-Count": "2" },
           });
-        })
+        }),
       );
 
       const result = await service.list("Todo");
@@ -48,6 +57,8 @@ describe("RecordingsService", () => {
       expect(result).toBeInstanceOf(ListResult);
       expect(result).toHaveLength(2);
       expect(result[0].type).toBe("Todo");
+      // The optional projection array surfaces on the matching-type recording.
+      expect(result[0].description_attachments).toEqual([]);
       expect(result.meta.totalCount).toBe(2);
     });
 
@@ -58,7 +69,7 @@ describe("RecordingsService", () => {
         http.get(`${BASE_URL}/projects/recordings.json`, ({ request }) => {
           capturedUrl = new URL(request.url);
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       // bucket is number[] → joined as CSV string in the query
@@ -83,7 +94,7 @@ describe("RecordingsService", () => {
         http.get(`${BASE_URL}/projects/recordings.json`, ({ request }) => {
           capturedUrl = new URL(request.url);
           return HttpResponse.json([]);
-        })
+        }),
       );
 
       await service.list("Todo", { bucket: [1, 2, 3] });
@@ -97,7 +108,7 @@ describe("RecordingsService", () => {
           return HttpResponse.json([], {
             headers: { "X-Total-Count": "0" },
           });
-        })
+        }),
       );
 
       const result = await service.list("Todo");
@@ -121,7 +132,7 @@ describe("RecordingsService", () => {
       server.use(
         http.get(`${BASE_URL}/recordings/3001`, () => {
           return HttpResponse.json(recording);
-        })
+        }),
       );
 
       const result = await service.get(3001);
@@ -135,7 +146,7 @@ describe("RecordingsService", () => {
       server.use(
         http.get(`${BASE_URL}/recordings/9999`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.get(9999)).rejects.toThrow(BasecampError);
@@ -153,7 +164,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/recordings/3001/status/trashed.json`, () => {
           return new HttpResponse(null, { status: 204 });
-        })
+        }),
       );
 
       await expect(service.trash(3001)).resolves.toBeUndefined();
@@ -163,7 +174,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/recordings/9999/status/trashed.json`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.trash(9999)).rejects.toThrow(BasecampError);
@@ -175,7 +186,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/recordings/3001/status/archived.json`, () => {
           return new HttpResponse(null, { status: 204 });
-        })
+        }),
       );
 
       await expect(service.archive(3001)).resolves.toBeUndefined();
@@ -185,7 +196,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/recordings/9999/status/archived.json`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.archive(9999)).rejects.toThrow(BasecampError);
@@ -197,7 +208,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/recordings/3001/status/active.json`, () => {
           return new HttpResponse(null, { status: 204 });
-        })
+        }),
       );
 
       await expect(service.unarchive(3001)).resolves.toBeUndefined();
@@ -207,7 +218,7 @@ describe("RecordingsService", () => {
       server.use(
         http.put(`${BASE_URL}/recordings/9999/status/active.json`, () => {
           return HttpResponse.json({ error: "Not found" }, { status: 404 });
-        })
+        }),
       );
 
       await expect(service.unarchive(9999)).rejects.toThrow(BasecampError);

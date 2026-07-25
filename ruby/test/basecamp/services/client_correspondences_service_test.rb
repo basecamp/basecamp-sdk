@@ -19,6 +19,7 @@ class ClientCorrespondencesServiceTest < Minitest::Test
       "id" => id,
       "subject" => subject,
       "content" => "<p>Here is the latest update on the project.</p>",
+      "content_attachments" => [],
       "replies_count" => 3,
       "created_at" => "2024-01-01T00:00:00Z"
     }

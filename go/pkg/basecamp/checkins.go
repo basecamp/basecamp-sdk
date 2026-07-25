@@ -113,10 +113,18 @@ type QuestionAnswer struct {
 	CommentsCount    int       `json:"comments_count"`
 	CommentsURL      string    `json:"comments_url"`
 	Content          string    `json:"content"`
-	GroupOn          string    `json:"group_on"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// ContentAttachments holds structured metadata for the downloadable files
+	// embedded in the rich text Content. @required — the API always sends this
+	// array (empty when the content has no inline files). No omitempty, so on
+	// marshal a non-nil slice emits its elements ([] when empty) and a nil
+	// slice emits null; the key is never
+	// dropped. Decode distinguishes a server-sent [] (non-nil) from nil. See
+	// RichTextAttachment.
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+	GroupOn            string               `json:"group_on"`
+	Parent             *Parent              `json:"parent,omitempty"`
+	Bucket             *Bucket              `json:"bucket,omitempty"`
+	Creator            *Person              `json:"creator,omitempty"`
 }
 
 // CreateQuestionRequest specifies the parameters for creating a question.
@@ -892,6 +900,8 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 		creator := personFromGenerated(ga.Creator)
 		a.Creator = &creator
 	}
+
+	a.ContentAttachments = richTextAttachmentsFromGenerated(ga.ContentAttachments)
 
 	return a
 }
