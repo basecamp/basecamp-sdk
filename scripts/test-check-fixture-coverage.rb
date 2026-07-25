@@ -295,10 +295,43 @@ rescue Timeout::Error
   failures << "alternative-group validation hung"
 end
 
+# allOf nullability is a conjunction: a required field whose schema is
+# allOf[nullable-branch, non-nullable-branch] must reject null (one branch
+# forbids it), not accept it because a single branch is nullable.
+NULLABLE_ALLOF_OPENAPI = {
+  "components" => { "schemas" => {
+    "NullAllOfTarget" => { "type" => "object", "required" => ["f"], "properties" => {
+      "f" => { "allOf" => [
+        { "type" => "string", "nullable" => true },
+        { "type" => "string" },
+      ] },
+    } },
+  } },
+}.freeze
+
+def null_allof_manifest
+  { "targets" => [{ "id" => "nallof", "fixture" => "nallof.json", "pointer" => "", "schema" => "NullAllOfTarget" }],
+    "covered_schemas" => { "NullAllOfTarget" => ["nallof"] },
+    "excluded_schemas" => {} }
+end
+
+begin
+  out, status = run_synthetic(openapi: NULLABLE_ALLOF_OPENAPI, manifest: null_allof_manifest,
+                              fixtures: { "nallof.json" => { "f" => nil } })
+  expect_fail(failures, "allOf nullability is conjunctive (null rejected)", out, status,
+              "required field is null but its schema is not nullable")
+
+  out, status = run_synthetic(openapi: NULLABLE_ALLOF_OPENAPI, manifest: null_allof_manifest,
+                              fixtures: { "nallof.json" => { "f" => "x" } })
+  expect_pass(failures, "allOf field with a concrete value passes", out, status)
+rescue Timeout::Error
+  failures << "allOf-nullability validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 7 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 9 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"

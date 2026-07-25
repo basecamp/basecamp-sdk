@@ -161,17 +161,20 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
   req = []
   props = {}
   types = Set.new
-  nullable = false
+  # `$ref`(+siblings) and allOf form a CONJUNCTION: null is allowed only if every
+  # part allows it, so a part that imposes a non-nullable type FORBIDS null. We
+  # accumulate `forbids_null` (OR) and return its negation as the nullable flag.
+  forbids_null = false
   items = nil
   alt_groups = []
-  return [req, props, types, nullable, items, alt_groups] if depth > 40 || !schema.is_a?(Hash)
+  return [req, props, types, true, items, alt_groups] if depth > 40 || !schema.is_a?(Hash)
 
   absorb = lambda do |sub|
-    r2, p2, t2, n2, i2, a2 = merged_constraints(sub, components, visited, depth + 1)
+    r2, p2, t2, sub_nullable, i2, a2 = merged_constraints(sub, components, visited, depth + 1)
     req.concat(r2)
     p2.each { |k, v| props[k] ||= v }
     types.merge(t2)
-    nullable ||= n2
+    forbids_null ||= !sub_nullable
     items ||= i2
     alt_groups.concat(a2)
   end
@@ -185,7 +188,8 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
 
   t, nn = allowed_types(schema)
   types.merge(t)
-  nullable ||= nn
+  # A node that imposes a concrete type but does not permit null forbids null.
+  forbids_null ||= (!t.empty? && !nn)
   (schema["properties"] || {}).each { |k, v| props[k] ||= v }
   (schema["required"] || []).each { |r| req << r }
   items ||= schema["items"]
@@ -194,7 +198,7 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
     alt_groups << schema[key] if schema[key].is_a?(Array) && !schema[key].empty?
   end
 
-  [req, props, types, nullable, items, alt_groups]
+  [req, props, types, !forbids_null, items, alt_groups]
 end
 
 # Composition-aware validation of `value` against `schema`. Reports
