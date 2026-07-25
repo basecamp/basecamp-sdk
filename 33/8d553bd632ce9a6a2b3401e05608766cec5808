@@ -6,6 +6,8 @@ Makefile
   s_9d1ce63adbac84::t_a1389eca7e4a76 626
   s_9d1ce63adbac84::t_30b0fa88acd1f7 660-670
   s_9d1ce63adbac84::t_bb8e458c011809 785-790
+  s_9d1ce63adbac84::t_936fb5cc744313 813
+  s_9d1ce63adbac84::t_3cae60e8f1b5c5 757
 scripts/check-idempotency-parity
   s_9d1ce63adbac84::t_1e905104a6ffbe 1-156
 scripts/check-swift-service-drift.sh
