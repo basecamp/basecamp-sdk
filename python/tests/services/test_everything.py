@@ -183,14 +183,14 @@ _BOOSTS_FEED = [
         "id": 1400,
         "content": "👍",
         "created_at": "2024-01-01T00:00:00Z",
-        "creator": {"id": 1, "name": "Victor Cooper"},
+        "booster": {"id": 1, "name": "Victor Cooper"},
         "recording": {"id": 1000, "type": "Message", "title": "Kickoff"},
     },
     {
         "id": 1401,
         "content": "🔥",
         "created_at": "2024-01-02T00:00:00Z",
-        "creator": {"id": 2, "name": "Annie Bryan"},
+        "booster": {"id": 2, "name": "Annie Bryan"},
         "recording": {"id": 1100, "type": "Comment", "title": "Nice work"},
     },
 ]
@@ -316,6 +316,7 @@ class TestEverythingRecordingFeeds:
         assert len(result) == 2
         assert result[0]["id"] == 1400
         assert result[0]["content"] == "👍"
+        assert result[0]["booster"]["name"] == "Victor Cooper"
         assert result[0]["recording"] == {"id": 1000, "type": "Message", "title": "Kickoff"}
         assert result[1]["recording"]["type"] == "Comment"
 

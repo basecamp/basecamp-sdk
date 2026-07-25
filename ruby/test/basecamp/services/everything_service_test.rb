@@ -222,7 +222,7 @@ class EverythingServiceTest < Minitest::Test
         "id" => 5001,
         "content" => "🎉",
         "created_at" => "2024-01-15T10:00:00Z",
-        "creator" => { "id" => 1, "name" => "Victor Cooper" },
+        "booster" => { "id" => 1, "name" => "Victor Cooper" },
         "recording" => {
           "id" => 1001,
           "type" => "Message",
@@ -234,7 +234,7 @@ class EverythingServiceTest < Minitest::Test
         "id" => 5002,
         "content" => "👏",
         "created_at" => "2024-01-15T09:00:00Z",
-        "creator" => { "id" => 1, "name" => "Victor Cooper" },
+        "booster" => { "id" => 1, "name" => "Victor Cooper" },
         "recording" => {
           "id" => 2001,
           "type" => "Comment",
@@ -251,6 +251,7 @@ class EverythingServiceTest < Minitest::Test
     assert_equal 2, result.length
     assert_equal 5001, result[0]["id"]
     assert_equal "🎉", result[0]["content"]
+    assert_equal "Victor Cooper", result[0]["booster"]["name"]
     assert_not_nil result[0]["recording"]
     assert_equal 1001, result[0]["recording"]["id"]
     assert_equal "Message", result[0]["recording"]["type"]

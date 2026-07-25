@@ -2,12 +2,22 @@ package basecamp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
+
+// strv nil-safely dereferences an optional *string (nil -> "").
+func strv(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
 
 func everythingTestClient(t *testing.T, handler http.HandlerFunc) (*EverythingService, string) {
 	t.Helper()
@@ -122,14 +132,16 @@ func TestEverythingService_Files_PerVariantDecode(t *testing.T) {
 		t.Fatalf("expected 3 files, got %d", len(result.Files))
 	}
 	up := result.Files[0]
-	if up.Type != "Upload" || up.Filename != "logo.png" || up.AppDownloadURL == "" {
+	if strv(up.Type) != "Upload" || strv(up.Filename) != "logo.png" || up.AppDownloadURL == nil {
 		t.Errorf("upload variant not decoded: %+v", up)
 	}
 	if up.Width == nil || *up.Width != 1024 {
 		t.Errorf("expected float-spelled width 1024, got %v", up.Width)
 	}
-	if up.AttachableSGID != "" {
-		t.Errorf("upload variant should not carry attachable_sgid")
+	// Presence-faithful strings: the Upload variant omits attachable_sgid, so it
+	// must decode as nil (absent), not a fabricated empty string, per SPEC §10.
+	if up.AttachableSGID != nil {
+		t.Errorf("upload variant should not carry attachable_sgid, got %q", *up.AttachableSGID)
 	}
 	// Presence-faithful pointers: the Upload carries byte_size, the Document
 	// omits it (must decode nil, not a fabricated 0), per SPEC §10.
@@ -137,13 +149,13 @@ func TestEverythingService_Files_PerVariantDecode(t *testing.T) {
 		t.Errorf("expected upload byte_size 1281, got %v", up.ByteSize)
 	}
 	doc := result.Files[1]
-	if doc.Type != "Document" || doc.Title != "Spec" {
+	if strv(doc.Type) != "Document" || strv(doc.Title) != "Spec" {
 		t.Errorf("document variant not decoded: %+v", doc)
 	}
 	// The Document body (content + content_attachments) must decode, not be
 	// dropped by the superset (finding #7).
-	if doc.Content != "<div>Body</div>" {
-		t.Errorf("expected document content to decode, got %q", doc.Content)
+	if strv(doc.Content) != "<div>Body</div>" {
+		t.Errorf("expected document content to decode, got %q", strv(doc.Content))
 	}
 	if doc.ContentAttachments == nil || len(*doc.ContentAttachments) != 1 {
 		t.Errorf("expected 1 document content attachment, got %v", doc.ContentAttachments)
@@ -151,8 +163,13 @@ func TestEverythingService_Files_PerVariantDecode(t *testing.T) {
 	if doc.ByteSize != nil {
 		t.Errorf("expected nil byte_size on the document variant, got %v", *doc.ByteSize)
 	}
+	// Presence-faithful strings: the Document variant omits filename entirely, so
+	// it must be nil (absent) rather than an empty-string sentinel.
+	if doc.Filename != nil {
+		t.Errorf("expected nil filename on the document variant, got %q", *doc.Filename)
+	}
 	att := result.Files[2]
-	if att.Type != "Attachment" || att.AttachableSGID != "sgid-902" || att.Parent == nil {
+	if strv(att.Type) != "Attachment" || strv(att.AttachableSGID) != "sgid-902" || att.Parent == nil {
 		t.Errorf("attachment variant not decoded: %+v", att)
 	}
 	if att.Width != nil || att.Height != nil {
@@ -220,5 +237,45 @@ func TestEverythingService_Files_PassesPageAndKindParams(t *testing.T) {
 	q, _ := url.ParseQuery(captured)
 	if q.Get("page") != "3" || q.Get("kind") != "pdfs" {
 		t.Errorf("expected page=3&kind=pdfs, got %q", captured)
+	}
+}
+
+// TestEverythingFile_OptionalStringsPreserveAbsence proves the SPEC §10 contract
+// for optional strings: an absent field and an explicitly-empty field must not
+// collapse. A Document with no filename decodes to nil (and re-marshals omitted),
+// while a recording with an explicit "" summary/description decodes to a non-nil
+// pointer to "" and re-marshals as an explicit empty string.
+func TestEverythingFile_OptionalStringsPreserveAbsence(t *testing.T) {
+	// filename absent entirely; description present but explicitly empty.
+	wire := `{"id":901,"type":"Document","title":"Spec","description":""}`
+
+	var f EverythingFile
+	if err := json.Unmarshal([]byte(wire), &f); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	// Absent filename -> nil (not a fabricated empty string).
+	if f.Filename != nil {
+		t.Errorf("expected absent filename to decode as nil, got %q", *f.Filename)
+	}
+	// Explicitly-empty description -> non-nil pointer to "".
+	if f.Description == nil {
+		t.Fatal("expected explicit empty description to decode as non-nil *string")
+	}
+	if *f.Description != "" {
+		t.Errorf("expected empty description, got %q", *f.Description)
+	}
+
+	out, err := json.Marshal(f)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	s := string(out)
+	// Absent filename must stay omitted on the way back out.
+	if strings.Contains(s, "filename") {
+		t.Errorf("expected absent filename to remain omitted, got %s", s)
+	}
+	// Explicit empty description must survive the round trip as "".
+	if !strings.Contains(s, `"description":""`) {
+		t.Errorf("expected explicit empty description to round-trip as \"\", got %s", s)
 	}
 }

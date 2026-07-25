@@ -57,53 +57,52 @@ type EverythingFilesOptions struct {
 // (distinguished by AttachableSGID and blob metadata). Only the fields of the
 // variant an instance represents are populated.
 type EverythingFile struct {
-	// ID and the numeric scalars below are pointers so an absent field (the
-	// variant this instance is not) stays nil and round-trips as omitted rather
-	// than a fabricated zero, per SPEC.md §10 (optional fields must preserve
-	// absence, not substitute a sentinel).
-	ID     *int64 `json:"id,omitempty"`
-	Status string `json:"status,omitempty"`
-	// VisibleToClients/CreatedAt/UpdatedAt/InheritsStatus are pointers so an
-	// absent field (the variant this instance is not) stays nil and round-trips
-	// as omitted rather than a fabricated zero timestamp or a dropped false.
+	// Every field is optional and pointer-backed: the superset populates only the
+	// fields of the variant an instance represents, so an absent field must stay
+	// nil and re-marshal as omitted rather than as a fabricated sentinel. Per
+	// SPEC.md §10, an empty string is NOT an acceptable stand-in for absence, so
+	// the optional strings are *string too (a Document with no filename must be
+	// distinguishable from an upload with an explicit empty filename).
+	ID               *int64     `json:"id,omitempty"`
+	Status           *string    `json:"status,omitempty"`
 	VisibleToClients *bool      `json:"visible_to_clients,omitempty"`
 	CreatedAt        *time.Time `json:"created_at,omitempty"`
 	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
-	Title            string     `json:"title,omitempty"`
+	Title            *string    `json:"title,omitempty"`
 	InheritsStatus   *bool      `json:"inherits_status,omitempty"`
 	// Type is "Upload", "Document", or "Attachment".
-	Type            string  `json:"type,omitempty"`
-	URL             string  `json:"url,omitempty"`
-	AppURL          string  `json:"app_url,omitempty"`
-	BookmarkURL     string  `json:"bookmark_url,omitempty"`
-	SubscriptionURL string  `json:"subscription_url,omitempty"`
+	Type            *string `json:"type,omitempty"`
+	URL             *string `json:"url,omitempty"`
+	AppURL          *string `json:"app_url,omitempty"`
+	BookmarkURL     *string `json:"bookmark_url,omitempty"`
+	SubscriptionURL *string `json:"subscription_url,omitempty"`
 	CommentsCount   *int32  `json:"comments_count,omitempty"`
-	CommentsURL     string  `json:"comments_url,omitempty"`
+	CommentsURL     *string `json:"comments_url,omitempty"`
 	BoostsCount     *int32  `json:"boosts_count,omitempty"`
-	BoostsURL       string  `json:"boosts_url,omitempty"`
+	BoostsURL       *string `json:"boosts_url,omitempty"`
 	Position        *int32  `json:"position,omitempty"`
 	Parent          *Parent `json:"parent,omitempty"`
 	Bucket          *Bucket `json:"bucket,omitempty"`
 	Creator         *Person `json:"creator,omitempty"`
 	// AttachableSGID is present on the rich-text attachment variant only.
-	AttachableSGID string `json:"attachable_sgid,omitempty"`
+	AttachableSGID *string `json:"attachable_sgid,omitempty"`
 	// Blob/file metadata (uploads and attachments).
-	ContentType    string `json:"content_type,omitempty"`
-	ByteSize       *int64 `json:"byte_size,omitempty"`
-	Filename       string `json:"filename,omitempty"`
-	DownloadURL    string `json:"download_url,omitempty"`
-	AppDownloadURL string `json:"app_download_url,omitempty"`
+	ContentType    *string `json:"content_type,omitempty"`
+	ByteSize       *int64  `json:"byte_size,omitempty"`
+	Filename       *string `json:"filename,omitempty"`
+	DownloadURL    *string `json:"download_url,omitempty"`
+	AppDownloadURL *string `json:"app_download_url,omitempty"`
 	// Width and Height are null for non-image blobs and may be float-spelled
 	// (1024.0) on the wire; narrowed to *int32 here (nil when absent/null).
-	Width       *int32 `json:"width,omitempty"`
-	Height      *int32 `json:"height,omitempty"`
-	Description string `json:"description,omitempty"`
+	Width       *int32  `json:"width,omitempty"`
+	Height      *int32  `json:"height,omitempty"`
+	Description *string `json:"description,omitempty"`
 	// DescriptionAttachments carries the rich-text companion array for the
 	// upload/document Description (absent on the attachment variant).
 	DescriptionAttachments *[]RichTextAttachment `json:"description_attachments,omitempty"`
 	// Content and ContentAttachments carry the Document variant's rich-text body
 	// (uploads and attachments omit them).
-	Content            string                `json:"content,omitempty"`
+	Content            *string               `json:"content,omitempty"`
 	ContentAttachments *[]RichTextAttachment `json:"content_attachments,omitempty"`
 }
 

@@ -857,32 +857,32 @@ type EventDetails struct {
 // fields are ignored by every SDK decoder, so the superset need not enumerate
 // every field of the Upload/Document recordings.
 type EverythingFile struct {
-	AppDownloadUrl string `json:"app_download_url,omitempty"`
-	AppUrl         string `json:"app_url,omitempty"`
+	AppDownloadUrl *string `json:"app_download_url,omitempty"`
+	AppUrl         *string `json:"app_url,omitempty"`
 
 	// AttachableSgid Present on the rich-text attachment variant: signed global id of the
 	// attachment (uploads/documents omit it).
-	AttachableSgid string          `json:"attachable_sgid,omitempty"`
-	BookmarkUrl    string          `json:"bookmark_url,omitempty"`
+	AttachableSgid *string         `json:"attachable_sgid,omitempty"`
+	BookmarkUrl    *string         `json:"bookmark_url,omitempty"`
 	BoostsCount    *int32          `json:"boosts_count,omitempty"`
-	BoostsUrl      string          `json:"boosts_url,omitempty"`
+	BoostsUrl      *string         `json:"boosts_url,omitempty"`
 	Bucket         RecordingBucket `json:"bucket,omitempty"`
 	ByteSize       *int64          `json:"byte_size,omitempty"`
 	CommentsCount  *int32          `json:"comments_count,omitempty"`
-	CommentsUrl    string          `json:"comments_url,omitempty"`
+	CommentsUrl    *string         `json:"comments_url,omitempty"`
 
 	// Content Rich-text body of the Document variant (uploads/attachments omit it).
-	Content            string               `json:"content,omitempty"`
+	Content            *string              `json:"content,omitempty"`
 	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
-	ContentType        string               `json:"content_type,omitempty"`
+	ContentType        *string              `json:"content_type,omitempty"`
 	CreatedAt          *time.Time           `json:"created_at,omitempty"`
 	Creator            Person               `json:"creator,omitempty"`
 
 	// Description Rich-text description (upload/document variants).
-	Description            string               `json:"description,omitempty"`
+	Description            *string              `json:"description,omitempty"`
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	DownloadUrl            string               `json:"download_url,omitempty"`
-	Filename               string               `json:"filename,omitempty"`
+	DownloadUrl            *string              `json:"download_url,omitempty"`
+	Filename               *string              `json:"filename,omitempty"`
 
 	// Height Pixel height; null for non-image blobs and may be float-spelled (1024.0).
 	Height *types.FlexInt `json:"height,omitempty"`
@@ -892,14 +892,14 @@ type EverythingFile struct {
 	InheritsStatus  *bool           `json:"inherits_status,omitempty"`
 	Parent          RecordingParent `json:"parent,omitempty"`
 	Position        *int32          `json:"position,omitempty"`
-	Status          string          `json:"status,omitempty"`
-	SubscriptionUrl string          `json:"subscription_url,omitempty"`
-	Title           string          `json:"title,omitempty"`
+	Status          *string         `json:"status,omitempty"`
+	SubscriptionUrl *string         `json:"subscription_url,omitempty"`
+	Title           *string         `json:"title,omitempty"`
 
 	// Type "Upload", "Document", or "Attachment".
-	Type             string     `json:"type,omitempty"`
+	Type             *string    `json:"type,omitempty"`
 	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
-	Url              string     `json:"url,omitempty"`
+	Url              *string    `json:"url,omitempty"`
 	VisibleToClients *bool      `json:"visible_to_clients,omitempty"`
 
 	// Width Pixel width; null for non-image blobs and may be float-spelled (1024.0).

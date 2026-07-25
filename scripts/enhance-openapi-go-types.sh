@@ -292,13 +292,16 @@ walk(
   }
 )
 |
-# Fifth-f pass: EverythingFile presence-faithful optional scalars (same rationale
+# Fifth-f pass: EverythingFile presence-faithful optional fields (same rationale
 # as TimelineAttachment). The /files.json superset populates only one variant per
-# instance, so its optional timestamps, booleans, and numeric scalars must
-# round-trip presence: make created_at/updated_at *time.Time,
-# visible_to_clients/inherits_status *bool, and the counts/position/byte_size
-# pointers so nil (absent variant) omits and an explicit zero/false is preserved
-# rather than fabricated. id is already an optional pointer via the oapi default.
+# instance, so ALL of its optional fields must round-trip presence: an absent
+# field on the variant this instance is not must stay nil and re-marshal as
+# omitted rather than a fabricated sentinel. That covers timestamps
+# (created_at/updated_at *time.Time), booleans (visible_to_clients/inherits_status
+# *bool), numeric scalars (counts/position/byte_size), AND the optional strings
+# (SPEC.md section 10 forbids empty-string as an absence sentinel: a Document with
+# no filename and an upload with an explicit empty filename must not collapse to
+# the same value). id is already an optional pointer via the oapi default.
 .components.schemas.EverythingFile.properties |= (
   (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
@@ -307,7 +310,23 @@ walk(
   (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false }
+  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.title // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.bookmark_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.subscription_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.attachable_sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.content_type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.filename // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.description // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.content // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
 # Sixth pass: Person.id → types.FlexibleInt64

@@ -22295,7 +22295,8 @@
             "x-go-type-skip-optional-pointer": false
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "visible_to_clients": {
             "type": "boolean",
@@ -22318,7 +22319,8 @@
             "x-go-type-skip-optional-pointer": false
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "inherits_status": {
             "type": "boolean",
@@ -22326,19 +22328,24 @@
           },
           "type": {
             "type": "string",
-            "description": "\"Upload\", \"Document\", or \"Attachment\"."
+            "description": "\"Upload\", \"Document\", or \"Attachment\".",
+            "x-go-type-skip-optional-pointer": false
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "app_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "bookmark_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "subscription_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "comments_count": {
             "type": "integer",
@@ -22346,7 +22353,8 @@
             "x-go-type-skip-optional-pointer": false
           },
           "comments_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "boosts_count": {
             "type": "integer",
@@ -22354,7 +22362,8 @@
             "x-go-type-skip-optional-pointer": false
           },
           "boosts_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "position": {
             "type": "integer",
@@ -22372,10 +22381,12 @@
           },
           "attachable_sgid": {
             "type": "string",
-            "description": "Present on the rich-text attachment variant: signed global id of the\nattachment (uploads/documents omit it)."
+            "description": "Present on the rich-text attachment variant: signed global id of the\nattachment (uploads/documents omit it).",
+            "x-go-type-skip-optional-pointer": false
           },
           "content_type": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "byte_size": {
             "type": "integer",
@@ -22383,14 +22394,17 @@
             "x-go-type-skip-optional-pointer": false
           },
           "filename": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "download_url": {
             "type": "string",
-            "x-basecamp-auth-routable-url": {}
+            "x-basecamp-auth-routable-url": {},
+            "x-go-type-skip-optional-pointer": false
           },
           "app_download_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "width": {
             "type": "integer",
@@ -22416,7 +22430,8 @@
           },
           "description": {
             "type": "string",
-            "description": "Rich-text description (upload/document variants)."
+            "description": "Rich-text description (upload/document variants).",
+            "x-go-type-skip-optional-pointer": false
           },
           "description_attachments": {
             "type": "array",
@@ -22426,7 +22441,8 @@
           },
           "content": {
             "type": "string",
-            "description": "Rich-text body of the Document variant (uploads/attachments omit it)."
+            "description": "Rich-text body of the Document variant (uploads/attachments omit it).",
+            "x-go-type-skip-optional-pointer": false
           },
           "content_attachments": {
             "type": "array",
