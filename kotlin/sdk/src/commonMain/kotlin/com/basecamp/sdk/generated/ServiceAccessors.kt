@@ -187,3 +187,7 @@ val AccountClient.vaults: VaultsService
 val AccountClient.webhooks: WebhooksService
     get() = service("Webhooks") { WebhooksService(this) }
 
+/** Wormholes operations. */
+val AccountClient.wormholes: WormholesService
+    get() = service("Wormholes") { WormholesService(this) }
+

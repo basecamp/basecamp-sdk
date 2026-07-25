@@ -18,6 +18,7 @@ public struct CardTable: Codable, Sendable {
     public var lists: [CardColumn]?
     public var subscribers: [Person]?
     public var subscriptionUrl: String?
+    public var wormholes: [Wormhole]?
 
     public init(
         appUrl: String,
@@ -35,7 +36,8 @@ public struct CardTable: Codable, Sendable {
         bookmarkUrl: String? = nil,
         lists: [CardColumn]? = nil,
         subscribers: [Person]? = nil,
-        subscriptionUrl: String? = nil
+        subscriptionUrl: String? = nil,
+        wormholes: [Wormhole]? = nil
     ) {
         self.appUrl = appUrl
         self.bucket = bucket
@@ -53,5 +55,6 @@ public struct CardTable: Codable, Sendable {
         self.lists = lists
         self.subscribers = subscribers
         self.subscriptionUrl = subscriptionUrl
+        self.wormholes = wormholes
     }
 }

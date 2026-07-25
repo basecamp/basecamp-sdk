@@ -1,92 +1,98 @@
 ---
 gap: card-table-wormholes
-status: addressed-in-bc3-pr-12144
+status: absorbed-in-sdk
 detected: 2026-07-23
-sdk_demand: low
-bc3_pr: 12144
+sdk_demand: medium
+smithy_refs:
+  - "CreateWormhole (spec/basecamp.smithy:4730)"
+  - "UpdateWormhole (spec/basecamp.smithy:4764)"
+  - "DeleteWormhole (spec/basecamp.smithy:4798)"
+  - "Wormhole (spec/basecamp.smithy:4873)"
 bc3_refs:
   introduced_in: master
   routes:
-    - "POST /:account_id/buckets/:bucket_id/card_tables/:card_table_id/wormholes.json (create — destination_recording_id, 201; 422 if the table already holds 4)"
-    - "PUT /:account_id/buckets/:bucket_id/card_tables/wormholes/:id.json (update destination — destination_recording_id, 200)"
-    - "DELETE /:account_id/buckets/:bucket_id/card_tables/wormholes/:id.json (delete — 204)"
+    - "POST /:account_id/buckets/:bucket_id/card_tables/:card_table_id/wormholes.json"
+    - "PUT /:account_id/buckets/:bucket_id/card_tables/wormholes/:id"
+    - "DELETE /:account_id/buckets/:bucket_id/card_tables/wormholes/:id"
   controllers:
     - app/controllers/kanban/wormholes_controller.rb
   related_existing_api:
-    - MoveCard
     - GetCardTable
+    - MoveCard
+    - CreateCardColumn
 ---
 
-# Card table wormholes — CRUD documented, unmodeled in the SDK
+# Card-table wormholes (cross-project card moves)
+
+> **Additive BC5 surface.** Unlike the contract-change entries
+> ([dock-tool-create-contract](dock-tool-create-contract.md),
+> [memories-emptied-regression](memories-emptied-regression.md)), this records
+> new BC5 surface the SDKs could not express. The server contract shipped in
+> BC3 **#12144** (`e41d2e33da`, merged 2026-07-09) and is present in whatever
+> bc3 revision `spec/api-provenance.json` currently pins; BC3 **#12385** (`90631fbf`) later
+> documented the cross-project move recipe. `absorbed-in-sdk` means the SDK
+> absorbed the contract without a provenance bump (basecamp-sdk#397).
 
 ## What's missing
 
-A **wormhole** sends cards dropped into it straight to a column on **another
-card table** (including one in a different project) — the mechanism behind a
-cross-project card move. The wormhole CRUD contract itself shipped in BC3
-**#12144** ("Wormholes", `e41d2e33da`, merged 2026-07-09), which added both
-`doc/api/sections/card_table_wormholes.md` and
-`app/controllers/kanban/wormholes_controller.rb`. That predates this PR's pin
-range; what surfaced the SDK gap in-range is BC3 **#12385** (`90631fbf`,
-2026-07-23), which spelled out the cross-project move recipe in
-`doc/api/sections/card_table_cards.md` and leans on the #12144 CRUD surface:
+A **wormhole** links a card table to a column on another card table and is the
+only mechanism for moving a card to a *different project*. The pinned bc3
+provenance already ships the full contract
+(`app/controllers/kanban/wormholes_controller.rb`,
+`app/views/api/kanban/wormholes/_wormhole.json.jbuilder`, `config/routes.rb`,
+`doc/api/sections/card_table_wormholes.md`), but the SDKs could neither
+*discover* wormholes nor *manage* them:
 
-- **Create** — `POST /buckets/:bucket_id/card_tables/:card_table_id/wormholes.json`,
-  required `destination_recording_id` (a column on another card table the caller
-  can access) → `201 Created` with the wormhole JSON, or `422` if the table
-  already holds the max of four wormholes.
-- **Update** — `PUT /buckets/:bucket_id/card_tables/wormholes/:id.json`, required
-  `destination_recording_id` → `200 OK` (the wormhole's title follows its
-  destination).
-- **Delete** — `DELETE /buckets/:bucket_id/card_tables/wormholes/:id.json` → `204`.
-- Wormholes surface in a card table's `wormholes` array (see Get a card table),
-  titled "Project › Board › Column". Only **linked** wormholes (`"linked": true`)
-  with a reachable destination accept a card; moving onto an unlinked or
-  unreachable one returns `404`.
+- **Discovery.** `GET /card_tables/{id}.json` emits a `wormholes[]` array (full
+  recording shape plus `color`, `linked`, `destination_url`) that no SDK
+  modeled — so `CardTables().Get` silently dropped it.
+- **CRUD.** Three operations were unmodeled:
+  - `POST /:account/buckets/:bucket/card_tables/:card_table/wormholes.json`
+    → 201 (422 at the 4-per-board limit; 404 for an invalid, inaccessible,
+    inactive, or same-board destination via a filtered `.find`).
+  - `PUT /:account/buckets/:bucket/card_tables/wormholes/:id` → 200 (404).
+  - `DELETE /:account/buckets/:bucket/card_tables/wormholes/:id`
+    → 204 (403/404).
 
-The SDK models `MoveCard` (whose `column_id` may be a wormhole id) but has **no
-wormhole shapes and no create/update/delete operations** — there is no `wormhole`
-anywhere in `spec/basecamp.smithy`, and the card-table structure carries no
-`wormholes` field. So a consumer can *move* a card through an existing wormhole
-but cannot create, retarget, or delete one, and can't read a table's wormholes
-to discover a target id — the cross-project move recipe #12385 documents is not
-expressible end-to-end through the typed SDK.
-
-This entry **registers** the documented contract; it does **not** absorb it.
+Routing a move *through* an existing wormhole already worked — a wormhole id is
+a valid `column_id` for `MoveCard` — so the gap was purely discovery + CRUD,
+not the move itself.
 
 ## Why it matters
 
-Cross-project card moves are the concrete use case: without wormhole CRUD, an
-integration can't set up (or tear down) the teleport it then drives with
-`MoveCard`. `sdk_demand` is low — wormholes are a niche Kanban feature, capped at
-four per table, and the move itself already works once a linked wormhole exists.
+Without `wormholes[]` decode and CRUD, cross-project card moves were
+unreachable from the SDKs: a caller could not enumerate a board's wormholes to
+find a teleport target, nor create/retarget/remove one. This blocked
+basecamp-cli#342 / draft PR #559, which needs `cards wormholes --in <proj>`
+(reads `wormholes[]`) and `cards move <id> --to-wormhole <id|dest-col-url>`.
+The `destination_url` field is the *only* signal identifying a wormhole's
+destination — the wormhole's own `url`/`app_url`/`parent` point at the source
+board — so omitting it left the destination undiscoverable.
 
 ## Suggested API shape
 
-Model a `Wormhole` structure (matching the `wormholes` array element on the card
-table) plus three operations: `CreateCardTableWormhole`
-(`POST …/card_tables/:id/wormholes.json`, body `{destination_recording_id}` →
-201), `UpdateCardTableWormhole` (`PUT …/card_tables/wormholes/:id.json` → 200),
-and `DeleteCardTableWormhole` (`DELETE …/card_tables/wormholes/:id.json` → 204).
-The card-table response structure **must** carry the `wormholes` field — it is
-the **only** way to discover an existing wormhole's id (create returns the new
-one, but there is no list-wormholes endpoint), so update/delete/reuse are
-unreachable without it. Note the `linked`/reachable precondition and the
-max-four (`422`) rule in the docs.
+None new — `master` already decided the shape. The SDK mirrors it: a single
+shared `Wormhole` model (recording shape + `color`, `linked`,
+`destination_url`) for both the `wormholes[]` decode member and the
+create/update outputs, plus a dedicated `Wormholes` service exposing
+`create(project, cardTable, destinationRecordingId)`,
+`update(project, wormhole, destinationRecordingId)`, and
+`delete(project, wormhole)`. `linked` is always emitted (true only while the
+destination column, its board, and its bucket are all active);
+`destination_url` is always present but nullable (null when unlinked).
 
 ## Implementation notes for BC3
 
-Done: the CRUD surface shipped in #12144 (`e41d2e33da`) and lives in
-`doc/api/sections/card_table_wormholes.md`, handled by
-`app/controllers/kanban/wormholes_controller.rb`. #12385 (`90631fbf`) later
-tightened the cross-project move recipe in `card_table_cards.md` (linked-only
-precondition → 404, `position` ignored on a teleport, queue-then-204 timing).
-Nothing further is required of BC3 for the register step.
+None. The contract is shipped, documented
+(`doc/api/sections/card_table_wormholes.md`), and inside the pinned provenance
+(the revision pinned in `spec/api-provenance.json`). No upstream doc or route work remains.
 
 ## SDK absorption plan when this lands
 
-Deferred. When absorbed, add the `Wormhole` structure and the three CRUD
-operations to Smithy, add the required card-table `wormholes` field (the sole id
-discovery surface), regenerate, and flip this entry to `absorbed-in-sdk` with the
-Smithy refs. Until then it stays `addressed-in-bc3-pr-12144` as a register-only
-record.
+Absorbed: basecamp-sdk#397 — three Smithy operations + shared `Wormhole`
+structure + `wormholes: WormholeList` on `CardTable`, a dedicated `Wormholes`
+service split across all six SDKs, the hand-written Go layer
+(`go/pkg/basecamp/wormholes.go`), client wiring, and per-language tests
+(CRUD happy + error paths, plus a linked/unlinked `wormholes[]` decode). No
+`spec/api-provenance.json` SHA bump — the contract was already present at the
+pinned `spec/api-provenance.json` revision (and earlier). No further SDK change is needed.

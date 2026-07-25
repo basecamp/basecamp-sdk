@@ -353,6 +353,17 @@
       ]
     }
   },
+  "CreateWormhole": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 2,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "DeleteBoost": {
     "idempotent": true,
     "retry": {
@@ -438,6 +449,18 @@
     }
   },
   "DeleteWebhook": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "DeleteWormhole": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",
@@ -2310,6 +2333,18 @@
     }
   },
   "UpdateWebhook": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UpdateWormhole": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

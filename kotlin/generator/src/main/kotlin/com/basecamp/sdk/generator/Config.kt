@@ -45,6 +45,7 @@ val SERVICE_SPLITS: Map<String, Map<String, List<String>>> = mapOf(
             "GetCardStep", "CreateCardStep", "UpdateCardStep", "SetCardStepCompletion",
             "RepositionCardStep",
         ),
+        "Wormholes" to listOf("CreateWormhole", "UpdateWormhole", "DeleteWormhole"),
     ),
     "Files" to mapOf(
         "Attachments" to listOf("CreateAttachment"),
@@ -281,6 +282,7 @@ val TYPE_ALIASES = mapOf(
     "CardTable" to "CardTable",
     "CardColumn" to "CardColumn",
     "CardStep" to "CardStep",
+    "Wormhole" to "Wormhole",
     "Campfire" to "Campfire",
     "CampfireLine" to "CampfireLine",
     "Chatbot" to "Chatbot",
@@ -339,4 +341,5 @@ val SIMPLE_RESOURCES = setOf(
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "hillchart", "hillcharts",
+    "wormhole", "wormholes",
 )

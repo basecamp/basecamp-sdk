@@ -157,6 +157,7 @@ private let simpleResources: Set<String> = [
     "todolistorgroup", "uploadversions",
     "boost", "boosts",
     "hillchart", "hillcharts",
+    "wormhole", "wormholes",
 ]
 
 /// Extracts the method name for an operationId.
