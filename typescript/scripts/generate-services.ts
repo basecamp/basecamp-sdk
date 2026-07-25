@@ -1291,12 +1291,12 @@ function generateMethod(op: ParsedOperation, serviceName: string): string[] {
   lines.push(`        resourceType: "${op.resourceType}",`);
   lines.push(`        isMutation: ${op.isMutation},`);
 
-  const projectParam = op.pathParams.find((p) => p.name === "projectId");
+  const projectParam = op.pathParams.find((p) => p.name === "projectId" || p.name === "bucketId");
   if (projectParam) {
-    lines.push(`        projectId,`);
+    lines.push(projectParam.name === "projectId" ? `        projectId,` : `        projectId: ${projectParam.name},`);
   }
 
-  const resourceParam = op.pathParams.findLast((p) => p.name !== "projectId" && p.name.endsWith("Id"));
+  const resourceParam = op.pathParams.findLast((p) => p.name !== "projectId" && p.name !== "bucketId" && p.name.endsWith("Id"));
   if (resourceParam) {
     lines.push(`        resourceId: ${resourceParam.name},`);
   }

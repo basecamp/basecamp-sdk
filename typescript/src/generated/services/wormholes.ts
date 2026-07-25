@@ -60,6 +60,7 @@ export class WormholesService extends BaseService {
         operation: "UpdateWormhole",
         resourceType: "wormhole",
         isMutation: true,
+        projectId: bucketId,
         resourceId: wormholeId,
       },
       () =>
@@ -94,6 +95,7 @@ export class WormholesService extends BaseService {
         operation: "DeleteWormhole",
         resourceType: "wormhole",
         isMutation: true,
+        projectId: bucketId,
         resourceId: wormholeId,
       },
       () =>
@@ -125,6 +127,7 @@ export class WormholesService extends BaseService {
         operation: "CreateWormhole",
         resourceType: "wormhole",
         isMutation: true,
+        projectId: bucketId,
         resourceId: cardTableId,
       },
       () =>
