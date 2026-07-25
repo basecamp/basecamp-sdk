@@ -1,0 +1,32 @@
+python/tests/services/test_todos.py
+  s_1a48c423686368::t_b05d58123472c0 22
+spec/fixtures/manifest.yaml
+  s_1a48c423686368::t_f9c780117c61c4 65-69
+  s_1a48c423686368::t_6ef48235b233ff 11-14
+scripts/test-check-fixture-coverage.rb
+  s_1a48c423686368::t_6d60dddb1003e3 40-64
+  s_1a48c423686368::t_372946e68f1e0b 179-183
+  s_1a48c423686368::t_581432d30e908e 197-224,228-229,232-237,243,246-248,256-268,272
+python/tests/services/test_uploads.py
+  s_1a48c423686368::t_a0d93c3a3e0416 19
+.github/workflows/test.yml
+  s_1a48c423686368::t_a81649e0dd5626 63-64,67-68,70,72-73
+scripts/check-fixture-coverage.rb
+  s_1a48c423686368::t_75ebf08dab3417 9-15,24-25,29-31,94,96-98,100,103-105,151-196,198-201,203,211-212,214-219,225,227-228,235,243,251-252,254,262-266,278-280,285,287-288,304-306,311,313-314,330-331,454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1c3b523fd3f8e36dcbbce13e8ae3b92210d88216",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
