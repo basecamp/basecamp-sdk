@@ -13,29 +13,29 @@ import com.basecamp.sdk.serialization.FlexibleIntSerializer
  */
 @Serializable
 data class EverythingFile(
-    val id: Long = 0L,
+    val id: Long? = null,
     val status: String? = null,
-    @SerialName("visible_to_clients") val visibleToClients: Boolean = false,
+    @SerialName("visible_to_clients") val visibleToClients: Boolean? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     val title: String? = null,
-    @SerialName("inherits_status") val inheritsStatus: Boolean = false,
+    @SerialName("inherits_status") val inheritsStatus: Boolean? = null,
     val type: String? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    @SerialName("comments_count") val commentsCount: Int = 0,
+    @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
-    @SerialName("boosts_count") val boostsCount: Int = 0,
+    @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val parent: RecordingParent? = null,
     val bucket: RecordingBucket? = null,
     val creator: Person? = null,
     @SerialName("attachable_sgid") val attachableSgid: String? = null,
     @SerialName("content_type") val contentType: String? = null,
-    @SerialName("byte_size") val byteSize: Long = 0L,
+    @SerialName("byte_size") val byteSize: Long? = null,
     val filename: String? = null,
     @SerialName("download_url") val downloadUrl: String? = null,
     @SerialName("app_download_url") val appDownloadUrl: String? = null,
@@ -44,5 +44,7 @@ data class EverythingFile(
     @Serializable(with = FlexibleIntSerializer::class)
     val height: Int? = null,
     val description: String? = null,
-    @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>? = null
+    @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>? = null,
+    val content: String? = null,
+    @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>? = null
 )

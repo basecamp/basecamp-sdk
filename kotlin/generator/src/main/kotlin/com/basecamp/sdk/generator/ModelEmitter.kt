@@ -188,9 +188,9 @@ class ModelEmitter(private val api: OpenApiParser) {
             // the untagged supersets (TimelineAttachment, EverythingFile) whose
             // variants each omit the other's fields.
             "integer" -> when (schema["format"]?.jsonPrimitive?.content) {
-                "int64" -> if (isRequired) "Long" else "Long?"
-                else -> if (isRequired) "Int" else "Int?"
-            }
+            "int64" -> if (isRequired) "Long" else "Long?"
+            else -> if (isRequired) "Int" else "Int?"
+        }
             "boolean" -> if (isRequired) "Boolean" else "Boolean?"
             "number" -> if (isRequired) "Double" else "Double?"
             "string" -> if (isRequired) "String" else "String?"

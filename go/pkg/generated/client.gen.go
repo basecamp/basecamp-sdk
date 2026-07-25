@@ -864,15 +864,19 @@ type EverythingFile struct {
 	// attachment (uploads/documents omit it).
 	AttachableSgid string          `json:"attachable_sgid,omitempty"`
 	BookmarkUrl    string          `json:"bookmark_url,omitempty"`
-	BoostsCount    int32           `json:"boosts_count,omitempty"`
+	BoostsCount    *int32          `json:"boosts_count,omitempty"`
 	BoostsUrl      string          `json:"boosts_url,omitempty"`
 	Bucket         RecordingBucket `json:"bucket,omitempty"`
-	ByteSize       int64           `json:"byte_size,omitempty"`
-	CommentsCount  int32           `json:"comments_count,omitempty"`
+	ByteSize       *int64          `json:"byte_size,omitempty"`
+	CommentsCount  *int32          `json:"comments_count,omitempty"`
 	CommentsUrl    string          `json:"comments_url,omitempty"`
-	ContentType    string          `json:"content_type,omitempty"`
-	CreatedAt      *time.Time      `json:"created_at,omitempty"`
-	Creator        Person          `json:"creator,omitempty"`
+
+	// Content Rich-text body of the Document variant (uploads/attachments omit it).
+	Content            string               `json:"content,omitempty"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
+	ContentType        string               `json:"content_type,omitempty"`
+	CreatedAt          *time.Time           `json:"created_at,omitempty"`
+	Creator            Person               `json:"creator,omitempty"`
 
 	// Description Rich-text description (upload/document variants).
 	Description            string               `json:"description,omitempty"`
@@ -887,7 +891,7 @@ type EverythingFile struct {
 	Id              *int64          `json:"id,omitempty"`
 	InheritsStatus  *bool           `json:"inherits_status,omitempty"`
 	Parent          RecordingParent `json:"parent,omitempty"`
-	Position        int32           `json:"position,omitempty"`
+	Position        *int32          `json:"position,omitempty"`
 	Status          string          `json:"status,omitempty"`
 	SubscriptionUrl string          `json:"subscription_url,omitempty"`
 	Title           string          `json:"title,omitempty"`

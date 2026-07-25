@@ -9024,6 +9024,10 @@ structure EverythingFile {
   /// Rich-text description (upload/document variants).
   description: String
   description_attachments: RichTextAttachmentList
+
+  /// Rich-text body of the Document variant (uploads/attachments omit it).
+  content: DocumentContent
+  content_attachments: RichTextAttachmentList
 }
 
 // ===== My Assignment Shapes =====

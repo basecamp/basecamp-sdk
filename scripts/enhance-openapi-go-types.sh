@@ -294,14 +294,20 @@ walk(
 |
 # Fifth-f pass: EverythingFile presence-faithful optional scalars (same rationale
 # as TimelineAttachment). The /files.json superset populates only one variant per
-# instance, so its optional timestamps and booleans must round-trip presence:
-# make created_at/updated_at *time.Time and visible_to_clients/inherits_status
-# *bool so nil (absent variant) omits and an explicit false is preserved.
+# instance, so its optional timestamps, booleans, and numeric scalars must
+# round-trip presence: make created_at/updated_at *time.Time,
+# visible_to_clients/inherits_status *bool, and the counts/position/byte_size
+# pointers so nil (absent variant) omits and an explicit zero/false is preserved
+# rather than fabricated. id is already an optional pointer via the oapi default.
 .components.schemas.EverythingFile.properties |= (
   (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false }
+  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
 # Sixth pass: Person.id → types.FlexibleInt64

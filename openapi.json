@@ -24819,21 +24819,24 @@
           },
           "comments_count": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
           },
           "comments_url": {
             "type": "string"
           },
           "boosts_count": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
           },
           "boosts_url": {
             "type": "string"
           },
           "position": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
           },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
@@ -24853,7 +24856,8 @@
           },
           "byte_size": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "filename": {
             "type": "string"
@@ -24892,6 +24896,16 @@
             "description": "Rich-text description (upload/document variants)."
           },
           "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
+          "content": {
+            "type": "string",
+            "description": "Rich-text body of the Document variant (uploads/attachments omit it)."
+          },
+          "content_attachments": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"

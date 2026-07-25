@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-25T17:48:06Z
+# Generated: 2026-07-25T21:40:03Z
 
 require "json"
 require "time"
@@ -1363,7 +1363,7 @@ module Basecamp
     # EverythingFile
     class EverythingFile
       include TypeHelpers
-      attr_accessor :app_download_url, :app_url, :attachable_sgid, :bookmark_url, :boosts_count, :boosts_url, :bucket, :byte_size, :comments_count, :comments_url, :content_type, :created_at, :creator, :description, :description_attachments, :download_url, :filename, :height, :id, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
+      attr_accessor :app_download_url, :app_url, :attachable_sgid, :bookmark_url, :boosts_count, :boosts_url, :bucket, :byte_size, :comments_count, :comments_url, :content, :content_attachments, :content_type, :created_at, :creator, :description, :description_attachments, :download_url, :filename, :height, :id, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
 
       def initialize(data = {})
         @app_download_url = data["app_download_url"]
@@ -1376,6 +1376,8 @@ module Basecamp
         @byte_size = parse_integer(data["byte_size"])
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
+        @content = data["content"]
+        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @content_type = data["content_type"]
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
@@ -1410,6 +1412,8 @@ module Basecamp
           "byte_size" => @byte_size,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
+          "content" => @content,
+          "content_attachments" => @content_attachments,
           "content_type" => @content_type,
           "created_at" => @created_at,
           "creator" => @creator,

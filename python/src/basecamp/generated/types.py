@@ -624,6 +624,8 @@ class EverythingFile(TypedDict):
     byte_size: NotRequired[int]
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
+    content: NotRequired[str]
+    content_attachments: NotRequired[list[RichTextAttachment]]
     content_type: NotRequired[str]
     created_at: NotRequired[str]
     creator: NotRequired[Person]

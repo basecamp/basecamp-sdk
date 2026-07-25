@@ -109,7 +109,7 @@ func TestEverythingService_Files_PerVariantDecode(t *testing.T) {
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte(`[
 			{"id":900,"type":"Upload","title":"logo.png","filename":"logo.png","content_type":"image/png","byte_size":1281,"width":1024.0,"height":768.0,"url":"https://x/uploads/900.json","download_url":"https://x/d/900","app_download_url":"https://storage/900","bucket":{"id":9,"name":"P","type":"Project"}},
-			{"id":901,"type":"Document","title":"Spec","url":"https://x/documents/901.json","content_type":"text/html","bucket":{"id":9,"name":"P","type":"Project"}},
+			{"id":901,"type":"Document","title":"Spec","url":"https://x/documents/901.json","content":"<div>Body</div>","content_attachments":[{"sgid":"sgid-doc","content_type":"image/png"}],"bucket":{"id":9,"name":"P","type":"Project"}},
 			{"id":902,"type":"Attachment","attachable_sgid":"sgid-902","filename":"chart.avif","content_type":"image/avif","byte_size":4096,"width":null,"height":null,"download_url":"https://storage/blobs/902","parent":{"id":800,"title":"A message","type":"Message"}}
 		]`))
 	})
@@ -131,9 +131,25 @@ func TestEverythingService_Files_PerVariantDecode(t *testing.T) {
 	if up.AttachableSGID != "" {
 		t.Errorf("upload variant should not carry attachable_sgid")
 	}
+	// Presence-faithful pointers: the Upload carries byte_size, the Document
+	// omits it (must decode nil, not a fabricated 0), per SPEC §10.
+	if up.ByteSize == nil || *up.ByteSize != 1281 {
+		t.Errorf("expected upload byte_size 1281, got %v", up.ByteSize)
+	}
 	doc := result.Files[1]
 	if doc.Type != "Document" || doc.Title != "Spec" {
 		t.Errorf("document variant not decoded: %+v", doc)
+	}
+	// The Document body (content + content_attachments) must decode, not be
+	// dropped by the superset (finding #7).
+	if doc.Content != "<div>Body</div>" {
+		t.Errorf("expected document content to decode, got %q", doc.Content)
+	}
+	if doc.ContentAttachments == nil || len(*doc.ContentAttachments) != 1 {
+		t.Errorf("expected 1 document content attachment, got %v", doc.ContentAttachments)
+	}
+	if doc.ByteSize != nil {
+		t.Errorf("expected nil byte_size on the document variant, got %v", *doc.ByteSize)
 	}
 	att := result.Files[2]
 	if att.Type != "Attachment" || att.AttachableSGID != "sgid-902" || att.Parent == nil {

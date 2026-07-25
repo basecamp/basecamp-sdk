@@ -350,6 +350,13 @@ export {
 // Everything aggregates service - generated
 export {
   EverythingService,
+  type EverythingFile,
+  type EverythingMessagesEverythingOptions,
+  type EverythingCommentsEverythingOptions,
+  type EverythingCheckinsEverythingOptions,
+  type EverythingForwardsEverythingOptions,
+  type EverythingBoostsEverythingOptions,
+  type EverythingFilesEverythingOptions,
 } from "./generated/services/everything.js";
 
 // Search & Reports services - generated

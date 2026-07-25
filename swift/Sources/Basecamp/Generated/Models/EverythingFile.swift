@@ -12,6 +12,8 @@ public struct EverythingFile: Codable, Sendable {
     public var byteSize: Int?
     public var commentsCount: Int32?
     public var commentsUrl: String?
+    public var content: String?
+    public var contentAttachments: [RichTextAttachment]?
     public var contentType: String?
     public var createdAt: String?
     public var creator: Person?

@@ -57,7 +57,11 @@ type EverythingFilesOptions struct {
 // (distinguished by AttachableSGID and blob metadata). Only the fields of the
 // variant an instance represents are populated.
 type EverythingFile struct {
-	ID     int64  `json:"id,omitempty"`
+	// ID and the numeric scalars below are pointers so an absent field (the
+	// variant this instance is not) stays nil and round-trips as omitted rather
+	// than a fabricated zero, per SPEC.md §10 (optional fields must preserve
+	// absence, not substitute a sentinel).
+	ID     *int64 `json:"id,omitempty"`
 	Status string `json:"status,omitempty"`
 	// VisibleToClients/CreatedAt/UpdatedAt/InheritsStatus are pointers so an
 	// absent field (the variant this instance is not) stays nil and round-trips
@@ -73,11 +77,11 @@ type EverythingFile struct {
 	AppURL          string  `json:"app_url,omitempty"`
 	BookmarkURL     string  `json:"bookmark_url,omitempty"`
 	SubscriptionURL string  `json:"subscription_url,omitempty"`
-	CommentsCount   int32   `json:"comments_count,omitempty"`
+	CommentsCount   *int32  `json:"comments_count,omitempty"`
 	CommentsURL     string  `json:"comments_url,omitempty"`
-	BoostsCount     int32   `json:"boosts_count,omitempty"`
+	BoostsCount     *int32  `json:"boosts_count,omitempty"`
 	BoostsURL       string  `json:"boosts_url,omitempty"`
-	Position        int32   `json:"position,omitempty"`
+	Position        *int32  `json:"position,omitempty"`
 	Parent          *Parent `json:"parent,omitempty"`
 	Bucket          *Bucket `json:"bucket,omitempty"`
 	Creator         *Person `json:"creator,omitempty"`
@@ -85,7 +89,7 @@ type EverythingFile struct {
 	AttachableSGID string `json:"attachable_sgid,omitempty"`
 	// Blob/file metadata (uploads and attachments).
 	ContentType    string `json:"content_type,omitempty"`
-	ByteSize       int64  `json:"byte_size,omitempty"`
+	ByteSize       *int64 `json:"byte_size,omitempty"`
 	Filename       string `json:"filename,omitempty"`
 	DownloadURL    string `json:"download_url,omitempty"`
 	AppDownloadURL string `json:"app_download_url,omitempty"`
@@ -97,6 +101,10 @@ type EverythingFile struct {
 	// DescriptionAttachments carries the rich-text companion array for the
 	// upload/document Description (absent on the attachment variant).
 	DescriptionAttachments *[]RichTextAttachment `json:"description_attachments,omitempty"`
+	// Content and ContentAttachments carry the Document variant's rich-text body
+	// (uploads and attachments omit them).
+	Content            string                `json:"content,omitempty"`
+	ContentAttachments *[]RichTextAttachment `json:"content_attachments,omitempty"`
 }
 
 // UnmarshalJSON routes decoding through the generated EverythingFile so the
@@ -117,6 +125,7 @@ func (f *EverythingFile) UnmarshalJSON(data []byte) error {
 // the public *int32 nil, and a present value is narrowed to int32.
 func everythingFileFromGenerated(gf generated.EverythingFile) EverythingFile {
 	f := EverythingFile{
+		ID:               gf.Id,
 		Status:           gf.Status,
 		VisibleToClients: gf.VisibleToClients,
 		CreatedAt:        gf.CreatedAt,
@@ -140,9 +149,7 @@ func everythingFileFromGenerated(gf generated.EverythingFile) EverythingFile {
 		DownloadURL:      gf.DownloadUrl,
 		AppDownloadURL:   gf.AppDownloadUrl,
 		Description:      gf.Description,
-	}
-	if gf.Id != nil {
-		f.ID = *gf.Id
+		Content:          gf.Content,
 	}
 	if gf.Width != nil {
 		w := int32(*gf.Width)
@@ -163,6 +170,7 @@ func everythingFileFromGenerated(gf generated.EverythingFile) EverythingFile {
 		f.Creator = &creator
 	}
 	f.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gf.DescriptionAttachments)
+	f.ContentAttachments = richTextAttachmentsPtrFromGenerated(gf.ContentAttachments)
 	return f
 }
 

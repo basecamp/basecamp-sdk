@@ -3502,6 +3502,9 @@ export interface components {
             /** @description Rich-text description (upload/document variants). */
             description?: string;
             description_attachments?: components["schemas"]["RichTextAttachment"][];
+            /** @description Rich-text body of the Document variant (uploads/attachments omit it). */
+            content?: string;
+            content_attachments?: components["schemas"]["RichTextAttachment"][];
         };
         /** @enum {string} */
         FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
