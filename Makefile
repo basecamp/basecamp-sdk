@@ -766,11 +766,14 @@ validate-api-gaps:
 	@./scripts/validate-api-gaps.sh
 
 # Fixture-completeness guard: every spec/fixtures/manifest.yaml target validates
-# against its schema, and every covered schema keeps a concrete active
-# representative — so a new required field on a covered schema is forced into a
-# fixture. Reuses the conformance schema-walker.
+# against its schema (required-field presence + type/nullability), every covered
+# schema keeps a concrete active representative, and every rich-text emitter is
+# accounted for — so a new required field on a covered schema is forced into a
+# fixture. Reuses the conformance schema-walker. The self-test asserts the guard
+# rejects each crafted failure mode (the live check only exercises the valid set).
 check-fixture-coverage:
 	@./scripts/check-fixture-coverage.sh
+	@ruby ./scripts/test-check-fixture-coverage.rb
 
 #------------------------------------------------------------------------------
 # Combined targets

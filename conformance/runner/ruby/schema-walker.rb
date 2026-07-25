@@ -30,7 +30,9 @@ module Basecamp
       MAX_DEPTH = 12
 
       def initialize(openapi_path)
-        @doc = JSON.parse(File.read(openapi_path))
+        # Read as UTF-8 regardless of process locale (LC_ALL=C would otherwise
+        # read as US-ASCII and choke on the spec's UTF-8 bytes).
+        @doc = JSON.parse(File.read(openapi_path, encoding: "UTF-8"))
       end
 
       # Returns the response schema for operation_id, or nil when none exists.

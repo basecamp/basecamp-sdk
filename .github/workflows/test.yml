@@ -63,6 +63,9 @@ jobs:
       - name: Check fixture completeness + coverage invariant
         run: ruby scripts/check-fixture-coverage.rb
 
+      - name: Fixture-guard self-test (negative cases)
+        run: ruby scripts/test-check-fixture-coverage.rb
+
   test-go:
     name: Go Tests
     runs-on: ubuntu-latest

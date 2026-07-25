@@ -9,7 +9,9 @@
 #      instance both (a) carries every required field of its schema (the
 #      recursive $ref/array/required walk, reused from the conformance walker)
 #      and (b) matches the schema's declared types and nullability (no required
-#      field null against a non-nullable schema, no wrong container/scalar type).
+#      field null against a non-nullable schema, no null array element against a
+#      non-nullable item schema, no wrong container/scalar type; a float is
+#      accepted for an integer field only when mathematically integral).
 #   2. The coverage invariant: every schema in `covered_schemas` has >= 1 active
 #      target that resolves to a concrete instance whose declared root schema is
 #      that component (the concrete-instance rule — transitive reachability and
@@ -18,12 +20,18 @@
 #   3. Inventory completeness: every RichTextAttachment-emitting component schema
 #      (the #408 class this guard exists to protect) must be either covered or
 #      excluded — so the inventory can't silently shrink by dropping a schema.
+#      Emitter discovery resolves `$ref` and `allOf`/`anyOf`/`oneOf` so an
+#      indirectly-declared companion array can't slip the net.
 #   4. `excluded_schemas` entries each carry a reason + tracking issue, name real
 #      components, and do not overlap `covered_schemas`.
 #
 # Reuses conformance/runner/ruby/schema-walker.rb for the required-field walk.
 # The type/nullability walk is additional (the walker checks presence only).
 # Wired into `make check` in the scripts/validate-api-gaps.rb style (stdlib only).
+#
+# Paths default to the repo layout but honour FIXTURE_MANIFEST / FIXTURE_OPENAPI
+# / FIXTURE_DIR env overrides so the negative-case self-test
+# (scripts/test-check-fixture-coverage.rb) can point it at crafted inputs.
 
 require "json"
 require "yaml"
@@ -32,9 +40,15 @@ require "set"
 require_relative "../conformance/runner/ruby/schema-walker"
 
 PROJECT_ROOT = File.expand_path("..", __dir__)
-MANIFEST_FILE = File.join(PROJECT_ROOT, "spec/fixtures/manifest.yaml")
-FIXTURES_DIR = File.join(PROJECT_ROOT, "spec/fixtures")
-OPENAPI_FILE = File.join(PROJECT_ROOT, "openapi.json")
+MANIFEST_FILE = ENV.fetch("FIXTURE_MANIFEST", File.join(PROJECT_ROOT, "spec/fixtures/manifest.yaml"))
+FIXTURES_DIR = ENV.fetch("FIXTURE_DIR", File.join(PROJECT_ROOT, "spec/fixtures"))
+OPENAPI_FILE = ENV.fetch("FIXTURE_OPENAPI", File.join(PROJECT_ROOT, "openapi.json"))
+
+# Read text as UTF-8 regardless of the process locale (LC_ALL=C would otherwise
+# read as US-ASCII and choke on the spec's UTF-8 bytes).
+def read_utf8(path)
+  File.read(path, encoding: "UTF-8")
+end
 
 errors = []
 
@@ -43,15 +57,18 @@ def fail_with(errors, message)
 end
 
 # RFC 6901 JSON pointer resolution. Returns [value, found]. "" selects the whole
-# document. Array indices must be "0" or a non-zero-leading run of digits (RFC
-# 6901 §4) — "01" is malformed and does NOT silently resolve element 1. Missing
-# keys / out-of-range indices / non-container traversal -> [nil, false].
+# document. Escapes: `~0`->`~`, `~1`->`/`; a `~` not followed by 0/1 is invalid.
+# Array indices must be "0" or a non-zero-leading run of digits (§4) — "01" is
+# malformed and does NOT silently resolve element 1. Missing keys / out-of-range
+# indices / non-container traversal / bad escapes -> [nil, false].
 def resolve_pointer(doc, pointer)
   return [doc, true] if pointer.nil? || pointer.empty?
   return [nil, false] unless pointer.start_with?("/")
 
   current = doc
   pointer.split("/", -1).drop(1).each do |raw|
+    return [nil, false] if raw.match?(/~(?![01])/) # invalid escape (e.g. ~2, trailing ~)
+
     token = raw.gsub("~1", "/").gsub("~0", "~")
     case current
     when Hash
@@ -59,7 +76,6 @@ def resolve_pointer(doc, pointer)
 
       current = current[token]
     when Array
-      # RFC 6901 array index: "0" or [1-9][0-9]* — reject leading zeroes.
       return [nil, false] unless token == "0" || token.match?(/\A[1-9]\d*\z/)
 
       idx = token.to_i
@@ -75,7 +91,6 @@ end
 
 # --- Schema helpers (local; the walker keeps its resolver private) -------------
 
-# Follows $ref chains within components until a non-ref schema or a cycle.
 def resolve_ref(schema, components)
   seen = {}
   current = schema
@@ -97,7 +112,7 @@ end
 
 # Returns [Set(declared non-null json-type strings), nullable?]. Handles OpenAPI
 # 3.1 null-union (`type: [X, "null"]`) and 3.0 `nullable: true`. An empty set
-# means the type is unconstrained/compositional (oneOf/allOf) — skip type checks.
+# means the type is unconstrained/compositional — skip type checks.
 def allowed_types(schema)
   return [Set.new, false] unless schema.is_a?(Hash)
 
@@ -125,37 +140,46 @@ def json_type(value)
   end
 end
 
-# Accepts an actual json-type against the schema's declared set. integer/number
-# are interchangeable so float-spelled integers (e.g. FlexInt `1024.0`) pass.
-def type_ok?(types, actual)
+# True when `value`'s JSON type satisfies the declared `types`. integer/number
+# interchange with one guard: a float supplied for an integer-only field passes
+# only when it is mathematically integral (so FlexInt `1024.0` passes but `1.5`
+# fails).
+def type_matches?(types, value)
   return true if types.empty?
+
+  actual = json_type(value)
   return true if types.include?(actual)
 
-  numeric = %w[integer number]
-  numeric.include?(actual) && types.any? { |t| numeric.include?(t) }
+  if actual == "number" && types.include?("integer") && !types.include?("number")
+    return value.is_a?(Float) && value.finite? && value == value.truncate
+  end
+  return true if actual == "integer" && types.include?("number")
+
+  false
 end
 
 # Recursive type/nullability validation. Reports (prefix-tagged) errors for:
-#   - a present value whose JSON type contradicts the schema's declared type;
-#   - a REQUIRED field present as null against a non-nullable schema.
-# Optional-null and unknown/compositional schemas are left alone (forward-compat,
-# matching the walker's extras philosophy).
+#   - a present value whose JSON type contradicts the declared type;
+#   - a REQUIRED object field present as null against a non-nullable schema;
+#   - a null ARRAY ELEMENT against a non-nullable item schema.
+# Optional object-field nulls are tolerated: the OpenAPI generated from Smithy
+# under-marks some nullable optionals (e.g. Person.bio/location are `type:string`
+# yet the wire sends null), so flagging them would be a false positive, not a
+# fixture defect.
 def type_errors(prefix, value, schema, components, depth = 0)
   return [] if depth > 20
 
   resolved = resolve_ref(schema, components)
   return [] unless resolved.is_a?(Hash)
+  return [] if value.nil? # object-field optional-null tolerated (see note above)
 
-  return [] if value.nil? # optional-null tolerated here; required-null caught below
-
-  errs = []
   types, = allowed_types(resolved)
-  actual = json_type(value)
-  unless type_ok?(types, actual)
+  unless type_matches?(types, value)
     label = prefix.empty? ? "(root)" : prefix
-    return ["#{label}: expected #{types.to_a.sort.join('|')}, got #{actual}"]
+    return ["#{label}: expected #{types.to_a.sort.join('|')}, got #{json_type(value)}"]
   end
 
+  errs = []
   if value.is_a?(Hash) && resolved["properties"].is_a?(Hash)
     props = resolved["properties"]
     (resolved["required"] || []).each do |rk|
@@ -174,16 +198,21 @@ def type_errors(prefix, value, schema, components, depth = 0)
       errs.concat(type_errors(child, v, props[k], components, depth + 1))
     end
   elsif value.is_a?(Array) && resolved["items"]
+    items = resolved["items"]
+    _, item_nullable = allowed_types(resolve_ref(items, components))
     value.each_with_index do |item, i|
-      errs.concat(type_errors("#{prefix}[#{i}]", item, resolved["items"], components, depth + 1))
+      ip = "#{prefix}[#{i}]"
+      if item.nil?
+        errs << "#{ip}: null array element but the item schema is not nullable" unless item_nullable
+        next
+      end
+      errs.concat(type_errors(ip, item, items, components, depth + 1))
     end
   end
 
   errs
 end
 
-# True when the instance is a concrete representative of `schema_name`: an
-# object component wants a non-null Hash; an array component a non-empty Array.
 def concrete_for?(schema_name, instance, components)
   types, = allowed_types(components[schema_name] || {})
   if types.include?("array")
@@ -193,17 +222,39 @@ def concrete_for?(schema_name, instance, components)
   end
 end
 
-# Component schemas that declare at least one array-of-RichTextAttachment member
-# — the rich-text emitters the guard exists to keep represented.
+# True when `schema` is (or composes/refs) an array whose items are the
+# RichTextAttachment component. Resolves $ref and allOf/anyOf/oneOf so an
+# indirectly-declared companion array is still recognized.
+def references_rich_text_array?(schema, components, depth = 0)
+  return false if depth > 10
+
+  resolved = resolve_ref(schema, components)
+  return false unless resolved.is_a?(Hash)
+
+  t = resolved["type"]
+  is_array = t == "array" || (t.is_a?(Array) && t.include?("array"))
+  if is_array
+    items = resolved["items"]
+    ref = items.is_a?(Hash) ? items["$ref"] : nil
+    if ref.is_a?(String) && ref.match(%r{/components/schemas/(.+)\z})&.captures&.first == "RichTextAttachment"
+      return true
+    end
+  end
+
+  %w[allOf anyOf oneOf].each do |key|
+    (resolved[key] || []).each do |sub|
+      return true if references_rich_text_array?(sub, components, depth + 1)
+    end
+  end
+  false
+end
+
 def rich_text_emitters(components)
   components.select do |_name, schema|
     props = schema.is_a?(Hash) ? schema["properties"] : nil
     next false unless props.is_a?(Hash)
 
-    props.any? do |_pn, ps|
-      ps.is_a?(Hash) && ps["type"] == "array" &&
-        ps.dig("items", "$ref").to_s.end_with?("/RichTextAttachment")
-    end
+    props.any? { |_pn, ps| references_rich_text_array?(ps, components) }
   end.keys
 end
 
@@ -218,29 +269,26 @@ unless File.file?(OPENAPI_FILE)
   exit 2
 end
 
-manifest = YAML.safe_load(File.read(MANIFEST_FILE))
+manifest = YAML.safe_load(read_utf8(MANIFEST_FILE))
 walker = Basecamp::Conformance::SchemaWalker.new(OPENAPI_FILE)
-openapi = JSON.parse(File.read(OPENAPI_FILE))
+openapi = JSON.parse(read_utf8(OPENAPI_FILE))
 components = openapi.dig("components", "schemas") || {}
 
 targets = manifest["targets"] || []
 covered = manifest["covered_schemas"] || {}
 excluded = manifest["excluded_schemas"] || {}
 
-# Fixture cache so a fixture referenced by several targets is read once.
 fixture_cache = {}
 load_fixture = lambda do |rel|
   fixture_cache[rel] ||= begin
     path = File.join(FIXTURES_DIR, rel)
-    File.file?(path) ? JSON.parse(File.read(path)) : :missing
+    File.file?(path) ? JSON.parse(read_utf8(path)) : :missing
   end
 end
 
 # --- 1. Targets ----------------------------------------------------------------
 
 by_id = {}
-# Records, per target id, the concrete root schema it resolved to (or nil) so the
-# coverage pass can apply the concrete-instance rule without re-resolving.
 resolved_root = {}
 
 targets.each_with_index do |entry, i|
@@ -271,7 +319,6 @@ targets.each_with_index do |entry, i|
     next
   end
 
-  # Locate the schema to validate against, and the schema NAME for coverage.
   schema, root_schema_name =
     if operation
       s = walker.find_response_schema(operation)
@@ -313,7 +360,6 @@ targets.each_with_index do |entry, i|
     next
   end
 
-  # Record for the coverage pass: concreteness is schema-type-aware.
   concrete = root_schema_name ? concrete_for?(root_schema_name, instance, components) : instance.is_a?(Hash)
   resolved_root[id] = { name: root_schema_name, concrete: concrete }
 
@@ -346,7 +392,7 @@ covered.each do |schema_name, ids|
       next
     end
     root = resolved_root[id]
-    next unless root # target failed to resolve; already reported above
+    next unless root
 
     concrete_rep = true if root[:name] == schema_name && root[:concrete]
   end
