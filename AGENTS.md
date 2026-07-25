@@ -316,10 +316,13 @@ Use `make sync-status` to see upstream diffs since last sync.
 
 > **Automated backstop.** The shared JSON fixtures under `spec/fixtures/` are
 > guarded by `make check-fixture-coverage` (`spec/fixtures/manifest.yaml`): every
-> manifest'd fixture must carry all required fields of its schema, and every
-> `covered_schemas` entry must keep a concrete representative. A new required
-> field on a covered schema is therefore forced into a fixture. This guard covers
-> only the manifest'd shared fixtures — one-off inline stubs remain the reviewer's
+> manifest'd fixture is validated against its schema for both required-field
+> presence and type/nullability (a required-null-against-non-nullable or a
+> wrong-typed value fails), every `covered_schemas` entry must keep a concrete
+> representative, and every rich-text emitter schema must be covered or explicitly
+> excluded (so the inventory can't silently shrink). A new required field on a
+> covered schema is therefore forced into a fixture. This guard covers only the
+> manifest'd shared fixtures — one-off inline stubs remain the reviewer's
 > responsibility under the rule above.
 
 ### Pre-Merge Verification
