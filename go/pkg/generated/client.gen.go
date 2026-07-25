@@ -715,6 +715,9 @@ type CreateToolRequestContent struct {
 
 	// ToolType Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
 	ToolType string `json:"tool_type"`
+
+	// VisibleToClients Create the tool already visible to clients. Honored only for tool types that manage their own client visibility (Chat::Transcript, Kanban::Board), which otherwise start hidden; every other tool type ignores it and inherits the project default.
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
 }
 
 // CreateToolResponseContent defines model for CreateToolResponseContent.

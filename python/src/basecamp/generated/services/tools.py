@@ -11,12 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class ToolsService(BaseService):
-    def create(self, *, bucket_id: int, tool_type: str, title: str | None = None) -> dict[str, Any]:
+    def create(
+        self, *, bucket_id: int, tool_type: str, title: str | None = None, visible_to_clients: bool | None = None
+    ) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="tools", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
             f"/buckets/{bucket_id}/dock/tools.json",
-            json_body=self._compact(tool_type=tool_type, title=title),
+            json_body=self._compact(tool_type=tool_type, title=title, visible_to_clients=visible_to_clients),
             operation="CreateTool",
         )
 
@@ -71,12 +73,14 @@ class ToolsService(BaseService):
 
 
 class AsyncToolsService(AsyncBaseService):
-    async def create(self, *, bucket_id: int, tool_type: str, title: str | None = None) -> dict[str, Any]:
+    async def create(
+        self, *, bucket_id: int, tool_type: str, title: str | None = None, visible_to_clients: bool | None = None
+    ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="tools", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
             f"/buckets/{bucket_id}/dock/tools.json",
-            json_body=self._compact(tool_type=tool_type, title=title),
+            json_body=self._compact(tool_type=tool_type, title=title, visible_to_clients=visible_to_clients),
             operation="CreateTool",
         )
 

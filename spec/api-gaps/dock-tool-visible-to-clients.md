@@ -1,9 +1,11 @@
 ---
 gap: dock-tool-visible-to-clients
-status: addressed-in-bc3-pr-12386
+status: absorbed-in-sdk
 detected: 2026-07-23
 sdk_demand: low
 bc3_pr: 12386
+smithy_refs:
+  - "CreateToolInput.visible_to_clients member (spec/basecamp.smithy:7227)"
 bc3_refs:
   introduced_in: master
   routes:
@@ -40,13 +42,14 @@ The contract is narrower than the content creates:
   `Recording::VisibleToClientsParam` and gates it on
   `tool.changes_client_visibility?`.
 
-The SDK's `CreateTool` request type does not yet expose `visible_to_clients`, so
-consumers can't set a Chat/Kanban tool's client visibility at create time.
+The SDK's `CreateTool` request type now exposes `visible_to_clients` (added as a
+tri-state optional on `CreateToolInput`), so consumers can set a Chat/Kanban
+tool's client visibility at create time.
 
-This entry **registers** the shipped contract; it does **not** absorb it. It is
-kept separate from the six-content-create absorption on purpose: `CreateTool` is
-a distinct dock-tool operation with a narrower (two-tool-type) honoring rule, so
-folding it in would both widen scope and blur the semantics.
+This absorption is kept separate from the six-content-create absorption on
+purpose: `CreateTool` is a distinct dock-tool operation with a narrower
+(two-tool-type) honoring rule, so folding it in would both widen scope and blur
+the semantics.
 
 ## Why it matters
 
@@ -73,9 +76,11 @@ Nothing further is required of BC3.
 
 ## SDK absorption plan when this lands
 
-Deferred to a follow-up. When absorbed, add optional `visible_to_clients` to the
-Smithy `CreateToolInput`, regenerate, add the Go hand-wrapper field + pass-through
-(CreateTool has a hand-written wrapper like the content creates), and add a
-tri-state transport test asserting explicit `false` reaches the wire — then flip
-this entry to `absorbed-in-sdk` with the Smithy ref. Until then it stays
-`addressed-in-bc3-pr-12386` as a register-only record.
+Absorbed (basecamp-sdk PR-1 of the post-#401 follow-up program). Added optional
+`visible_to_clients: Boolean` to the Smithy `CreateToolInput`, regenerated, added
+the Go hand-wrapper field (`CreateToolOptions.VisibleToClients *bool`) with a
+tri-state pass-through in `ToolsService.Create`, and added a Go tri-state
+transport test plus one body-encoding test in each non-Go SDK
+(TS/Ruby/Python/Kotlin/Swift) asserting an explicit `false` reaches the wire.
+The narrower two-tool-type honoring rule is documented on the Smithy member and
+the Go option field.

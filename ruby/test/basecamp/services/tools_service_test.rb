@@ -42,6 +42,43 @@ class ToolsServiceTest < Minitest::Test
     assert_equal "Message Board", result["name"]
   end
 
+  # visible_to_clients is tri-state: unset omits the key (compact_params drops nil),
+  # true/false are sent verbatim. An explicit false must reach the wire. Only
+  # Chat::Transcript and Kanban::Board honor it; all other tool types ignore it.
+  def test_create_omits_visible_to_clients_when_unset
+    response = { "id" => 3, "name" => "Campfire" }
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.tools.create(bucket_id: 456, tool_type: "Chat::Transcript")
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/buckets/456/dock/tools.json") do |req|
+      !JSON.parse(req.body).key?("visible_to_clients")
+    end
+  end
+
+  def test_create_sends_visible_to_clients_true
+    response = { "id" => 3, "name" => "Campfire" }
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.tools.create(bucket_id: 456, tool_type: "Chat::Transcript", visible_to_clients: true)
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/buckets/456/dock/tools.json",
+      body: hash_including("visible_to_clients" => true))
+  end
+
+  def test_create_sends_visible_to_clients_false
+    response = { "id" => 3, "name" => "Campfire" }
+    stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
+      .to_return(status: 201, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    @account.tools.create(bucket_id: 456, tool_type: "Chat::Transcript", visible_to_clients: false)
+
+    assert_requested(:post, "https://3.basecampapi.com/12345/buckets/456/dock/tools.json",
+      body: hash_including("visible_to_clients" => false))
+  end
+
   def test_create_raises_validation_error_on_422
     stub_request(:post, %r{https://3\.basecampapi\.com/12345/buckets/456/dock/tools\.json})
       .to_return(

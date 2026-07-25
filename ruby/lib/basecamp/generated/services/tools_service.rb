@@ -11,10 +11,11 @@ module Basecamp
       # @param bucket_id [Integer] bucket id ID
       # @param tool_type [String] Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault.
       # @param title [String, nil] Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
+      # @param visible_to_clients [Boolean, nil] Create the tool already visible to clients. Honored only for tool types that manage their own client visibility (Chat::Transcript, Kanban::Board), which otherwise start hidden; every other tool type ignores it and inherits the project default.
       # @return [Hash] response data
-      def create(bucket_id:, tool_type:, title: nil)
+      def create(bucket_id:, tool_type:, title: nil, visible_to_clients: nil)
         with_operation(service: "tools", operation: "create", is_mutation: true, project_id: bucket_id) do
-          http_post("/buckets/#{bucket_id}/dock/tools.json", body: compact_params(tool_type: tool_type, title: title)).json
+          http_post("/buckets/#{bucket_id}/dock/tools.json", body: compact_params(tool_type: tool_type, title: title, visible_to_clients: visible_to_clients)).json
         end
       end
 

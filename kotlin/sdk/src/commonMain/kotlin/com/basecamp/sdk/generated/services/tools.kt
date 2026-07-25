@@ -30,6 +30,7 @@ class ToolsService(client: AccountClient) : BaseService(client) {
             httpPost("/buckets/${bucketId}/dock/tools.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
                 put("tool_type", kotlinx.serialization.json.JsonPrimitive(body.toolType))
                 body.title?.let { put("title", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.visibleToClients?.let { put("visible_to_clients", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->
             json.decodeFromString<Tool>(body)

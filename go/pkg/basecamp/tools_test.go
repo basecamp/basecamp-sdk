@@ -174,6 +174,62 @@ func TestToolsServiceCreateOmitsTitleWhenNotProvided(t *testing.T) {
 	}
 }
 
+// TestToolsServiceCreateVisibleToClients verifies the tri-state
+// visible_to_clients flag reaches the wire correctly on create: nil omits the
+// key, true is sent verbatim, and an explicit false is sent (not dropped).
+func TestToolsServiceCreateVisibleToClients(t *testing.T) {
+	const (
+		accountID = "5245563"
+		bucketID  = int64(33861629)
+		toolType  = "Chat::Transcript"
+	)
+	tru, fls := true, false
+	cases := []struct {
+		name    string
+		value   *bool
+		present bool
+		want    bool
+	}{
+		{"nil omits the field", nil, false, false},
+		{"true is sent", &tru, true, true},
+		{"explicit false is sent, not dropped", &fls, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var receivedBody map[string]any
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedBody = decodeRequestBody(t, r)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write(loadToolsFixture(t, "create.json"))
+			}))
+			defer server.Close()
+
+			cfg := DefaultConfig()
+			cfg.BaseURL = server.URL
+			client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+
+			_, err := client.ForAccount(accountID).Tools().Create(
+				context.Background(),
+				bucketID,
+				toolType,
+				&CreateToolOptions{VisibleToClients: tc.value},
+			)
+			if err != nil {
+				t.Fatalf("Create() error = %v", err)
+			}
+
+			val, ok := receivedBody["visible_to_clients"]
+			if ok != tc.present {
+				t.Fatalf("visible_to_clients present=%v, want %v (body=%v)", ok, tc.present, receivedBody)
+			}
+			if tc.present && val != tc.want {
+				t.Errorf("visible_to_clients=%v, want %v", val, tc.want)
+			}
+		})
+	}
+}
+
 func TestToolsServiceCreateEmptyToolType(t *testing.T) {
 	var requestCount int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
