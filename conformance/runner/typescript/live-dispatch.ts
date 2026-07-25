@@ -99,7 +99,10 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
   GetProgressReport: {
     fixtures: [],
     call: async (ctx) => {
-      const result = await ctx.client.reports.progress();
+      // maxItems caps pagination: the progress feed can be very long on an
+      // active account, and requestPaginated would otherwise follow every Link
+      // page. A small sample is enough to validate the TimelineEvent schema.
+      const result = await ctx.client.reports.progress({ maxItems: 5 });
       return { resolvedIds: {}, result };
     },
   },

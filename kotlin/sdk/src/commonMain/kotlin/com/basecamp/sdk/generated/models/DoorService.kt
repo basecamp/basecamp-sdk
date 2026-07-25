@@ -15,6 +15,6 @@ data class DoorService(
     val name: String? = null,
     @SerialName("example_url") val exampleUrl: String? = null,
     val code: String? = null,
-    @SerialName("valid_patterns") val validPatterns: List<String> = emptyList(),
+    @SerialName("valid_patterns") val validPatterns: List<String>? = null,
     @SerialName("supporting_text") val supportingText: String? = null
 )

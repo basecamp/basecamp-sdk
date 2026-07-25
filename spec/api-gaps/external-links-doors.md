@@ -135,6 +135,24 @@ image are recorded as residual gaps below.
 
 ## Compatibility
 
-Additive only: the `Door` enum value plus optional `position`/`description`/
-`service` fields on the shared `Recording` output type. No change to existing
-modeled operations; no new operation.
+Mostly additive, with one deliberate optionality **correction** — not purely
+additive. No new operation and no change to existing modeled operations.
+
+- **Additive:** the `Door` recording type value plus the optional
+  `position`/`description`/`service` fields on the shared `Recording` output.
+- **Optionality correction (`Recording.parent`):** this entry relaxes
+  `Recording.parent` from required to optional. That changes the generated
+  public types (Swift/Kotlin/TypeScript/Python surface `parent` as optional), so
+  it is technically source-affecting for consumers that assumed `parent` is
+  always present. It is nonetheless a **fix of a pre-existing contract defect,
+  not a gratuitous break**: BC3's shared recording projection
+  (`app/views/api/recordings/_recording.json.jbuilder`) emits `parent` only
+  `if !recording.docked? && recording.parent`, so it is **omitted for every
+  docked recording** — message boards, to-do sets, schedules, campfires,
+  questionnaires, and doors (all dock items, `docked? == parent&.dock?`) — and
+  for any parentless recording. The prior `@required` therefore over-asserted a
+  field the API has always emitted conditionally, and strict decoders
+  (Swift/Kotlin) would already have failed to decode any dock item. Door (a
+  docked recording) only made the latent defect unavoidable. Because it changes
+  a public type, it should still be called out in the release notes as a
+  compatibility-affecting correction.
