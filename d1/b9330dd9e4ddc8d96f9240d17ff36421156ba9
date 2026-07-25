@@ -1,0 +1,29 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_9d1ce63adbac84::t_3dccc9e59c4cf8 170-179
+conformance/runner/go/main.go
+  s_9d1ce63adbac84::t_59cad717b33d64 241-247,253-255
+  s_9d1ce63adbac84::t_ad006f43cdfb8e 248-252
+conformance/runner/python/runner.py
+  s_9d1ce63adbac84::t_4b280274812154 175-188
+conformance/runner/typescript/runner.test.ts
+  s_9d1ce63adbac84::t_a86bf98fe8bd0b 363-376
+  s_9d1ce63adbac84::t_ab265935d2f465 101-104,107-110
+conformance/runner/ruby/runner.rb
+  s_9d1ce63adbac84::t_89cd2d1b4a6cb8 234-246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d1b9330dd9e4ddc8d96f9240d17ff36421156ba9",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

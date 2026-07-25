@@ -1,0 +1,52 @@
+swift/Tests/BasecampTests/RetryTests.swift
+  s_9d1ce63adbac84::t_69ef0dcfd61064 521-547
+conformance/runner/python/runner.py
+  s_9d1ce63adbac84::t_93a109c476a653 216-220
+  s_9d1ce63adbac84::t_69b85a3a623cdc 361,366-375
+conformance/schema.json
+  s_9d1ce63adbac84::t_65c8075665b671 73-82,86-91
+conformance/runner/ruby/runner.rb
+  s_9d1ce63adbac84::t_514acf12958f70 290-296
+  s_9d1ce63adbac84::t_c7de9f9fc8578a 258-266
+  s_9d1ce63adbac84::t_af541d36cbe2db 465,470-478
+  s_9d1ce63adbac84::t_d1f7cf481cc363 207
+  s_9d1ce63adbac84::t_57f6fd76a83c66 221
+conformance/runner/typescript/runner.test.ts
+  s_9d1ce63adbac84::t_5c09352dd85594 97-111
+  s_9d1ce63adbac84::t_386c923ae008e0 431-437
+  s_9d1ce63adbac84::t_b8326d4d45a91b 807-812,814-820,822-825
+  s_9d1ce63adbac84::t_ea8d45aeb3aa5b 24-25
+  s_9d1ce63adbac84::t_a14c462cfc088a 471-473
+  s_9d1ce63adbac84::t_9ddc6a365baa07 85-86
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_9d1ce63adbac84::t_12a7ac41354879 240-242
+  s_9d1ce63adbac84::t_a890061bda40d2 14
+  s_9d1ce63adbac84::t_ef6337ea265cb3 29
+  s_9d1ce63adbac84::t_b473b5995151d5 218-224
+  s_9d1ce63adbac84::t_6f90056f866f77 135-136
+conformance/tests/network-retry.json
+  s_9d1ce63adbac84::t_46c006e1370920 1-36
+conformance/runner/go/main.go
+  s_9d1ce63adbac84::t_90e99509b73e11 305-320
+  s_9d1ce63adbac84::t_93caa60c20919d 18
+  s_9d1ce63adbac84::t_40594c4cf15cba 770-787
+  s_9d1ce63adbac84::t_bb5dacdc43f448 1129-1141
+  s_9d1ce63adbac84::t_96adaf52033788 61-65
+  s_9d1ce63adbac84::t_7c65e8ec5c3739 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6ec7ee349fbd28d234251c4a8aa1c4abe0a1315d",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
