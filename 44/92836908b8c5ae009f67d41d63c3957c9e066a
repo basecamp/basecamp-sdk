@@ -1,0 +1,32 @@
+scripts/check-fixture-coverage.rb
+  s_1a48c423686368::t_214c04de3e5324 225-227,229-230,232-250,253-273,276-277,283-302,321-323
+  s_1a48c423686368::t_028f3de5a69d04 303,305-315,318-319
+  s_1a48c423686368::t_40dcc32e67ebe2 304
+scripts/test-check-fixture-coverage.rb
+  s_1a48c423686368::t_61efa66590564e 130-190,194
+  s_4b0556ae8a0942::t_7c2460ee4b6c33 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4492836908b8c5ae009f67d41d63c3957c9e066a",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_4b0556ae8a0942": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8bac-ca98-7803-83a6-784720066f74",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
