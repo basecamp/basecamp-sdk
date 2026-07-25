@@ -968,4 +968,50 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
     func onOperationStart(_ info: OperationInfo) {
         lock.withLock { _operationStarts.append(info) }
     }
+
+    // MARK: - GetBubbleUps (paginated bare-array decode)
+
+    // Bubble-ups return a bare array of Notification. Proves the full decode path
+    // (.convertFromSnakeCase) maps bubble_up_at → bubbleUpAt and carries type/title.
+    func testBubbleUpsDecodesNotifications() async throws {
+        let fixture = """
+        [
+          {
+            "id": 2,
+            "created_at": "2026-07-21T00:01:43.009Z",
+            "updated_at": "2026-07-21T00:01:43.031Z",
+            "section": "bubbles",
+            "unread_count": 0,
+            "read_at": "2026-07-21T00:01:43.031Z",
+            "title": "We won Leto!",
+            "type": "Message",
+            "bucket_name": "The Leto Laptop"
+          },
+          {
+            "id": 3,
+            "created_at": "2026-07-21T00:02:00.000Z",
+            "updated_at": "2026-07-21T00:02:00.000Z",
+            "section": "bubbles",
+            "unread_count": 1,
+            "title": "Scheduled follow-up",
+            "type": "Todo",
+            "bubble_up_at": "2026-08-01T00:00:00Z"
+          }
+        ]
+        """
+        let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8),
+                                      headers: ["X-Total-Count": "2"])
+        let account = makeTestAccountClient(transport: transport)
+
+        let bubbleUps = try await account.myNotifications.bubbleUps()
+
+        XCTAssertEqual(bubbleUps.count, 2)
+        XCTAssertEqual(bubbleUps[0].id, 2)
+        XCTAssertEqual(bubbleUps[0].title, "We won Leto!")
+        XCTAssertEqual(bubbleUps[0].type, "Message")
+        XCTAssertEqual(bubbleUps[1].bubbleUpAt, "2026-08-01T00:00:00Z")
+
+        let sentURL = transport.lastRequest!.request.url!.absoluteString
+        XCTAssertTrue(sentURL.hasSuffix("/my/readings/bubble_ups.json"), "Got \(sentURL)")
+    }
 }

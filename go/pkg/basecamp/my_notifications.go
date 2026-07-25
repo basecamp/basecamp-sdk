@@ -70,8 +70,26 @@ type NotificationsResult struct {
 	// integrations should prefer BubbleUps.
 	BubbleUps []Notification `json:"bubble_ups,omitempty"`
 	// ScheduledBubbleUps is the BC5-added list of scheduled Bubble Up
-	// notifications (resurface time in the future).
+	// notifications (resurface time in the future). Omitted from the response
+	// entirely when the request sets limit_bubble_ups=true.
 	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitempty"`
+	// BubbleUpsCount is the total number of current bubble-ups, independent of
+	// the limit_bubble_ups cap on the BubbleUps array.
+	BubbleUpsCount int32 `json:"bubble_ups_count"`
+	// ScheduledBubbleUpsCount is the total number of scheduled bubble-ups,
+	// present even when limit_bubble_ups omits the ScheduledBubbleUps array.
+	ScheduledBubbleUpsCount int32 `json:"scheduled_bubble_ups_count"`
+}
+
+// BubbleUpsResult contains a page-followed list of bubble-up notifications
+// with pagination metadata.
+type BubbleUpsResult struct {
+	// BubbleUps is the combined list of current bubble-ups (first, ordered by
+	// most recently bubbled up) followed by scheduled bubble-ups (ordered by
+	// scheduled time).
+	BubbleUps []Notification
+	// Meta contains pagination metadata (total count, truncation).
+	Meta ListMeta
 }
 
 // MyNotificationsService handles notification operations for the current user.
@@ -84,9 +102,20 @@ func NewMyNotificationsService(client *AccountClient) *MyNotificationsService {
 	return &MyNotificationsService{client: client}
 }
 
+// MyNotificationsGetOption customizes a MyNotifications Get request.
+type MyNotificationsGetOption func(*generated.GetMyNotificationsParams)
+
+// WithLimitBubbleUps caps the bubble_ups array at 2 current bubble-ups and
+// omits the scheduled_bubble_ups array from the response (the counts are still
+// returned). Use the BubbleUps method to page through all bubble-ups.
+func WithLimitBubbleUps() MyNotificationsGetOption {
+	return func(p *generated.GetMyNotificationsParams) { p.LimitBubbleUps = true }
+}
+
 // Get returns notifications for the current user.
-// page is optional; pass 0 to use the default (page 1).
-func (s *MyNotificationsService) Get(ctx context.Context, page int32) (result *NotificationsResult, err error) {
+// page is optional; pass 0 to use the default (page 1). Optional functional
+// options (e.g. WithLimitBubbleUps) tune the request.
+func (s *MyNotificationsService) Get(ctx context.Context, page int32, opts ...MyNotificationsGetOption) (result *NotificationsResult, err error) {
 	op := OperationInfo{
 		Service: "MyNotifications", Operation: "Get",
 		ResourceType: "notification", IsMutation: false,
@@ -100,11 +129,12 @@ func (s *MyNotificationsService) Get(ctx context.Context, page int32) (result *N
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	var params *generated.GetMyNotificationsParams
+	params := &generated.GetMyNotificationsParams{}
 	if page > 0 {
-		params = &generated.GetMyNotificationsParams{
-			Page: page,
-		}
+		params.Page = page
+	}
+	for _, opt := range opts {
+		opt(params)
 	}
 
 	resp, err := s.client.parent.gen.GetMyNotificationsWithResponse(ctx, s.client.accountID, params)
@@ -157,4 +187,93 @@ func (s *MyNotificationsService) MarkAsRead(ctx context.Context, readables []str
 		return err
 	}
 	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// BubbleUps returns the current user's current and scheduled bubble-ups.
+// Current bubble-ups come first (ordered by most recently bubbled up), then
+// scheduled bubble-ups (ordered by scheduled time). The list is paginated at
+// 50 per page; by default this follows the Link header across all pages.
+// Pass a positive page to disable auto-pagination and return only that page.
+func (s *MyNotificationsService) BubbleUps(ctx context.Context, page int32) (result *BubbleUpsResult, err error) {
+	op := OperationInfo{
+		Service: "MyNotifications", Operation: "BubbleUps",
+		ResourceType: "notification", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	var params *generated.GetBubbleUpsParams
+	if page > 0 {
+		params = &generated.GetBubbleUpsParams{Page: page}
+	}
+
+	resp, err := s.client.parent.gen.GetBubbleUpsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	items, err := decodeBubbleUpPage(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	// A positive page disables auto-pagination (single page only).
+	if page > 0 {
+		return &BubbleUpsResult{BubbleUps: items, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(items), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		n, decErr := decodeNotificationItem(raw)
+		if decErr != nil {
+			return nil, decErr
+		}
+		items = append(items, n)
+	}
+
+	return &BubbleUpsResult{BubbleUps: items, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
+// decodeBubbleUpPage decodes a bubble-ups page (a bare JSON array of
+// notifications) into clean Notification values, applying the embedded-people
+// id normalization the Notification shape relies on.
+func decodeBubbleUpPage(body []byte) ([]Notification, error) {
+	normalized, normErr := normalizeEmbeddedPeopleJSON(body)
+	if normErr != nil {
+		normalized = body // fallback to raw
+	}
+	var items []Notification
+	if err := json.Unmarshal(normalized, &items); err != nil {
+		return nil, fmt.Errorf("failed to parse bubble-ups: %w", err)
+	}
+	return items, nil
+}
+
+// decodeNotificationItem decodes a single notification item (a raw JSON object
+// from a followed pagination page) into a clean Notification, applying the same
+// embedded-people id normalization as the first page.
+func decodeNotificationItem(raw json.RawMessage) (Notification, error) {
+	normalized, normErr := normalizeEmbeddedPeopleJSON(raw)
+	if normErr != nil {
+		normalized = raw // fallback to raw
+	}
+	var n Notification
+	if err := json.Unmarshal(normalized, &n); err != nil {
+		return Notification{}, fmt.Errorf("failed to parse bubble-up notification: %w", err)
+	}
+	return n, nil
 }

@@ -27,11 +27,35 @@ class MyNotificationsService(client: AccountClient) : BaseService(client) {
         )
         val qs = buildQueryString(
             "page" to options?.page,
+            "limit_bubble_ups" to options?.limitBubbleUps,
         )
         return request(info, {
             httpGet("/my/readings.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<JsonElement>(body)
+        }
+    }
+
+    /**
+     * Get the current user's current and scheduled bubble-ups as a paginated
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun bubbleUps(options: GetBubbleUpsOptions? = null): ListResult<Notification> {
+        val info = OperationInfo(
+            service = "MyNotifications",
+            operation = "GetBubbleUps",
+            resourceType = "bubble_up",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/my/readings/bubble_ups.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<Notification>>(body)
         }
     }
 

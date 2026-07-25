@@ -195,6 +195,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "PUT:/{accountId}/my/profile.json": "UpdateMyProfile",
   "GET:/{accountId}/my/question_reminders.json": "GetQuestionReminders",
   "GET:/{accountId}/my/readings.json": "GetMyNotifications",
+  "GET:/{accountId}/my/readings/bubble_ups.json": "GetBubbleUps",
   "PUT:/{accountId}/my/unreads.json": "MarkAsRead",
 
   // Projects

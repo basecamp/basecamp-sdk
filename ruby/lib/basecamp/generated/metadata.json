@@ -1,7 +1,13 @@
 {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-27T08:00:45Z",
+<<<<<<< HEAD
+  "generated": "2026-07-27T05:56:36Z",
+||||||| parent of fe0ebcc7 (Absorb the Bubble Ups successor surface (bc3 #11628))
+  "generated": "2026-07-26T17:29:02Z",
+=======
+  "generated": "2026-07-25T07:14:10Z",
+>>>>>>> fe0ebcc7 (Absorb the Bubble Ups successor surface (bc3 #11628))
   "operations": {
     "GetAccount": {
       "retry": {
@@ -1191,6 +1197,22 @@
           429,
           503
         ]
+      }
+    },
+    "GetBubbleUps": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "MarkAsRead": {

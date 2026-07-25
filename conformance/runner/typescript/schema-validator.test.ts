@@ -69,13 +69,18 @@ describe("validateResponse — ListProjects (array root)", () => {
 // =============================================================================
 
 describe("validateResponse — GetMyNotifications (object root, array fields)", () => {
-  it("validates an empty payload (all arrays absent)", () => {
-    const result = validateResponse("GetMyNotifications", {});
+  // bubble_ups_count / scheduled_bubble_ups_count are @required on the output,
+  // so every valid payload carries them (the arrays remain optional).
+  const counts = { bubble_ups_count: 0, scheduled_bubble_ups_count: 0 };
+
+  it("validates a minimal payload (arrays absent, required counts present)", () => {
+    const result = validateResponse("GetMyNotifications", { ...counts });
     expect(result.ok).toBe(true);
   });
 
   it("validates with empty arrays", () => {
     const result = validateResponse("GetMyNotifications", {
+      ...counts,
       unreads: [],
       reads: [],
       memories: [],
@@ -87,6 +92,7 @@ describe("validateResponse — GetMyNotifications (object root, array fields)", 
 
   it("collects extras at the root", () => {
     const result = validateResponse("GetMyNotifications", {
+      ...counts,
       unreads: [],
       hypothetical_new_top_level: 42,
     });
@@ -101,6 +107,7 @@ describe("validateResponse — GetMyNotifications (object root, array fields)", 
       updated_at: "2026-01-02T00:00:00Z",
     };
     const result = validateResponse("GetMyNotifications", {
+      ...counts,
       unreads: [{ ...minimalNotification, future_envelope_field: "BC5 addition" }],
     });
     expect(result.ok).toBe(true);

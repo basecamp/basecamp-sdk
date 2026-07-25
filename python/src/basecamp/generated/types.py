@@ -730,9 +730,11 @@ class GetMyAssignmentsResponseContent(TypedDict):
 
 class GetMyNotificationsResponseContent(TypedDict):
     bubble_ups: NotRequired[list[Notification]]
+    bubble_ups_count: int
     memories: NotRequired[list[Notification]]
     reads: NotRequired[list[Notification]]
     scheduled_bubble_ups: NotRequired[list[Notification]]
+    scheduled_bubble_ups_count: int
     unreads: NotRequired[list[Notification]]
 
 

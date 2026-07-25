@@ -1,7 +1,13 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T08:00:45Z
+<<<<<<< HEAD
+# Generated: 2026-07-27T05:56:36Z
+||||||| parent of fe0ebcc7 (Absorb the Bubble Ups successor surface (bc3 #11628))
+# Generated: 2026-07-26T17:29:02Z
+=======
+# Generated: 2026-07-25T07:14:10Z
+>>>>>>> fe0ebcc7 (Absorb the Bubble Ups successor surface (bc3 #11628))
 
 require "json"
 require "time"
@@ -3579,7 +3585,7 @@ module Basecamp
           "all_day" => @all_day,
           "ends_at" => @ends_at,
           "starts_at" => @starts_at,
-        }.reject { |k, v| v.nil? && !["ends_at", "starts_at"].include?(k) }
+        }.compact
       end
 
       def to_json(*args)

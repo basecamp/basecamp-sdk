@@ -9,10 +9,24 @@ module Basecamp
 
       # Get the current user's notification inbox (the "Hey!" menu).
       # @param page [Integer, nil] Page number for paginating through read items. Defaults to 1.
+      # @param limit_bubble_ups [Boolean, nil] Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
+      #   `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
+      #   bubble-ups endpoint (GetBubbleUps) to page through all current and
+      #   scheduled bubble-ups.
       # @return [Hash] response data
-      def get_my_notifications(page: nil)
+      def get_my_notifications(page: nil, limit_bubble_ups: nil)
         with_operation(service: "mynotifications", operation: "get_my_notifications", is_mutation: false) do
-          http_get("/my/readings.json", params: compact_query_params(page: page)).json
+          http_get("/my/readings.json", params: compact_query_params(page: page, limit_bubble_ups: limit_bubble_ups)).json
+        end
+      end
+
+      # Get the current user's current and scheduled bubble-ups as a paginated
+      # @param page [Integer, nil] Page number. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_bubble_ups(page: nil)
+        wrap_paginated(service: "mynotifications", operation: "get_bubble_ups", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/my/readings/bubble_ups.json", params: params)
         end
       end
 

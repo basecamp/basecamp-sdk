@@ -11,11 +11,18 @@ from basecamp.hooks import OperationInfo
 
 
 class MyNotificationsService(BaseService):
-    def get_my_notifications(self, *, page: int | None = None) -> dict[str, Any]:
+    def get_my_notifications(self, *, page: int | None = None, limit_bubble_ups: bool | None = None) -> dict[str, Any]:
         return self._request(
             OperationInfo(service="mynotifications", operation="get_my_notifications", is_mutation=False),
             "GET",
             "/my/readings.json",
+            params=self._compact(page=page, limit_bubble_ups=limit_bubble_ups),
+        )
+
+    def get_bubble_ups(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
+            "/my/readings/bubble_ups.json",
             params=self._compact(page=page),
         )
 
@@ -30,11 +37,20 @@ class MyNotificationsService(BaseService):
 
 
 class AsyncMyNotificationsService(AsyncBaseService):
-    async def get_my_notifications(self, *, page: int | None = None) -> dict[str, Any]:
+    async def get_my_notifications(
+        self, *, page: int | None = None, limit_bubble_ups: bool | None = None
+    ) -> dict[str, Any]:
         return await self._request(
             OperationInfo(service="mynotifications", operation="get_my_notifications", is_mutation=False),
             "GET",
             "/my/readings.json",
+            params=self._compact(page=page, limit_bubble_ups=limit_bubble_ups),
+        )
+
+    async def get_bubble_ups(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
+            "/my/readings/bubble_ups.json",
             params=self._compact(page=page),
         )
 
