@@ -1017,12 +1017,19 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
 /**
  * Determine whether retry should be enabled for a given test case.
  *
- * Retry tests and idempotency tests need retry enabled.
+ * Retry tests, idempotency tests, and network-retry tests need retry enabled.
  * Status-code tests generally need retry disabled to avoid interference,
  * except for the 429-retries-exhausted test which requires retry.
  */
 function shouldEnableRetry(tc: TestCase, filename: string): boolean {
-  if (filename === "retry.json" || filename === "idempotency.json") {
+  if (
+    filename === "retry.json" ||
+    filename === "idempotency.json" ||
+    filename === "network-retry.json"
+  ) {
+    // network-retry.json's CreateTodo safety case must run retry-ENABLED so it
+    // actually proves the SDK doesn't re-send a non-idempotent POST on a network
+    // error (with retry off, the requestCount:1 assertion would be vacuous).
     return true;
   }
 
