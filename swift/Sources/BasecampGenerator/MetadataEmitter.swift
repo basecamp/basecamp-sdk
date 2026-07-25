@@ -24,9 +24,11 @@ func emitMetadata(configs: [BehaviorRetryConfig]) -> String {
     lines.append("    }")
     lines.append("")
 
-    // Operations whose effects are idempotent per behavior-model.json. These
-    // POSTs stay retry-eligible even though POST is not naturally idempotent;
-    // everything else keys retry off the HTTP method alone (see HTTPClient).
+    // Every operation flagged `idempotent` in behavior-model.json (any HTTP
+    // method). This matters only for POSTs: a POST listed here stays
+    // retry-eligible even though POST is not naturally idempotent. Naturally
+    // idempotent methods (GET/HEAD/PUT/DELETE) already retry via the method gate
+    // in HTTPClient, so their entries here are redundant but harmless.
     let idempotentIds = configs.filter { $0.idempotent }.map { $0.operationId }.sorted()
     lines.append("    private static let idempotentOperations: Set<String> = [")
     for operationId in idempotentIds {

@@ -18,6 +18,11 @@ package final class HTTPClient: Sendable {
     private static let maxJitterMs: UInt64 = 100
     private static let defaultBaseDelayMs: UInt64 = 1_000
 
+    /// HTTP methods that are naturally idempotent and therefore always
+    /// retry-eligible (SPEC §7). Hoisted to a static constant so the retry gate
+    /// on the hot path does not allocate a `Set` per request.
+    private static let retryableMethods: Set<String> = ["GET", "HEAD", "PUT", "DELETE"]
+
     package init(
         transport: any Transport,
         authStrategy: any AuthStrategy,
@@ -83,8 +88,7 @@ package final class HTTPClient: Sendable {
         // methods (rather than excluding POST) keeps PATCH/OPTIONS and any future
         // method fail-closed. This single gate covers both retry paths below: the
         // status retry and the network-error retry key off `attempt < maxAttempts`.
-        let retryableMethods: Set<String> = ["GET", "HEAD", "PUT", "DELETE"]
-        let retryable = retryableMethods.contains(method.uppercased()) || idempotent
+        let retryable = Self.retryableMethods.contains(method.uppercased()) || idempotent
         let maxAttempts = max((config.enableRetry && retryable) ? effectiveConfig.maxAttempts : 1, 1)
 
         for attempt in 1...maxAttempts {
