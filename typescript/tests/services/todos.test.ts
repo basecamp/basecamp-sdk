@@ -442,10 +442,13 @@ describe("TodosService", () => {
       );
 
       // The suite default is enableRetry:false; this operation needs a
-      // retry-enabled client to exercise the POST idempotency gate.
+      // retry-enabled client to exercise the POST idempotency gate. Set it
+      // explicitly rather than relying on createBasecampClient's default so the
+      // test keeps testing retry even if that default ever changes.
       const retryClient = createBasecampClient({
         accountId: "12345",
         accessToken: "test-token",
+        enableRetry: true,
       });
 
       await expect(retryClient.todos.complete(42)).resolves.toBeUndefined();
