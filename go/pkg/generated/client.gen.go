@@ -806,6 +806,18 @@ type Document struct {
 	VisibleToClients   bool                 `json:"visible_to_clients"`
 }
 
+// DoorService Metadata describing the recognized external service backing an external link
+// (`Door` recording): its display name, a canonical example URL, a short code,
+// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
+// is `other` for a generic link.
+type DoorService struct {
+	Code           string   `json:"code,omitempty"`
+	ExampleUrl     string   `json:"example_url,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	SupportingText string   `json:"supporting_text,omitempty"`
+	ValidPatterns  []string `json:"valid_patterns,omitempty"`
+}
+
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
 type EnableCardColumnOnHoldResponseContent = CardColumn
 
@@ -1828,18 +1840,40 @@ type Recording struct {
 	CreatedAt          time.Time            `json:"created_at"`
 	Creator            Person               `json:"creator"`
 
+	// Description Rich-text (HTML) description shown beneath an external link. Present only
+	// on `Door` recordings returned by the `type=Door` recordings query (the only
+	// endpoint that returns the full door shape). The external destination
+	// address is `url` (not this field); `app_url` is the Basecamp redirector.
+	// See `spec/api-gaps/external-links-doors.md`.
+	Description string `json:"description,omitempty"`
+
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status"`
-	Parent                 RecordingParent      `json:"parent"`
-	Status                 string               `json:"status"`
-	SubscriptionUrl        string               `json:"subscription_url,omitempty"`
-	Title                  string               `json:"title"`
-	Type                   string               `json:"type"`
-	UpdatedAt              time.Time            `json:"updated_at"`
-	Url                    string               `json:"url"`
-	VisibleToClients       bool                 `json:"visible_to_clients"`
+	Parent                 RecordingParent      `json:"parent,omitempty"`
+
+	// Position Ordinal position within the project's External links section. Present on
+	// `Door` (external-link) recordings.
+	Position int32 `json:"position,omitempty"`
+
+	// Service Metadata describing the recognized external service backing an external link
+	// (`Door` recording): its display name, a canonical example URL, a short code,
+	// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
+	// is `other` for a generic link.
+	Service         DoorService `json:"service,omitempty"`
+	Status          string      `json:"status"`
+	SubscriptionUrl string      `json:"subscription_url,omitempty"`
+	Title           string      `json:"title"`
+	Type            string      `json:"type"`
+	UpdatedAt       time.Time   `json:"updated_at"`
+
+	// Url API URL of the recording. Exception: in the `type=Door` (external-link)
+	// projection, `url` is the door's **external destination address** (e.g. the
+	// Figma/Dropbox URL) and `app_url` is the Basecamp redirector — see the
+	// door-specific `service`/`description` fields below.
+	Url              string `json:"url"`
+	VisibleToClients bool   `json:"visible_to_clients"`
 }
 
 // RecordingBucket defines model for RecordingBucket.
@@ -3091,7 +3125,7 @@ type ListProjectsParams struct {
 
 // ListRecordingsParams defines parameters for ListRecordings.
 type ListRecordingsParams struct {
-	// Type Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
+	// Type Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
 	Type   string `form:"type" json:"type"`
 	Bucket string `form:"bucket,omitempty" json:"bucket,omitempty"`
 

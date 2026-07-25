@@ -42,7 +42,7 @@ export class RecordingsService extends BaseService {
 
   /**
    * List recordings of a given type across projects
-   * @param type - Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
+   * @param type - Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
    * @param options - Optional query parameters
    * @returns All Recording across all pages, with .meta.totalCount
    *
@@ -54,7 +54,7 @@ export class RecordingsService extends BaseService {
    * const filtered = await client.recordings.list("type", { bucket: [123] });
    * ```
    */
-  async list(type: "Comment" | "Document" | "Kanban::Card" | "Kanban::Step" | "Message" | "Question::Answer" | "Schedule::Entry" | "Todo" | "Todolist" | "Upload" | "Vault", options?: ListRecordingOptions): Promise<ListResult<Recording>> {
+  async list(type: "Comment" | "Document" | "Door" | "Kanban::Card" | "Kanban::Step" | "Message" | "Question::Answer" | "Schedule::Entry" | "Todo" | "Todolist" | "Upload" | "Vault", options?: ListRecordingOptions): Promise<ListResult<Recording>> {
     return this.requestPaginated(
       {
         service: "Recordings",

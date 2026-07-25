@@ -1,9 +1,13 @@
 ---
 gap: external-links-doors
-status: addressed-in-bc3-pr-12375
+status: partial-coverage
 detected: 2026-07-22
 sdk_demand: low
 bc3_pr: 12375
+smithy_refs:
+  - "RecordingType Door enum value (spec/basecamp.smithy:6063)"
+  - "Recording.position/description/service (spec/basecamp.smithy:6078)"
+  - "DoorService (spec/basecamp.smithy:6142)"
 bc3_refs:
   routes:
     - GET /:account_id/projects/recordings.json?type=Door
@@ -87,22 +91,50 @@ the contract is now documented and must be tracked to keep detection honest.
 
 ## SDK absorption plan when this lands
 
-- Model the door **list** as a `type=Door`-scoped recordings query (or a
-  dedicated `ListExternalLinks` operation) returning the full door shape
-  (`url`, `service`, `description`).
-- Model **create** carefully: the 302/no-JSON-body contract does not fit the
-  standard "create returns the resource" mold — the operation returns no
-  usable body, so the SDK surface must not promise one. The wire operation
-  should model only the 302/empty response; a create-and-discover convenience
-  (create, then `type=Door` list to find the new door's id) is a **separately
-  sanctioned composite** — it needs explicit composite treatment, conformance
-  coverage, and a defined answer for ambiguous concurrent/duplicate creates,
-  not something the plain create operation implies.
-- Get/rename/trash reuse the existing dock-tool GetTool/UpdateTool/DeleteTool
-  operations.
-- Add `Door` to the `RecordingType` documented enum.
+**Partially absorbed** (basecamp-sdk PR-4 of the post-#401 follow-up program).
+A pre-implementation spike resolved the three blockers and scoped this PR to the
+cleanly-absorbable surface; the redirect-dependent create and the multipart
+image are recorded as residual gaps below.
+
+**Absorbed in this PR:**
+
+- The door **list** is the existing `type=Door`-scoped `ListRecordings` query —
+  **not** a new operation. `ListRecordings` already carries a `type` query and a
+  `Recording.url`; the full door shape is reached by adding `Door` to the
+  `RecordingType` documented enum and adding optional `position`, `description`,
+  and a `service` struct (`DoorService`) to the shared `Recording` projection.
+  A runtime decode test proves the door shape (external `url` + `service` +
+  `description`) decodes through the projection.
+- Get/rename/trash reuse the existing `GetTool` / `UpdateTool` / `DeleteTool`
+  operations — no new work.
+- A `type=Door` recordings canary entry validates statically (live dormant).
+
+**Residual gaps (why this entry is `partial-coverage`, not
+`absorbed-in-sdk`):**
+
+- **Create (`POST /buckets/:b/dock/doors.json`) — deferred.** The endpoint
+  returns **302 with an empty body** (no ID), redirecting cross-origin to the
+  web project page. The spike found the six SDK transports handle this
+  inconsistently: Go, TypeScript (fetch default), Kotlin (Ktor default), and
+  Swift (URLSession default) **follow** the redirect (landing on the web page,
+  after cross-origin auth stripping); Python (`follow_redirects=False`) and Ruby
+  (Faraday, no follow middleware) do **not** follow but then face empty-body
+  decode, and each classifies a bare 302 differently. Modeling "return only the
+  302/empty response" would require coordinated per-operation redirect
+  suppression + 302-as-success handling across all six generated transports — a
+  cross-cutting transport change, not an additive absorption. Deferred to a
+  dedicated PR.
+- **`image` thumbnail (multipart) — unmodeled.** `door[image]` is
+  `multipart/form-data` only; not modeled. Independent of the create-transport
+  question, this alone keeps the entry from honestly flipping to
+  `absorbed-in-sdk`.
+- **Create-and-discover composite (SPEC §18) — deferred.** It depends on a
+  shippable `CreateExternalLink`, so it is out of scope until create lands.
+- **No JSON update path** for `url`/`service`/`description` (PUT → 406): never
+  modeled, by contract.
 
 ## Compatibility
 
-New documented resource surface; no change to existing modeled operations
-beyond the additive `Door` enum value on `ListRecordings` output type.
+Additive only: the `Door` enum value plus optional `position`/`description`/
+`service` fields on the shared `Recording` output type. No change to existing
+modeled operations; no new operation.

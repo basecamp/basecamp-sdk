@@ -3240,6 +3240,19 @@ export interface components {
             boosts_count?: number;
             boosts_url?: string;
         };
+        /**
+         * @description Metadata describing the recognized external service backing an external link
+         *     (`Door` recording): its display name, a canonical example URL, a short code,
+         *     the URL patterns Basecamp recognizes for it, and human supporting text. `code`
+         *     is `other` for a generic link.
+         */
+        DoorService: {
+            name?: string;
+            example_url?: string;
+            code?: string;
+            valid_patterns?: string[];
+            supporting_text?: string;
+        };
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         EnableOutOfOfficeRequestContent: {
             out_of_office: components["schemas"]["OutOfOfficePayload"];
@@ -4034,6 +4047,12 @@ export interface components {
             title: string;
             inherits_status: boolean;
             type: string;
+            /**
+             * @description API URL of the recording. Exception: in the `type=Door` (external-link)
+             *     projection, `url` is the door's **external destination address** (e.g. the
+             *     Figma/Dropbox URL) and `app_url` is the Basecamp redirector — see the
+             *     door-specific `service`/`description` fields below.
+             */
             url: string;
             app_url: string;
             bookmark_url?: string;
@@ -4054,7 +4073,22 @@ export interface components {
             comments_count?: number;
             comments_url?: string;
             subscription_url?: string;
-            parent: components["schemas"]["RecordingParent"];
+            /**
+             * Format: int32
+             * @description Ordinal position within the project's External links section. Present on
+             *     `Door` (external-link) recordings.
+             */
+            position?: number;
+            /**
+             * @description Rich-text (HTML) description shown beneath an external link. Present only
+             *     on `Door` recordings returned by the `type=Door` recordings query (the only
+             *     endpoint that returns the full door shape). The external destination
+             *     address is `url` (not this field); `app_url` is the Basecamp redirector.
+             *     See `spec/api-gaps/external-links-doors.md`.
+             */
+            description?: string;
+            service?: components["schemas"]["DoorService"];
+            parent?: components["schemas"]["RecordingParent"];
             bucket: components["schemas"]["RecordingBucket"];
             creator: components["schemas"]["Person"];
         };
@@ -11466,7 +11500,7 @@ export interface operations {
     ListRecordings: {
         parameters: {
             query: {
-                /** @description Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault */
+                /** @description Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault */
                 type: string;
                 bucket?: string;
                 /** @description active|archived|trashed */

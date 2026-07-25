@@ -81,13 +81,28 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     },
   },
 
+  ListRecordings: {
+    fixtures: [],
+    call: async (ctx) => {
+      // Backs the type=Door external-links canary; validates the door shape
+      // (external url + service + description) against the Recording schema.
+      const result = await ctx.client.recordings.list("Door");
+      return { resolvedIds: {}, result };
+    },
+  },
+
+  GetProgressReport: {
+    fixtures: [],
+    call: async (ctx) => {
+      const result = await ctx.client.reports.progress();
+      return { resolvedIds: {}, result };
+    },
+  },
+
   GetBubbleUps: {
     fixtures: [],
     call: async (ctx) => {
-      // maxItems caps pagination: bubble_ups is a paginated feed (50/page), so a
-      // small sample validates the Notification schema without following every
-      // Link page on an active account.
-      const result = await ctx.client.myNotifications.bubbleUps({ maxItems: 5 });
+      const result = await ctx.client.myNotifications.bubbleUps();
       return { resolvedIds: {}, result };
     },
   },

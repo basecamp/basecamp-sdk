@@ -22,7 +22,6 @@ data class Recording(
     val type: String,
     val url: String,
     @SerialName("app_url") val appUrl: String,
-    val parent: RecordingParent,
     val bucket: RecordingBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
@@ -31,5 +30,9 @@ data class Recording(
     @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>? = null,
     @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
-    @SerialName("subscription_url") val subscriptionUrl: String? = null
+    @SerialName("subscription_url") val subscriptionUrl: String? = null,
+    val position: Int = 0,
+    val description: String? = null,
+    val service: DoorService? = null,
+    val parent: RecordingParent? = null
 )

@@ -14,7 +14,7 @@ class RecordingsService(client: AccountClient) : BaseService(client) {
 
     /**
      * List recordings of a given type across projects
-     * @param type Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
+     * @param type Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
      * @param options Optional query parameters and pagination control
      */
     suspend fun list(type: String, options: ListRecordingsOptions? = null): ListResult<Recording> {
