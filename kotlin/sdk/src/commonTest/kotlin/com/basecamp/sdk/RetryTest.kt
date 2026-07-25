@@ -400,8 +400,12 @@ class RetryTest {
     @Test
     fun retriesIdempotentPostThroughGeneratedService() = runTest {
         var requestCount = 0
-        val engine = MockEngine { _ ->
+        val methods = mutableListOf<String>()
+        val paths = mutableListOf<String>()
+        val engine = MockEngine { request ->
             requestCount++
+            methods.add(request.method.value)
+            paths.add(request.url.encodedPath)
             if (requestCount == 1) {
                 respond(content = "", status = HttpStatusCode.ServiceUnavailable)
             } else {
@@ -424,6 +428,14 @@ class RetryTest {
         account.todos.complete(todoId = 100)
 
         assertEquals(2, requestCount)
+        // Pin the generated CompleteTodo wire shape: both the initial attempt and
+        // the retry must be POST to /…/todos/100/completion.json. Without this the
+        // test could pass on a wrong route/method as long as something retried once.
+        assertTrue(methods.all { it == "POST" }, "expected all POST, got $methods")
+        assertTrue(
+            paths.all { it.endsWith("/todos/100/completion.json") },
+            "expected the CompleteTodo completion path, got $paths",
+        )
         client.close()
     }
 }
