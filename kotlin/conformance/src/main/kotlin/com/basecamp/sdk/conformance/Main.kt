@@ -705,6 +705,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "CompleteTodo" -> {
+            account.todos.complete(tc.pathParams.longParam("todoId"))
+            DispatchResult()
+        }
+
         "GetTimesheetEntry" -> {
             val entryId = tc.pathParams.longParam("timesheetEntryId")
                 .let { if (it != 0L) it else tc.pathParams.longParam("entryId") }

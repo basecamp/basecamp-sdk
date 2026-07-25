@@ -94,6 +94,8 @@ class OperationMapper:
                 return self._account.todos.get(todo_id=path_params["todoId"])
             case "CreateTodo":
                 return self._account.todos.create(todolist_id=path_params["todolistId"], content=body["content"])
+            case "CompleteTodo":
+                return self._account.todos.complete(todo_id=path_params["todoId"])
             case "UpdateTodo":
                 return self._account.todos.update(
                     todo_id=path_params["todoId"],
