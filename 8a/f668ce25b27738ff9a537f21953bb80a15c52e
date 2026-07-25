@@ -1,0 +1,66 @@
+go/pkg/basecamp/tools.go
+  s_8a8548e8866958::t_51b1c1150a89c7 90
+go/pkg/basecamp/timesheet.go
+  s_8a8548e8866958::t_31b6c894f146ed 155
+go/pkg/basecamp/people.go
+  s_8a8548e8866958::t_e4183171ab8cb7 316,463
+go/pkg/basecamp/operation_scope_test.go
+  s_8a8548e8866958::t_dc87dfad4c40bc 1-131
+go/pkg/basecamp/gauges.go
+  s_8a8548e8866958::t_69149b1d09bd24 247
+  s_8a8548e8866958::t_4341e7777293f3 170
+  s_8a8548e8866958::t_37dd704b44ef0f 362
+SPEC.md
+  s_8a8548e8866958::t_9248cb8c473044 785
+go/pkg/basecamp/cards.go
+  s_8a8548e8866958::t_6e408bd607d748 763
+  s_8a8548e8866958::t_40da6656b47ad8 806
+  s_8a8548e8866958::t_ea55f3cf75b981 840
+go/pkg/basecamp/otel/otel_test.go
+  s_8a8548e8866958::t_5eeb84ebf2a0ae 58
+  s_8a8548e8866958::t_0125a48e03b5af 97-98
+  s_60b254bfab738a::t_3f5d3505a84a08 99
+go/pkg/basecamp/timeline.go
+  s_8a8548e8866958::t_66153ad5fba2a8 155
+go/pkg/basecamp/otel/otel.go
+  s_8a8548e8866958::t_22785c2943f6ca 152-155
+go/pkg/basecamp/observability.go
+  s_8a8548e8866958::t_e2f4f8bc0ca0e3 73-74
+go/pkg/basecamp/tools_test.go
+  s_8a8548e8866958::t_68f4e069f76e04 138-142
+go/pkg/basecamp/projects.go
+  s_8a8548e8866958::t_35f2c513903b88 354
+  s_8a8548e8866958::t_5cacd7c724b59b 215
+  s_8a8548e8866958::t_88d4a8da3d369d 290
+go/pkg/basecamp/wormholes.go
+  s_8a8548e8866958::t_2013940b7698e0 65
+  s_8a8548e8866958::t_54fd638fd39d86 118
+  s_8a8548e8866958::t_beb8a907f0d47e 168
+go/pkg/basecamp/webhooks.go
+  s_8a8548e8866958::t_971cd780550b48 107
+  s_8a8548e8866958::t_2eca11df6a490c 213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8af668ce25b27738ff9a537f21953bb80a15c52e",
+  "prompts": {},
+  "sessions": {
+    "s_60b254bfab738a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eaf61ecb-b9ae-4891-8ccd-0cc675658e44",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
