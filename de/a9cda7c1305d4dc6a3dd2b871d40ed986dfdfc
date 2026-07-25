@@ -1,0 +1,31 @@
+.github/workflows/test.yml
+  s_9d1ce63adbac84::t_5c0830bc14e8bd 78-83
+  s_9d1ce63adbac84::t_13423242b49875 284-291
+Makefile
+  s_9d1ce63adbac84::t_868efab539643e 865
+  s_9d1ce63adbac84::t_a1389eca7e4a76 626
+  s_9d1ce63adbac84::t_0ff776ad5c99e9 807
+  s_9d1ce63adbac84::t_30b0fa88acd1f7 660-670
+  s_9d1ce63adbac84::t_e25d57d263633b 757
+  s_9d1ce63adbac84::t_bb8e458c011809 779-784
+scripts/check-idempotency-parity
+  s_9d1ce63adbac84::t_1e905104a6ffbe 1-156
+scripts/check-swift-service-drift.sh
+  s_9d1ce63adbac84::t_eedf9c38cbe7f9 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "dea9cda7c1305d4dc6a3dd2b871d40ed986dfdfc",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
