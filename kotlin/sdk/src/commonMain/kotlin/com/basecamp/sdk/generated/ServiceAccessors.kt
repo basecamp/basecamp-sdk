@@ -79,6 +79,10 @@ val AccountClient.documents: DocumentsService
 val AccountClient.events: EventsService
     get() = service("Events") { EventsService(this) }
 
+/** Everything operations. */
+val AccountClient.everything: EverythingService
+    get() = service("Everything") { EverythingService(this) }
+
 /** Forwards operations. */
 val AccountClient.forwards: ForwardsService
     get() = service("Forwards") { ForwardsService(this) }

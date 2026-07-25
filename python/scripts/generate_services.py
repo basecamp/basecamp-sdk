@@ -454,7 +454,13 @@ def parse_operation(
     success = operation.get("responses", {}).get("200") or operation.get("responses", {}).get("201")
     response_schema = (success or {}).get("content", {}).get("application/json", {}).get("schema")
     returns_void = response_schema is None
-    returns_array = (response_schema or {}).get("type") == "array"
+    # Resolve through a $ref so bare-array ResponseContent aliases (e.g. the
+    # unpaginated overdue lists, whose response is a $ref to `Todo[]`) are
+    # detected as arrays rather than falling through to a dict return type.
+    resolved_response = response_schema
+    if isinstance(response_schema, dict) and "$ref" in response_schema:
+        resolved_response = resolve_schema_ref(response_schema, schemas) or response_schema
+    returns_array = (resolved_response or {}).get("type") == "array"
 
     # Pagination
     pagination = operation.get("x-basecamp-pagination")

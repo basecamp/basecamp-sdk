@@ -289,6 +289,16 @@ service Basecamp {
     GetMyCompletedAssignments,
     GetMyDueAssignments,
 
+    // Batch 15b - Everything Aggregates (flat family)
+    GetEverythingMessages,
+    GetEverythingComments,
+    GetEverythingCheckins,
+    GetEverythingForwards,
+    GetEverythingBoosts,
+    GetEverythingFiles,
+    GetEverythingOverdueTodos,
+    GetEverythingOverdueCards,
+
     // Batch 16 - My Notifications
     GetMyNotifications,
     GetBubbleUps,
@@ -8733,6 +8743,287 @@ structure GetMyDueAssignmentsInput {
 structure GetMyDueAssignmentsOutput {
 
   assignments: MyAssignmentList
+}
+
+// =============================================================================
+// BATCH 15b - Everything Aggregates (flat family)
+// =============================================================================
+//
+// Account-wide recording listings served by the everything/*_controller.rb
+// namespace under flat top-level paths (the /everything/... segment is the
+// Rails controller namespace, not part of the URL). Documented by BC3 #11627 in
+// doc/api/sections/everything.md. This is the flat family: six recency-ordered,
+// Link-paginated roots plus two unpaginated oldest-first overdue lists. The
+// bucket-grouped todo/card filter sub-routes are a separate family. Never model
+// the bare /todos.json or /cards.json roots (HTML shells) or the internal
+// /<resource>/recent.json feeds.
+
+/// Get every message across all accessible projects, newest-first (paginated).
+/// Each item embeds its `bucket` for project context.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/messages.json")
+operation GetEverythingMessages {
+  input: GetEverythingMessagesInput
+  output: GetEverythingMessagesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEverythingMessagesInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetEverythingMessagesOutput {
+  recordings: RecordingList
+}
+
+/// Get every comment across all accessible projects, newest-first (paginated).
+/// Each item embeds its `bucket`.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/comments.json")
+operation GetEverythingComments {
+  input: GetEverythingCommentsInput
+  output: GetEverythingCommentsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEverythingCommentsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetEverythingCommentsOutput {
+  recordings: RecordingList
+}
+
+/// Get every automatic check-in answer across all accessible projects,
+/// newest-first (paginated). Each item embeds its `bucket`.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/checkins.json")
+operation GetEverythingCheckins {
+  input: GetEverythingCheckinsInput
+  output: GetEverythingCheckinsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEverythingCheckinsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetEverythingCheckinsOutput {
+  recordings: RecordingList
+}
+
+/// Get every inbox forward across all accessible projects, newest-first
+/// (paginated). Each item embeds its `bucket`.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/forwards.json")
+operation GetEverythingForwards {
+  input: GetEverythingForwardsInput
+  output: GetEverythingForwardsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEverythingForwardsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetEverythingForwardsOutput {
+  recordings: RecordingList
+}
+
+/// Get every boost across all accessible projects, newest-first (paginated).
+/// Each boost carries its `booster` and the `recording` it boosts.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/boosts.json")
+operation GetEverythingBoosts {
+  input: GetEverythingBoostsInput
+  output: GetEverythingBoostsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEverythingBoostsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetEverythingBoostsOutput {
+  boosts: BoostList
+}
+
+/// Get every file recording across all accessible projects, newest-first
+/// (paginated). Heterogeneous: uploads and Basecamp documents carry their
+/// standard recording shapes, while rich-text attachments are wrapped in a
+/// recording envelope plus an `attachable_sgid` and blob metadata. Modeled as
+/// an optional-field superset (EverythingFile) so one element type decodes any
+/// variant.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/files.json")
+operation GetEverythingFiles {
+  input: GetEverythingFilesInput
+  output: GetEverythingFilesOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetEverythingFilesInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Filter by file kind: all (default), images, pdfs, documents, or videos.
+  @httpQuery("kind")
+  kind: String
+
+  /// Restrict to files created by the given people (repeatable).
+  @httpQuery("people_ids[]")
+  people_ids: PersonIdList
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetEverythingFilesOutput {
+  files: EverythingFileList
+}
+
+/// Get every overdue to-do across all accessible projects, oldest-due-date-first.
+/// A complete, unpaginated array; each item embeds its `bucket`.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/todos/overdue.json")
+operation GetEverythingOverdueTodos {
+  input: GetEverythingOverdueTodosInput
+  output: GetEverythingOverdueTodosOutput
+  errors: [UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetEverythingOverdueTodosInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetEverythingOverdueTodosOutput {
+  todos: TodoItems
+}
+
+/// Get every overdue card across all accessible projects, oldest-due-date-first.
+/// A complete, unpaginated array; each item embeds its `bucket`.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/cards/overdue.json")
+operation GetEverythingOverdueCards {
+  input: GetEverythingOverdueCardsInput
+  output: GetEverythingOverdueCardsOutput
+  errors: [UnauthorizedError, ForbiddenError, InternalServerError]
+}
+
+structure GetEverythingOverdueCardsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+structure GetEverythingOverdueCardsOutput {
+  cards: CardList
+}
+
+// ===== Everything File Shapes =====
+
+list EverythingFileList {
+  member: EverythingFile
+}
+
+/// A single item in the /files.json feed. An optional-field superset over three
+/// wire variants — a full Upload recording, a Basecamp Document recording, and a
+/// rich-text attachment wrapped in a recording envelope (distinguished by
+/// `attachable_sgid` and blob metadata). Every field is optional; a given
+/// instance populates only the fields of the variant it represents. Unknown
+/// fields are ignored by every SDK decoder, so the superset need not enumerate
+/// every field of the Upload/Document recordings.
+structure EverythingFile {
+  /// Recording (Upload/Document) or attachment id.
+  id: Long
+  status: String
+  visible_to_clients: Boolean
+  created_at: ISO8601Timestamp
+  updated_at: ISO8601Timestamp
+  title: String
+  inherits_status: Boolean
+  /// "Upload", "Document", or "Attachment".
+  type: String
+  url: String
+  app_url: String
+  bookmark_url: String
+  subscription_url: String
+  comments_count: Integer
+  comments_url: String
+  boosts_count: Integer
+  boosts_url: String
+  position: Integer
+  parent: RecordingParent
+  bucket: RecordingBucket
+  creator: Person
+
+  /// Present on the rich-text attachment variant: signed global id of the
+  /// attachment (uploads/documents omit it).
+  attachable_sgid: String
+
+  // ----- blob/file metadata (uploads and attachments) -----
+  content_type: String
+  byte_size: Long
+  filename: String
+  @basecampAuthRoutableUrl
+  download_url: String
+  app_download_url: String
+  /// Pixel width; null for non-image blobs and may be float-spelled (1024.0).
+  width: Integer
+  /// Pixel height; null for non-image blobs and may be float-spelled (1024.0).
+  height: Integer
+
+  /// Rich-text description (upload/document variants).
+  description: String
+  description_attachments: RichTextAttachmentList
 }
 
 // ===== My Assignment Shapes =====

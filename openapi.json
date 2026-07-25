@@ -492,6 +492,104 @@
         }
       }
     },
+    "/{accountId}/boosts.json": {
+      "get": {
+        "description": "Get every boost across all accessible projects, newest-first (paginated).\nEach boost carries its `booster` and the `recording` it boosts.",
+        "operationId": "GetEverythingBoosts",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingBoosts 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingBoostsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/boosts/{boostId}": {
       "delete": {
         "description": "Delete a boost",
@@ -3973,6 +4071,79 @@
         }
       }
     },
+    "/{accountId}/cards/overdue.json": {
+      "get": {
+        "description": "Get every overdue card across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
+        "operationId": "GetEverythingOverdueCards",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingOverdueCards 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingOverdueCardsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/chats.json": {
       "get": {
         "description": "List all campfires across the account\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -5459,6 +5630,104 @@
         }
       }
     },
+    "/{accountId}/checkins.json": {
+      "get": {
+        "description": "Get every automatic check-in answer across all accessible projects,\nnewest-first (paginated). Each item embeds its `bucket`.",
+        "operationId": "GetEverythingCheckins",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingCheckins 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingCheckinsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/circles/people.json": {
       "get": {
         "description": "List all account users who can be pinged\n\n**Pagination**: Uses Link header (RFC5988). Follow the `next` rel URL\nto fetch additional pages. X-Total-Count header provides total count.",
@@ -6130,6 +6399,104 @@
         "tags": [
           "ClientFeatures"
         ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/comments.json": {
+      "get": {
+        "description": "Get every comment across all accessible projects, newest-first (paginated).\nEach item embeds its `bucket`.",
+        "operationId": "GetEverythingComments",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingComments 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingCommentsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -6829,6 +7196,227 @@
         ],
         "x-basecamp-idempotent": {
           "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/files.json": {
+      "get": {
+        "description": "Get every file recording across all accessible projects, newest-first\n(paginated). Heterogeneous: uploads and Basecamp documents carry their\nstandard recording shapes, while rich-text attachments are wrapped in a\nrecording envelope plus an `attachable_sgid` and blob metadata. Modeled as\nan optional-field superset (EverythingFile) so one element type decodes any\nvariant.",
+        "operationId": "GetEverythingFiles",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Filter by file kind: all (default), images, pdfs, documents, or videos.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by file kind: all (default), images, pdfs, documents, or videos."
+            }
+          },
+          {
+            "name": "people_ids[]",
+            "in": "query",
+            "description": "Restrict to files created by the given people (repeatable).",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to files created by the given people (repeatable).",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingFiles 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingFilesResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/forwards.json": {
+      "get": {
+        "description": "Get every inbox forward across all accessible projects, newest-first\n(paginated). Each item embeds its `bucket`.",
+        "operationId": "GetEverythingForwards",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingForwards 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingForwardsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -8436,6 +9024,104 @@
         ],
         "x-basecamp-retry": {
           "maxAttempts": 2,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/messages.json": {
+      "get": {
+        "description": "Get every message across all accessible projects, newest-first (paginated).\nEach item embeds its `bucket` for project context.",
+        "operationId": "GetEverythingMessages",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingMessages 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingMessagesResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
           "baseDelayMs": 1000,
           "backoff": "exponential",
           "retryOn": [
@@ -18933,6 +19619,79 @@
         }
       }
     },
+    "/{accountId}/todos/overdue.json": {
+      "get": {
+        "description": "Get every overdue to-do across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
+        "operationId": "GetEverythingOverdueTodos",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetEverythingOverdueTodos 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEverythingOverdueTodosResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Everything"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/todos/{todoId}": {
       "delete": {
         "description": "Trash a todo (returns 204 No Content)",
@@ -24002,6 +24761,144 @@
           }
         }
       },
+      "EverythingFile": {
+        "type": "object",
+        "description": "A single item in the /files.json feed. An optional-field superset over three\nwire variants — a full Upload recording, a Basecamp Document recording, and a\nrich-text attachment wrapped in a recording envelope (distinguished by\n`attachable_sgid` and blob metadata). Every field is optional; a given\ninstance populates only the fields of the variant it represents. Unknown\nfields are ignored by every SDK decoder, so the superset need not enumerate\nevery field of the Upload/Document recordings.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Recording (Upload/Document) or attachment id.",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "status": {
+            "type": "string"
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "title": {
+            "type": "string"
+          },
+          "inherits_status": {
+            "type": "boolean",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "type": {
+            "type": "string",
+            "description": "\"Upload\", \"Document\", or \"Attachment\"."
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "bookmark_url": {
+            "type": "string"
+          },
+          "subscription_url": {
+            "type": "string"
+          },
+          "comments_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "comments_url": {
+            "type": "string"
+          },
+          "boosts_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "boosts_url": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/RecordingBucket"
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "attachable_sgid": {
+            "type": "string",
+            "description": "Present on the rich-text attachment variant: signed global id of the\nattachment (uploads/documents omit it)."
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "byte_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "download_url": {
+            "type": "string",
+            "x-basecamp-auth-routable-url": {}
+          },
+          "app_download_url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "description": "Pixel width; null for non-image blobs and may be float-spelled (1024.0).",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "height": {
+            "type": "integer",
+            "description": "Pixel height; null for non-image blobs and may be float-spelled (1024.0).",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "description": {
+            "type": "string",
+            "description": "Rich-text description (upload/document variants)."
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          }
+        }
+      },
       "FirstWeekDay": {
         "type": "string",
         "enum": [
@@ -24518,6 +25415,54 @@
       },
       "GetDocumentResponseContent": {
         "$ref": "#/components/schemas/Document"
+      },
+      "GetEverythingBoostsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Boost"
+        }
+      },
+      "GetEverythingCheckinsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Recording"
+        }
+      },
+      "GetEverythingCommentsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Recording"
+        }
+      },
+      "GetEverythingFilesResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/EverythingFile"
+        }
+      },
+      "GetEverythingForwardsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Recording"
+        }
+      },
+      "GetEverythingMessagesResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Recording"
+        }
+      },
+      "GetEverythingOverdueCardsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Card"
+        }
+      },
+      "GetEverythingOverdueTodosResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Todo"
+        }
       },
       "GetForwardReplyResponseContent": {
         "$ref": "#/components/schemas/ForwardReply"

@@ -5,15 +5,28 @@
     "operation": "GetProjectTimeline",
     "method": "GET",
     "path": "/projects/{projectId}/timeline.json",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 200, "body": []}
+      {
+        "status": 200,
+        "body": []
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/projects/12345/timeline.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/projects/12345/timeline.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "timeline"]
+    "tags": [
+      "path",
+      "timeline"
+    ]
   },
   {
     "name": "Progress report uses /reports/ path",
@@ -22,13 +35,24 @@
     "method": "GET",
     "path": "/reports/progress.json",
     "mockResponses": [
-      {"status": 200, "body": []}
+      {
+        "status": 200,
+        "body": []
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/reports/progress.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/reports/progress.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "reports"]
+    "tags": [
+      "path",
+      "reports"
+    ]
   },
   {
     "name": "Person progress uses /reports/users/ path with .json",
@@ -36,15 +60,34 @@
     "operation": "GetPersonProgress",
     "method": "GET",
     "path": "/reports/users/progress/{personId}.json",
-    "pathParams": {"personId": 45678},
+    "pathParams": {
+      "personId": 45678
+    },
     "mockResponses": [
-      {"status": 200, "body": {"person": {"id": 45678, "name": "Test"}, "events": []}}
+      {
+        "status": 200,
+        "body": {
+          "person": {
+            "id": 45678,
+            "name": "Test"
+          },
+          "events": []
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/reports/users/progress/45678.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/reports/users/progress/45678.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "reports"]
+    "tags": [
+      "path",
+      "reports"
+    ]
   },
   {
     "name": "Project timesheet uses project-scoped /projects/{projectId}/timesheet.json path",
@@ -52,15 +95,28 @@
     "operation": "GetProjectTimesheet",
     "method": "GET",
     "path": "/projects/{projectId}/timesheet.json",
-    "pathParams": {"projectId": 12345},
+    "pathParams": {
+      "projectId": 12345
+    },
     "mockResponses": [
-      {"status": 200, "body": []}
+      {
+        "status": 200,
+        "body": []
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/projects/12345/timesheet.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/projects/12345/timesheet.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "timesheets"]
+    "tags": [
+      "path",
+      "timesheets"
+    ]
   },
   {
     "name": "Timesheet entry get uses /timesheet_entries/{entryId} path",
@@ -68,15 +124,57 @@
     "operation": "GetTimesheetEntry",
     "method": "GET",
     "path": "/timesheet_entries/{entryId}",
-    "pathParams": {"entryId": 999},
+    "pathParams": {
+      "entryId": 999
+    },
     "mockResponses": [
-      {"status": 200, "body": {"id": 999, "status": "active", "visible_to_clients": false, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "title": "Timesheet entry", "inherits_status": true, "type": "Timesheet::Entry", "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999", "parent": {"id": 2, "title": "Timesheet", "type": "Timesheet", "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"}, "bucket": {"id": 456, "name": "Test", "type": "Project"}, "creator": {"id": 1, "name": "Test User"}, "date": "2024-01-01", "hours": "4.0"}}
+      {
+        "status": 200,
+        "body": {
+          "id": 999,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "title": "Timesheet entry",
+          "inherits_status": true,
+          "type": "Timesheet::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999",
+          "parent": {
+            "id": 2,
+            "title": "Timesheet",
+            "type": "Timesheet",
+            "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"
+          },
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User"
+          },
+          "date": "2024-01-01",
+          "hours": "4.0"
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/timesheet_entries/999"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "timesheets"]
+    "tags": [
+      "path",
+      "timesheets"
+    ]
   },
   {
     "name": "Timesheet entry update uses /timesheet_entries/{entryId} path",
@@ -84,16 +182,60 @@
     "operation": "UpdateTimesheetEntry",
     "method": "PUT",
     "path": "/timesheet_entries/{entryId}",
-    "pathParams": {"entryId": 999},
-    "requestBody": {"hours": "4.0"},
+    "pathParams": {
+      "entryId": 999
+    },
+    "requestBody": {
+      "hours": "4.0"
+    },
     "mockResponses": [
-      {"status": 200, "body": {"id": 999, "status": "active", "visible_to_clients": false, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "title": "Timesheet entry", "inherits_status": true, "type": "Timesheet::Entry", "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999", "parent": {"id": 2, "title": "Timesheet", "type": "Timesheet", "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json", "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"}, "bucket": {"id": 456, "name": "Test", "type": "Project"}, "creator": {"id": 1, "name": "Test User"}, "date": "2024-01-01", "hours": "4.0"}}
+      {
+        "status": 200,
+        "body": {
+          "id": 999,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "title": "Timesheet entry",
+          "inherits_status": true,
+          "type": "Timesheet::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/456/timesheet_entries/999.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/timesheet_entries/999",
+          "parent": {
+            "id": 2,
+            "title": "Timesheet",
+            "type": "Timesheet",
+            "url": "https://3.basecampapi.com/999/buckets/456/timesheets/2.json",
+            "app_url": "https://3.basecamp.com/999/buckets/456/timesheets/2"
+          },
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1,
+            "name": "Test User"
+          },
+          "date": "2024-01-01",
+          "hours": "4.0"
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/timesheet_entries/999"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/timesheet_entries/999"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "timesheets"]
+    "tags": [
+      "path",
+      "timesheets"
+    ]
   },
   {
     "name": "List webhooks uses bucket-scoped /buckets/{bucketId}/webhooks.json path",
@@ -101,15 +243,28 @@
     "operation": "ListWebhooks",
     "method": "GET",
     "path": "/buckets/{bucketId}/webhooks.json",
-    "pathParams": {"bucketId": 456},
+    "pathParams": {
+      "bucketId": 456
+    },
     "mockResponses": [
-      {"status": 200, "body": []}
+      {
+        "status": 200,
+        "body": []
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/buckets/456/webhooks.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/456/webhooks.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "webhooks"]
+    "tags": [
+      "path",
+      "webhooks"
+    ]
   },
   {
     "name": "Create webhook uses bucket-scoped /buckets/{bucketId}/webhooks.json path",
@@ -117,16 +272,45 @@
     "operation": "CreateWebhook",
     "method": "POST",
     "path": "/buckets/{bucketId}/webhooks.json",
-    "pathParams": {"bucketId": 456},
-    "requestBody": {"payload_url": "https://example.com/hook", "types": ["Todo"]},
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "payload_url": "https://example.com/hook",
+      "types": [
+        "Todo"
+      ]
+    },
     "mockResponses": [
-      {"status": 201, "body": {"id": 1, "payload_url": "https://example.com/hook", "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/webhooks/1.json", "app_url": "https://3.basecamp.com/999/buckets/456/webhooks/1", "active": true, "types": ["Todo"]}}
+      {
+        "status": 201,
+        "body": {
+          "id": 1,
+          "payload_url": "https://example.com/hook",
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "url": "https://3.basecampapi.com/999/buckets/456/webhooks/1.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/webhooks/1",
+          "active": true,
+          "types": [
+            "Todo"
+          ]
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/buckets/456/webhooks.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/456/webhooks.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "webhooks"]
+    "tags": [
+      "path",
+      "webhooks"
+    ]
   },
   {
     "name": "GetTool uses flat /dock/tools/{toolId} path (no bucketId)",
@@ -134,15 +318,44 @@
     "operation": "GetTool",
     "method": "GET",
     "path": "/dock/tools/{toolId}",
-    "pathParams": {"toolId": 789},
+    "pathParams": {
+      "toolId": 789
+    },
     "mockResponses": [
-      {"status": 200, "body": {"id": 789, "name": "todoset", "title": "To-dos", "status": "active", "enabled": true, "position": 1, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+      {
+        "status": 200,
+        "body": {
+          "id": 789,
+          "name": "todoset",
+          "title": "To-dos",
+          "status": "active",
+          "enabled": true,
+          "position": 1,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789",
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/dock/tools/789"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/dock/tools/789"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "tools"]
+    "tags": [
+      "path",
+      "tools"
+    ]
   },
   {
     "name": "CreateTool uses bucket-scoped /buckets/{bucketId}/dock/tools.json path",
@@ -150,16 +363,48 @@
     "operation": "CreateTool",
     "method": "POST",
     "path": "/buckets/{bucketId}/dock/tools.json",
-    "pathParams": {"bucketId": 456},
-    "requestBody": {"tool_type": "Message::Board", "title": "Message Board (Copy)"},
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "tool_type": "Message::Board",
+      "title": "Message Board (Copy)"
+    },
     "mockResponses": [
-      {"status": 201, "body": {"id": 800, "name": "message_board", "title": "Message Board (Copy)", "status": "active", "enabled": true, "position": 5, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/message_boards/800.json", "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/800", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+      {
+        "status": 201,
+        "body": {
+          "id": 800,
+          "name": "message_board",
+          "title": "Message Board (Copy)",
+          "status": "active",
+          "enabled": true,
+          "position": 5,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "url": "https://3.basecampapi.com/999/buckets/456/message_boards/800.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/800",
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/buckets/456/dock/tools.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/456/dock/tools.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "tools"]
+    "tags": [
+      "path",
+      "tools"
+    ]
   },
   {
     "name": "CreateTool accepts omitted title on bucket-scoped path",
@@ -167,16 +412,47 @@
     "operation": "CreateTool",
     "method": "POST",
     "path": "/buckets/{bucketId}/dock/tools.json",
-    "pathParams": {"bucketId": 456},
-    "requestBody": {"tool_type": "Message::Board"},
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "tool_type": "Message::Board"
+    },
     "mockResponses": [
-      {"status": 201, "body": {"id": 801, "name": "message_board", "title": "Message Board", "status": "active", "enabled": true, "position": 6, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/message_boards/801.json", "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/801", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+      {
+        "status": 201,
+        "body": {
+          "id": 801,
+          "name": "message_board",
+          "title": "Message Board",
+          "status": "active",
+          "enabled": true,
+          "position": 6,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "url": "https://3.basecampapi.com/999/buckets/456/message_boards/801.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/message_boards/801",
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/buckets/456/dock/tools.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/buckets/456/dock/tools.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "tools"]
+    "tags": [
+      "path",
+      "tools"
+    ]
   },
   {
     "name": "EnableTool uses flat /recordings/{toolId}/position.json path (no bucketId)",
@@ -184,15 +460,28 @@
     "operation": "EnableTool",
     "method": "POST",
     "path": "/recordings/{toolId}/position.json",
-    "pathParams": {"toolId": 789},
+    "pathParams": {
+      "toolId": 789
+    },
     "mockResponses": [
-      {"status": 201, "body": {}}
+      {
+        "status": 201,
+        "body": {}
+      }
     ],
     "assertions": [
-      {"type": "requestPath", "expected": "/999/recordings/789/position.json"},
-      {"type": "noError"}
+      {
+        "type": "requestPath",
+        "expected": "/999/recordings/789/position.json"
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "tools"]
+    "tags": [
+      "path",
+      "tools"
+    ]
   },
   {
     "name": "Mixed-case host and explicit default port stay on the mocked origin",
@@ -200,32 +489,305 @@
     "operation": "GetTool",
     "method": "GET",
     "path": "/dock/tools/{toolId}",
-    "pathParams": {"toolId": 789},
-    "configOverrides": {"baseUrl": "https://3.BasecampAPI.com:443"},
+    "pathParams": {
+      "toolId": 789
+    },
+    "configOverrides": {
+      "baseUrl": "https://3.BasecampAPI.com:443"
+    },
     "mockResponses": [
-      {"status": 200, "body": {"id": 789, "name": "todoset", "title": "To-dos", "status": "active", "enabled": true, "position": 1, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+      {
+        "status": 200,
+        "body": {
+          "id": 789,
+          "name": "todoset",
+          "title": "To-dos",
+          "status": "active",
+          "enabled": true,
+          "position": 1,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789",
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestCount", "expected": 1},
-      {"type": "noError"}
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "origin", "normalization"]
+    "tags": [
+      "path",
+      "origin",
+      "normalization"
+    ]
   },
   {
     "name": "Bracketed IPv6 loopback origin stays on the mocked origin",
-    "description": "Regression for runner origin interception with IPv6: a configOverrides.baseUrl of http://[::1]:3000 (the SPEC §16 IPv6 example; loopback is exempt from HTTPS enforcement) must keep its brackets through origin normalization so the request is served by the mock queue. Runners that dial baseUrl directly rather than intercepting by origin may skip.",
+    "description": "Regression for runner origin interception with IPv6: a configOverrides.baseUrl of http://[::1]:3000 (the SPEC \u00a716 IPv6 example; loopback is exempt from HTTPS enforcement) must keep its brackets through origin normalization so the request is served by the mock queue. Runners that dial baseUrl directly rather than intercepting by origin may skip.",
     "operation": "GetTool",
     "method": "GET",
     "path": "/dock/tools/{toolId}",
-    "pathParams": {"toolId": 789},
-    "configOverrides": {"baseUrl": "http://[::1]:3000"},
+    "pathParams": {
+      "toolId": 789
+    },
+    "configOverrides": {
+      "baseUrl": "http://[::1]:3000"
+    },
     "mockResponses": [
-      {"status": 200, "body": {"id": 789, "name": "todoset", "title": "To-dos", "status": "active", "enabled": true, "position": 1, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-01T00:00:00Z", "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json", "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789", "bucket": {"id": 456, "name": "Test", "type": "Project"}}}
+      {
+        "status": 200,
+        "body": {
+          "id": 789,
+          "name": "todoset",
+          "title": "To-dos",
+          "status": "active",
+          "enabled": true,
+          "position": 1,
+          "created_at": "2024-01-01T00:00:00Z",
+          "updated_at": "2024-01-01T00:00:00Z",
+          "url": "https://3.basecampapi.com/999/buckets/456/todosets/789.json",
+          "app_url": "https://3.basecamp.com/999/buckets/456/todosets/789",
+          "bucket": {
+            "id": 456,
+            "name": "Test",
+            "type": "Project"
+          }
+        }
+      }
     ],
     "assertions": [
-      {"type": "requestCount", "expected": 1},
-      {"type": "noError"}
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "noError"
+      }
     ],
-    "tags": ["path", "origin", "normalization", "ipv6"]
+    "tags": [
+      "path",
+      "origin",
+      "normalization",
+      "ipv6"
+    ]
+  },
+  {
+    "name": "GetEverythingMessages constructs /messages.json",
+    "description": "Verifies GetEverythingMessages constructs the flat top-level URL path /messages.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingMessages",
+    "method": "GET",
+    "path": "/messages.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/messages.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingComments constructs /comments.json",
+    "description": "Verifies GetEverythingComments constructs the flat top-level URL path /comments.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingComments",
+    "method": "GET",
+    "path": "/comments.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/comments.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingCheckins constructs /checkins.json",
+    "description": "Verifies GetEverythingCheckins constructs the flat top-level URL path /checkins.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingCheckins",
+    "method": "GET",
+    "path": "/checkins.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/checkins.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingForwards constructs /forwards.json",
+    "description": "Verifies GetEverythingForwards constructs the flat top-level URL path /forwards.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingForwards",
+    "method": "GET",
+    "path": "/forwards.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/forwards.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingBoosts constructs /boosts.json",
+    "description": "Verifies GetEverythingBoosts constructs the flat top-level URL path /boosts.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingBoosts",
+    "method": "GET",
+    "path": "/boosts.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/boosts.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingFiles constructs /files.json",
+    "description": "Verifies GetEverythingFiles constructs the flat top-level URL path /files.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingFiles",
+    "method": "GET",
+    "path": "/files.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/files.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingOverdueTodos constructs /todos/overdue.json",
+    "description": "Verifies GetEverythingOverdueTodos constructs the flat top-level URL path /todos/overdue.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingOverdueTodos",
+    "method": "GET",
+    "path": "/todos/overdue.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/overdue.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingOverdueCards constructs /cards/overdue.json",
+    "description": "Verifies GetEverythingOverdueCards constructs the flat top-level URL path /cards/overdue.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
+    "operation": "GetEverythingOverdueCards",
+    "method": "GET",
+    "path": "/cards/overdue.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/cards/overdue.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
   }
 ]

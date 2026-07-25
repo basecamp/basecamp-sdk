@@ -124,10 +124,9 @@ class PeopleService(BaseService):
             operation="UpdateProjectAccess",
         )
 
-    def list_assignable(self) -> dict[str, Any]:
-        return self._request(
+    def list_assignable(self) -> ListResult:
+        return self._request_paginated(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
-            "GET",
             "/reports/todos/assigned.json",
         )
 
@@ -246,9 +245,8 @@ class AsyncPeopleService(AsyncBaseService):
             operation="UpdateProjectAccess",
         )
 
-    async def list_assignable(self) -> dict[str, Any]:
-        return await self._request(
+    async def list_assignable(self) -> ListResult:
+        return await self._request_paginated(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
-            "GET",
             "/reports/todos/assigned.json",
         )

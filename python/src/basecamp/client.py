@@ -351,6 +351,12 @@ class AccountClient:
         return self._service("timeline", lambda: TimelineService(self))
 
     @property
+    def everything(self):
+        from basecamp.generated.services.everything import EverythingService
+
+        return self._service("everything", lambda: EverythingService(self))
+
+    @property
     def tools(self):
         from basecamp.generated.services.tools import ToolsService
 

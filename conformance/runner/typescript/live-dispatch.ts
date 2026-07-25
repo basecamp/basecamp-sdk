@@ -118,6 +118,40 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     },
   },
 
+  // Everything aggregates — flat family (one canary per group).
+  GetEverythingMessages: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingMessages() }),
+  },
+  GetEverythingComments: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingComments() }),
+  },
+  GetEverythingCheckins: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingCheckins() }),
+  },
+  GetEverythingForwards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingForwards() }),
+  },
+  GetEverythingBoosts: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingBoosts() }),
+  },
+  GetEverythingFiles: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingFiles() }),
+  },
+  GetEverythingOverdueTodos: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueTodos() }),
+  },
+  GetEverythingOverdueCards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueCards() }),
+  },
+
   GetMyProfile: {
     fixtures: [],
     call: async (ctx) => {

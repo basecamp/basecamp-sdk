@@ -108,6 +108,7 @@ type AccountClient struct {
 	gauges                *GaugesService
 	myAssignments         *MyAssignmentsService
 	myNotifications       *MyNotificationsService
+	everything            *EverythingService
 }
 
 // Response wraps an API response.
@@ -1334,6 +1335,16 @@ func (ac *AccountClient) Timeline() *TimelineService {
 		ac.timeline = NewTimelineService(ac)
 	}
 	return ac.timeline
+}
+
+// Everything returns the EverythingService for account-wide aggregate listings.
+func (ac *AccountClient) Everything() *EverythingService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.everything == nil {
+		ac.everything = NewEverythingService(ac)
+	}
+	return ac.everything
 }
 
 // Reports returns the ReportsService for reports operations.

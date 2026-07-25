@@ -501,6 +501,11 @@ module Basecamp
       service(:timeline) { Services::TimelineService.new(self) }
     end
 
+    # @return [Services::EverythingService]
+    def everything
+      service(:everything) { Services::EverythingService.new(self) }
+    end
+
     # @return [Services::TimesheetsService]
     def timesheets
       service(:timesheets) { Services::TimesheetsService.new(self) }

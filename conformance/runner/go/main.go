@@ -725,6 +725,38 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		}
 		return operationResult{err: nil}
 
+	case "GetEverythingMessages":
+		_, err := account.Everything().Messages(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingComments":
+		_, err := account.Everything().Comments(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingCheckins":
+		_, err := account.Everything().Checkins(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingForwards":
+		_, err := account.Everything().Forwards(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingBoosts":
+		_, err := account.Everything().Boosts(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingFiles":
+		_, err := account.Everything().Files(ctx, 0, nil)
+		return operationResult{err: err}
+
+	case "GetEverythingOverdueTodos":
+		_, err := account.Everything().OverdueTodos(ctx)
+		return operationResult{err: err}
+
+	case "GetEverythingOverdueCards":
+		_, err := account.Everything().OverdueCards(ctx)
+		return operationResult{err: err}
+
 	default:
 		return operationResult{
 			err: fmt.Errorf("unknown operation: %s", tc.Operation),

@@ -272,6 +272,38 @@ walk(
   (.description // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
+# Fifth-d pass: EverythingFile width/height → nullable *types.FlexInt
+# The /files.json feed mixes uploads and attachments whose pixel dimensions are
+# float-spelled (1024.0) and null for non-image blobs, exactly like
+# RichTextAttachment/TimelineAttachment. Keep the optional pointer and mark
+# nullable so the present-null value types faithfully.
+.components.schemas.EverythingFile.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  }
+)
+|
+# Fifth-f pass: EverythingFile presence-faithful optional scalars (same rationale
+# as TimelineAttachment). The /files.json superset populates only one variant per
+# instance, so its optional timestamps and booleans must round-trip presence:
+# make created_at/updated_at *time.Time and visible_to_clients/inherits_status
+# *bool so nil (absent variant) omits and an explicit false is preserved.
+.components.schemas.EverythingFile.properties |= (
+  (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false }
+)
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.

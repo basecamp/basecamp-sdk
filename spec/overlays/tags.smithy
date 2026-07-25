@@ -219,6 +219,16 @@ apply GetMyAssignments @tags(["MyAssignments"])
 apply GetMyCompletedAssignments @tags(["MyAssignments"])
 apply GetMyDueAssignments @tags(["MyAssignments"])
 
+// Everything Aggregates (flat family)
+apply GetEverythingMessages @tags(["Everything"])
+apply GetEverythingComments @tags(["Everything"])
+apply GetEverythingCheckins @tags(["Everything"])
+apply GetEverythingForwards @tags(["Everything"])
+apply GetEverythingBoosts @tags(["Everything"])
+apply GetEverythingFiles @tags(["Everything"])
+apply GetEverythingOverdueTodos @tags(["Everything"])
+apply GetEverythingOverdueCards @tags(["Everything"])
+
 // My Notifications
 apply GetMyNotifications @tags(["MyNotifications"])
 apply GetBubbleUps @tags(["MyNotifications"])

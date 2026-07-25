@@ -39,7 +39,7 @@ making the absorption journey publicly auditable.
 | [calendar](calendar.md) | addressed-in-bc3-pr-12321 | 3b | medium |
 | [scratchpad](scratchpad.md) | addressed-in-bc3-pr-12322 | 3b | medium |
 | [step-top-level](step-top-level.md) | absorbed-in-sdk | 3b | low |
-| [everything-aggregates](everything-aggregates.md) | addressed-in-bc3-pr-11627 | 3c | high |
+| [everything-aggregates](everything-aggregates.md) | partial-coverage | 3c | high |
 | [activity-timeline](activity-timeline.md) | absorbed-in-sdk | 3d | high |
 | [recordable-subtypes-doc](recordable-subtypes-doc.md) | partial-coverage | 3a | medium |
 | [stack-doc-and-smithy](stack-doc-and-smithy.md) | confirmed-not-api-resource | 3b | medium |

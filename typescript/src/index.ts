@@ -347,6 +347,11 @@ export {
   TimelineService,
 } from "./generated/services/timeline.js";
 
+// Everything aggregates service - generated
+export {
+  EverythingService,
+} from "./generated/services/everything.js";
+
 // Search & Reports services - generated
 export {
   SearchService,

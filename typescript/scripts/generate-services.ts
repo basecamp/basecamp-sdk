@@ -459,6 +459,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   ClientReply: ["ClientReply", "entity"],
   TimelineEvent: ["TimelineEvent", "entity"],
   Notification: ["Notification", "entity"],
+  Boost: ["Boost", "entity"],
+  EverythingFile: ["EverythingFile", "entity"],
   TimesheetEntry: ["TimesheetEntry", "entity"],
 };
 

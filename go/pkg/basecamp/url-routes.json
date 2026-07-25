@@ -57,6 +57,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/boosts",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingBoosts"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/boosts/{boostId}",
       "resource": "Boosts",
       "operations": {
@@ -156,47 +169,6 @@
         },
         "cardTableId": {
           "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{bucketId}/categories",
-      "resource": "Messages",
-      "operations": {
-        "GET": "ListMessageTypes",
-        "POST": "CreateMessageType"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "bucketId": {
-          "role": "parent",
-          "type": "int64"
-        }
-      }
-    },
-    {
-      "pattern": "/{accountId}/buckets/{bucketId}/categories/{typeId}",
-      "resource": "Messages",
-      "operations": {
-        "DELETE": "DeleteMessageType",
-        "GET": "GetMessageType",
-        "PUT": "UpdateMessageType"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        },
-        "bucketId": {
-          "role": "parent",
-          "type": "int64"
-        },
-        "typeId": {
-          "role": "recording",
           "type": "int64"
         }
       }
@@ -446,6 +418,52 @@
       }
     },
     {
+      "pattern": "/{accountId}/cards/overdue",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingOverdueCards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/categories",
+      "resource": "Messages",
+      "operations": {
+        "GET": "ListMessageTypes",
+        "POST": "CreateMessageType"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/categories/{typeId}",
+      "resource": "Messages",
+      "operations": {
+        "DELETE": "DeleteMessageType",
+        "GET": "GetMessageType",
+        "PUT": "UpdateMessageType"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "typeId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/chats",
       "resource": "Campfire",
       "operations": {
@@ -576,6 +594,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/checkins",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingCheckins"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/circles/people",
       "resource": "People",
       "operations": {
@@ -687,6 +718,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/comments",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingComments"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/comments/{commentId}",
       "resource": "Messages",
       "operations": {
@@ -738,6 +782,32 @@
         "documentId": {
           "role": "recording",
           "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/files",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingFiles"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/forwards",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingForwards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
         }
       }
     },
@@ -914,6 +984,19 @@
         "boardId": {
           "role": "parent",
           "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/messages",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingMessages"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
         }
       }
     },
@@ -2035,6 +2118,19 @@
         "todolistId": {
           "role": "parent",
           "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/overdue",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingOverdueTodos"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
         }
       }
     },

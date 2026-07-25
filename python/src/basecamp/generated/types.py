@@ -613,6 +613,39 @@ class EventDetails(TypedDict):
     removed_person_ids: NotRequired[list[int]]
 
 
+class EverythingFile(TypedDict):
+    app_download_url: NotRequired[str]
+    app_url: NotRequired[str]
+    attachable_sgid: NotRequired[str]
+    bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    bucket: NotRequired[RecordingBucket]
+    byte_size: NotRequired[int]
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
+    content_type: NotRequired[str]
+    created_at: NotRequired[str]
+    creator: NotRequired[Person]
+    description: NotRequired[str]
+    description_attachments: NotRequired[list[RichTextAttachment]]
+    download_url: NotRequired[str]
+    filename: NotRequired[str]
+    height: NotRequired[Optional[int | float]]
+    id: NotRequired[int]
+    inherits_status: NotRequired[bool]
+    parent: NotRequired[RecordingParent]
+    position: NotRequired[int]
+    status: NotRequired[str]
+    subscription_url: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
+    updated_at: NotRequired[str]
+    url: NotRequired[str]
+    visible_to_clients: NotRequired[bool]
+    width: NotRequired[Optional[int | float]]
+
+
 class ForbiddenErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]

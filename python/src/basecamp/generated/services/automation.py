@@ -11,18 +11,16 @@ from basecamp.hooks import OperationInfo
 
 
 class AutomationService(BaseService):
-    def list_lineup_markers(self) -> dict[str, Any]:
-        return self._request(
+    def list_lineup_markers(self) -> ListResult:
+        return self._request_paginated(
             OperationInfo(service="automation", operation="list_lineup_markers", is_mutation=False),
-            "GET",
             "/lineup/markers.json",
         )
 
 
 class AsyncAutomationService(AsyncBaseService):
-    async def list_lineup_markers(self) -> dict[str, Any]:
-        return await self._request(
+    async def list_lineup_markers(self) -> ListResult:
+        return await self._request_paginated(
             OperationInfo(service="automation", operation="list_lineup_markers", is_mutation=False),
-            "GET",
             "/lineup/markers.json",
         )

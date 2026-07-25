@@ -1,5 +1,6 @@
 export { AccountService } from "./account.js";
 export { AttachmentsService } from "./attachments.js";
+export { EverythingService } from "./everything.js";
 export { BoostsService } from "./boosts.js";
 export { CardColumnsService } from "./card-columns.js";
 export { WormholesService } from "./wormholes.js";
