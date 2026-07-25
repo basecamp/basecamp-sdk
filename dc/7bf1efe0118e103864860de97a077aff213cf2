@@ -1,0 +1,33 @@
+SPEC.md
+  s_cda32f3fcaa36b::t_8c9f5b8a10c1cf 1566
+  s_cda32f3fcaa36b::t_d3f9caffea7635 405-406
+conformance/tests/idempotency.json
+  s_cda32f3fcaa36b::t_0ce295ae49e329 53-69
+conformance/runner/go/main.go
+  s_cda32f3fcaa36b::t_8a73ca1e9d0092 480-484
+conformance/runner/typescript/runner.test.ts
+  s_cda32f3fcaa36b::t_e7f6f8fd4ab473 202-205
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_cda32f3fcaa36b::t_7e3cf6da9c7745 708-712
+conformance/runner/ruby/runner.rb
+  s_cda32f3fcaa36b::t_0d9f62e43a8da7 213
+  s_cda32f3fcaa36b::t_fd6bb7c61064ed 200
+conformance/runner/python/runner.py
+  s_cda32f3fcaa36b::t_7d9f9f07532ba8 97-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "dc7bf1efe0118e103864860de97a077aff213cf2",
+  "prompts": {},
+  "sessions": {
+    "s_cda32f3fcaa36b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17173ea4-f341-40fc-aa2b-26d1d6e988be",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
