@@ -222,39 +222,105 @@ def concrete_for?(schema_name, instance, components)
   end
 end
 
-# True when `schema` is (or composes/refs) an array whose items are the
-# RichTextAttachment component. Resolves $ref and allOf/anyOf/oneOf so an
-# indirectly-declared companion array is still recognized.
-def references_rich_text_array?(schema, components, depth = 0)
-  return false if depth > 10
+# Ruby name of a `$ref`, or nil.
+def ref_name(schema)
+  return nil unless schema.is_a?(Hash) && schema["$ref"].is_a?(String)
 
-  resolved = resolve_ref(schema, components)
-  return false unless resolved.is_a?(Hash)
+  schema["$ref"].match(%r{/components/schemas/(.+)\z})&.captures&.first
+end
 
-  t = resolved["type"]
-  is_array = t == "array" || (t.is_a?(Array) && t.include?("array"))
-  if is_array
-    items = resolved["items"]
-    ref = items.is_a?(Hash) ? items["$ref"] : nil
-    if ref.is_a?(String) && ref.match(%r{/components/schemas/(.+)\z})&.captures&.first == "RichTextAttachment"
-      return true
-    end
+# True when `schema` denotes (through $ref chains AND allOf/anyOf/oneOf
+# composition) the RichTextAttachment component — so an alias
+# (`{$ref: SomeAlias}` -> RichTextAttachment) or a composed item schema is still
+# recognized. `visited` tracks resolved component names to terminate ref cycles.
+def rich_text_attachment?(schema, components, visited = Set.new, depth = 0)
+  return false if depth > 40 || !schema.is_a?(Hash)
+
+  name = ref_name(schema)
+  if name
+    return true if name == "RichTextAttachment"
+    return false if visited.include?(name)
+
+    visited << name
+    return rich_text_attachment?(components[name], components, visited, depth + 1)
   end
 
   %w[allOf anyOf oneOf].each do |key|
-    (resolved[key] || []).each do |sub|
-      return true if references_rich_text_array?(sub, components, depth + 1)
+    (schema[key] || []).each do |sub|
+      return true if rich_text_attachment?(sub, components, visited, depth + 1)
     end
   end
   false
 end
 
+# True when `schema` is (or composes/refs) an array whose items resolve to the
+# RichTextAttachment component. Follows $ref chains and allOf/anyOf/oneOf on both
+# the array schema and its items; `visited` guards ref cycles.
+def references_rich_text_array?(schema, components, visited = Set.new, depth = 0)
+  return false if depth > 40 || !schema.is_a?(Hash)
+
+  name = ref_name(schema)
+  if name
+    return false if visited.include?(name)
+
+    visited << name
+    return references_rich_text_array?(components[name], components, visited, depth + 1)
+  end
+
+  t = schema["type"]
+  if (t == "array" || (t.is_a?(Array) && t.include?("array"))) && schema["items"]
+    return true if rich_text_attachment?(schema["items"], components)
+  end
+
+  %w[allOf anyOf oneOf].each do |key|
+    (schema[key] || []).each do |sub|
+      return true if references_rich_text_array?(sub, components, visited, depth + 1)
+    end
+  end
+  false
+end
+
+# Collects every property schema of a component, following $ref and traversing
+# component-level allOf/anyOf/oneOf so properties inherited through composition
+# are seen. `visited` guards ref cycles.
+def collect_property_schemas(schema, components, out, visited = Set.new, depth = 0)
+  return if depth > 40 || !schema.is_a?(Hash)
+
+  name = ref_name(schema)
+  if name
+    return if visited.include?(name)
+
+    visited << name
+    return collect_property_schemas(components[name], components, out, visited, depth + 1)
+  end
+
+  (schema["properties"] || {}).each_value { |ps| out << ps }
+  %w[allOf anyOf oneOf].each do |key|
+    (schema[key] || []).each do |sub|
+      collect_property_schemas(sub, components, out, visited, depth + 1)
+    end
+  end
+end
+
+# A whole-component alias — a schema that is only a `$ref` to another component
+# (bare annotations aside). It introduces no decode surface of its own, so it is
+# NOT an independent emitter: covering its target covers it, and if that target
+# is itself an emitter it is caught directly. Skipping these keeps the emitter
+# set to the concrete decode types (the ~40 `*ResponseContent` response
+# envelopes are pure aliases of already-covered components).
+def pure_ref_alias?(schema)
+  schema.is_a?(Hash) && schema.key?("$ref") &&
+    (schema.keys - %w[$ref description title]).empty?
+end
+
 def rich_text_emitters(components)
   components.select do |_name, schema|
-    props = schema.is_a?(Hash) ? schema["properties"] : nil
-    next false unless props.is_a?(Hash)
+    next false unless schema.is_a?(Hash)
+    next false if pure_ref_alias?(schema)
 
-    props.any? { |_pn, ps| references_rich_text_array?(ps, components) }
+    props = []
+    collect_property_schemas(schema, components, props)
+    props.any? { |ps| references_rich_text_array?(ps, components) }
   end.keys
 end
 

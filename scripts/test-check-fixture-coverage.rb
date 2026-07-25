@@ -17,6 +17,7 @@ require "yaml"
 require "tmpdir"
 require "fileutils"
 require "open3"
+require "timeout"
 
 ROOT = File.expand_path("..", __dir__)
 CHECKER = File.join(__dir__, "check-fixture-coverage.rb")
@@ -126,10 +127,71 @@ out, status = with_mutated_manifest do |m|
 end
 expect_fail(failures, "operation entry with non-root pointer", out, status, "non-root")
 
+# --- Synthetic emitter-discovery cases -----------------------------------------
+#
+# Exercise indirect rich-text-emitter shapes against a crafted OpenAPI (no
+# targets, so no fixtures are read): the completeness check must still discover
+# emitters declared through component-level composition and aliased array items,
+# and must traverse reference/composition cycles without hanging.
+
+SYNTHETIC_OPENAPI = {
+  "components" => { "schemas" => {
+    "RichTextAttachment" => { "type" => "object", "properties" => { "id" => { "type" => "integer" } } },
+    # A whole-component alias of RichTextAttachment (an aliased item target).
+    "RTAAlias" => { "$ref" => "#/components/schemas/RichTextAttachment" },
+    "Base" => { "type" => "object", "properties" => { "title" => { "type" => "string" } } },
+    # (1) Emitter whose companion array arrives via COMPONENT-LEVEL allOf.
+    "AllOfEmitter" => { "allOf" => [
+      { "$ref" => "#/components/schemas/Base" },
+      { "type" => "object",
+        "properties" => { "content_attachments" => { "type" => "array",
+                                                     "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } } } },
+    ] },
+    # (2) Emitter whose array ITEMS reference RichTextAttachment through an alias.
+    "AliasedItemEmitter" => { "type" => "object",
+                              "properties" => { "description_attachments" => { "type" => "array",
+                                                                              "items" => { "$ref" => "#/components/schemas/RTAAlias" } } } },
+    # (3a) Component-level composition cycle (no rich text) — must terminate.
+    "CycleA" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleB" }] },
+    "CycleB" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleA" }] },
+    # (3b) A self-referential item alias reached from an array — must terminate.
+    "SelfRefItem" => { "allOf" => [{ "$ref" => "#/components/schemas/SelfRefItem" }] },
+    "CycleItemHolder" => { "type" => "object",
+                           "properties" => { "things" => { "type" => "array",
+                                                          "items" => { "$ref" => "#/components/schemas/SelfRefItem" } } } },
+  } },
+}.freeze
+
+EMPTY_MANIFEST = { "targets" => [], "covered_schemas" => {}, "excluded_schemas" => {} }.freeze
+
+def run_synthetic(openapi:, manifest:)
+  Dir.mktmpdir("fixture-cov-synthetic") do |dir|
+    op = File.join(dir, "openapi.json")
+    mf = File.join(dir, "manifest.yaml")
+    File.write(op, JSON.generate(openapi))
+    File.write(mf, YAML.dump(manifest))
+    Timeout.timeout(30) { run_checker(manifest: mf, openapi: op, fixtures: dir) }
+  end
+end
+
+begin
+  out, status = run_synthetic(openapi: SYNTHETIC_OPENAPI, manifest: EMPTY_MANIFEST)
+  # (1) + (2): both indirect emitters must be discovered and flagged as unaccounted.
+  expect_fail(failures, "component-level allOf emitter discovered", out, status, "`AllOfEmitter`")
+  expect_fail(failures, "aliased RichTextAttachment item discovered", out, status, "`AliasedItemEmitter`")
+  # (3): the cycle components must NOT be misclassified as emitters, and — proven
+  # by the run returning at all under Timeout — discovery terminated safely.
+  if out.include?("`CycleA`") || out.include?("`SelfRefItem`") || out.include?("`CycleItemHolder`")
+    failures << "cycle components should not be flagged as emitters:\n#{out}"
+  end
+rescue Timeout::Error
+  failures << "emitter discovery did not terminate on a reference/composition cycle (hung)"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 3 synthetic emitter cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
