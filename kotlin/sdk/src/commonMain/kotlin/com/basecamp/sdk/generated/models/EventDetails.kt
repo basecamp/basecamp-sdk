@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class EventDetails(
-    @SerialName("added_person_ids") val addedPersonIds: List<Long> = emptyList(),
-    @SerialName("removed_person_ids") val removedPersonIds: List<Long> = emptyList(),
-    @SerialName("notified_recipient_ids") val notifiedRecipientIds: List<Long> = emptyList()
+    @SerialName("added_person_ids") val addedPersonIds: List<Long>? = null,
+    @SerialName("removed_person_ids") val removedPersonIds: List<Long>? = null,
+    @SerialName("notified_recipient_ids") val notifiedRecipientIds: List<Long>? = null
 )

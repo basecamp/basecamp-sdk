@@ -19,6 +19,6 @@ data class Webhook(
     val url: String,
     @SerialName("app_url") val appUrl: String,
     val active: Boolean = false,
-    val types: List<String> = emptyList(),
-    @SerialName("recent_deliveries") val recentDeliveries: List<WebhookDelivery> = emptyList()
+    val types: List<String>? = null,
+    @SerialName("recent_deliveries") val recentDeliveries: List<WebhookDelivery>? = null
 )

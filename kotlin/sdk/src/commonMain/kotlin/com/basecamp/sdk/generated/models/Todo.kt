@@ -36,10 +36,10 @@ data class Todo(
     val completed: Boolean = false,
     @SerialName("starts_on") val startsOn: String? = null,
     @SerialName("due_on") val dueOn: String? = null,
-    val assignees: List<Person> = emptyList(),
-    @SerialName("completion_subscribers") val completionSubscribers: List<Person> = emptyList(),
+    val assignees: List<Person>? = null,
+    @SerialName("completion_subscribers") val completionSubscribers: List<Person>? = null,
     @SerialName("completion_url") val completionUrl: String? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,
     @SerialName("boosts_url") val boostsUrl: String? = null,
-    val steps: List<CardStep> = emptyList()
+    val steps: List<CardStep>? = null
 )

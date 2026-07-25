@@ -35,5 +35,5 @@ data class ClientApproval(
     @SerialName("replies_url") val repliesUrl: String? = null,
     @SerialName("approval_status") val approvalStatus: String? = null,
     val approver: Person? = null,
-    val responses: List<ClientApprovalResponse> = emptyList()
+    val responses: List<ClientApprovalResponse>? = null
 )

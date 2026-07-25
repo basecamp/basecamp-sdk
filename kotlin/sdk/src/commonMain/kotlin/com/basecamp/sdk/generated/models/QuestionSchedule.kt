@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class QuestionSchedule(
     val frequency: String? = null,
-    val days: List<Int> = emptyList(),
+    val days: List<Int>? = null,
     val hour: Int = 0,
     val minute: Int = 0,
     @SerialName("week_instance") val weekInstance: Int = 0,
