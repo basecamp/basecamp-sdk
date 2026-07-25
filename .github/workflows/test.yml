@@ -343,6 +343,9 @@ jobs:
           fi
           echo "Generated code is up to date"
 
+      - name: Check optional-array invariant
+        run: ruby ../scripts/check-kotlin-optional-arrays.rb
+
       - name: Run Kotlin conformance tests
         run: ./gradlew :conformance:run
 

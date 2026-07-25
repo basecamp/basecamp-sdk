@@ -75,7 +75,7 @@ export class WebhooksService extends BaseService {
         operation: "ListWebhooks",
         resourceType: "webhook",
         isMutation: false,
-        resourceId: bucketId,
+        projectId: bucketId,
       },
       () =>
         this.client.GET("/buckets/{bucketId}/webhooks.json", {
@@ -112,7 +112,7 @@ export class WebhooksService extends BaseService {
         operation: "CreateWebhook",
         resourceType: "webhook",
         isMutation: true,
-        resourceId: bucketId,
+        projectId: bucketId,
       },
       () =>
         this.client.POST("/buckets/{bucketId}/webhooks.json", {

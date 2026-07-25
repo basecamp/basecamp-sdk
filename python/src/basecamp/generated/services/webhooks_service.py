@@ -13,7 +13,7 @@ from basecamp.hooks import OperationInfo
 class WebhooksService(BaseService):
     def list(self, *, bucket_id: int) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="webhooks", operation="list", is_mutation=False, resource_id=bucket_id),
+            OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
         )
 
@@ -21,7 +21,7 @@ class WebhooksService(BaseService):
         self, *, bucket_id: int, payload_url: str, types: list[str], active: bool | None = None
     ) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="webhooks", operation="create", is_mutation=True, resource_id=bucket_id),
+            OperationInfo(service="webhooks", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
             f"/buckets/{bucket_id}/webhooks.json",
             json_body=self._compact(payload_url=payload_url, types=types, active=active),
@@ -63,7 +63,7 @@ class WebhooksService(BaseService):
 class AsyncWebhooksService(AsyncBaseService):
     async def list(self, *, bucket_id: int) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="webhooks", operation="list", is_mutation=False, resource_id=bucket_id),
+            OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
         )
 
@@ -71,7 +71,7 @@ class AsyncWebhooksService(AsyncBaseService):
         self, *, bucket_id: int, payload_url: str, types: list[str], active: bool | None = None
     ) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="webhooks", operation="create", is_mutation=True, resource_id=bucket_id),
+            OperationInfo(service="webhooks", operation="create", is_mutation=True, project_id=bucket_id),
             "POST",
             f"/buckets/{bucket_id}/webhooks.json",
             json_body=self._compact(payload_url=payload_url, types=types, active=active),

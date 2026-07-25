@@ -94,8 +94,8 @@ class TodosService(client: AccountClient) :
     private fun fieldsFromTodo(todo: Todo): TodoFields = TodoFields(
         content = todo.content,
         description = todo.description ?: "",
-        assigneeIds = todo.assignees.map { it.id },
-        completionSubscriberIds = todo.completionSubscribers.map { it.id },
+        assigneeIds = todo.assignees.orEmpty().map { it.id },
+        completionSubscriberIds = todo.completionSubscribers.orEmpty().map { it.id },
         dueOn = todo.dueOn ?: "",
         startsOn = todo.startsOn ?: "",
     )

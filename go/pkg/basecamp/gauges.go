@@ -167,6 +167,7 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 	op := OperationInfo{
 		Service: "Gauges", Operation: "ListNeedles",
 		ResourceType: "gauge_needle", IsMutation: false,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -243,6 +244,7 @@ func (s *GaugesService) CreateNeedle(ctx context.Context, projectID int64, req *
 	op := OperationInfo{
 		Service: "Gauges", Operation: "CreateNeedle",
 		ResourceType: "gauge_needle", IsMutation: true,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -357,6 +359,7 @@ func (s *GaugesService) Toggle(ctx context.Context, projectID int64, enabled boo
 	op := OperationInfo{
 		Service: "Gauges", Operation: "Toggle",
 		ResourceType: "gauge", IsMutation: true,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {

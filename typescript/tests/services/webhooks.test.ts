@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient, type BasecampClient } from "../../src/client.js";
+import type { OperationInfo } from "../../src/hooks.js";
 import { BasecampError } from "../../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -71,6 +72,33 @@ describe("WebhooksService", () => {
 
       const webhooks = await client.webhooks.list(1);
       expect(webhooks).toHaveLength(0);
+    });
+
+    it("scopes the operation to the bucket as project with no resource id", async () => {
+      const bucketId = 2085958499;
+      let captured: OperationInfo | undefined;
+
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        hooks: {
+          onOperationStart: (info) => {
+            captured = info;
+          },
+        },
+      });
+
+      server.use(
+        http.get(`${BASE_URL}/buckets/${bucketId}/webhooks.json`, () =>
+          HttpResponse.json([])
+        )
+      );
+
+      await hookedClient.webhooks.list(bucketId);
+
+      expect(captured?.operation).toBe("ListWebhooks");
+      expect(captured?.projectId).toBe(bucketId);
+      expect(captured?.resourceId).toBeUndefined();
     });
   });
 

@@ -24,7 +24,7 @@ class WormholesService(client: AccountClient) : BaseService(client) {
             operation = "UpdateWormhole",
             resourceType = "wormhole",
             isMutation = true,
-            projectId = null,
+            projectId = bucketId,
             resourceId = wormholeId,
         )
         return request(info, {
@@ -47,7 +47,7 @@ class WormholesService(client: AccountClient) : BaseService(client) {
             operation = "DeleteWormhole",
             resourceType = "wormhole",
             isMutation = true,
-            projectId = null,
+            projectId = bucketId,
             resourceId = wormholeId,
         )
         request(info, {
@@ -67,7 +67,7 @@ class WormholesService(client: AccountClient) : BaseService(client) {
             operation = "CreateWormhole",
             resourceType = "wormhole",
             isMutation = true,
-            projectId = null,
+            projectId = bucketId,
             resourceId = cardTableId,
         )
         return request(info, {

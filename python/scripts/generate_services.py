@@ -585,9 +585,9 @@ def build_info_kwargs(op: dict, service_name: str) -> str:
         f'is_mutation={op["is_mutation"]}',
     ]
 
-    project_param = next((p for p in op["path_params"] if p["name"] == "projectId"), None)
+    project_param = next((p for p in op["path_params"] if p["name"] in ("projectId", "bucketId")), None)
     resource_param = next(
-        (p for p in reversed(op["path_params"]) if p["name"] != "projectId"),
+        (p for p in reversed(op["path_params"]) if p["name"] not in ("projectId", "bucketId")),
         None,
     )
 

@@ -13,7 +13,7 @@ module Basecamp
       # @param title [String, nil] Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
       # @return [Hash] response data
       def create(bucket_id:, tool_type:, title: nil)
-        with_operation(service: "tools", operation: "create", is_mutation: true, resource_id: bucket_id) do
+        with_operation(service: "tools", operation: "create", is_mutation: true, project_id: bucket_id) do
           http_post("/buckets/#{bucket_id}/dock/tools.json", body: compact_params(tool_type: tool_type, title: title)).json
         end
       end

@@ -35,7 +35,7 @@ data class ScheduleEntry(
     @SerialName("all_day") val allDay: Boolean = false,
     @SerialName("starts_at") val startsAt: String? = null,
     @SerialName("ends_at") val endsAt: String? = null,
-    val participants: List<Person> = emptyList(),
+    val participants: List<Person>? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

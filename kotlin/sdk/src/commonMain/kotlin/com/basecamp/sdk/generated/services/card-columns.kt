@@ -24,7 +24,7 @@ class CardColumnsService(client: AccountClient) : BaseService(client) {
             operation = "SetCardColumnColor",
             resourceType = "card_column_color",
             isMutation = true,
-            projectId = null,
+            projectId = bucketId,
             resourceId = columnId,
         )
         return request(info, {
@@ -47,7 +47,7 @@ class CardColumnsService(client: AccountClient) : BaseService(client) {
             operation = "EnableCardColumnOnHold",
             resourceType = "card_column_on_hold",
             isMutation = true,
-            projectId = null,
+            projectId = bucketId,
             resourceId = columnId,
         )
         return request(info, {
@@ -68,7 +68,7 @@ class CardColumnsService(client: AccountClient) : BaseService(client) {
             operation = "DisableCardColumnOnHold",
             resourceType = "card_column_on_hold",
             isMutation = true,
-            projectId = null,
+            projectId = bucketId,
             resourceId = columnId,
         )
         return request(info, {

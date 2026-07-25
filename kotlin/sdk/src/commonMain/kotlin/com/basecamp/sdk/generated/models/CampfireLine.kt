@@ -27,7 +27,7 @@ data class CampfireLine(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     val content: String? = null,
-    val attachments: List<CampfireLineAttachment> = emptyList(),
+    val attachments: List<CampfireLineAttachment>? = null,
     @SerialName("boosts_count") val boostsCount: Int = 0,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

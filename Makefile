@@ -743,7 +743,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -775,6 +775,12 @@ check-fixture-coverage:
 	@./scripts/check-fixture-coverage.sh
 	@ruby ./scripts/test-check-fixture-coverage.rb
 
+# D-invariant: every optional generated Kotlin array is `List<T>? = null`, every
+# required array stays `List<T>`, and none default to the `= emptyList()`
+# sentinel — pinning the optional-array presence contract against regression.
+kt-check-optional-arrays:
+	@./scripts/check-kotlin-optional-arrays.sh
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -797,7 +803,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -910,6 +916,6 @@ help:
 	@echo ""
 	@echo "Combined:"
 	@echo "  generate         Regenerate every machine-derived artifact (Smithy + per-language SDKs + provenance)"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + fixture-coverage + Actions lint)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + fixture-coverage + kt-optional-arrays + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"

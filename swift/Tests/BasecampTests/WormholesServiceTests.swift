@@ -137,6 +137,23 @@ final class WormholesServiceTests: XCTestCase {
         }
     }
 
+    // CreateWormhole is bucket-scoped with a deeper card-table id: operation
+    // metadata carries projectId == bucket id AND resourceId == card table id.
+    func testCreateEmitsProjectAndResourceMetadata() async throws {
+        let spy = SpyHooks()
+        let responseData = try JSONSerialization.data(withJSONObject: wormholeJSON(id: 99))
+        let transport = MockTransport(statusCode: 201, data: responseData)
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        _ = try await account.wormholes.create(bucketId: 7, cardTableId: 42, req: CreateWormholeRequest(destinationRecordingId: 500))
+
+        XCTAssertEqual(spy.operationStarts.count, 1)
+        let info = spy.operationStarts.first!
+        XCTAssertEqual(info.operation, "CreateWormhole")
+        XCTAssertEqual(info.projectId, 7, "projectId should be the bucket id")
+        XCTAssertEqual(info.resourceId, 42, "resourceId should be the card table id")
+    }
+
     func testCardTableDecodesLinkedAndUnlinkedWormholes() async throws {
         let json: [String: Any] = [
             "id": 1069479345,
@@ -166,5 +183,19 @@ final class WormholesServiceTests: XCTestCase {
         XCTAssertEqual(cardTable.wormholes?[1].linked, false)
         XCTAssertNil(cardTable.wormholes?[1].destinationUrl)
         XCTAssertNil(cardTable.wormholes?[1].color)
+    }
+}
+
+/// Records operation-start callbacks so tests can assert emitted metadata.
+private final class SpyHooks: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _operationStarts: [OperationInfo] = []
+
+    var operationStarts: [OperationInfo] {
+        lock.withLock { _operationStarts }
+    }
+
+    func onOperationStart(_ info: OperationInfo) {
+        lock.withLock { _operationStarts.append(info) }
     }
 }

@@ -199,6 +199,10 @@ async function executeOperation(
         });
         break;
 
+      case "CompleteTodo":
+        await client.todos.complete(Number(params.todoId));
+        break;
+
       case "UpdateTodo":
         // Merge-safe update: GET then full PUT; only fixture-present keys are passed.
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));

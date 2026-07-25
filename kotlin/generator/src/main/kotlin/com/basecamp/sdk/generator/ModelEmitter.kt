@@ -191,17 +191,15 @@ class ModelEmitter(private val api: OpenApiParser) {
             "string" -> if (isRequired) "String" else "String?"
             "array" -> {
                 val itemType = resolveArrayItemType(schema["items"]?.jsonObject)
-                // Rich-text companion arrays (RichTextAttachmentList) carry a
-                // documented cross-SDK presence contract (SPEC.md §10): an
-                // OPTIONAL one must stay nullable so an absent array (a
-                // non-matching projection type or a webhook-sourced item) is
-                // distinct from a present-but-empty one, matching how Go (nil),
-                // Swift/TypeScript (optional), Python (NotRequired), and Ruby
-                // (nil) already decode it. A bare `List<X> = emptyList()` would
-                // be a sentinel for absence, which SPEC.md's Optional Fields
-                // rule forbids. Other optional arrays keep the empty-list
-                // convention (no such presence contract).
-                if (!isRequired && itemType == "RichTextAttachment") "List<$itemType>?" else "List<$itemType>"
+                // Every OPTIONAL array is nullable (`List<X>? = null`) so an
+                // absent array stays distinct from a present-but-empty one,
+                // per SPEC.md's Optional Fields rule (a sentinel — here
+                // `= emptyList()` — is not a substitute for absence). This
+                // aligns Kotlin with the other five SDKs, all of which already
+                // preserve the distinction: Go (nil pointer), Swift/TypeScript
+                // (optional), Python (NotRequired), Ruby (nil). REQUIRED arrays
+                // are always emitted, so they stay a plain non-null `List<X>`.
+                if (!isRequired) "List<$itemType>?" else "List<$itemType>"
             }
             "object" -> if (isRequired) "JsonObject" else "JsonObject?"
             else -> if (isRequired) "JsonElement" else "JsonElement?"

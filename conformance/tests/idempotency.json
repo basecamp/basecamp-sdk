@@ -50,5 +50,22 @@
       {"type": "statusCode", "expected": 503}
     ],
     "tags": ["no-retry", "post"]
+  },
+  {
+    "name": "POST operation retries when marked idempotent",
+    "description": "An idempotent-flagged POST (x-basecamp-idempotent / behavior-model idempotent:true) must retry on 503, unlike a non-idempotent POST. Pins the metadata-driven three-gate liveness that distinguishes Go/TS/Kotlin/Python from Ruby's GET-only retry.",
+    "operation": "CompleteTodo",
+    "method": "POST",
+    "path": "/todos/{todoId}/completion.json",
+    "pathParams": {"todoId": 456},
+    "mockResponses": [
+      {"status": 503},
+      {"status": 204}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["idempotent", "post"]
   }
 ]

@@ -13,7 +13,7 @@ module Basecamp
       # @param color [String] Valid colors: white, red, orange, yellow, green, blue, aqua, purple, gray, pink, brown
       # @return [Hash] response data
       def set_color(bucket_id:, column_id:, color:)
-        with_operation(service: "cardcolumns", operation: "set_color", is_mutation: true, resource_id: column_id) do
+        with_operation(service: "cardcolumns", operation: "set_color", is_mutation: true, project_id: bucket_id, resource_id: column_id) do
           http_put("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/color.json", body: compact_params(color: color)).json
         end
       end
@@ -23,7 +23,7 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [Hash] response data
       def enable_on_hold(bucket_id:, column_id:)
-        with_operation(service: "cardcolumns", operation: "enable_on_hold", is_mutation: true, resource_id: column_id) do
+        with_operation(service: "cardcolumns", operation: "enable_on_hold", is_mutation: true, project_id: bucket_id, resource_id: column_id) do
           http_post("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json
         end
       end
@@ -33,7 +33,7 @@ module Basecamp
       # @param column_id [Integer] column id ID
       # @return [Hash] response data
       def disable_on_hold(bucket_id:, column_id:)
-        with_operation(service: "cardcolumns", operation: "disable_on_hold", is_mutation: true, resource_id: column_id) do
+        with_operation(service: "cardcolumns", operation: "disable_on_hold", is_mutation: true, project_id: bucket_id, resource_id: column_id) do
           http_delete("/buckets/#{bucket_id}/card_tables/columns/#{column_id}/on_hold.json").json
         end
       end

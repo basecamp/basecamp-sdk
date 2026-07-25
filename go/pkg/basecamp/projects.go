@@ -212,7 +212,7 @@ func (s *ProjectsService) Get(ctx context.Context, id int64) (result *Project, e
 	op := OperationInfo{
 		Service: "Projects", Operation: "Get",
 		ResourceType: "project", IsMutation: false,
-		ResourceID: id,
+		ProjectID: id,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -287,7 +287,7 @@ func (s *ProjectsService) Update(ctx context.Context, id int64, req *UpdateProje
 	op := OperationInfo{
 		Service: "Projects", Operation: "Update",
 		ResourceType: "project", IsMutation: true,
-		ResourceID: id,
+		ProjectID: id,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -351,7 +351,7 @@ func (s *ProjectsService) Trash(ctx context.Context, id int64) (err error) {
 	op := OperationInfo{
 		Service: "Projects", Operation: "Trash",
 		ResourceType: "project", IsMutation: true,
-		ResourceID: id,
+		ProjectID: id,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {

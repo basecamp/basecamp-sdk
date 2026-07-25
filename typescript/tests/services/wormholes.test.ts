@@ -6,6 +6,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
+import type { OperationInfo } from "../../src/hooks.js";
 import { BasecampError } from "../../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -96,6 +97,38 @@ describe("WormholesService", () => {
       await expect(
         client.wormholes.create(bucketId, cardTableId, { destinationRecordingId: 999 })
       ).rejects.toThrow(BasecampError);
+    });
+
+    it("scopes the operation to the bucket as project, card table as resource", async () => {
+      const bucketId = 2085958499;
+      const cardTableId = 1069479345;
+      let captured: OperationInfo | undefined;
+
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            captured = info;
+          },
+        },
+      });
+
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/${bucketId}/card_tables/${cardTableId}/wormholes.json`,
+          () => HttpResponse.json(sampleWormhole(99), { status: 201 })
+        )
+      );
+
+      await hookedClient.wormholes.create(bucketId, cardTableId, {
+        destinationRecordingId: 1069479500,
+      });
+
+      expect(captured?.operation).toBe("CreateWormhole");
+      expect(captured?.projectId).toBe(bucketId);
+      expect(captured?.resourceId).toBe(cardTableId);
     });
   });
 

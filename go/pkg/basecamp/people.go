@@ -313,6 +313,7 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 	op := OperationInfo{
 		Service: "People", Operation: "ListProjectPeople",
 		ResourceType: "person", IsMutation: false,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
@@ -459,6 +460,7 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 	op := OperationInfo{
 		Service: "People", Operation: "UpdateProjectAccess",
 		ResourceType: "person", IsMutation: true,
+		ProjectID: projectID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {

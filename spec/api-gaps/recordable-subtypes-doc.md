@@ -85,6 +85,11 @@ Journal::Entry — there is no contract to model.
   do not model ahead of a BC3 contract.
 - Where Recording is polymorphic, extend the discriminated structure with the
   new `type` values.
+- `CloudFile` and `GoogleDocument` are rich-text emitters: their responses
+  carry their own `*_attachments` companion arrays (see
+  [[rich-text-attachments-coverage]]). Model those members alongside the base
+  shapes at absorption time so the rich-text projection stays complete — a
+  newly-absorbed subtype must not silently drop its companion array.
 - Door now has its own documented surface (list/create/get/rename/trash) and is
   tracked under [[external-links-doors]] — model it there, not here. It still
   also appears as a string `type` value on generic Recording responses.

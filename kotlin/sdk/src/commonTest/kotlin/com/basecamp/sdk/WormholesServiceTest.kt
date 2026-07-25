@@ -83,6 +83,40 @@ class WormholesServiceTest {
     }
 
     @Test
+    fun createEmitsBucketProjectScopeWithCardTableResourceId() = runTest {
+        var capturedInfo: OperationInfo? = null
+        val hooks = object : BasecampHooks {
+            override fun onOperationStart(info: OperationInfo) {
+                if (info.operation == "CreateWormhole") capturedInfo = info
+            }
+        }
+        val engine = MockEngine { _ ->
+            respond(
+                content = wormholeJson(99),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+        val client = testBasecampClient {
+            accessToken("test-token")
+            this.engine = engine
+            this.hooks = hooks
+        }
+
+        client.forAccount("12345").wormholes.create(
+            bucketId = 2085958499,
+            cardTableId = 1069479345,
+            body = CreateWormholeBody(destinationRecordingId = 1069479500),
+        )
+
+        assertNotNull(capturedInfo)
+        assertEquals(2085958499L, capturedInfo!!.projectId)
+        assertEquals(1069479345L, capturedInfo!!.resourceId)
+
+        client.close()
+    }
+
+    @Test
     fun createValidationErrorAtLimitThrows() = runTest {
         val client = mockClient { _ ->
             respond(
@@ -276,11 +310,12 @@ class WormholesServiceTest {
         val account = client.forAccount("12345")
         val cardTable = account.cardTables.get(cardTableId = 1069479345)
 
-        assertEquals(2, cardTable.wormholes.size)
-        assertTrue(cardTable.wormholes[0].linked)
-        assertNotNull(cardTable.wormholes[0].destinationUrl)
-        assertTrue(!cardTable.wormholes[1].linked)
-        assertNull(cardTable.wormholes[1].destinationUrl)
+        val wormholes = assertNotNull(cardTable.wormholes)
+        assertEquals(2, wormholes.size)
+        assertTrue(wormholes[0].linked)
+        assertNotNull(wormholes[0].destinationUrl)
+        assertTrue(!wormholes[1].linked)
+        assertNull(wormholes[1].destinationUrl)
 
         client.close()
     }

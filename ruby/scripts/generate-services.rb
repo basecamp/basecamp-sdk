@@ -704,10 +704,10 @@ class ServiceGenerator
     kwargs << "operation: \"#{op[:method_name]}\""
     kwargs << "is_mutation: #{op[:is_mutation]}"
 
-    project_param = op[:path_params].find { |p| p[:name] == 'projectId' }
-    resource_param = op[:path_params].reject { |p| p[:name] == 'projectId' }.last
+    project_param = op[:path_params].find { |p| %w[projectId bucketId].include?(p[:name]) }
+    resource_param = op[:path_params].reject { |p| %w[projectId bucketId].include?(p[:name]) }.last
 
-    kwargs << "project_id: project_id" if project_param
+    kwargs << "project_id: #{to_snake_case(project_param[:name])}" if project_param
     kwargs << "resource_id: #{to_snake_case(resource_param[:name])}" if resource_param
 
     kwargs.join(', ')
