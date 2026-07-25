@@ -1,0 +1,39 @@
+spec/api-provenance.json
+  s_8d633484dc870e::t_48165f50965f84 4
+spec/api-gaps/dock-tool-create-contract.md
+  s_8d633484dc870e::t_660e936628d447 110-115
+  s_8d633484dc870e::t_010c9811573ff0 26-28
+  s_8d633484dc870e::t_6dfb03f5c94352 6
+  s_8d633484dc870e::t_efc16e052c8c6b 121-123
+  s_8d633484dc870e::t_b9346510089d6f 56-59
+spec/api-gaps/schedule-recurrence-writes.md
+  s_8d633484dc870e::t_dd799c7a1b846e 82-85
+  s_8d633484dc870e::t_e9e91ac32ee081 54-61
+  s_8d633484dc870e::t_35d03657e752af 94-97
+go/pkg/basecamp/api-provenance.json
+  s_8d633484dc870e::t_7aa8347bdcb333 4
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_7aa8347bdcb333 4
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_7aa8347bdcb333 40
+spec/api-gaps/README.md
+  s_8d633484dc870e::t_30113ce6325131 74-81
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_7aa8347bdcb333 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "461623af3c17cdbccd6c2cfd1a76f29386965df7",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
