@@ -861,6 +861,51 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "GetEverythingOpenTodos" -> {
+            account.everything.everythingOpenTodos()
+            DispatchResult()
+        }
+
+        "GetEverythingCompletedTodos" -> {
+            account.everything.everythingCompletedTodos()
+            DispatchResult()
+        }
+
+        "GetEverythingUnassignedTodos" -> {
+            account.everything.everythingUnassignedTodos()
+            DispatchResult()
+        }
+
+        "GetEverythingNoDueDateTodos" -> {
+            account.everything.everythingNoDueDateTodos()
+            DispatchResult()
+        }
+
+        "GetEverythingOpenCards" -> {
+            account.everything.everythingOpenCards()
+            DispatchResult()
+        }
+
+        "GetEverythingCompletedCards" -> {
+            account.everything.everythingCompletedCards()
+            DispatchResult()
+        }
+
+        "GetEverythingUnassignedCards" -> {
+            account.everything.everythingUnassignedCards()
+            DispatchResult()
+        }
+
+        "GetEverythingNoDueDateCards" -> {
+            account.everything.everythingNoDueDateCards()
+            DispatchResult()
+        }
+
+        "GetEverythingNotNowCards" -> {
+            account.everything.everythingNotNowCards()
+            DispatchResult()
+        }
+
         else ->
             throw UnsupportedOperationException("Unknown operation: ${tc.operation}")
     }

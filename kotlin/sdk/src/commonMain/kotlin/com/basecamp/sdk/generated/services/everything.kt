@@ -36,6 +36,98 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Completed cards across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingCompletedCards(options: GetEverythingCompletedCardsOptions? = null): ListResult<BucketCardsGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingCompletedCards",
+            resourceType = "everything_completed_card",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/cards/completed.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketCardsGroup>>(body)
+        }
+    }
+
+    /**
+     * Open cards with no due date across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingNoDueDateCards(options: GetEverythingNoDueDateCardsOptions? = null): ListResult<BucketCardsGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingNoDueDateCards",
+            resourceType = "everything_no_due_date_card",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/cards/no_due_date.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketCardsGroup>>(body)
+        }
+    }
+
+    /**
+     * Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingNotNowCards(options: GetEverythingNotNowCardsOptions? = null): ListResult<BucketCardsGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingNotNowCards",
+            resourceType = "everything_not_now_card",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/cards/not_now.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketCardsGroup>>(body)
+        }
+    }
+
+    /**
+     * Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingOpenCards(options: GetEverythingOpenCardsOptions? = null): ListResult<BucketCardsGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingOpenCards",
+            resourceType = "everything_open_card",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/cards/open.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketCardsGroup>>(body)
+        }
+    }
+
+    /**
      * Get every overdue card across all accessible projects, oldest-due-date-first.
      */
     suspend fun everythingOverdueCards(): List<Card> {
@@ -51,6 +143,29 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             httpGet("/cards/overdue.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Card>>(body)
+        }
+    }
+
+    /**
+     * Open, unassigned cards across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingUnassignedCards(options: GetEverythingUnassignedCardsOptions? = null): ListResult<BucketCardsGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingUnassignedCards",
+            resourceType = "everything_unassigned_card",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/cards/unassigned.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketCardsGroup>>(body)
         }
     }
 
@@ -172,6 +287,75 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
+     * Completed to-dos across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingCompletedTodos(options: GetEverythingCompletedTodosOptions? = null): ListResult<BucketTodosGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingCompletedTodos",
+            resourceType = "everything_completed_todo",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/todos/completed.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketTodosGroup>>(body)
+        }
+    }
+
+    /**
+     * Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingNoDueDateTodos(options: GetEverythingNoDueDateTodosOptions? = null): ListResult<BucketTodosGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingNoDueDateTodos",
+            resourceType = "everything_no_due_date_todo",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/todos/no_due_date.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketTodosGroup>>(body)
+        }
+    }
+
+    /**
+     * Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingOpenTodos(options: GetEverythingOpenTodosOptions? = null): ListResult<BucketTodosGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingOpenTodos",
+            resourceType = "everything_open_todo",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/todos/open.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketTodosGroup>>(body)
+        }
+    }
+
+    /**
      * Get every overdue to-do across all accessible projects, oldest-due-date-first.
      */
     suspend fun everythingOverdueTodos(): List<Todo> {
@@ -187,6 +371,29 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             httpGet("/todos/overdue.json", operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Todo>>(body)
+        }
+    }
+
+    /**
+     * Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+     * @param options Optional query parameters and pagination control
+     */
+    suspend fun everythingUnassignedTodos(options: GetEverythingUnassignedTodosOptions? = null): ListResult<BucketTodosGroup> {
+        val info = OperationInfo(
+            service = "Everything",
+            operation = "GetEverythingUnassignedTodos",
+            resourceType = "everything_unassigned_todo",
+            isMutation = false,
+            projectId = null,
+            resourceId = null,
+        )
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/todos/unassigned.json" + qs, operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<List<BucketTodosGroup>>(body)
         }
     }
 }

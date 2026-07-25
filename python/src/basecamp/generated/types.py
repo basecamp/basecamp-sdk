@@ -78,6 +78,16 @@ class Boost(TypedDict):
     recording: NotRequired[RecordingParent]
 
 
+class BucketCardsGroup(TypedDict):
+    bucket: RecordingBucket
+    cards: list[Card]
+
+
+class BucketTodosGroup(TypedDict):
+    bucket: RecordingBucket
+    todos: list[Todo]
+
+
 class Campfire(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]

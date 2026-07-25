@@ -154,6 +154,44 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOverdueCards() }),
   },
 
+  // Everything aggregates — bucket-grouped family (one canary per group).
+  GetEverythingOpenTodos: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOpenTodos() }),
+  },
+  GetEverythingCompletedTodos: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingCompletedTodos() }),
+  },
+  GetEverythingUnassignedTodos: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingUnassignedTodos() }),
+  },
+  GetEverythingNoDueDateTodos: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingNoDueDateTodos() }),
+  },
+  GetEverythingOpenCards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingOpenCards() }),
+  },
+  GetEverythingCompletedCards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingCompletedCards() }),
+  },
+  GetEverythingUnassignedCards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingUnassignedCards() }),
+  },
+  GetEverythingNoDueDateCards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingNoDueDateCards() }),
+  },
+  GetEverythingNotNowCards: {
+    fixtures: [],
+    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingNotNowCards() }),
+  },
+
   GetMyProfile: {
     fixtures: [],
     call: async (ctx) => {

@@ -181,6 +181,24 @@ class OperationMapper
       @account.everything.get_everything_overdue_todos
     when "GetEverythingOverdueCards"
       @account.everything.get_everything_overdue_cards
+    when "GetEverythingOpenTodos"
+      @account.everything.get_everything_open_todos.to_a
+    when "GetEverythingCompletedTodos"
+      @account.everything.get_everything_completed_todos.to_a
+    when "GetEverythingUnassignedTodos"
+      @account.everything.get_everything_unassigned_todos.to_a
+    when "GetEverythingNoDueDateTodos"
+      @account.everything.get_everything_no_due_date_todos.to_a
+    when "GetEverythingOpenCards"
+      @account.everything.get_everything_open_cards.to_a
+    when "GetEverythingCompletedCards"
+      @account.everything.get_everything_completed_cards.to_a
+    when "GetEverythingUnassignedCards"
+      @account.everything.get_everything_unassigned_cards.to_a
+    when "GetEverythingNoDueDateCards"
+      @account.everything.get_everything_no_due_date_cards.to_a
+    when "GetEverythingNotNowCards"
+      @account.everything.get_everything_not_now_cards.to_a
     else
       raise "Unknown operation: #{operation}"
     end

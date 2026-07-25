@@ -789,5 +789,239 @@
       "path",
       "everything"
     ]
+  },
+  {
+    "name": "GetEverythingOpenTodos constructs /todos/open.json",
+    "description": "Verifies GetEverythingOpenTodos constructs the bucket-grouped filter URL /todos/open.json.",
+    "operation": "GetEverythingOpenTodos",
+    "method": "GET",
+    "path": "/todos/open.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/open.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingCompletedTodos constructs /todos/completed.json",
+    "description": "Verifies GetEverythingCompletedTodos constructs the bucket-grouped filter URL /todos/completed.json.",
+    "operation": "GetEverythingCompletedTodos",
+    "method": "GET",
+    "path": "/todos/completed.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/completed.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingUnassignedTodos constructs /todos/unassigned.json",
+    "description": "Verifies GetEverythingUnassignedTodos constructs the bucket-grouped filter URL /todos/unassigned.json.",
+    "operation": "GetEverythingUnassignedTodos",
+    "method": "GET",
+    "path": "/todos/unassigned.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/unassigned.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingNoDueDateTodos constructs /todos/no_due_date.json",
+    "description": "Verifies GetEverythingNoDueDateTodos constructs the bucket-grouped filter URL /todos/no_due_date.json.",
+    "operation": "GetEverythingNoDueDateTodos",
+    "method": "GET",
+    "path": "/todos/no_due_date.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/todos/no_due_date.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingOpenCards constructs /cards/open.json",
+    "description": "Verifies GetEverythingOpenCards constructs the bucket-grouped filter URL /cards/open.json.",
+    "operation": "GetEverythingOpenCards",
+    "method": "GET",
+    "path": "/cards/open.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/cards/open.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingCompletedCards constructs /cards/completed.json",
+    "description": "Verifies GetEverythingCompletedCards constructs the bucket-grouped filter URL /cards/completed.json.",
+    "operation": "GetEverythingCompletedCards",
+    "method": "GET",
+    "path": "/cards/completed.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/cards/completed.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingUnassignedCards constructs /cards/unassigned.json",
+    "description": "Verifies GetEverythingUnassignedCards constructs the bucket-grouped filter URL /cards/unassigned.json.",
+    "operation": "GetEverythingUnassignedCards",
+    "method": "GET",
+    "path": "/cards/unassigned.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/cards/unassigned.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingNoDueDateCards constructs /cards/no_due_date.json",
+    "description": "Verifies GetEverythingNoDueDateCards constructs the bucket-grouped filter URL /cards/no_due_date.json.",
+    "operation": "GetEverythingNoDueDateCards",
+    "method": "GET",
+    "path": "/cards/no_due_date.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/cards/no_due_date.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
+  },
+  {
+    "name": "GetEverythingNotNowCards constructs /cards/not_now.json",
+    "description": "Verifies GetEverythingNotNowCards constructs the bucket-grouped filter URL /cards/not_now.json.",
+    "operation": "GetEverythingNotNowCards",
+    "method": "GET",
+    "path": "/cards/not_now.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": []
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/cards/not_now.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "everything"
+    ]
   }
 ]

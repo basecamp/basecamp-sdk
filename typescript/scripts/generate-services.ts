@@ -462,6 +462,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Boost: ["Boost", "entity"],
   EverythingBoost: ["EverythingBoost", "entity"],
   EverythingFile: ["EverythingFile", "entity"],
+  BucketTodosGroup: ["BucketTodosGroup", "entity"],
+  BucketCardsGroup: ["BucketCardsGroup", "entity"],
   TimesheetEntry: ["TimesheetEntry", "entity"],
 };
 

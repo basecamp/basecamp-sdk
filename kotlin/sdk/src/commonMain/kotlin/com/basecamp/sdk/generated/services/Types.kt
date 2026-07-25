@@ -225,6 +225,46 @@ data class GetEverythingBoostsOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Options for GetEverythingCompletedCards. */
+data class GetEverythingCompletedCardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingNoDueDateCards. */
+data class GetEverythingNoDueDateCardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingNotNowCards. */
+data class GetEverythingNotNowCardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingOpenCards. */
+data class GetEverythingOpenCardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingUnassignedCards. */
+data class GetEverythingUnassignedCardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Options for GetEverythingCheckins. */
 data class GetEverythingCheckinsOptions(
     val page: Long? = null,
@@ -261,6 +301,38 @@ data class GetEverythingForwardsOptions(
 
 /** Options for GetEverythingMessages. */
 data class GetEverythingMessagesOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingCompletedTodos. */
+data class GetEverythingCompletedTodosOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingNoDueDateTodos. */
+data class GetEverythingNoDueDateTodosOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingOpenTodos. */
+data class GetEverythingOpenTodosOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingUnassignedTodos. */
+data class GetEverythingUnassignedTodosOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {

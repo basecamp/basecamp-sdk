@@ -344,7 +344,7 @@ func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 		]`))
 	})
 
-	result, err := svc.Boosts(context.Background(), 1)
+	result, err := svc.NotNowCards(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -365,5 +365,107 @@ func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 	}
 	if b.Recording.URL == "" || strv(b.Recording.Subject) != "A message" {
 		t.Errorf("expected full projection url+subject, got url=%q subject=%v", b.Recording.URL, b.Recording.Subject)
+	}
+}
+
+// TestEverythingService_OpenTodos_BucketGrouped_MultiPage exercises the
+// bucket-grouped todo filter family: Link-header following across two pages, the
+// {bucket, todos} grouping, and embedded steps on a todo.
+func TestEverythingService_OpenTodos_BucketGrouped_MultiPage(t *testing.T) {
+	var serverURL string
+	var page1, page2 int
+	svc, url := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/todos/open.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "2")
+		if r.URL.Query().Get("page") == "2" {
+			page2++
+			w.WriteHeader(200)
+			_, _ = w.Write([]byte(`[{"bucket":{"id":20,"name":"Project B","type":"Project"},"todos":[{"id":5,"content":"Second bucket todo","completed":false}]}]`))
+			return
+		}
+		page1++
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/todos/open.json?page=2>; rel="next"`, serverURL))
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[{"bucket":{"id":10,"name":"Project A","type":"Project"},"todos":[{"id":1,"content":"First","completed":false,"steps":[{"id":100,"title":"Step 1","completed":false}]}]}]`))
+	})
+	serverURL = url
+
+	result, err := svc.OpenTodos(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if page1 != 1 || page2 != 1 {
+		t.Fatalf("expected one hit per page, got page1=%d page2=%d", page1, page2)
+	}
+	if len(result.Groups) != 2 {
+		t.Fatalf("expected 2 bucket groups across pages, got %d", len(result.Groups))
+	}
+	g0 := result.Groups[0]
+	if g0.Bucket == nil || g0.Bucket.Name != "Project A" {
+		t.Errorf("expected group 0 bucket 'Project A', got %+v", g0.Bucket)
+	}
+	if len(g0.Todos) != 1 || g0.Todos[0].ID != 1 {
+		t.Fatalf("expected 1 todo in group 0, got %+v", g0.Todos)
+	}
+	if len(g0.Todos[0].Steps) != 1 || g0.Todos[0].Steps[0].Title != "Step 1" {
+		t.Errorf("expected embedded step on todo, got %+v", g0.Todos[0].Steps)
+	}
+	if result.Groups[1].Bucket == nil || result.Groups[1].Bucket.Name != "Project B" {
+		t.Errorf("expected group 1 bucket 'Project B', got %+v", result.Groups[1].Bucket)
+	}
+	if result.Meta.TotalCount != 2 {
+		t.Errorf("expected TotalCount 2, got %d", result.Meta.TotalCount)
+	}
+}
+
+// TestEverythingService_NotNowCards_BucketGrouped verifies the card filter
+// family decodes the {bucket, cards} grouping with embedded steps.
+func TestEverythingService_NotNowCards_BucketGrouped(t *testing.T) {
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/cards/not_now.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[{"bucket":{"id":30,"name":"Kanban Project","type":"Project"},"cards":[{"id":7,"title":"Parked card","completed":false,"steps":[{"id":200,"title":"Do later","completed":false}]}]}]`))
+	})
+
+	result, err := svc.NotNowCards(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Groups) != 1 {
+		t.Fatalf("expected 1 bucket group, got %d", len(result.Groups))
+	}
+	g := result.Groups[0]
+	if g.Bucket == nil || g.Bucket.Name != "Kanban Project" {
+		t.Errorf("expected bucket 'Kanban Project', got %+v", g.Bucket)
+	}
+	if len(g.Cards) != 1 || g.Cards[0].ID != 7 {
+		t.Fatalf("expected 1 card, got %+v", g.Cards)
+	}
+	if len(g.Cards[0].Steps) != 1 || g.Cards[0].Steps[0].Title != "Do later" {
+		t.Errorf("expected embedded step on card, got %+v", g.Cards[0].Steps)
+	}
+}
+
+// TestEverythingService_OpenTodos_ForwardsPage verifies the bucket-grouped ops
+// forward a positive page as ?page= (regression parity with the flat family).
+func TestEverythingService_OpenTodos_ForwardsPage(t *testing.T) {
+	var captured string
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[]`))
+	})
+	if _, err := svc.OpenTodos(context.Background(), 4); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if q, _ := url.ParseQuery(captured); q.Get("page") != "4" {
+		t.Errorf("expected page=4 forwarded, got query %q", captured)
 	}
 }

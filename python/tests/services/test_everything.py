@@ -386,7 +386,7 @@ class TestEverythingOverdueFeeds:
         assert len(result) == 2
 
 
-# Every flat-family operation must surface a canonical 4xx as a typed error.
+# Every everything operation must surface a canonical 4xx as a typed error.
 _FLAT_ERROR_CASES = [
     ("messages.json", lambda acct: acct.everything.get_everything_messages()),
     ("comments.json", lambda acct: acct.everything.get_everything_comments()),
@@ -398,11 +398,23 @@ _FLAT_ERROR_CASES = [
     ("cards/overdue.json", lambda acct: acct.everything.get_everything_overdue_cards()),
 ]
 
+_BUCKET_ERROR_CASES = [
+    ("todos/open.json", lambda acct: acct.everything.get_everything_open_todos()),
+    ("todos/completed.json", lambda acct: acct.everything.get_everything_completed_todos()),
+    ("todos/unassigned.json", lambda acct: acct.everything.get_everything_unassigned_todos()),
+    ("todos/no_due_date.json", lambda acct: acct.everything.get_everything_no_due_date_todos()),
+    ("cards/open.json", lambda acct: acct.everything.get_everything_open_cards()),
+    ("cards/completed.json", lambda acct: acct.everything.get_everything_completed_cards()),
+    ("cards/unassigned.json", lambda acct: acct.everything.get_everything_unassigned_cards()),
+    ("cards/no_due_date.json", lambda acct: acct.everything.get_everything_no_due_date_cards()),
+    ("cards/not_now.json", lambda acct: acct.everything.get_everything_not_now_cards()),
+]
+
 
 class TestEverythingErrorPropagation:
-    @pytest.mark.parametrize("path, call", _FLAT_ERROR_CASES)
+    @pytest.mark.parametrize("path, call", _FLAT_ERROR_CASES + _BUCKET_ERROR_CASES)
     @respx.mock
-    def test_flat_family_propagates_not_found(self, path, call):
+    def test_operation_propagates_not_found(self, path, call):
         respx.get(f"https://3.basecampapi.com/12345/{path}").mock(
             return_value=httpx.Response(404, json={"error": "Not found"})
         )
@@ -410,3 +422,279 @@ class TestEverythingErrorPropagation:
         account = Client(access_token="test-token").for_account("12345")
         with pytest.raises(NotFoundError):
             call(account)
+
+
+# Bucket-grouped feeds are paginated arrays of `{bucket, todos|cards}` groups.
+# Each todo/card is a full recording carrying a `steps` array (a to-do's steps
+# or a card's step checklist).
+def _todo_group(bucket_id, bucket_name, todos):
+    return {
+        "bucket": {"id": bucket_id, "name": bucket_name, "type": "Project"},
+        "todos": todos,
+    }
+
+
+def _card_group(bucket_id, bucket_name, cards):
+    return {
+        "bucket": {"id": bucket_id, "name": bucket_name, "type": "Project"},
+        "cards": cards,
+    }
+
+
+def _todo(todo_id, title, steps):
+    return {
+        "id": todo_id,
+        "type": "Todo",
+        "status": "active",
+        "visible_to_clients": False,
+        "title": title,
+        "bucket": {"id": 2, "name": "The Leto Laptop", "type": "Project"},
+        "creator": {"id": 1, "name": "Victor Cooper"},
+        "steps": steps,
+    }
+
+
+def _card(card_id, title, steps):
+    return {
+        "id": card_id,
+        "type": "Kanban::Card",
+        "status": "active",
+        "visible_to_clients": False,
+        "title": title,
+        "bucket": {"id": 2, "name": "The Leto Laptop", "type": "Project"},
+        "creator": {"id": 1, "name": "Victor Cooper"},
+        "steps": steps,
+    }
+
+
+_OPEN_TODOS_FEED = [
+    _todo_group(
+        2,
+        "The Leto Laptop",
+        [
+            _todo(2000, "Wire up auth", [{"id": 20000, "title": "Add login form", "completed": False}]),
+            _todo(2001, "Write docs", [{"id": 20010, "title": "Draft README", "completed": True}]),
+        ],
+    ),
+    _todo_group(3, "Honcho Design", [_todo(2002, "Design mockups", [])]),
+]
+
+_COMPLETED_TODOS_FEED = [
+    _todo_group(
+        2,
+        "The Leto Laptop",
+        [_todo(2100, "Ship v1", [{"id": 21000, "title": "Tag release", "completed": True}])],
+    ),
+]
+
+_UNASSIGNED_TODOS_FEED = [
+    _todo_group(
+        3,
+        "Honcho Design",
+        [_todo(2200, "Triage backlog", [{"id": 22000, "title": "Label issues", "completed": False}])],
+    ),
+]
+
+_NO_DUE_DATE_TODOS_FEED = [
+    _todo_group(
+        2,
+        "The Leto Laptop",
+        [_todo(2300, "Someday refactor", [{"id": 23000, "title": "Sketch plan", "completed": False}])],
+    ),
+]
+
+_OPEN_CARDS_FEED = [
+    _card_group(
+        2,
+        "The Leto Laptop",
+        [
+            _card(3000, "Build pipeline", [{"id": 30000, "title": "Add CI", "completed": False}]),
+            _card(3001, "Add metrics", [{"id": 30010, "title": "Wire Prometheus", "completed": True}]),
+        ],
+    ),
+    _card_group(3, "Honcho Design", [_card(3002, "Draft brief", [])]),
+]
+
+_COMPLETED_CARDS_FEED = [
+    _card_group(
+        2,
+        "The Leto Laptop",
+        [_card(3100, "Launch site", [{"id": 31000, "title": "Deploy", "completed": True}])],
+    ),
+]
+
+_UNASSIGNED_CARDS_FEED = [
+    _card_group(
+        3,
+        "Honcho Design",
+        [_card(3200, "Pick a name", [{"id": 32000, "title": "Brainstorm", "completed": False}])],
+    ),
+]
+
+_NO_DUE_DATE_CARDS_FEED = [
+    _card_group(
+        2,
+        "The Leto Laptop",
+        [_card(3300, "Backlog idea", [{"id": 33000, "title": "Research", "completed": False}])],
+    ),
+]
+
+_NOT_NOW_CARDS_FEED = [
+    _card_group(
+        3,
+        "Honcho Design",
+        [_card(3400, "Deferred feature", [{"id": 34000, "title": "Revisit Q3", "completed": False}])],
+    ),
+]
+
+
+class TestEverythingBucketGroupedTodoFeeds:
+    @respx.mock
+    def test_open_todos_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/todos/open.json").mock(
+            return_value=httpx.Response(200, json=_OPEN_TODOS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_open_todos()
+
+        assert route.called
+        assert len(result) == 2
+        group = result[0]
+        assert group["bucket"] == {"id": 2, "name": "The Leto Laptop", "type": "Project"}
+        assert len(group["todos"]) == 2
+        assert group["todos"][0]["id"] == 2000
+        assert group["todos"][0]["type"] == "Todo"
+        assert group["todos"][0]["steps"][0]["title"] == "Add login form"
+
+    @respx.mock
+    def test_completed_todos_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/todos/completed.json").mock(
+            return_value=httpx.Response(200, json=_COMPLETED_TODOS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_completed_todos()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["id"] == 2
+        assert group["todos"][0]["id"] == 2100
+        assert group["todos"][0]["steps"][0]["completed"] is True
+
+    @respx.mock
+    def test_unassigned_todos_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/todos/unassigned.json").mock(
+            return_value=httpx.Response(200, json=_UNASSIGNED_TODOS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_unassigned_todos()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["name"] == "Honcho Design"
+        assert group["todos"][0]["id"] == 2200
+        assert group["todos"][0]["steps"][0]["title"] == "Label issues"
+
+    @respx.mock
+    def test_no_due_date_todos_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/todos/no_due_date.json").mock(
+            return_value=httpx.Response(200, json=_NO_DUE_DATE_TODOS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_no_due_date_todos()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["type"] == "Project"
+        assert group["todos"][0]["id"] == 2300
+        assert group["todos"][0]["steps"][0]["title"] == "Sketch plan"
+
+
+class TestEverythingBucketGroupedCardFeeds:
+    @respx.mock
+    def test_open_cards_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/cards/open.json").mock(
+            return_value=httpx.Response(200, json=_OPEN_CARDS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_open_cards()
+
+        assert route.called
+        assert len(result) == 2
+        group = result[0]
+        assert group["bucket"] == {"id": 2, "name": "The Leto Laptop", "type": "Project"}
+        assert len(group["cards"]) == 2
+        assert group["cards"][0]["id"] == 3000
+        assert group["cards"][0]["type"] == "Kanban::Card"
+        assert group["cards"][0]["steps"][0]["title"] == "Add CI"
+
+    @respx.mock
+    def test_completed_cards_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/cards/completed.json").mock(
+            return_value=httpx.Response(200, json=_COMPLETED_CARDS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_completed_cards()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["id"] == 2
+        assert group["cards"][0]["id"] == 3100
+        assert group["cards"][0]["steps"][0]["completed"] is True
+
+    @respx.mock
+    def test_unassigned_cards_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/cards/unassigned.json").mock(
+            return_value=httpx.Response(200, json=_UNASSIGNED_CARDS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_unassigned_cards()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["name"] == "Honcho Design"
+        assert group["cards"][0]["id"] == 3200
+        assert group["cards"][0]["steps"][0]["title"] == "Brainstorm"
+
+    @respx.mock
+    def test_no_due_date_cards_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/cards/no_due_date.json").mock(
+            return_value=httpx.Response(200, json=_NO_DUE_DATE_CARDS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_no_due_date_cards()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["type"] == "Project"
+        assert group["cards"][0]["id"] == 3300
+        assert group["cards"][0]["steps"][0]["title"] == "Research"
+
+    @respx.mock
+    def test_not_now_cards_groups_by_bucket_with_steps(self):
+        route = respx.get("https://3.basecampapi.com/12345/cards/not_now.json").mock(
+            return_value=httpx.Response(200, json=_NOT_NOW_CARDS_FEED)
+        )
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_not_now_cards()
+
+        assert route.called
+        assert len(result) == 1
+        group = result[0]
+        assert group["bucket"]["name"] == "Honcho Design"
+        assert group["cards"][0]["id"] == 3400
+        assert group["cards"][0]["steps"][0]["title"] == "Revisit Q3"

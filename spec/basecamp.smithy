@@ -299,6 +299,17 @@ service Basecamp {
     GetEverythingOverdueTodos,
     GetEverythingOverdueCards,
 
+    // Batch 15c - Everything Aggregates (bucket-grouped todo/card family)
+    GetEverythingOpenTodos,
+    GetEverythingCompletedTodos,
+    GetEverythingUnassignedTodos,
+    GetEverythingNoDueDateTodos,
+    GetEverythingOpenCards,
+    GetEverythingCompletedCards,
+    GetEverythingUnassignedCards,
+    GetEverythingNoDueDateCards,
+    GetEverythingNotNowCards,
+
     // Batch 16 - My Notifications
     GetMyNotifications,
     GetBubbleUps,
@@ -9107,6 +9118,172 @@ structure EverythingFile {
   /// Rich-text body of the Document variant (uploads/attachments omit it).
   content: DocumentContent
   content_attachments: RichTextAttachmentList
+}
+
+// =============================================================================
+// BATCH 15c - Everything Aggregates (bucket-grouped todo/card filter family)
+// =============================================================================
+//
+// The todo/card filter sub-routes return a paginated array of buckets, each
+// entry grouping the matching recordings (with their steps) under their parent
+// project. Documented by BC3 #11627 in doc/api/sections/everything.md. The bare
+// /todos.json and /cards.json roots stay HTML shells and are never modeled.
+
+/// Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+/// Each bucket entry carries the matching to-dos and their steps.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/todos/open.json")
+operation GetEverythingOpenTodos {
+  input: EverythingTodosFilterInput
+  output: EverythingTodosGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Completed to-dos across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/todos/completed.json")
+operation GetEverythingCompletedTodos {
+  input: EverythingTodosFilterInput
+  output: EverythingTodosGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/todos/unassigned.json")
+operation GetEverythingUnassignedTodos {
+  input: EverythingTodosFilterInput
+  output: EverythingTodosGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/todos/no_due_date.json")
+operation GetEverythingNoDueDateTodos {
+  input: EverythingTodosFilterInput
+  output: EverythingTodosGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+/// Each bucket entry carries the matching cards and their steps.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/cards/open.json")
+operation GetEverythingOpenCards {
+  input: EverythingCardsFilterInput
+  output: EverythingCardsGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Completed cards across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/cards/completed.json")
+operation GetEverythingCompletedCards {
+  input: EverythingCardsFilterInput
+  output: EverythingCardsGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Open, unassigned cards across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/cards/unassigned.json")
+operation GetEverythingUnassignedCards {
+  input: EverythingCardsFilterInput
+  output: EverythingCardsGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Open cards with no due date across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/cards/no_due_date.json")
+operation GetEverythingNoDueDateCards {
+  input: EverythingCardsFilterInput
+  output: EverythingCardsGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+/// Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/cards/not_now.json")
+operation GetEverythingNotNowCards {
+  input: EverythingCardsFilterInput
+  output: EverythingCardsGroupOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure EverythingTodosFilterInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure EverythingTodosGroupOutput {
+  buckets: BucketTodosGroupList
+}
+
+structure EverythingCardsFilterInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure EverythingCardsGroupOutput {
+  buckets: BucketCardsGroupList
+}
+
+// ===== Everything Bucket-Group Shapes =====
+
+list BucketTodosGroupList {
+  member: BucketTodosGroup
+}
+
+/// One project's slice of a filtered to-do listing: the parent project and the
+/// matching to-dos (each carrying its steps).
+structure BucketTodosGroup {
+  @required
+  bucket: RecordingBucket
+  @required
+  todos: TodoItems
+}
+
+list BucketCardsGroupList {
+  member: BucketCardsGroup
+}
+
+/// One project's slice of a filtered card listing: the parent project and the
+/// matching cards (each carrying its steps).
+structure BucketCardsGroup {
+  @required
+  bucket: RecordingBucket
+  @required
+  cards: CardList
 }
 
 // ===== My Assignment Shapes =====

@@ -485,6 +485,276 @@ func (s *EverythingService) OverdueCards(ctx context.Context) (result []Card, er
 	return cards, nil
 }
 
+// ---- bucket-grouped todo/card filter family ----
+
+// BucketTodosGroup is one project's slice of a filtered to-do listing: the
+// parent project and the matching to-dos (each carrying its steps).
+type BucketTodosGroup struct {
+	Bucket *Bucket `json:"bucket,omitempty"`
+	Todos  []Todo  `json:"todos,omitempty"`
+}
+
+// BucketCardsGroup is one project's slice of a filtered card listing.
+type BucketCardsGroup struct {
+	Bucket *Bucket `json:"bucket,omitempty"`
+	Cards  []Card  `json:"cards,omitempty"`
+}
+
+// BucketTodosGroupsPage is a page-followed list of to-do bucket groups.
+type BucketTodosGroupsPage struct {
+	Groups []BucketTodosGroup
+	Meta   ListMeta
+}
+
+// BucketCardsGroupsPage is a page-followed list of card bucket groups.
+type BucketCardsGroupsPage struct {
+	Groups []BucketCardsGroup
+	Meta   ListMeta
+}
+
+func bucketTodosGroupFromGenerated(g generated.BucketTodosGroup) BucketTodosGroup {
+	grp := BucketTodosGroup{}
+	if g.Bucket.Id != 0 || g.Bucket.Name != "" {
+		grp.Bucket = &Bucket{ID: g.Bucket.Id, Name: g.Bucket.Name, Type: g.Bucket.Type}
+	}
+	for _, gt := range g.Todos {
+		grp.Todos = append(grp.Todos, todoFromGenerated(gt))
+	}
+	return grp
+}
+
+func bucketCardsGroupFromGenerated(g generated.BucketCardsGroup) BucketCardsGroup {
+	grp := BucketCardsGroup{}
+	if g.Bucket.Id != 0 || g.Bucket.Name != "" {
+		grp.Bucket = &Bucket{ID: g.Bucket.Id, Name: g.Bucket.Name, Type: g.Bucket.Type}
+	}
+	for _, gc := range g.Cards {
+		grp.Cards = append(grp.Cards, cardFromGenerated(gc))
+	}
+	return grp
+}
+
+// OpenTodos returns active, incomplete to-dos across all accessible projects,
+// grouped by project (paginated). Pass a positive page to return only that page;
+// page 0 follows the Link header across all pages.
+func (s *EverythingService) OpenTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "OpenTodos", ResourceType: "todo"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingOpenTodosParams
+	if page > 0 {
+		params = &generated.GetEverythingOpenTodosParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingOpenTodosWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishTodoGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// CompletedTodos returns completed to-dos, grouped by project (paginated).
+func (s *EverythingService) CompletedTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "CompletedTodos", ResourceType: "todo"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingCompletedTodosParams
+	if page > 0 {
+		params = &generated.GetEverythingCompletedTodosParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingCompletedTodosWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishTodoGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// UnassignedTodos returns open, unassigned to-dos, grouped by project (paginated).
+func (s *EverythingService) UnassignedTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "UnassignedTodos", ResourceType: "todo"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingUnassignedTodosParams
+	if page > 0 {
+		params = &generated.GetEverythingUnassignedTodosParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingUnassignedTodosWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishTodoGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// NoDueDateTodos returns open to-dos with no due date, grouped by project (paginated).
+func (s *EverythingService) NoDueDateTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "NoDueDateTodos", ResourceType: "todo"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingNoDueDateTodosParams
+	if page > 0 {
+		params = &generated.GetEverythingNoDueDateTodosParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingNoDueDateTodosWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishTodoGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// OpenCards returns incomplete cards in active columns, grouped by project (paginated).
+func (s *EverythingService) OpenCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "OpenCards", ResourceType: "card"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingOpenCardsParams
+	if page > 0 {
+		params = &generated.GetEverythingOpenCardsParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingOpenCardsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishCardGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// CompletedCards returns completed cards, grouped by project (paginated).
+func (s *EverythingService) CompletedCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "CompletedCards", ResourceType: "card"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingCompletedCardsParams
+	if page > 0 {
+		params = &generated.GetEverythingCompletedCardsParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingCompletedCardsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishCardGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// UnassignedCards returns open, unassigned cards, grouped by project (paginated).
+func (s *EverythingService) UnassignedCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "UnassignedCards", ResourceType: "card"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingUnassignedCardsParams
+	if page > 0 {
+		params = &generated.GetEverythingUnassignedCardsParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingUnassignedCardsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishCardGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// NoDueDateCards returns open cards with no due date, grouped by project (paginated).
+func (s *EverythingService) NoDueDateCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "NoDueDateCards", ResourceType: "card"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingNoDueDateCardsParams
+	if page > 0 {
+		params = &generated.GetEverythingNoDueDateCardsParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingNoDueDateCardsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishCardGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+// NotNowCards returns cards parked in a project's "Not now" column, grouped by
+// project (paginated).
+func (s *EverythingService) NotNowCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "NotNowCards", ResourceType: "card"})
+	if err != nil {
+		return nil, err
+	}
+	defer done(&err)
+	var params *generated.GetEverythingNotNowCardsParams
+	if page > 0 {
+		params = &generated.GetEverythingNotNowCardsParams{Page: page}
+	}
+	r, err := s.client.parent.gen.GetEverythingNotNowCardsWithResponse(ctx, s.client.accountID, params)
+	if err != nil {
+		return nil, err
+	}
+	return s.finishCardGroupsPage(ctx, r.HTTPResponse, r.Body, r.JSON200, page)
+}
+
+func (s *EverythingService) finishTodoGroupsPage(ctx context.Context, httpResp *http.Response, body []byte, json200 *[]generated.BucketTodosGroup, page int32) (*BucketTodosGroupsPage, error) {
+	if err := checkResponse(httpResp, body); err != nil {
+		return nil, err
+	}
+	var groups []BucketTodosGroup
+	if json200 != nil {
+		for _, g := range *json200 {
+			groups = append(groups, bucketTodosGroupFromGenerated(g))
+		}
+	}
+	totalCount := parseTotalCount(httpResp)
+	if page > 0 {
+		return &BucketTodosGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, httpResp, len(groups), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var g generated.BucketTodosGroup
+		if err := json.Unmarshal(raw, &g); err != nil {
+			return nil, fmt.Errorf("failed to parse bucket todo group: %w", err)
+		}
+		groups = append(groups, bucketTodosGroupFromGenerated(g))
+	}
+	return &BucketTodosGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
+func (s *EverythingService) finishCardGroupsPage(ctx context.Context, httpResp *http.Response, body []byte, json200 *[]generated.BucketCardsGroup, page int32) (*BucketCardsGroupsPage, error) {
+	if err := checkResponse(httpResp, body); err != nil {
+		return nil, err
+	}
+	var groups []BucketCardsGroup
+	if json200 != nil {
+		for _, g := range *json200 {
+			groups = append(groups, bucketCardsGroupFromGenerated(g))
+		}
+	}
+	totalCount := parseTotalCount(httpResp)
+	if page > 0 {
+		return &BucketCardsGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, httpResp, len(groups), 0)
+	if err != nil {
+		return nil, err
+	}
+	for _, raw := range rawMore {
+		var g generated.BucketCardsGroup
+		if err := json.Unmarshal(raw, &g); err != nil {
+			return nil, fmt.Errorf("failed to parse bucket card group: %w", err)
+		}
+		groups = append(groups, bucketCardsGroupFromGenerated(g))
+	}
+	return &BucketCardsGroupsPage{Groups: groups, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
 // begin runs the gating + start/end hook lifecycle shared by the everything
 // methods and returns the (possibly gated) context plus a deferred finisher.
 func (s *EverythingService) begin(ctx context.Context, op OperationInfo) (context.Context, func(*error), error) {

@@ -17,11 +17,61 @@ module Basecamp
         end
       end
 
+      # Completed cards across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_completed_cards(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_completed_cards", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/cards/completed.json", params: params)
+        end
+      end
+
+      # Open cards with no due date across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_no_due_date_cards(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_no_due_date_cards", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/cards/no_due_date.json", params: params)
+        end
+      end
+
+      # Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_not_now_cards(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_not_now_cards", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/cards/not_now.json", params: params)
+        end
+      end
+
+      # Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_open_cards(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_open_cards", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/cards/open.json", params: params)
+        end
+      end
+
       # Get every overdue card across all accessible projects, oldest-due-date-first.
       # @return [Array<Hash>] response data
       def get_everything_overdue_cards()
         with_operation(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
           http_get("/cards/overdue.json").json
+        end
+      end
+
+      # Open, unassigned cards across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_unassigned_cards(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_unassigned_cards", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/cards/unassigned.json", params: params)
         end
       end
 
@@ -77,11 +127,51 @@ module Basecamp
         end
       end
 
+      # Completed to-dos across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_completed_todos(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_completed_todos", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/todos/completed.json", params: params)
+        end
+      end
+
+      # Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_no_due_date_todos(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_no_due_date_todos", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/todos/no_due_date.json", params: params)
+        end
+      end
+
+      # Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_open_todos(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_open_todos", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/todos/open.json", params: params)
+        end
+      end
+
       # Get every overdue to-do across all accessible projects, oldest-due-date-first.
       # @return [Array<Hash>] response data
       def get_everything_overdue_todos()
         with_operation(service: "everything", operation: "get_everything_overdue_todos", is_mutation: false) do
           http_get("/todos/overdue.json").json
+        end
+      end
+
+      # Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
+      # @return [Enumerator<Hash>] paginated results
+      def get_everything_unassigned_todos(page: nil)
+        wrap_paginated(service: "everything", operation: "get_everything_unassigned_todos", is_mutation: false) do
+          params = compact_query_params(page: page)
+          paginate("/todos/unassigned.json", params: params)
         end
       end
     end

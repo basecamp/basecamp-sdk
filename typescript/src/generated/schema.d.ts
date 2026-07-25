@@ -487,6 +487,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cards/completed.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Completed cards across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingCompletedCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cards/no_due_date.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open cards with no due date across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingNoDueDateCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cards/not_now.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingNotNowCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cards/open.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+         *     Each bucket entry carries the matching cards and their steps.
+         */
+        get: operations["GetEverythingOpenCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cards/overdue.json": {
         parameters: {
             query?: never;
@@ -499,6 +570,23 @@ export interface paths {
          *     A complete, unpaginated array; each item embeds its `bucket`.
          */
         get: operations["GetEverythingOverdueCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cards/unassigned.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open, unassigned cards across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingUnassignedCards"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2460,6 +2548,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/todos/completed.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Completed to-dos across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingCompletedTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/todos/no_due_date.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open to-dos with no due date across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingNoDueDateTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/todos/open.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+         *     Each bucket entry carries the matching to-dos and their steps.
+         */
+        get: operations["GetEverythingOpenTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/todos/overdue.json": {
         parameters: {
             query?: never;
@@ -2472,6 +2614,23 @@ export interface paths {
          *     A complete, unpaginated array; each item embeds its `bucket`.
          */
         get: operations["GetEverythingOverdueTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/todos/unassigned.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Open, unassigned to-dos across all accessible projects, grouped by project (paginated). */
+        get: operations["GetEverythingUnassignedTodos"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2855,7 +3014,23 @@ export interface components {
             content?: string;
             created_at: string;
             booster?: components["schemas"]["Person"];
-            recording?: components["schemas"]["RecordingParent"];
+            recording?: components["schemas"]["Recording"];
+        };
+        /**
+         * @description One project's slice of a filtered card listing: the parent project and the
+         *     matching cards (each carrying its steps).
+         */
+        BucketCardsGroup: {
+            bucket: components["schemas"]["RecordingBucket"];
+            cards: components["schemas"]["Card"][];
+        };
+        /**
+         * @description One project's slice of a filtered to-do listing: the parent project and the
+         *     matching to-dos (each carrying its steps).
+         */
+        BucketTodosGroup: {
+            bucket: components["schemas"]["RecordingBucket"];
+            todos: components["schemas"]["Todo"][];
         };
         Campfire: {
             /** Format: int64 */
@@ -3677,11 +3852,20 @@ export interface components {
         GetEverythingBoostsResponseContent: components["schemas"]["EverythingBoost"][];
         GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCommentsResponseContent: components["schemas"]["Recording"][];
+        GetEverythingCompletedCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
+        GetEverythingCompletedTodosResponseContent: components["schemas"]["BucketTodosGroup"][];
         GetEverythingFilesResponseContent: components["schemas"]["EverythingFile"][];
         GetEverythingForwardsResponseContent: components["schemas"]["Recording"][];
         GetEverythingMessagesResponseContent: components["schemas"]["Recording"][];
+        GetEverythingNoDueDateCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
+        GetEverythingNoDueDateTodosResponseContent: components["schemas"]["BucketTodosGroup"][];
+        GetEverythingNotNowCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
+        GetEverythingOpenCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
+        GetEverythingOpenTodosResponseContent: components["schemas"]["BucketTodosGroup"][];
         GetEverythingOverdueCardsResponseContent: components["schemas"]["Card"][];
         GetEverythingOverdueTodosResponseContent: components["schemas"]["Todo"][];
+        GetEverythingUnassignedCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
+        GetEverythingUnassignedTodosResponseContent: components["schemas"]["BucketTodosGroup"][];
         GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         GetForwardResponseContent: components["schemas"]["Forward"];
         GetGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
@@ -4403,7 +4587,6 @@ export interface components {
             type: string;
             url: string;
             app_url: string;
-            bucket?: components["schemas"]["RecordingBucket"];
         };
         ReplaceTodoRequestContent: {
             content: string;
@@ -7929,6 +8112,242 @@ export interface operations {
             };
         };
     };
+    GetEverythingCompletedCards: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingCompletedCards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingCompletedCardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingNoDueDateCards: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingNoDueDateCards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingNoDueDateCardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingNotNowCards: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingNotNowCards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingNotNowCardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingOpenCards: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingOpenCards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingOpenCardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetEverythingOverdueCards: {
         parameters: {
             query?: never;
@@ -7945,6 +8364,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetEverythingOverdueCardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingUnassignedCards: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingUnassignedCards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingUnassignedCardsResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */
@@ -17419,6 +17897,183 @@ export interface operations {
             };
         };
     };
+    GetEverythingCompletedTodos: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingCompletedTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingCompletedTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingNoDueDateTodos: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingNoDueDateTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingNoDueDateTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingOpenTodos: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingOpenTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingOpenTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetEverythingOverdueTodos: {
         parameters: {
             query?: never;
@@ -17435,6 +18090,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GetEverythingOverdueTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingUnassignedTodos: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingUnassignedTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingUnassignedTodosResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

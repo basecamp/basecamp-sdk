@@ -503,5 +503,194 @@
         "type": "liveSchemaValidate"
       }
     ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingOpenTodos validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /todos/open.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingOpenTodos",
+    "method": "GET",
+    "path": "/todos/open.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingCompletedTodos validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /todos/completed.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingCompletedTodos",
+    "method": "GET",
+    "path": "/todos/completed.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingUnassignedTodos validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /todos/unassigned.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingUnassignedTodos",
+    "method": "GET",
+    "path": "/todos/unassigned.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingNoDueDateTodos validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /todos/no_due_date.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingNoDueDateTodos",
+    "method": "GET",
+    "path": "/todos/no_due_date.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingOpenCards validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /cards/open.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingOpenCards",
+    "method": "GET",
+    "path": "/cards/open.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingCompletedCards validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /cards/completed.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingCompletedCards",
+    "method": "GET",
+    "path": "/cards/completed.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingUnassignedCards validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /cards/unassigned.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingUnassignedCards",
+    "method": "GET",
+    "path": "/cards/unassigned.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingNoDueDateCards validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /cards/no_due_date.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingNoDueDateCards",
+    "method": "GET",
+    "path": "/cards/no_due_date.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingNotNowCards validates against the bucket-grouped schema",
+    "description": "DECODING coverage for the everything-aggregates bucket-grouped family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises /cards/not_now.json and validates each bucket group against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingNotNowCards",
+    "method": "GET",
+    "path": "/cards/not_now.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
   }
 ]
