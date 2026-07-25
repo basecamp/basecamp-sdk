@@ -42,7 +42,8 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 2
 fi
 
-WORK="$(mktemp -d)"
+# Explicit template so this works identically under GNU and BSD/macOS mktemp.
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/idempotency-parity.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
 fail=0

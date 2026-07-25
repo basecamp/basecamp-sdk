@@ -23,7 +23,8 @@ if ! command -v swift >/dev/null 2>&1; then
 fi
 
 GENERATED_DIR="$ROOT_DIR/swift/Sources/Basecamp/Generated"
-TMP_OUT="$(mktemp -d)"
+# Explicit template so this works identically under GNU and BSD/macOS mktemp.
+TMP_OUT="$(mktemp -d "${TMPDIR:-/tmp}/swift-service-drift.XXXXXX")"
 trap 'rm -rf "$TMP_OUT"' EXIT
 
 echo "==> Regenerating Swift SDK into a temp directory..."
