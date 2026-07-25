@@ -34,6 +34,26 @@
 # Paths default to the repo layout but honour FIXTURE_MANIFEST / FIXTURE_OPENAPI
 # / FIXTURE_DIR env overrides so the negative-case self-test
 # (scripts/test-check-fixture-coverage.rb) can point it at crafted inputs.
+#
+# --- Scope: a deliberately PARTIAL structural validator ------------------------
+#
+# This is NOT a complete JSON-Schema / OpenAPI validator. It validates the subset
+# that keeps a fixture structurally faithful to the generated types:
+#   * required-field presence
+#   * declared types (with integer/number integrality) and nullability
+#   * arrays and array-element typing/nullability
+#   * $ref (incl. 3.1 $ref-with-siblings) and allOf conjunction (required unioned;
+#     duplicate properties and array `items` conjoined; type constraints
+#     intersected; nullability = every part permits null)
+#   * anyOf/oneOf as AT-LEAST-ONE (the value must satisfy some branch; a group is
+#     nullable only if a branch is)
+#
+# Intentionally NOT implemented (out of scope unless a case is reached by the
+# actual generated schemas): exact-one `oneOf` selection, `enum`, `const`,
+# discriminators, `pattern`, `format`, numeric bounds, `additionalProperties`,
+# `uniqueItems`, and other assertion keywords. Findings about these are declined
+# unless they affect the current generated `openapi.json` or this documented
+# subset.
 
 require "json"
 require "yaml"
@@ -112,9 +132,10 @@ def allowed_types(schema)
     members = t.compact
     [Set.new(members - ["null"]), members.include?("null")]
   when String
-    # OpenAPI 3.1 scalar null type: the value must be null, so it imposes no
-    # non-null type constraint and IS nullable.
-    return [Set.new, true] if t == "null"
+    # OpenAPI 3.1 scalar null type: the value must BE null — a real "null" type
+    # constraint (so a non-null value fails), and it is nullable. Returning an
+    # empty type set would wrongly impose no constraint at all.
+    return [Set.new(["null"]), true] if t == "null"
 
     [Set.new([t]), schema["nullable"] == true]
   else

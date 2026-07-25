@@ -72,6 +72,11 @@
 # required), fails the target. So a fixture that no longer matches the generated
 # types is caught, not just one missing a key.
 #
+# This is a deliberately PARTIAL structural validator (required/types/nullability/
+# arrays/$ref/allOf/at-least-one-alternative) — not a full JSON-Schema
+# implementation. See the "Scope" note in scripts/check-fixture-coverage.rb for
+# the supported subset and the keywords intentionally out of scope.
+#
 # A missing fixture, unresolvable pointer, unknown schema, or covered schema
 # with no active concrete representative -> the check FAILS.
 

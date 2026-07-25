@@ -431,6 +431,14 @@ begin
     fixtures: { "nt.json" => { "n" => nil } },
   )
   expect_pass(failures, 'scalar type:"null" required field accepts null', out, status)
+
+  out, status = run_synthetic(
+    openapi: NULL_TYPE_OPENAPI,
+    manifest: { "targets" => [{ "id" => "nt", "fixture" => "nt.json", "pointer" => "", "schema" => "NullTypeTarget" }],
+                "covered_schemas" => { "NullTypeTarget" => ["nt"] }, "excluded_schemas" => {} },
+    fixtures: { "nt.json" => { "n" => "not-null" } },
+  )
+  expect_fail(failures, 'scalar type:"null" rejects a non-null value', out, status, "expected null, got string")
 rescue Timeout::Error
   failures << "null-type validation hung"
 end
@@ -438,7 +446,7 @@ end
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 14 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 15 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
