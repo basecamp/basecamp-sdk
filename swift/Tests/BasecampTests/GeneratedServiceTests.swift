@@ -352,6 +352,36 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertNil(info.resourceId, "collection op has no deeper resource id")
     }
 
+    // GetTodolistOrGroup's path label is the unsuffixed `{id}`; the resource
+    // selector must still pick it up (endsWith("Id") OR == "id").
+    func testGetTodolistOrGroupEmitsTodolistIdAsResourceId() async throws {
+        let spy = SpyHooks()
+        let data = try JSONSerialization.data(withJSONObject: [:] as [String: Any])
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        _ = try await account.todolists.get(id: 42)
+
+        XCTAssertEqual(spy.operationStarts.count, 1)
+        let info = spy.operationStarts.first!
+        XCTAssertEqual(info.operation, "GetTodolistOrGroup")
+        XCTAssertEqual(info.resourceId, 42, "resourceId should be the todolist id")
+    }
+
+    func testUpdateTodolistOrGroupEmitsTodolistIdAsResourceId() async throws {
+        let spy = SpyHooks()
+        let data = try JSONSerialization.data(withJSONObject: [:] as [String: Any])
+        let transport = MockTransport(statusCode: 200, data: data)
+        let account = makeTestAccountClient(transport: transport, hooks: spy)
+
+        _ = try await account.todolists.update(id: 42, req: UpdateTodolistOrGroupRequest(name: "Updated list"))
+
+        XCTAssertEqual(spy.operationStarts.count, 1)
+        let info = spy.operationStarts.first!
+        XCTAssertEqual(info.operation, "UpdateTodolistOrGroup")
+        XCTAssertEqual(info.resourceId, 42, "resourceId should be the todolist id")
+    }
+
     func testCommentsServiceGet() async throws {
         let responseJSON: [String: Any] = [
             "id": 7, "content": "Great idea!", "content_attachments": [],

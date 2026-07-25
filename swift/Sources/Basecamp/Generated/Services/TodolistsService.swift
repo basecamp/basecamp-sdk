@@ -25,7 +25,7 @@ public final class TodolistsService: BaseService, @unchecked Sendable {
 
     public func get(id: Int) async throws -> TodolistOrGroup {
         return try await request(
-            OperationInfo(service: "Todolists", operation: "GetTodolistOrGroup", resourceType: "todolist_or_group", isMutation: false),
+            OperationInfo(service: "Todolists", operation: "GetTodolistOrGroup", resourceType: "todolist_or_group", isMutation: false, resourceId: id),
             method: "GET",
             path: "/todolists/\(id)",
             retryConfig: Metadata.retryConfig(for: "GetTodolistOrGroup")
@@ -58,7 +58,7 @@ public final class TodolistsService: BaseService, @unchecked Sendable {
 
     public func update(id: Int, req: UpdateTodolistOrGroupRequest) async throws -> TodolistOrGroup {
         return try await request(
-            OperationInfo(service: "Todolists", operation: "UpdateTodolistOrGroup", resourceType: "todolist_or_group", isMutation: true),
+            OperationInfo(service: "Todolists", operation: "UpdateTodolistOrGroup", resourceType: "todolist_or_group", isMutation: true, resourceId: id),
             method: "PUT",
             path: "/todolists/\(id)",
             body: req,
