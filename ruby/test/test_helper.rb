@@ -184,6 +184,13 @@ module TestHelpers
       .to_return(status: status, body: "")
   end
 
+  # Load a shared JSON fixture (the validated source of truth) as string-keyed
+  # hashes. test_helper.rb lives at ruby/test/, so "../../spec/fixtures" reaches
+  # the repo-root spec/fixtures directory.
+  def load_fixture(relative_path)
+    JSON.parse(File.read(File.expand_path("../../spec/fixtures/#{relative_path}", __dir__)))
+  end
+
   # Sample project data
   def sample_project(id: 123, name: "Test Project")
     {

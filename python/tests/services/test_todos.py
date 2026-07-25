@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -14,9 +15,19 @@ from basecamp.hooks import BasecampHooks, OperationInfo
 
 BASE = "https://3.basecampapi.com/12345"
 
+_FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures"
+
+
+def load_fixture(rel: str) -> dict:
+    return json.loads((_FIXTURES / rel).read_text())
+
 
 def _todo(todo_id: int = 42, **overrides) -> dict:
-    todo = {
+    # Source the full validated fixture for shape (every required Todo field is
+    # present), then keep the test-critical override values that the assertions
+    # verify flow through to the PUT body.
+    return {
+        **load_fixture("todos/get.json"),
         "id": todo_id,
         "content": "Buy milk",
         "description": "<p>From the store</p>",
@@ -25,9 +36,8 @@ def _todo(todo_id: int = 42, **overrides) -> dict:
         "assignees": [{"id": 100, "name": "Jane Doe"}],
         "completion_subscribers": [{"id": 555, "name": "Sub Scriber"}],
         "completed": False,
+        **overrides,
     }
-    todo.update(overrides)
-    return todo
 
 
 def _put_body(route) -> dict:

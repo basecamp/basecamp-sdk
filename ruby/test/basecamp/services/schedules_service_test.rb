@@ -24,15 +24,9 @@ class SchedulesServiceTest < Minitest::Test
     }
   end
 
-  def sample_entry(id: 789, summary: "Team Meeting")
-    {
-      "id" => id,
-      "summary" => summary,
-      "description_attachments" => [],
-      "starts_at" => "2024-12-15T09:00:00Z",
-      "ends_at" => "2024-12-15T10:00:00Z",
-      "all_day" => false
-    }
+  def sample_entry(id: nil, summary: nil)
+    fixture = load_fixture("schedules/entry_get.json")
+    fixture.merge "id" => id || fixture["id"], "summary" => summary || fixture["summary"]
   end
 
   def test_get
@@ -51,7 +45,7 @@ class SchedulesServiceTest < Minitest::Test
     result = @account.schedules.list_entries(schedule_id: 456).to_a
 
     assert_equal 2, result.length
-    assert_equal "Team Meeting", result[0]["summary"]
+    assert_equal "Project Kickoff Meeting", result[0]["summary"]
   end
 
   def test_get_entry
@@ -59,8 +53,8 @@ class SchedulesServiceTest < Minitest::Test
 
     result = @account.schedules.get_entry(entry_id: 789)
 
-    assert_equal 789, result["id"]
-    assert_equal "Team Meeting", result["summary"]
+    assert_equal 1_069_479_400, result["id"]
+    assert_equal "Project Kickoff Meeting", result["summary"]
   end
 
   def test_create_entry

@@ -19,17 +19,13 @@ class RecordingsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_recording(id: 456, title: "Test Recording")
-    {
-      "id" => id,
-      "title" => title,
-      "status" => "active",
-      "type" => "Todo",
-      # The generic recording projection carries the matching type's rich-text
-      # companion array; a Todo recording surfaces description_attachments.
-      "description_attachments" => [],
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  # Sourced from the shared recordings/get.json fixture (the validated source of
+  # truth). It is a Message recording, so the rich-text companion array it
+  # carries is content_attachments (one inline file); description_attachments is
+  # absent for this type.
+  def sample_recording(id: nil, title: nil)
+    fixture = load_fixture("recordings/get.json")
+    fixture.merge "id" => id || fixture["id"], "title" => title || fixture["title"]
   end
 
   def test_list
@@ -41,7 +37,7 @@ class RecordingsServiceTest < Minitest::Test
     result = @account.recordings.list(type: "Todo").to_a
 
     assert_equal 2, result.length
-    assert_equal "Test Recording", result[0]["title"]
+    assert_equal "We won Leto!", result[0]["title"]
   end
 
   def test_list_with_filters
@@ -62,10 +58,12 @@ class RecordingsServiceTest < Minitest::Test
 
     result = @account.recordings.get(recording_id: 456)
 
-    assert_equal 456, result["id"]
-    assert_equal "Test Recording", result["title"]
-    # The optional projection array surfaces on the matching-type recording.
-    assert_equal [], result["description_attachments"]
+    assert_equal 1_069_479_351, result["id"]
+    assert_equal "We won Leto!", result["title"]
+    # This Message recording surfaces content_attachments (one inline file); the
+    # description_attachments projection is absent for this type.
+    assert_equal 1, result["content_attachments"].length
+    assert_nil result["description_attachments"]
   end
 
   def test_archive

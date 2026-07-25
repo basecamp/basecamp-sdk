@@ -16,16 +16,9 @@ class MessagesServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_message(id: 789, subject: "Test Message")
-    {
-      "id" => id,
-      "subject" => subject,
-      "content" => "<p>Message content</p>",
-      "content_attachments" => [],
-      "status" => "active",
-      "created_at" => "2024-01-01T00:00:00Z",
-      "creator" => { "id" => 1, "name" => "Test User" }
-    }
+  def sample_message(id: nil, subject: nil)
+    fixture = load_fixture("messages/get.json")
+    fixture.merge "id" => id || fixture["id"], "subject" => subject || fixture["subject"]
   end
 
   def test_list
@@ -35,7 +28,7 @@ class MessagesServiceTest < Minitest::Test
     result = @account.messages.list(board_id: 456).to_a
 
     assert_equal 2, result.length
-    assert_equal "Test Message", result[0]["subject"]
+    assert_equal "We won Leto!", result[0]["subject"]
   end
 
   def test_list_with_sort_and_direction
@@ -57,8 +50,8 @@ class MessagesServiceTest < Minitest::Test
 
     result = @account.messages.get(message_id: 789)
 
-    assert_equal 789, result["id"]
-    assert_equal "Test Message", result["subject"]
+    assert_equal 1_069_479_351, result["id"]
+    assert_equal "We won Leto!", result["subject"]
   end
 
   def test_create

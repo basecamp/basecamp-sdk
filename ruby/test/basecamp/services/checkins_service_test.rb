@@ -32,14 +32,9 @@ class CheckinsServiceTest < Minitest::Test
     }
   end
 
-  def sample_answer(id: 1, content: "<p>Making great progress!</p>")
-    {
-      "id" => id,
-      "content" => content,
-      "content_attachments" => [],
-      "creator" => { "id" => 1, "name" => "Test User" },
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_answer(id: nil, content: nil)
+    fixture = load_fixture("checkins/answer.json")
+    fixture.merge "id" => id || fixture["id"], "content" => content || fixture["content"]
   end
 
   def test_get_questionnaire
@@ -107,7 +102,7 @@ class CheckinsServiceTest < Minitest::Test
     answers = @account.checkins.list_answers(question_id: 200).to_a
 
     assert_equal 2, answers.length
-    assert_equal "<p>Making great progress!</p>", answers[0]["content"]
+    assert_equal load_fixture("checkins/answer.json")["content"], answers[0]["content"]
   end
 
   def test_get_answer
@@ -117,7 +112,7 @@ class CheckinsServiceTest < Minitest::Test
     answer = @account.checkins.get_answer(answer_id: 200)
 
     assert_equal 200, answer["id"]
-    assert_equal "<p>Making great progress!</p>", answer["content"]
+    assert_equal load_fixture("checkins/answer.json")["content"], answer["content"]
   end
 
   def test_create_answer

@@ -14,14 +14,9 @@ class ClientRepliesServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_reply(id: 1, content: "<p>Thank you for the update!</p>")
-    {
-      "id" => id,
-      "content" => content,
-      "content_attachments" => [],
-      "creator" => { "id" => 1, "name" => "Client User" },
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_reply(id: nil, content: nil)
+    fixture = load_fixture("client_replies/get.json")
+    fixture.merge "id" => id || fixture["id"], "content" => content || fixture["content"]
   end
 
   def test_list_replies
@@ -31,7 +26,7 @@ class ClientRepliesServiceTest < Minitest::Test
     replies = @account.client_replies.list(recording_id: 200).to_a
 
     assert_equal 2, replies.length
-    assert_equal "<p>Thank you for the update!</p>", replies[0]["content"]
+    assert_equal load_fixture("client_replies/get.json")["content"], replies[0]["content"]
     assert_equal "<p>Looking forward to it!</p>", replies[1]["content"]
   end
 
@@ -42,7 +37,7 @@ class ClientRepliesServiceTest < Minitest::Test
     reply = @account.client_replies.get(recording_id: 200, reply_id: 300)
 
     assert_equal 300, reply["id"]
-    assert_equal "<p>Thank you for the update!</p>", reply["content"]
-    assert_equal "Client User", reply["creator"]["name"]
+    assert_equal load_fixture("client_replies/get.json")["content"], reply["content"]
+    assert_equal "Annie Bryan", reply["creator"]["name"]
   end
 end

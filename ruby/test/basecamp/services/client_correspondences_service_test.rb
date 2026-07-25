@@ -14,15 +14,9 @@ class ClientCorrespondencesServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_correspondence(id: 1, subject: "Project Update")
-    {
-      "id" => id,
-      "subject" => subject,
-      "content" => "<p>Here is the latest update on the project.</p>",
-      "content_attachments" => [],
-      "replies_count" => 3,
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_correspondence(id: nil, subject: nil)
+    fixture = load_fixture("client_correspondences/get.json")
+    fixture.merge "id" => id || fixture["id"], "subject" => subject || fixture["subject"]
   end
 
   def test_list_correspondences
@@ -32,7 +26,7 @@ class ClientCorrespondencesServiceTest < Minitest::Test
     correspondences = @account.client_correspondences.list.to_a
 
     assert_equal 2, correspondences.length
-    assert_equal "Project Update", correspondences[0]["subject"]
+    assert_equal "Project kickoff!", correspondences[0]["subject"]
     assert_equal "Invoice Query", correspondences[1]["subject"]
   end
 
@@ -43,7 +37,7 @@ class ClientCorrespondencesServiceTest < Minitest::Test
     correspondence = @account.client_correspondences.get(correspondence_id: 200)
 
     assert_equal 200, correspondence["id"]
-    assert_equal "Project Update", correspondence["subject"]
-    assert_equal 3, correspondence["replies_count"]
+    assert_equal "Project kickoff!", correspondence["subject"]
+    assert_equal 5, correspondence["replies_count"]
   end
 end

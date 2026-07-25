@@ -14,16 +14,9 @@ class CardsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_card(id: 1, title: "Task Card")
-    {
-      "id" => id,
-      "title" => title,
-      "content" => "<p>Card description</p>",
-      "description_attachments" => [],
-      "due_on" => "2024-12-31",
-      "completed" => false,
-      "assignees" => []
-    }
+  def sample_card(id: nil, title: nil)
+    fixture = load_fixture("cards/get.json")
+    fixture.merge "id" => id || fixture["id"], "title" => title || fixture["title"]
   end
 
   def test_list_cards
@@ -33,7 +26,7 @@ class CardsServiceTest < Minitest::Test
     cards = @account.cards.list(column_id: 200).to_a
 
     assert_equal 2, cards.length
-    assert_equal "Task Card", cards[0]["title"]
+    assert_equal "Implement user authentication", cards[0]["title"]
     assert_equal "Another Card", cards[1]["title"]
   end
 
@@ -44,7 +37,7 @@ class CardsServiceTest < Minitest::Test
     card = @account.cards.get(card_id: 200)
 
     assert_equal 200, card["id"]
-    assert_equal "Task Card", card["title"]
+    assert_equal "Implement user authentication", card["title"]
   end
 
   def test_create_card
