@@ -1,0 +1,44 @@
+swift/Sources/Basecamp/Generated/Services/WormholesService.swift
+  s_8a8548e8866958::t_93a0b50526d75c 7,17,26
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_8a8548e8866958::t_7c685e02e0bfdd 181-182
+  s_8a8548e8866958::t_b0cc0d36a0df5d 189-190
+swift/Sources/Basecamp/Generated/Services/ToolsService.swift
+  s_8a8548e8866958::t_93a0b50526d75c 7
+swift/Sources/Basecamp/Generated/Services/WebhooksService.swift
+  s_8a8548e8866958::t_93a0b50526d75c 16,44
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_8a8548e8866958::t_3a3318f31e4d57 338-354
+  s_8a8548e8866958::t_767890d4826580 762-774
+  s_8a8548e8866958::t_dae12afacd4a6e 775
+swift/Tests/BasecampTests/WormholesServiceTests.swift
+  s_8a8548e8866958::t_637fae61a92fc7 140-156
+  s_8a8548e8866958::t_5dfc2271b45262 188-200
+  s_8d633484dc870e::t_5f3ae967c6fc6e 201
+swift/Sources/Basecamp/Generated/Services/CardColumnsService.swift
+  s_8a8548e8866958::t_93a0b50526d75c 17,26,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1ecf68ab6d684c8c923b40b6ee0708e50a4e63b8",
+  "prompts": {},
+  "sessions": {
+    "s_8a8548e8866958": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26364120-e7b7-41a6-99d4-9ef82f457c3f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
