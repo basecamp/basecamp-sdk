@@ -1,0 +1,24 @@
+python/tests/services/test_everything.py
+  s_8d633484dc870e::t_766632d2884e7d 319
+  s_8d633484dc870e::t_f9e0bfafdbeb0a 186,193
+ruby/test/basecamp/services/everything_service_test.rb
+  s_8d633484dc870e::t_95dbcc296356be 254
+  s_8d633484dc870e::t_f9e0bfafdbeb0a 225
+  s_8d633484dc870e::t_b84b191bb36743 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f63593a68b85b8ed3bdbb52e2c9f6e933a1870fd",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
