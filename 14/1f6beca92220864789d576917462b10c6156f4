@@ -60,6 +60,7 @@ python/src/basecamp/generated/types.py
   s_8d633484dc870e::t_ec6b094bb9ee11 527
   s_8d633484dc870e::t_5512a011cbb15c 1374-1400,1404-1405,1409,1419-1422
   s_8d633484dc870e::t_6e1e09f0dd28c7 1423-1424
+  s_8d633484dc870e::t_5cb99b87244fc8 1417-1418
 kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ToolsServiceTest.kt
   s_8d633484dc870e::t_e9eeb7c4585864 97-127
 spec/basecamp.smithy
