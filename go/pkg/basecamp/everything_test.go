@@ -452,9 +452,9 @@ func TestEverythingService_NotNowCards_BucketGrouped(t *testing.T) {
 	}
 }
 
-// TestEverythingService_OpenTodos_ForwardsPage verifies the bucket-grouped ops
-// forward a positive page as ?page= (regression parity with the flat family).
-func TestEverythingService_OpenTodos_ForwardsPage(t *testing.T) {
+// TestEverythingService_OpenTodos_PassesPageParam verifies the bucket-grouped
+// ops send a positive page as ?page= (regression parity with the flat family).
+func TestEverythingService_OpenTodos_PassesPageParam(t *testing.T) {
 	var captured string
 	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		captured = r.URL.RawQuery
