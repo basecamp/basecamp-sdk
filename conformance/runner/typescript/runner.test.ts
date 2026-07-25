@@ -21,7 +21,8 @@ import { fileURLToPath } from "node:url";
 // =============================================================================
 
 interface MockResponse {
-  status: number;
+  status?: number;
+  networkError?: boolean;
   headers?: Record<string, string>;
   body?: unknown;
   delay?: number;
@@ -81,6 +82,8 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
+  "Network error on an idempotent POST is retried then succeeds":
+    "TS SDK retry middleware does not retry fetch rejections (network errors); only HTTP-status retries are implemented",
 };
 
 /**
@@ -90,6 +93,21 @@ const TS_SDK_SKIPS: Record<string, string> = {
  * its own stricter hop-1 invariant below.
  */
 const MULTI_HOP_OPERATIONS = new Set(["DownloadURL", "UploadsDownload"]);
+
+/**
+ * Recognize a genuine transport-level failure (fetch rejection). The TS SDK
+ * does not wrap these into a BasecampError, so the raw error surfaces: MSW's
+ * HttpResponse.error() rejects with a TypeError ("Failed to fetch"); undici
+ * variants say "fetch failed". Match by type and message so the errorType
+ * assertion can classify it as "network" without accepting arbitrary errors.
+ */
+function isNetworkRejection(err: unknown): boolean {
+  if (err instanceof TypeError) return true;
+  if (err instanceof Error) {
+    return /failed to fetch|fetch failed|network|socket|econn/i.test(err.message);
+  }
+  return false;
+}
 
 // =============================================================================
 // Test infrastructure
@@ -410,6 +428,13 @@ function installMockHandlers(tc: TestCase): {
       await new Promise((resolve) => setTimeout(resolve, mock.delay));
     }
 
+    // Genuine transport failure for this queued entry: MSW's
+    // HttpResponse.error() rejects the fetch the way a real network error does
+    // (the request counter is already incremented above).
+    if (mock.networkError) {
+      return HttpResponse.error();
+    }
+
     // Build response headers
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -443,7 +468,9 @@ function installMockHandlers(tc: TestCase): {
       bodyToSerialize !== undefined ? JSON.stringify(bodyToSerialize) : null;
 
     return new HttpResponse(responseBody, {
-      status: mock.status,
+      // networkError entries return early above; the schema guarantees a
+      // status is present on every non-networkError entry.
+      status: mock.status ?? 200,
       headers,
     });
   });
@@ -777,12 +804,25 @@ function checkAssertions(
           result.error,
           `[${tc.name}] expected an error of type ${expectedType}`,
         ).toBeDefined();
+        // Classify the error. A mapped BasecampError carries a canonical
+        // `.code`. On the network path the TS SDK does NOT wrap the fetch
+        // rejection into a BasecampError — it surfaces the raw transport
+        // failure (a TypeError / "Failed to fetch") — so recognize that as
+        // "network". Anything else is unknown: fail rather than silently pass.
+        let actualType: string;
         if (result.error instanceof BasecampError) {
-          expect(
-            result.error.code,
-            `[${tc.name}] expected error code "${expectedType}", got "${result.error.code}"`,
-          ).toBe(expectedType);
+          actualType = result.error.code;
+        } else if (isNetworkRejection(result.error)) {
+          actualType = "network";
+        } else {
+          throw new Error(
+            `[${tc.name}] expected error type "${expectedType}", got unrecognized error: ${String(result.error)}`,
+          );
         }
+        expect(
+          actualType,
+          `[${tc.name}] expected error type "${expectedType}", got "${actualType}"`,
+        ).toBe(expectedType);
         break;
       }
 

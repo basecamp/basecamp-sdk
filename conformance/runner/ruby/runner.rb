@@ -204,6 +204,7 @@ RUBY_SKIPS = Set.new([
   "maxItems caps results across pages",
   "DownloadURL retries on 503 at the auth'd first hop",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop",
+  "Network error on an idempotent POST is retried then succeeds",
 ].freeze)
 
 DOWNLOAD_RETRY_SKIP = "Ruby SDK download path uses http.get_no_retry; retry on 5xx / Retry-After is not implemented".freeze
@@ -217,6 +218,7 @@ RUBY_SKIP_REASONS = {
   "maxItems caps results across pages" => "Ruby SDK paginate doesn't support maxItems",
   "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
   "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
+  "Network error on an idempotent POST is retried then succeeds" => "Ruby SDK only retries GET network errors; mutations go through single_request with no retry",
 }.freeze
 
 # Single test case
@@ -253,11 +255,15 @@ class TestRunner
 
     # Queue up responses
     response_queue = responses.map do |r|
-      {
-        status: r["status"],
-        body: r["body"]&.to_json || "",
-        headers: { "Content-Type" => "application/json" }.merge(r["headers"] || {})
-      }
+      if r["networkError"]
+        { network_error: true }
+      else
+        {
+          status: r["status"],
+          body: r["body"]&.to_json || "",
+          headers: { "Content-Type" => "application/json" }.merge(r["headers"] || {})
+        }
+      end
     end
 
     # Method-agnostic catch-all on the active client's origin (derived from
@@ -281,6 +287,13 @@ class TestRunner
       if call_count < response_queue.size
         resp = response_queue[call_count]
         call_count += 1
+        # Genuine transport failure for this queued entry only: raise a Faraday
+        # connection error (the SDK's rescue Faraday::Error path maps it to a
+        # NetworkError). The request is already recorded above, so requestCount
+        # is correct. Raising in-block keeps the rest of the queue intact,
+        # unlike a blanket stub .to_raise.
+        raise Faraday::ConnectionFailed, "simulated network error" if resp[:network_error]
+
         resp
       elsif paginates
         # Beyond defined responses for paginated ops: empty 200 terminates pagination
@@ -449,12 +462,20 @@ class TestRunner
           "forbidden" => Basecamp::ErrorCode::FORBIDDEN,
           "rate_limit" => Basecamp::ErrorCode::RATE_LIMIT,
           "validation" => Basecamp::ErrorCode::VALIDATION,
+          "network" => Basecamp::ErrorCode::NETWORK,
         }
         expected_code = code_map[expected_type]
         if expected_code.nil?
           failures << "Unknown conformance error type #{expected_type.inspect} (add to code_map)"
-        elsif error.respond_to?(:code) && error.code != expected_code
-          failures << "Expected error code #{expected_code.inspect}, got #{error.code.inspect}"
+        else
+          # Require a canonical code that exists and matches — an error that
+          # carries no code must fail, not silently pass.
+          actual_code = error.respond_to?(:code) ? error.code : nil
+          if actual_code.nil?
+            failures << "Expected error code #{expected_code.inspect}, but #{error.class} carries no code: #{error}"
+          elsif actual_code != expected_code
+            failures << "Expected error code #{expected_code.inspect}, got #{actual_code.inspect}"
+          end
         end
 
       when "requestPath"
