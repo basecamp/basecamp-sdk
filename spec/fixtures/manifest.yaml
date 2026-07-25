@@ -63,9 +63,11 @@
 #
 # Each target's selected instance is validated against its schema for BOTH
 # required-field presence AND type/nullability, composition-aware ($ref-with-
-# siblings + allOf are merged): a missing required field (including one
-# contributed by an allOf branch), a required field null against a non-nullable
-# schema, a null array element against a non-nullable item schema, or a value
+# siblings + allOf are merged; anyOf/oneOf groups — including those inherited via
+# $ref/allOf — require the value to satisfy at least one branch): a missing
+# required field (including one contributed by an allOf branch), a required field
+# null against a non-nullable schema, a null array element against a non-nullable
+# item schema, a value matching none of an anyOf/oneOf's alternatives, or a value
 # whose JSON type contradicts the declared type (e.g. a string where an array is
 # required), fails the target. So a fixture that no longer matches the generated
 # types is caught, not just one missing a key.

@@ -150,25 +150,30 @@ end
 
 # Merges a schema's effective constraints across `$ref` (including 3.1
 # `$ref`-with-siblings) and `allOf`, returning
-# [required(Array), properties(Hash), types(Set), nullable(bool), items(schema)].
-# `anyOf`/`oneOf` are alternatives, so their required/properties are NOT merged
-# (that would over-require). `visited` (component names) + depth guard terminate
-# reference/composition cycles.
+# [required(Array), properties(Hash), types(Set), nullable(bool), items(schema),
+#  alt_groups(Array of branch-arrays)].
+# `allOf` is a conjunction (merged into required/properties). `anyOf`/`oneOf` are
+# alternatives: their branches are NOT merged (that would over-require) but each
+# group is collected so validation can require at least one branch to match —
+# including groups inherited through `$ref` and `allOf`. `visited` (component
+# names) + depth guard terminate reference/composition cycles.
 def merged_constraints(schema, components, visited = Set.new, depth = 0)
   req = []
   props = {}
   types = Set.new
   nullable = false
   items = nil
-  return [req, props, types, nullable, items] if depth > 40 || !schema.is_a?(Hash)
+  alt_groups = []
+  return [req, props, types, nullable, items, alt_groups] if depth > 40 || !schema.is_a?(Hash)
 
   absorb = lambda do |sub|
-    r2, p2, t2, n2, i2 = merged_constraints(sub, components, visited, depth + 1)
+    r2, p2, t2, n2, i2, a2 = merged_constraints(sub, components, visited, depth + 1)
     req.concat(r2)
     p2.each { |k, v| props[k] ||= v }
     types.merge(t2)
     nullable ||= n2
     items ||= i2
+    alt_groups.concat(a2)
   end
 
   name = ref_name(schema)
@@ -185,8 +190,11 @@ def merged_constraints(schema, components, visited = Set.new, depth = 0)
   (schema["required"] || []).each { |r| req << r }
   items ||= schema["items"]
   (schema["allOf"] || []).each { |sub| absorb.call(sub) }
+  %w[anyOf oneOf].each do |key|
+    alt_groups << schema[key] if schema[key].is_a?(Array) && !schema[key].empty?
+  end
 
-  [req, props, types, nullable, items]
+  [req, props, types, nullable, items, alt_groups]
 end
 
 # Composition-aware validation of `value` against `schema`. Reports
@@ -200,7 +208,7 @@ def instance_errors(prefix, value, schema, components, depth = 0)
   return [] if depth > 60
   return [] if value.nil? # optional-null tolerated; required-/element-null handled in context
 
-  req, props, types, _nullable, items = merged_constraints(schema, components)
+  req, props, types, _nullable, items, alt_groups = merged_constraints(schema, components)
 
   unless type_matches?(types, value)
     label = prefix.empty? ? "(root)" : prefix
@@ -208,6 +216,17 @@ def instance_errors(prefix, value, schema, components, depth = 0)
   end
 
   errs = []
+
+  # anyOf/oneOf: the value must satisfy at least one branch of each group
+  # (oneOf is validated as "at least one" — enforcing exactly-one would need full
+  # discriminator/enum/const validation to avoid false positives).
+  alt_groups.each do |branches|
+    next if branches.any? { |branch| instance_errors(prefix, value, branch, components, depth + 1).empty? }
+
+    label = prefix.empty? ? "(root)" : prefix
+    errs << "#{label}: value matches none of the #{branches.length} allowed alternatives (anyOf/oneOf)"
+  end
+
   if value.is_a?(Hash)
     req.uniq.each do |rk|
       field = prefix.empty? ? rk : "#{prefix}/#{rk}"

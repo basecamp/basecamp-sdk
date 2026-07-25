@@ -266,10 +266,39 @@ rescue Timeout::Error
   failures << "composed-target validation hung"
 end
 
+# Alternative-group (anyOf/oneOf) validation, with the group inherited through
+# BOTH allOf and $ref (ComposedAlt -> allOf -> $ref AltBase -> oneOf). A value
+# must satisfy at least one branch; an empty object satisfies neither.
+ALT_OPENAPI = {
+  "components" => { "schemas" => {
+    "AltBase" => { "oneOf" => [
+      { "type" => "object", "required" => ["a"], "properties" => { "a" => { "type" => "string" } } },
+      { "type" => "object", "required" => ["b"], "properties" => { "b" => { "type" => "string" } } },
+    ] },
+    "ComposedAlt" => { "allOf" => [{ "$ref" => "#/components/schemas/AltBase" }] },
+  } },
+}.freeze
+
+def alt_manifest
+  { "targets" => [{ "id" => "alt", "fixture" => "alt.json", "pointer" => "", "schema" => "ComposedAlt" }],
+    "covered_schemas" => { "ComposedAlt" => ["alt"] },
+    "excluded_schemas" => {} }
+end
+
+begin
+  out, status = run_synthetic(openapi: ALT_OPENAPI, manifest: alt_manifest, fixtures: { "alt.json" => {} })
+  expect_fail(failures, "anyOf/oneOf: empty object matches no alternative", out, status, "matches none of")
+
+  out, status = run_synthetic(openapi: ALT_OPENAPI, manifest: alt_manifest, fixtures: { "alt.json" => { "a" => "x" } })
+  expect_pass(failures, "anyOf/oneOf: value matching a branch passes", out, status)
+rescue Timeout::Error
+  failures << "alternative-group validation hung"
+end
+
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 5 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 7 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
