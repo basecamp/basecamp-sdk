@@ -8810,8 +8810,8 @@ structure GetEverythingCommentsOutput {
   recordings: RecordingList
 }
 
-/// Get every automatic check-in answer across all accessible projects,
-/// newest-first (paginated). Each item embeds its `bucket`.
+/// Get every automatic check-in answer across all accessible projects, newest-first.
+/// Paginated; each item embeds its `bucket`.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)

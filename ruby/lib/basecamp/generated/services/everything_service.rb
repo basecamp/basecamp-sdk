@@ -25,7 +25,7 @@ module Basecamp
         end
       end
 
-      # Get every automatic check-in answer across all accessible projects,
+      # Get every automatic check-in answer across all accessible projects, newest-first.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
       def get_everything_checkins(page: nil)

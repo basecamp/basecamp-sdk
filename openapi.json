@@ -5632,7 +5632,7 @@
     },
     "/{accountId}/checkins.json": {
       "get": {
-        "description": "Get every automatic check-in answer across all accessible projects,\nnewest-first (paginated). Each item embeds its `bucket`.",
+        "description": "Get every automatic check-in answer across all accessible projects, newest-first.\nPaginated; each item embeds its `bucket`.",
         "operationId": "GetEverythingCheckins",
         "parameters": [
           {

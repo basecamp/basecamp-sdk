@@ -55,7 +55,7 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Get every automatic check-in answer across all accessible projects,
+     * Get every automatic check-in answer across all accessible projects, newest-first.
      * @param options Optional query parameters and pagination control
      */
     suspend fun everythingCheckins(options: GetEverythingCheckinsOptions? = null): ListResult<Recording> {

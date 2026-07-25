@@ -2670,8 +2670,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Get every automatic check-in answer across all accessible projects,
-         *     newest-first (paginated). Each item embeds its `bucket`.
+         * @description Get every automatic check-in answer across all accessible projects, newest-first.
+         *     Paginated; each item embeds its `bucket`.
          */
         get: operations["GetEverythingCheckins"];
         put?: never;

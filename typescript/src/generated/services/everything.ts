@@ -139,7 +139,7 @@ export class EverythingService extends BaseService {
   }
 
   /**
-   * Get every automatic check-in answer across all accessible projects,
+   * Get every automatic check-in answer across all accessible projects, newest-first.
    * @param options - Optional query parameters
    * @returns All Recording across all pages, with .meta.totalCount
    *
