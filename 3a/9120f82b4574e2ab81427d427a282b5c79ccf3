@@ -1,0 +1,35 @@
+conformance/runner/go/main.go
+  s_9d1ce63adbac84::t_b49f88a9fec030 241-248
+conformance/tests.schema.json
+  s_9d1ce63adbac84::t_c536d9909c8243 4
+  s_9d1ce63adbac84::t_197c2a1b117dad 1-3,5-7
+conformance/runner/typescript/runner.test.ts
+  s_9d1ce63adbac84::t_6384086c894f5b 363-369
+conformance/runner/ruby/runner.rb
+  s_9d1ce63adbac84::t_d2864d7ddcf253 235-240
+.github/workflows/test.yml
+  s_9d1ce63adbac84::t_51a5558385d9b4 253-261
+conformance/runner/python/runner.py
+  s_9d1ce63adbac84::t_b52be41c9ad67c 175-181
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_9d1ce63adbac84::t_db1d2095a84426 170-176
+Makefile
+  s_9d1ce63adbac84::t_d351f7dcc6bd77 400-411
+  s_9d1ce63adbac84::t_e20533a69914a3 387,486,882
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3a9120f82b4574e2ab81427d427a282b5c79ccf3",
+  "prompts": {},
+  "sessions": {
+    "s_9d1ce63adbac84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27b28bb0-3c2e-4548-9540-c34c440081ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
