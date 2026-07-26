@@ -205,3 +205,12 @@ excluded_schemas:
       blob-variant fixtures), so its rich-text array has no shared-fixture
       representative. Its round-trip is proven by those inline tests.
     issue: 434
+  EverythingFile:
+    reason: >-
+      No shared JSON fixture. EverythingFile is the /files.json optional-field
+      superset, exercised only inline in the per-SDK everything Files tests
+      (go/pkg/basecamp/everything_test.go and the TS/Ruby/Python everything
+      service tests), so its optional description_attachments and
+      content_attachments RichTextAttachment arrays have no shared-fixture
+      representative. Its rich-text round-trip is proven by those inline tests.
+    issue: 434
