@@ -7,6 +7,7 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
+import type { OperationInfo } from "../../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -55,6 +56,31 @@ describe("TodolistsService", () => {
       );
 
       await expect(client.todolists.get(999)).rejects.toThrow(BasecampError);
+    });
+
+    it("scopes the resource to the todolist id (unsuffixed {id} path param)", async () => {
+      const id = 42;
+      let captured: OperationInfo | undefined;
+
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            captured = info;
+          },
+        },
+      });
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(sampleTodolist(id)))
+      );
+
+      await hookedClient.todolists.get(id);
+
+      expect(captured?.operation).toBe("GetTodolistOrGroup");
+      expect(captured?.resourceId).toBe(id);
     });
   });
 
@@ -123,6 +149,31 @@ describe("TodolistsService", () => {
         name: "Updated list",
       });
       expect(todolist.id).toBe(id);
+    });
+
+    it("scopes the resource to the todolist id (unsuffixed {id} path param)", async () => {
+      const id = 42;
+      let captured: OperationInfo | undefined;
+
+      const hookedClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        hooks: {
+          onOperationStart: (info) => {
+            captured = info;
+          },
+        },
+      });
+
+      server.use(
+        http.put(`${BASE_URL}/todolists/${id}`, () => HttpResponse.json(sampleTodolist(id)))
+      );
+
+      await hookedClient.todolists.update(id, { name: "Updated list" });
+
+      expect(captured?.operation).toBe("UpdateTodolistOrGroup");
+      expect(captured?.resourceId).toBe(id);
     });
   });
 

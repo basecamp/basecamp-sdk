@@ -86,4 +86,59 @@ class TodolistsServiceTest < Minitest::Test
       @account.todolists.reposition(todolist_id: 999, position: 1)
     end
   end
+
+  # The get/update path label is the unsuffixed `{id}`. resource_id must still
+  # carry it (predicate is `end_with?("Id") || == "id"`); a suffix-only
+  # regression would silently drop resource_id here.
+  def test_get_operation_metadata
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+
+    response = { "id" => 2, "name" => "Sprint Tasks", "description_attachments" => [] }
+    stub_request(:get, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    account.todolists.get(id: 2)
+
+    event = events.find { |e| e[:event] == :on_operation_start }
+    assert event, "Expected on_operation_start to fire"
+    info = event[:info]
+    assert_equal "todolists", info.service
+    assert_equal "get", info.operation
+    assert_equal 2, info.resource_id
+  end
+
+  def test_update_operation_metadata
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+
+    response = { "id" => 2, "name" => "Updated List", "description_attachments" => [] }
+    stub_request(:put, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
+      .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
+
+    account.todolists.update(id: 2, name: "Updated List")
+
+    event = events.find { |e| e[:event] == :on_operation_start }
+    assert event, "Expected on_operation_start to fire"
+    info = event[:info]
+    assert_equal "todolists", info.service
+    assert_equal "update", info.operation
+    assert_equal 2, info.resource_id
+  end
+
+  private
+
+  # Captures the OperationInfo passed to on_operation_start so tests can
+  # assert the metadata emitted by the real generated service call.
+  class CapturingHooks
+    include Basecamp::Hooks
+
+    def initialize(events)
+      @events = events
+    end
+
+    def on_operation_start(info)
+      @events << { event: :on_operation_start, info: info }
+    end
+  end
 end

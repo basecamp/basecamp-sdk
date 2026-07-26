@@ -83,6 +83,7 @@ export class TodolistsService extends BaseService {
         operation: "GetTodolistOrGroup",
         resourceType: "todolist_or_group",
         isMutation: false,
+        resourceId: id,
       },
       () =>
         this.client.GET("/todolists/{id}", {
@@ -113,6 +114,7 @@ export class TodolistsService extends BaseService {
         operation: "UpdateTodolistOrGroup",
         resourceType: "todolist_or_group",
         isMutation: true,
+        resourceId: id,
       },
       () =>
         this.client.PUT("/todolists/{id}", {
