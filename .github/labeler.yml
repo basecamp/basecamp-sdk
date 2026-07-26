@@ -18,6 +18,10 @@ swift:
   - changed-files:
       - any-glob-to-any-file: "swift/**"
 
+python:
+  - changed-files:
+      - any-glob-to-any-file: "python/**"
+
 spec:
   - changed-files:
       - any-glob-to-any-file:
