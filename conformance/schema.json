@@ -70,11 +70,27 @@
       "description": "Sequence of mock responses for retry/error testing",
       "items": {
         "type": "object",
-        "required": ["status"],
+        "oneOf": [
+          {
+            "required": ["status"],
+            "not": { "required": ["networkError"] }
+          },
+          {
+            "required": ["networkError"],
+            "not": { "required": ["status"] }
+          }
+        ],
         "properties": {
           "status": {
             "type": "integer",
-            "description": "HTTP status code"
+            "minimum": 100,
+            "maximum": 599,
+            "description": "HTTP status code (a real 1xx–5xx code). Exactly one of `status` or `networkError` must be set per entry. Constraining the range keeps 0 out, which some runners (e.g. Go) use as the 'status not set' sentinel."
+          },
+          "networkError": {
+            "type": "boolean",
+            "const": true,
+            "description": "When true, the runner injects a genuine transport-level failure for this queued response (socket reset / connection error / thrown IOException) instead of an HTTP status. Exactly one of `status` or `networkError` must be set per entry."
           },
           "headers": {
             "type": "object",

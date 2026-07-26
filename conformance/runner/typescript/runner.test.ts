@@ -21,7 +21,8 @@ import { fileURLToPath } from "node:url";
 // =============================================================================
 
 interface MockResponse {
-  status: number;
+  status?: number;
+  networkError?: boolean;
   headers?: Record<string, string>;
   body?: unknown;
   delay?: number;
@@ -81,6 +82,8 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
+  "Network error on an idempotent POST is retried then succeeds":
+    "TS SDK retry middleware does not retry fetch rejections (network errors); only HTTP-status retries are implemented",
 };
 
 /**
@@ -90,6 +93,22 @@ const TS_SDK_SKIPS: Record<string, string> = {
  * its own stricter hop-1 invariant below.
  */
 const MULTI_HOP_OPERATIONS = new Set(["DownloadURL", "UploadsDownload"]);
+
+/**
+ * Recognize a genuine transport-level failure (fetch rejection). The TS SDK
+ * does not wrap these into a BasecampError, so the raw error surfaces: MSW's
+ * HttpResponse.error() rejects with a TypeError ("Failed to fetch"); undici
+ * variants say "fetch failed". Match on the message only — an arbitrary
+ * TypeError from an unrelated runner/SDK bug must NOT be misclassified as a
+ * transport failure (that would let an `errorType: "network"` assertion pass
+ * while hiding a real regression).
+ */
+function isNetworkRejection(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return /failed to fetch|fetch failed|network(?: request)? failed|socket|econn/i.test(
+    err.message,
+  );
+}
 
 // =============================================================================
 // Test infrastructure
@@ -341,6 +360,23 @@ function installMockHandlers(tc: TestCase): {
   requestBodies: () => unknown[];
   requestHeaders: () => Record<string, string>[];
 } {
+  // Defense-in-depth backstop for the operationally-harmful mockResponses
+  // shapes: neither mode set (would be served as `status ?? 200`, a false
+  // positive) or both active. The AUTHORITATIVE oneOf enforcement is
+  // `make conformance-fixtures-check` (check-jsonschema against
+  // conformance/schema.json), which runs before the runners and rejects
+  // {status, networkError:false} / non-true networkError that this truthiness
+  // backstop intentionally lets through for cross-runner parity.
+  tc.mockResponses.forEach((mock, i) => {
+    const hasStatus = mock.status !== undefined;
+    const hasNetworkError = mock.networkError === true;
+    if (hasStatus === hasNetworkError) {
+      throw new Error(
+        `[${tc.name}] mockResponses[${i}] must set exactly one of status or networkError (got status=${String(mock.status)}, networkError=${String(mock.networkError)})`,
+      );
+    }
+  });
+
   let responseIndex = 0;
   const times: number[] = [];
   const paths: string[] = [];
@@ -410,6 +446,13 @@ function installMockHandlers(tc: TestCase): {
       await new Promise((resolve) => setTimeout(resolve, mock.delay));
     }
 
+    // Genuine transport failure for this queued entry: MSW's
+    // HttpResponse.error() rejects the fetch the way a real network error does
+    // (the request counter is already incremented above).
+    if (mock.networkError) {
+      return HttpResponse.error();
+    }
+
     // Build response headers
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -443,7 +486,9 @@ function installMockHandlers(tc: TestCase): {
       bodyToSerialize !== undefined ? JSON.stringify(bodyToSerialize) : null;
 
     return new HttpResponse(responseBody, {
-      status: mock.status,
+      // networkError entries return early above; the schema guarantees a
+      // status is present on every non-networkError entry.
+      status: mock.status ?? 200,
       headers,
     });
   });
@@ -777,12 +822,25 @@ function checkAssertions(
           result.error,
           `[${tc.name}] expected an error of type ${expectedType}`,
         ).toBeDefined();
+        // Classify the error. A mapped BasecampError carries a canonical
+        // `.code`. On the network path the TS SDK does NOT wrap the fetch
+        // rejection into a BasecampError — it surfaces the raw transport
+        // failure (a TypeError / "Failed to fetch") — so recognize that as
+        // "network". Anything else is unknown: fail rather than silently pass.
+        let actualType: string;
         if (result.error instanceof BasecampError) {
-          expect(
-            result.error.code,
-            `[${tc.name}] expected error code "${expectedType}", got "${result.error.code}"`,
-          ).toBe(expectedType);
+          actualType = result.error.code;
+        } else if (isNetworkRejection(result.error)) {
+          actualType = "network";
+        } else {
+          throw new Error(
+            `[${tc.name}] expected error type "${expectedType}", got unrecognized error: ${String(result.error)}`,
+          );
         }
+        expect(
+          actualType,
+          `[${tc.name}] expected error type "${expectedType}", got "${actualType}"`,
+        ).toBe(expectedType);
         break;
       }
 
@@ -962,12 +1020,19 @@ function loadTestSuites(): { filename: string; tests: TestCase[] }[] {
 /**
  * Determine whether retry should be enabled for a given test case.
  *
- * Retry tests and idempotency tests need retry enabled.
+ * Retry tests, idempotency tests, and network-retry tests need retry enabled.
  * Status-code tests generally need retry disabled to avoid interference,
  * except for the 429-retries-exhausted test which requires retry.
  */
 function shouldEnableRetry(tc: TestCase, filename: string): boolean {
-  if (filename === "retry.json" || filename === "idempotency.json") {
+  if (
+    filename === "retry.json" ||
+    filename === "idempotency.json" ||
+    filename === "network-retry.json"
+  ) {
+    // network-retry.json's CreateTodo safety case must run retry-ENABLED so it
+    // actually proves the SDK doesn't re-send a non-idempotent POST on a network
+    // error (with retry off, the requestCount:1 assertion would be vacuous).
     return true;
   }
 

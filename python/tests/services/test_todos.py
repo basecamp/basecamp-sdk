@@ -9,7 +9,7 @@ import httpx
 import pytest
 import respx
 
-from basecamp import AsyncClient, Client
+from basecamp import AsyncClient, Client, Config
 from basecamp.errors import UsageError
 from basecamp.hooks import BasecampHooks, OperationInfo
 
@@ -350,3 +350,38 @@ class TestDescriptionAttachments:
         # None is preserved verbatim despite the TypedDict's non-optional width.
         assert attachments[1]["width"] is None
         assert attachments[1]["height"] is None
+
+
+# Instant retries: CompleteTodo's retry config would otherwise back off ~1s.
+_FAST = Config(base_delay=0.0, max_jitter=0.0)
+
+
+class TestCompleteRetriesIdempotentPost:
+    """CompleteTodo is a POST flagged idempotent in metadata, so it must be
+    retried on a transient 503. Driving the generated ``todos.complete`` service
+    (not the raw HTTP client) exercises the metadata idempotency gate
+    (``_is_retryable_operation``), so these fail if CompleteTodo's ``idempotent``
+    flag is flipped off. Sync and async use separate retry loops (_http.py vs
+    _async_http.py), so both are pinned. Regression guard for #439 / #417.
+    """
+
+    @respx.mock
+    def test_sync_retries_on_503_then_succeeds(self):
+        route = respx.post(f"{BASE}/todos/42/completion.json")
+        route.side_effect = [httpx.Response(503), httpx.Response(204)]
+
+        client = Client(access_token="test-token", config=_FAST)
+        client.for_account("12345").todos.complete(todo_id=42)
+
+        assert route.call_count == 2  # initial 503 + 1 retry that succeeds
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_async_retries_on_503_then_succeeds(self):
+        route = respx.post(f"{BASE}/todos/42/completion.json")
+        route.side_effect = [httpx.Response(503), httpx.Response(204)]
+
+        client = AsyncClient(access_token="test-token", config=_FAST)
+        await client.for_account("12345").todos.complete(todo_id=42)
+
+        assert route.call_count == 2  # initial 503 + 1 retry that succeeds

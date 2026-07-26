@@ -48,7 +48,9 @@ class SchedulesService(BaseService):
 
     def get_entry_occurrence(self, *, entry_id: int, date: str) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=date),
+            OperationInfo(
+                service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=entry_id
+            ),
             "GET",
             f"/schedule_entries/{entry_id}/occurrences/{date}",
         )
@@ -147,7 +149,9 @@ class AsyncSchedulesService(AsyncBaseService):
 
     async def get_entry_occurrence(self, *, entry_id: int, date: str) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=date),
+            OperationInfo(
+                service="schedules", operation="get_entry_occurrence", is_mutation=False, resource_id=entry_id
+            ),
             "GET",
             f"/schedule_entries/{entry_id}/occurrences/{date}",
         )

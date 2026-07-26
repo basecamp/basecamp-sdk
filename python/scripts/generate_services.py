@@ -587,7 +587,12 @@ def build_info_kwargs(op: dict, service_name: str) -> str:
 
     project_param = next((p for p in op["path_params"] if p["name"] in ("projectId", "bucketId")), None)
     resource_param = next(
-        (p for p in reversed(op["path_params"]) if p["name"] not in ("projectId", "bucketId")),
+        (
+            p
+            for p in reversed(op["path_params"])
+            if p["name"] not in ("projectId", "bucketId")
+            and (p["name"].endswith("Id") or p["name"] == "id")
+        ),
         None,
     )
 

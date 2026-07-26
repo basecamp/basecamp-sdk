@@ -384,7 +384,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check conformance-fixtures-check
 
 # Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
 # version is reproducible without a global install; the schema is separate from
@@ -396,6 +396,18 @@ oauth-fixtures-check:
 	@echo "==> Validating OAuth discovery fixtures..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/oauth/schema.json conformance/oauth/fixtures/*.json
+
+# Validate every conformance/tests/*.json entry against conformance/schema.json.
+# This is the AUTHORITATIVE enforcement of the per-case schema — including the
+# mockResponses oneOf (exactly one of status or networkError:true). The runners
+# don't schema-validate fixtures, so without this a malformed fixture (e.g.
+# {status:204, networkError:false}) would only be caught, if at all, by each
+# runner's looser runtime backstop. tests.schema.json wraps schema.json as an
+# array so check-jsonschema validates each element of the array-shaped files.
+conformance-fixtures-check:
+	@echo "==> Validating conformance fixtures against schema.json..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--schemafile conformance/tests.schema.json conformance/tests/*.json
 
 # Build conformance test runner
 conformance-build:
@@ -471,7 +483,7 @@ conformance-python-replay:
 	cd conformance/runner/python && uv sync && uv run python replay_runner.py
 
 # Run all conformance tests
-conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
+conformance: oauth-fixtures-check conformance-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
 
 # Orchestrate one canary pass against a single backend:
@@ -623,7 +635,7 @@ gradle-stop:
 HAS_SWIFT := $(shell command -v swift 2>/dev/null)
 IS_MACOS  := $(filter Darwin,$(shell uname -s))
 
-.PHONY: swift-build swift-test swift-check swift-clean swift-generate
+.PHONY: swift-build swift-test swift-check swift-check-drift swift-clean swift-generate
 
 # Build Swift SDK (macOS only — SDK requires Apple platforms)
 swift-build:
@@ -655,6 +667,17 @@ ifdef HAS_SWIFT
 	@$(MAKE) -C swift generate
 else
 	$(error swift is required for swift-generate but was not found)
+endif
+
+# Check committed generated Swift is current (needs swift on any platform, NOT
+# just macOS — generation only needs the toolchain, unlike swift-check's
+# build/test which require Apple platforms). Non-mutating regenerate + diff.
+swift-check-drift:
+ifdef HAS_SWIFT
+	@echo "==> Checking Swift service drift..."
+	@./scripts/check-swift-service-drift.sh
+else
+	@echo "SKIP: swift-check-drift (swift toolchain not found)"
 endif
 
 # Clean Swift build artifacts
@@ -743,7 +766,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-fixture-coverage check-idempotency-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -781,6 +804,12 @@ check-fixture-coverage:
 kt-check-optional-arrays:
 	@./scripts/check-kotlin-optional-arrays.sh
 
+# Verify idempotency classification is identical across all six SDKs and matches
+# behavior-model.json (the 69 idempotent mutations; Go additionally folds in the
+# 100 read-only ops for 169). Bash+jq — runs anywhere, enforced in CI.
+check-idempotency-parity:
+	@./scripts/check-idempotency-parity
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -803,7 +832,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -861,6 +890,7 @@ help:
 	@echo "  swift-build      Build Swift SDK"
 	@echo "  swift-test       Run Swift tests"
 	@echo "  swift-check      Run all Swift checks"
+	@echo "  swift-check-drift  Check generated Swift is current (any OS with swift)"
 	@echo "  swift-clean      Remove Swift build artifacts"
 	@echo ""
 	@echo "Conformance:"
@@ -877,6 +907,7 @@ help:
 	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
+	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"

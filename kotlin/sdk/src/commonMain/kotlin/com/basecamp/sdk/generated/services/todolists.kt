@@ -23,7 +23,7 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
             resourceType = "todolist_or_group",
             isMutation = false,
             projectId = null,
-            resourceId = null,
+            resourceId = id,
         )
         return request(info, {
             httpGet("/todolists/${id}", operationName = info.operation)
@@ -44,7 +44,7 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
             resourceType = "todolist_or_group",
             isMutation = true,
             projectId = null,
-            resourceId = null,
+            resourceId = id,
         )
         return request(info, {
             httpPut("/todolists/${id}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {

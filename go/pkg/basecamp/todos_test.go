@@ -1789,3 +1789,35 @@ func TestTodosService_RepositionWithParentID(t *testing.T) {
 		t.Errorf("expected parent_id 99999, got %v", receivedBody["parent_id"])
 	}
 }
+
+// TestTodosService_Complete_RetriesOn503 pins that Complete (CompleteTodo) — a
+// POST that is nonetheless flagged idempotent in behavior-model.json — is
+// retried on a transient 503 and then succeeds. It drives the generated service
+// path (Todos().Complete), so it fails if CompleteTodo's idempotency
+// classification is ever flipped off (in Go the load-bearing value is the
+// generated call-site boolean doWithRetry(…, true, "CompleteTodo", …)).
+// Regression guard for the hole closed by #439 / #417.
+func TestTodosService_Complete_RetriesOn503(t *testing.T) {
+	attempts := 0
+	svc := testTodosServer(t, func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		if !strings.Contains(r.URL.Path, "/todos/100/completion.json") {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if attempts == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	if err := svc.Complete(context.Background(), 100); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if attempts != 2 {
+		t.Errorf("expected 2 attempts (initial 503 + 1 retry), got %d", attempts)
+	}
+}

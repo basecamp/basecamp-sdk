@@ -1,0 +1,36 @@
+[
+  {
+    "name": "Network error on a non-idempotent POST is not retried",
+    "description": "A transport-level failure on CreateTodo (a non-idempotent POST) must surface as a network error with no re-send — no SDK re-sends a non-idempotent POST on a network blip. Exercises the transport-exception path that the 503 safety case cannot reach. Runs and passes in all five runners.",
+    "operation": "CreateTodo",
+    "method": "POST",
+    "path": "/todolists/{todolistId}/todos.json",
+    "pathParams": {"todolistId": 67890},
+    "requestBody": {"content": "New todo"},
+    "mockResponses": [
+      {"networkError": true}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "errorType", "expected": "network"}
+    ],
+    "tags": ["network", "no-retry", "post"]
+  },
+  {
+    "name": "Network error on an idempotent POST is retried then succeeds",
+    "description": "A transport-level failure on CompleteTodo (an idempotent-flagged POST) is retried and then succeeds on 204 — the network-error analog of the idempotency.json 503 liveness case. Go and Python retry network errors for idempotent operations; TS/Kotlin/Ruby do not retry network errors on mutations and carry explicit capability skips.",
+    "operation": "CompleteTodo",
+    "method": "POST",
+    "path": "/todos/{todoId}/completion.json",
+    "pathParams": {"todoId": 456},
+    "mockResponses": [
+      {"networkError": true},
+      {"status": 204}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["network", "idempotent", "post"]
+  }
+]

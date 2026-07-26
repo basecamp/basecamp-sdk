@@ -127,6 +127,25 @@ class SchedulesServiceTest < Minitest::Test
     assert_equal "2024-12-22", result["occurrence_date"]
   end
 
+  # The occurrence path ends in `{date}` (a string), not an `Id`-suffixed param.
+  # resource_id must fall back to the entry id, never the date string.
+  def test_get_entry_occurrence_operation_metadata
+    events = []
+    account = create_account_client(account_id: "12345", hooks: CapturingHooks.new(events))
+
+    occurrence = sample_entry.merge("occurrence_date" => "2024-12-22")
+    stub_get("/12345/schedule_entries/789/occurrences/2024-12-22", response_body: occurrence)
+
+    account.schedules.get_entry_occurrence(entry_id: 789, date: "2024-12-22")
+
+    event = events.find { |e| e[:event] == :on_operation_start }
+    assert event, "Expected on_operation_start to fire"
+    info = event[:info]
+    assert_equal "schedules", info.service
+    assert_equal "get_entry_occurrence", info.operation
+    assert_equal 789, info.resource_id
+  end
+
   def test_update_settings
     updated_schedule = sample_schedule.merge("include_due_assignments" => false)
     stub_put("/12345/schedules/456", response_body: updated_schedule)
@@ -141,4 +160,20 @@ class SchedulesServiceTest < Minitest::Test
 
   # Note: trash_entry() is on RecordingsService, not SchedulesService (spec-conformant)
   # Use @account.recordings.trash(project_id:, recording_id:) instead
+
+  private
+
+  # Captures the OperationInfo passed to on_operation_start so tests can
+  # assert the metadata emitted by the real generated service call.
+  class CapturingHooks
+    include Basecamp::Hooks
+
+    def initialize(events)
+      @events = events
+    end
+
+    def on_operation_start(info)
+      @events << { event: :on_operation_start, info: info }
+    end
+  end
 end

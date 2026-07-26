@@ -37,7 +37,7 @@ module Basecamp
       # @param date [String] date ID
       # @return [Hash] response data
       def get_entry_occurrence(entry_id:, date:)
-        with_operation(service: "schedules", operation: "get_entry_occurrence", is_mutation: false, resource_id: date) do
+        with_operation(service: "schedules", operation: "get_entry_occurrence", is_mutation: false, resource_id: entry_id) do
           http_get("/schedule_entries/#{entry_id}/occurrences/#{date}").json
         end
       end
