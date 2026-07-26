@@ -3014,7 +3014,7 @@ export interface components {
             content?: string;
             created_at: string;
             booster?: components["schemas"]["Person"];
-            recording?: components["schemas"]["Recording"];
+            recording?: components["schemas"]["RecordingParent"];
         };
         /**
          * @description One project's slice of a filtered card listing: the parent project and the
@@ -4587,6 +4587,7 @@ export interface components {
             type: string;
             url: string;
             app_url: string;
+            bucket?: components["schemas"]["RecordingBucket"];
         };
         ReplaceTodoRequestContent: {
             content: string;

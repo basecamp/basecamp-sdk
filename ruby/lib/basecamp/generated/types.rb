@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-26T17:59:56Z
+# Generated: 2026-07-27T01:18:25Z
 
 require "json"
 require "time"
@@ -3162,7 +3162,7 @@ module Basecamp
     # RecordingParent
     class RecordingParent
       include TypeHelpers
-      attr_accessor :app_url, :id, :title, :type, :url
+      attr_accessor :app_url, :id, :title, :type, :url, :bucket
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3175,6 +3175,7 @@ module Basecamp
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
       end
 
       def to_h
@@ -3184,6 +3185,7 @@ module Basecamp
           "title" => @title,
           "type" => @type,
           "url" => @url,
+          "bucket" => @bucket,
         }.compact
       end
 

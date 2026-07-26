@@ -344,7 +344,7 @@ func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 		]`))
 	})
 
-	result, err := svc.NotNowCards(context.Background(), 1)
+	result, err := svc.Boosts(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
