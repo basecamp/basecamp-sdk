@@ -1,0 +1,93 @@
+typescript/src/generated/services/todolists.ts
+  s_1a48c423686368::t_5d77201637ef99 86,117
+swift/Tests/BasecampTests/RetryTests.swift
+  s_1a48c423686368::t_5d77201637ef99 521-547
+python/src/basecamp/generated/services/schedules.py
+  s_1a48c423686368::t_5d77201637ef99 51-53,152-154
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_1a48c423686368::t_5d77201637ef99 14,29,135-136,170-182,231-237,253-255
+conformance/schema.json
+  s_1a48c423686368::t_5d77201637ef99 73-82,86-93
+conformance/runner/ruby/runner.rb
+  s_1a48c423686368::t_5d77201637ef99 207,221,234-248,273-281,305-311,480,485-493
+conformance/tests.schema.json
+  s_1a48c423686368::t_5d77201637ef99 1-7
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodolistsServiceTest.kt
+  s_1a48c423686368::t_5d77201637ef99 1-85
+.github/labeler.yml
+  s_1a48c423686368::t_5d77201637ef99 21-24
+Makefile
+  s_1a48c423686368::t_5d77201637ef99 387,400-411,486,638,672-680,807-811,893,910
+  s_1a48c423686368::t_70999c8790188b 769
+  s_1a48c423686368::t_aa0fdfda25b1ed 835
+  s_1a48c423686368::t_3741435c3c598a 681-682
+  s_1a48c423686368::t_f9e34e4fdda17b 812
+.github/workflows/test.yml
+  s_1a48c423686368::t_5d77201637ef99 105-110,286-294,320-327
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_1a48c423686368::t_5d77201637ef99 355-384
+typescript/scripts/generate-services.ts
+  s_1a48c423686368::t_5d77201637ef99 1299
+typescript/tests/services/todos.test.ts
+  s_1a48c423686368::t_5d77201637ef99 425-456
+conformance/runner/python/runner.py
+  s_1a48c423686368::t_5d77201637ef99 175-191,233-237,378,383-392
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_1a48c423686368::t_5d77201637ef99 3,399-438
+  s_1a48c423686368::t_75a91b2a8ec567 439-440
+python/tests/services/test_todolists_service.py
+  s_1a48c423686368::t_5d77201637ef99 13,18-25,80-156
+python/tests/services/test_schedules_service.py
+  s_1a48c423686368::t_5d77201637ef99 1-63
+go/pkg/basecamp/todos_test.go
+  s_1a48c423686368::t_5d77201637ef99 1792-1823
+ruby/scripts/generate-services.rb
+  s_1a48c423686368::t_5d77201637ef99 708-709
+conformance/runner/go/main.go
+  s_1a48c423686368::t_5d77201637ef99 18,21,61-65,241-259,324-339,789-806,1148-1158
+  s_1a48c423686368::t_4474eb04283d0a 1159-1160
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_1a48c423686368::t_5d77201637ef99 110
+ruby/test/basecamp/services/schedules_service_test.rb
+  s_1a48c423686368::t_5d77201637ef99 130-148,163-178
+scripts/check-idempotency-parity
+  s_1a48c423686368::t_5d77201637ef99 1-200
+conformance/runner/typescript/runner.test.ts
+  s_1a48c423686368::t_5d77201637ef99 24-25,85-86,97-112,363-379,449-455,489-491,825-830,832-838,840-843,1023,1028-1035
+typescript/tests/services/todolists.test.ts
+  s_1a48c423686368::t_5d77201637ef99 11,55-79,148-172
+python/tests/services/test_todos.py
+  s_1a48c423686368::t_5d77201637ef99 12,353-387
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_1a48c423686368::t_5d77201637ef99 89-143
+swift/Sources/BasecampGenerator/ServiceEmitter.swift
+  s_1a48c423686368::t_5d77201637ef99 182
+python/scripts/generate_services.py
+  s_1a48c423686368::t_5d77201637ef99 590-595
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_1a48c423686368::t_5d77201637ef99 40
+conformance/tests/network-retry.json
+  s_1a48c423686368::t_5d77201637ef99 1-36
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolists.kt
+  s_1a48c423686368::t_5d77201637ef99 26,47
+scripts/check-swift-service-drift.sh
+  s_1a48c423686368::t_5d77201637ef99 1-48
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_1a48c423686368::t_5d77201637ef99 28,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ff814eb3753bacd76122013f5dc40d6d4d26be4f",
+  "prompts": {},
+  "sessions": {
+    "s_1a48c423686368": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cba5d91f-cb7e-427f-b04b-505a9fa5e7fc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
