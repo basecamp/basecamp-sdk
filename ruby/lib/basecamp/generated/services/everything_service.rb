@@ -18,7 +18,7 @@ module Basecamp
       end
 
       # Get every overdue card across all accessible projects, oldest-due-date-first.
-      # @return [Hash] response data
+      # @return [Array<Hash>] response data
       def get_everything_overdue_cards()
         with_operation(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
           http_get("/cards/overdue.json").json
@@ -78,7 +78,7 @@ module Basecamp
       end
 
       # Get every overdue to-do across all accessible projects, oldest-due-date-first.
-      # @return [Hash] response data
+      # @return [Array<Hash>] response data
       def get_everything_overdue_todos()
         with_operation(service: "everything", operation: "get_everything_overdue_todos", is_mutation: false) do
           http_get("/todos/overdue.json").json

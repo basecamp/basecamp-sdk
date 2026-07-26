@@ -125,7 +125,7 @@ module Basecamp
       end
 
       # List people who can be assigned todos
-      # @return [Hash] response data
+      # @return [Array<Hash>] response data
       def list_assignable()
         with_operation(service: "people", operation: "list_assignable", is_mutation: false) do
           http_get("/reports/todos/assigned.json").json

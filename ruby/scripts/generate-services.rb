@@ -424,6 +424,13 @@ class ServiceGenerator
     response_schema = success_response&.dig('content', 'application/json', 'schema')
     returns_void = response_schema.nil?
     returns_array = response_schema&.dig('type') == 'array'
+    # Bare-array responses are usually a $ref to a single-member output alias, so
+    # the inline `type` is absent. Resolve the ref to detect them — used only for
+    # the YARD @return doc (an unpaginated bare array returns an Array, not a
+    # Hash); the pagination/body logic deliberately keys off the raw `type` so a
+    # bare array without x-basecamp-pagination stays a single request.
+    resolved_response = response_schema && response_schema['$ref'] ? resolve_schema_ref(response_schema) : response_schema
+    returns_bare_array = resolved_response&.dig('type') == 'array'
 
     {
       operation_id: operation_id,
@@ -440,6 +447,7 @@ class ServiceGenerator
       multipart_field: multipart_field,
       returns_void: returns_void,
       returns_array: returns_array,
+      returns_bare_array: returns_bare_array,
       is_mutation: http_method != 'GET',
       has_pagination: !!operation['x-basecamp-pagination'],
       pagination_key: operation.dig('x-basecamp-pagination', 'key')
@@ -658,6 +666,10 @@ class ServiceGenerator
       lines << '      # @return [Hash] response data'
     elsif is_paginated
       lines << '      # @return [Enumerator<Hash>] paginated results'
+    elsif op[:returns_bare_array]
+      # Unpaginated bare array (single request, no Link-following) — e.g. the
+      # overdue todo/card feeds. Returns the parsed JSON array, not a Hash.
+      lines << '      # @return [Array<Hash>] response data'
     else
       lines << '      # @return [Hash] response data'
     end
