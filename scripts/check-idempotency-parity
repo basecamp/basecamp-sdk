@@ -5,7 +5,7 @@
 #
 # The source of truth is behavior-model.json:
 #   * idempotent == true            → the 69 naturally-idempotent mutations
-#   * idempotent OR readonly == true → the 169 operations Go bakes idempotency
+#   * idempotent OR readonly == true → the idempotent∪readonly set Go bakes idempotency
 #                                      into at generation time (GET/HEAD are
 #                                      idempotent by construction, so Go folds
 #                                      the 100 read-only ops into its retry set).
@@ -14,14 +14,14 @@
 # EXACTLY (set equality, both directions — not subset):
 #
 #   * Non-Go SDKs' idempotent set == the 69.
-#   * Go's Idempotent:true set     == the 169 (idempotent ∪ readonly).
+#   * Go's Idempotent:true set     == the idempotent∪readonly set (count = expected_union).
 #
 # Go is checked FOUR ways, because the retry gate consumes an inline call-site
 # boolean (doWithRetry(…, true, "Op", …)) that is rendered INDEPENDENTLY from
 # the operationMetadata table. The call-site boolean is the load-bearing value
 # for retry, so both must be pinned and proven equal:
-#   (1) operationMetadata Idempotent:true set == 169
-#   (2) unique ops passed as doWithRetry(…, true, "Op", …) == 169
+#   (1) operationMetadata Idempotent:true set == $expected_union
+#   (2) unique ops passed as doWithRetry(…, true, "Op", …) == the idempotent∪readonly set
 #   (3) sets (1) and (2) are equal
 #   (4) no idempotent op carries a doWithRetry(…, false, "Op", …) call-site
 #       (assertion (2) sorts -u, so one variant regressing true→false could
@@ -69,7 +69,7 @@ pass=0
 compare() {
     local label="$1" expected="$2" actual="$3"
     local missing extra
-    # Fail closed: every set in this check is non-empty (69 or 169 ops). An
+    # Fail closed: every set in this check is non-empty (the 69 idempotent, or the union set). An
     # empty file means an extraction (grep/jq/awk/sed) matched nothing — a
     # broken adapter, not a real "empty == empty" match — so `comm` producing
     # no diff must not be counted as a pass.
@@ -169,12 +169,12 @@ GO=go/pkg/generated/client.gen.go
 awk '/var operationMetadata = map\[string\]OperationMetadata\{/{f=1} f; /^\}/{if(f)f=0}' "$GO" \
     | grep -E 'Idempotent: true' \
     | grep -oE '"[[:alnum:]]+":' | tr -d '":' | sort -u > "$WORK/go_table"
-compare "Go operationMetadata Idempotent:true set == 169" "$WORK/unionSet" "$WORK/go_table"
+compare "Go operationMetadata Idempotent:true set == $expected_union" "$WORK/unionSet" "$WORK/go_table"
 # (2) call-site booleans: unique ops passed as doWithRetry(…, true, "Op", …).
 # This is the load-bearing value for the retry gate.
 grep -oE '\}, true, "[[:alnum:]]+",' "$GO" \
     | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort -u > "$WORK/go_callsite"
-compare "Go doWithRetry(…, true, …) call-site set == 169" "$WORK/unionSet" "$WORK/go_callsite"
+compare "Go doWithRetry(…, true, …) call-site set == $expected_union" "$WORK/unionSet" "$WORK/go_callsite"
 # (3) table and call-site sets agree.
 compare "Go table set == call-site set" "$WORK/go_table" "$WORK/go_callsite"
 # (4) No idempotent op may carry a `false` doWithRetry call-site. Assertion (2)
@@ -182,7 +182,7 @@ compare "Go table set == call-site set" "$WORK/go_table" "$WORK/go_callsite"
 # WithBody sibling both render a doWithRetry call for the same op); a single
 # variant regressing true→false would otherwise hide behind a sibling's true.
 # So separately assert the set of ops passed as doWithRetry(…, false, …) is
-# disjoint from the 169. (Today there are zero `false` call-sites — non-
+# disjoint from the idempotent∪readonly set. (Today there are zero `false` call-sites — non-
 # idempotent ops bypass doWithRetry entirely — so this guards a future regression.)
 grep -oE '\}, false, "[[:alnum:]]+",' "$GO" \
     | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort -u > "$WORK/go_false_callsite"
