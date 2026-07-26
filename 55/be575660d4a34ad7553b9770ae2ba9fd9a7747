@@ -263,6 +263,7 @@ ruby/lib/basecamp/generated/types.rb
   s_8d633484dc870e::t_1a002b03b5c7cc 1420,1433-1434,1469-1470
   s_8d633484dc870e::t_4f0e26ce96a8f4 4,291-338,340-343
   s_8d633484dc870e::t_28a4513c647a47 339,344
+  s_8d633484dc870e::t_843f6395b66a53 273
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEvent.kt
   s_8d633484dc870e::t_234d34679797bc 26,29
   s_8d633484dc870e::t_5512a011cbb15c 27-28
