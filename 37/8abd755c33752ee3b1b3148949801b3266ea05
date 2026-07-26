@@ -1,0 +1,39 @@
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_f8d78f7dd036fa 40
+spec/basecamp.smithy
+  s_8d633484dc870e::t_7bebf34417f6b7 8794-8797
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_f8d78f7dd036fa 4
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_f8d78f7dd036fa 4
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Notification.kt
+  s_8d633484dc870e::t_f8d78f7dd036fa 37-38
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/my-notifications.kt
+  s_8d633484dc870e::t_f1714694207673 40
+openapi.json
+  s_8d633484dc870e::t_ba7a48cc92608e 9369
+ruby/lib/basecamp/generated/services/my_notifications_service.rb
+  s_8d633484dc870e::t_cc043b44abb228 23
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_922a13c957c01d 8329
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_2607e20a5573f5 1179-1182
+typescript/src/generated/services/my-notifications.ts
+  s_8d633484dc870e::t_36b88ed896d809 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "378abd755c33752ee3b1b3148949801b3266ea05",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
