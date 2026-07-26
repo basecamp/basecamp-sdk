@@ -1,0 +1,53 @@
+conformance/runner/typescript/package-lock.json
+  s_9e11e9c91ba58f::t_814af6c76afe75 23
+go/pkg/basecamp/version.go
+  s_9e11e9c91ba58f::t_bb22fe04065193 4
+kotlin/sdk/build.gradle.kts
+  s_9e11e9c91ba58f::t_018812ec1e4e79 8
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_9e11e9c91ba58f::t_bb1d273ae22f2e 31
+package.json
+  s_9e11e9c91ba58f::t_5d8fa30e7dceaa 3
+python/pyproject.toml
+  s_9e11e9c91ba58f::t_73963a4dd73f2d 7
+python/src/basecamp/_version.py
+  s_9e11e9c91ba58f::t_ce921fa33cce7d 1
+python/uv.lock
+  s_9e11e9c91ba58f::t_afece2e79cb4dc 20
+ruby/Gemfile.lock
+  s_8d633484dc870e::t_e7541934f610d1 4,156
+ruby/lib/basecamp/version.rb
+  s_9e11e9c91ba58f::t_05bb946244bd34 4
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_9e11e9c91ba58f::t_635824c14d09c4 27
+typescript/package-lock.json
+  s_8d633484dc870e::t_9fce23c1d3e26b 3,9
+typescript/package.json
+  s_9e11e9c91ba58f::t_a9c4c61f6deb56 3
+typescript/src/client.ts
+  s_9e11e9c91ba58f::t_7d10ccec7123a6 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4365516b9d9b527f7bbf8a67591df213e27242c4",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_9e11e9c91ba58f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8b89-eac0-7373-a874-e80acdba5a62",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
