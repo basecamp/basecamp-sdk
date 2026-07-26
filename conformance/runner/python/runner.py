@@ -172,10 +172,13 @@ class TestRunner:
     def run(self) -> TestResult:
         self._tracker.reset()
 
-        # Enforce the schema's mockResponses oneOf at runtime: exactly one of
-        # `status` or `networkError` per entry. Fixtures are not schema-validated
-        # by `make conformance`, so a malformed entry would otherwise be served
-        # as a normal HTTP response — fail loudly instead.
+        # Defense-in-depth backstop for the operationally-harmful mockResponses
+        # shapes (neither mode set → served as a normal HTTP response; or both
+        # active). The AUTHORITATIVE oneOf enforcement is
+        # `make conformance-fixtures-check` (check-jsonschema against
+        # conformance/schema.json), which runs before the runners; it rejects
+        # {status, networkError:false} and non-true networkError values that this
+        # truthiness backstop intentionally lets through for cross-runner parity.
         for i, r in enumerate(self._test.get("mockResponses", [])):
             has_status = "status" in r
             has_network_error = r.get("networkError") is True

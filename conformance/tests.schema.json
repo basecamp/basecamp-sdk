@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SDK Conformance Test File",
+  "description": "A conformance/tests/*.json file: an array of SDK Conformance Test cases. Each element is validated against the per-case schema in schema.json, which enforces the mockResponses oneOf (exactly one of status or networkError:true). No $id here on purpose: it keeps the relative $ref resolving to the sibling schema.json by file path.",
+  "type": "array",
+  "items": { "$ref": "schema.json" }
+}

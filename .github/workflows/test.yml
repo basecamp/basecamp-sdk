@@ -250,6 +250,15 @@ jobs:
       - name: Test with coverage
         run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=60
 
+      - name: Validate conformance fixtures against schema
+        # Authoritative enforcement of conformance/schema.json (incl. the
+        # mockResponses oneOf). uv is already installed, so `make
+        # conformance-fixtures-check` runs check-jsonschema via uvx. Runs from
+        # repo root regardless of this job's working-directory: python.
+        if: matrix.python == '3.13'
+        working-directory: .
+        run: make conformance-fixtures-check
+
       - name: Run Python conformance tests
         if: matrix.python == '3.13'
         working-directory: conformance/runner/python

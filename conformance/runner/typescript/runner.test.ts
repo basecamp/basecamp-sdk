@@ -360,10 +360,13 @@ function installMockHandlers(tc: TestCase): {
   requestBodies: () => unknown[];
   requestHeaders: () => Record<string, string>[];
 } {
-  // Enforce the schema's mockResponses oneOf at runtime: exactly one of
-  // `status` or `networkError` per entry. This runner does not schema-validate
-  // fixtures, so without this a malformed entry could be served as `status ??
-  // 200` (a false positive) — fail loudly instead.
+  // Defense-in-depth backstop for the operationally-harmful mockResponses
+  // shapes: neither mode set (would be served as `status ?? 200`, a false
+  // positive) or both active. The AUTHORITATIVE oneOf enforcement is
+  // `make conformance-fixtures-check` (check-jsonschema against
+  // conformance/schema.json), which runs before the runners and rejects
+  // {status, networkError:false} / non-true networkError that this truthiness
+  // backstop intentionally lets through for cross-runner parity.
   tc.mockResponses.forEach((mock, i) => {
     const hasStatus = mock.status !== undefined;
     const hasNetworkError = mock.networkError === true;

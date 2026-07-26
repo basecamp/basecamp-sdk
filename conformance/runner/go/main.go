@@ -238,10 +238,14 @@ type operationResult struct {
 }
 
 func runTest(tc TestCase) TestResult {
-	// Enforce the schema's mockResponses oneOf at runtime: exactly one of
-	// `status` or `networkError` per entry. `make conformance` does not
-	// schema-validate fixtures, so without this a malformed entry could panic
-	// on WriteHeader(0) or silently pass — fail loudly instead.
+	// Defense-in-depth backstop for the operationally-harmful mockResponses
+	// shapes: neither status nor networkError set (would be served as an HTTP
+	// response), or both active. The AUTHORITATIVE oneOf enforcement — including
+	// rejecting {status, networkError:false} and networkError values other than
+	// true — is `make conformance-fixtures-check` (check-jsonschema against
+	// conformance/schema.json), which runs before the runners. This truthiness
+	// check can't distinguish an absent networkError from a present false one,
+	// so it deliberately covers only the harmful cases, not the full schema.
 	for i, mr := range tc.MockResponses {
 		hasStatus := mr.Status != 0
 		if hasStatus == mr.NetworkError {

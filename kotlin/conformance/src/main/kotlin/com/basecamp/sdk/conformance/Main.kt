@@ -167,10 +167,13 @@ data class DispatchResult(
 )
 
 private fun runTest(tc: TestCase): TestResult {
-    // Enforce the schema's mockResponses oneOf at runtime: exactly one of
-    // `status` or `networkError` per entry. Fixtures are not schema-validated by
-    // `make conformance`, so without this a malformed entry could be served as
-    // `status ?: 200` (a false positive) — fail loudly instead.
+    // Defense-in-depth backstop for the operationally-harmful mockResponses
+    // shapes: neither mode set (would be served as `status ?: 200`, a false
+    // positive) or both active. The AUTHORITATIVE oneOf enforcement is
+    // `make conformance-fixtures-check` (check-jsonschema against
+    // conformance/schema.json), which runs before the runners and rejects
+    // {status, networkError:false} / non-true networkError that this truthiness
+    // backstop intentionally lets through for cross-runner parity.
     tc.mockResponses.forEachIndexed { i, mr ->
         if ((mr.status != null) == mr.networkError) {
             return TestResult(false, "mockResponses[$i] must set exactly one of status or networkError (got status=${mr.status}, networkError=${mr.networkError})")
