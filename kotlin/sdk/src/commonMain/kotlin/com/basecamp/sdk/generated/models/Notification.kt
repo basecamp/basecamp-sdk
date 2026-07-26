@@ -16,7 +16,7 @@ data class Notification(
     @SerialName("created_at") val createdAt: String,
     @SerialName("updated_at") val updatedAt: String,
     val section: String? = null,
-    @SerialName("unread_count") val unreadCount: Int = 0,
+    @SerialName("unread_count") val unreadCount: Int? = null,
     @SerialName("unread_at") val unreadAt: String? = null,
     @SerialName("read_at") val readAt: String? = null,
     @SerialName("readable_sgid") val readableSgid: String? = null,
@@ -33,9 +33,9 @@ data class Notification(
     @SerialName("bubble_up_url") val bubbleUpUrl: String? = null,
     @SerialName("bubble_up_at") val bubbleUpAt: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val subscribed: Boolean = false,
+    val subscribed: Boolean? = null,
     @SerialName("previewable_attachments") val previewableAttachments: List<PreviewableAttachment>? = null,
     val participants: List<Person>? = null,
-    val named: Boolean = false,
+    val named: Boolean? = null,
     @SerialName("image_url") val imageUrl: String? = null
 )

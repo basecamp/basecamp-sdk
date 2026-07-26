@@ -12,12 +12,12 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class PreviewableAttachment(
-    val id: Long = 0L,
+    val id: Long? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     @SerialName("content_type") val contentType: String? = null,
     val filename: String? = null,
-    val filesize: Long = 0L,
-    val width: Int = 0,
-    val height: Int = 0
+    val filesize: Long? = null,
+    val width: Int? = null,
+    val height: Int? = null
 )
