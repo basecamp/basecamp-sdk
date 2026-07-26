@@ -1,0 +1,25 @@
+AGENTS.md
+  s_8d633484dc870e::t_023e8dc8918c8c 7
+  s_8d633484dc870e::t_a096004e22f82b 34
+SPEC.md
+  s_8d633484dc870e::t_22d14beeea1924 499
+  s_8d633484dc870e::t_2fe5fab03b2ef7 1551
+go/pkg/basecamp/my_notifications.go
+  s_8d633484dc870e::t_feca17d6d0bd4f 200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "971761394994286545505cbde330da25ada8f2e4",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
