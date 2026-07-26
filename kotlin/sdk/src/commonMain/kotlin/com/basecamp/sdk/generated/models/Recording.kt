@@ -31,7 +31,7 @@ data class Recording(
     @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val description: String? = null,
     val service: DoorService? = null,
     val parent: RecordingParent? = null
