@@ -66,6 +66,7 @@ kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Webhook.kt
   s_8d633484dc870e::t_b4dc0cb8321512 21
 kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
   s_8d633484dc870e::t_72b14a9abf1516 185-186,194-195
+  s_8d633484dc870e::t_5b0fa2c355a0a7 191-193
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/QuestionSchedule.kt
   s_8d633484dc870e::t_b4dc0cb8321512 17-21
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/MessageBoard.kt
