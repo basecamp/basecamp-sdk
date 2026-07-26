@@ -29,18 +29,18 @@ data class Upload(
     @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    @SerialName("comments_count") val commentsCount: Int = 0,
+    @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val description: String? = null,
     @SerialName("content_type") val contentType: String? = null,
-    @SerialName("byte_size") val byteSize: Long = 0L,
+    @SerialName("byte_size") val byteSize: Long? = null,
     @Serializable(with = FlexibleIntSerializer::class)
     val width: Int? = null,
     @Serializable(with = FlexibleIntSerializer::class)
     val height: Int? = null,
     @SerialName("download_url") val downloadUrl: String? = null,
     val filename: String? = null,
-    @SerialName("boosts_count") val boostsCount: Int = 0,
+    @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

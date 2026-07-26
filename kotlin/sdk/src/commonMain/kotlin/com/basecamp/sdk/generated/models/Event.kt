@@ -18,6 +18,6 @@ data class Event(
     @SerialName("created_at") val createdAt: String,
     val creator: Person,
     val details: EventDetails? = null,
-    @SerialName("boosts_count") val boostsCount: Int = 0,
+    @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

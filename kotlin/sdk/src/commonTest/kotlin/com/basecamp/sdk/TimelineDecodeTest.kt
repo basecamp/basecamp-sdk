@@ -117,7 +117,9 @@ class TimelineDecodeTest {
         assertEquals("sgid-attachable-500", blob[0].attachableSgid)
         assertEquals("See attached", blob[0].caption)
         assertEquals("blobkey500", blob[0].key)
-        assertTrue(blob[0].previewable)
+        // previewable is now nullable (optional boolean, presence-faithful);
+        // this fixture sets it true, so assert the explicit value.
+        assertEquals(true, blob[0].previewable)
         assertNull(blob[0].width)
     }
 }

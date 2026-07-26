@@ -19,7 +19,7 @@ data class Tool(
     val name: String,
     val enabled: Boolean,
     val status: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     val bucket: RecordingBucket? = null

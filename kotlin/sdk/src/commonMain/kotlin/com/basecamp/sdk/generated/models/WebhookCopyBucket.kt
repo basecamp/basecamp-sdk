@@ -12,5 +12,5 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class WebhookCopyBucket(
-    val id: Long = 0L
+    val id: Long? = null
 )

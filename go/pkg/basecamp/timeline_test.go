@@ -195,14 +195,16 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 	if len(up) != 1 {
 		t.Fatalf("expected 1 upload attachment, got %d", len(up))
 	}
-	if up[0].Type != "Upload" || up[0].Filename != "diagram.png" || up[0].AppDownloadURL == "" {
+	if strv(up[0].Type) != "Upload" || strv(up[0].Filename) != "diagram.png" || up[0].AppDownloadURL == nil {
 		t.Errorf("upload variant fields not decoded: %+v", up[0])
 	}
 	if up[0].Width == nil || *up[0].Width != 1024 {
 		t.Errorf("expected float-spelled width 1024, got %v", up[0].Width)
 	}
-	if up[0].AttachableSGID != "" {
-		t.Errorf("upload variant should not carry attachable_sgid, got %q", up[0].AttachableSGID)
+	// Presence-faithful: the Upload variant omits attachable_sgid, so it must be
+	// nil (absent), not a fabricated empty string, per SPEC §10.
+	if up[0].AttachableSGID != nil {
+		t.Errorf("upload variant should not carry attachable_sgid, got %q", *up[0].AttachableSGID)
 	}
 
 	// Rich-text attachment/blob variant
@@ -210,10 +212,10 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 	if len(att) != 1 {
 		t.Fatalf("expected 1 blob attachment, got %d", len(att))
 	}
-	if att[0].AttachableSGID != "sgid-attachable-500" || att[0].Caption != "See attached" || att[0].Key != "blobkey500" {
+	if strv(att[0].AttachableSGID) != "sgid-attachable-500" || strv(att[0].Caption) != "See attached" || strv(att[0].Key) != "blobkey500" {
 		t.Errorf("attachment variant fields not decoded: %+v", att[0])
 	}
-	if att[0].Previewable == nil || !*att[0].Previewable || att[0].ThumbnailURL == "" {
+	if att[0].Previewable == nil || !*att[0].Previewable || strv(att[0].ThumbnailURL) == "" {
 		t.Errorf("attachment variant preview fields not decoded: %+v", att[0])
 	}
 	if att[0].Width != nil || att[0].Height != nil {

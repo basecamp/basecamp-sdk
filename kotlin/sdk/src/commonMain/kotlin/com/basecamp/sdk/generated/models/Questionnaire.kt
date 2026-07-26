@@ -27,5 +27,5 @@ data class Questionnaire(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("questions_url") val questionsUrl: String? = null,
-    @SerialName("questions_count") val questionsCount: Int = 0
+    @SerialName("questions_count") val questionsCount: Int? = null
 )

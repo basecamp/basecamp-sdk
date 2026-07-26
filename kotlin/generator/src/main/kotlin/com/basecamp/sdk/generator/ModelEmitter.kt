@@ -182,12 +182,17 @@ class ModelEmitter(private val api: OpenApiParser) {
         }
 
         return when (schema["type"]?.jsonPrimitive?.content) {
+            // Optional scalars are nullable so an absent field decodes to null
+            // rather than a fabricated 0/false sentinel, per SPEC.md §10 (Optional
+            // Fields). Required scalars stay non-nullable. This matters most for
+            // the untagged supersets (TimelineAttachment, EverythingFile) whose
+            // variants each omit the other's fields.
             "integer" -> when (schema["format"]?.jsonPrimitive?.content) {
-                "int64" -> "Long"
-                else -> "Int"
+                "int64" -> if (isRequired) "Long" else "Long?"
+                else -> if (isRequired) "Int" else "Int?"
             }
-            "boolean" -> "Boolean"
-            "number" -> "Double"
+            "boolean" -> if (isRequired) "Boolean" else "Boolean?"
+            "number" -> if (isRequired) "Double" else "Double?"
             "string" -> if (isRequired) "String" else "String?"
             "array" -> {
                 val itemType = resolveArrayItemType(schema["items"]?.jsonObject)

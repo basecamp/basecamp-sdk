@@ -211,19 +211,37 @@ walk(
   }
 )
 |
-# Fifth-e pass: TimelineAttachment presence-faithful optional scalars.
-# The optional-field superset populates only one variant per instance, so its
-# optional timestamps and booleans must round-trip presence: a plain time.Time
-# re-marshals absent fields as the zero time (0001-01-01T00:00:00Z) and a plain
-# bool with omitempty drops an explicit false. Make them pointers so nil (absent)
-# omits and an explicit value (including false) is preserved. created_at/updated_at
-# keep the time.Time x-go-type but drop skip-optional-pointer so they become
-# *time.Time.
+# Fifth-e pass: TimelineAttachment presence-faithful optional fields.
+# The optional-field superset populates only one variant per instance, so ALL of
+# its optional fields must round-trip presence: a plain time.Time re-marshals an
+# absent field as the zero time, a plain bool with omitempty drops an explicit
+# false, a plain int drops an explicit zero, and a plain string cannot tell an
+# absent field from an explicit empty (SPEC.md §10 forbids empty-string as an
+# absence sentinel). Make them all pointers so nil (absent) omits and an explicit
+# value is preserved. width/height are handled by the Fifth-c FlexInt pass.
 .components.schemas.TimelineAttachment.properties |= (
   (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.previewable // empty) += { "x-go-type-skip-optional-pointer": false }
+  (.previewable // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.id // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.content_type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.filename // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.title // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.attachable_sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.status_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.caption // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.key // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.preview_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.thumbnail_url // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
 # Sixth pass: Person.id → types.FlexibleInt64

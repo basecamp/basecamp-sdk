@@ -31,7 +31,7 @@ data class ClientApproval(
     val content: String? = null,
     val subject: String? = null,
     @SerialName("due_on") val dueOn: String? = null,
-    @SerialName("replies_count") val repliesCount: Int = 0,
+    @SerialName("replies_count") val repliesCount: Int? = null,
     @SerialName("replies_url") val repliesUrl: String? = null,
     @SerialName("approval_status") val approvalStatus: String? = null,
     val approver: Person? = null,

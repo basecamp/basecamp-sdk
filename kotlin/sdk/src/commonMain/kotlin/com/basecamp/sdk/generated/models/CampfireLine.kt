@@ -28,6 +28,6 @@ data class CampfireLine(
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     val content: String? = null,
     val attachments: List<CampfireLineAttachment>? = null,
-    @SerialName("boosts_count") val boostsCount: Int = 0,
+    @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

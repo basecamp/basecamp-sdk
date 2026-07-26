@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class WebhookCopy(
-    val id: Long = 0L,
+    val id: Long? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     val bucket: WebhookCopyBucket? = null

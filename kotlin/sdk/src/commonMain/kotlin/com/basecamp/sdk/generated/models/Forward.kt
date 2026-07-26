@@ -31,6 +31,6 @@ data class Forward(
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     val content: String? = null,
     val from: String? = null,
-    @SerialName("replies_count") val repliesCount: Int = 0,
+    @SerialName("replies_count") val repliesCount: Int? = null,
     @SerialName("replies_url") val repliesUrl: String? = null
 )

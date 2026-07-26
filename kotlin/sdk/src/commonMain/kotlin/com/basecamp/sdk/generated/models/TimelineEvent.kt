@@ -12,10 +12,10 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class TimelineEvent(
-    val id: Long = 0L,
+    val id: Long? = null,
     @SerialName("created_at") val createdAt: String? = null,
     val kind: String? = null,
-    @SerialName("parent_recording_id") val parentRecordingId: Long = 0L,
+    @SerialName("parent_recording_id") val parentRecordingId: Long? = null,
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     val creator: Person? = null,

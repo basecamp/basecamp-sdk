@@ -60,42 +60,43 @@ type TimelineEventData struct {
 // recordings) and a rich-text attachment/blob partial (all other recordings).
 // Only the fields of the variant an instance represents are populated.
 type TimelineAttachment struct {
-	ID int64 `json:"id,omitempty"`
+	// Every field is optional and pointer-backed: the superset populates only the
+	// fields of the variant an instance represents (Upload-recording vs rich-text
+	// blob), so an absent field must stay nil and re-marshal as omitted rather
+	// than a fabricated sentinel. Per SPEC.md §10 an empty string is NOT an
+	// acceptable stand-in for absence, so the optional strings are *string too.
+	ID *int64 `json:"id,omitempty"`
 
 	// Shared by both variants.
-	ContentType string `json:"content_type,omitempty"`
-	ByteSize    int64  `json:"byte_size,omitempty"`
-	Filename    string `json:"filename,omitempty"`
-	DownloadURL string `json:"download_url,omitempty"`
+	ContentType *string `json:"content_type,omitempty"`
+	ByteSize    *int64  `json:"byte_size,omitempty"`
+	Filename    *string `json:"filename,omitempty"`
+	DownloadURL *string `json:"download_url,omitempty"`
 	// Width and Height are null for non-image blobs and may be float-spelled
 	// (1024.0) on the wire; narrowed to *int32 here (nil when absent/null).
 	Width  *int32 `json:"width,omitempty"`
 	Height *int32 `json:"height,omitempty"`
 
-	// Upload-recording variant. CreatedAt/UpdatedAt/VisibleToClients are
-	// pointers so an absent field (this instance is the attachment variant)
-	// stays nil and round-trips as omitted rather than a fabricated zero
-	// timestamp or a dropped explicit false.
-	Type             string     `json:"type,omitempty"`
-	Title            string     `json:"title,omitempty"`
-	Status           string     `json:"status,omitempty"`
+	// Upload-recording variant.
+	Type             *string    `json:"type,omitempty"`
+	Title            *string    `json:"title,omitempty"`
+	Status           *string    `json:"status,omitempty"`
 	CreatedAt        *time.Time `json:"created_at,omitempty"`
 	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
-	RecordingURL     string     `json:"url,omitempty"`
-	AppURL           string     `json:"app_url,omitempty"`
-	AppDownloadURL   string     `json:"app_download_url,omitempty"`
+	RecordingURL     *string    `json:"url,omitempty"`
+	AppURL           *string    `json:"app_url,omitempty"`
+	AppDownloadURL   *string    `json:"app_download_url,omitempty"`
 	VisibleToClients *bool      `json:"visible_to_clients,omitempty"`
 
-	// Rich-text attachment/blob variant. Previewable is a pointer for the same
-	// presence-faithful reason as VisibleToClients.
-	AttachableSGID string `json:"attachable_sgid,omitempty"`
-	SGID           string `json:"sgid,omitempty"`
-	StatusURL      string `json:"status_url,omitempty"`
-	Caption        string `json:"caption,omitempty"`
-	Key            string `json:"key,omitempty"`
-	Previewable    *bool  `json:"previewable,omitempty"`
-	PreviewURL     string `json:"preview_url,omitempty"`
-	ThumbnailURL   string `json:"thumbnail_url,omitempty"`
+	// Rich-text attachment/blob variant.
+	AttachableSGID *string `json:"attachable_sgid,omitempty"`
+	SGID           *string `json:"sgid,omitempty"`
+	StatusURL      *string `json:"status_url,omitempty"`
+	Caption        *string `json:"caption,omitempty"`
+	Key            *string `json:"key,omitempty"`
+	Previewable    *bool   `json:"previewable,omitempty"`
+	PreviewURL     *string `json:"preview_url,omitempty"`
+	ThumbnailURL   *string `json:"thumbnail_url,omitempty"`
 }
 
 // TimelineListOptions specifies options for listing timeline events.
@@ -513,6 +514,7 @@ func (a *TimelineAttachment) UnmarshalJSON(data []byte) error {
 // the public *int32 nil, and a present value is narrowed to int32.
 func timelineAttachmentFromGenerated(ga generated.TimelineAttachment) TimelineAttachment {
 	a := TimelineAttachment{
+		ID:               ga.Id,
 		ContentType:      ga.ContentType,
 		ByteSize:         ga.ByteSize,
 		Filename:         ga.Filename,
@@ -534,9 +536,6 @@ func timelineAttachmentFromGenerated(ga generated.TimelineAttachment) TimelineAt
 		Previewable:      ga.Previewable,
 		PreviewURL:       ga.PreviewUrl,
 		ThumbnailURL:     ga.ThumbnailUrl,
-	}
-	if ga.Id != nil {
-		a.ID = *ga.Id
 	}
 	if ga.Width != nil {
 		w := int32(*ga.Width)

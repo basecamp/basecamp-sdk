@@ -2099,31 +2099,31 @@ type Template struct {
 // every SDK decoder, so the superset need not enumerate every Upload field.
 type TimelineAttachment struct {
 	// AppDownloadUrl Web download URL (upload-recording variant).
-	AppDownloadUrl string `json:"app_download_url,omitempty"`
+	AppDownloadUrl *string `json:"app_download_url,omitempty"`
 
 	// AppUrl Web URL of the upload recording.
-	AppUrl string `json:"app_url,omitempty"`
+	AppUrl *string `json:"app_url,omitempty"`
 
 	// AttachableSgid Signed global id of the attachable (attachment variant).
-	AttachableSgid string `json:"attachable_sgid,omitempty"`
+	AttachableSgid *string `json:"attachable_sgid,omitempty"`
 
 	// ByteSize Size of the file in bytes.
-	ByteSize int64 `json:"byte_size,omitempty"`
+	ByteSize *int64 `json:"byte_size,omitempty"`
 
 	// Caption Caption text, if any (attachment variant).
-	Caption string `json:"caption,omitempty"`
+	Caption *string `json:"caption,omitempty"`
 
 	// ContentType MIME type of the file.
-	ContentType string `json:"content_type,omitempty"`
+	ContentType *string `json:"content_type,omitempty"`
 
 	// CreatedAt When the upload recording was created.
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 
 	// DownloadUrl Authenticated download URL for the file.
-	DownloadUrl string `json:"download_url,omitempty"`
+	DownloadUrl *string `json:"download_url,omitempty"`
 
 	// Filename Original filename.
-	Filename string `json:"filename,omitempty"`
+	Filename *string `json:"filename,omitempty"`
 
 	// Height Pixel height; null for non-image blobs and may be float-spelled (1024.0).
 	Height *types.FlexInt `json:"height,omitempty"`
@@ -2132,37 +2132,37 @@ type TimelineAttachment struct {
 	Id *int64 `json:"id,omitempty"`
 
 	// Key Storage key of the underlying blob (attachment variant).
-	Key string `json:"key,omitempty"`
+	Key *string `json:"key,omitempty"`
 
 	// PreviewUrl Full-size preview URL (attachment variant).
-	PreviewUrl string `json:"preview_url,omitempty"`
+	PreviewUrl *string `json:"preview_url,omitempty"`
 
 	// Previewable Whether the blob can be previewed (attachment variant).
 	Previewable *bool `json:"previewable,omitempty"`
 
 	// Sgid Signed global id of the attachment (attachment variant).
-	Sgid string `json:"sgid,omitempty"`
+	Sgid *string `json:"sgid,omitempty"`
 
 	// Status Publication status of the upload recording (e.g. "active").
-	Status string `json:"status,omitempty"`
+	Status *string `json:"status,omitempty"`
 
 	// StatusUrl URL to poll attachment processing status (attachment variant).
-	StatusUrl string `json:"status_url,omitempty"`
+	StatusUrl *string `json:"status_url,omitempty"`
 
 	// ThumbnailUrl Thumbnail preview URL (attachment variant).
-	ThumbnailUrl string `json:"thumbnail_url,omitempty"`
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
 
 	// Title Title of the upload recording.
-	Title string `json:"title,omitempty"`
+	Title *string `json:"title,omitempty"`
 
 	// Type Recording type, e.g. "Upload" (upload-recording variant).
-	Type string `json:"type,omitempty"`
+	Type *string `json:"type,omitempty"`
 
 	// UpdatedAt When the upload recording was last updated.
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 
 	// Url API URL of the upload recording.
-	Url string `json:"url,omitempty"`
+	Url *string `json:"url,omitempty"`
 
 	// VisibleToClients Whether the upload recording is visible to clients.
 	VisibleToClients *bool `json:"visible_to_clients,omitempty"`

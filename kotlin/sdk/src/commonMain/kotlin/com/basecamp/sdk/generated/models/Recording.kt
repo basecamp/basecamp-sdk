@@ -29,7 +29,7 @@ data class Recording(
     val content: String? = null,
     @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>? = null,
     @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>? = null,
-    @SerialName("comments_count") val commentsCount: Int = 0,
+    @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null
 )

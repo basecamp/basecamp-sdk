@@ -25,8 +25,8 @@ data class MessageBoard(
     val bucket: TodoBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val position: Int = 0,
-    @SerialName("messages_count") val messagesCount: Int = 0,
+    val position: Int? = null,
+    @SerialName("messages_count") val messagesCount: Int? = null,
     @SerialName("messages_url") val messagesUrl: String? = null,
     @SerialName("app_messages_url") val appMessagesUrl: String? = null
 )

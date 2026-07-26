@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class WebhookEvent(
-    val id: Long = 0L,
+    val id: Long? = null,
     val kind: String? = null,
     val details: JsonElement? = null,
     @SerialName("created_at") val createdAt: String? = null,

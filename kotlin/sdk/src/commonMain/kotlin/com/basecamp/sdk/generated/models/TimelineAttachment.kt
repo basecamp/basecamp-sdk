@@ -13,9 +13,9 @@ import com.basecamp.sdk.serialization.FlexibleIntSerializer
  */
 @Serializable
 data class TimelineAttachment(
-    val id: Long = 0L,
+    val id: Long? = null,
     @SerialName("content_type") val contentType: String? = null,
-    @SerialName("byte_size") val byteSize: Long = 0L,
+    @SerialName("byte_size") val byteSize: Long? = null,
     val filename: String? = null,
     @SerialName("download_url") val downloadUrl: String? = null,
     @Serializable(with = FlexibleIntSerializer::class)
@@ -30,13 +30,13 @@ data class TimelineAttachment(
     val url: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     @SerialName("app_download_url") val appDownloadUrl: String? = null,
-    @SerialName("visible_to_clients") val visibleToClients: Boolean = false,
+    @SerialName("visible_to_clients") val visibleToClients: Boolean? = null,
     @SerialName("attachable_sgid") val attachableSgid: String? = null,
     val sgid: String? = null,
     @SerialName("status_url") val statusUrl: String? = null,
     val caption: String? = null,
     val key: String? = null,
-    val previewable: Boolean = false,
+    val previewable: Boolean? = null,
     @SerialName("preview_url") val previewUrl: String? = null,
     @SerialName("thumbnail_url") val thumbnailUrl: String? = null
 )

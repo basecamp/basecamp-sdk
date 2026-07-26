@@ -13,6 +13,6 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class WebhookDeliveryResponse(
     val headers: JsonObject? = null,
-    val code: Int = 0,
+    val code: Int? = null,
     val message: String? = null
 )

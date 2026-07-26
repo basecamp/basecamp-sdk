@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class WebhookDelivery(
-    val id: Long = 0L,
+    val id: Long? = null,
     @SerialName("created_at") val createdAt: String? = null,
     val request: WebhookDeliveryRequest? = null,
     val response: WebhookDeliveryResponse? = null

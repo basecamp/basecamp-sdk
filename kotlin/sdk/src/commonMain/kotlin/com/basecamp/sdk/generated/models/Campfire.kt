@@ -26,7 +26,7 @@ data class Campfire(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val topic: String? = null,
     @SerialName("lines_url") val linesUrl: String? = null,
     @SerialName("files_url") val filesUrl: String? = null

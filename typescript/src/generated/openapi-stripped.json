@@ -24919,21 +24919,25 @@
           },
           "content_type": {
             "type": "string",
-            "description": "MIME type of the file."
+            "description": "MIME type of the file.",
+            "x-go-type-skip-optional-pointer": false
           },
           "byte_size": {
             "type": "integer",
             "description": "Size of the file in bytes.",
-            "format": "int64"
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
           },
           "filename": {
             "type": "string",
-            "description": "Original filename."
+            "description": "Original filename.",
+            "x-go-type-skip-optional-pointer": false
           },
           "download_url": {
             "type": "string",
             "description": "Authenticated download URL for the file.",
-            "x-basecamp-auth-routable-url": {}
+            "x-basecamp-auth-routable-url": {},
+            "x-go-type-skip-optional-pointer": false
           },
           "width": {
             "type": "integer",
@@ -24959,15 +24963,18 @@
           },
           "type": {
             "type": "string",
-            "description": "Recording type, e.g. \"Upload\" (upload-recording variant)."
+            "description": "Recording type, e.g. \"Upload\" (upload-recording variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "title": {
             "type": "string",
-            "description": "Title of the upload recording."
+            "description": "Title of the upload recording.",
+            "x-go-type-skip-optional-pointer": false
           },
           "status": {
             "type": "string",
-            "description": "Publication status of the upload recording (e.g. \"active\")."
+            "description": "Publication status of the upload recording (e.g. \"active\").",
+            "x-go-type-skip-optional-pointer": false
           },
           "created_at": {
             "type": "string",
@@ -24989,15 +24996,18 @@
           },
           "url": {
             "type": "string",
-            "description": "API URL of the upload recording."
+            "description": "API URL of the upload recording.",
+            "x-go-type-skip-optional-pointer": false
           },
           "app_url": {
             "type": "string",
-            "description": "Web URL of the upload recording."
+            "description": "Web URL of the upload recording.",
+            "x-go-type-skip-optional-pointer": false
           },
           "app_download_url": {
             "type": "string",
-            "description": "Web download URL (upload-recording variant)."
+            "description": "Web download URL (upload-recording variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "visible_to_clients": {
             "type": "boolean",
@@ -25006,23 +25016,28 @@
           },
           "attachable_sgid": {
             "type": "string",
-            "description": "Signed global id of the attachable (attachment variant)."
+            "description": "Signed global id of the attachable (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "sgid": {
             "type": "string",
-            "description": "Signed global id of the attachment (attachment variant)."
+            "description": "Signed global id of the attachment (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "status_url": {
             "type": "string",
-            "description": "URL to poll attachment processing status (attachment variant)."
+            "description": "URL to poll attachment processing status (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "caption": {
             "type": "string",
-            "description": "Caption text, if any (attachment variant)."
+            "description": "Caption text, if any (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "key": {
             "type": "string",
-            "description": "Storage key of the underlying blob (attachment variant)."
+            "description": "Storage key of the underlying blob (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "previewable": {
             "type": "boolean",
@@ -25031,11 +25046,13 @@
           },
           "preview_url": {
             "type": "string",
-            "description": "Full-size preview URL (attachment variant)."
+            "description": "Full-size preview URL (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           },
           "thumbnail_url": {
             "type": "string",
-            "description": "Thumbnail preview URL (attachment variant)."
+            "description": "Thumbnail preview URL (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
           }
         }
       },

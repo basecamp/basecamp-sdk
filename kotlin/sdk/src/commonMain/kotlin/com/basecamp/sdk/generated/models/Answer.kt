@@ -29,9 +29,9 @@ data class Answer(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    @SerialName("comments_count") val commentsCount: Int = 0,
+    @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
     @SerialName("group_on") val groupOn: String? = null,
-    @SerialName("boosts_count") val boostsCount: Int = 0,
+    @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null
 )

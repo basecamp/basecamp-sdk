@@ -18,5 +18,5 @@ data class DockItem(
     val enabled: Boolean,
     val url: String,
     @SerialName("app_url") val appUrl: String,
-    val position: Int = 0
+    val position: Int? = null
 )

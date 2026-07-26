@@ -821,20 +821,6 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertNotNil(sentJSON["visible_to_clients"], "explicit false must be sent, not dropped")
         XCTAssertEqual(sentJSON["visible_to_clients"] as? Bool, false)
     }
-}
-
-/// Records operation-start callbacks so tests can assert emitted metadata.
-private final class SpyHooks: BasecampHooks, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _operationStarts: [OperationInfo] = []
-
-    var operationStarts: [OperationInfo] {
-        lock.withLock { _operationStarts }
-    }
-
-    func onOperationStart(_ info: OperationInfo) {
-        lock.withLock { _operationStarts.append(info) }
-    }
 
     // MARK: - Activity timeline additive fields (avatars_sample, data, heterogeneous attachments)
 
@@ -949,5 +935,19 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
         XCTAssertEqual(blob.key, "blobkey500")
         XCTAssertEqual(blob.previewable, true)
         XCTAssertNil(blob.width)
+    }
+}
+
+/// Records operation-start callbacks so tests can assert emitted metadata.
+private final class SpyHooks: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _operationStarts: [OperationInfo] = []
+
+    var operationStarts: [OperationInfo] {
+        lock.withLock { _operationStarts }
+    }
+
+    func onOperationStart(_ info: OperationInfo) {
+        lock.withLock { _operationStarts.append(info) }
     }
 }
