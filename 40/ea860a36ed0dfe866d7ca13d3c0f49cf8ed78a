@@ -1,0 +1,26 @@
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_19cb8c98484dbd 4,273,291-317,319,323
+  s_8d633484dc870e::t_35a8d763a7b3b8 318,320-322,324-325
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_19cb8c98484dbd 3017-3030
+go/pkg/basecamp/everything_test.go
+  s_8d633484dc870e::t_7544608ecc790e 412-444
+scripts/check-idempotency-parity
+  s_8d633484dc870e::t_a618a308eb1b89 8,17,24,72,185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "40ea860a36ed0dfe866d7ca13d3c0f49cf8ed78a",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
