@@ -428,17 +428,20 @@ class TestEverythingErrorPropagation:
 # Each todo/card is a full recording carrying a `steps` array (a to-do's steps
 # or a card's step checklist).
 def _todo_group(bucket_id, bucket_name, todos):
-    return {
-        "bucket": {"id": bucket_id, "name": bucket_name, "type": "Project"},
-        "todos": todos,
-    }
+    # Real API invariant: each child recording's `bucket` is the group's bucket,
+    # so propagate it rather than leaving the _todo default (which weakens the
+    # test by letting a group and its children disagree).
+    bucket = {"id": bucket_id, "name": bucket_name, "type": "Project"}
+    for todo in todos:
+        todo["bucket"] = bucket
+    return {"bucket": bucket, "todos": todos}
 
 
 def _card_group(bucket_id, bucket_name, cards):
-    return {
-        "bucket": {"id": bucket_id, "name": bucket_name, "type": "Project"},
-        "cards": cards,
-    }
+    bucket = {"id": bucket_id, "name": bucket_name, "type": "Project"}
+    for card in cards:
+        card["bucket"] = bucket
+    return {"bucket": bucket, "cards": cards}
 
 
 def _todo(todo_id, title, steps):
