@@ -15,8 +15,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,10 +58,11 @@ type ConfigOverrides struct {
 
 // MockResponse defines a single mock HTTP response.
 type MockResponse struct {
-	Status  int               `json:"status"`
-	Headers map[string]string `json:"headers"`
-	Body    interface{}       `json:"body"`
-	Delay   int               `json:"delay"`
+	Status       int               `json:"status"`
+	NetworkError bool              `json:"networkError"`
+	Headers      map[string]string `json:"headers"`
+	Body         interface{}       `json:"body"`
+	Delay        int               `json:"delay"`
 }
 
 // Assertion defines what to verify after the test.
@@ -235,6 +238,25 @@ type operationResult struct {
 }
 
 func runTest(tc TestCase) TestResult {
+	// Defense-in-depth backstop for the operationally-harmful mockResponses
+	// shapes: neither status nor networkError set (would be served as an HTTP
+	// response), or both active. The AUTHORITATIVE oneOf enforcement — including
+	// rejecting {status, networkError:false} and networkError values other than
+	// true — is `make conformance-fixtures-check` (check-jsonschema against
+	// conformance/schema.json), which runs before the runners. This truthiness
+	// check can't distinguish an absent networkError from a present false one,
+	// so it deliberately covers only the harmful cases, not the full schema.
+	for i, mr := range tc.MockResponses {
+		hasStatus := mr.Status != 0
+		if hasStatus == mr.NetworkError {
+			return TestResult{
+				Name:    tc.Name,
+				Passed:  false,
+				Message: fmt.Sprintf("mockResponses[%d] must set exactly one of status or networkError (got status=%d, networkError=%t)", i, mr.Status, mr.NetworkError),
+			}
+		}
+	}
+
 	// Track request count and timing with mutex protection
 	var mu sync.Mutex
 	var requestCount int
@@ -297,6 +319,22 @@ func runTest(tc TestCase) TestResult {
 		// Apply delay if specified
 		if resp.Delay > 0 {
 			time.Sleep(time.Duration(resp.Delay) * time.Millisecond)
+		}
+
+		// Genuine transport failure: hijack the connection and close it without
+		// writing any response, forcing a real socket reset the SDK observes as
+		// a network error. The request counter is already incremented above.
+		if resp.NetworkError {
+			if hj, ok := w.(http.Hijacker); ok {
+				if conn, _, err := hj.Hijack(); err == nil {
+					_ = conn.Close()
+					return
+				}
+			}
+			// Fallback: no hijack support — drop the connection via a panic the
+			// httptest server converts into a reset (should not happen on the
+			// default server, which supports hijacking).
+			panic(http.ErrAbortHandler)
 		}
 
 		// Set Content-Type before any other headers (oapi-codegen
@@ -748,6 +786,24 @@ func checkAssertion(
 		if sdkErr == nil {
 			return fail(tc, fmt.Sprintf("Expected error type %v, but got no error", assertion.Expected))
 		}
+		expected := expectedString(assertion.Expected)
+		// Classify the error. A mapped *basecamp.Error carries a canonical
+		// .Code; on the network path the generated client returns the raw
+		// transport error (e.g. *url.Error) rather than a *basecamp.Error, so
+		// recognize that as "network". Anything else is unknown — fail rather
+		// than silently accept, so this assertion actually pins the class.
+		var actualType string
+		var sdkError *basecamp.Error
+		if errors.As(sdkErr, &sdkError) {
+			actualType = sdkError.Code
+		} else if isNetworkError(sdkErr) {
+			actualType = basecamp.CodeNetwork
+		} else {
+			return fail(tc, fmt.Sprintf("Expected error type %q, but got unrecognized error: %v", expected, sdkErr))
+		}
+		if actualType != expected {
+			return fail(tc, fmt.Sprintf("Expected error type %q, got %q (%v)", expected, actualType, sdkErr))
+		}
 
 	case "statusCode":
 		expected := expectedInt(assertion.Expected)
@@ -1087,6 +1143,19 @@ func expectedString(v interface{}) string {
 		return s.String()
 	}
 	return fmt.Sprintf("%v", v)
+}
+
+// isNetworkError reports whether err is a genuine transport-level failure
+// (connection reset / DNS / timeout). The generated Go client surfaces such
+// failures as the raw error from http.Client.Do — a *url.Error, or something
+// satisfying net.Error — rather than mapping them to a *basecamp.Error.
+func isNetworkError(err error) bool {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 // digPath walks a dot-notation path through nested maps, reporting presence.

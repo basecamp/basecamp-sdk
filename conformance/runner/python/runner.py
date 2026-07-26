@@ -172,6 +172,23 @@ class TestRunner:
     def run(self) -> TestResult:
         self._tracker.reset()
 
+        # Defense-in-depth backstop for the operationally-harmful mockResponses
+        # shapes (neither mode set → served as a normal HTTP response; or both
+        # active). The AUTHORITATIVE oneOf enforcement is
+        # `make conformance-fixtures-check` (check-jsonschema against
+        # conformance/schema.json), which runs before the runners; it rejects
+        # {status, networkError:false} and non-true networkError values that this
+        # truthiness backstop intentionally lets through for cross-runner parity.
+        for i, r in enumerate(self._test.get("mockResponses", [])):
+            has_status = "status" in r
+            has_network_error = r.get("networkError") is True
+            if has_status == has_network_error:
+                return TestResult(
+                    self._test["name"],
+                    False,
+                    f"mockResponses[{i}] must set exactly one of status or networkError",
+                )
+
         with respx.mock:
             self._setup_mock_responses()
 
@@ -213,6 +230,11 @@ class TestRunner:
 
             if idx < len(response_queue):
                 r = response_queue[idx]
+                # Genuine transport failure for this queued entry: raise a
+                # connection error the way a real network fault would. The
+                # request is already recorded above, so requestCount is correct.
+                if r.get("networkError"):
+                    raise httpx.ConnectError("simulated network error")
                 body = json.dumps(r.get("body", "")).encode() if r.get("body") is not None else b""
                 headers = {"Content-Type": "application/json"}
                 headers.update(r.get("headers", {}))
@@ -353,12 +375,21 @@ class TestRunner:
                         "forbidden": "forbidden",
                         "rate_limit": "rate_limit",
                         "validation": "validation",
+                        "network": "network",
                     }
                     expected_code = code_map.get(expected_type)
                     if expected_code is None:
                         failures.append(f"Unknown conformance error type {expected_type!r}")
-                    elif hasattr(error, "code") and error.code != expected_code:
-                        failures.append(f"Expected error code {expected_code!r}, got {error.code!r}")
+                    else:
+                        # Require a canonical code that exists and matches — an
+                        # error carrying no .code must fail, not silently pass.
+                        actual_code = getattr(error, "code", None)
+                        if actual_code is None:
+                            failures.append(
+                                f"Expected error code {expected_code!r}, but {type(error).__name__} carries no code: {error}"
+                            )
+                        elif actual_code != expected_code:
+                            failures.append(f"Expected error code {expected_code!r}, got {actual_code!r}")
 
                 case "requestPath":
                     expected = assertion["expected"]

@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.json.*
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Default account ID for conformance tests. */
@@ -25,6 +26,7 @@ private val KOTLIN_SKIPS: Map<String, String> = mapOf(
     "DownloadURL surfaces redirect with no Location" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
     "UploadsDownload delegates through DownloadURL primitive" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
     "UploadsDownload errors when upload has no download_url" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
+    "Network error on an idempotent POST is retried then succeeds" to "Kotlin SDK does not retry network errors on mutations; it throws immediately (RetryTest network test asserts requestCount == 1)",
 )
 
 fun main() {
@@ -130,7 +132,8 @@ data class ConfigOverrides(
 
 @kotlinx.serialization.Serializable
 data class MockResponse(
-    val status: Int,
+    val status: Int? = null,
+    val networkError: Boolean = false,
     val headers: Map<String, String> = emptyMap(),
     val body: JsonElement? = null,
     val delay: Int = 0,
@@ -164,6 +167,19 @@ data class DispatchResult(
 )
 
 private fun runTest(tc: TestCase): TestResult {
+    // Defense-in-depth backstop for the operationally-harmful mockResponses
+    // shapes: neither mode set (would be served as `status ?: 200`, a false
+    // positive) or both active. The AUTHORITATIVE oneOf enforcement is
+    // `make conformance-fixtures-check` (check-jsonschema against
+    // conformance/schema.json), which runs before the runners and rejects
+    // {status, networkError:false} / non-true networkError that this truthiness
+    // backstop intentionally lets through for cross-runner parity.
+    tc.mockResponses.forEachIndexed { i, mr ->
+        if ((mr.status != null) == mr.networkError) {
+            return TestResult(false, "mockResponses[$i] must set exactly one of status or networkError (got status=${mr.status}, networkError=${mr.networkError})")
+        }
+    }
+
     // Track requests
     val requestCounter = AtomicInteger(0)
     val requestTimes = mutableListOf<Long>()
@@ -212,6 +228,13 @@ private fun runTest(tc: TestCase): TestResult {
                 Thread.sleep(mockResp.delay.toLong())
             }
 
+            // Genuine transport failure for this queued entry: throw from the
+            // engine lambda, which the SDK observes as a network error and maps
+            // to BasecampException.Network. The request is already counted above.
+            if (mockResp.networkError) {
+                throw IOException("simulated network error")
+            }
+
             val responseHeaders = HeadersBuilder().apply {
                 append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 for ((key, value) in mockResp.headers) {
@@ -227,7 +250,9 @@ private fun runTest(tc: TestCase): TestResult {
 
             respond(
                 content = bodyContent,
-                status = HttpStatusCode.fromValue(mockResp.status),
+                // networkError entries throw above; the schema guarantees a
+                // status on every non-networkError entry.
+                status = HttpStatusCode.fromValue(mockResp.status ?: 200),
                 headers = responseHeaders.build(),
             )
         }

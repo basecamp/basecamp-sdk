@@ -518,6 +518,33 @@ final class RetryTests: XCTestCase {
         XCTAssertEqual(transport.requests.count, 2, "CompleteTodo (idempotent POST) must retry through BaseService")
     }
 
+    /// Network-error analog of `testGeneratedIdempotentPostRetries`: an
+    /// idempotent POST driven through its generated service retries a genuine
+    /// transport failure and then succeeds. The existing
+    /// `testNetworkErrorTriggersRetry` is GET-only, so it never exercises the
+    /// POST metadata gate on the network path. Swift is not in the conformance
+    /// matrix, so this unit test is the only coverage of Swift's network
+    /// liveness for a metadata-flagged idempotent POST. Refs #439 / #417.
+    func testGeneratedIdempotentPostRetriesOnNetworkError() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            if count == 1 {
+                throw URLError(.networkConnectionLost)
+            }
+            return (Data(), HTTPURLResponse(
+                url: request.url!, statusCode: 204,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!)
+        }
+
+        let account = makeTestClient(transport: transport, enableRetry: true).forAccount("999999999")
+
+        try await account.todos.complete(todoId: 1)
+
+        XCTAssertEqual(transport.requests.count, 2, "CompleteTodo (idempotent POST) must retry a network error through BaseService")
+    }
+
     // MARK: - Auth Header
 
     func testAuthHeaderIncludesToken() async throws {

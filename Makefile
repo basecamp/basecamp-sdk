@@ -384,7 +384,7 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check
+.PHONY: conformance conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check conformance-fixtures-check
 
 # Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
 # version is reproducible without a global install; the schema is separate from
@@ -396,6 +396,18 @@ oauth-fixtures-check:
 	@echo "==> Validating OAuth discovery fixtures..."
 	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
 		--schemafile conformance/oauth/schema.json conformance/oauth/fixtures/*.json
+
+# Validate every conformance/tests/*.json entry against conformance/schema.json.
+# This is the AUTHORITATIVE enforcement of the per-case schema — including the
+# mockResponses oneOf (exactly one of status or networkError:true). The runners
+# don't schema-validate fixtures, so without this a malformed fixture (e.g.
+# {status:204, networkError:false}) would only be caught, if at all, by each
+# runner's looser runtime backstop. tests.schema.json wraps schema.json as an
+# array so check-jsonschema validates each element of the array-shaped files.
+conformance-fixtures-check:
+	@echo "==> Validating conformance fixtures against schema.json..."
+	uvx --from 'check-jsonschema==$(CHECK_JSONSCHEMA_VERSION)' check-jsonschema \
+		--schemafile conformance/tests.schema.json conformance/tests/*.json
 
 # Build conformance test runner
 conformance-build:
@@ -471,7 +483,7 @@ conformance-python-replay:
 	cd conformance/runner/python && uv sync && uv run python replay_runner.py
 
 # Run all conformance tests
-conformance: oauth-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
+conformance: oauth-fixtures-check conformance-fixtures-check conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
 	@echo "==> Conformance tests passed"
 
 # Orchestrate one canary pass against a single backend:
@@ -885,6 +897,7 @@ help:
 	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
+	@echo "  conformance-fixtures-check Validate conformance/tests fixtures against schema.json"
 	@echo ""
 	@echo "Ruby SDK:"
 	@echo "  rb-generate          Generate types and metadata from OpenAPI"
