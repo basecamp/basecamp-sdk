@@ -339,7 +339,7 @@ func TestRecording_UnmarshalDoor(t *testing.T) {
 	cfg := DefaultConfig()
 	cfg.BaseURL = server.URL
 	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
-	result, err := client.ForAccount("99999").Recordings().List(context.Background(), "Door", nil)
+	result, err := client.ForAccount("99999").Recordings().List(context.Background(), RecordingTypeDoor, nil)
 	if err != nil {
 		t.Fatalf("List(Door) failed: %v", err)
 	}
@@ -373,14 +373,35 @@ func TestRecording_UnmarshalDoor(t *testing.T) {
 	}
 }
 
-// TestRecording_UnmarshalNonDoorOmitsDoorFields verifies a non-door recording
-// leaves the door-specific fields empty (they are optional).
-func TestRecording_UnmarshalNonDoorOmitsDoorFields(t *testing.T) {
-	data := `{"id": 1, "type": "Message", "title": "Hi", "url": "https://x/1.json"}`
-	var r Recording
-	if err := json.Unmarshal([]byte(data), &r); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
+// TestRecording_ListNonDoorOmitsDoorFields verifies a non-door recording, driven
+// through the real RecordingsService.List pipeline (generated decode ->
+// recordingFromGenerated), leaves the door-specific fields empty. Routing it
+// through List (rather than a direct unmarshal) exercises the same converter
+// path production uses, so it would catch a regression that wrongly populated
+// the door fields for a non-door type.
+func TestRecording_ListNonDoorOmitsDoorFields(t *testing.T) {
+	data := `[{"id": 1, "type": "Message", "title": "Hi", "url": "https://x/1.json"}]`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("type"); got != "Message" {
+			t.Errorf("expected type=Message query, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(data))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	result, err := client.ForAccount("99999").Recordings().List(context.Background(), RecordingTypeMessage, nil)
+	if err != nil {
+		t.Fatalf("List(Message) failed: %v", err)
 	}
+	if len(result.Recordings) != 1 {
+		t.Fatalf("expected 1 recording, got %d", len(result.Recordings))
+	}
+	r := result.Recordings[0]
 	if r.Service != nil {
 		t.Errorf("expected nil service for non-door, got %+v", r.Service)
 	}
