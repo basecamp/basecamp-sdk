@@ -111,7 +111,7 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # and Everything GET families). idempotent stays 69 (new GETs are not flagged
 # idempotent:true).
 expected_idempotent=69
-expected_union=178
+expected_union=187
 n69=$(wc -l < "$WORK/idempotent69" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $n69 idempotent, $nUnion idempotent∪readonly"
