@@ -156,29 +156,32 @@ describe("MyNotificationsService", () => {
     it("should return current and scheduled bubble-ups", async () => {
       server.use(
         http.get(`${BASE_URL}/my/readings/bubble_ups.json`, () => {
-          return HttpResponse.json([
-            {
-              id: 2,
-              created_at: "2026-07-21T00:01:43.009Z",
-              updated_at: "2026-07-21T00:01:43.031Z",
-              section: "bubbles",
-              unread_count: 0,
-              read_at: "2026-07-21T00:01:43.031Z",
-              title: "We won Leto!",
-              type: "Message",
-              bucket_name: "The Leto Laptop",
-            },
-            {
-              id: 3,
-              created_at: "2026-07-21T00:02:00.000Z",
-              updated_at: "2026-07-21T00:02:00.000Z",
-              section: "bubbles",
-              unread_count: 1,
-              title: "Scheduled follow-up",
-              type: "Todo",
-              bubble_up_at: "2026-08-01T00:00:00Z",
-            },
-          ]);
+          return HttpResponse.json(
+            [
+              {
+                id: 2,
+                created_at: "2026-07-21T00:01:43.009Z",
+                updated_at: "2026-07-21T00:01:43.031Z",
+                section: "bubbles",
+                unread_count: 0,
+                read_at: "2026-07-21T00:01:43.031Z",
+                title: "We won Leto!",
+                type: "Message",
+                bucket_name: "The Leto Laptop",
+              },
+              {
+                id: 3,
+                created_at: "2026-07-21T00:02:00.000Z",
+                updated_at: "2026-07-21T00:02:00.000Z",
+                section: "bubbles",
+                unread_count: 1,
+                title: "Scheduled follow-up",
+                type: "Todo",
+                bubble_up_at: "2026-08-01T00:00:00Z",
+              },
+            ],
+            { headers: { "X-Total-Count": "2" } }
+          );
         })
       );
 
@@ -189,6 +192,8 @@ describe("MyNotificationsService", () => {
       expect(result[0]!.title).toBe("We won Leto!");
       expect((result[0] as Record<string, unknown>).type).toBe("Message");
       expect((result[1] as Record<string, unknown>).bubble_up_at).toBe("2026-08-01T00:00:00Z");
+      // Paginated: the ListResult carries the X-Total-Count metadata.
+      expect(result.meta.totalCount).toBe(2);
     });
 
     it("should propagate a 4xx as a BasecampError", async () => {
