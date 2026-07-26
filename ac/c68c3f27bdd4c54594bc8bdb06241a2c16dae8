@@ -1,0 +1,48 @@
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_8d633484dc870e::t_8bb7ddb88b6efd 231,289
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_6e1e09f0dd28c7 1386-1387
+typescript/src/generated/services/my-notifications.ts
+  s_8d633484dc870e::t_d85e36ff1ab941 62-65,66
+  s_8d633484dc870e::t_2273074778bc2e 68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "acc68c3f27bdd4c54594bc8bdb06241a2c16dae8",
+  "prompts": {},
+  "sessions": {
+    "s_1ad9dc053c5abc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cc39af5-a0d6-44ec-895a-2638d7b25a46",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_1b437abfa07167": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cda71db0-eea3-4445-8ffe-bf40bead5715",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_20c69161b1ea93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "649fc5a9-6fbe-4157-8851-aab0e7b97f32",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
