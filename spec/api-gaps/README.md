@@ -57,6 +57,7 @@ making the absorption journey publicly auditable.
 | [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | absorbed-in-sdk | n/a | medium |
 | [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | absorbed-in-sdk | post-train | medium |
 | [external-links-doors](external-links-doors.md) | addressed-in-bc3-pr-12375 | post-train | low |
+| [my-bookmarks](my-bookmarks.md) | addressed-in-bc3-pr-12383 | master | medium |
 | [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | addressed-in-bc3-pr-12386 | post-train | low |
 | [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 
