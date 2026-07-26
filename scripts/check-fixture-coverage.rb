@@ -363,27 +363,21 @@ def rich_text_attachment?(schema, components, visited = Set.new, depth = 0)
 end
 
 # True when `schema` is (or composes/refs) an array whose items resolve to the
-# RichTextAttachment component. Follows `$ref` (with siblings) and
-# allOf/anyOf/oneOf on both the array schema and its items; `visited` guards
-# cycles.
-def references_rich_text_array?(schema, components, visited = Set.new, depth = 0)
+# RichTextAttachment component. Uses the EFFECTIVE conjoined view across `$ref`
+# (with siblings) and `allOf` (via merged_constraints) so an array whose `type`
+# and `items` are contributed by different conjuncts — e.g.
+# `allOf: [{type: array}, {items: {$ref: RichTextAttachment}}]` — is still
+# recognized. anyOf/oneOf are alternatives, so each branch is examined
+# independently (a branch that is itself an array-of-RichTextAttachment counts).
+def references_rich_text_array?(schema, components, depth = 0)
   return false if depth > 40 || !schema.is_a?(Hash)
 
-  name = ref_name(schema)
-  if name && !visited.include?(name)
-    visited << name
-    return true if references_rich_text_array?(components[name], components, visited, depth + 1)
-    # fall through to local keywords ($ref siblings)
-  end
+  _req, _props, types, _nullable, items, alt_groups = merged_constraints(schema, components)
+  return true if types.include?("array") && items && rich_text_attachment?(items, components)
 
-  t = schema["type"]
-  if (t == "array" || (t.is_a?(Array) && t.include?("array"))) && schema["items"]
-    return true if rich_text_attachment?(schema["items"], components)
-  end
-
-  %w[allOf anyOf oneOf].each do |key|
-    (schema[key] || []).each do |sub|
-      return true if references_rich_text_array?(sub, components, visited, depth + 1)
+  alt_groups.each do |branches|
+    branches.each do |branch|
+      return true if references_rich_text_array?(branch, components, depth + 1)
     end
   end
   false

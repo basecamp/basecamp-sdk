@@ -187,6 +187,13 @@ SYNTHETIC_OPENAPI = {
     "SiblingEmitter" => { "$ref" => "#/components/schemas/Base",
                           "properties" => { "content_attachments" => { "type" => "array",
                                                                        "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } } } },
+    # (2c) Emitter whose array `type` and `items` are split across allOf
+    # conjuncts — only the EFFECTIVE (merged) view sees the array-of-RTA.
+    "SplitEmitter" => { "type" => "object",
+                        "properties" => { "atts" => { "allOf" => [
+                          { "type" => "array" },
+                          { "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } },
+                        ] } } },
     # (3a) Component-level composition cycle (no rich text) — must terminate.
     "CycleA" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleB" }] },
     "CycleB" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleA" }] },
@@ -250,6 +257,7 @@ begin
   expect_fail(failures, "component-level allOf emitter discovered", out, status, "`AllOfEmitter`")
   expect_fail(failures, "aliased RichTextAttachment item discovered", out, status, "`AliasedItemEmitter`")
   expect_fail(failures, "$ref-with-siblings emitter discovered", out, status, "`SiblingEmitter`")
+  expect_fail(failures, "split type/items allOf emitter discovered", out, status, "`SplitEmitter`")
   # The cycle components must NOT be misclassified as emitters, and — proven by
   # the run returning at all under the killable timeout — discovery terminated.
   if out.include?("`CycleA`") || out.include?("`SelfRefItem`") || out.include?("`CycleItemHolder`")
@@ -466,7 +474,7 @@ end
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 17 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 18 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"
