@@ -623,7 +623,7 @@ gradle-stop:
 HAS_SWIFT := $(shell command -v swift 2>/dev/null)
 IS_MACOS  := $(filter Darwin,$(shell uname -s))
 
-.PHONY: swift-build swift-test swift-check swift-clean swift-generate
+.PHONY: swift-build swift-test swift-check swift-check-drift swift-clean swift-generate
 
 # Build Swift SDK (macOS only — SDK requires Apple platforms)
 swift-build:
@@ -655,6 +655,17 @@ ifdef HAS_SWIFT
 	@$(MAKE) -C swift generate
 else
 	$(error swift is required for swift-generate but was not found)
+endif
+
+# Check committed generated Swift is current (needs swift on any platform, NOT
+# just macOS — generation only needs the toolchain, unlike swift-check's
+# build/test which require Apple platforms). Non-mutating regenerate + diff.
+swift-check-drift:
+ifdef HAS_SWIFT
+	@echo "==> Checking Swift service drift..."
+	@./scripts/check-swift-service-drift.sh
+else
+	@echo "SKIP: swift-check-drift (swift toolchain not found)"
 endif
 
 # Clean Swift build artifacts
@@ -743,7 +754,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-idempotency-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -771,6 +782,12 @@ validate-api-gaps:
 kt-check-optional-arrays:
 	@./scripts/check-kotlin-optional-arrays.sh
 
+# Verify idempotency classification is identical across all six SDKs and matches
+# behavior-model.json (the 69 idempotent mutations; Go additionally folds in the
+# 100 read-only ops for 169). Bash+jq — runs anywhere, enforced in CI.
+check-idempotency-parity:
+	@./scripts/check-idempotency-parity
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -793,7 +810,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-idempotency-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -851,6 +868,7 @@ help:
 	@echo "  swift-build      Build Swift SDK"
 	@echo "  swift-test       Run Swift tests"
 	@echo "  swift-check      Run all Swift checks"
+	@echo "  swift-check-drift  Check generated Swift is current (any OS with swift)"
 	@echo "  swift-clean      Remove Swift build artifacts"
 	@echo ""
 	@echo "Conformance:"
