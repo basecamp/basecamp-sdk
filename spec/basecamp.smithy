@@ -8228,7 +8228,28 @@ structure Boost {
   @required
   created_at: ISO8601Timestamp
   booster: Person
-  recording: RecordingParent
+  // The boosted recording on the feeds that embed it (my/boosts,
+  // everything/boosts); absent on the per-recording boosts list. A dedicated
+  // compact projection: the RecordingParent identity fields PLUS `bucket`, so an
+  // account-wide boost keeps its project context without forcing strict decoders
+  // to require the full Recording's dozen-plus fields on a compact projection.
+  recording: BoostRecording
+}
+
+/// The boosted recording as embedded in the boosts feeds: the compact
+/// RecordingParent identity fields plus the `bucket` for project context.
+structure BoostRecording {
+  @required
+  id: Long
+  @required
+  title: String
+  @required
+  type: String
+  @required
+  url: String
+  @required
+  app_url: String
+  bucket: RecordingBucket
 }
 
 // =============================================================================

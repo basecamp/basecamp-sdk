@@ -271,3 +271,36 @@ func TestEverythingFile_OptionalStringsPreserveAbsence(t *testing.T) {
 		t.Errorf("expected explicit empty description to round-trip as \"\", got %s", s)
 	}
 }
+
+// TestEverythingService_Boosts_RecordingCarriesBucket proves the everything
+// /boosts.json feed preserves the boosted recording's bucket (project context).
+// The feed renders the full recording projection, so Boost.Recording must be the
+// full Recording (with bucket), not the reduced parent shape that would discard
+// it — routed through the real Boosts() -> boostFromGenerated pipeline.
+func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/boosts.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[
+			{"id":5001,"content":"👏","created_at":"2024-01-15T10:00:00Z","booster":{"id":1,"name":"Victor Cooper"},"recording":{"id":800,"type":"Message","title":"A message","bucket":{"id":9,"name":"The Leto Laptop","type":"Project"}}}
+		]`))
+	})
+
+	result, err := svc.Boosts(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Boosts) != 1 {
+		t.Fatalf("expected 1 boost, got %d", len(result.Boosts))
+	}
+	b := result.Boosts[0]
+	if b.Recording == nil {
+		t.Fatal("expected the boosted recording to decode")
+	}
+	if b.Recording.Bucket == nil || b.Recording.Bucket.Name != "The Leto Laptop" {
+		t.Errorf("expected the boosted recording to carry its bucket, got %+v", b.Recording.Bucket)
+	}
+}

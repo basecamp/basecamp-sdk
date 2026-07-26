@@ -1000,20 +1000,6 @@ final class GeneratedServiceTests: XCTestCase {
         let sentURL = transport.lastRequest!.request.url!.absoluteString
         XCTAssertTrue(sentURL.hasSuffix("/my/readings/bubble_ups.json"), "Got \(sentURL)")
     }
-}
-
-/// Records operation-start callbacks so tests can assert emitted metadata.
-private final class SpyHooks: BasecampHooks, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _operationStarts: [OperationInfo] = []
-
-    var operationStarts: [OperationInfo] {
-        lock.withLock { _operationStarts }
-    }
-
-    func onOperationStart(_ info: OperationInfo) {
-        lock.withLock { _operationStarts.append(info) }
-    }
 
     // MARK: - Everything /files.json heterogeneous feed
 
@@ -1103,5 +1089,50 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
 
         let sentURL = transport.lastRequest!.request.url!.absoluteString
         XCTAssertTrue(sentURL.hasSuffix("/files.json"), "Got \(sentURL)")
+    }
+
+    func testEverythingBoostsRecordingCarriesBucket() async throws {
+        let fixture = """
+        [
+          {
+            "id": 5001,
+            "content": "👏",
+            "created_at": "2024-01-15T10:00:00Z",
+            "booster": { "id": 1, "name": "Victor Cooper" },
+            "recording": {
+              "id": 800,
+              "type": "Message",
+              "title": "A message",
+              "url": "https://3.basecampapi.com/1/buckets/9/messages/800.json",
+              "app_url": "https://3.basecamp.com/1/buckets/9/messages/800",
+              "bucket": { "id": 9, "name": "The Leto Laptop", "type": "Project" }
+            }
+          }
+        ]
+        """
+        let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8))
+        let account = makeTestAccountClient(transport: transport)
+
+        let boosts = try await account.everything.everythingBoosts()
+
+        XCTAssertEqual(boosts.count, 1)
+        let recording = try XCTUnwrap(boosts[0].recording)
+        // The boosted recording carries its bucket for project context.
+        XCTAssertEqual(recording.bucket?.id, 9)
+        XCTAssertEqual(recording.bucket?.name, "The Leto Laptop")
+    }
+}
+
+/// Records operation-start callbacks so tests can assert emitted metadata.
+private final class SpyHooks: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _operationStarts: [OperationInfo] = []
+
+    var operationStarts: [OperationInfo] {
+        lock.withLock { _operationStarts }
+    }
+
+    func onOperationStart(_ info: OperationInfo) {
+        lock.withLock { _operationStarts.append(info) }
     }
 }

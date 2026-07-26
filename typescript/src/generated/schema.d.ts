@@ -2855,7 +2855,20 @@ export interface components {
             content?: string;
             created_at: string;
             booster?: components["schemas"]["Person"];
-            recording?: components["schemas"]["RecordingParent"];
+            recording?: components["schemas"]["BoostRecording"];
+        };
+        /**
+         * @description The boosted recording as embedded in the boosts feeds: the compact
+         *     RecordingParent identity fields plus the `bucket` for project context.
+         */
+        BoostRecording: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            type: string;
+            url: string;
+            app_url: string;
+            bucket?: components["schemas"]["RecordingBucket"];
         };
         Campfire: {
             /** Format: int64 */

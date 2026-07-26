@@ -6,15 +6,16 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Boost entity from the Basecamp API.
+ * BoostRecording entity from the Basecamp API.
  *
  * @generated from OpenAPI spec — do not edit directly
  */
 @Serializable
-data class Boost(
+data class BoostRecording(
     val id: Long,
-    @SerialName("created_at") val createdAt: String,
-    val content: String? = null,
-    val booster: Person? = null,
-    val recording: BoostRecording? = null
+    val title: String,
+    val type: String,
+    val url: String,
+    @SerialName("app_url") val appUrl: String,
+    val bucket: RecordingBucket? = null
 )

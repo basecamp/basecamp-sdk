@@ -234,7 +234,12 @@ describe("EverythingService", () => {
           content: "👏",
           created_at: "2024-01-15T10:00:00Z",
           booster: { id: 1, name: "Victor Cooper" },
-          recording: { id: 800, title: "A message", type: "Message" },
+          recording: {
+            id: 800,
+            title: "A message",
+            type: "Message",
+            bucket: { id: 9, name: "The Leto Laptop", type: "Project" },
+          },
         },
         {
           id: 5002,
@@ -255,7 +260,12 @@ describe("EverythingService", () => {
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe(5001);
       expect(result[0].booster).toEqual({ id: 1, name: "Victor Cooper" });
-      expect(result[0].recording).toEqual({ id: 800, title: "A message", type: "Message" });
+      expect(result[0].recording.id).toBe(800);
+      expect(result[0].recording.title).toBe("A message");
+      expect(result[0].recording.type).toBe("Message");
+      // The boosted recording carries its bucket for project context (the
+      // everything feed renders the recording with its bucket).
+      expect(result[0].recording.bucket).toEqual({ id: 9, name: "The Leto Laptop", type: "Project" });
       expect(result[1].id).toBe(5002);
       expect(result[1].recording.id).toBe(801);
     });

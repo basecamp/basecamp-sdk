@@ -130,11 +130,25 @@ type BadRequestErrorResponseContent struct {
 
 // Boost defines model for Boost.
 type Boost struct {
-	Booster   Person          `json:"booster,omitempty"`
-	Content   string          `json:"content,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
-	Id        int64           `json:"id"`
-	Recording RecordingParent `json:"recording,omitempty"`
+	Booster   Person    `json:"booster,omitempty"`
+	Content   string    `json:"content,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+
+	// Recording The boosted recording as embedded in the boosts feeds: the compact
+	// RecordingParent identity fields plus the `bucket` for project context.
+	Recording BoostRecording `json:"recording,omitempty"`
+}
+
+// BoostRecording The boosted recording as embedded in the boosts feeds: the compact
+// RecordingParent identity fields plus the `bucket` for project context.
+type BoostRecording struct {
+	AppUrl string          `json:"app_url"`
+	Bucket RecordingBucket `json:"bucket,omitempty"`
+	Id     int64           `json:"id"`
+	Title  string          `json:"title"`
+	Type   string          `json:"type"`
+	Url    string          `json:"url"`
 }
 
 // Campfire defines model for Campfire.

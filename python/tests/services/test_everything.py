@@ -184,7 +184,12 @@ _BOOSTS_FEED = [
         "content": "👍",
         "created_at": "2024-01-01T00:00:00Z",
         "booster": {"id": 1, "name": "Victor Cooper"},
-        "recording": {"id": 1000, "type": "Message", "title": "Kickoff"},
+        "recording": {
+            "id": 1000,
+            "type": "Message",
+            "title": "Kickoff",
+            "bucket": {"id": 9, "name": "The Leto Laptop", "type": "Project"},
+        },
     },
     {
         "id": 1401,
@@ -317,7 +322,10 @@ class TestEverythingRecordingFeeds:
         assert result[0]["id"] == 1400
         assert result[0]["content"] == "👍"
         assert result[0]["booster"]["name"] == "Victor Cooper"
-        assert result[0]["recording"] == {"id": 1000, "type": "Message", "title": "Kickoff"}
+        assert result[0]["recording"]["id"] == 1000
+        # The boosted recording carries its bucket for project context (the
+        # everything feed renders the recording with its bucket).
+        assert result[0]["recording"]["bucket"] == {"id": 9, "name": "The Leto Laptop", "type": "Project"}
         assert result[1]["recording"]["type"] == "Comment"
 
 

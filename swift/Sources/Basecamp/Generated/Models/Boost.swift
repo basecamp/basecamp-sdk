@@ -6,14 +6,14 @@ public struct Boost: Codable, Sendable {
     public let id: Int
     public var booster: Person?
     public var content: String?
-    public var recording: RecordingParent?
+    public var recording: BoostRecording?
 
     public init(
         createdAt: String,
         id: Int,
         booster: Person? = nil,
         content: String? = nil,
-        recording: RecordingParent? = nil
+        recording: BoostRecording? = nil
     ) {
         self.createdAt = createdAt
         self.id = id
