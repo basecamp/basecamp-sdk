@@ -7,17 +7,14 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
+import commentFixture from "../../../spec/fixtures/comments/get.json";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-const sampleComment = (id = 1) => ({
-  id,
-  content: "<p>Great work!</p>",
-  content_attachments: [],
-  created_at: "2024-01-15T10:00:00Z",
-  updated_at: "2024-01-15T10:00:00Z",
-  creator: { id: 100, name: "Jane Doe" },
-});
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
+// so this helper cannot drift from the validated Comment shape; `id` is
+// overridable per call.
+const sampleComment = (id = commentFixture.id) => ({ ...commentFixture, id });
 
 describe("CommentsService", () => {
   let client: BasecampClient;
@@ -42,7 +39,7 @@ describe("CommentsService", () => {
 
       const comment = await client.comments.get(commentId);
       expect(comment.id).toBe(commentId);
-      expect(comment.content).toBe("<p>Great work!</p>");
+      expect(comment.content).toBe(commentFixture.content);
     });
 
     it("preserves float-spelled and null attachment dimensions at runtime", async () => {

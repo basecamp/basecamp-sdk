@@ -7,18 +7,14 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
+import cardFixture from "../../../spec/fixtures/cards/get.json";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-const sampleCard = (id = 1) => ({
-  id,
-  title: "Design mockups",
-  content: "<p>Create initial designs</p>",
-  description_attachments: [],
-  due_on: "2024-03-01",
-  created_at: "2024-01-15T10:00:00Z",
-  updated_at: "2024-01-15T10:00:00Z",
-});
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
+// so this helper cannot drift from the validated Card shape; `id` is overridable
+// per call.
+const sampleCard = (id = cardFixture.id) => ({ ...cardFixture, id });
 
 describe("CardsService", () => {
   let client: BasecampClient;
@@ -71,7 +67,7 @@ describe("CardsService", () => {
 
       const card = await client.cards.get(cardId);
       expect(card.id).toBe(cardId);
-      expect(card.title).toBe("Design mockups");
+      expect(card.title).toBe(cardFixture.title);
     });
 
     it("should throw not_found for missing card", async () => {

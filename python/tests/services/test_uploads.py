@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import httpx
 import pytest
 import respx
@@ -9,14 +12,20 @@ import respx
 from basecamp import AsyncClient, Client
 from basecamp.errors import UsageError
 
+_FIXTURES = Path(__file__).resolve().parents[3] / "spec" / "fixtures"
+
+
+def load_fixture(rel: str) -> dict:
+    return json.loads((_FIXTURES / rel).read_text(encoding="utf-8"))
+
 
 def _metadata(upload_id: int = 1069479400, *, download_url, filename="report.pdf") -> dict:
-    """Minimal upload metadata payload; callers override download_url/filename."""
+    """Upload metadata sourced from the validated fixture; callers override download_url/filename."""
     return {
+        **load_fixture("uploads/get.json"),
         "id": upload_id,
         "filename": filename,
         "download_url": download_url,
-        "description_attachments": [],
     }
 
 

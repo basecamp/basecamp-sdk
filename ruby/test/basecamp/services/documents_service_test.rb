@@ -14,16 +14,9 @@ class DocumentsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_document(id: 1, title: "Meeting Notes")
-    {
-      "id" => id,
-      "title" => title,
-      "content" => "<p>Notes from today's meeting...</p>",
-      "content_attachments" => [],
-      "status" => "active",
-      "comments_count" => 2,
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_document(id: nil, title: nil)
+    fixture = load_fixture("documents/get.json")
+    fixture.merge "id" => id || fixture["id"], "title" => title || fixture["title"]
   end
 
   def test_list_documents
@@ -33,7 +26,7 @@ class DocumentsServiceTest < Minitest::Test
     documents = @account.documents.list(vault_id: 200).to_a
 
     assert_equal 2, documents.length
-    assert_equal "Meeting Notes", documents[0]["title"]
+    assert_equal "Project Overview", documents[0]["title"]
     assert_equal "Project Plan", documents[1]["title"]
   end
 
@@ -44,7 +37,7 @@ class DocumentsServiceTest < Minitest::Test
     document = @account.documents.get(document_id: 200)
 
     assert_equal 200, document["id"]
-    assert_equal "Meeting Notes", document["title"]
+    assert_equal "Project Overview", document["title"]
   end
 
   def test_create_document

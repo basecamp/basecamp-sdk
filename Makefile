@@ -766,7 +766,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-idempotency-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-fixture-coverage check-idempotency-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -787,6 +787,16 @@ check-deprecation-parity: rb-build
 # Validate spec/api-gaps/ entry frontmatter, required body sections, and allowlist.
 validate-api-gaps:
 	@./scripts/validate-api-gaps.sh
+
+# Fixture-completeness guard: every spec/fixtures/manifest.yaml target validates
+# against its schema (required-field presence + type/nullability), every covered
+# schema keeps a concrete active representative, and every rich-text emitter is
+# accounted for — so a new required field on a covered schema is forced into a
+# fixture. Reuses the conformance schema-walker. The self-test asserts the guard
+# rejects each crafted failure mode (the live check only exercises the valid set).
+check-fixture-coverage:
+	@./scripts/check-fixture-coverage.sh
+	@ruby ./scripts/test-check-fixture-coverage.rb
 
 # D-invariant: every optional generated Kotlin array is `List<T>? = null`, every
 # required array stays `List<T>`, and none default to the `= emptyList()`
@@ -822,7 +832,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-idempotency-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -937,6 +947,6 @@ help:
 	@echo ""
 	@echo "Combined:"
 	@echo "  generate         Regenerate every machine-derived artifact (Smithy + per-language SDKs + provenance)"
-	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + Actions lint)"
+	@echo "  check            Run all checks (Smithy + behavior-model/drift + Go + TypeScript + Ruby + Swift + Kotlin + Python + Conformance + Provenance + API version sync + parity lint + api-gaps + fixture-coverage + kt-optional-arrays + Actions lint)"
 	@echo "  clean            Remove all build artifacts"
 	@echo "  help             Show this help"

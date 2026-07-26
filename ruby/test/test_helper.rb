@@ -184,6 +184,16 @@ module TestHelpers
       .to_return(status: status, body: "")
   end
 
+  # Load a shared JSON fixture (the validated source of truth) as string-keyed
+  # hashes. test_helper.rb lives at ruby/test/, so "../../spec/fixtures" reaches
+  # the repo-root spec/fixtures directory. Read as explicit UTF-8 so a non-UTF-8
+  # process locale (LC_ALL=C) doesn't choke on the emoji/non-ASCII bytes several
+  # fixtures carry.
+  def load_fixture(relative_path)
+    path = File.expand_path("../../spec/fixtures/#{relative_path}", __dir__)
+    JSON.parse(File.read(path, encoding: "UTF-8"))
+  end
+
   # Sample project data
   def sample_project(id: 123, name: "Test Project")
     {

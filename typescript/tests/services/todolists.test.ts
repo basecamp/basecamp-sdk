@@ -7,20 +7,15 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
+import todolistFixture from "../../../spec/fixtures/todolists/get.json";
 import type { OperationInfo } from "../../src/hooks.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-const sampleTodolist = (id = 1) => ({
-  id,
-  name: "Launch list",
-  description: "<p>Things to do before launch</p>",
-  description_attachments: [],
-  completed: false,
-  completed_ratio: "0/5",
-  created_at: "2024-01-15T10:00:00Z",
-  updated_at: "2024-01-15T10:00:00Z",
-});
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
+// so this helper cannot drift from the validated Todolist shape; `id` is
+// overridable per call.
+const sampleTodolist = (id = todolistFixture.id) => ({ ...todolistFixture, id });
 
 describe("TodolistsService", () => {
   let client: BasecampClient;
@@ -45,7 +40,7 @@ describe("TodolistsService", () => {
 
       const todolist = await client.todolists.get(id);
       expect(todolist.id).toBe(id);
-      expect(todolist.name).toBe("Launch list");
+      expect(todolist.name).toBe(todolistFixture.name);
     });
 
     it("should throw not_found for missing todolist", async () => {

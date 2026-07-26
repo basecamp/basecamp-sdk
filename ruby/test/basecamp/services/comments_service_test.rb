@@ -15,14 +15,9 @@ class CommentsServiceTest < Minitest::Test
     @account = create_account_client(account_id: "12345")
   end
 
-  def sample_comment(id: 1, content: "<p>Great work!</p>")
-    {
-      "id" => id,
-      "content" => content,
-      "content_attachments" => [],
-      "creator" => { "id" => 1, "name" => "Test User" },
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_comment(id: nil, content: nil)
+    fixture = load_fixture("comments/get.json")
+    fixture.merge "id" => id || fixture["id"], "content" => content || fixture["content"]
   end
 
   def test_list_comments
@@ -32,7 +27,7 @@ class CommentsServiceTest < Minitest::Test
     comments = @account.comments.list(recording_id: 200).to_a
 
     assert_equal 2, comments.length
-    assert_equal "<p>Great work!</p>", comments[0]["content"]
+    assert_equal load_fixture("comments/get.json")["content"], comments[0]["content"]
     assert_equal "<p>I agree!</p>", comments[1]["content"]
   end
 
@@ -43,7 +38,7 @@ class CommentsServiceTest < Minitest::Test
     comment = @account.comments.get(comment_id: 200)
 
     assert_equal 200, comment["id"]
-    assert_equal "<p>Great work!</p>", comment["content"]
+    assert_equal load_fixture("comments/get.json")["content"], comment["content"]
   end
 
   def test_create_comment

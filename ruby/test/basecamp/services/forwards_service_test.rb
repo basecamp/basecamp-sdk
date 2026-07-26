@@ -22,25 +22,14 @@ class ForwardsServiceTest < Minitest::Test
     }
   end
 
-  def sample_forward(id: 1, subject: "Client Question")
-    {
-      "id" => id,
-      "subject" => subject,
-      "from" => "client@example.com",
-      "content" => "<p>I have a question about the project.</p>",
-      "content_attachments" => [],
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_forward(id: nil, subject: nil)
+    fixture = load_fixture("forwards/get.json")
+    fixture.merge "id" => id || fixture["id"], "subject" => subject || fixture["subject"]
   end
 
-  def sample_reply(id: 1, content: "<p>Thanks for reaching out!</p>")
-    {
-      "id" => id,
-      "content" => content,
-      "content_attachments" => [],
-      "creator" => { "id" => 1, "name" => "Test User" },
-      "created_at" => "2024-01-01T00:00:00Z"
-    }
+  def sample_reply(id: nil, content: nil)
+    fixture = load_fixture("forwards/reply_get.json")
+    fixture.merge "id" => id || fixture["id"], "content" => content || fixture["content"]
   end
 
   def test_get_inbox
@@ -60,7 +49,7 @@ class ForwardsServiceTest < Minitest::Test
     forwards = @account.forwards.list(inbox_id: 200).to_a
 
     assert_equal 2, forwards.length
-    assert_equal "Client Question", forwards[0]["subject"]
+    assert_equal "Project proposal from client", forwards[0]["subject"]
     assert_equal "Another Email", forwards[1]["subject"]
   end
 
@@ -71,7 +60,7 @@ class ForwardsServiceTest < Minitest::Test
     forward = @account.forwards.get(forward_id: 200)
 
     assert_equal 200, forward["id"]
-    assert_equal "Client Question", forward["subject"]
+    assert_equal "Project proposal from client", forward["subject"]
     assert_equal "client@example.com", forward["from"]
   end
 
@@ -82,7 +71,7 @@ class ForwardsServiceTest < Minitest::Test
     replies = @account.forwards.list_replies(forward_id: 200).to_a
 
     assert_equal 2, replies.length
-    assert_equal "<p>Thanks for reaching out!</p>", replies[0]["content"]
+    assert_equal load_fixture("forwards/reply_get.json")["content"], replies[0]["content"]
   end
 
   def test_get_reply
@@ -92,7 +81,7 @@ class ForwardsServiceTest < Minitest::Test
     reply = @account.forwards.get_reply(forward_id: 200, reply_id: 300)
 
     assert_equal 300, reply["id"]
-    assert_equal "<p>Thanks for reaching out!</p>", reply["content"]
+    assert_equal load_fixture("forwards/reply_get.json")["content"], reply["content"]
   end
 
   def test_create_reply

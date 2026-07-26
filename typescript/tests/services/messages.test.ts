@@ -7,19 +7,14 @@ import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
+import messageFixture from "../../../spec/fixtures/messages/get.json";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-const sampleMessage = (id = 1) => ({
-  id,
-  subject: "Weekly Update",
-  content: "<p>Here is the update</p>",
-  content_attachments: [],
-  status: "active",
-  created_at: "2024-01-15T10:00:00Z",
-  updated_at: "2024-01-15T10:00:00Z",
-  creator: { id: 100, name: "Jane Doe" },
-});
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
+// so this helper cannot drift from the validated Message shape; `id` is
+// overridable per call.
+const sampleMessage = (id = messageFixture.id) => ({ ...messageFixture, id });
 
 describe("MessagesService", () => {
   let client: BasecampClient;
@@ -88,7 +83,7 @@ describe("MessagesService", () => {
 
       const message = await client.messages.get(messageId);
       expect(message.id).toBe(messageId);
-      expect(message.subject).toBe("Weekly Update");
+      expect(message.subject).toBe(messageFixture.subject);
     });
 
     it("should throw not_found for missing message", async () => {

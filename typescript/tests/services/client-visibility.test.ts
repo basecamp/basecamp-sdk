@@ -6,17 +6,14 @@ import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
 import type { BasecampClient } from "../../src/client.js";
+import recordingFixture from "../../../spec/fixtures/recordings/get.json";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
-const sampleRecording = (id = 1) => ({
-  id,
-  title: "Some recording",
-  type: "Todo",
-  visible_to_clients: true,
-  created_at: "2024-01-15T10:00:00Z",
-  updated_at: "2024-01-15T10:00:00Z",
-});
+// Sourced from the shared, coverage-guarded fixture (spec/fixtures/manifest.yaml)
+// so this helper cannot drift from the validated Recording shape; `id` is
+// overridable per call.
+const sampleRecording = (id = recordingFixture.id) => ({ ...recordingFixture, id });
 
 describe("ClientVisibilityService", () => {
   let client: BasecampClient;
