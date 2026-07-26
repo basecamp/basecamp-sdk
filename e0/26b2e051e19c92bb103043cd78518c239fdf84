@@ -1,0 +1,45 @@
+go/pkg/basecamp/everything.go
+  s_8d633484dc870e::t_8d8362c6d44893 60-67,71,74-78,80,82,88,90-94,97-99,105
+ruby/test/basecamp/services/everything_service_test.rb
+  s_8d633484dc870e::t_95dbcc296356be 254
+  s_8d633484dc870e::t_f9e0bfafdbeb0a 225
+  s_8d633484dc870e::t_b84b191bb36743 237
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_7604cbd81008bf 22251-22252,22275-22276,22284-22285,22288-22289,22292-22293,22296-22297,22300-22301,22309-22310,22318-22319,22337-22338,22341-22342,22350-22351,22355-22356,22359-22360,22386-22387,22397-22398
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_e3a352f6101875 267,269-276,285-301
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_7604cbd81008bf 40
+go/pkg/basecamp/everything_test.go
+  s_8d633484dc870e::t_feb1b78865c1ad 5,10,14-20
+  s_8d633484dc870e::t_59a96f9ba354dc 135,141-144,152,157-158,166-170,172
+  s_8d633484dc870e::t_46c9799eb181b8 242-281
+  s_8d633484dc870e::t_9f995e735e2841 21
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_7604cbd81008bf 860-861,865-866,868,872,875,877,882,884-885,895-897,900,902
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_7604cbd81008bf 4
+python/tests/services/test_everything.py
+  s_8d633484dc870e::t_766632d2884e7d 319
+  s_8d633484dc870e::t_f9e0bfafdbeb0a 186,193
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_7604cbd81008bf 4
+openapi.json
+  s_8d633484dc870e::t_7604cbd81008bf 24730-24731,24754-24755,24763-24764,24767-24768,24771-24772,24775-24776,24779-24780,24788-24789,24797-24798,24816-24817,24820-24821,24829-24830,24834-24835,24838-24839,24865-24866,24876-24877
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e026b2e051e19c92bb103043cd78518c239fdf84",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
