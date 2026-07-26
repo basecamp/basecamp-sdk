@@ -194,6 +194,20 @@ SYNTHETIC_OPENAPI = {
                           { "type" => "array" },
                           { "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } },
                         ] } } },
+    # (2d) Enclosing conjunction supplies `type: array`; an anyOf branch supplies
+    # the RTA items. Only preserving the enclosing type while evaluating each
+    # alternative sees the array-of-RTA.
+    "EnclosingArrayEmitter" => { "type" => "object", "properties" => { "atts" => { "allOf" => [
+      { "type" => "array" },
+      { "anyOf" => [{ "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } },
+                    { "items" => { "type" => "string" } }] },
+    ] } } },
+    # (2e) Symmetric: enclosing conjunction supplies the RTA items; an anyOf
+    # branch supplies `type: array`.
+    "EnclosingItemsEmitter" => { "type" => "object", "properties" => { "atts" => { "allOf" => [
+      { "items" => { "$ref" => "#/components/schemas/RichTextAttachment" } },
+      { "anyOf" => [{ "type" => "array" }, { "type" => "object" }] },
+    ] } } },
     # (3a) Component-level composition cycle (no rich text) — must terminate.
     "CycleA" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleB" }] },
     "CycleB" => { "allOf" => [{ "$ref" => "#/components/schemas/CycleA" }] },
@@ -258,6 +272,8 @@ begin
   expect_fail(failures, "aliased RichTextAttachment item discovered", out, status, "`AliasedItemEmitter`")
   expect_fail(failures, "$ref-with-siblings emitter discovered", out, status, "`SiblingEmitter`")
   expect_fail(failures, "split type/items allOf emitter discovered", out, status, "`SplitEmitter`")
+  expect_fail(failures, "enclosing-array + anyOf-items emitter discovered", out, status, "`EnclosingArrayEmitter`")
+  expect_fail(failures, "enclosing-items + anyOf-array emitter discovered", out, status, "`EnclosingItemsEmitter`")
   # The cycle components must NOT be misclassified as emitters, and — proven by
   # the run returning at all under the killable timeout — discovery terminated.
   if out.include?("`CycleA`") || out.include?("`SelfRefItem`") || out.include?("`CycleItemHolder`")
@@ -474,7 +490,7 @@ end
 # --- Report --------------------------------------------------------------------
 
 if failures.empty?
-  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 18 synthetic cases"
+  puts "==> Fixture-coverage self-test passed — 1 positive + 8 negative + 20 synthetic cases"
   exit 0
 else
   warn "Fixture-coverage self-test FAILED:"

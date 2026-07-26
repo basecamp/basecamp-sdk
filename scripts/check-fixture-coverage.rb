@@ -362,22 +362,31 @@ def rich_text_attachment?(schema, components, visited = Set.new, depth = 0)
   false
 end
 
-# True when `schema` is (or composes/refs) an array whose items resolve to the
-# RichTextAttachment component. Uses the EFFECTIVE conjoined view across `$ref`
-# (with siblings) and `allOf` (via merged_constraints) so an array whose `type`
-# and `items` are contributed by different conjuncts — e.g.
-# `allOf: [{type: array}, {items: {$ref: RichTextAttachment}}]` — is still
-# recognized. anyOf/oneOf are alternatives, so each branch is examined
-# independently (a branch that is itself an array-of-RichTextAttachment counts).
+# True when `schema` can be an array whose items resolve to the RichTextAttachment
+# component. Uses the EFFECTIVE conjoined view across `$ref` (with siblings) and
+# `allOf` (via merged_constraints) so an array whose `type` and `items` are
+# contributed by different conjuncts — e.g.
+# `allOf: [{type: array}, {items: {$ref: RichTextAttachment}}]` — is recognized.
+# anyOf/oneOf are alternatives, examined branchwise; each branch is CONJOINED with
+# the enclosing effective array-ness/items so an outer `type: array` (or outer
+# `items`) contributed by the surrounding conjunction isn't lost when a branch
+# only supplies the other half — e.g.
+# `allOf: [{type: array}, {anyOf: [{items: {$ref: RichTextAttachment}}, …]}]`.
+# Discovery is intentionally conservative (over-account, never let an emitter
+# escape): a schema that COULD be an array-of-RTA via some alternative is flagged.
 def references_rich_text_array?(schema, components, depth = 0)
   return false if depth > 40 || !schema.is_a?(Hash)
 
   _req, _props, types, _nullable, items, alt_groups = merged_constraints(schema, components)
-  return true if types.include?("array") && items && rich_text_attachment?(items, components)
+  is_array = types.include?("array")
+  return true if is_array && items && rich_text_attachment?(items, components)
 
   alt_groups.each do |branches|
     branches.each do |branch|
-      return true if references_rich_text_array?(branch, components, depth + 1)
+      combined = { "allOf" => [branch] }
+      combined["allOf"] << { "type" => "array" } if is_array
+      combined["allOf"] << { "items" => items } if items
+      return true if references_rich_text_array?(combined, components, depth + 1)
     end
   end
   false
