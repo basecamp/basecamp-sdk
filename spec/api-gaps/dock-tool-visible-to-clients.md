@@ -26,8 +26,9 @@ boolean at create time in BC3 **#12386** ("Honor create-time visible_to_clients
 on dock tool creates", merged `bee714c74`, 2026-07-23). This is the dock-tool
 sibling of the six content creates absorbed in
 [[visible-to-clients-on-creates]]; it is split into its own entry because the
-honoring rule is narrower and `CreateToolInput` is **not** modeled with the
-field yet.
+honoring rule is narrower. It is now `absorbed-in-sdk`: `CreateToolInput` models
+the optional `visible_to_clients` field and `ToolsService.Create` passes it
+through (see the smithy_refs below).
 
 The contract is narrower than the content creates:
 
