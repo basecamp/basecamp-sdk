@@ -1,0 +1,19 @@
+spec/basecamp.smithy
+  s_8d633484dc870e::t_7bebf34417f6b7 8794-8797
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d19d3c4cd1389bc3115e684576ffa2a9981b612e",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
