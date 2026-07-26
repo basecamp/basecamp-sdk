@@ -422,6 +422,38 @@ describe("TodosService", () => {
 
       await expect(client.todos.complete(42)).resolves.toBeUndefined();
     });
+
+    it("should retry an idempotent POST (CompleteTodo) on 503 then succeed", async () => {
+      // CompleteTodo is a POST but is flagged idempotent in metadata
+      // (idempotent.natural === true), so the retry middleware MUST retry it on
+      // 503. Drives the generated service path (client.todos.complete), not the
+      // raw client, so this fails if CompleteTodo's metadata idempotent flag is
+      // ever flipped off — the analog of Swift's testGeneratedIdempotentPostRetries.
+      let attempts = 0;
+
+      server.use(
+        http.post(`${BASE_URL}/todos/42/completion.json`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return new HttpResponse(null, { status: 503 });
+          }
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      // The suite default is enableRetry:false; this operation needs a
+      // retry-enabled client to exercise the POST idempotency gate. Set it
+      // explicitly rather than relying on createBasecampClient's default so the
+      // test keeps testing retry even if that default ever changes.
+      const retryClient = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: true,
+      });
+
+      await expect(retryClient.todos.complete(42)).resolves.toBeUndefined();
+      expect(attempts).toBe(2); // initial 503 + 1 retry that succeeds
+    });
   });
 
   describe("uncomplete", () => {
