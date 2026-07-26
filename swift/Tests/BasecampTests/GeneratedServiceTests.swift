@@ -954,20 +954,6 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertNil(events[4].data?.startsAt)
         XCTAssertNil(events[4].data?.endsAt)
     }
-}
-
-/// Records operation-start callbacks so tests can assert emitted metadata.
-private final class SpyHooks: BasecampHooks, @unchecked Sendable {
-    private let lock = NSLock()
-    private var _operationStarts: [OperationInfo] = []
-
-    var operationStarts: [OperationInfo] {
-        lock.withLock { _operationStarts }
-    }
-
-    func onOperationStart(_ info: OperationInfo) {
-        lock.withLock { _operationStarts.append(info) }
-    }
 
     // MARK: - GetBubbleUps (paginated bare-array decode)
 
@@ -1013,5 +999,19 @@ private final class SpyHooks: BasecampHooks, @unchecked Sendable {
 
         let sentURL = transport.lastRequest!.request.url!.absoluteString
         XCTAssertTrue(sentURL.hasSuffix("/my/readings/bubble_ups.json"), "Got \(sentURL)")
+    }
+}
+
+/// Records operation-start callbacks so tests can assert emitted metadata.
+private final class SpyHooks: BasecampHooks, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _operationStarts: [OperationInfo] = []
+
+    var operationStarts: [OperationInfo] {
+        lock.withLock { _operationStarts }
+    }
+
+    func onOperationStart(_ info: OperationInfo) {
+        lock.withLock { _operationStarts.append(info) }
     }
 }
