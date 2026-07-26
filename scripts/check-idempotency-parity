@@ -104,7 +104,7 @@ BM=behavior-model.json
 jq -r '.operations | to_entries[] | select(.value.idempotent == true) | .key' "$BM" \
     | sort > "$WORK/idempotent69"
 jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.readonly == true) | .key' "$BM" \
-    | sort > "$WORK/union169"
+    | sort > "$WORK/unionSet"
 
 # Expected source-of-truth counts. Bump `expected_union` deliberately when an
 # absorption adds readonly/idempotent operations (e.g. this stack's Bubble Ups
@@ -113,7 +113,7 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 expected_idempotent=69
 expected_union=170
 n69=$(wc -l < "$WORK/idempotent69" | tr -d ' ')
-nUnion=$(wc -l < "$WORK/union169" | tr -d ' ')
+nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $n69 idempotent, $nUnion idempotent∪readonly"
 if [[ "$n69" != "$expected_idempotent" || "$nUnion" != "$expected_union" ]]; then
     echo "  FAIL: unexpected source-of-truth counts (idempotent=$n69 want $expected_idempotent, union=$nUnion want $expected_union)"
@@ -169,12 +169,12 @@ GO=go/pkg/generated/client.gen.go
 awk '/var operationMetadata = map\[string\]OperationMetadata\{/{f=1} f; /^\}/{if(f)f=0}' "$GO" \
     | grep -E 'Idempotent: true' \
     | grep -oE '"[[:alnum:]]+":' | tr -d '":' | sort -u > "$WORK/go_table"
-compare "Go operationMetadata Idempotent:true set == 169" "$WORK/union169" "$WORK/go_table"
+compare "Go operationMetadata Idempotent:true set == 169" "$WORK/unionSet" "$WORK/go_table"
 # (2) call-site booleans: unique ops passed as doWithRetry(…, true, "Op", …).
 # This is the load-bearing value for the retry gate.
 grep -oE '\}, true, "[[:alnum:]]+",' "$GO" \
     | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort -u > "$WORK/go_callsite"
-compare "Go doWithRetry(…, true, …) call-site set == 169" "$WORK/union169" "$WORK/go_callsite"
+compare "Go doWithRetry(…, true, …) call-site set == 169" "$WORK/unionSet" "$WORK/go_callsite"
 # (3) table and call-site sets agree.
 compare "Go table set == call-site set" "$WORK/go_table" "$WORK/go_callsite"
 # (4) No idempotent op may carry a `false` doWithRetry call-site. Assertion (2)
@@ -186,7 +186,7 @@ compare "Go table set == call-site set" "$WORK/go_table" "$WORK/go_callsite"
 # idempotent ops bypass doWithRetry entirely — so this guards a future regression.)
 grep -oE '\}, false, "[[:alnum:]]+",' "$GO" \
     | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort -u > "$WORK/go_false_callsite"
-go_false_idempotent=$(comm -12 "$WORK/union169" "$WORK/go_false_callsite")
+go_false_idempotent=$(comm -12 "$WORK/unionSet" "$WORK/go_false_callsite")
 if [[ -z "$go_false_idempotent" ]]; then
     pass=$((pass + 1))
 else
