@@ -1,0 +1,22 @@
+go/pkg/basecamp/everything_test.go
+  s_8d633484dc870e::t_d958eb54f14e61 188-191
+  s_8d633484dc870e::t_461ec0b46607b6 207-209
+typescript/src/index.ts
+  s_8d633484dc870e::t_5be3c9c1f48cde 418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b519abcf013adcc8bb43e28bd5f91edde1da39d6",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
