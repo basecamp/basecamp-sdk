@@ -106,11 +106,17 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true) | .key' "$
 jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.readonly == true) | .key' "$BM" \
     | sort > "$WORK/union169"
 
+# Expected source-of-truth counts. Bump `expected_union` deliberately when an
+# absorption adds readonly/idempotent operations (e.g. this stack's Bubble Ups
+# and Everything GET families). idempotent stays 69 (new GETs are not flagged
+# idempotent:true).
+expected_idempotent=69
+expected_union=170
 n69=$(wc -l < "$WORK/idempotent69" | tr -d ' ')
-n169=$(wc -l < "$WORK/union169" | tr -d ' ')
-echo "    source of truth: $n69 idempotent, $n169 idempotent∪readonly"
-if [[ "$n69" != "69" || "$n169" != "169" ]]; then
-    echo "  FAIL: unexpected source-of-truth counts (idempotent=$n69 want 69, union=$n169 want 169)"
+nUnion=$(wc -l < "$WORK/union169" | tr -d ' ')
+echo "    source of truth: $n69 idempotent, $nUnion idempotent∪readonly"
+if [[ "$n69" != "$expected_idempotent" || "$nUnion" != "$expected_union" ]]; then
+    echo "  FAIL: unexpected source-of-truth counts (idempotent=$n69 want $expected_idempotent, union=$nUnion want $expected_union)"
     echo "        behavior-model.json changed shape — update this check deliberately."
     fail=$((fail + 1))
 fi
