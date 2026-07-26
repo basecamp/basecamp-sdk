@@ -4156,7 +4156,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -4254,7 +4254,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -4352,7 +4352,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -4450,7 +4450,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -4631,7 +4631,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20204,7 +20204,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20302,7 +20302,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20400,7 +20400,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,
@@ -20581,7 +20581,7 @@
         "x-basecamp-pagination": {
           "style": "link",
           "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
+          "maxPageSize": 5
         },
         "x-basecamp-retry": {
           "maxAttempts": 3,

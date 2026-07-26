@@ -9133,7 +9133,7 @@ structure EverythingFile {
 /// Each bucket entry carries the matching to-dos and their steps.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/todos/open.json")
 operation GetEverythingOpenTodos {
   input: EverythingTodosFilterInput
@@ -9144,7 +9144,7 @@ operation GetEverythingOpenTodos {
 /// Completed to-dos across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/todos/completed.json")
 operation GetEverythingCompletedTodos {
   input: EverythingTodosFilterInput
@@ -9155,7 +9155,7 @@ operation GetEverythingCompletedTodos {
 /// Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/todos/unassigned.json")
 operation GetEverythingUnassignedTodos {
   input: EverythingTodosFilterInput
@@ -9166,7 +9166,7 @@ operation GetEverythingUnassignedTodos {
 /// Open to-dos with no due date across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/todos/no_due_date.json")
 operation GetEverythingNoDueDateTodos {
   input: EverythingTodosFilterInput
@@ -9178,7 +9178,7 @@ operation GetEverythingNoDueDateTodos {
 /// Each bucket entry carries the matching cards and their steps.
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/cards/open.json")
 operation GetEverythingOpenCards {
   input: EverythingCardsFilterInput
@@ -9189,7 +9189,7 @@ operation GetEverythingOpenCards {
 /// Completed cards across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/cards/completed.json")
 operation GetEverythingCompletedCards {
   input: EverythingCardsFilterInput
@@ -9200,7 +9200,7 @@ operation GetEverythingCompletedCards {
 /// Open, unassigned cards across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/cards/unassigned.json")
 operation GetEverythingUnassignedCards {
   input: EverythingCardsFilterInput
@@ -9211,7 +9211,7 @@ operation GetEverythingUnassignedCards {
 /// Open cards with no due date across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/cards/no_due_date.json")
 operation GetEverythingNoDueDateCards {
   input: EverythingCardsFilterInput
@@ -9222,7 +9222,7 @@ operation GetEverythingNoDueDateCards {
 /// Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 5)
 @http(method: "GET", uri: "/{accountId}/cards/not_now.json")
 operation GetEverythingNotNowCards {
   input: EverythingCardsFilterInput

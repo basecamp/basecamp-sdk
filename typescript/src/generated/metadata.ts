@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-25T17:54:48.772Z",
+  "generated": "2026-07-26T17:59:55.555Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -483,7 +483,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingNoDueDateCards": {
@@ -499,7 +499,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingNotNowCards": {
@@ -515,7 +515,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingOpenCards": {
@@ -531,7 +531,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingOverdueCards": {
@@ -558,7 +558,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "ListMessageTypes": {
@@ -2624,7 +2624,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingNoDueDateTodos": {
@@ -2640,7 +2640,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingOpenTodos": {
@@ -2656,7 +2656,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetEverythingOverdueTodos": {
@@ -2683,7 +2683,7 @@ const metadata: MetadataOutput = {
       "pagination": {
         "style": "link",
         "totalCountHeader": "X-Total-Count",
-        "maxPageSize": 50
+        "maxPageSize": 5
       }
     },
     "GetTodo": {

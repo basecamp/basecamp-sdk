@@ -833,7 +833,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -849,7 +849,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -913,7 +913,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -929,7 +929,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -945,7 +945,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -961,7 +961,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -977,7 +977,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -1017,7 +1017,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
@@ -1033,7 +1033,7 @@
       "readonly": true,
       "pagination": {
         "style": "link",
-        "maxPageSize": 50
+        "maxPageSize": 5
       },
       "retry": {
         "max": 3,
