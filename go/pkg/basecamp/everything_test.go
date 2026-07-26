@@ -11,14 +11,6 @@ import (
 	"testing"
 )
 
-// strv nil-safely dereferences an optional *string (nil -> "").
-func strv(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
 func everythingTestClient(t *testing.T, handler http.HandlerFunc) (*EverythingService, string) {
 	t.Helper()
 	server := httptest.NewServer(handler)
