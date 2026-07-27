@@ -23,7 +23,7 @@ Official TypeScript SDK for the [Basecamp API](https://github.com/basecamp/bc3-a
 npm install @37signals/basecamp
 ```
 
-Requires Node.js 18+ and TypeScript 5.0+.
+Requires Node.js 22.12+ and TypeScript 5.0+.
 
 ## Quick Start
 

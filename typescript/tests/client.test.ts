@@ -439,7 +439,12 @@ describe("BasecampClient", () => {
       });
 
       const startedAt = Date.now();
-      await expect(client.GET("/projects.json")).rejects.toThrow();
+      // Assert the error identity, not just "it rejected": AbortSignal.timeout
+      // aborts with TimeoutError, and this pins that contract so a regression
+      // back to a generic AbortError is caught.
+      await expect(client.GET("/projects.json")).rejects.toMatchObject({
+        name: "TimeoutError",
+      });
 
       // Must abort on the timeout, not by waiting out the 2000ms handler.
       expect(Date.now() - startedAt).toBeLessThan(1000);
@@ -462,16 +467,23 @@ describe("BasecampClient", () => {
       });
 
       const controller = new AbortController();
-      setTimeout(() => controller.abort(), 50);
+      const abortTimer = setTimeout(() => controller.abort(), 50);
 
-      const startedAt = Date.now();
-      await expect(
-        client.GET("/projects.json", { signal: controller.signal })
-      ).rejects.toThrow();
+      try {
+        const startedAt = Date.now();
+        // A caller abort surfaces as AbortError, distinct from the timeout's
+        // TimeoutError — so this also proves it was the caller's signal, not
+        // the (30s) timeout, that won.
+        await expect(
+          client.GET("/projects.json", { signal: controller.signal })
+        ).rejects.toMatchObject({ name: "AbortError" });
 
-      // Aborting promptly proves the caller's signal reached the request; the
-      // 30s timeout signal could not have fired.
-      expect(Date.now() - startedAt).toBeLessThan(1000);
+        // Aborting promptly proves the caller's signal reached the request; the
+        // 30s timeout signal could not have fired.
+        expect(Date.now() - startedAt).toBeLessThan(1000);
+      } finally {
+        clearTimeout(abortTimer);
+      }
     });
   });
 
