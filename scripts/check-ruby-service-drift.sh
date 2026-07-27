@@ -86,7 +86,11 @@ mkdir -p "$SERVICES_TMP"
 
 SERVICES_COMMITTED="$TMPDIR_BASE/services_committed"
 mkdir -p "$SERVICES_COMMITTED"
-cp "$GENERATED_DIR/services/"*.rb "$SERVICES_COMMITTED/"
+# Copy the WHOLE committed services/ tree (not just *.rb) so any stray extra
+# artifact — a non-.rb file or a nested directory the generator never emits —
+# surfaces as drift against the generated set. The generator writes only
+# *_service.rb into an empty temp dir, so anything else here is extra.
+cp -R "$GENERATED_DIR/services/." "$SERVICES_COMMITTED/"
 # Exclude the hand-written base class (lives alongside generated services but is
 # not produced by the generator; it carries no @generated marker).
 rm -f "$SERVICES_COMMITTED/base_service.rb"
