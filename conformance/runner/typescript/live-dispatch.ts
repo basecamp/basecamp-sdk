@@ -81,6 +81,17 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     },
   },
 
+  GetBubbleUps: {
+    fixtures: [],
+    call: async (ctx) => {
+      // maxItems caps pagination: bubble_ups is a paginated feed (50/page), so a
+      // small sample validates the Notification schema without following every
+      // Link page on an active account.
+      const result = await ctx.client.myNotifications.bubbleUps({ maxItems: 5 });
+      return { resolvedIds: {}, result };
+    },
+  },
+
   GetMyProfile: {
     fixtures: [],
     call: async (ctx) => {

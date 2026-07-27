@@ -31,7 +31,7 @@ func TestMyNotificationsService_Get(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"unreads":[{"id":1,"title":"New comment"}],"reads":[],"memories":[]}`))
+		w.Write([]byte(`{"unreads":[{"id":1,"title":"New comment","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}],"reads":[],"memories":[],"bubble_ups_count":0,"scheduled_bubble_ups_count":0}`))
 	})
 
 	result, err := svc.Get(context.Background(), 0)
@@ -53,12 +53,142 @@ func TestMyNotificationsService_Get_WithPage(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"unreads":[],"reads":[],"memories":[]}`))
+		w.Write([]byte(`{"unreads":[],"reads":[],"memories":[],"bubble_ups_count":0,"scheduled_bubble_ups_count":0}`))
 	})
 
 	_, err := svc.Get(context.Background(), 2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestMyNotificationsService_Get_LimitBubbleUps verifies that
+// WithLimitBubbleUps sends limit_bubble_ups=true and that a response which omits
+// the scheduled_bubble_ups key (per the documented cap) still decodes, with the
+// counts preserved.
+func TestMyNotificationsService_Get_LimitBubbleUps(t *testing.T) {
+	var capturedQuery string
+	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		capturedQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		// scheduled_bubble_ups key intentionally omitted; counts still present.
+		w.Write([]byte(`{
+			"unreads": [], "reads": [], "memories": [],
+			"bubble_ups": [{"id": 10, "title": "Bubbled", "created_at": "2026-07-21T00:00:00Z", "updated_at": "2026-07-21T00:00:00Z"}, {"id": 11, "title": "Bubbled 2", "created_at": "2026-07-21T00:00:00Z", "updated_at": "2026-07-21T00:00:00Z"}],
+			"bubble_ups_count": 5,
+			"scheduled_bubble_ups_count": 3
+		}`))
+	})
+
+	result, err := svc.GetWithOptions(context.Background(), 0, WithLimitBubbleUps())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if capturedQuery != "limit_bubble_ups=true" {
+		t.Errorf("expected query limit_bubble_ups=true, got %q", capturedQuery)
+	}
+	if len(result.BubbleUps) != 2 {
+		t.Errorf("expected 2 bubble_ups, got %d", len(result.BubbleUps))
+	}
+	if result.ScheduledBubbleUps != nil {
+		t.Errorf("expected scheduled_bubble_ups omitted (nil), got %v", result.ScheduledBubbleUps)
+	}
+	if result.BubbleUpsCount != 5 {
+		t.Errorf("expected bubble_ups_count 5, got %d", result.BubbleUpsCount)
+	}
+	if result.ScheduledBubbleUpsCount != 3 {
+		t.Errorf("expected scheduled_bubble_ups_count 3, got %d", result.ScheduledBubbleUpsCount)
+	}
+}
+
+// TestMyNotificationsService_BubbleUps_MultiPage exercises the dedicated
+// bubble-ups endpoint across multiple pages, verifying Link-header following and
+// generated pagination metadata (X-Total-Count), not just a single-page decode.
+// Current bubble-ups appear first, scheduled bubble-ups follow.
+func TestMyNotificationsService_BubbleUps_MultiPage(t *testing.T) {
+	var serverURL string
+	var page1Hits, page2Hits int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/my/readings/bubble_ups.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "3")
+		if r.URL.Query().Get("page") == "2" {
+			page2Hits++
+			w.WriteHeader(200)
+			// scheduled bubble-up, ordered after the current ones
+			w.Write([]byte(`[{"id":30,"title":"Scheduled","bubble_up_at":"2026-08-01T00:00:00Z","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}]`))
+			return
+		}
+		page1Hits++
+		// page 1: two current bubble-ups, with a Link header to page 2
+		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/my/readings/bubble_ups.json?page=2>; rel="next"`, serverURL))
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id":10,"title":"Current A","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"},{"id":11,"title":"Current B","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}]`))
+	}))
+	t.Cleanup(server.Close)
+	serverURL = server.URL
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	svc := client.ForAccount("99999").MyNotifications()
+
+	result, err := svc.BubbleUps(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if page1Hits != 1 || page2Hits != 1 {
+		t.Fatalf("expected one hit per page, got page1=%d page2=%d", page1Hits, page2Hits)
+	}
+	if len(result.BubbleUps) != 3 {
+		t.Fatalf("expected 3 bubble_ups across pages, got %d", len(result.BubbleUps))
+	}
+	// Ordering: current bubble-ups first, then scheduled.
+	if result.BubbleUps[0].ID != 10 || result.BubbleUps[1].ID != 11 || result.BubbleUps[2].ID != 30 {
+		t.Errorf("unexpected ordering: %d, %d, %d", result.BubbleUps[0].ID, result.BubbleUps[1].ID, result.BubbleUps[2].ID)
+	}
+	if result.BubbleUps[2].BubbleUpAt == nil {
+		t.Errorf("expected scheduled item to carry bubble_up_at")
+	}
+	if result.Meta.TotalCount != 3 {
+		t.Errorf("expected TotalCount 3, got %d", result.Meta.TotalCount)
+	}
+}
+
+// TestMyNotificationsService_BubbleUps_SinglePage verifies that a positive page
+// disables auto-pagination and returns only that page (no Link-following).
+func TestMyNotificationsService_BubbleUps_SinglePage(t *testing.T) {
+	var hits int
+	svc := testMyNotificationsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		if r.URL.Query().Get("page") != "2" {
+			t.Errorf("expected page=2, got %q", r.URL.Query().Get("page"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "3")
+		// A Link header is present but must NOT be followed for an explicit page.
+		w.Header().Set("Link", `</99999/my/readings/bubble_ups.json?page=3>; rel="next"`)
+		w.WriteHeader(200)
+		w.Write([]byte(`[{"id":30,"title":"Scheduled","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}]`))
+	})
+
+	result, err := svc.BubbleUps(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if hits != 1 {
+		t.Errorf("expected exactly 1 request for explicit page, got %d", hits)
+	}
+	if len(result.BubbleUps) != 1 {
+		t.Errorf("expected 1 bubble_up for single page, got %d", len(result.BubbleUps))
+	}
+	// A next-page Link is present but not followed in explicit-page mode, so the
+	// result must advertise itself as a partial view.
+	if !result.Meta.Truncated {
+		t.Error("expected Meta.Truncated=true when a next-page Link is present in single-page mode")
 	}
 }
 
@@ -84,7 +214,9 @@ func TestMyNotificationsService_Get_SentinelCreatorID(t *testing.T) {
 				}
 			}],
 			"reads": [],
-			"memories": []
+			"memories": [],
+			"bubble_ups_count": 0,
+			"scheduled_bubble_ups_count": 0
 		}`))
 	})
 
@@ -140,7 +272,9 @@ func TestMyNotificationsService_Get_StringCreatorIDWithoutPersonableType(t *test
 				]
 			}],
 			"reads": [],
-			"memories": []
+			"memories": [],
+			"bubble_ups_count": 0,
+			"scheduled_bubble_ups_count": 0
 		}`))
 	})
 

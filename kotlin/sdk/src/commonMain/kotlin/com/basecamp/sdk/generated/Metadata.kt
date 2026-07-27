@@ -74,6 +74,7 @@ object Metadata {
         "GetAnswersByPerson" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetAssignedTodos" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetBoost" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "GetBubbleUps" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetCampfire" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetCampfireLine" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetCard" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

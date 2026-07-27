@@ -1021,6 +1021,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/readings/bubble_ups",
+      "resource": "MyNotifications",
+      "operations": {
+        "GET": "GetBubbleUps"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/unreads",
       "resource": "MyNotifications",
       "operations": {

@@ -321,8 +321,17 @@ data class GetMyDueAssignmentsOptions(
 
 /** Options for GetMyNotifications. */
 data class GetMyNotificationsOptions(
-    val page: Long? = null
+    val page: Long? = null,
+    val limitBubbleUps: Boolean? = null
 ) {
+}
+
+/** Options for GetBubbleUps. */
+data class GetBubbleUpsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
 /** Request body for MarkAsRead. */

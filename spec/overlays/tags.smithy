@@ -221,6 +221,7 @@ apply GetMyDueAssignments @tags(["MyAssignments"])
 
 // My Notifications
 apply GetMyNotifications @tags(["MyNotifications"])
+apply GetBubbleUps @tags(["MyNotifications"])
 apply MarkAsRead @tags(["MyNotifications"])
 
 // Out of Office

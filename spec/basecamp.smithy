@@ -291,6 +291,7 @@ service Basecamp {
 
     // Batch 16 - My Notifications
     GetMyNotifications,
+    GetBubbleUps,
     MarkAsRead,
 
     // Batch 17 - Out of Office
@@ -8759,11 +8760,29 @@ structure GetMyNotificationsInput {
   /// Page number for paginating through read items. Defaults to 1.
   @httpQuery("page")
   page: Integer
+
+  /// Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
+  /// `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
+  /// bubble-ups endpoint (GetBubbleUps) to page through all current and
+  /// scheduled bubble-ups.
+  @httpQuery("limit_bubble_ups")
+  limit_bubble_ups: Boolean
 }
 
 structure GetMyNotificationsOutput {
   unreads: NotificationList
   reads: NotificationList
+
+  /// Total number of current bubble-ups, for notification UI counts
+  /// (independent of the `limit_bubble_ups` cap on the `bubble_ups` array).
+  @required
+  bubble_ups_count: Integer
+
+  /// Total number of scheduled bubble-ups, for notification UI counts
+  /// (present even when `limit_bubble_ups` omits the `scheduled_bubble_ups`
+  /// array).
+  @required
+  scheduled_bubble_ups_count: Integer
 
   /// Legacy "save forever" collection. Permanently `[]` on BC5 by documented
   /// contract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):
@@ -8805,6 +8824,34 @@ structure MarkAsReadInput {
 }
 
 structure MarkAsReadOutput {}
+
+/// Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
+/// Current bubble-ups are returned first, ordered by most recently bubbled up;
+/// scheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item
+/// uses the same notification object shape as GetMyNotifications.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/my/readings/bubble_ups.json")
+operation GetBubbleUps {
+  input: GetBubbleUpsInput
+  output: GetBubbleUpsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetBubbleUpsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure GetBubbleUpsOutput {
+  bubble_ups: NotificationList
+}
 
 // ===== Notification Shapes =====
 

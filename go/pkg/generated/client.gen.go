@@ -990,6 +990,9 @@ type GetAssignedTodosResponseContent struct {
 // GetBoostResponseContent defines model for GetBoostResponseContent.
 type GetBoostResponseContent = Boost
 
+// GetBubbleUpsResponseContent defines model for GetBubbleUpsResponseContent.
+type GetBubbleUpsResponseContent = []Notification
+
 // GetCampfireLineResponseContent defines model for GetCampfireLineResponseContent.
 type GetCampfireLineResponseContent = CampfireLine
 
@@ -1069,6 +1072,10 @@ type GetMyNotificationsResponseContent struct {
 	// `scheduled_bubble_ups` for the time-deferred subset.
 	BubbleUps []Notification `json:"bubble_ups,omitempty"`
 
+	// BubbleUpsCount Total number of current bubble-ups, for notification UI counts
+	// (independent of the `limit_bubble_ups` cap on the `bubble_ups` array).
+	BubbleUpsCount int32 `json:"bubble_ups_count"`
+
 	// Memories Legacy "save forever" collection. Permanently `[]` on BC5 by documented
 	// contract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):
 	// an always-empty placeholder superseded by `bubble_ups`. BC4 (the `four`
@@ -1081,7 +1088,12 @@ type GetMyNotificationsResponseContent struct {
 
 	// ScheduledBubbleUps Bubble Ups scheduled to resurface in the future (BC5 addition).
 	ScheduledBubbleUps []Notification `json:"scheduled_bubble_ups,omitempty"`
-	Unreads            []Notification `json:"unreads,omitempty"`
+
+	// ScheduledBubbleUpsCount Total number of scheduled bubble-ups, for notification UI counts
+	// (present even when `limit_bubble_ups` omits the `scheduled_bubble_ups`
+	// array).
+	ScheduledBubbleUpsCount int32          `json:"scheduled_bubble_ups_count"`
+	Unreads                 []Notification `json:"unreads,omitempty"`
 }
 
 // GetMyPreferencesResponseContent defines model for GetMyPreferencesResponseContent.
@@ -3057,6 +3069,18 @@ type GetMyDueAssignmentsParams struct {
 type GetMyNotificationsParams struct {
 	// Page Page number for paginating through read items. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+
+	// LimitBubbleUps Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
+	// `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
+	// bubble-ups endpoint (GetBubbleUps) to page through all current and
+	// scheduled bubble-ups.
+	LimitBubbleUps bool `form:"limit_bubble_ups,omitempty" json:"limit_bubble_ups,omitempty"`
+}
+
+// GetBubbleUpsParams defines parameters for GetBubbleUps.
+type GetBubbleUpsParams struct {
+	// Page Page number. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListProjectsParams defines parameters for ListProjects.
@@ -4048,6 +4072,9 @@ type ClientInterface interface {
 
 	// GetMyNotifications request
 	GetMyNotifications(ctx context.Context, accountId string, params *GetMyNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBubbleUps request
+	GetBubbleUps(ctx context.Context, accountId string, params *GetBubbleUpsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MarkAsReadWithBody request with any body
 	MarkAsReadWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5866,6 +5893,16 @@ func (c *Client) GetMyNotifications(ctx context.Context, accountId string, param
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetMyNotificationsRequest(c.Server, accountId, params)
 	}, true, "GetMyNotifications", reqEditors...)
+
+}
+
+// GetBubbleUps is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetBubbleUps(ctx context.Context, accountId string, params *GetBubbleUpsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetBubbleUpsRequest(c.Server, accountId, params)
+	}, true, "GetBubbleUps", reqEditors...)
 
 }
 
@@ -12070,6 +12107,78 @@ func NewGetMyNotificationsRequest(server string, accountId string, params *GetMy
 
 		}
 
+		if params.LimitBubbleUps {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "limit_bubble_ups", runtime.ParamLocationQuery, params.LimitBubbleUps); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetBubbleUpsRequest generates requests for GetBubbleUps
+func NewGetBubbleUpsRequest(server string, accountId string, params *GetBubbleUpsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/readings/bubble_ups.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		queryURL.RawQuery = queryValues.Encode()
 	}
 
@@ -18008,6 +18117,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateMyProfile":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
 	"GetMyNotifications":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetBubbleUps":                       {Idempotent: true, HasSensitiveParams: false},
 	"MarkAsRead":                         {Idempotent: true, HasSensitiveParams: false},
 	"ListPeople":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetPerson":                          {Idempotent: true, HasSensitiveParams: false},
@@ -19402,6 +19512,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetMyNotificationsWithResponse request
 	GetMyNotificationsWithResponse(ctx context.Context, accountId string, params *GetMyNotificationsParams, reqEditors ...RequestEditorFn) (*GetMyNotificationsResponse, error)
+
+	// GetBubbleUpsWithResponse request
+	GetBubbleUpsWithResponse(ctx context.Context, accountId string, params *GetBubbleUpsParams, reqEditors ...RequestEditorFn) (*GetBubbleUpsResponse, error)
 
 	// MarkAsReadWithBodyWithResponse request with any body
 	MarkAsReadWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MarkAsReadResponse, error)
@@ -23007,6 +23120,40 @@ func (r GetMyNotificationsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetMyNotificationsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetBubbleUpsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetBubbleUpsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBubbleUpsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBubbleUpsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBubbleUpsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -28055,6 +28202,15 @@ func (c *ClientWithResponses) GetMyNotificationsWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGetMyNotificationsResponse(rsp)
+}
+
+// GetBubbleUpsWithResponse request returning *GetBubbleUpsResponse
+func (c *ClientWithResponses) GetBubbleUpsWithResponse(ctx context.Context, accountId string, params *GetBubbleUpsParams, reqEditors ...RequestEditorFn) (*GetBubbleUpsResponse, error) {
+	rsp, err := c.GetBubbleUps(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBubbleUpsResponse(rsp)
 }
 
 // MarkAsReadWithBodyWithResponse request with arbitrary body returning *MarkAsReadResponse
@@ -34626,6 +34782,60 @@ func ParseGetMyNotificationsResponse(rsp *http.Response) (*GetMyNotificationsRes
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBubbleUpsResponse parses an HTTP response from a GetBubbleUpsWithResponse call
+func ParseGetBubbleUpsResponse(rsp *http.Response) (*GetBubbleUpsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBubbleUpsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetBubbleUpsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

@@ -14,6 +14,19 @@
   },
   {
     "mode": "live",
+    "name": "GetBubbleUps returns a paginated bubble-ups list and validates against schema",
+    "description": "Exercises the dedicated bubble-ups endpoint (current + scheduled, 50/page) and validates each notification item against the schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetBubbleUps",
+    "method": "GET",
+    "path": "/my/readings/bubble_ups.json",
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
     "name": "ListProjects returns a list and validates against schema",
     "description": "Smoke check + schema validation for the canonical list endpoint. Required fields are enforced per spec; new BC5-only fields surface as extras-observed.",
     "operation": "ListProjects",

@@ -1168,6 +1168,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/readings/bubble_ups.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get the current user's current and scheduled bubble-ups (paginated, 50 per page).
+         *     Current bubble-ups are returned first, ordered by most recently bubbled up;
+         *     scheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item
+         *     uses the same notification object shape as GetMyNotifications.
+         */
+        get: operations["GetBubbleUps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my/unreads.json": {
         parameters: {
             query?: never;
@@ -3380,6 +3402,7 @@ export interface components {
             todos?: components["schemas"]["Todo"][];
         };
         GetBoostResponseContent: components["schemas"]["Boost"];
+        GetBubbleUpsResponseContent: components["schemas"]["Notification"][];
         GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         GetCampfireResponseContent: components["schemas"]["Campfire"];
         GetCardColumnResponseContent: components["schemas"]["CardColumn"];
@@ -3409,6 +3432,19 @@ export interface components {
         GetMyNotificationsResponseContent: {
             unreads?: components["schemas"]["Notification"][];
             reads?: components["schemas"]["Notification"][];
+            /**
+             * Format: int32
+             * @description Total number of current bubble-ups, for notification UI counts
+             *     (independent of the `limit_bubble_ups` cap on the `bubble_ups` array).
+             */
+            bubble_ups_count: number;
+            /**
+             * Format: int32
+             * @description Total number of scheduled bubble-ups, for notification UI counts
+             *     (present even when `limit_bubble_ups` omits the `scheduled_bubble_ups`
+             *     array).
+             */
+            scheduled_bubble_ups_count: number;
             /**
              * @description Legacy "save forever" collection. Permanently `[]` on BC5 by documented
              *     contract (`doc/api/sections/my_notifications.md`, codified by BC3 #11628):
@@ -10831,6 +10867,13 @@ export interface operations {
             query?: {
                 /** @description Page number for paginating through read items. Defaults to 1. */
                 page?: number;
+                /**
+                 * @description Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the
+                 *     `scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated
+                 *     bubble-ups endpoint (GetBubbleUps) to page through all current and
+                 *     scheduled bubble-ups.
+                 */
+                limit_bubble_ups?: boolean;
             };
             header?: never;
             path?: never;
@@ -10863,6 +10906,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetBubbleUps: {
+        parameters: {
+            query?: {
+                /** @description Page number. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetBubbleUps 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetBubbleUpsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

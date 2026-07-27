@@ -9297,6 +9297,15 @@
               "description": "Page number for paginating through read items. Defaults to 1.",
               "format": "int32"
             }
+          },
+          {
+            "name": "limit_bubble_ups",
+            "in": "query",
+            "description": "Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the\n`scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated\nbubble-ups endpoint (GetBubbleUps) to page through all current and\nscheduled bubble-ups.",
+            "schema": {
+              "type": "boolean",
+              "description": "Set to true to cap `bubble_ups` at 2 current bubble-ups and omit the\n`scheduled_bubble_ups` key entirely. Defaults to false. Use the dedicated\nbubble-ups endpoint (GetBubbleUps) to page through all current and\nscheduled bubble-ups."
+            }
           }
         ],
         "responses": {
@@ -9344,6 +9353,104 @@
         "tags": [
           "MyNotifications"
         ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
+    "/{accountId}/my/readings/bubble_ups.json": {
+      "get": {
+        "description": "Get the current user's current and scheduled bubble-ups (paginated, 50 per page).\nCurrent bubble-ups are returned first, ordered by most recently bubbled up;\nscheduled bubble-ups follow, ordered by scheduled bubble-up time. Each item\nuses the same notification object shape as GetMyNotifications.",
+        "operationId": "GetBubbleUps",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetBubbleUps 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetBubbleUpsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyNotifications"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
         "x-basecamp-retry": {
           "maxAttempts": 3,
           "baseDelayMs": 1000,
@@ -24301,6 +24408,12 @@
       "GetBoostResponseContent": {
         "$ref": "#/components/schemas/Boost"
       },
+      "GetBubbleUpsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Notification"
+        }
+      },
       "GetCampfireLineResponseContent": {
         "$ref": "#/components/schemas/CampfireLine"
       },
@@ -24405,6 +24518,16 @@
               "$ref": "#/components/schemas/Notification"
             }
           },
+          "bubble_ups_count": {
+            "type": "integer",
+            "description": "Total number of current bubble-ups, for notification UI counts\n(independent of the `limit_bubble_ups` cap on the `bubble_ups` array).",
+            "format": "int32"
+          },
+          "scheduled_bubble_ups_count": {
+            "type": "integer",
+            "description": "Total number of scheduled bubble-ups, for notification UI counts\n(present even when `limit_bubble_ups` omits the `scheduled_bubble_ups`\narray).",
+            "format": "int32"
+          },
           "memories": {
             "type": "array",
             "items": {
@@ -24426,7 +24549,11 @@
             },
             "description": "Bubble Ups scheduled to resurface in the future (BC5 addition)."
           }
-        }
+        },
+        "required": [
+          "bubble_ups_count",
+          "scheduled_bubble_ups_count"
+        ]
       },
       "GetMyPreferencesResponseContent": {
         "$ref": "#/components/schemas/Preferences"
