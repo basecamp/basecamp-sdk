@@ -29398,7 +29398,7 @@
             "items": {
               "$ref": "#/components/schemas/RichTextAttachment"
             },
-            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable. Distinct\nfrom the generic `attachments` key (the recording's aggregate downloadable\nfiles), which is a separate projection concern and not modeled here."
+            "description": "Rich-text companion arrays carried through the polymorphic search\nprojection. A given result is one recording type, so it carries only\nthe array matching its rich-text attribute (`content_attachments` for a\nComment/Message, `description_attachments` for a Todo); a webhook-sourced\nresult carries neither. Optional (no `@required`), non-nullable.\n\nSearch results additionally repeat this same array under a generic\n`attachments` key. It is a redundant projection, not a distinct\naggregate: `searches/show.json.jbuilder` emits\n`recording.downloadable_attachments`, which delegates to the recordable's\nsole `rich_text_content`, through the same `attachments/_attachment`\npartial that `recordings/_rich_text.json.jbuilder` uses to build the\ncompanion array. `RichText.rich_text_attribute` permits exactly one\nrich-text attribute per model, so the two keys always carry identical\nelements. Modeling `attachments` would duplicate the field, so it is\ndeliberately not modeled."
           },
           "description_attachments": {
             "type": "array",
