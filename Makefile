@@ -808,7 +808,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays check-fixture-coverage check-idempotency-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars check-fixture-coverage check-idempotency-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -840,11 +840,13 @@ check-fixture-coverage:
 	@./scripts/check-fixture-coverage.sh
 	@ruby ./scripts/test-check-fixture-coverage.rb
 
-# D-invariant: every optional generated Kotlin array is `List<T>? = null`, every
-# required array stays `List<T>`, and none default to the `= emptyList()`
-# sentinel — pinning the optional-array presence contract against regression.
-kt-check-optional-arrays:
-	@./scripts/check-kotlin-optional-arrays.sh
+# Presence contract for generated Kotlin ARRAY and PRIMITIVE SCALAR properties:
+# optional -> `T? = null`, required -> `T`, required-and-nullable -> `T?` with no
+# default, and no zero-value sentinel defaults (`= emptyList()`, `= 0`, `= false`,
+# `= ""`). Pins the Kotlin scalar fix (#424) and optional-array fix (#433).
+# Object/$ref/enum properties are deliberately out of scope — hence the name.
+kt-check-optional-arrays-and-scalars:
+	@./scripts/check-kotlin-optional-arrays-and-scalars.sh
 
 # Verify idempotency classification is identical across all six SDKs and matches
 # behavior-model.json (the naturally-idempotent mutations; Go additionally folds
@@ -874,7 +876,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars check-idempotency-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

@@ -720,6 +720,18 @@ Fields declared with `format: date-time` in the OpenAPI spec use ISO 8601 format
 
 Fields not listed in the `required` array of the OpenAPI schema must be nullable or optional in the language's type system. Sentinel values (empty string, 0, etc.) are not acceptable substitutes for absence.
 
+**Scope.** This rule constrains the **static type** of a member on a **generated type**. It says an optional member must be *representable* as absent — it does not, on its own, mandate that every SDK's runtime decode and re-encode round-trip absence. Where a language's decoding collapses absence into the zero value, or its encoder drops an explicit null, that is a separate concern, documented per language in the Nullable Numeric Dimensions table above and tracked in #436.
+
+**A third wire state.** A member may be *required and nullable* (`type: [T, "null"]` on a required member — e.g. `SearchType.key`, `TimelineEventData.starts_at`/`ends_at`, `Wormhole.color`/`destination_url`). This is distinct from optional: the key must be **present**, and its value may be null. It must not be encoded as though it were optional, because that would silently accept a response that omits the key. Kotlin therefore emits `T?` **with no default** for this case, versus `T? = null` for a genuinely optional member.
+
+Enforced for Kotlin arrays and primitive scalars by `make kt-check-optional-arrays-and-scalars`. Object/`$ref`/enum-typed members are out of that checker's scope — they are reference types with no zero-value sentinel to guard against.
+
+**No blanket `omitempty` waiver.** The `width`/`height` carve-out described under Nullable Numeric Dimensions is **response-only**: it concerns faithfully re-encoding a decoded response. It must not be generalized into a blanket permission for Go request structs to use non-pointer scalars with `omitempty`.
+
+For a **writable** optional scalar, an explicit `false` / `0` / `""` is a different instruction to the server than absence, and `omitempty` destroys exactly that distinction — the field becomes unsendable at its zero value. A meaningful fraction of the affected generated Go fields are request-shaped (`*RequestContent`), so this is not a hypothetical.
+
+Any waiver of the pointer requirement for Go must therefore be **response-only or field-specific, and must say which**. The per-field escape hatch is the existing `x-go-type-skip-optional-pointer: false` precedent, applied per schema — not a global generator flag.
+
 ### 204 No Content
 
 Responses with status 204 have no body. The SDK must handle this without attempting JSON parse (`[static]`). Return `void`/`nil`/`undefined`/`Unit` as appropriate. Conformance tests verify the 204 path completes without error (`[conformance]`).

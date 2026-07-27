@@ -382,8 +382,8 @@ jobs:
         working-directory: .
         run: make kt-check-generated-drift
 
-      - name: Check optional-array invariant
-        run: ruby ../scripts/check-kotlin-optional-arrays.rb
+      - name: Check optional array/scalar invariant
+        run: ruby ../scripts/check-kotlin-optional-arrays-and-scalars.rb
 
       - name: Run Kotlin conformance tests
         run: ./gradlew :conformance:run
