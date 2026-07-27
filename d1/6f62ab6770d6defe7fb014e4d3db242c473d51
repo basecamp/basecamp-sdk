@@ -1,0 +1,20 @@
+scripts/check-idempotency-parity
+  s_8d633484dc870e::t_b6cf5c4d96de49 16,32,72,111
+  s_8d633484dc870e::t_6539a81481019f 105,115,117-119,127,132,140,146,157,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d16f62ab6770d6defe7fb014e4d3db242c473d51",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
