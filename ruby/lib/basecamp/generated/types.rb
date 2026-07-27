@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T06:48:27Z
+# Generated: 2026-07-27T07:34:03Z
 
 require "json"
 require "time"
@@ -3097,7 +3097,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :category, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3120,6 +3120,7 @@ module Basecamp
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @category = parse_type(data["category"], "RecordingCategory")
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @content = data["content"]
@@ -3154,6 +3155,7 @@ module Basecamp
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "category" => @category,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "content" => @content,
@@ -3198,6 +3200,35 @@ module Basecamp
           "id" => @id,
           "name" => @name,
           "type" => @type,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # RecordingCategory
+    class RecordingCategory
+      include TypeHelpers
+      attr_accessor :id, :name, :icon
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @icon = data["icon"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "name" => @name,
+          "icon" => @icon,
         }.compact
       end
 

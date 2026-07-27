@@ -353,15 +353,17 @@ walk(
 # pointer-backed too — an empty string must not stand in for absence (SPEC.md §10).
 .components.schemas.RecordingCategory.properties.icon += { "x-go-type-skip-optional-pointer": false }
 |
-# Fifth-g pass: Todo/Card date fields are always-present nullable.
-# BC3 renders due_on (and, for to-dos, starts_on) unconditionally through the
-# shared todos/_todo and cards/_card partials — the key is always emitted and is
-# JSON null when the record has no date (documented across the resource docs and
-# the account-wide feeds, e.g. /todos/no_due_date.json). Mark them nullable so
-# the static-type SDKs type them `string | null` and the schema (AJV) accepts a
-# null value instead of the types lying. Go keeps its types.Date value type
-# (the _on pass already sets skip-optional-pointer: true), and types.Date decodes
-# JSON null to the zero Date, so no Go change is needed.
+# Fifth-g pass: Todo/Card date fields are nullable-when-present.
+# BC3 renders due_on (and, for to-dos, starts_on) through the shared todos/_todo
+# and cards/_card partials with a JSON null value when the record has no date
+# (documented across the resource docs and the account-wide feeds, e.g.
+# /todos/no_due_date.json). Mark them nullable so a null value is accepted by the
+# schema (AJV) and typed as such by the static SDKs, instead of the types lying
+# that the value is always a non-null string. These stay OPTIONAL in the schema
+# (not @required): the static SDKs type them `string | null | undefined`, which
+# also tolerates a partial payload that omits the key. Go keeps its types.Date
+# value type (the _on pass already sets skip-optional-pointer: true), and
+# types.Date decodes JSON null to the zero Date, so no Go change is needed.
 .components.schemas.Todo.properties.due_on += { "nullable": true }
 |
 .components.schemas.Todo.properties.starts_on += { "nullable": true }
