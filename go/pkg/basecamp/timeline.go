@@ -78,28 +78,32 @@ type TimelineAttachment struct {
 	Height *int32 `json:"height,omitempty"`
 
 	// Upload-recording variant — the full uploads/_upload projection.
-	Type                   *string              `json:"type,omitempty"`
-	Title                  *string              `json:"title,omitempty"`
-	Status                 *string              `json:"status,omitempty"`
-	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
-	CreatedAt              *time.Time           `json:"created_at,omitempty"`
-	UpdatedAt              *time.Time           `json:"updated_at,omitempty"`
-	RecordingURL           *string              `json:"url,omitempty"`
-	AppURL                 *string              `json:"app_url,omitempty"`
-	BookmarkURL            *string              `json:"bookmark_url,omitempty"`
-	SubscriptionURL        *string              `json:"subscription_url,omitempty"`
-	CommentsCount          *int32               `json:"comments_count,omitempty"`
-	CommentsURL            *string              `json:"comments_url,omitempty"`
-	BoostsCount            *int32               `json:"boosts_count,omitempty"`
-	BoostsURL              *string              `json:"boosts_url,omitempty"`
-	Position               *int32               `json:"position,omitempty"`
-	Parent                 *Parent              `json:"parent,omitempty"`
-	Bucket                 *Bucket              `json:"bucket,omitempty"`
-	Creator                *Person              `json:"creator,omitempty"`
-	Description            *string              `json:"description,omitempty"`
-	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	AppDownloadURL         *string              `json:"app_download_url,omitempty"`
-	VisibleToClients       *bool                `json:"visible_to_clients,omitempty"`
+	Type            *string    `json:"type,omitempty"`
+	Title           *string    `json:"title,omitempty"`
+	Status          *string    `json:"status,omitempty"`
+	InheritsStatus  *bool      `json:"inherits_status,omitempty"`
+	CreatedAt       *time.Time `json:"created_at,omitempty"`
+	UpdatedAt       *time.Time `json:"updated_at,omitempty"`
+	RecordingURL    *string    `json:"url,omitempty"`
+	AppURL          *string    `json:"app_url,omitempty"`
+	BookmarkURL     *string    `json:"bookmark_url,omitempty"`
+	SubscriptionURL *string    `json:"subscription_url,omitempty"`
+	CommentsCount   *int32     `json:"comments_count,omitempty"`
+	CommentsURL     *string    `json:"comments_url,omitempty"`
+	BoostsCount     *int32     `json:"boosts_count,omitempty"`
+	BoostsURL       *string    `json:"boosts_url,omitempty"`
+	Position        *int32     `json:"position,omitempty"`
+	Parent          *Parent    `json:"parent,omitempty"`
+	Bucket          *Bucket    `json:"bucket,omitempty"`
+	Creator         *Person    `json:"creator,omitempty"`
+	Description     *string    `json:"description,omitempty"`
+	// DescriptionAttachments is pointer-backed so all three wire states round-trip
+	// faithfully: nil (key absent), a non-nil empty slice (present "[]"), and a
+	// populated list. A plain slice with omitempty would drop a present empty
+	// array on re-marshal, losing the documented present-vs-absent distinction.
+	DescriptionAttachments *[]RichTextAttachment `json:"description_attachments,omitempty"`
+	AppDownloadURL         *string               `json:"app_download_url,omitempty"`
+	VisibleToClients       *bool                 `json:"visible_to_clients,omitempty"`
 
 	// Rich-text attachment/blob variant.
 	AttachableSGID *string `json:"attachable_sgid,omitempty"`
@@ -587,8 +591,6 @@ func timelineAttachmentFromGenerated(ga generated.TimelineAttachment) TimelineAt
 		creator := personFromGenerated(*ga.Creator)
 		a.Creator = &creator
 	}
-	if len(ga.DescriptionAttachments) > 0 {
-		a.DescriptionAttachments = richTextAttachmentsFromGenerated(ga.DescriptionAttachments)
-	}
+	a.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(ga.DescriptionAttachments)
 	return a
 }

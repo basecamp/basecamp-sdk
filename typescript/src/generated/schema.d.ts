@@ -4425,8 +4425,8 @@ export interface components {
              *     required within this struct.
              */
             all_day: boolean;
-            starts_at: string;
-            ends_at: string;
+            starts_at: string | null;
+            ends_at: string | null;
         };
         TimesheetEntry: {
             /** Format: int64 */

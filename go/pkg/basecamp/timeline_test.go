@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -242,6 +243,17 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 	}
 	if up[0].CreatedAt == nil || up[0].UpdatedAt == nil {
 		t.Errorf("expected created_at/updated_at decoded, got c=%v u=%v", up[0].CreatedAt, up[0].UpdatedAt)
+	}
+	// Presence-faithful: the fixture carries an explicit "description_attachments": [],
+	// so the pointer must be non-nil (present) and empty, and re-marshal as [] not
+	// be dropped by omitempty.
+	if up[0].DescriptionAttachments == nil {
+		t.Error("expected present empty description_attachments (non-nil), got nil")
+	} else if len(*up[0].DescriptionAttachments) != 0 {
+		t.Errorf("expected empty description_attachments, got %d", len(*up[0].DescriptionAttachments))
+	}
+	if b, _ := json.Marshal(up[0]); !strings.Contains(string(b), `"description_attachments":[]`) {
+		t.Errorf("expected present empty array to round-trip as []; got %s", string(b))
 	}
 
 	// Rich-text attachment/blob variant
