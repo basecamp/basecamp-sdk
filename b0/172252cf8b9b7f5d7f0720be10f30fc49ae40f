@@ -1,0 +1,24 @@
+spec/fixtures/gauges/get.json
+  s_4df49d42d6c9e3::t_0f65e21f5506fa 1-71
+spec/fixtures/manifest.yaml
+  s_4df49d42d6c9e3::t_4b268a01e8df53 166-181
+  s_4df49d42d6c9e3::t_57bbaea97beab8 200-201
+spec/fixtures/gauges/needle_get.json
+  s_4df49d42d6c9e3::t_5d4e77b69fe77e 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b0172252cf8b9b7f5d7f0720be10f30fc49ae40f",
+  "prompts": {},
+  "sessions": {
+    "s_4df49d42d6c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8432f7a9-be4e-4dec-8f6f-9306ed534d9a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
