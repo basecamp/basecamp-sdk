@@ -38,7 +38,8 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.1.0 # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
         with:
           cache-provider: basic
 
@@ -88,7 +89,8 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.1.0 # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        # zizmor: ignore[cache-poisoning] -- cache is branch-isolated; fork PRs cannot write to this cache
         with:
           cache-provider: basic
 
