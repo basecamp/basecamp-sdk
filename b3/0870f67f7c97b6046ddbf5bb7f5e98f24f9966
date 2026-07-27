@@ -1,0 +1,33 @@
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_feb4c56b1912fd 40
+  s_8d633484dc870e::t_71a4f1572b18f8 486,502,518,534,561,2627,2643,2659,2686
+behavior-model.json
+  s_8d633484dc870e::t_71a4f1572b18f8 836,852,916,932,948,964,980,1020,1036
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_feb4c56b1912fd 4
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_71a4f1572b18f8 450,466,482,498,525,2590,2606,2622,2649
+  s_8d633484dc870e::t_feb4c56b1912fd 4
+spec/basecamp.smithy
+  s_8d633484dc870e::t_71a4f1572b18f8 9096,9107,9118,9129,9141,9152,9163,9174,9185
+openapi.json
+  s_8d633484dc870e::t_71a4f1572b18f8 3635,3733,3831,3929,4110,20162,20260,20358,20539
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_71a4f1572b18f8 3246,3333,3420,3507,3665,17915,18002,18089,18247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b30870f67f7c97b6046ddbf5bb7f5e98f24f9966",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
