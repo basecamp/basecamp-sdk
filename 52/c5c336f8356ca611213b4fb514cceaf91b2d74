@@ -1,0 +1,25 @@
+scripts/check-idempotency-parity
+  s_8d633484dc870e::t_3111eee6c91186 7,11
+spec/api-gaps/schedule-recurrence-writes.md
+  s_8d633484dc870e::t_a4ec3fdd1f0327 47-52
+spec/api-gaps/bubble-ups-surface.md
+  s_8d633484dc870e::t_d7b505a6907f5d 8-11
+Makefile
+  s_8d633484dc870e::t_28daf86db310c0 841-842
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "52c5c336f8356ca611213b4fb514cceaf91b2d74",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
