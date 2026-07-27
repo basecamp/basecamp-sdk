@@ -39,28 +39,47 @@ elif ! command -v java >/dev/null 2>&1; then
 fi
 
 GENERATED_DIR="$ROOT_DIR/kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
-# Explicit template so this works identically under GNU and BSD/macOS mktemp.
-TMP_OUT="$(mktemp -d "${TMPDIR:-/tmp}/kotlin-generated-drift.XXXXXX")"
-# Canonicalize to an absolute path: a relative TMPDIR (e.g. TMPDIR=tmp) yields a
-# relative TMP_OUT, and the generator runs from kotlin/ (below), which would
-# resolve it against the wrong directory and falsely report drift.
-TMP_OUT="$(cd "$TMP_OUT" && pwd)"
-trap 'rm -rf "$TMP_OUT"' EXIT
 
-echo "==> Regenerating Kotlin SDK into a temp directory..."
-# Mirror `make kt-generate-services` but emit to an absolute temp path so the
-# committed tree is untouched. The Gradle generator accepts absolute paths for
-# --openapi/--behavior/--output.
+# Regenerate into a unique subdir of kotlin/build (gitignored, so this stays
+# non-mutating w.r.t. the committed tree). Explicit XXXXXX template so mktemp
+# behaves identically under GNU and BSD/macOS. A failure to create the temp
+# directory means the check could not run → exit 2 (not the default 1).
+BUILD_DIR="$ROOT_DIR/kotlin/build"
+mkdir -p "$BUILD_DIR" || { echo "ERROR: could not create $BUILD_DIR — cannot check drift" >&2; exit 2; }
+TMP_OUT="$(mktemp -d "$BUILD_DIR/kt-drift-check.XXXXXX")" || { echo "ERROR: could not create a temporary output directory under $BUILD_DIR — cannot check drift" >&2; exit 2; }
+# Path RELATIVE to kotlin/ (the generator's working directory below). basename
+# is a fixed prefix + [A-Za-z0-9] suffix, so this is always clean.
+TMP_REL="build/$(basename "$TMP_OUT")"
+GEN_LOG="$TMP_OUT.log"
+trap 'rm -rf "$TMP_OUT" "$GEN_LOG"' EXIT
+
+echo "==> Regenerating Kotlin SDK into kotlin/$TMP_REL ..."
+# Pass ONLY clean, fixed RELATIVE paths to the generator, exactly like
+# `make kt-generate-services`. This sidesteps Gradle's --args string tokenizer
+# entirely: because no repo/TMPDIR path characters (spaces, quotes, backslashes)
+# ever appear in the argument string, no quoting is needed and no path can be
+# mis-split. The generator runs with kotlin/ as its working directory, so
+# ../openapi.json, ../behavior-model.json, and build/... all resolve there.
 #
-# Gradle re-tokenizes the --args string on whitespace, honoring quotes, so each
-# path is wrapped in double quotes: without it a repo or TMPDIR path containing a
-# space would be split into multiple tokens and the generator (which consumes
-# only the token immediately after each flag) would read/write the wrong path.
-# Double (not single) quotes so a path containing an apostrophe also survives;
-# the shell still expands the variables inside the outer double-quoted --args.
+# Gradle output goes to a log file (it can be voluminous on first run), printed
+# only on failure — same pattern as check-go-generated-drift.sh. A generator/
+# Gradle failure means the check could not run → map ANY non-zero exit to 2 (the
+# reserved "unable to run" code), not 1 (drift). The `|| gen_status=$?` keeps
+# set -e from firing on Gradle's non-zero exit.
+gen_status=0
 (cd "$ROOT_DIR/kotlin" && \
   ./gradlew --quiet :generator:run \
-    --args="--openapi \"$ROOT_DIR/openapi.json\" --behavior \"$ROOT_DIR/behavior-model.json\" --output \"$TMP_OUT\"") > /dev/null
+    --args="--openapi ../openapi.json --behavior ../behavior-model.json --output $TMP_REL") > "$GEN_LOG" 2>&1 || gen_status=$?
+if [ "$gen_status" -ne 0 ]; then
+  echo "ERROR: Kotlin generator failed (gradle exit $gen_status) — cannot check drift:" >&2
+  # Only read the log if it exists and is non-empty: if the redirection itself
+  # failed (e.g. a full disk), an unconditional cat would fail under set -e and
+  # abort with status 1 before the reserved exit 2 is reached.
+  if [ -s "$GEN_LOG" ]; then
+    cat "$GEN_LOG" >&2
+  fi
+  exit 2
+fi
 
 echo "==> Diffing against committed kotlin/.../generated/ ..."
 # A missing committed tree (accidental delete/rename) is drift, not a tool
