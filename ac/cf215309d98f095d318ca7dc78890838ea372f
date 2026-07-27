@@ -1,0 +1,20 @@
+scripts/check-go-generated-drift.sh
+  s_b1a0736794598e::t_e49801e4aee095 37-39
+  s_b1a0736794598e::t_1c33e5393ed993 55,57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "accf215309d98f095d318ca7dc78890838ea372f",
+  "prompts": {},
+  "sessions": {
+    "s_b1a0736794598e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69f5a50d-66ad-4430-b746-40380fcf8835",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
