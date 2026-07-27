@@ -1,0 +1,33 @@
+scripts/check-kotlin-generated-drift.sh
+  s_4b0e7357e2c0fe::t_53901d2aebbf30 43-44,47,50-52,56-62
+  s_4b0e7357e2c0fe::t_061c5d55798591 45-46,48-49
+  s_4b0e7357e2c0fe::t_218ff7ae8e309a 53-54,64-68,72
+  s_e482278ba88739::t_1b79a3a3d5a481 55
+  s_4b0e7357e2c0fe::t_040c9a78a37f74 69,73-74,81-82
+  s_4b0e7357e2c0fe::t_3cc3db3c32cc9f 75-77
+  s_4b0e7357e2c0fe::t_5f3ee5a8fbbfaf 78-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "74957f5b3e419754d51c2c28ed7361a2470e1453",
+  "prompts": {},
+  "sessions": {
+    "s_4b0e7357e2c0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5919a1e2-b689-433b-b4e7-dc3c8266a5d9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_e482278ba88739": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bd1b82ec-bfac-4598-92d4-84af692fce2e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
