@@ -21,7 +21,7 @@ permissions: {}
 
 jobs:
   sync:
-    uses: basecamp/.github/.github/workflows/dependabot-sync-actions-comments.yml@45d3fc9588f15d50fbccde7476418007dd19e16e
+    uses: basecamp/.github/.github/workflows/dependabot-sync-actions-comments.yml@fdf2ae72b33bb13413919b87bb493f23633e938d
     permissions:
       contents: read
       actions: write
