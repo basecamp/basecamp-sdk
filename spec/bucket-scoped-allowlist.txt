@@ -6,3 +6,7 @@
 # Webhooks are inherently per-project: a webhook subscribes to events scoped
 # to a single project, so there is no meaningful account-wide aggregate.
 /{accountId}/buckets/{bucketId}/webhooks.json
+
+# Message categories are defined per project in BC3 — there is no account-wide
+# categories collection. The former flat route was a modeling error that 404'd.
+/{accountId}/buckets/{bucketId}/categories.json

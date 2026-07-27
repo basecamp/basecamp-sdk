@@ -1917,7 +1917,7 @@ structure GetMessageBoardOutput {
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/categories.json")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/categories.json")
 operation ListMessageTypes {
   input: ListMessageTypesInput
   output: ListMessageTypesOutput
@@ -1929,6 +1929,9 @@ structure ListMessageTypesInput {
   @httpLabel
   accountId: AccountId
 
+  @required
+  @httpLabel
+  bucketId: ProjectId
 }
 
 structure ListMessageTypesOutput {
@@ -1939,7 +1942,7 @@ structure ListMessageTypesOutput {
 /// Get a single message type by id
 @readonly
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "GET", uri: "/{accountId}/categories/{typeId}")
+@http(method: "GET", uri: "/{accountId}/buckets/{bucketId}/categories/{typeId}")
 operation GetMessageType {
   input: GetMessageTypeInput
   output: GetMessageTypeOutput
@@ -1953,6 +1956,10 @@ structure GetMessageTypeInput {
 
   @required
   @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
   typeId: MessageTypeId
 }
 
@@ -1963,7 +1970,7 @@ structure GetMessageTypeOutput {
 
 /// Create a new message type in a project
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@http(method: "POST", uri: "/{accountId}/categories.json", code: 201)
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/categories.json", code: 201)
 operation CreateMessageType {
   input: CreateMessageTypeInput
   output: CreateMessageTypeOutput
@@ -1974,6 +1981,10 @@ structure CreateMessageTypeInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   name: MessageTypeName
@@ -1991,7 +2002,7 @@ structure CreateMessageTypeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "PUT", uri: "/{accountId}/categories/{typeId}")
+@http(method: "PUT", uri: "/{accountId}/buckets/{bucketId}/categories/{typeId}")
 operation UpdateMessageType {
   input: UpdateMessageTypeInput
   output: UpdateMessageTypeOutput
@@ -2002,6 +2013,10 @@ structure UpdateMessageTypeInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel
@@ -2020,7 +2035,7 @@ structure UpdateMessageTypeOutput {
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
-@http(method: "DELETE", uri: "/{accountId}/categories/{typeId}", code: 204)
+@http(method: "DELETE", uri: "/{accountId}/buckets/{bucketId}/categories/{typeId}", code: 204)
 operation DeleteMessageType {
   input: DeleteMessageTypeInput
   output: DeleteMessageTypeOutput
@@ -2031,6 +2046,10 @@ structure DeleteMessageTypeInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
 
   @required
   @httpLabel

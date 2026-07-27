@@ -3262,6 +3262,12 @@ type UpdateWormholeJSONRequestBody = UpdateWormholeRequestContent
 // CreateWormholeJSONRequestBody defines body for CreateWormhole for application/json ContentType.
 type CreateWormholeJSONRequestBody = CreateWormholeRequestContent
 
+// CreateMessageTypeJSONRequestBody defines body for CreateMessageType for application/json ContentType.
+type CreateMessageTypeJSONRequestBody = CreateMessageTypeRequestContent
+
+// UpdateMessageTypeJSONRequestBody defines body for UpdateMessageType for application/json ContentType.
+type UpdateMessageTypeJSONRequestBody = UpdateMessageTypeRequestContent
+
 // CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
 type CreateToolJSONRequestBody = CreateToolRequestContent
 
@@ -3297,12 +3303,6 @@ type CreateCardColumnJSONRequestBody = CreateCardColumnRequestContent
 
 // MoveCardColumnJSONRequestBody defines body for MoveCardColumn for application/json ContentType.
 type MoveCardColumnJSONRequestBody = MoveCardColumnRequestContent
-
-// CreateMessageTypeJSONRequestBody defines body for CreateMessageType for application/json ContentType.
-type CreateMessageTypeJSONRequestBody = CreateMessageTypeRequestContent
-
-// UpdateMessageTypeJSONRequestBody defines body for UpdateMessageType for application/json ContentType.
-type UpdateMessageTypeJSONRequestBody = UpdateMessageTypeRequestContent
 
 // CreateChatbotJSONRequestBody defines body for CreateChatbot for application/json ContentType.
 type CreateChatbotJSONRequestBody = CreateChatbotRequestContent
@@ -3809,6 +3809,25 @@ type ClientInterface interface {
 
 	CreateWormhole(ctx context.Context, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListMessageTypes request
+	ListMessageTypes(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateMessageTypeWithBody request with any body
+	CreateMessageTypeWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateMessageType(ctx context.Context, accountId string, bucketId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteMessageType request
+	DeleteMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMessageType request
+	GetMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMessageTypeWithBody request with any body
+	UpdateMessageTypeWithBody(ctx context.Context, accountId string, bucketId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateToolWithBody request with any body
 	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3892,25 +3911,6 @@ type ClientInterface interface {
 	MoveCardColumnWithBody(ctx context.Context, accountId string, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	MoveCardColumn(ctx context.Context, accountId string, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// ListMessageTypes request
-	ListMessageTypes(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateMessageTypeWithBody request with any body
-	CreateMessageTypeWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateMessageType(ctx context.Context, accountId string, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteMessageType request
-	DeleteMessageType(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetMessageType request
-	GetMessageType(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateMessageTypeWithBody request with any body
-	UpdateMessageTypeWithBody(ctx context.Context, accountId string, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateMessageType(ctx context.Context, accountId string, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfires request
 	ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4724,6 +4724,84 @@ func (c *Client) CreateWormhole(ctx context.Context, accountId string, bucketId 
 
 }
 
+// ListMessageTypes is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListMessageTypes(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListMessageTypesRequest(c.Server, accountId, bucketId)
+	}, true, "ListMessageTypes", reqEditors...)
+
+}
+
+// CreateMessageTypeWithBody executes the CreateMessageType operation.
+
+func (c *Client) CreateMessageTypeWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateMessageTypeRequestWithBody(c.Server, accountId, bucketId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateMessageType(ctx context.Context, accountId string, bucketId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateMessageTypeRequest(c.Server, accountId, bucketId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// DeleteMessageType is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteMessageTypeRequest(c.Server, accountId, bucketId, typeId)
+	}, true, "DeleteMessageType", reqEditors...)
+
+}
+
+// GetMessageType is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMessageTypeRequest(c.Server, accountId, bucketId, typeId)
+	}, true, "GetMessageType", reqEditors...)
+
+}
+
+// UpdateMessageTypeWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, accountId string, bucketId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMessageTypeRequestWithBody(c.Server, accountId, bucketId, typeId, contentType, body)
+	}, true, "UpdateMessageType", reqEditors...)
+
+}
+
+func (c *Client) UpdateMessageType(ctx context.Context, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMessageTypeRequest(c.Server, accountId, bucketId, typeId, body)
+	}, true, "UpdateMessageType", reqEditors...)
+
+}
+
 // CreateToolWithBody executes the CreateTool operation.
 
 func (c *Client) CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5113,84 +5191,6 @@ func (c *Client) MoveCardColumn(ctx context.Context, accountId string, cardTable
 		return nil, err
 	}
 	return c.Client.Do(req)
-
-}
-
-// ListMessageTypes is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) ListMessageTypes(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewListMessageTypesRequest(c.Server, accountId)
-	}, true, "ListMessageTypes", reqEditors...)
-
-}
-
-// CreateMessageTypeWithBody executes the CreateMessageType operation.
-
-func (c *Client) CreateMessageTypeWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateMessageTypeRequestWithBody(c.Server, accountId, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-func (c *Client) CreateMessageType(ctx context.Context, accountId string, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	req, err := NewCreateMessageTypeRequest(c.Server, accountId, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-
-}
-
-// DeleteMessageType is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) DeleteMessageType(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewDeleteMessageTypeRequest(c.Server, accountId, typeId)
-	}, true, "DeleteMessageType", reqEditors...)
-
-}
-
-// GetMessageType is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetMessageType(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetMessageTypeRequest(c.Server, accountId, typeId)
-	}, true, "GetMessageType", reqEditors...)
-
-}
-
-// UpdateMessageTypeWithBody is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) UpdateMessageTypeWithBody(ctx context.Context, accountId string, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateMessageTypeRequestWithBody(c.Server, accountId, typeId, contentType, body)
-	}, true, "UpdateMessageType", reqEditors...)
-
-}
-
-func (c *Client) UpdateMessageType(ctx context.Context, accountId string, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewUpdateMessageTypeRequest(c.Server, accountId, typeId, body)
-	}, true, "UpdateMessageType", reqEditors...)
 
 }
 
@@ -8266,6 +8266,258 @@ func NewCreateWormholeRequestWithBody(server string, accountId string, bucketId 
 	return req, nil
 }
 
+// NewListMessageTypesRequest generates requests for ListMessageTypes
+func NewListMessageTypesRequest(server string, accountId string, bucketId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateMessageTypeRequest calls the generic CreateMessageType builder with application/json body
+func NewCreateMessageTypeRequest(server string, accountId string, bucketId int64, body CreateMessageTypeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateMessageTypeRequestWithBody(server, accountId, bucketId, "application/json", bodyReader)
+}
+
+// NewCreateMessageTypeRequestWithBody generates requests for CreateMessageType with any type of body
+func NewCreateMessageTypeRequestWithBody(server string, accountId string, bucketId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeleteMessageTypeRequest generates requests for DeleteMessageType
+func NewDeleteMessageTypeRequest(server string, accountId string, bucketId int64, typeId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetMessageTypeRequest generates requests for GetMessageType
+func NewGetMessageTypeRequest(server string, accountId string, bucketId int64, typeId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateMessageTypeRequest calls the generic UpdateMessageType builder with application/json body
+func NewUpdateMessageTypeRequest(server string, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateMessageTypeRequestWithBody(server, accountId, bucketId, typeId, "application/json", bodyReader)
+}
+
+// NewUpdateMessageTypeRequestWithBody generates requests for UpdateMessageType with any type of body
+func NewUpdateMessageTypeRequestWithBody(server string, accountId string, bucketId int64, typeId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/categories/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewCreateToolRequest calls the generic CreateTool builder with application/json body
 func NewCreateToolRequest(server string, accountId string, bucketId int64, body CreateToolJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -9233,223 +9485,6 @@ func NewMoveCardColumnRequestWithBody(server string, accountId string, cardTable
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewListMessageTypesRequest generates requests for ListMessageTypes
-func NewListMessageTypesRequest(server string, accountId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/categories.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCreateMessageTypeRequest calls the generic CreateMessageType builder with application/json body
-func NewCreateMessageTypeRequest(server string, accountId string, body CreateMessageTypeJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateMessageTypeRequestWithBody(server, accountId, "application/json", bodyReader)
-}
-
-// NewCreateMessageTypeRequestWithBody generates requests for CreateMessageType with any type of body
-func NewCreateMessageTypeRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/categories.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteMessageTypeRequest generates requests for DeleteMessageType
-func NewDeleteMessageTypeRequest(server string, accountId string, typeId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/categories/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetMessageTypeRequest generates requests for GetMessageType
-func NewGetMessageTypeRequest(server string, accountId string, typeId int64) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/categories/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateMessageTypeRequest calls the generic UpdateMessageType builder with application/json body
-func NewUpdateMessageTypeRequest(server string, accountId string, typeId int64, body UpdateMessageTypeJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateMessageTypeRequestWithBody(server, accountId, typeId, "application/json", bodyReader)
-}
-
-// NewUpdateMessageTypeRequestWithBody generates requests for UpdateMessageType with any type of body
-func NewUpdateMessageTypeRequestWithBody(server string, accountId string, typeId int64, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "typeId", runtime.ParamLocationPath, typeId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/categories/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -18071,6 +18106,11 @@ var operationMetadata = map[string]OperationMetadata{
 	"DeleteWormhole":                     {Idempotent: true, HasSensitiveParams: false},
 	"UpdateWormhole":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateWormhole":                     {Idempotent: false, HasSensitiveParams: false},
+	"ListMessageTypes":                   {Idempotent: true, HasSensitiveParams: false},
+	"CreateMessageType":                  {Idempotent: false, HasSensitiveParams: false},
+	"DeleteMessageType":                  {Idempotent: true, HasSensitiveParams: false},
+	"GetMessageType":                     {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMessageType":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
@@ -18091,11 +18131,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetCardTable":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateCardColumn":                   {Idempotent: false, HasSensitiveParams: false},
 	"MoveCardColumn":                     {Idempotent: false, HasSensitiveParams: false},
-	"ListMessageTypes":                   {Idempotent: true, HasSensitiveParams: false},
-	"CreateMessageType":                  {Idempotent: false, HasSensitiveParams: false},
-	"DeleteMessageType":                  {Idempotent: true, HasSensitiveParams: false},
-	"GetMessageType":                     {Idempotent: true, HasSensitiveParams: false},
-	"UpdateMessageType":                  {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfires":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetCampfire":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
@@ -19249,6 +19284,25 @@ type ClientWithResponsesInterface interface {
 
 	CreateWormholeWithResponse(ctx context.Context, accountId string, bucketId int64, cardTableId int64, body CreateWormholeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWormholeResponse, error)
 
+	// ListMessageTypesWithResponse request
+	ListMessageTypesWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error)
+
+	// CreateMessageTypeWithBodyWithResponse request with any body
+	CreateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
+
+	CreateMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
+
+	// DeleteMessageTypeWithResponse request
+	DeleteMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error)
+
+	// GetMessageTypeWithResponse request
+	GetMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error)
+
+	// UpdateMessageTypeWithBodyWithResponse request with any body
+	UpdateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
+
+	UpdateMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
+
 	// CreateToolWithBodyWithResponse request with any body
 	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
@@ -19332,25 +19386,6 @@ type ClientWithResponsesInterface interface {
 	MoveCardColumnWithBodyWithResponse(ctx context.Context, accountId string, cardTableId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
 	MoveCardColumnWithResponse(ctx context.Context, accountId string, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
-
-	// ListMessageTypesWithResponse request
-	ListMessageTypesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error)
-
-	// CreateMessageTypeWithBodyWithResponse request with any body
-	CreateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
-
-	CreateMessageTypeWithResponse(ctx context.Context, accountId string, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error)
-
-	// DeleteMessageTypeWithResponse request
-	DeleteMessageTypeWithResponse(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error)
-
-	// GetMessageTypeWithResponse request
-	GetMessageTypeWithResponse(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error)
-
-	// UpdateMessageTypeWithBodyWithResponse request with any body
-	UpdateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
-
-	UpdateMessageTypeWithResponse(ctx context.Context, accountId string, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error)
 
 	// ListCampfiresWithResponse request
 	ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
@@ -20425,6 +20460,177 @@ func (r CreateWormholeResponse) ContentType() string {
 	return ""
 }
 
+type ListMessageTypesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListMessageTypesResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMessageTypesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMessageTypesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMessageTypesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateMessageTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateMessageTypeResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateMessageTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateMessageTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteMessageTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteMessageTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteMessageTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetMessageTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetMessageTypeResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMessageTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMessageTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateMessageTypeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateMessageTypeResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMessageTypeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMessageTypeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMessageTypeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CreateToolResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21108,177 +21314,6 @@ func (r MoveCardColumnResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r MoveCardColumnResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type ListMessageTypesResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ListMessageTypesResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r ListMessageTypesResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListMessageTypesResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListMessageTypesResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateMessageTypeResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *CreateMessageTypeResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateMessageTypeResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateMessageTypeResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateMessageTypeResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type DeleteMessageTypeResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteMessageTypeResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteMessageTypeResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteMessageTypeResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetMessageTypeResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetMessageTypeResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetMessageTypeResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetMessageTypeResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetMessageTypeResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type UpdateMessageTypeResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *UpdateMessageTypeResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateMessageTypeResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateMessageTypeResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateMessageTypeResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -27286,6 +27321,67 @@ func (c *ClientWithResponses) CreateWormholeWithResponse(ctx context.Context, ac
 	return ParseCreateWormholeResponse(rsp)
 }
 
+// ListMessageTypesWithResponse request returning *ListMessageTypesResponse
+func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error) {
+	rsp, err := c.ListMessageTypes(ctx, accountId, bucketId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMessageTypesResponse(rsp)
+}
+
+// CreateMessageTypeWithBodyWithResponse request with arbitrary body returning *CreateMessageTypeResponse
+func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
+	rsp, err := c.CreateMessageTypeWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateMessageTypeResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
+	rsp, err := c.CreateMessageType(ctx, accountId, bucketId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateMessageTypeResponse(rsp)
+}
+
+// DeleteMessageTypeWithResponse request returning *DeleteMessageTypeResponse
+func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error) {
+	rsp, err := c.DeleteMessageType(ctx, accountId, bucketId, typeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteMessageTypeResponse(rsp)
+}
+
+// GetMessageTypeWithResponse request returning *GetMessageTypeResponse
+func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error) {
+	rsp, err := c.GetMessageType(ctx, accountId, bucketId, typeId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMessageTypeResponse(rsp)
+}
+
+// UpdateMessageTypeWithBodyWithResponse request with arbitrary body returning *UpdateMessageTypeResponse
+func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
+	rsp, err := c.UpdateMessageTypeWithBody(ctx, accountId, bucketId, typeId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMessageTypeResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context, accountId string, bucketId int64, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
+	rsp, err := c.UpdateMessageType(ctx, accountId, bucketId, typeId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMessageTypeResponse(rsp)
+}
+
 // CreateToolWithBodyWithResponse request with arbitrary body returning *CreateToolResponse
 func (c *ClientWithResponses) CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error) {
 	rsp, err := c.CreateToolWithBody(ctx, accountId, bucketId, contentType, body, reqEditors...)
@@ -27560,67 +27656,6 @@ func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, ac
 		return nil, err
 	}
 	return ParseMoveCardColumnResponse(rsp)
-}
-
-// ListMessageTypesWithResponse request returning *ListMessageTypesResponse
-func (c *ClientWithResponses) ListMessageTypesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListMessageTypesResponse, error) {
-	rsp, err := c.ListMessageTypes(ctx, accountId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListMessageTypesResponse(rsp)
-}
-
-// CreateMessageTypeWithBodyWithResponse request with arbitrary body returning *CreateMessageTypeResponse
-func (c *ClientWithResponses) CreateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
-	rsp, err := c.CreateMessageTypeWithBody(ctx, accountId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateMessageTypeResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateMessageTypeWithResponse(ctx context.Context, accountId string, body CreateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageTypeResponse, error) {
-	rsp, err := c.CreateMessageType(ctx, accountId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateMessageTypeResponse(rsp)
-}
-
-// DeleteMessageTypeWithResponse request returning *DeleteMessageTypeResponse
-func (c *ClientWithResponses) DeleteMessageTypeWithResponse(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*DeleteMessageTypeResponse, error) {
-	rsp, err := c.DeleteMessageType(ctx, accountId, typeId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteMessageTypeResponse(rsp)
-}
-
-// GetMessageTypeWithResponse request returning *GetMessageTypeResponse
-func (c *ClientWithResponses) GetMessageTypeWithResponse(ctx context.Context, accountId string, typeId int64, reqEditors ...RequestEditorFn) (*GetMessageTypeResponse, error) {
-	rsp, err := c.GetMessageType(ctx, accountId, typeId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetMessageTypeResponse(rsp)
-}
-
-// UpdateMessageTypeWithBodyWithResponse request with arbitrary body returning *UpdateMessageTypeResponse
-func (c *ClientWithResponses) UpdateMessageTypeWithBodyWithResponse(ctx context.Context, accountId string, typeId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
-	rsp, err := c.UpdateMessageTypeWithBody(ctx, accountId, typeId, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateMessageTypeResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateMessageTypeWithResponse(ctx context.Context, accountId string, typeId int64, body UpdateMessageTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMessageTypeResponse, error) {
-	rsp, err := c.UpdateMessageType(ctx, accountId, typeId, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateMessageTypeResponse(rsp)
 }
 
 // ListCampfiresWithResponse request returning *ListCampfiresResponse
@@ -30359,6 +30394,286 @@ func ParseCreateWormholeResponse(rsp *http.Response) (*CreateWormholeResponse, e
 	return response, nil
 }
 
+// ParseListMessageTypesResponse parses an HTTP response from a ListMessageTypesWithResponse call
+func ParseListMessageTypesResponse(rsp *http.Response) (*ListMessageTypesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMessageTypesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListMessageTypesResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateMessageTypeResponse parses an HTTP response from a CreateMessageTypeWithResponse call
+func ParseCreateMessageTypeResponse(rsp *http.Response) (*CreateMessageTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateMessageTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateMessageTypeResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteMessageTypeResponse parses an HTTP response from a DeleteMessageTypeWithResponse call
+func ParseDeleteMessageTypeResponse(rsp *http.Response) (*DeleteMessageTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteMessageTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMessageTypeResponse parses an HTTP response from a GetMessageTypeWithResponse call
+func ParseGetMessageTypeResponse(rsp *http.Response) (*GetMessageTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMessageTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetMessageTypeResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMessageTypeResponse parses an HTTP response from a UpdateMessageTypeWithResponse call
+func ParseUpdateMessageTypeResponse(rsp *http.Response) (*UpdateMessageTypeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMessageTypeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateMessageTypeResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseCreateToolResponse parses an HTTP response from a CreateToolWithResponse call
 func ParseCreateToolResponse(rsp *http.Response) (*CreateToolResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -31504,286 +31819,6 @@ func ParseMoveCardColumnResponse(rsp *http.Response) (*MoveCardColumnResponse, e
 			return nil, err
 		}
 		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseListMessageTypesResponse parses an HTTP response from a ListMessageTypesWithResponse call
-func ParseListMessageTypesResponse(rsp *http.Response) (*ListMessageTypesResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListMessageTypesResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ListMessageTypesResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateMessageTypeResponse parses an HTTP response from a CreateMessageTypeWithResponse call
-func ParseCreateMessageTypeResponse(rsp *http.Response) (*CreateMessageTypeResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateMessageTypeResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateMessageTypeResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteMessageTypeResponse parses an HTTP response from a DeleteMessageTypeWithResponse call
-func ParseDeleteMessageTypeResponse(rsp *http.Response) (*DeleteMessageTypeResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteMessageTypeResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case rsp.StatusCode == 204:
-		break // No content-type
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetMessageTypeResponse parses an HTTP response from a GetMessageTypeWithResponse call
-func ParseGetMessageTypeResponse(rsp *http.Response) (*GetMessageTypeResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetMessageTypeResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetMessageTypeResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateMessageTypeResponse parses an HTTP response from a UpdateMessageTypeWithResponse call
-func ParseUpdateMessageTypeResponse(rsp *http.Response) (*UpdateMessageTypeResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateMessageTypeResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UpdateMessageTypeResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

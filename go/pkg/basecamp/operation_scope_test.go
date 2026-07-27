@@ -22,6 +22,7 @@ func TestOperationProjectResourceScope(t *testing.T) {
 		cardTableID = int64(2202)
 		wormholeID  = int64(3303)
 		projectID   = int64(4404)
+		typeID      = int64(5505)
 	)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -56,6 +57,15 @@ func TestOperationProjectResourceScope(t *testing.T) {
 		{"Wormholes.Delete", func(ctx context.Context, ac *AccountClient) {
 			_ = ac.Wormholes().Delete(ctx, bucketID, wormholeID)
 		}, bucketID, wormholeID},
+		{"MessageTypes.Get", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.MessageTypes().Get(ctx, bucketID, typeID)
+		}, bucketID, typeID},
+		{"MessageTypes.Update", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.MessageTypes().Update(ctx, bucketID, typeID, &UpdateMessageTypeRequest{})
+		}, bucketID, typeID},
+		{"MessageTypes.Delete", func(ctx context.Context, ac *AccountClient) {
+			_ = ac.MessageTypes().Delete(ctx, bucketID, typeID)
+		}, bucketID, typeID},
 
 		// Group 2 — project scope only; no deeper resource id.
 		{"Gauges.ListNeedles", func(ctx context.Context, ac *AccountClient) {
@@ -87,6 +97,12 @@ func TestOperationProjectResourceScope(t *testing.T) {
 		}, bucketID, 0},
 		{"Webhooks.Create", func(ctx context.Context, ac *AccountClient) {
 			_, _ = ac.Webhooks().Create(ctx, bucketID, &CreateWebhookRequest{})
+		}, bucketID, 0},
+		{"MessageTypes.List", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.MessageTypes().List(ctx, bucketID, &MessageTypeListOptions{Page: 1})
+		}, bucketID, 0},
+		{"MessageTypes.Create", func(ctx context.Context, ac *AccountClient) {
+			_, _ = ac.MessageTypes().Create(ctx, bucketID, &CreateMessageTypeRequest{Name: "Announcement", Icon: "📣"})
 		}, bucketID, 0},
 		{"Projects.Get", func(ctx context.Context, ac *AccountClient) {
 			_, _ = ac.Projects().Get(ctx, projectID)
