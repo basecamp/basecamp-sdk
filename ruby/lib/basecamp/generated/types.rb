@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T17:58:57Z
+# Generated: 2026-07-27T18:27:05Z
 
 require "json"
 require "time"
@@ -280,6 +280,60 @@ module Basecamp
           "booster" => @booster,
           "content" => @content,
           "recording" => @recording,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # BucketCardsGroup
+    class BucketCardsGroup
+      include TypeHelpers
+      attr_accessor :bucket, :cards
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket cards].freeze
+      end
+
+      def initialize(data = {})
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @cards = parse_array(data["cards"], "Card")
+      end
+
+      def to_h
+        {
+          "bucket" => @bucket,
+          "cards" => @cards,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # BucketTodosGroup
+    class BucketTodosGroup
+      include TypeHelpers
+      attr_accessor :bucket, :todos
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bucket todos].freeze
+      end
+
+      def initialize(data = {})
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @todos = parse_array(data["todos"], "Todo")
+      end
+
+      def to_h
+        {
+          "bucket" => @bucket,
+          "todos" => @todos,
         }.compact
       end
 

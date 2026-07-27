@@ -371,6 +371,15 @@ describe("EverythingService", () => {
       ["everythingFiles", "/files.json", () => client.everything.everythingFiles()],
       ["everythingOverdueTodos", "/todos/overdue.json", () => client.everything.everythingOverdueTodos()],
       ["everythingOverdueCards", "/cards/overdue.json", () => client.everything.everythingOverdueCards()],
+      ["everythingOpenTodos", "/todos/open.json", () => client.everything.everythingOpenTodos()],
+      ["everythingCompletedTodos", "/todos/completed.json", () => client.everything.everythingCompletedTodos()],
+      ["everythingUnassignedTodos", "/todos/unassigned.json", () => client.everything.everythingUnassignedTodos()],
+      ["everythingNoDueDateTodos", "/todos/no_due_date.json", () => client.everything.everythingNoDueDateTodos()],
+      ["everythingOpenCards", "/cards/open.json", () => client.everything.everythingOpenCards()],
+      ["everythingCompletedCards", "/cards/completed.json", () => client.everything.everythingCompletedCards()],
+      ["everythingUnassignedCards", "/cards/unassigned.json", () => client.everything.everythingUnassignedCards()],
+      ["everythingNoDueDateCards", "/cards/no_due_date.json", () => client.everything.everythingNoDueDateCards()],
+      ["everythingNotNowCards", "/cards/not_now.json", () => client.everything.everythingNotNowCards()],
     ];
 
     it.each(cases)("%s propagates a 4xx as a BasecampError", async (_name, path, call) => {
@@ -379,6 +388,361 @@ describe("EverythingService", () => {
       );
 
       await expect(call()).rejects.toThrow(BasecampError);
+    });
+  });
+
+  describe("everythingOpenTodos", () => {
+    it("should decode the /todos/open.json feed grouped by bucket, each to-do carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          todos: [
+            {
+              id: 8001,
+              type: "Todo",
+              title: "Draft the spec",
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 90011, type: "Todo", title: "Outline sections" }],
+            },
+          ],
+        },
+        {
+          bucket: { id: 3, name: "Honcho Rollout", type: "Project" },
+          todos: [
+            {
+              id: 8002,
+              type: "Todo",
+              title: "Book the venue",
+              bucket: { id: 3, name: "Honcho Rollout", type: "Project" },
+              steps: [{ id: 90021, type: "Todo", title: "Compare quotes" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/todos/open.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingOpenTodos()) as any[];
+      expect(result).toHaveLength(2);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].todos).toHaveLength(1);
+      expect(result[0].todos[0].id).toBe(8001);
+      expect(result[0].todos[0].steps[0].title).toBe("Outline sections");
+      expect(result[1].bucket.id).toBe(3);
+      expect(result[1].todos[0].id).toBe(8002);
+    });
+  });
+
+  describe("everythingCompletedTodos", () => {
+    it("should decode the /todos/completed.json feed grouped by bucket, each to-do carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          todos: [
+            {
+              id: 8101,
+              type: "Todo",
+              title: "Ship v1",
+              completed: true,
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 91011, type: "Todo", title: "Tag release", completed: true }],
+            },
+          ],
+        },
+        {
+          bucket: { id: 4, name: "Marketing Site", type: "Project" },
+          todos: [
+            {
+              id: 8102,
+              type: "Todo",
+              title: "Publish post",
+              completed: true,
+              bucket: { id: 4, name: "Marketing Site", type: "Project" },
+              steps: [{ id: 91021, type: "Todo", title: "Proofread", completed: true }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/todos/completed.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingCompletedTodos()) as any[];
+      expect(result).toHaveLength(2);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].todos).toHaveLength(1);
+      expect(result[0].todos[0].id).toBe(8101);
+      expect(result[0].todos[0].steps[0].title).toBe("Tag release");
+      expect(result[1].bucket.id).toBe(4);
+      expect(result[1].todos[0].id).toBe(8102);
+    });
+  });
+
+  describe("everythingUnassignedTodos", () => {
+    it("should decode the /todos/unassigned.json feed grouped by bucket, each to-do carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          todos: [
+            {
+              id: 8201,
+              type: "Todo",
+              title: "Assign an owner",
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              assignees: [],
+              steps: [{ id: 92011, type: "Todo", title: "Pick a lead" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/todos/unassigned.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingUnassignedTodos()) as any[];
+      expect(result).toHaveLength(1);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].todos).toHaveLength(1);
+      expect(result[0].todos[0].id).toBe(8201);
+      expect(result[0].todos[0].assignees).toEqual([]);
+      expect(result[0].todos[0].steps[0].title).toBe("Pick a lead");
+    });
+  });
+
+  describe("everythingNoDueDateTodos", () => {
+    it("should decode the /todos/no_due_date.json feed grouped by bucket, each to-do carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          todos: [
+            {
+              id: 8301,
+              type: "Todo",
+              title: "Someday task",
+              due_on: null,
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 93011, type: "Todo", title: "Scope it" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/todos/no_due_date.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingNoDueDateTodos()) as any[];
+      expect(result).toHaveLength(1);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].todos).toHaveLength(1);
+      expect(result[0].todos[0].id).toBe(8301);
+      expect(result[0].todos[0].due_on).toBeNull();
+      expect(result[0].todos[0].steps[0].title).toBe("Scope it");
+    });
+  });
+
+  describe("everythingOpenCards", () => {
+    it("should decode the /cards/open.json feed grouped by bucket, each card carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          cards: [
+            {
+              id: 8401,
+              type: "Kanban::Card",
+              title: "Design review",
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 94011, type: "Kanban::Step", title: "Gather feedback" }],
+            },
+          ],
+        },
+        {
+          bucket: { id: 3, name: "Honcho Rollout", type: "Project" },
+          cards: [
+            {
+              id: 8402,
+              type: "Kanban::Card",
+              title: "Wire the API",
+              bucket: { id: 3, name: "Honcho Rollout", type: "Project" },
+              steps: [{ id: 94021, type: "Kanban::Step", title: "Define routes" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/cards/open.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingOpenCards()) as any[];
+      expect(result).toHaveLength(2);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].cards).toHaveLength(1);
+      expect(result[0].cards[0].id).toBe(8401);
+      expect(result[0].cards[0].steps[0].title).toBe("Gather feedback");
+      expect(result[1].bucket.id).toBe(3);
+      expect(result[1].cards[0].id).toBe(8402);
+    });
+  });
+
+  describe("everythingCompletedCards", () => {
+    it("should decode the /cards/completed.json feed grouped by bucket, each card carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          cards: [
+            {
+              id: 8501,
+              type: "Kanban::Card",
+              title: "Launch checklist",
+              completed: true,
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 95011, type: "Kanban::Step", title: "Verify DNS", completed: true }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/cards/completed.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingCompletedCards()) as any[];
+      expect(result).toHaveLength(1);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].cards).toHaveLength(1);
+      expect(result[0].cards[0].id).toBe(8501);
+      expect(result[0].cards[0].steps[0].title).toBe("Verify DNS");
+    });
+  });
+
+  describe("everythingUnassignedCards", () => {
+    it("should decode the /cards/unassigned.json feed grouped by bucket, each card carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          cards: [
+            {
+              id: 8601,
+              type: "Kanban::Card",
+              title: "Needs an owner",
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              assignees: [],
+              steps: [{ id: 96011, type: "Kanban::Step", title: "Triage" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/cards/unassigned.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingUnassignedCards()) as any[];
+      expect(result).toHaveLength(1);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].cards).toHaveLength(1);
+      expect(result[0].cards[0].id).toBe(8601);
+      expect(result[0].cards[0].assignees).toEqual([]);
+      expect(result[0].cards[0].steps[0].title).toBe("Triage");
+    });
+  });
+
+  describe("everythingNoDueDateCards", () => {
+    it("should decode the /cards/no_due_date.json feed grouped by bucket, each card carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          cards: [
+            {
+              id: 8701,
+              type: "Kanban::Card",
+              title: "Backlog idea",
+              due_on: null,
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 97011, type: "Kanban::Step", title: "Sketch it" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/cards/no_due_date.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingNoDueDateCards()) as any[];
+      expect(result).toHaveLength(1);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].cards).toHaveLength(1);
+      expect(result[0].cards[0].id).toBe(8701);
+      expect(result[0].cards[0].due_on).toBeNull();
+      expect(result[0].cards[0].steps[0].title).toBe("Sketch it");
+    });
+  });
+
+  describe("everythingNotNowCards", () => {
+    it("should decode the /cards/not_now.json feed grouped by bucket, each card carrying its steps", async () => {
+      const fixture = [
+        {
+          bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+          cards: [
+            {
+              id: 8801,
+              type: "Kanban::Card",
+              title: "Parked for later",
+              bucket: { id: 2, name: "The Leto Laptop", type: "Project" },
+              steps: [{ id: 98011, type: "Kanban::Step", title: "Revisit next quarter" }],
+            },
+          ],
+        },
+        {
+          bucket: { id: 4, name: "Marketing Site", type: "Project" },
+          cards: [
+            {
+              id: 8802,
+              type: "Kanban::Card",
+              title: "On hold",
+              bucket: { id: 4, name: "Marketing Site", type: "Project" },
+              steps: [{ id: 98021, type: "Kanban::Step", title: "Await budget" }],
+            },
+          ],
+        },
+      ];
+
+      server.use(
+        http.get(`${BASE_URL}/cards/not_now.json`, () => {
+          return HttpResponse.json(fixture);
+        })
+      );
+
+      const result = (await client.everything.everythingNotNowCards()) as any[];
+      expect(result).toHaveLength(2);
+      expect(result[0].bucket).toEqual({ id: 2, name: "The Leto Laptop", type: "Project" });
+      expect(result[0].cards).toHaveLength(1);
+      expect(result[0].cards[0].id).toBe(8801);
+      expect(result[0].cards[0].steps[0].title).toBe("Revisit next quarter");
+      expect(result[1].bucket.id).toBe(4);
+      expect(result[1].cards[0].id).toBe(8802);
     });
   });
 });

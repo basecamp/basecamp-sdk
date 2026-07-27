@@ -352,12 +352,23 @@ export {
   EverythingService,
   type EverythingBoost,
   type EverythingFile,
+  type BucketTodosGroup,
+  type BucketCardsGroup,
   type EverythingMessagesEverythingOptions,
   type EverythingCommentsEverythingOptions,
   type EverythingCheckinsEverythingOptions,
   type EverythingForwardsEverythingOptions,
   type EverythingBoostsEverythingOptions,
   type EverythingFilesEverythingOptions,
+  type EverythingOpenTodosEverythingOptions,
+  type EverythingCompletedTodosEverythingOptions,
+  type EverythingUnassignedTodosEverythingOptions,
+  type EverythingNoDueDateTodosEverythingOptions,
+  type EverythingOpenCardsEverythingOptions,
+  type EverythingCompletedCardsEverythingOptions,
+  type EverythingUnassignedCardsEverythingOptions,
+  type EverythingNoDueDateCardsEverythingOptions,
+  type EverythingNotNowCardsEverythingOptions,
 } from "./generated/services/everything.js";
 
 // Search & Reports services - generated

@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-27T17:58:56.990Z",
+  "generated": "2026-07-27T18:27:04.758Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -536,6 +536,70 @@ const metadata: MetadataOutput = {
         ]
       }
     },
+    "GetEverythingCompletedCards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
+    "GetEverythingNoDueDateCards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
+    "GetEverythingNotNowCards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
+    "GetEverythingOpenCards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
     "GetEverythingOverdueCards": {
       "retry": {
         "maxAttempts": 3,
@@ -545,6 +609,22 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      }
+    },
+    "GetEverythingUnassignedCards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
       }
     },
     "ListCampfires": {
@@ -2531,6 +2611,54 @@ const metadata: MetadataOutput = {
         ]
       }
     },
+    "GetEverythingCompletedTodos": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
+    "GetEverythingNoDueDateTodos": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
+    "GetEverythingOpenTodos": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
+      }
+    },
     "GetEverythingOverdueTodos": {
       "retry": {
         "maxAttempts": 3,
@@ -2540,6 +2668,22 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      }
+    },
+    "GetEverythingUnassignedTodos": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 5
       }
     },
     "GetTodo": {

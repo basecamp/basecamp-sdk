@@ -459,10 +459,75 @@
       }
     },
     {
+      "pattern": "/{accountId}/cards/completed",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingCompletedCards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/cards/no_due_date",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingNoDueDateCards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/cards/not_now",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingNotNowCards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/cards/open",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingOpenCards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/cards/overdue",
       "resource": "Everything",
       "operations": {
         "GET": "GetEverythingOverdueCards"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/cards/unassigned",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingUnassignedCards"
       },
       "params": {
         "accountId": {
@@ -2130,10 +2195,62 @@
       }
     },
     {
+      "pattern": "/{accountId}/todos/completed",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingCompletedTodos"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/no_due_date",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingNoDueDateTodos"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/open",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingOpenTodos"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/todos/overdue",
       "resource": "Everything",
       "operations": {
         "GET": "GetEverythingOverdueTodos"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/todos/unassigned",
+      "resource": "Everything",
+      "operations": {
+        "GET": "GetEverythingUnassignedTodos"
       },
       "params": {
         "accountId": {

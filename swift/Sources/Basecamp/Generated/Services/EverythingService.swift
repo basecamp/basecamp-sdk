@@ -31,6 +31,26 @@ public struct EverythingCommentsEverythingOptions: Sendable {
     }
 }
 
+public struct EverythingCompletedCardsEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingCompletedTodosEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
 public struct EverythingFilesEverythingOptions: Sendable {
     public var kind: String?
     public var peopleIds: [Int]?
@@ -61,6 +81,76 @@ public struct EverythingForwardsEverythingOptions: Sendable {
 }
 
 public struct EverythingMessagesEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingNoDueDateCardsEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingNoDueDateTodosEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingNotNowCardsEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingOpenCardsEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingOpenTodosEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingUnassignedCardsEverythingOptions: Sendable {
+    public var page: Int?
+    public var maxItems: Int?
+
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
+        self.maxItems = maxItems
+    }
+}
+
+public struct EverythingUnassignedTodosEverythingOptions: Sendable {
     public var page: Int?
     public var maxItems: Int?
 
@@ -114,6 +204,34 @@ public final class EverythingService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func everythingCompletedCards(options: EverythingCompletedCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingCompletedCards", resourceType: "everything_completed_card", isMutation: false),
+            path: "/cards/completed.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingCompletedCards")
+        )
+    }
+
+    public func everythingCompletedTodos(options: EverythingCompletedTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingCompletedTodos", resourceType: "everything_completed_todo", isMutation: false),
+            path: "/todos/completed.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingCompletedTodos")
+        )
+    }
+
     public func everythingFiles(options: EverythingFilesEverythingOptions? = nil) async throws -> ListResult<EverythingFile> {
         var queryItems: [URLQueryItem] = []
         if let kind = options?.kind {
@@ -164,6 +282,76 @@ public final class EverythingService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func everythingNoDueDateCards(options: EverythingNoDueDateCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingNoDueDateCards", resourceType: "everything_no_due_date_card", isMutation: false),
+            path: "/cards/no_due_date.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingNoDueDateCards")
+        )
+    }
+
+    public func everythingNoDueDateTodos(options: EverythingNoDueDateTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingNoDueDateTodos", resourceType: "everything_no_due_date_todo", isMutation: false),
+            path: "/todos/no_due_date.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingNoDueDateTodos")
+        )
+    }
+
+    public func everythingNotNowCards(options: EverythingNotNowCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingNotNowCards", resourceType: "everything_not_now_card", isMutation: false),
+            path: "/cards/not_now.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingNotNowCards")
+        )
+    }
+
+    public func everythingOpenCards(options: EverythingOpenCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingOpenCards", resourceType: "everything_open_card", isMutation: false),
+            path: "/cards/open.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingOpenCards")
+        )
+    }
+
+    public func everythingOpenTodos(options: EverythingOpenTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingOpenTodos", resourceType: "everything_open_todo", isMutation: false),
+            path: "/todos/open.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingOpenTodos")
+        )
+    }
+
     public func everythingOverdueCards() async throws -> [Card] {
         return try await request(
             OperationInfo(service: "Everything", operation: "GetEverythingOverdueCards", resourceType: "everything_overdue_card", isMutation: false),
@@ -179,6 +367,34 @@ public final class EverythingService: BaseService, @unchecked Sendable {
             method: "GET",
             path: "/todos/overdue.json",
             retryConfig: Metadata.retryConfig(for: "GetEverythingOverdueTodos")
+        )
+    }
+
+    public func everythingUnassignedCards(options: EverythingUnassignedCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingUnassignedCards", resourceType: "everything_unassigned_card", isMutation: false),
+            path: "/cards/unassigned.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingUnassignedCards")
+        )
+    }
+
+    public func everythingUnassignedTodos(options: EverythingUnassignedTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
+        return try await requestPaginated(
+            OperationInfo(service: "Everything", operation: "GetEverythingUnassignedTodos", resourceType: "everything_unassigned_todo", isMutation: false),
+            path: "/todos/unassigned.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
+            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
+            retryConfig: Metadata.retryConfig(for: "GetEverythingUnassignedTodos")
         )
     }
 }

@@ -137,6 +137,20 @@ type Boost struct {
 	Recording RecordingParent `json:"recording,omitempty"`
 }
 
+// BucketCardsGroup One project's slice of a filtered card listing: the parent project and the
+// matching cards (each carrying its steps).
+type BucketCardsGroup struct {
+	Bucket RecordingBucket `json:"bucket"`
+	Cards  []Card          `json:"cards"`
+}
+
+// BucketTodosGroup One project's slice of a filtered to-do listing: the parent project and the
+// matching to-dos (each carrying its steps).
+type BucketTodosGroup struct {
+	Bucket RecordingBucket `json:"bucket"`
+	Todos  []Todo          `json:"todos"`
+}
+
 // Campfire defines model for Campfire.
 type Campfire struct {
 	AppUrl           string     `json:"app_url"`
@@ -1122,6 +1136,12 @@ type GetEverythingCheckinsResponseContent = []Recording
 // GetEverythingCommentsResponseContent defines model for GetEverythingCommentsResponseContent.
 type GetEverythingCommentsResponseContent = []Recording
 
+// GetEverythingCompletedCardsResponseContent defines model for GetEverythingCompletedCardsResponseContent.
+type GetEverythingCompletedCardsResponseContent = []BucketCardsGroup
+
+// GetEverythingCompletedTodosResponseContent defines model for GetEverythingCompletedTodosResponseContent.
+type GetEverythingCompletedTodosResponseContent = []BucketTodosGroup
+
 // GetEverythingFilesResponseContent defines model for GetEverythingFilesResponseContent.
 type GetEverythingFilesResponseContent = []EverythingFile
 
@@ -1131,11 +1151,32 @@ type GetEverythingForwardsResponseContent = []Recording
 // GetEverythingMessagesResponseContent defines model for GetEverythingMessagesResponseContent.
 type GetEverythingMessagesResponseContent = []Recording
 
+// GetEverythingNoDueDateCardsResponseContent defines model for GetEverythingNoDueDateCardsResponseContent.
+type GetEverythingNoDueDateCardsResponseContent = []BucketCardsGroup
+
+// GetEverythingNoDueDateTodosResponseContent defines model for GetEverythingNoDueDateTodosResponseContent.
+type GetEverythingNoDueDateTodosResponseContent = []BucketTodosGroup
+
+// GetEverythingNotNowCardsResponseContent defines model for GetEverythingNotNowCardsResponseContent.
+type GetEverythingNotNowCardsResponseContent = []BucketCardsGroup
+
+// GetEverythingOpenCardsResponseContent defines model for GetEverythingOpenCardsResponseContent.
+type GetEverythingOpenCardsResponseContent = []BucketCardsGroup
+
+// GetEverythingOpenTodosResponseContent defines model for GetEverythingOpenTodosResponseContent.
+type GetEverythingOpenTodosResponseContent = []BucketTodosGroup
+
 // GetEverythingOverdueCardsResponseContent defines model for GetEverythingOverdueCardsResponseContent.
 type GetEverythingOverdueCardsResponseContent = []Card
 
 // GetEverythingOverdueTodosResponseContent defines model for GetEverythingOverdueTodosResponseContent.
 type GetEverythingOverdueTodosResponseContent = []Todo
+
+// GetEverythingUnassignedCardsResponseContent defines model for GetEverythingUnassignedCardsResponseContent.
+type GetEverythingUnassignedCardsResponseContent = []BucketCardsGroup
+
+// GetEverythingUnassignedTodosResponseContent defines model for GetEverythingUnassignedTodosResponseContent.
+type GetEverythingUnassignedTodosResponseContent = []BucketTodosGroup
 
 // GetForwardReplyResponseContent defines model for GetForwardReplyResponseContent.
 type GetForwardReplyResponseContent = ForwardReply
@@ -3174,6 +3215,36 @@ type GetEverythingBoostsParams struct {
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// GetEverythingCompletedCardsParams defines parameters for GetEverythingCompletedCards.
+type GetEverythingCompletedCardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingNoDueDateCardsParams defines parameters for GetEverythingNoDueDateCards.
+type GetEverythingNoDueDateCardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingNotNowCardsParams defines parameters for GetEverythingNotNowCards.
+type GetEverythingNotNowCardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingOpenCardsParams defines parameters for GetEverythingOpenCards.
+type GetEverythingOpenCardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingUnassignedCardsParams defines parameters for GetEverythingUnassignedCards.
+type GetEverythingUnassignedCardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListCampfireLinesParams defines parameters for ListCampfireLines.
 type ListCampfireLinesParams struct {
 	// Sort created_at|updated_at
@@ -3417,6 +3488,30 @@ type ListTodosParams struct {
 	// Status active|archived|trashed
 	Status    string `form:"status,omitempty" json:"status,omitempty"`
 	Completed bool   `form:"completed,omitempty" json:"completed,omitempty"`
+}
+
+// GetEverythingCompletedTodosParams defines parameters for GetEverythingCompletedTodos.
+type GetEverythingCompletedTodosParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingNoDueDateTodosParams defines parameters for GetEverythingNoDueDateTodos.
+type GetEverythingNoDueDateTodosParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingOpenTodosParams defines parameters for GetEverythingOpenTodos.
+type GetEverythingOpenTodosParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingUnassignedTodosParams defines parameters for GetEverythingUnassignedTodos.
+type GetEverythingUnassignedTodosParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // ListTodolistsParams defines parameters for ListTodolists.
@@ -4093,8 +4188,23 @@ type ClientInterface interface {
 
 	MoveCardColumn(ctx context.Context, accountId string, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEverythingCompletedCards request
+	GetEverythingCompletedCards(ctx context.Context, accountId string, params *GetEverythingCompletedCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingNoDueDateCards request
+	GetEverythingNoDueDateCards(ctx context.Context, accountId string, params *GetEverythingNoDueDateCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingNotNowCards request
+	GetEverythingNotNowCards(ctx context.Context, accountId string, params *GetEverythingNotNowCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingOpenCards request
+	GetEverythingOpenCards(ctx context.Context, accountId string, params *GetEverythingOpenCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEverythingOverdueCards request
 	GetEverythingOverdueCards(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingUnassignedCards request
+	GetEverythingUnassignedCards(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListCampfires request
 	ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4636,8 +4746,20 @@ type ClientInterface interface {
 
 	CreateTodo(ctx context.Context, accountId string, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEverythingCompletedTodos request
+	GetEverythingCompletedTodos(ctx context.Context, accountId string, params *GetEverythingCompletedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingNoDueDateTodos request
+	GetEverythingNoDueDateTodos(ctx context.Context, accountId string, params *GetEverythingNoDueDateTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingOpenTodos request
+	GetEverythingOpenTodos(ctx context.Context, accountId string, params *GetEverythingOpenTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetEverythingOverdueTodos request
 	GetEverythingOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingUnassignedTodos request
+	GetEverythingUnassignedTodos(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// TrashTodo request
 	TrashTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5406,6 +5528,46 @@ func (c *Client) MoveCardColumn(ctx context.Context, accountId string, cardTable
 
 }
 
+// GetEverythingCompletedCards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingCompletedCards(ctx context.Context, accountId string, params *GetEverythingCompletedCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingCompletedCardsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingCompletedCards", reqEditors...)
+
+}
+
+// GetEverythingNoDueDateCards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingNoDueDateCards(ctx context.Context, accountId string, params *GetEverythingNoDueDateCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingNoDueDateCardsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingNoDueDateCards", reqEditors...)
+
+}
+
+// GetEverythingNotNowCards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingNotNowCards(ctx context.Context, accountId string, params *GetEverythingNotNowCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingNotNowCardsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingNotNowCards", reqEditors...)
+
+}
+
+// GetEverythingOpenCards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingOpenCards(ctx context.Context, accountId string, params *GetEverythingOpenCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingOpenCardsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingOpenCards", reqEditors...)
+
+}
+
 // GetEverythingOverdueCards is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetEverythingOverdueCards(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5413,6 +5575,16 @@ func (c *Client) GetEverythingOverdueCards(ctx context.Context, accountId string
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetEverythingOverdueCardsRequest(c.Server, accountId)
 	}, true, "GetEverythingOverdueCards", reqEditors...)
+
+}
+
+// GetEverythingUnassignedCards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingUnassignedCards(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingUnassignedCardsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingUnassignedCards", reqEditors...)
 
 }
 
@@ -7528,6 +7700,36 @@ func (c *Client) CreateTodo(ctx context.Context, accountId string, todolistId in
 
 }
 
+// GetEverythingCompletedTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingCompletedTodos(ctx context.Context, accountId string, params *GetEverythingCompletedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingCompletedTodosRequest(c.Server, accountId, params)
+	}, true, "GetEverythingCompletedTodos", reqEditors...)
+
+}
+
+// GetEverythingNoDueDateTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingNoDueDateTodos(ctx context.Context, accountId string, params *GetEverythingNoDueDateTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingNoDueDateTodosRequest(c.Server, accountId, params)
+	}, true, "GetEverythingNoDueDateTodos", reqEditors...)
+
+}
+
+// GetEverythingOpenTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingOpenTodos(ctx context.Context, accountId string, params *GetEverythingOpenTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingOpenTodosRequest(c.Server, accountId, params)
+	}, true, "GetEverythingOpenTodos", reqEditors...)
+
+}
+
 // GetEverythingOverdueTodos is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetEverythingOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -7535,6 +7737,16 @@ func (c *Client) GetEverythingOverdueTodos(ctx context.Context, accountId string
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetEverythingOverdueTodosRequest(c.Server, accountId)
 	}, true, "GetEverythingOverdueTodos", reqEditors...)
+
+}
+
+// GetEverythingUnassignedTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingUnassignedTodos(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingUnassignedTodosRequest(c.Server, accountId, params)
+	}, true, "GetEverythingUnassignedTodos", reqEditors...)
 
 }
 
@@ -9832,6 +10044,230 @@ func NewMoveCardColumnRequestWithBody(server string, accountId string, cardTable
 	return req, nil
 }
 
+// NewGetEverythingCompletedCardsRequest generates requests for GetEverythingCompletedCards
+func NewGetEverythingCompletedCardsRequest(server string, accountId string, params *GetEverythingCompletedCardsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cards/completed.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingNoDueDateCardsRequest generates requests for GetEverythingNoDueDateCards
+func NewGetEverythingNoDueDateCardsRequest(server string, accountId string, params *GetEverythingNoDueDateCardsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cards/no_due_date.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingNotNowCardsRequest generates requests for GetEverythingNotNowCards
+func NewGetEverythingNotNowCardsRequest(server string, accountId string, params *GetEverythingNotNowCardsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cards/not_now.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingOpenCardsRequest generates requests for GetEverythingOpenCards
+func NewGetEverythingOpenCardsRequest(server string, accountId string, params *GetEverythingOpenCardsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cards/open.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetEverythingOverdueCardsRequest generates requests for GetEverythingOverdueCards
 func NewGetEverythingOverdueCardsRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -9856,6 +10292,62 @@ func NewGetEverythingOverdueCardsRequest(server string, accountId string) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingUnassignedCardsRequest generates requests for GetEverythingUnassignedCards
+func NewGetEverythingUnassignedCardsRequest(server string, accountId string, params *GetEverythingUnassignedCardsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cards/unassigned.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -17520,6 +18012,174 @@ func NewCreateTodoRequestWithBody(server string, accountId string, todolistId in
 	return req, nil
 }
 
+// NewGetEverythingCompletedTodosRequest generates requests for GetEverythingCompletedTodos
+func NewGetEverythingCompletedTodosRequest(server string, accountId string, params *GetEverythingCompletedTodosParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todos/completed.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingNoDueDateTodosRequest generates requests for GetEverythingNoDueDateTodos
+func NewGetEverythingNoDueDateTodosRequest(server string, accountId string, params *GetEverythingNoDueDateTodosParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todos/no_due_date.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingOpenTodosRequest generates requests for GetEverythingOpenTodos
+func NewGetEverythingOpenTodosRequest(server string, accountId string, params *GetEverythingOpenTodosParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todos/open.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetEverythingOverdueTodosRequest generates requests for GetEverythingOverdueTodos
 func NewGetEverythingOverdueTodosRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -17544,6 +18204,62 @@ func NewGetEverythingOverdueTodosRequest(server string, accountId string) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingUnassignedTodosRequest generates requests for GetEverythingUnassignedTodos
+func NewGetEverythingUnassignedTodosRequest(server string, accountId string, params *GetEverythingUnassignedTodosParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todos/unassigned.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -18850,7 +19566,12 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetCardTable":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateCardColumn":                   {Idempotent: false, HasSensitiveParams: false},
 	"MoveCardColumn":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingCompletedCards":        {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingNoDueDateCards":        {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingNotNowCards":           {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingOpenCards":             {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingOverdueCards":          {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingUnassignedCards":       {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfires":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetCampfire":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
@@ -19001,7 +19722,11 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateTodolistGroup":                {Idempotent: false, HasSensitiveParams: false},
 	"ListTodos":                          {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodo":                         {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingCompletedTodos":        {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingNoDueDateTodos":        {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingOpenTodos":             {Idempotent: true, HasSensitiveParams: false},
 	"GetEverythingOverdueTodos":          {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingUnassignedTodos":       {Idempotent: true, HasSensitiveParams: false},
 	"TrashTodo":                          {Idempotent: true, HasSensitiveParams: false},
 	"GetTodo":                            {Idempotent: true, HasSensitiveParams: false},
 	"ReplaceTodo":                        {Idempotent: true, HasSensitiveParams: false},
@@ -20116,8 +20841,23 @@ type ClientWithResponsesInterface interface {
 
 	MoveCardColumnWithResponse(ctx context.Context, accountId string, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
+	// GetEverythingCompletedCardsWithResponse request
+	GetEverythingCompletedCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingCompletedCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingCompletedCardsResponse, error)
+
+	// GetEverythingNoDueDateCardsWithResponse request
+	GetEverythingNoDueDateCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingNoDueDateCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingNoDueDateCardsResponse, error)
+
+	// GetEverythingNotNowCardsWithResponse request
+	GetEverythingNotNowCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingNotNowCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingNotNowCardsResponse, error)
+
+	// GetEverythingOpenCardsWithResponse request
+	GetEverythingOpenCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingOpenCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingOpenCardsResponse, error)
+
 	// GetEverythingOverdueCardsWithResponse request
 	GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error)
+
+	// GetEverythingUnassignedCardsWithResponse request
+	GetEverythingUnassignedCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedCardsResponse, error)
 
 	// ListCampfiresWithResponse request
 	ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
@@ -20659,8 +21399,20 @@ type ClientWithResponsesInterface interface {
 
 	CreateTodoWithResponse(ctx context.Context, accountId string, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
+	// GetEverythingCompletedTodosWithResponse request
+	GetEverythingCompletedTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingCompletedTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingCompletedTodosResponse, error)
+
+	// GetEverythingNoDueDateTodosWithResponse request
+	GetEverythingNoDueDateTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingNoDueDateTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingNoDueDateTodosResponse, error)
+
+	// GetEverythingOpenTodosWithResponse request
+	GetEverythingOpenTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingOpenTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingOpenTodosResponse, error)
+
 	// GetEverythingOverdueTodosWithResponse request
 	GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error)
+
+	// GetEverythingUnassignedTodosWithResponse request
+	GetEverythingUnassignedTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedTodosResponse, error)
 
 	// TrashTodoWithResponse request
 	TrashTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
@@ -22104,6 +22856,142 @@ func (r MoveCardColumnResponse) ContentType() string {
 	return ""
 }
 
+type GetEverythingCompletedCardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingCompletedCardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingCompletedCardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingCompletedCardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingCompletedCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingNoDueDateCardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingNoDueDateCardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingNoDueDateCardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingNoDueDateCardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingNoDueDateCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingNotNowCardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingNotNowCardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingNotNowCardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingNotNowCardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingNotNowCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingOpenCardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingOpenCardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingOpenCardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingOpenCardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingOpenCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetEverythingOverdueCardsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22132,6 +23020,40 @@ func (r GetEverythingOverdueCardsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetEverythingOverdueCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingUnassignedCardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingUnassignedCardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingUnassignedCardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingUnassignedCardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingUnassignedCardsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -27269,6 +28191,108 @@ func (r CreateTodoResponse) ContentType() string {
 	return ""
 }
 
+type GetEverythingCompletedTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingCompletedTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingCompletedTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingCompletedTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingCompletedTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingNoDueDateTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingNoDueDateTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingNoDueDateTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingNoDueDateTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingNoDueDateTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingOpenTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingOpenTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingOpenTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingOpenTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingOpenTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetEverythingOverdueTodosResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27297,6 +28321,40 @@ func (r GetEverythingOverdueTodosResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetEverythingOverdueTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingUnassignedTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingUnassignedTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingUnassignedTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingUnassignedTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingUnassignedTodosResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -28689,6 +29747,42 @@ func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, ac
 	return ParseMoveCardColumnResponse(rsp)
 }
 
+// GetEverythingCompletedCardsWithResponse request returning *GetEverythingCompletedCardsResponse
+func (c *ClientWithResponses) GetEverythingCompletedCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingCompletedCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingCompletedCardsResponse, error) {
+	rsp, err := c.GetEverythingCompletedCards(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingCompletedCardsResponse(rsp)
+}
+
+// GetEverythingNoDueDateCardsWithResponse request returning *GetEverythingNoDueDateCardsResponse
+func (c *ClientWithResponses) GetEverythingNoDueDateCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingNoDueDateCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingNoDueDateCardsResponse, error) {
+	rsp, err := c.GetEverythingNoDueDateCards(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingNoDueDateCardsResponse(rsp)
+}
+
+// GetEverythingNotNowCardsWithResponse request returning *GetEverythingNotNowCardsResponse
+func (c *ClientWithResponses) GetEverythingNotNowCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingNotNowCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingNotNowCardsResponse, error) {
+	rsp, err := c.GetEverythingNotNowCards(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingNotNowCardsResponse(rsp)
+}
+
+// GetEverythingOpenCardsWithResponse request returning *GetEverythingOpenCardsResponse
+func (c *ClientWithResponses) GetEverythingOpenCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingOpenCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingOpenCardsResponse, error) {
+	rsp, err := c.GetEverythingOpenCards(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingOpenCardsResponse(rsp)
+}
+
 // GetEverythingOverdueCardsWithResponse request returning *GetEverythingOverdueCardsResponse
 func (c *ClientWithResponses) GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error) {
 	rsp, err := c.GetEverythingOverdueCards(ctx, accountId, reqEditors...)
@@ -28696,6 +29790,15 @@ func (c *ClientWithResponses) GetEverythingOverdueCardsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseGetEverythingOverdueCardsResponse(rsp)
+}
+
+// GetEverythingUnassignedCardsWithResponse request returning *GetEverythingUnassignedCardsResponse
+func (c *ClientWithResponses) GetEverythingUnassignedCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedCardsResponse, error) {
+	rsp, err := c.GetEverythingUnassignedCards(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingUnassignedCardsResponse(rsp)
 }
 
 // ListCampfiresWithResponse request returning *ListCampfiresResponse
@@ -30408,6 +31511,33 @@ func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, accoun
 	return ParseCreateTodoResponse(rsp)
 }
 
+// GetEverythingCompletedTodosWithResponse request returning *GetEverythingCompletedTodosResponse
+func (c *ClientWithResponses) GetEverythingCompletedTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingCompletedTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingCompletedTodosResponse, error) {
+	rsp, err := c.GetEverythingCompletedTodos(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingCompletedTodosResponse(rsp)
+}
+
+// GetEverythingNoDueDateTodosWithResponse request returning *GetEverythingNoDueDateTodosResponse
+func (c *ClientWithResponses) GetEverythingNoDueDateTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingNoDueDateTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingNoDueDateTodosResponse, error) {
+	rsp, err := c.GetEverythingNoDueDateTodos(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingNoDueDateTodosResponse(rsp)
+}
+
+// GetEverythingOpenTodosWithResponse request returning *GetEverythingOpenTodosResponse
+func (c *ClientWithResponses) GetEverythingOpenTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingOpenTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingOpenTodosResponse, error) {
+	rsp, err := c.GetEverythingOpenTodos(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingOpenTodosResponse(rsp)
+}
+
 // GetEverythingOverdueTodosWithResponse request returning *GetEverythingOverdueTodosResponse
 func (c *ClientWithResponses) GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error) {
 	rsp, err := c.GetEverythingOverdueTodos(ctx, accountId, reqEditors...)
@@ -30415,6 +31545,15 @@ func (c *ClientWithResponses) GetEverythingOverdueTodosWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseGetEverythingOverdueTodosResponse(rsp)
+}
+
+// GetEverythingUnassignedTodosWithResponse request returning *GetEverythingUnassignedTodosResponse
+func (c *ClientWithResponses) GetEverythingUnassignedTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedTodosResponse, error) {
+	rsp, err := c.GetEverythingUnassignedTodos(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingUnassignedTodosResponse(rsp)
 }
 
 // TrashTodoWithResponse request returning *TrashTodoResponse
@@ -32980,6 +34119,222 @@ func ParseMoveCardColumnResponse(rsp *http.Response) (*MoveCardColumnResponse, e
 	return response, nil
 }
 
+// ParseGetEverythingCompletedCardsResponse parses an HTTP response from a GetEverythingCompletedCardsWithResponse call
+func ParseGetEverythingCompletedCardsResponse(rsp *http.Response) (*GetEverythingCompletedCardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingCompletedCardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingCompletedCardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingNoDueDateCardsResponse parses an HTTP response from a GetEverythingNoDueDateCardsWithResponse call
+func ParseGetEverythingNoDueDateCardsResponse(rsp *http.Response) (*GetEverythingNoDueDateCardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingNoDueDateCardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingNoDueDateCardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingNotNowCardsResponse parses an HTTP response from a GetEverythingNotNowCardsWithResponse call
+func ParseGetEverythingNotNowCardsResponse(rsp *http.Response) (*GetEverythingNotNowCardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingNotNowCardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingNotNowCardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingOpenCardsResponse parses an HTTP response from a GetEverythingOpenCardsWithResponse call
+func ParseGetEverythingOpenCardsResponse(rsp *http.Response) (*GetEverythingOpenCardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingOpenCardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingOpenCardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetEverythingOverdueCardsResponse parses an HTTP response from a GetEverythingOverdueCardsWithResponse call
 func ParseGetEverythingOverdueCardsResponse(rsp *http.Response) (*GetEverythingOverdueCardsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32996,6 +34351,60 @@ func ParseGetEverythingOverdueCardsResponse(rsp *http.Response) (*GetEverythingO
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetEverythingOverdueCardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingUnassignedCardsResponse parses an HTTP response from a GetEverythingUnassignedCardsWithResponse call
+func ParseGetEverythingUnassignedCardsResponse(rsp *http.Response) (*GetEverythingUnassignedCardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingUnassignedCardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingUnassignedCardsResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -41426,6 +42835,168 @@ func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
 	return response, nil
 }
 
+// ParseGetEverythingCompletedTodosResponse parses an HTTP response from a GetEverythingCompletedTodosWithResponse call
+func ParseGetEverythingCompletedTodosResponse(rsp *http.Response) (*GetEverythingCompletedTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingCompletedTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingCompletedTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingNoDueDateTodosResponse parses an HTTP response from a GetEverythingNoDueDateTodosWithResponse call
+func ParseGetEverythingNoDueDateTodosResponse(rsp *http.Response) (*GetEverythingNoDueDateTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingNoDueDateTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingNoDueDateTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingOpenTodosResponse parses an HTTP response from a GetEverythingOpenTodosWithResponse call
+func ParseGetEverythingOpenTodosResponse(rsp *http.Response) (*GetEverythingOpenTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingOpenTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingOpenTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetEverythingOverdueTodosResponse parses an HTTP response from a GetEverythingOverdueTodosWithResponse call
 func ParseGetEverythingOverdueTodosResponse(rsp *http.Response) (*GetEverythingOverdueTodosResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -41442,6 +43013,60 @@ func ParseGetEverythingOverdueTodosResponse(rsp *http.Response) (*GetEverythingO
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest GetEverythingOverdueTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingUnassignedTodosResponse parses an HTTP response from a GetEverythingUnassignedTodosWithResponse call
+func ParseGetEverythingUnassignedTodosResponse(rsp *http.Response) (*GetEverythingUnassignedTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingUnassignedTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingUnassignedTodosResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

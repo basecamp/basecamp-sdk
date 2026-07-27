@@ -829,6 +829,38 @@
         ]
       }
     },
+    "GetEverythingCompletedCards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingCompletedTodos": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetEverythingFiles": {
       "readonly": true,
       "pagination": {
@@ -877,6 +909,86 @@
         ]
       }
     },
+    "GetEverythingNoDueDateCards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingNoDueDateTodos": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingNotNowCards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingOpenCards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingOpenTodos": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetEverythingOverdueCards": {
       "readonly": true,
       "retry": {
@@ -891,6 +1003,38 @@
     },
     "GetEverythingOverdueTodos": {
       "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingUnassignedCards": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingUnassignedTodos": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 5
+      },
       "retry": {
         "max": 3,
         "base_delay_ms": 1000,

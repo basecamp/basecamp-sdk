@@ -316,6 +316,8 @@ val TYPE_ALIASES = mapOf(
     "Notification" to "Notification",
     "EverythingBoost" to "EverythingBoost",
     "EverythingFile" to "EverythingFile",
+    "BucketTodosGroup" to "BucketTodosGroup",
+    "BucketCardsGroup" to "BucketCardsGroup",
     "TimelineEvent" to "TimelineEvent",
     "TimesheetEntry" to "TimesheetEntry",
     "HillChart" to "HillChart",

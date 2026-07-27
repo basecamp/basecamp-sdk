@@ -18,10 +18,45 @@ class EverythingService(BaseService):
             params=self._compact(page=page),
         )
 
+    def get_everything_completed_cards(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
+            "/cards/completed.json",
+            params=self._compact(page=page),
+        )
+
+    def get_everything_no_due_date_cards(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_no_due_date_cards", is_mutation=False),
+            "/cards/no_due_date.json",
+            params=self._compact(page=page),
+        )
+
+    def get_everything_not_now_cards(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_not_now_cards", is_mutation=False),
+            "/cards/not_now.json",
+            params=self._compact(page=page),
+        )
+
+    def get_everything_open_cards(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_open_cards", is_mutation=False),
+            "/cards/open.json",
+            params=self._compact(page=page),
+        )
+
     def get_everything_overdue_cards(self) -> ListResult:
         return self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_cards", is_mutation=False),
             "/cards/overdue.json",
+        )
+
+    def get_everything_unassigned_cards(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_unassigned_cards", is_mutation=False),
+            "/cards/unassigned.json",
+            params=self._compact(page=page),
         )
 
     def get_everything_checkins(self, *, page: int | None = None) -> ListResult:
@@ -61,10 +96,38 @@ class EverythingService(BaseService):
             params=self._compact(page=page),
         )
 
+    def get_everything_completed_todos(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_completed_todos", is_mutation=False),
+            "/todos/completed.json",
+            params=self._compact(page=page),
+        )
+
+    def get_everything_no_due_date_todos(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_no_due_date_todos", is_mutation=False),
+            "/todos/no_due_date.json",
+            params=self._compact(page=page),
+        )
+
+    def get_everything_open_todos(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_open_todos", is_mutation=False),
+            "/todos/open.json",
+            params=self._compact(page=page),
+        )
+
     def get_everything_overdue_todos(self) -> ListResult:
         return self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
+        )
+
+    def get_everything_unassigned_todos(self, *, page: int | None = None) -> ListResult:
+        return self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_unassigned_todos", is_mutation=False),
+            "/todos/unassigned.json",
+            params=self._compact(page=page),
         )
 
 
@@ -76,10 +139,45 @@ class AsyncEverythingService(AsyncBaseService):
             params=self._compact(page=page),
         )
 
+    async def get_everything_completed_cards(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
+            "/cards/completed.json",
+            params=self._compact(page=page),
+        )
+
+    async def get_everything_no_due_date_cards(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_no_due_date_cards", is_mutation=False),
+            "/cards/no_due_date.json",
+            params=self._compact(page=page),
+        )
+
+    async def get_everything_not_now_cards(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_not_now_cards", is_mutation=False),
+            "/cards/not_now.json",
+            params=self._compact(page=page),
+        )
+
+    async def get_everything_open_cards(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_open_cards", is_mutation=False),
+            "/cards/open.json",
+            params=self._compact(page=page),
+        )
+
     async def get_everything_overdue_cards(self) -> ListResult:
         return await self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_cards", is_mutation=False),
             "/cards/overdue.json",
+        )
+
+    async def get_everything_unassigned_cards(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_unassigned_cards", is_mutation=False),
+            "/cards/unassigned.json",
+            params=self._compact(page=page),
         )
 
     async def get_everything_checkins(self, *, page: int | None = None) -> ListResult:
@@ -119,8 +217,36 @@ class AsyncEverythingService(AsyncBaseService):
             params=self._compact(page=page),
         )
 
+    async def get_everything_completed_todos(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_completed_todos", is_mutation=False),
+            "/todos/completed.json",
+            params=self._compact(page=page),
+        )
+
+    async def get_everything_no_due_date_todos(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_no_due_date_todos", is_mutation=False),
+            "/todos/no_due_date.json",
+            params=self._compact(page=page),
+        )
+
+    async def get_everything_open_todos(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_open_todos", is_mutation=False),
+            "/todos/open.json",
+            params=self._compact(page=page),
+        )
+
     async def get_everything_overdue_todos(self) -> ListResult:
         return await self._request_list(
             OperationInfo(service="everything", operation="get_everything_overdue_todos", is_mutation=False),
             "/todos/overdue.json",
+        )
+
+    async def get_everything_unassigned_todos(self, *, page: int | None = None) -> ListResult:
+        return await self._request_paginated(
+            OperationInfo(service="everything", operation="get_everything_unassigned_todos", is_mutation=False),
+            "/todos/unassigned.json",
+            params=self._compact(page=page),
         )

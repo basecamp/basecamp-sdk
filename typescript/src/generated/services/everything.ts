@@ -15,12 +15,16 @@ import type { PaginationOptions } from "../../pagination.js";
 
 /** EverythingBoost entity from the Basecamp API. */
 export type EverythingBoost = components["schemas"]["EverythingBoost"];
+/** BucketCardsGroup entity from the Basecamp API. */
+export type BucketCardsGroup = components["schemas"]["BucketCardsGroup"];
 /** Card entity from the Basecamp API. */
 export type Card = components["schemas"]["Card"];
 /** Recording entity from the Basecamp API. */
 export type Recording = components["schemas"]["Recording"];
 /** EverythingFile entity from the Basecamp API. */
 export type EverythingFile = components["schemas"]["EverythingFile"];
+/** BucketTodosGroup entity from the Basecamp API. */
+export type BucketTodosGroup = components["schemas"]["BucketTodosGroup"];
 /** Todo entity from the Basecamp API. */
 export type Todo = components["schemas"]["Todo"];
 
@@ -28,6 +32,46 @@ export type Todo = components["schemas"]["Todo"];
  * Options for everythingBoosts.
  */
 export interface EverythingBoostsEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingCompletedCards.
+ */
+export interface EverythingCompletedCardsEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingNoDueDateCards.
+ */
+export interface EverythingNoDueDateCardsEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingNotNowCards.
+ */
+export interface EverythingNotNowCardsEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingOpenCards.
+ */
+export interface EverythingOpenCardsEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingUnassignedCards.
+ */
+export interface EverythingUnassignedCardsEverythingOptions extends PaginationOptions {
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -76,6 +120,38 @@ export interface EverythingMessagesEverythingOptions extends PaginationOptions {
   page?: number;
 }
 
+/**
+ * Options for everythingCompletedTodos.
+ */
+export interface EverythingCompletedTodosEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingNoDueDateTodos.
+ */
+export interface EverythingNoDueDateTodosEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingOpenTodos.
+ */
+export interface EverythingOpenTodosEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
+/**
+ * Options for everythingUnassignedTodos.
+ */
+export interface EverythingUnassignedTodosEverythingOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
+}
+
 
 // =============================================================================
 // Service
@@ -115,6 +191,118 @@ export class EverythingService extends BaseService {
   }
 
   /**
+   * Completed cards across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingCompletedCards();
+   * ```
+   */
+  async everythingCompletedCards(options?: EverythingCompletedCardsEverythingOptions): Promise<ListResult<BucketCardsGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingCompletedCards",
+        resourceType: "everything_completed_card",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/cards/completed.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Open cards with no due date across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingNoDueDateCards();
+   * ```
+   */
+  async everythingNoDueDateCards(options?: EverythingNoDueDateCardsEverythingOptions): Promise<ListResult<BucketCardsGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingNoDueDateCards",
+        resourceType: "everything_no_due_date_card",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/cards/no_due_date.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingNotNowCards();
+   * ```
+   */
+  async everythingNotNowCards(options?: EverythingNotNowCardsEverythingOptions): Promise<ListResult<BucketCardsGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingNotNowCards",
+        resourceType: "everything_not_now_card",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/cards/not_now.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingOpenCards();
+   * ```
+   */
+  async everythingOpenCards(options?: EverythingOpenCardsEverythingOptions): Promise<ListResult<BucketCardsGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingOpenCards",
+        resourceType: "everything_open_card",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/cards/open.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
    * Get every overdue card across all accessible projects, oldest-due-date-first.
    * @returns Array of Card
    *
@@ -136,6 +324,34 @@ export class EverythingService extends BaseService {
         })
     );
     return response ?? [];
+  }
+
+  /**
+   * Open, unassigned cards across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketCardsGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingUnassignedCards();
+   * ```
+   */
+  async everythingUnassignedCards(options?: EverythingUnassignedCardsEverythingOptions): Promise<ListResult<BucketCardsGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingUnassignedCards",
+        resourceType: "everything_unassigned_card",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/cards/unassigned.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
   }
 
   /**
@@ -279,6 +495,90 @@ export class EverythingService extends BaseService {
   }
 
   /**
+   * Completed to-dos across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingCompletedTodos();
+   * ```
+   */
+  async everythingCompletedTodos(options?: EverythingCompletedTodosEverythingOptions): Promise<ListResult<BucketTodosGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingCompletedTodos",
+        resourceType: "everything_completed_todo",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/todos/completed.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingNoDueDateTodos();
+   * ```
+   */
+  async everythingNoDueDateTodos(options?: EverythingNoDueDateTodosEverythingOptions): Promise<ListResult<BucketTodosGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingNoDueDateTodos",
+        resourceType: "everything_no_due_date_todo",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/todos/no_due_date.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
+   * Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingOpenTodos();
+   * ```
+   */
+  async everythingOpenTodos(options?: EverythingOpenTodosEverythingOptions): Promise<ListResult<BucketTodosGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingOpenTodos",
+        resourceType: "everything_open_todo",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/todos/open.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
+  }
+
+  /**
    * Get every overdue to-do across all accessible projects, oldest-due-date-first.
    * @returns Array of Todo
    *
@@ -300,5 +600,33 @@ export class EverythingService extends BaseService {
         })
     );
     return response ?? [];
+  }
+
+  /**
+   * Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+   * @param options - Optional query parameters
+   * @returns All BucketTodosGroup across all pages, with .meta.totalCount
+   *
+   * @example
+   * ```ts
+   * const result = await client.everything.everythingUnassignedTodos();
+   * ```
+   */
+  async everythingUnassignedTodos(options?: EverythingUnassignedTodosEverythingOptions): Promise<ListResult<BucketTodosGroup>> {
+    return this.requestPaginated(
+      {
+        service: "Everything",
+        operation: "GetEverythingUnassignedTodos",
+        resourceType: "everything_unassigned_todo",
+        isMutation: false,
+      },
+      () =>
+        this.client.GET("/todos/unassigned.json", {
+          params: {
+            query: { page: options?.page },
+          },
+        })
+      , options
+    );
   }
 }

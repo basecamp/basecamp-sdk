@@ -325,8 +325,8 @@ class EverythingServiceTest < Minitest::Test
     assert result[0]["due_on"] < result[1]["due_on"]
   end
 
-  # Every flat-family operation must surface a canonical 4xx as a typed error.
-  def test_flat_family_operations_propagate_not_found
+  # Every everything operation must surface a canonical 4xx as a typed error.
+  def test_operations_propagate_not_found
     calls = {
       "/12345/messages.json" => -> { @account.everything.get_everything_messages.to_a },
       "/12345/comments.json" => -> { @account.everything.get_everything_comments.to_a },
@@ -335,7 +335,16 @@ class EverythingServiceTest < Minitest::Test
       "/12345/boosts.json" => -> { @account.everything.get_everything_boosts.to_a },
       "/12345/files.json" => -> { @account.everything.get_everything_files(kind: nil, people_ids: nil).to_a },
       "/12345/todos/overdue.json" => -> { @account.everything.get_everything_overdue_todos.to_a },
-      "/12345/cards/overdue.json" => -> { @account.everything.get_everything_overdue_cards.to_a }
+      "/12345/cards/overdue.json" => -> { @account.everything.get_everything_overdue_cards.to_a },
+      "/12345/todos/open.json" => -> { @account.everything.get_everything_open_todos.to_a },
+      "/12345/todos/completed.json" => -> { @account.everything.get_everything_completed_todos.to_a },
+      "/12345/todos/unassigned.json" => -> { @account.everything.get_everything_unassigned_todos.to_a },
+      "/12345/todos/no_due_date.json" => -> { @account.everything.get_everything_no_due_date_todos.to_a },
+      "/12345/cards/open.json" => -> { @account.everything.get_everything_open_cards.to_a },
+      "/12345/cards/completed.json" => -> { @account.everything.get_everything_completed_cards.to_a },
+      "/12345/cards/unassigned.json" => -> { @account.everything.get_everything_unassigned_cards.to_a },
+      "/12345/cards/no_due_date.json" => -> { @account.everything.get_everything_no_due_date_cards.to_a },
+      "/12345/cards/not_now.json" => -> { @account.everything.get_everything_not_now_cards.to_a }
     }
 
     calls.each do |path, call|
@@ -344,5 +353,302 @@ class EverythingServiceTest < Minitest::Test
         call.call
       end
     end
+  end
+
+  def test_get_everything_open_todos_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 2, "name" => "The Leto Laptop", "type" => "Project" },
+        "todos" => [
+          {
+            "id" => 8001,
+            "type" => "Todo",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Wire up auth",
+            "steps" => [
+              { "id" => 90_001, "type" => "Todo", "title" => "Add login form", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/todos/open.json", response_body: groups)
+
+    result = @account.everything.get_everything_open_todos.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 2, result[0]["bucket"]["id"]
+    assert_equal "Project", result[0]["bucket"]["type"]
+    assert_equal 8001, result[0]["todos"][0]["id"]
+    assert_equal "Wire up auth", result[0]["todos"][0]["title"]
+    assert_equal 90_001, result[0]["todos"][0]["steps"][0]["id"]
+    assert_equal "Add login form", result[0]["todos"][0]["steps"][0]["title"]
+  end
+
+  def test_get_everything_completed_todos_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 3, "name" => "Honcho Design", "type" => "Project" },
+        "todos" => [
+          {
+            "id" => 8101,
+            "type" => "Todo",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Ship the redesign",
+            "completed" => true,
+            "steps" => [
+              { "id" => 90_101, "type" => "Todo", "title" => "Publish assets", "completed" => true }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/todos/completed.json", response_body: groups)
+
+    result = @account.everything.get_everything_completed_todos.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 3, result[0]["bucket"]["id"]
+    assert_equal "Honcho Design", result[0]["bucket"]["name"]
+    assert_equal 8101, result[0]["todos"][0]["id"]
+    assert result[0]["todos"][0]["completed"]
+    assert_equal 90_101, result[0]["todos"][0]["steps"][0]["id"]
+    assert result[0]["todos"][0]["steps"][0]["completed"]
+  end
+
+  def test_get_everything_unassigned_todos_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 2, "name" => "The Leto Laptop", "type" => "Project" },
+        "todos" => [
+          {
+            "id" => 8201,
+            "type" => "Todo",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Triage inbox",
+            "assignees" => [],
+            "steps" => [
+              { "id" => 90_201, "type" => "Todo", "title" => "Sort by priority", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/todos/unassigned.json", response_body: groups)
+
+    result = @account.everything.get_everything_unassigned_todos.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 2, result[0]["bucket"]["id"]
+    assert_equal 8201, result[0]["todos"][0]["id"]
+    assert_empty result[0]["todos"][0]["assignees"]
+    assert_equal 90_201, result[0]["todos"][0]["steps"][0]["id"]
+    assert_equal "Sort by priority", result[0]["todos"][0]["steps"][0]["title"]
+  end
+
+  def test_get_everything_no_due_date_todos_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 3, "name" => "Honcho Design", "type" => "Project" },
+        "todos" => [
+          {
+            "id" => 8301,
+            "type" => "Todo",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Someday maybe",
+            "due_on" => nil,
+            "steps" => [
+              { "id" => 90_301, "type" => "Todo", "title" => "Brainstorm ideas", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/todos/no_due_date.json", response_body: groups)
+
+    result = @account.everything.get_everything_no_due_date_todos.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 3, result[0]["bucket"]["id"]
+    assert_equal 8301, result[0]["todos"][0]["id"]
+    assert_nil result[0]["todos"][0]["due_on"]
+    assert_equal 90_301, result[0]["todos"][0]["steps"][0]["id"]
+    assert_equal "Brainstorm ideas", result[0]["todos"][0]["steps"][0]["title"]
+  end
+
+  def test_get_everything_open_cards_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 2, "name" => "The Leto Laptop", "type" => "Project" },
+        "cards" => [
+          {
+            "id" => 8401,
+            "type" => "Kanban::Card",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Draft proposal",
+            "steps" => [
+              { "id" => 90_401, "type" => "Kanban::Step", "title" => "Outline sections", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/cards/open.json", response_body: groups)
+
+    result = @account.everything.get_everything_open_cards.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 2, result[0]["bucket"]["id"]
+    assert_equal "Project", result[0]["bucket"]["type"]
+    assert_equal 8401, result[0]["cards"][0]["id"]
+    assert_equal "Kanban::Card", result[0]["cards"][0]["type"]
+    assert_equal 90_401, result[0]["cards"][0]["steps"][0]["id"]
+    assert_equal "Outline sections", result[0]["cards"][0]["steps"][0]["title"]
+  end
+
+  def test_get_everything_completed_cards_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 3, "name" => "Honcho Design", "type" => "Project" },
+        "cards" => [
+          {
+            "id" => 8501,
+            "type" => "Kanban::Card",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Send invoice",
+            "completed" => true,
+            "steps" => [
+              { "id" => 90_501, "type" => "Kanban::Step", "title" => "Attach PDF", "completed" => true }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/cards/completed.json", response_body: groups)
+
+    result = @account.everything.get_everything_completed_cards.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 3, result[0]["bucket"]["id"]
+    assert_equal 8501, result[0]["cards"][0]["id"]
+    assert result[0]["cards"][0]["completed"]
+    assert_equal 90_501, result[0]["cards"][0]["steps"][0]["id"]
+    assert result[0]["cards"][0]["steps"][0]["completed"]
+  end
+
+  def test_get_everything_unassigned_cards_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 2, "name" => "The Leto Laptop", "type" => "Project" },
+        "cards" => [
+          {
+            "id" => 8601,
+            "type" => "Kanban::Card",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Unclaimed work",
+            "assignees" => [],
+            "steps" => [
+              { "id" => 90_601, "type" => "Kanban::Step", "title" => "Claim this", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/cards/unassigned.json", response_body: groups)
+
+    result = @account.everything.get_everything_unassigned_cards.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 2, result[0]["bucket"]["id"]
+    assert_equal 8601, result[0]["cards"][0]["id"]
+    assert_empty result[0]["cards"][0]["assignees"]
+    assert_equal 90_601, result[0]["cards"][0]["steps"][0]["id"]
+    assert_equal "Claim this", result[0]["cards"][0]["steps"][0]["title"]
+  end
+
+  def test_get_everything_no_due_date_cards_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 3, "name" => "Honcho Design", "type" => "Project" },
+        "cards" => [
+          {
+            "id" => 8701,
+            "type" => "Kanban::Card",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "No deadline",
+            "due_on" => nil,
+            "steps" => [
+              { "id" => 90_701, "type" => "Kanban::Step", "title" => "Schedule later", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/cards/no_due_date.json", response_body: groups)
+
+    result = @account.everything.get_everything_no_due_date_cards.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 3, result[0]["bucket"]["id"]
+    assert_equal 8701, result[0]["cards"][0]["id"]
+    assert_nil result[0]["cards"][0]["due_on"]
+    assert_equal 90_701, result[0]["cards"][0]["steps"][0]["id"]
+    assert_equal "Schedule later", result[0]["cards"][0]["steps"][0]["title"]
+  end
+
+  def test_get_everything_not_now_cards_decodes_bucket_groups
+    groups = [
+      {
+        "bucket" => { "id" => 2, "name" => "The Leto Laptop", "type" => "Project" },
+        "cards" => [
+          {
+            "id" => 8801,
+            "type" => "Kanban::Card",
+            "status" => "active",
+            "visible_to_clients" => false,
+            "title" => "Parked idea",
+            "steps" => [
+              { "id" => 90_801, "type" => "Kanban::Step", "title" => "Revisit next quarter", "completed" => false }
+            ]
+          }
+        ]
+      }
+    ]
+
+    stub_get("/12345/cards/not_now.json", response_body: groups)
+
+    result = @account.everything.get_everything_not_now_cards.to_a
+
+    assert_kind_of Array, result
+    assert_equal 1, result.length
+    assert_equal 2, result[0]["bucket"]["id"]
+    assert_equal 8801, result[0]["cards"][0]["id"]
+    assert_equal "Parked idea", result[0]["cards"][0]["title"]
+    assert_equal 90_801, result[0]["cards"][0]["steps"][0]["id"]
+    assert_equal "Revisit next quarter", result[0]["cards"][0]["steps"][0]["title"]
   end
 end

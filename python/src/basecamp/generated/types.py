@@ -78,6 +78,16 @@ class Boost(TypedDict):
     recording: NotRequired[RecordingParent]
 
 
+class BucketCardsGroup(TypedDict):
+    bucket: RecordingBucket
+    cards: list[Card]
+
+
+class BucketTodosGroup(TypedDict):
+    bucket: RecordingBucket
+    todos: list[Todo]
+
+
 class Campfire(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -148,7 +158,7 @@ class Card(TypedDict):
     creator: Person
     description: NotRequired[str]
     description_attachments: list[RichTextAttachment]
-    due_on: NotRequired[str]
+    due_on: NotRequired[Optional[str]]
     id: int
     inherits_status: bool
     parent: RecordingParent
@@ -1552,12 +1562,12 @@ class Todo(TypedDict):
     creator: Person
     description: NotRequired[str]
     description_attachments: list[RichTextAttachment]
-    due_on: NotRequired[str]
+    due_on: NotRequired[Optional[str]]
     id: int
     inherits_status: bool
     parent: TodoParent
     position: NotRequired[int]
-    starts_on: NotRequired[str]
+    starts_on: NotRequired[Optional[str]]
     status: str
     steps: NotRequired[list[CardStep]]
     subscription_url: NotRequired[str]

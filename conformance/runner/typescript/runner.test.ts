@@ -315,6 +315,42 @@ async function executeOperation(
         await client.everything.everythingOverdueCards();
         break;
 
+      case "GetEverythingOpenTodos":
+        await client.everything.everythingOpenTodos();
+        break;
+
+      case "GetEverythingCompletedTodos":
+        await client.everything.everythingCompletedTodos();
+        break;
+
+      case "GetEverythingUnassignedTodos":
+        await client.everything.everythingUnassignedTodos();
+        break;
+
+      case "GetEverythingNoDueDateTodos":
+        await client.everything.everythingNoDueDateTodos();
+        break;
+
+      case "GetEverythingOpenCards":
+        await client.everything.everythingOpenCards();
+        break;
+
+      case "GetEverythingCompletedCards":
+        await client.everything.everythingCompletedCards();
+        break;
+
+      case "GetEverythingUnassignedCards":
+        await client.everything.everythingUnassignedCards();
+        break;
+
+      case "GetEverythingNoDueDateCards":
+        await client.everything.everythingNoDueDateCards();
+        break;
+
+      case "GetEverythingNotNowCards":
+        await client.everything.everythingNotNowCards();
+        break;
+
       case "GetTool":
         await client.tools.get(Number(params.toolId));
         break;

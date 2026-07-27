@@ -168,6 +168,24 @@ class OperationMapper:
                 return self._account.everything.get_everything_overdue_todos()
             case "GetEverythingOverdueCards":
                 return self._account.everything.get_everything_overdue_cards()
+            case "GetEverythingOpenTodos":
+                return self._account.everything.get_everything_open_todos()
+            case "GetEverythingCompletedTodos":
+                return self._account.everything.get_everything_completed_todos()
+            case "GetEverythingUnassignedTodos":
+                return self._account.everything.get_everything_unassigned_todos()
+            case "GetEverythingNoDueDateTodos":
+                return self._account.everything.get_everything_no_due_date_todos()
+            case "GetEverythingOpenCards":
+                return self._account.everything.get_everything_open_cards()
+            case "GetEverythingCompletedCards":
+                return self._account.everything.get_everything_completed_cards()
+            case "GetEverythingUnassignedCards":
+                return self._account.everything.get_everything_unassigned_cards()
+            case "GetEverythingNoDueDateCards":
+                return self._account.everything.get_everything_no_due_date_cards()
+            case "GetEverythingNotNowCards":
+                return self._account.everything.get_everything_not_now_cards()
             case _:
                 raise ValueError(f"Unknown operation: {operation}")
 

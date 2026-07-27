@@ -1,12 +1,14 @@
 ---
 gap: everything-aggregates
-status: partial-coverage
+status: absorbed-in-sdk
 detected: 2026-05-01
 sdk_demand: high
 bc3_pr: 11627
 smithy_refs:
   - "EverythingService flat family: GetEverythingMessages/Comments/Checkins/Forwards/Boosts/Files + GetEverythingOverdueTodos/OverdueCards (spec/basecamp.smithy)"
   - "EverythingFile superset (spec/basecamp.smithy)"
+  - "EverythingService bucket-grouped family: GetEverythingOpen/Completed/Unassigned/NoDueDate Todos + Open/Completed/Unassigned/NoDueDate/NotNow Cards (spec/basecamp.smithy)"
+  - "BucketTodosGroup / BucketCardsGroup (spec/basecamp.smithy)"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3c
@@ -115,9 +117,9 @@ merged doc.
 
 ## SDK absorption plan when this lands
 
-Absorbed in **two phases** across a stacked PR pair. This entry stays
-`partial-coverage` until **both** phases land; it flips to `absorbed-in-sdk`
-only when all 17 routes are modeled.
+Absorbed in **two phases** across a stacked PR pair. All 17 routes are now
+modeled, generated across the six SDKs, Go-wrapped, and decode-tested — the
+entry is `absorbed-in-sdk`.
 
 **PR-5 (flat family) — DONE.** A new `EverythingService` with the 8 flat-family
 operations:
@@ -160,12 +162,25 @@ operations:
   `live-my-surface.json` with matching `live-dispatch` cases (live canary
   dormant → validates statically).
 
-**PR-5b (bucket-grouped family) — PENDING.** The 9 todo/card filter sub-routes
+**PR-5b (bucket-grouped family) — DONE.** The 9 todo/card filter sub-routes
 (`/todos/{open,completed,unassigned,no_due_date}.json`,
 `/cards/{open,completed,unassigned,no_due_date,not_now}.json`) return a
-paginated array of `{bucket, todos|cards}` with steps. Modeled + covered
-(tests, page params, conformance, canary) in PR-5b, after which this entry
-flips to `absorbed-in-sdk`.
+Link-paginated array of `{bucket, todos|cards}` (full `Todo`/`Card` recordings
+with their embedded steps), modeled as `BucketTodosGroup` / `BucketCardsGroup`
+(single-member output, Link pagination → bare array of groups). Go wrappers
+(`OpenTodos`/`CompletedTodos`/`UnassignedTodos`/`NoDueDateTodos` and
+`OpenCards`/`CompletedCards`/`UnassignedCards`/`NoDueDateCards`/`NotNowCards`)
+with multi-page Link-following. Each op carries a `page` `@httpQuery` param
+forwarded by the Go wrapper. The generator auto-derives these onto
+`EverythingService` from the `Everything` tag (`BucketTodosGroup` /
+`BucketCardsGroup` added to the TS + Kotlin type registries so the methods
+advertise `ListResult<T>`). Coverage: Go multi-page/steps tests, happy-path
+per-op tests in TS/Ruby/Python for all 9 ops, `paths.json` path-assertion
+entries + mock-runner dispatch (Go/TS/Kotlin/Ruby/Python) for all 9, and a
+live-canary entry per group with matching `live-dispatch` cases.
+
+With both families landed, all 17 routes are modeled, generated, wrapped, and
+covered — the entry is `absorbed-in-sdk`.
 
 Exclusions honored: never model the `/<resource>/recent.json` aliases (internal
 web feeds) or the bare `/todos.json` / `/cards.json` roots (HTML shells).

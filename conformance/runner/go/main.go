@@ -757,6 +757,42 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Everything().OverdueCards(ctx)
 		return operationResult{err: err}
 
+	case "GetEverythingOpenTodos":
+		_, err := account.Everything().OpenTodos(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingCompletedTodos":
+		_, err := account.Everything().CompletedTodos(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingUnassignedTodos":
+		_, err := account.Everything().UnassignedTodos(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingNoDueDateTodos":
+		_, err := account.Everything().NoDueDateTodos(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingOpenCards":
+		_, err := account.Everything().OpenCards(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingCompletedCards":
+		_, err := account.Everything().CompletedCards(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingUnassignedCards":
+		_, err := account.Everything().UnassignedCards(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingNoDueDateCards":
+		_, err := account.Everything().NoDueDateCards(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetEverythingNotNowCards":
+		_, err := account.Everything().NotNowCards(ctx, 0)
+		return operationResult{err: err}
+
 	default:
 		return operationResult{
 			err: fmt.Errorf("unknown operation: %s", tc.Operation),
