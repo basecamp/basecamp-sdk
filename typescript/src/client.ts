@@ -79,6 +79,13 @@ export type { paths };
  * Raw client type from openapi-fetch.
  * Use this when you need direct access to GET/POST/PUT/DELETE methods.
  */
+/**
+ * Largest delay `AbortSignal.timeout` schedules faithfully: Node's timers are
+ * backed by a signed 32-bit int, and anything above this is clamped to 1ms with
+ * a TimeoutOverflowWarning rather than honored.
+ */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
 export type RawClient = ReturnType<typeof createClient<paths>>;
 
 /**
@@ -269,14 +276,22 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     throw new BasecampError("usage", "Either 'auth' or 'accessToken' is required");
   }
 
-  // AbortSignal.timeout throws a bare RangeError for a negative, NaN, or
-  // non-finite delay — per request, and far from the call that misconfigured it.
-  // (The previous setTimeout coerced such values to 0, aborting immediately.)
-  // Fail fast at construction instead, like the other config checks.
-  if (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs < 0) {
+  // AbortSignal.timeout accepts only a non-negative integer that fits a signed
+  // 32-bit timer. Outside that range Node either throws a bare RangeError
+  // (fractional, negative, or > 2^32-1) or — worse — silently clamps to 1ms with
+  // a TimeoutOverflowWarning (2^31 .. 2^32-1), which would abort every request
+  // almost immediately. Both would surface per request, far from the call that
+  // misconfigured it, and both are behavior changes from the old setTimeout,
+  // which coerced such values to 0. Fail fast at construction instead, like the
+  // other config checks.
+  if (
+    !Number.isInteger(requestTimeoutMs) ||
+    requestTimeoutMs < 0 ||
+    requestTimeoutMs > MAX_TIMEOUT_MS
+  ) {
     throw new BasecampError(
       "usage",
-      `'requestTimeoutMs' must be a non-negative finite number, got ${requestTimeoutMs}`
+      `'requestTimeoutMs' must be an integer between 0 and ${MAX_TIMEOUT_MS}, got ${requestTimeoutMs}`
     );
   }
 

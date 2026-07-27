@@ -446,7 +446,7 @@ describe("BasecampClient", () => {
         name: "TimeoutError",
       });
 
-      // Must abort on the timeout, not by waiting out the 2000ms handler.
+      // Must abort on the timeout, not by waiting out the 1000ms handler.
       expect(Date.now() - startedAt).toBeLessThan(500);
     });
 
@@ -484,6 +484,52 @@ describe("BasecampClient", () => {
       } finally {
         clearTimeout(abortTimer);
       }
+    });
+  });
+
+  describe("requestTimeoutMs validation", () => {
+    // AbortSignal.timeout only schedules a non-negative signed-32-bit integer
+    // faithfully. Everything else either throws a bare RangeError per request or
+    // is silently clamped to 1ms, so the bound is enforced at construction.
+    // Table-driven so each rejected shape is named rather than merged into one
+    // assertion.
+    const invalid: Array<[string, number]> = [
+      ["negative", -1],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["fractional", 1.5],
+      ["above the signed 32-bit timer range", 2_147_483_648],
+      ["above 2^32-1", 4_294_967_296],
+    ];
+
+    it.each(invalid)("rejects a %s timeout at construction", (_label, value) => {
+      expect(() =>
+        createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+          requestTimeoutMs: value,
+        })
+      ).toThrowError(
+        expect.objectContaining({
+          name: "BasecampError",
+          code: "usage",
+          message: expect.stringContaining("'requestTimeoutMs' must be an integer"),
+        })
+      );
+    });
+
+    it.each([
+      ["zero", 0],
+      ["a typical value", 30000],
+      ["the maximum", 2_147_483_647],
+    ])("accepts %s", (_label, value) => {
+      expect(() =>
+        createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+          requestTimeoutMs: value,
+        })
+      ).not.toThrow();
     });
   });
 
