@@ -2,7 +2,8 @@
  * Tests for the Schedules service (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - Client-side checks: createEntry() rejects a missing summary, startsAt, or
+ *   endsAt; the API validates the rest
  * - No domain-specific trashEntry() (use recordings.trash())
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -216,7 +217,19 @@ describe("SchedulesService", () => {
       expect(capturedBody?.notify).toBe(true);
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing summary, startsAt, or endsAt", async () => {
+      await expect(
+        service.createEntry(1, { summary: "", startsAt: "2026-01-01T09:00:00Z", endsAt: "2026-01-01T10:00:00Z" })
+      ).rejects.toMatchObject({ code: "validation", message: "Summary is required" });
+      await expect(
+        service.createEntry(1, { summary: "Standup", startsAt: "", endsAt: "2026-01-01T10:00:00Z" })
+      ).rejects.toMatchObject({ code: "validation", message: "Starts at is required" });
+      await expect(
+        service.createEntry(1, { summary: "Standup", startsAt: "2026-01-01T09:00:00Z", endsAt: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Ends at is required" });
+    });
   });
 
   describe("updateEntry", () => {
@@ -243,7 +256,6 @@ describe("SchedulesService", () => {
       expect(result.summary).toBe("Updated Meeting");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("getEntryOccurrence", () => {
@@ -269,7 +281,6 @@ describe("SchedulesService", () => {
       expect(result.starts_at).toBe("2024-12-22T09:00:00Z");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("updateSettings", () => {

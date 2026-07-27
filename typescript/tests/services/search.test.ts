@@ -2,13 +2,12 @@
  * Tests for the SearchService (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - This service performs no client-side validation; the API validates
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient } from "../../src/client.js";
-import { BasecampError } from "../../src/errors.js";
 import type { BasecampClient } from "../../src/client.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
@@ -158,7 +157,6 @@ describe("SearchService", () => {
       });
     });
 
-    // Note: Client-side validation removed - generated services let API validate
 
     it("should return empty array when no results", async () => {
       server.use(

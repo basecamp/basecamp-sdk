@@ -2,7 +2,7 @@
  * Tests for the Vaults service (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - Client-side check: create() rejects a missing title; the API validates the rest
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -135,7 +135,13 @@ describe("VaultsService", () => {
       expect(capturedBody?.title).toBe("My New Folder");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing title", async () => {
+      await expect(
+        service.create(1001, { title: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Title is required" });
+    });
   });
 
   describe("update", () => {

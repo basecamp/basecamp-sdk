@@ -5,7 +5,7 @@
  * - No get() method (not in API spec)
  * - No update() method (not in API spec)
  * - No domain-specific trash() (use recordings.trash())
- * - No client-side validation (API validates)
+ * - Client-side check: create() rejects a missing name; the API validates the rest
  * - reposition() takes a request object, not bare number
  */
 import { describe, it, expect, beforeEach } from "vitest";
@@ -97,7 +97,13 @@ describe("TodolistGroupsService", () => {
       expect(group.name).toBe("New Phase");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing name", async () => {
+      await expect(
+        client.todolistGroups.create(1, { name: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Name is required" });
+    });
   });
 
   // Note: update() is not in the API spec
@@ -123,7 +129,6 @@ describe("TodolistGroupsService", () => {
       ).resolves.toBeUndefined();
     });
 
-    // Note: Client-side validation removed - generated services let API validate
   });
 
   // Note: trash() is on RecordingsService, not TodolistGroupsService (spec-conformant)

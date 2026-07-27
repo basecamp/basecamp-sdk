@@ -3,7 +3,7 @@
  *
  * Note: Generated services are spec-conformant:
  * - Method names: create(), update(), delete() (not createMarker, updateMarker, deleteMarker)
- * - No client-side validation (API validates)
+ * - Client-side checks: create() rejects a missing name or date; the API validates the rest
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
