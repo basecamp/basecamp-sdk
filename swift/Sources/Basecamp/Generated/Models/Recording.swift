@@ -15,15 +15,22 @@ public struct Recording: Codable, Sendable {
     public let url: String
     public let visibleToClients: Bool
     public var bookmarkUrl: String?
+    public var boostsCount: Int32?
+    public var boostsUrl: String?
     public var commentsCount: Int32?
     public var commentsUrl: String?
     public var content: String?
     public var contentAttachments: [RichTextAttachment]?
     public var description: String?
     public var descriptionAttachments: [RichTextAttachment]?
+    public var from: String?
+    public var groupOn: String?
     public var parent: RecordingParent?
     public var position: Int32?
+    public var repliesCount: Int32?
+    public var repliesUrl: String?
     public var service: DoorService?
+    public var subject: String?
     public var subscriptionUrl: String?
 
     public init(
@@ -40,15 +47,22 @@ public struct Recording: Codable, Sendable {
         url: String,
         visibleToClients: Bool,
         bookmarkUrl: String? = nil,
+        boostsCount: Int32? = nil,
+        boostsUrl: String? = nil,
         commentsCount: Int32? = nil,
         commentsUrl: String? = nil,
         content: String? = nil,
         contentAttachments: [RichTextAttachment]? = nil,
         description: String? = nil,
         descriptionAttachments: [RichTextAttachment]? = nil,
+        from: String? = nil,
+        groupOn: String? = nil,
         parent: RecordingParent? = nil,
         position: Int32? = nil,
+        repliesCount: Int32? = nil,
+        repliesUrl: String? = nil,
         service: DoorService? = nil,
+        subject: String? = nil,
         subscriptionUrl: String? = nil
     ) {
         self.appUrl = appUrl
@@ -64,15 +78,22 @@ public struct Recording: Codable, Sendable {
         self.url = url
         self.visibleToClients = visibleToClients
         self.bookmarkUrl = bookmarkUrl
+        self.boostsCount = boostsCount
+        self.boostsUrl = boostsUrl
         self.commentsCount = commentsCount
         self.commentsUrl = commentsUrl
         self.content = content
         self.contentAttachments = contentAttachments
         self.description = description
         self.descriptionAttachments = descriptionAttachments
+        self.from = from
+        self.groupOn = groupOn
         self.parent = parent
         self.position = position
+        self.repliesCount = repliesCount
+        self.repliesUrl = repliesUrl
         self.service = service
+        self.subject = subject
         self.subscriptionUrl = subscriptionUrl
     }
 }

@@ -72,7 +72,7 @@ public struct EverythingMessagesEverythingOptions: Sendable {
 
 
 public final class EverythingService: BaseService, @unchecked Sendable {
-    public func everythingBoosts(options: EverythingBoostsEverythingOptions? = nil) async throws -> ListResult<Boost> {
+    public func everythingBoosts(options: EverythingBoostsEverythingOptions? = nil) async throws -> ListResult<EverythingBoost> {
         var queryItems: [URLQueryItem] = []
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))

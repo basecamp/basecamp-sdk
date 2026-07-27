@@ -22,6 +22,24 @@ describe("EverythingService", () => {
   });
 
   describe("everythingFiles", () => {
+    it("encodes the kind filter and repeatable people_ids[] in the query string", async () => {
+      let captured = "";
+      server.use(
+        http.get(`${BASE_URL}/files.json`, ({ request }) => {
+          captured = new URL(request.url).search;
+          return HttpResponse.json([]);
+        })
+      );
+
+      await client.everything.everythingFiles({ kind: "images", peopleIds: [11, 22] });
+
+      const params = new URLSearchParams(captured);
+      expect(params.get("kind")).toBe("images");
+      // people_ids[] is a repeatable array param: both ids must appear under the
+      // bracketed key, not a single comma-joined value.
+      expect(params.getAll("people_ids[]")).toEqual(["11", "22"]);
+    });
+
     it("should decode the heterogeneous /files.json feed: Upload, Document, and Attachment variants in one array", async () => {
       const fixture = [
         {

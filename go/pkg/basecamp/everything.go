@@ -30,9 +30,22 @@ type RecordingsPage struct {
 	Meta       ListMeta
 }
 
+// EverythingBoost is a single item in the account-wide /boosts.json feed. Unlike
+// the shared Boost (whose Recording is the reduced Parent projection, kept
+// source-compatible for existing callers), this feed renders each boost's
+// recording through the full recording projection, so it carries a complete
+// *Recording.
+type EverythingBoost struct {
+	ID        int64      `json:"id"`
+	Content   string     `json:"content,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	Booster   *Person    `json:"booster,omitempty"`
+	Recording *Recording `json:"recording,omitempty"`
+}
+
 // EverythingBoostsPage is a page-followed list of boosts with pagination metadata.
 type EverythingBoostsPage struct {
-	Boosts []Boost
+	Boosts []EverythingBoost
 	Meta   ListMeta
 }
 
@@ -305,10 +318,10 @@ func (s *EverythingService) Boosts(ctx context.Context, page int32) (result *Eve
 		return nil, err
 	}
 
-	var boosts []Boost
+	var boosts []EverythingBoost
 	if resp.JSON200 != nil {
 		for _, gb := range *resp.JSON200 {
-			boosts = append(boosts, boostFromGenerated(gb))
+			boosts = append(boosts, everythingBoostFromGenerated(gb))
 		}
 	}
 	totalCount := parseTotalCount(resp.HTTPResponse)
@@ -320,13 +333,32 @@ func (s *EverythingService) Boosts(ctx context.Context, page int32) (result *Eve
 		return nil, err
 	}
 	for _, raw := range rawMore {
-		var gb generated.Boost
+		var gb generated.EverythingBoost
 		if err := json.Unmarshal(raw, &gb); err != nil {
 			return nil, fmt.Errorf("failed to parse boost: %w", err)
 		}
-		boosts = append(boosts, boostFromGenerated(gb))
+		boosts = append(boosts, everythingBoostFromGenerated(gb))
 	}
 	return &EverythingBoostsPage{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
+// everythingBoostFromGenerated converts a generated EverythingBoost (whose
+// recording is the full projection) to the public type.
+func everythingBoostFromGenerated(gb generated.EverythingBoost) EverythingBoost {
+	b := EverythingBoost{
+		ID:        gb.Id,
+		Content:   gb.Content,
+		CreatedAt: gb.CreatedAt,
+	}
+	if gb.Booster.Id != 0 || gb.Booster.Name != "" {
+		booster := personFromGenerated(gb.Booster)
+		b.Booster = &booster
+	}
+	if gb.Recording.Id != 0 || gb.Recording.Title != "" {
+		rec := recordingFromGenerated(gb.Recording)
+		b.Recording = &rec
+	}
+	return b
 }
 
 // Files returns every file recording across all accessible projects,

@@ -6310,6 +6310,31 @@ structure Recording {
   comments_url: String
   subscription_url: String
 
+  /// Boost count/URL. Carried on boostable recordings — notably the account-wide
+  /// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
+  /// partials render with `boostable: true`. Optional (absent on non-boostable
+  /// recordings and on the base/webhook partial).
+  boosts_count: Integer
+  boosts_url: String
+
+  /// Message subject. Present on `Message` recordings — notably the account-wide
+  /// `/messages.json` aggregate feed, whose message partial renders `subject`.
+  subject: String
+
+  /// Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
+  /// (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
+  /// feed, whose answer partial renders `group_on`.
+  group_on: String
+
+  /// Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably
+  /// the `/forwards.json` aggregate feed, whose forward partial renders `from`.
+  from: String
+
+  /// Reply count/URL for an inbox forward. Present on `Inbox::Forward`
+  /// recordings — notably the `/forwards.json` aggregate feed.
+  replies_count: Integer
+  replies_url: String
+
   /// Ordinal position within the project's External links section. Present on
   /// `Door` (external-link) recordings.
   position: Integer
@@ -8894,7 +8919,7 @@ structure GetEverythingBoostsInput {
 }
 
 structure GetEverythingBoostsOutput {
-  boosts: BoostList
+  boosts: EverythingBoostList
 }
 
 /// Get every file recording across all accessible projects, newest-first (paginated).
@@ -8943,7 +8968,7 @@ structure GetEverythingFilesOutput {
 operation GetEverythingOverdueTodos {
   input: GetEverythingOverdueTodosInput
   output: GetEverythingOverdueTodosOutput
-  errors: [UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure GetEverythingOverdueTodosInput {
@@ -8964,7 +8989,7 @@ structure GetEverythingOverdueTodosOutput {
 operation GetEverythingOverdueCards {
   input: GetEverythingOverdueCardsInput
   output: GetEverythingOverdueCardsOutput
-  errors: [UnauthorizedError, ForbiddenError, InternalServerError]
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure GetEverythingOverdueCardsInput {
@@ -8975,6 +9000,30 @@ structure GetEverythingOverdueCardsInput {
 
 structure GetEverythingOverdueCardsOutput {
   cards: CardList
+}
+
+// ===== Everything Boost Shapes =====
+
+list EverythingBoostList {
+  member: EverythingBoost
+}
+
+/// A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
+/// shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
+/// kept source-compatible for existing callers), this feed renders each boost's
+/// `recording` through the FULL recording projection, so it gets a dedicated
+/// element type carrying the complete `Recording`.
+structure EverythingBoost {
+  @required
+  id: BoostId
+  content: String
+  @required
+  created_at: ISO8601Timestamp
+  booster: Person
+
+  /// The boosted recording, rendered as the full recording projection (not the
+  /// reduced parent shape).
+  recording: Recording
 }
 
 // ===== Everything File Shapes =====

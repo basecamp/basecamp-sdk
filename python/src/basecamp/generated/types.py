@@ -613,6 +613,14 @@ class EventDetails(TypedDict):
     removed_person_ids: NotRequired[list[int]]
 
 
+class EverythingBoost(TypedDict):
+    booster: NotRequired[Person]
+    content: NotRequired[str]
+    created_at: str
+    id: int
+    recording: NotRequired[Recording]
+
+
 class EverythingFile(TypedDict):
     app_download_url: NotRequired[str]
     app_url: NotRequired[str]
@@ -1210,6 +1218,8 @@ class RateLimitErrorResponseContent(TypedDict):
 class Recording(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
     bucket: RecordingBucket
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
@@ -1219,12 +1229,17 @@ class Recording(TypedDict):
     creator: Person
     description: NotRequired[str]
     description_attachments: NotRequired[list[RichTextAttachment]]
+    from_: NotRequired[str]
+    group_on: NotRequired[str]
     id: int
     inherits_status: bool
     parent: NotRequired[RecordingParent]
     position: NotRequired[int]
+    replies_count: NotRequired[int]
+    replies_url: NotRequired[str]
     service: NotRequired[DoorService]
     status: str
+    subject: NotRequired[str]
     subscription_url: NotRequired[str]
     title: str
     type: str

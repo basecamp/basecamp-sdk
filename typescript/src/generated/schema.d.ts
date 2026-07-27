@@ -3441,6 +3441,21 @@ export interface components {
             notified_recipient_ids?: number[];
         };
         /**
+         * @description A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
+         *     shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
+         *     kept source-compatible for existing callers), this feed renders each boost's
+         *     `recording` through the FULL recording projection, so it gets a dedicated
+         *     element type carrying the complete `Recording`.
+         */
+        EverythingBoost: {
+            /** Format: int64 */
+            id: number;
+            content?: string;
+            created_at: string;
+            booster?: components["schemas"]["Person"];
+            recording?: components["schemas"]["Recording"];
+        };
+        /**
          * @description A single item in the /files.json feed. An optional-field superset over three
          *     wire variants — a full Upload recording, a Basecamp Document recording, and a
          *     rich-text attachment wrapped in a recording envelope (distinguished by
@@ -3658,7 +3673,7 @@ export interface components {
         GetClientReplyResponseContent: components["schemas"]["ClientReply"];
         GetCommentResponseContent: components["schemas"]["Comment"];
         GetDocumentResponseContent: components["schemas"]["Document"];
-        GetEverythingBoostsResponseContent: components["schemas"]["Boost"][];
+        GetEverythingBoostsResponseContent: components["schemas"]["EverythingBoost"][];
         GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCommentsResponseContent: components["schemas"]["Recording"][];
         GetEverythingFilesResponseContent: components["schemas"]["EverythingFile"][];
@@ -4311,6 +4326,38 @@ export interface components {
             comments_count?: number;
             comments_url?: string;
             subscription_url?: string;
+            /**
+             * Format: int32
+             * @description Boost count/URL. Carried on boostable recordings — notably the account-wide
+             *     aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
+             *     partials render with `boostable: true`. Optional (absent on non-boostable
+             *     recordings and on the base/webhook partial).
+             */
+            boosts_count?: number;
+            boosts_url?: string;
+            /**
+             * @description Message subject. Present on `Message` recordings — notably the account-wide
+             *     `/messages.json` aggregate feed, whose message partial renders `subject`.
+             */
+            subject?: string;
+            /**
+             * @description Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
+             *     (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
+             *     feed, whose answer partial renders `group_on`.
+             */
+            group_on?: string;
+            /**
+             * @description Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably
+             *     the `/forwards.json` aggregate feed, whose forward partial renders `from`.
+             */
+            from?: string;
+            /**
+             * Format: int32
+             * @description Reply count/URL for an inbox forward. Present on `Inbox::Forward`
+             *     recordings — notably the `/forwards.json` aggregate feed.
+             */
+            replies_count?: number;
+            replies_url?: string;
             /**
              * Format: int32
              * @description Ordinal position within the project's External links section. Present on
@@ -7586,6 +7633,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -17377,6 +17433,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

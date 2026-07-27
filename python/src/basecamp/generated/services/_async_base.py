@@ -96,7 +96,12 @@ class AsyncBaseService:
             _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
             items = response.json()
             _normalize_person_ids(items)
+            # Unpaginated feeds return the whole collection at once and often omit
+            # X-Total-Count. When the header is absent the returned array *is* the
+            # complete set, so the true total is its length — don't report None.
             total_count = parse_total_count(dict(response.headers))
+            if total_count is None:
+                total_count = len(items)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return ListResult(items, ListMeta(total_count=total_count, truncated=False))

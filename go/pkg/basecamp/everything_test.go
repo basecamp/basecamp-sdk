@@ -41,7 +41,7 @@ func TestEverythingService_Messages_MultiPage(t *testing.T) {
 		page1++
 		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/messages.json?page=2>; rel="next"`, serverURL))
 		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`[{"id":1,"type":"Message","title":"First","url":"https://x/1.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/1","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}},{"id":2,"type":"Message","title":"Second","url":"https://x/2.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/2","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}}]`))
+		_, _ = w.Write([]byte(`[{"id":1,"type":"Message","title":"First","subject":"First subject","boosts_count":4,"boosts_url":"https://x/1/boosts.json","url":"https://x/1.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/1","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}},{"id":2,"type":"Message","title":"Second","url":"https://x/2.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/2","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}}]`))
 	})
 	serverURL = url
 
@@ -60,6 +60,14 @@ func TestEverythingService_Messages_MultiPage(t *testing.T) {
 	}
 	if result.Recordings[0].Bucket == nil || result.Recordings[0].Bucket.Name != "P" {
 		t.Errorf("expected embedded bucket, got %+v", result.Recordings[0].Bucket)
+	}
+	// Type-specific message fields must decode (not dropped by the generic
+	// recording projection): subject and the boostable counts.
+	if result.Recordings[0].Subject != "First subject" {
+		t.Errorf("expected message subject decoded, got %q", result.Recordings[0].Subject)
+	}
+	if result.Recordings[0].BoostsCount != 4 || result.Recordings[0].BoostsURL == "" {
+		t.Errorf("expected boost data decoded, got count=%d url=%q", result.Recordings[0].BoostsCount, result.Recordings[0].BoostsURL)
 	}
 	if result.Meta.TotalCount != 3 {
 		t.Errorf("expected TotalCount 3, got %d", result.Meta.TotalCount)
@@ -272,11 +280,55 @@ func TestEverythingFile_OptionalStringsPreserveAbsence(t *testing.T) {
 	}
 }
 
+// TestEverythingService_TypeSpecificFeedFields proves the check-in and forward
+// feeds surface their type-specific projections (group_on; from/subject/replies)
+// through the generic recording element rather than dropping them.
+func TestEverythingService_TypeSpecificFeedFields(t *testing.T) {
+	// Check-ins: group_on.
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/checkins.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[{"id":1,"type":"Question::Answer","title":"How's it going?","group_on":"2026-07-20","status":"active","visible_to_clients":false,"created_at":"2026-07-20T00:00:00Z","updated_at":"2026-07-20T00:00:00Z","inherits_status":true,"url":"https://x/1.json","app_url":"https://x/1","bucket":{"id":9,"name":"P","type":"Project"},"creator":{"id":1,"name":"A"}}]`))
+	})
+	ci, err := svc.Checkins(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("checkins error: %v", err)
+	}
+	if len(ci.Recordings) != 1 || ci.Recordings[0].GroupOn != "2026-07-20" {
+		t.Errorf("expected check-in group_on 2026-07-20, got %+v", ci.Recordings)
+	}
+
+	// Forwards: from, subject, replies_count/url.
+	svc2, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/forwards.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[{"id":2,"type":"Inbox::Forward","title":"FW: Invoice","subject":"FW: Invoice","from":"vendor@example.com","replies_count":2,"replies_url":"https://x/2/replies.json","status":"active","visible_to_clients":false,"created_at":"2026-07-20T00:00:00Z","updated_at":"2026-07-20T00:00:00Z","inherits_status":true,"url":"https://x/2.json","app_url":"https://x/2","bucket":{"id":9,"name":"P","type":"Project"},"creator":{"id":1,"name":"A"}}]`))
+	})
+	fw, err := svc2.Forwards(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("forwards error: %v", err)
+	}
+	if len(fw.Recordings) != 1 {
+		t.Fatalf("expected 1 forward, got %d", len(fw.Recordings))
+	}
+	f := fw.Recordings[0]
+	if f.Subject != "FW: Invoice" || f.From != "vendor@example.com" || f.RepliesCount != 2 || f.RepliesURL == "" {
+		t.Errorf("expected forward type-specific fields, got subject=%q from=%q replies=%d url=%q", f.Subject, f.From, f.RepliesCount, f.RepliesURL)
+	}
+}
+
 // TestEverythingService_Boosts_RecordingCarriesBucket proves the everything
-// /boosts.json feed preserves the boosted recording's bucket (project context).
-// The feed renders the full recording projection, so Boost.Recording must be the
-// full Recording (with bucket), not the reduced parent shape that would discard
-// it — routed through the real Boosts() -> boostFromGenerated pipeline.
+// /boosts.json feed renders each boost's recording through the FULL recording
+// projection. EverythingBoost.Recording is a *Recording (not the reduced Parent
+// shape the shared Boost keeps for source compatibility), so it must carry the
+// bucket, creator, and type-specific fields — routed through the real Boosts()
+// -> everythingBoostFromGenerated pipeline.
 func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/99999/boosts.json" {
@@ -285,7 +337,7 @@ func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte(`[
-			{"id":5001,"content":"👏","created_at":"2024-01-15T10:00:00Z","booster":{"id":1,"name":"Victor Cooper"},"recording":{"id":800,"type":"Message","title":"A message","bucket":{"id":9,"name":"The Leto Laptop","type":"Project"}}}
+			{"id":5001,"content":"👏","created_at":"2024-01-15T10:00:00Z","booster":{"id":1,"name":"Victor Cooper"},"recording":{"id":800,"type":"Message","status":"active","title":"A message","subject":"A message","url":"https://3.basecampapi.com/99999/buckets/9/messages/800.json","creator":{"id":7,"name":"Ann Perkins"},"bucket":{"id":9,"name":"The Leto Laptop","type":"Project"}}}
 		]`))
 	})
 
@@ -302,5 +354,13 @@ func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 	}
 	if b.Recording.Bucket == nil || b.Recording.Bucket.Name != "The Leto Laptop" {
 		t.Errorf("expected the boosted recording to carry its bucket, got %+v", b.Recording.Bucket)
+	}
+	// Full projection (not reduced parent): creator, url, and the type-specific
+	// message subject must all decode.
+	if b.Recording.Creator == nil || b.Recording.Creator.Name != "Ann Perkins" {
+		t.Errorf("expected full projection creator, got %+v", b.Recording.Creator)
+	}
+	if b.Recording.URL == "" || b.Recording.Subject != "A message" {
+		t.Errorf("expected full projection url+subject, got url=%q subject=%q", b.Recording.URL, b.Recording.Subject)
 	}
 }

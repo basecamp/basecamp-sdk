@@ -16,7 +16,7 @@ class EverythingService(client: AccountClient) : BaseService(client) {
      * Get every boost across all accessible projects, newest-first (paginated).
      * @param options Optional query parameters and pagination control
      */
-    suspend fun everythingBoosts(options: GetEverythingBoostsOptions? = null): ListResult<Boost> {
+    suspend fun everythingBoosts(options: GetEverythingBoostsOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Everything",
             operation = "GetEverythingBoosts",
@@ -31,7 +31,7 @@ class EverythingService(client: AccountClient) : BaseService(client) {
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/boosts.json" + qs, operationName = info.operation)
         }) { body ->
-            json.decodeFromString<List<Boost>>(body)
+            json.decodeFromString<List<JsonElement>>(body)
         }
     }
 
