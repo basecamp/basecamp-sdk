@@ -204,7 +204,7 @@ sync-api-version-check:
 # Go SDK targets (delegates to go/Makefile)
 #------------------------------------------------------------------------------
 
-.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift
+.PHONY: go-test go-lint go-check go-clean go-check-drift go-check-wrapper-drift go-check-generated-drift
 
 go-test:
 	@$(MAKE) -C go test
@@ -222,6 +222,15 @@ go-clean:
 go-check-drift:
 	@echo "==> Checking service layer drift..."
 	@./scripts/check-service-drift.sh
+
+# Check that the committed generated Go client is current. Regenerates
+# client.gen.go (oapi-codegen + normalization) into a temp location and diffs;
+# non-mutative and safe under `make -j`. Distinct from go-check-drift
+# (operation-level coverage) and go-check-wrapper-drift (field-level): this is
+# output freshness of the generated file itself.
+go-check-generated-drift:
+	@echo "==> Checking generated Go client drift..."
+	@./scripts/check-go-generated-drift.sh
 
 # Check for field-level drift between generated structs and hand-written
 # wrappers in go/pkg/basecamp/. Sibling of go-check-drift; that check is
@@ -244,7 +253,7 @@ auth-routable-check:
 # TypeScript SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-clean
+.PHONY: ts-install ts-generate ts-generate-services ts-build ts-test ts-typecheck ts-check ts-check-drift ts-clean
 
 TS_NODE_STAMP := typescript/node_modules/.install-stamp
 
@@ -286,8 +295,16 @@ ts-typecheck:
 	@echo "==> Type checking TypeScript SDK..."
 	cd typescript && npm run typecheck
 
+# Check that committed generated TypeScript artifacts are current. Regenerates
+# the whole src/generated/ tree (stripped OpenAPI, schema, metadata,
+# path-mapping, services) into a temp project and diffs; non-mutative and safe
+# under `make -j`.
+ts-check-drift: ts-install
+	@echo "==> Checking TypeScript generated code drift..."
+	@./scripts/check-typescript-service-drift.sh
+
 # Run all TypeScript checks
-ts-check: ts-typecheck ts-test
+ts-check: ts-check-drift ts-typecheck ts-test
 	@echo "==> TypeScript SDK checks passed"
 
 # Clean TypeScript build artifacts
@@ -299,7 +316,7 @@ ts-clean:
 # Ruby SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: rb-generate rb-generate-services rb-build rb-test rb-check rb-doc rb-clean
+.PHONY: rb-generate rb-generate-services rb-build rb-test rb-check rb-check-drift rb-doc rb-clean
 
 # Generate Ruby types and metadata from OpenAPI
 rb-generate:
@@ -329,8 +346,15 @@ rb-test: rb-build
 	@echo "==> Running Ruby tests..."
 	cd ruby && bundle exec rake test
 
+# Check that committed generated Ruby artifacts are current. Regenerates
+# metadata.json, types.rb, and the service files and diffs; non-mutative. The
+# metadata/types diff canonicalizes the embedded generation timestamp.
+rb-check-drift:
+	@echo "==> Checking Ruby generated code drift..."
+	@./scripts/check-ruby-service-drift.sh
+
 # Run all Ruby checks
-rb-check: rb-test
+rb-check: rb-check-drift rb-test
 	@echo "==> Running Ruby linter..."
 	cd ruby && bundle exec rubocop
 	@echo "==> Ruby SDK checks passed"
@@ -613,7 +637,16 @@ kt-test:
 kt-check: kt-test
 	@echo "==> Kotlin SDK checks passed"
 
-# Check for drift between generated Kotlin services and OpenAPI spec
+# Check for drift between generated Kotlin services and OpenAPI spec.
+#
+# NOTE: this is an operation-level *coverage* check (operationId sets match),
+# NOT a regenerate-and-diff freshness gate like check-{python,ruby,typescript}-
+# service-drift.sh or check-go-generated-drift.sh. The authoritative
+# regenerate-and-diff for Kotlin runs only in CI (the "Check generated code
+# drift" step of the test-kotlin job in .github/workflows/test.yml), which
+# regenerates and fails on any committed drift. Kotlin is intentionally a
+# CI-only exception to the non-mutating regen-and-diff program for now;
+# promoting it to a root-invocable non-mutating gate is tracked as a follow-up.
 kt-check-drift:
 	@echo "==> Checking Kotlin service drift..."
 	@./scripts/check-kotlin-service-drift.sh
@@ -832,7 +865,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -865,6 +898,7 @@ help:
 	@echo "  go-check         Run all Go checks"
 	@echo "  go-check-drift           Check service layer drift vs generated client (operation-level)"
 	@echo "  go-check-wrapper-drift   Check wrapper struct drift vs generated structs (field-level)"
+	@echo "  go-check-generated-drift Check generated client.gen.go is current (regenerate + diff)"
 	@echo "  go-clean         Remove Go build artifacts"
 	@echo ""
 	@echo "TypeScript SDK:"
@@ -873,7 +907,8 @@ help:
 	@echo "  ts-build              Build TypeScript SDK"
 	@echo "  ts-test               Run TypeScript tests"
 	@echo "  ts-typecheck          Run TypeScript type checking"
-		@echo "  ts-check              Run all TypeScript checks"
+	@echo "  ts-check-drift        Check generated src/generated/ is current (regenerate + diff)"
+	@echo "  ts-check              Run all TypeScript checks"
 	@echo "  ts-clean              Remove TypeScript build artifacts"
 	@echo ""
 	@echo "Kotlin SDK:"
@@ -914,6 +949,7 @@ help:
 	@echo "  rb-generate-services Generate service classes from OpenAPI"
 	@echo "  rb-build             Build Ruby SDK (install deps)"
 	@echo "  rb-test              Run Ruby tests (with coverage)"
+	@echo "  rb-check-drift       Check generated metadata/types/services are current (regenerate + diff)"
 	@echo "  rb-check             Run all Ruby checks"
 	@echo "  rb-doc               Generate YARD documentation"
 	@echo "  rb-clean             Remove Ruby build artifacts"
