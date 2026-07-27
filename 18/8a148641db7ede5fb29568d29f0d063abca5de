@@ -1,0 +1,45 @@
+ruby/lib/basecamp/http.rb
+  s_4b0e7357e2c0fe::t_07773422df54cd 380
+go/templates/client.tmpl
+  s_4b0e7357e2c0fe::t_2ab159f015e62f 108-126,128,131-133
+  s_4b0e7357e2c0fe::t_9c718615c9a728 163-171
+  s_4b0e7357e2c0fe::t_a21f4a531d0a59 15-20
+SPEC.md
+  s_4b0e7357e2c0fe::t_eaecbe8b1851c8 130-133
+python/README.md
+  s_4b0e7357e2c0fe::t_49c155e43cbe7f 458
+go/pkg/basecamp/client.go
+  s_4b0e7357e2c0fe::t_e6cfd65607bc67 670
+python/src/basecamp/_http.py
+  s_4b0e7357e2c0fe::t_7198db737e69b2 149-152,158,177
+  s_4b0e7357e2c0fe::t_680de657af42e6 191
+go/pkg/basecamp/generated_retry_test.go
+  s_4b0e7357e2c0fe::t_48fbfecce77e9a 1-144
+python/tests/test_http.py
+  s_4b0e7357e2c0fe::t_37123c89be2454 155
+  s_4b0e7357e2c0fe::t_bae85816b8677e 11
+  s_4b0e7357e2c0fe::t_e40cbf2418f09a 9
+  s_4b0e7357e2c0fe::t_507789ee85bc4f 147-154,156-208
+python/src/basecamp/_async_http.py
+  s_4b0e7357e2c0fe::t_56c2b61aa4522a 149-152,158
+  s_4b0e7357e2c0fe::t_3fd0ca2e453862 191
+  s_4b0e7357e2c0fe::t_64dae4bb699e64 177
+go/pkg/generated/client.gen.go
+  s_4b0e7357e2c0fe::t_d956c9fb60699d 3822-3827,3915-3933,3935,3938-3940,3970-3978
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "188a148641db7ede5fb29568d29f0d063abca5de",
+  "prompts": {},
+  "sessions": {
+    "s_4b0e7357e2c0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5919a1e2-b689-433b-b4e7-dc3c8266a5d9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
