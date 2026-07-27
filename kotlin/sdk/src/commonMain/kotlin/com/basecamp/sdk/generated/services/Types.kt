@@ -217,6 +217,56 @@ data class CreateDocumentBody(
     val visibleToClients: Boolean? = null
 )
 
+/** Options for GetEverythingBoosts. */
+data class GetEverythingBoostsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingCheckins. */
+data class GetEverythingCheckinsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingComments. */
+data class GetEverythingCommentsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingFiles. */
+data class GetEverythingFilesOptions(
+    val kind: String? = null,
+    val peopleIds: List<Long>? = null,
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingForwards. */
+data class GetEverythingForwardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetEverythingMessages. */
+data class GetEverythingMessagesOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateForwardReply. */
 data class CreateForwardReplyBody(
     val content: String

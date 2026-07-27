@@ -152,6 +152,22 @@ class OperationMapper:
                 return self._account.tools.enable(tool_id=path_params["toolId"])
             case "UploadsDownload":
                 return self._account.uploads.download(upload_id=path_params["uploadId"])
+            case "GetEverythingMessages":
+                return self._account.everything.get_everything_messages()
+            case "GetEverythingComments":
+                return self._account.everything.get_everything_comments()
+            case "GetEverythingCheckins":
+                return self._account.everything.get_everything_checkins()
+            case "GetEverythingForwards":
+                return self._account.everything.get_everything_forwards()
+            case "GetEverythingBoosts":
+                return self._account.everything.get_everything_boosts()
+            case "GetEverythingFiles":
+                return self._account.everything.get_everything_files()
+            case "GetEverythingOverdueTodos":
+                return self._account.everything.get_everything_overdue_todos()
+            case "GetEverythingOverdueCards":
+                return self._account.everything.get_everything_overdue_cards()
             case _:
                 raise ValueError(f"Unknown operation: {operation}")
 

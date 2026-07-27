@@ -6,10 +6,17 @@
     "operation": "GetProgressReport",
     "method": "GET",
     "path": "/reports/progress.json",
-    "tags": ["live", "read-only"],
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -19,10 +26,17 @@
     "operation": "GetBubbleUps",
     "method": "GET",
     "path": "/my/readings/bubble_ups.json",
-    "tags": ["live", "read-only"],
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -32,10 +46,17 @@
     "operation": "ListProjects",
     "method": "GET",
     "path": "/projects.json",
-    "tags": ["live", "read-only"],
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -45,29 +66,55 @@
     "operation": "GetProject",
     "method": "GET",
     "path": "/projects/${PROJECT_ID}.json",
-    "fixtureIds": { "PROJECT_ID": "PROJECT_ID" },
-    "pathParams": { "projectId": "${PROJECT_ID}" },
-    "tags": ["live", "read-only"],
+    "fixtureIds": {
+      "PROJECT_ID": "PROJECT_ID"
+    },
+    "pathParams": {
+      "projectId": "${PROJECT_ID}"
+    },
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" },
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      },
       {
         "type": "liveResponseFieldsRequired",
-        "fields": ["id", "status", "created_at", "updated_at", "name", "url", "app_url"]
+        "fields": [
+          "id",
+          "status",
+          "created_at",
+          "updated_at",
+          "name",
+          "url",
+          "app_url"
+        ]
       }
     ]
   },
   {
     "mode": "live",
     "name": "GetMyAssignments decodes priorities + non_priorities",
-    "description": "Verifies MyAssignment.bucket JSON-key compat — the field is preserved despite route renames.",
+    "description": "Verifies MyAssignment.bucket JSON-key compat \u2014 the field is preserved despite route renames.",
     "operation": "GetMyAssignments",
     "method": "GET",
     "path": "/my/assignments.json",
-    "tags": ["live", "read-only"],
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -76,10 +123,17 @@
     "operation": "GetMyCompletedAssignments",
     "method": "GET",
     "path": "/my/assignments/completed.json",
-    "tags": ["live", "read-only"],
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -88,23 +142,38 @@
     "operation": "GetMyDueAssignments",
     "method": "GET",
     "path": "/my/assignments/due.json",
-    "tags": ["live", "read-only"],
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
     "mode": "live",
     "name": "GetMyNotifications decodes unreads/reads/memories/bubble_ups",
-    "description": "Asserts the call succeeds and the raw body validates against the GetMyNotifications response schema on production BC5 (bubble_ups / scheduled_bubble_ups / memories are all schema-checked as arrays). It does not assert memories is empty — BC5 ships memories as an always-empty placeholder by documented contract (doc/api/sections/my_notifications.md, bc3 #11628), noted here as context; see spec/api-gaps/memories-emptied-regression.md.",
+    "description": "Asserts the call succeeds and the raw body validates against the GetMyNotifications response schema on production BC5 (bubble_ups / scheduled_bubble_ups / memories are all schema-checked as arrays). It does not assert memories is empty \u2014 BC5 ships memories as an always-empty placeholder by documented contract (doc/api/sections/my_notifications.md, bc3 #11628), noted here as context; see spec/api-gaps/memories-emptied-regression.md.",
     "operation": "GetMyNotifications",
     "method": "GET",
     "path": "/my/readings.json",
-    "tags": ["live", "read-only", "bc5-additive"],
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -114,29 +183,52 @@
     "operation": "GetMyProfile",
     "method": "GET",
     "path": "/my/profile.json",
-    "tags": ["live", "read-only", "bc5-additive"],
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" },
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      },
       {
         "type": "liveResponseFieldsRequired",
-        "fields": ["id", "name"]
+        "fields": [
+          "id",
+          "name"
+        ]
       }
     ]
   },
   {
     "mode": "live",
     "name": "GetTodoset decodes the BC5 count + url additions",
-    "description": "Verifies todos_count, completed_loose_todos_count, todos_url, app_todos_url decode (when present — eligibility-gated like other BC5 additions).",
+    "description": "Verifies todos_count, completed_loose_todos_count, todos_url, app_todos_url decode (when present \u2014 eligibility-gated like other BC5 additions).",
     "operation": "GetTodoset",
     "method": "GET",
     "path": "/todosets/${TODOSET_ID}.json",
-    "fixtureIds": { "TODOSET_ID": "TODOSET_ID" },
-    "pathParams": { "todosetId": "${TODOSET_ID}" },
-    "tags": ["live", "read-only", "bc5-additive"],
+    "fixtureIds": {
+      "TODOSET_ID": "TODOSET_ID"
+    },
+    "pathParams": {
+      "todosetId": "${TODOSET_ID}"
+    },
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -146,12 +238,23 @@
     "operation": "ListTodolists",
     "method": "GET",
     "path": "/todosets/${TODOSET_ID}/todolists.json",
-    "fixtureIds": { "TODOSET_ID": "TODOSET_ID" },
-    "pathParams": { "todosetId": "${TODOSET_ID}" },
-    "tags": ["live", "read-only"],
+    "fixtureIds": {
+      "TODOSET_ID": "TODOSET_ID"
+    },
+    "pathParams": {
+      "todosetId": "${TODOSET_ID}"
+    },
+    "tags": [
+      "live",
+      "read-only"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -161,26 +264,52 @@
     "operation": "ListTodos",
     "method": "GET",
     "path": "/todolists/${TODOLIST_ID}/todos.json",
-    "fixtureIds": { "TODOLIST_ID": "TODOLIST_ID" },
-    "pathParams": { "todolistId": "${TODOLIST_ID}" },
-    "tags": ["live", "read-only", "bc5-additive"],
+    "fixtureIds": {
+      "TODOLIST_ID": "TODOLIST_ID"
+    },
+    "pathParams": {
+      "todolistId": "${TODOLIST_ID}"
+    },
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
     "mode": "live",
     "name": "Search accepts the BC5 filter params (type_names[]/since) and decodes results",
-    "description": "ACCEPTANCE/DECODING coverage for the absorbed search filter surface (spec/api-gaps/search-filter-additions.md, bc3 #12361). Drives search with the new type_names[] array + since params through the SDK's bracketed wire encoding (the dispatch call in live-dispatch.ts is authoritative). New params are silently ignored on BC4, accepted on BC5. HONESTY NOTE: the available live assertions prove only 2xx + SearchResult schema validity — NOT that BC5 actually filters by the params. No result-membership assertion exists in the vocabulary (conformance/schema.json), so this canary is decoding/acceptance coverage, not proof the filter is respected.",
+    "description": "ACCEPTANCE/DECODING coverage for the absorbed search filter surface (spec/api-gaps/search-filter-additions.md, bc3 #12361). Drives search with the new type_names[] array + since params through the SDK's bracketed wire encoding (the dispatch call in live-dispatch.ts is authoritative). New params are silently ignored on BC4, accepted on BC5. HONESTY NOTE: the available live assertions prove only 2xx + SearchResult schema validity \u2014 NOT that BC5 actually filters by the params. No result-membership assertion exists in the vocabulary (conformance/schema.json), so this canary is decoding/acceptance coverage, not proof the filter is respected.",
     "operation": "Search",
     "method": "GET",
     "path": "/search.json",
-    "queryParams": { "q": "the", "type_names[]": ["Message"], "since": "last_30_days" },
-    "tags": ["live", "read-only", "bc5-additive"],
+    "queryParams": {
+      "q": "the",
+      "type_names[]": [
+        "Message"
+      ],
+      "since": "last_30_days"
+    },
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   },
   {
@@ -190,11 +319,189 @@
     "operation": "ListRecordings",
     "method": "GET",
     "path": "/projects/recordings.json",
-    "queryParams": { "type": "Door" },
-    "tags": ["live", "read-only", "bc5-additive"],
+    "queryParams": {
+      "type": "Door"
+    },
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
     "liveAssertions": [
-      { "type": "liveCallSucceeds" },
-      { "type": "liveSchemaValidate" }
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingMessages validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises every message across all projects and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingMessages",
+    "method": "GET",
+    "path": "/messages.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingComments validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises every comment across all projects and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingComments",
+    "method": "GET",
+    "path": "/comments.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingCheckins validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises every check-in answer across all projects and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingCheckins",
+    "method": "GET",
+    "path": "/checkins.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingForwards validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises every inbox forward across all projects and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingForwards",
+    "method": "GET",
+    "path": "/forwards.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingBoosts validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises every boost across all projects and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingBoosts",
+    "method": "GET",
+    "path": "/boosts.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingFiles validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises the heterogeneous files feed (uploads/documents/attachments) and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingFiles",
+    "method": "GET",
+    "path": "/files.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingOverdueTodos validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises the unpaginated oldest-first overdue to-dos and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingOverdueTodos",
+    "method": "GET",
+    "path": "/todos/overdue.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
+    ]
+  },
+  {
+    "mode": "live",
+    "name": "GetEverythingOverdueCards validates against the everything-aggregates schema",
+    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises the unpaginated oldest-first overdue cards and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetEverythingOverdueCards",
+    "method": "GET",
+    "path": "/cards/overdue.json",
+    "tags": [
+      "live",
+      "read-only",
+      "bc5-additive"
+    ],
+    "liveAssertions": [
+      {
+        "type": "liveCallSucceeds"
+      },
+      {
+        "type": "liveSchemaValidate"
+      }
     ]
   }
 ]

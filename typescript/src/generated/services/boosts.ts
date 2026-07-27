@@ -14,6 +14,8 @@ import { Errors } from "../../errors.js";
 // Types
 // =============================================================================
 
+/** Boost entity from the Basecamp API. */
+export type Boost = components["schemas"]["Boost"];
 
 /**
  * Options for listForRecording.
@@ -56,7 +58,7 @@ export class BoostsService extends BaseService {
   /**
    * Get a single boost
    * @param boostId - The boost ID
-   * @returns The boost
+   * @returns The Boost
    * @throws {BasecampError} If the resource is not found
    *
    * @example
@@ -64,7 +66,7 @@ export class BoostsService extends BaseService {
    * const result = await client.boosts.get(123);
    * ```
    */
-  async get(boostId: number): Promise<components["schemas"]["GetBoostResponseContent"]> {
+  async get(boostId: number): Promise<Boost> {
     const response = await this.request(
       {
         service: "Boosts",
@@ -116,14 +118,14 @@ export class BoostsService extends BaseService {
    * List boosts on a recording
    * @param recordingId - The recording ID
    * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
+   * @returns All Boost across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.boosts.listForRecording(123);
    * ```
    */
-  async listForRecording(recordingId: number, options?: ListForRecordingBoostOptions): Promise<components["schemas"]["ListRecordingBoostsResponseContent"]> {
+  async listForRecording(recordingId: number, options?: ListForRecordingBoostOptions): Promise<ListResult<Boost>> {
     return this.requestPaginated(
       {
         service: "Boosts",
@@ -146,7 +148,7 @@ export class BoostsService extends BaseService {
    * Create a boost on a recording
    * @param recordingId - The recording ID
    * @param req - Recording_boost creation parameters
-   * @returns The recording_boost
+   * @returns The Boost
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -154,7 +156,7 @@ export class BoostsService extends BaseService {
    * const result = await client.boosts.createForRecording(123, { content: "Hello world" });
    * ```
    */
-  async createForRecording(recordingId: number, req: CreateForRecordingBoostRequest): Promise<components["schemas"]["CreateRecordingBoostResponseContent"]> {
+  async createForRecording(recordingId: number, req: CreateForRecordingBoostRequest): Promise<Boost> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }
@@ -184,14 +186,14 @@ export class BoostsService extends BaseService {
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
+   * @returns All Boost across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.boosts.listForEvent(123, 123);
    * ```
    */
-  async listForEvent(recordingId: number, eventId: number, options?: ListForEventBoostOptions): Promise<components["schemas"]["ListEventBoostsResponseContent"]> {
+  async listForEvent(recordingId: number, eventId: number, options?: ListForEventBoostOptions): Promise<ListResult<Boost>> {
     return this.requestPaginated(
       {
         service: "Boosts",
@@ -215,7 +217,7 @@ export class BoostsService extends BaseService {
    * @param recordingId - The recording ID
    * @param eventId - The event ID
    * @param req - Event_boost creation parameters
-   * @returns The event_boost
+   * @returns The Boost
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -223,7 +225,7 @@ export class BoostsService extends BaseService {
    * const result = await client.boosts.createForEvent(123, 123, { content: "Hello world" });
    * ```
    */
-  async createForEvent(recordingId: number, eventId: number, req: CreateForEventBoostRequest): Promise<components["schemas"]["CreateEventBoostResponseContent"]> {
+  async createForEvent(recordingId: number, eventId: number, req: CreateForEventBoostRequest): Promise<Boost> {
     if (!req.content) {
       throw Errors.validation("Content is required");
     }

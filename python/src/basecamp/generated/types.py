@@ -613,33 +613,80 @@ class EventDetails(TypedDict):
     removed_person_ids: NotRequired[list[int]]
 
 
+class EverythingBoost(TypedDict):
+    booster: Person
+    content: str
+    created_at: str
+    id: int
+    recording: Recording
+
+
+class EverythingFile(TypedDict):
+    app_download_url: NotRequired[str]
+    app_url: NotRequired[str]
+    attachable_sgid: NotRequired[str]
+    bookmark_url: NotRequired[str]
+    boosts_count: NotRequired[int]
+    boosts_url: NotRequired[str]
+    bucket: NotRequired[RecordingBucket]
+    byte_size: NotRequired[int]
+    comments_count: NotRequired[int]
+    comments_url: NotRequired[str]
+    content: NotRequired[str]
+    content_attachments: NotRequired[list[RichTextAttachment]]
+    content_type: NotRequired[str]
+    created_at: NotRequired[str]
+    creator: NotRequired[Person]
+    description: NotRequired[str]
+    description_attachments: NotRequired[list[RichTextAttachment]]
+    download_url: NotRequired[str]
+    filename: NotRequired[str]
+    height: NotRequired[Optional[int | float]]
+    id: NotRequired[int]
+    inherits_status: NotRequired[bool]
+    parent: NotRequired[RecordingParent]
+    position: NotRequired[int]
+    status: NotRequired[str]
+    subscription_url: NotRequired[str]
+    title: NotRequired[str]
+    type: NotRequired[str]
+    updated_at: NotRequired[str]
+    url: NotRequired[str]
+    visible_to_clients: NotRequired[bool]
+    width: NotRequired[Optional[int | float]]
+
+
 class ForbiddenErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
 
 
-class Forward(TypedDict):
-    app_url: str
-    bookmark_url: NotRequired[str]
-    bucket: TodoBucket
-    content: NotRequired[str]
-    content_attachments: list[RichTextAttachment]
-    created_at: str
-    creator: Person
-    from_: NotRequired[str]
-    id: int
-    inherits_status: bool
-    parent: RecordingParent
-    replies_count: NotRequired[int]
-    replies_url: NotRequired[str]
-    status: str
-    subject: str
-    subscription_url: NotRequired[str]
-    title: str
-    type: str
-    updated_at: str
-    url: str
-    visible_to_clients: bool
+Forward = TypedDict(
+    "Forward",
+    {
+        "app_url": str,
+        "bookmark_url": NotRequired[str],
+        "bucket": "TodoBucket",
+        "content": NotRequired[str],
+        "content_attachments": list["RichTextAttachment"],
+        "created_at": str,
+        "creator": "Person",
+        "from": NotRequired[str],
+        "id": int,
+        "inherits_status": bool,
+        "parent": "RecordingParent",
+        "replies_count": NotRequired[int],
+        "replies_url": NotRequired[str],
+        "status": str,
+        "subject": str,
+        "subscription_url": NotRequired[str],
+        "title": str,
+        "type": str,
+        "updated_at": str,
+        "url": str,
+        "visible_to_clients": bool,
+    },
+)
 
 
 class ForwardReply(TypedDict):
@@ -1172,30 +1219,42 @@ class RateLimitErrorResponseContent(TypedDict):
     retry_after: NotRequired[int]
 
 
-class Recording(TypedDict):
-    app_url: str
-    bookmark_url: NotRequired[str]
-    bucket: RecordingBucket
-    comments_count: NotRequired[int]
-    comments_url: NotRequired[str]
-    content: NotRequired[str]
-    content_attachments: NotRequired[list[RichTextAttachment]]
-    created_at: str
-    creator: Person
-    description: NotRequired[str]
-    description_attachments: NotRequired[list[RichTextAttachment]]
-    id: int
-    inherits_status: bool
-    parent: NotRequired[RecordingParent]
-    position: NotRequired[int]
-    service: NotRequired[DoorService]
-    status: str
-    subscription_url: NotRequired[str]
-    title: str
-    type: str
-    updated_at: str
-    url: str
-    visible_to_clients: bool
+Recording = TypedDict(
+    "Recording",
+    {
+        "app_url": str,
+        "bookmark_url": NotRequired[str],
+        "boosts_count": NotRequired[int],
+        "boosts_url": NotRequired[str],
+        "bucket": "RecordingBucket",
+        "category": NotRequired["RecordingCategory"],
+        "comments_count": NotRequired[int],
+        "comments_url": NotRequired[str],
+        "content": NotRequired[str],
+        "content_attachments": NotRequired[list["RichTextAttachment"]],
+        "created_at": str,
+        "creator": "Person",
+        "description": NotRequired[str],
+        "description_attachments": NotRequired[list["RichTextAttachment"]],
+        "from": NotRequired[str],
+        "group_on": NotRequired[str],
+        "id": int,
+        "inherits_status": bool,
+        "parent": NotRequired["RecordingParent"],
+        "position": NotRequired[int],
+        "replies_count": NotRequired[int],
+        "replies_url": NotRequired[str],
+        "service": NotRequired["DoorService"],
+        "status": str,
+        "subject": NotRequired[str],
+        "subscription_url": NotRequired[str],
+        "title": str,
+        "type": str,
+        "updated_at": str,
+        "url": str,
+        "visible_to_clients": bool,
+    },
+)
 
 
 class RecordingBucket(TypedDict):
@@ -1204,8 +1263,15 @@ class RecordingBucket(TypedDict):
     type: str
 
 
+class RecordingCategory(TypedDict):
+    icon: NotRequired[str]
+    id: int
+    name: str
+
+
 class RecordingParent(TypedDict):
     app_url: str
+    bucket: NotRequired[RecordingBucket]
     id: int
     title: str
     type: str

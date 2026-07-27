@@ -62,6 +62,23 @@ type Recording struct {
 	CommentsCount          int                   `json:"comments_count,omitempty"`
 	CommentsURL            string                `json:"comments_url,omitempty"`
 	SubscriptionURL        string                `json:"subscription_url,omitempty"`
+	// BoostsCount/BoostsURL, Subject, GroupOn, From, and RepliesCount/RepliesURL
+	// are type-specific fields carried by the account-wide aggregate feeds
+	// (/messages.json, /comments.json, /checkins.json, /forwards.json), whose
+	// type-specific partials render them on top of the base recording projection.
+	// They are populated only on the matching recording type (boosts_* on
+	// boostable recordings, subject on Message, group_on on Question::Answer,
+	// from/replies_* on Inbox::Forward), so they are pointer-backed: nil (absent)
+	// omits, and an explicit value — including an empty string or a zero count —
+	// round-trips, per SPEC.md §10.
+	BoostsCount  *int               `json:"boosts_count,omitempty"`
+	BoostsURL    *string            `json:"boosts_url,omitempty"`
+	Subject      *string            `json:"subject,omitempty"`
+	Category     *RecordingCategory `json:"category,omitempty"`
+	GroupOn      *string            `json:"group_on,omitempty"`
+	From         *string            `json:"from,omitempty"`
+	RepliesCount *int               `json:"replies_count,omitempty"`
+	RepliesURL   *string            `json:"replies_url,omitempty"`
 	// Position, Description, and Service are door-specific (external-link)
 	// fields, populated only on Door recordings returned by the type=Door
 	// recordings query (the only endpoint that returns the full door shape).
@@ -72,6 +89,16 @@ type Recording struct {
 	Parent      *Parent      `json:"parent,omitempty"`
 	Bucket      *Bucket      `json:"bucket,omitempty"`
 	Creator     *Person      `json:"creator,omitempty"`
+}
+
+// RecordingCategory is a message category (type): id, display name, and icon.
+// Present on categorized Message recordings (e.g. the /messages.json feed).
+type RecordingCategory struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	// Icon is optional (a category may omit it); pointer-backed so an absent icon
+	// (nil) is distinct from an explicit empty string, per SPEC.md §10.
+	Icon *string `json:"icon,omitempty"`
 }
 
 // DoorService describes the recognized external service backing an external
@@ -413,6 +440,22 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		CommentsCount:    int(gr.CommentsCount),
 		CommentsURL:      gr.CommentsUrl,
 		SubscriptionURL:  gr.SubscriptionUrl,
+		BoostsURL:        gr.BoostsUrl,
+		Subject:          gr.Subject,
+		From:             gr.From,
+		RepliesURL:       gr.RepliesUrl,
+	}
+	if gr.BoostsCount != nil {
+		v := int(*gr.BoostsCount)
+		r.BoostsCount = &v
+	}
+	if gr.RepliesCount != nil {
+		v := int(*gr.RepliesCount)
+		r.RepliesCount = &v
+	}
+	if gr.GroupOn != nil {
+		s := gr.GroupOn.String()
+		r.GroupOn = &s
 	}
 
 	if gr.Id != 0 {
@@ -440,6 +483,14 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 		creator := personFromGenerated(gr.Creator)
 		r.Creator = &creator
+	}
+
+	if gr.Category.Id != 0 || gr.Category.Name != "" {
+		r.Category = &RecordingCategory{
+			ID:   gr.Category.Id,
+			Name: gr.Category.Name,
+			Icon: gr.Category.Icon,
+		}
 	}
 
 	r.ContentAttachments = richTextAttachmentsPtrFromGenerated(gr.ContentAttachments)

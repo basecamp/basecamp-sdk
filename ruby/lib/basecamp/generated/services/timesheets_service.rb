@@ -50,7 +50,7 @@ module Basecamp
       # @param from [String, nil] from
       # @param to [String, nil] to
       # @param person_id [Integer, nil] person id
-      # @return [Hash] response data
+      # @return [Array<Hash>] response data
       def report(from: nil, to: nil, person_id: nil)
         with_operation(service: "timesheets", operation: "report", is_mutation: false) do
           http_get("/reports/timesheet.json", params: compact_query_params(from: from, to: to, person_id: person_id)).json

@@ -75,6 +75,40 @@ class AsyncBaseService:
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms, error=e))
             raise
 
+    async def _request_list(
+        self,
+        info: OperationInfo,
+        path: str,
+        *,
+        params: dict | None = None,
+    ) -> ListResult:
+        """Fetch a complete, unpaginated array in a single request.
+
+        Unlike ``_request_paginated`` this never follows ``Link`` headers: the
+        endpoint returns the whole collection at once (e.g. the overdue todo/card
+        feeds, sorted oldest-first). Matches the plain full-array decode the other
+        SDKs use for these routes.
+        """
+        start = time.monotonic()
+        safe_hook(self._hooks.on_operation_start, info)
+        try:
+            response = await self._client.http.get(self._client.account_path(path), params=params)
+            _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
+            items = response.json()
+            _normalize_person_ids(items)
+            # Unpaginated feeds return the whole collection in a single response,
+            # so the total count is simply the array length. This is authoritative
+            # regardless of X-Total-Count (absent, present-and-equal, or present-
+            # but-invalid), which is why we do not consult the header here.
+            total_count = len(items)
+            duration_ms = int((time.monotonic() - start) * 1000)
+            safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
+            return ListResult(items, ListMeta(total_count=total_count, truncated=False))
+        except Exception as e:
+            duration_ms = int((time.monotonic() - start) * 1000)
+            safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms, error=e))
+            raise
+
     async def _request_void(
         self,
         info: OperationInfo,

@@ -272,6 +272,87 @@ walk(
   (.description // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
+# Fifth-d pass: EverythingFile width/height → nullable *types.FlexInt
+# The /files.json feed mixes uploads and attachments whose pixel dimensions are
+# float-spelled (1024.0) and null for non-image blobs, exactly like
+# RichTextAttachment/TimelineAttachment. Keep the optional pointer and mark
+# nullable so the present-null value types faithfully.
+.components.schemas.EverythingFile.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  }
+)
+|
+# Fifth-f pass: EverythingFile presence-faithful optional fields (same rationale
+# as TimelineAttachment). The /files.json superset populates only one variant per
+# instance, so ALL of its optional fields must round-trip presence: an absent
+# field on the variant this instance is not must stay nil and re-marshal as
+# omitted rather than a fabricated sentinel. That covers timestamps
+# (created_at/updated_at *time.Time), booleans (visible_to_clients/inherits_status
+# *bool), numeric scalars (counts/position/byte_size), AND the optional strings
+# (SPEC.md section 10 forbids empty-string as an absence sentinel: a Document with
+# no filename and an upload with an explicit empty filename must not collapse to
+# the same value). id is already an optional pointer via the oapi default.
+.components.schemas.EverythingFile.properties |= (
+  (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.title // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.bookmark_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.subscription_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.attachable_sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.content_type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.filename // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.description // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.content // empty) += { "x-go-type-skip-optional-pointer": false }
+)
+|
+# Fifth-h pass: the Recording aggregate-feed type-specific scalars are presence-
+# faithful. BC3 renders boosts_count/subject/group_on/from/replies_count/
+# replies_url conditionally (only on the matching recording type — boosts_count
+# via boostable, subject on Message, group_on on Question::Answer, from/replies_*
+# on Inbox::Forward). Per SPEC.md §10 an optional scalar must round-trip absence,
+# so a plain int/string with omitempty (which cannot distinguish absent from an
+# explicit 0/"") is not acceptable. Make them pointer-backed (*int32 / *string /
+# *types.Date) so nil (absent) omits and an explicit value is preserved. Scoped
+# to the new fields only — the pre-existing comments_count/comments_url debt is
+# out of scope here.
+.components.schemas.Recording.properties |= (
+  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.subject // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.group_on // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.from // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.replies_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.replies_url // empty) += { "x-go-type-skip-optional-pointer": false }
+)
+|
+# RecordingCategory.icon is optional (a category may omit its icon), so make it
+# pointer-backed too — an empty string must not stand in for absence (SPEC.md §10).
+.components.schemas.RecordingCategory.properties.icon += { "x-go-type-skip-optional-pointer": false }
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.

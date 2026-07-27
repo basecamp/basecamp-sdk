@@ -454,7 +454,13 @@ def parse_operation(
     success = operation.get("responses", {}).get("200") or operation.get("responses", {}).get("201")
     response_schema = (success or {}).get("content", {}).get("application/json", {}).get("schema")
     returns_void = response_schema is None
-    returns_array = (response_schema or {}).get("type") == "array"
+    # Resolve through a $ref so bare-array ResponseContent aliases (e.g. the
+    # unpaginated overdue lists, whose response is a $ref to `Todo[]`) are
+    # detected as arrays rather than falling through to a dict return type.
+    resolved_response = response_schema
+    if isinstance(response_schema, dict) and "$ref" in response_schema:
+        resolved_response = resolve_schema_ref(response_schema, schemas) or response_schema
+    returns_array = (resolved_response or {}).get("type") == "array"
 
     # Pagination
     pagination = operation.get("x-basecamp-pagination")
@@ -652,7 +658,17 @@ def operation_kwarg(op: dict) -> str:
 
 
 def is_paginated_list(op: dict) -> bool:
-    return (op["returns_array"] or op["has_pagination"]) and not op["pagination_key"]
+    # Link-header paginated: the operation is explicitly marked paginated. A bare
+    # array without that marker is a complete, unpaginated collection (see
+    # is_unpaginated_array) and must NOT follow Link headers.
+    return op["has_pagination"] and not op["pagination_key"]
+
+
+def is_unpaginated_array(op: dict) -> bool:
+    # Returns a bare array but is not marked paginated: the whole collection comes
+    # back in a single response (e.g. the overdue todo/card feeds). Fetched with a
+    # single request, no Link-following — matching the other SDKs' plain decode.
+    return op["returns_array"] and not op["has_pagination"] and not op["pagination_key"]
 
 
 def is_wrapped_paginated(op: dict) -> bool:
@@ -664,7 +680,7 @@ def return_type(op: dict) -> str:
         return "None"
     if is_wrapped_paginated(op):
         return "dict[str, Any]"
-    if is_paginated_list(op):
+    if is_paginated_list(op) or is_unpaginated_array(op):
         return "ListResult"
     return "dict[str, Any]"
 
@@ -692,6 +708,14 @@ def generate_method_body(op: dict, service_name: str, *, is_async: bool) -> list
             lines.append("        )")
         else:
             lines.append(f"        return {_await(is_async)}self._request_paginated(OperationInfo({info_kwargs}), {path_expr})")
+    elif is_unpaginated_array(op):
+        if op["query_params"]:
+            lines.append(f"        return {_await(is_async)}self._request_list(")
+            lines.append(f"            OperationInfo({info_kwargs}), {path_expr},")
+            lines.append(f"            params={build_query_params_expr(op)},")
+            lines.append("        )")
+        else:
+            lines.append(f"        return {_await(is_async)}self._request_list(OperationInfo({info_kwargs}), {path_expr})")
     elif op["has_binary_body"]:
         # Binary upload
         if op["query_params"]:

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T08:13:10Z
+# Generated: 2026-07-27T17:58:57Z
 
 require "json"
 require "time"
@@ -1352,6 +1352,121 @@ module Basecamp
           "added_person_ids" => @added_person_ids,
           "notified_recipient_ids" => @notified_recipient_ids,
           "removed_person_ids" => @removed_person_ids,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # EverythingBoost
+    class EverythingBoost
+      include TypeHelpers
+      attr_accessor :booster, :content, :created_at, :id, :recording
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[booster content created_at id recording].freeze
+      end
+
+      def initialize(data = {})
+        @booster = parse_type(data["booster"], "Person")
+        @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @recording = parse_type(data["recording"], "Recording")
+      end
+
+      def to_h
+        {
+          "booster" => @booster,
+          "content" => @content,
+          "created_at" => @created_at,
+          "id" => @id,
+          "recording" => @recording,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # EverythingFile
+    class EverythingFile
+      include TypeHelpers
+      attr_accessor :app_download_url, :app_url, :attachable_sgid, :bookmark_url, :boosts_count, :boosts_url, :bucket, :byte_size, :comments_count, :comments_url, :content, :content_attachments, :content_type, :created_at, :creator, :description, :description_attachments, :download_url, :filename, :height, :id, :inherits_status, :parent, :position, :status, :subscription_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
+
+      def initialize(data = {})
+        @app_download_url = data["app_download_url"]
+        @app_url = data["app_url"]
+        @attachable_sgid = data["attachable_sgid"]
+        @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
+        @byte_size = parse_integer(data["byte_size"])
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
+        @content = data["content"]
+        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
+        @content_type = data["content_type"]
+        @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @description = data["description"]
+        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @download_url = data["download_url"]
+        @filename = data["filename"]
+        @height = parse_integer(data["height"])
+        @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @position = parse_integer(data["position"])
+        @status = data["status"]
+        @subscription_url = data["subscription_url"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+        @visible_to_clients = parse_boolean(data["visible_to_clients"])
+        @width = parse_integer(data["width"])
+      end
+
+      def to_h
+        {
+          "app_download_url" => @app_download_url,
+          "app_url" => @app_url,
+          "attachable_sgid" => @attachable_sgid,
+          "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "bucket" => @bucket,
+          "byte_size" => @byte_size,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
+          "content" => @content,
+          "content_attachments" => @content_attachments,
+          "content_type" => @content_type,
+          "created_at" => @created_at,
+          "creator" => @creator,
+          "description" => @description,
+          "description_attachments" => @description_attachments,
+          "download_url" => @download_url,
+          "filename" => @filename,
+          "height" => @height,
+          "id" => @id,
+          "inherits_status" => @inherits_status,
+          "parent" => @parent,
+          "position" => @position,
+          "status" => @status,
+          "subscription_url" => @subscription_url,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+          "visible_to_clients" => @visible_to_clients,
+          "width" => @width,
         }.compact
       end
 
@@ -2928,7 +3043,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :parent, :position, :service, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :category, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -2949,15 +3064,23 @@ module Basecamp
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @category = parse_type(data["category"], "RecordingCategory")
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @content = data["content"]
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @description = data["description"]
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @from = data["from"]
+        @group_on = data["group_on"]
         @parent = parse_type(data["parent"], "RecordingParent")
         @position = parse_integer(data["position"])
+        @replies_count = parse_integer(data["replies_count"])
+        @replies_url = data["replies_url"]
         @service = parse_type(data["service"], "DoorService")
+        @subject = data["subject"]
         @subscription_url = data["subscription_url"]
       end
 
@@ -2976,15 +3099,23 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "category" => @category,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "content" => @content,
           "content_attachments" => @content_attachments,
           "description" => @description,
           "description_attachments" => @description_attachments,
+          "from" => @from,
+          "group_on" => @group_on,
           "parent" => @parent,
           "position" => @position,
+          "replies_count" => @replies_count,
+          "replies_url" => @replies_url,
           "service" => @service,
+          "subject" => @subject,
           "subscription_url" => @subscription_url,
         }.compact
       end
@@ -3023,10 +3154,39 @@ module Basecamp
       end
     end
 
+    # RecordingCategory
+    class RecordingCategory
+      include TypeHelpers
+      attr_accessor :id, :name, :icon
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[id name].freeze
+      end
+
+      def initialize(data = {})
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @icon = data["icon"]
+      end
+
+      def to_h
+        {
+          "id" => @id,
+          "name" => @name,
+          "icon" => @icon,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
     # RecordingParent
     class RecordingParent
       include TypeHelpers
-      attr_accessor :app_url, :id, :title, :type, :url
+      attr_accessor :app_url, :id, :title, :type, :url, :bucket
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3039,6 +3199,7 @@ module Basecamp
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
       end
 
       def to_h
@@ -3048,6 +3209,7 @@ module Basecamp
           "title" => @title,
           "type" => @type,
           "url" => @url,
+          "bucket" => @bucket,
         }.compact
       end
 

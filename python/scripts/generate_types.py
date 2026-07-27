@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import keyword
+import re
 import sys
 from pathlib import Path
 
@@ -17,6 +18,38 @@ from gen_common import escape_py_string  # noqa: E402
 
 # Python keywords that can't be used as field names in TypedDicts
 PYTHON_KEYWORDS = set(keyword.kwlist)
+
+
+def _wants_system_label(prop_name: str, prop: dict, props: dict) -> bool:
+    """Whether to inject the synthetic ``system_label`` companion field.
+
+    System actors (e.g. LocalPerson) carry a non-numeric label in their ``id``,
+    surfaced as ``system_label``. Inject it only for the ``id`` field (not any
+    other FlexibleInt64 property), and never when the schema already declares a
+    real ``system_label`` property — otherwise the TypedDict would get a
+    duplicate key.
+    """
+    return (
+        prop_name == "id"
+        and "FlexibleInt64" in str(prop.get("x-go-type", ""))
+        and "system_label" not in props
+    )
+
+
+def quote_schema_refs(py_type: str, schema_names: set[str]) -> str:
+    """Quote whole-word schema-name identifiers in a type annotation as forward
+    references, leaving qualifiers (NotRequired, Optional, list) and builtins
+    (str, int, bool, Any, None) bare. Used only for functional-syntax TypedDicts,
+    where the value expressions are evaluated eagerly: the qualifier must stay
+    live so required/optional keys resolve correctly, while a schema defined later
+    in the file must be deferred to avoid NameError.
+    """
+
+    def repl(m: re.Match) -> str:
+        tok = m.group(0)
+        return f'"{tok}"' if tok in schema_names else tok
+
+    return re.sub(r"[A-Za-z_][A-Za-z0-9_]*", repl, py_type)
 
 
 def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> str:
@@ -105,6 +138,7 @@ def main() -> None:
     lines.append("")
 
     # Sort schemas alphabetically for deterministic output
+    schema_names = set(schemas)
     generated_count = 0
     for name in sorted(schemas):
         schema = schemas[name]
@@ -114,7 +148,42 @@ def main() -> None:
         required_fields = set(schema.get("required", []))
         props = schema["properties"]
 
+        # A JSON key that is a Python keyword (e.g. `from` on Inbox::Forward) or
+        # otherwise not a valid identifier cannot be a class-based TypedDict field
+        # without mangling the key. Appending `_` (from_) would make the public
+        # typing lie about the real wire key. When any key needs that, emit the
+        # whole TypedDict with the functional TypedDict("Name", {...}) syntax,
+        # which preserves the real JSON keys verbatim.
+        needs_functional = any(
+            (p in PYTHON_KEYWORDS) or (not p.isidentifier()) for p in props
+        )
+
         lines.append("")
+        if needs_functional:
+            if schema.get("deprecated"):
+                reason = escape_py_string(schema.get("x-deprecated-reason") or "deprecated")
+                lines.append(f"# Deprecated: {reason}")
+            lines.append(f'{name} = TypedDict("{name}", {{')
+            for prop_name in sorted(props):
+                prop = props[prop_name]
+                is_optional = prop_name not in required_fields
+                py_type = schema_to_type(prop, schemas, optional=is_optional)
+                if prop.get("deprecated"):
+                    reason = escape_py_string(prop.get("x-deprecated-reason") or "deprecated")
+                    lines.append(f"    # deprecated (source-only): {reason}")
+                # Forward-reference only the schema-name identifiers (types defined
+                # later in the file), leaving NotRequired/list/Optional and builtins
+                # bare so the functional TypedDict still SEES the NotRequired
+                # qualifier at construction time — otherwise every field lands in
+                # __required_keys__ and none in __optional_keys__, breaking runtime
+                # introspection. E.g. NotRequired[TodoBucket] -> NotRequired["TodoBucket"].
+                lines.append(f'    "{prop_name}": {quote_schema_refs(py_type, schema_names)},')
+                if _wants_system_label(prop_name, prop, props):
+                    lines.append('    "system_label": NotRequired[str],')
+            lines.append("})")
+            generated_count += 1
+            continue
+
         lines.append(f"class {name}(TypedDict):")
         # Documentation-only deprecation (see #406): a real class docstring for a
         # wholly deprecated TypedDict. TypedDicts have no runtime docstring hook
@@ -128,8 +197,7 @@ def main() -> None:
             prop = props[prop_name]
             is_optional = prop_name not in required_fields
             py_type = schema_to_type(prop, schemas, optional=is_optional)
-            # Escape Python keywords by appending underscore
-            field_name = f"{prop_name}_" if prop_name in PYTHON_KEYWORDS else prop_name
+            field_name = prop_name
             # TypedDict fields carry no directive; label deprecation honestly as a
             # source-only comment (see #406).
             if prop.get("deprecated"):
@@ -140,7 +208,7 @@ def main() -> None:
             lines.append(f"    {field_name}: {py_type}")
             # Add system_label field after id for flexible integer fields
             # (system actors like LocalPerson have non-numeric labels as id)
-            if "FlexibleInt64" in str(prop.get("x-go-type", "")):
+            if _wants_system_label(prop_name, prop, props):
                 lines.append("    system_label: NotRequired[str]")
 
         generated_count += 1

@@ -40,12 +40,9 @@ class TimesheetsService(BaseService):
             operation="CreateTimesheetEntry",
         )
 
-    def report(
-        self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None
-    ) -> dict[str, Any]:
-        return self._request(
+    def report(self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None) -> ListResult:
+        return self._request_list(
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
-            "GET",
             "/reports/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
         )
@@ -107,10 +104,9 @@ class AsyncTimesheetsService(AsyncBaseService):
 
     async def report(
         self, *, from_: str | None = None, to: str | None = None, person_id: int | None = None
-    ) -> dict[str, Any]:
-        return await self._request(
+    ) -> ListResult:
+        return await self._request_list(
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
-            "GET",
             "/reports/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
         )

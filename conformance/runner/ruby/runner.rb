@@ -165,6 +165,22 @@ class OperationMapper
         todo_id: path_params["todoId"],
         **todo_write_kwargs(body)
       )
+    when "GetEverythingMessages"
+      @account.everything.get_everything_messages.to_a
+    when "GetEverythingComments"
+      @account.everything.get_everything_comments.to_a
+    when "GetEverythingCheckins"
+      @account.everything.get_everything_checkins.to_a
+    when "GetEverythingForwards"
+      @account.everything.get_everything_forwards.to_a
+    when "GetEverythingBoosts"
+      @account.everything.get_everything_boosts.to_a
+    when "GetEverythingFiles"
+      @account.everything.get_everything_files.to_a
+    when "GetEverythingOverdueTodos"
+      @account.everything.get_everything_overdue_todos
+    when "GetEverythingOverdueCards"
+      @account.everything.get_everything_overdue_cards
     else
       raise "Unknown operation: #{operation}"
     end

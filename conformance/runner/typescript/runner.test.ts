@@ -283,6 +283,38 @@ async function executeOperation(
         await client.reports.personProgress(Number(params.personId));
         break;
 
+      case "GetEverythingMessages":
+        await client.everything.everythingMessages();
+        break;
+
+      case "GetEverythingComments":
+        await client.everything.everythingComments();
+        break;
+
+      case "GetEverythingCheckins":
+        await client.everything.everythingCheckins();
+        break;
+
+      case "GetEverythingForwards":
+        await client.everything.everythingForwards();
+        break;
+
+      case "GetEverythingBoosts":
+        await client.everything.everythingBoosts();
+        break;
+
+      case "GetEverythingFiles":
+        await client.everything.everythingFiles();
+        break;
+
+      case "GetEverythingOverdueTodos":
+        await client.everything.everythingOverdueTodos();
+        break;
+
+      case "GetEverythingOverdueCards":
+        await client.everything.everythingOverdueCards();
+        break;
+
       case "GetTool":
         await client.tools.get(Number(params.toolId));
         break;

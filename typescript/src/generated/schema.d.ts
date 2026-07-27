@@ -77,6 +77,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/boosts.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every boost across all accessible projects, newest-first (paginated).
+         *     Each boost carries its `booster` and the `recording` it boosts.
+         */
+        get: operations["GetEverythingBoosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/boosts/{boostId}": {
         parameters: {
             query?: never;
@@ -467,6 +487,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cards/overdue.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every overdue card across all accessible projects, oldest-due-date-first.
+         *     A complete, unpaginated array; each item embeds its `bucket`.
+         */
+        get: operations["GetEverythingOverdueCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/chats.json": {
         parameters: {
             query?: never;
@@ -621,6 +661,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/checkins.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every automatic check-in answer across all accessible projects, newest-first.
+         *     Paginated; each item embeds its `bucket`.
+         */
+        get: operations["GetEverythingCheckins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/circles/people.json": {
         parameters: {
             query?: never;
@@ -760,6 +820,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comments.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every comment across all accessible projects, newest-first (paginated).
+         *     Each item embeds its `bucket`.
+         */
+        get: operations["GetEverythingComments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/comments/{commentId}": {
         parameters: {
             query?: never;
@@ -808,6 +888,50 @@ export interface paths {
         get: operations["GetDocument"];
         /** @description Update an existing document */
         put: operations["UpdateDocument"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every file recording across all accessible projects, newest-first (paginated).
+         *     Heterogeneous: uploads and Basecamp documents carry their
+         *     standard recording shapes, while rich-text attachments are wrapped in a
+         *     recording envelope plus an `attachable_sgid` and blob metadata. Modeled as
+         *     an optional-field superset (EverythingFile) so one element type decodes any
+         *     variant.
+         */
+        get: operations["GetEverythingFiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/forwards.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every inbox forward across all accessible projects, newest-first (paginated).
+         *     Each item embeds its `bucket`.
+         */
+        get: operations["GetEverythingForwards"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1000,6 +1124,26 @@ export interface paths {
         put?: never;
         /** @description Create a new message on a message board */
         post: operations["CreateMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every message across all accessible projects, newest-first (paginated).
+         *     Each item embeds its `bucket` for project context.
+         */
+        get: operations["GetEverythingMessages"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2316,6 +2460,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/todos/overdue.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get every overdue to-do across all accessible projects, oldest-due-date-first.
+         *     A complete, unpaginated array; each item embeds its `bucket`.
+         */
+        get: operations["GetEverythingOverdueTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/todos/{todoId}": {
         parameters: {
             query?: never;
@@ -3276,6 +3440,88 @@ export interface components {
             removed_person_ids?: number[];
             notified_recipient_ids?: number[];
         };
+        /**
+         * @description A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
+         *     shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
+         *     kept source-compatible for existing callers), this feed renders each boost's
+         *     `recording` through the FULL recording projection, so it gets a dedicated
+         *     element type carrying the complete `Recording`.
+         */
+        EverythingBoost: {
+            /** Format: int64 */
+            id: number;
+            /** @description The boost's content (the reaction/emoji). BC3 renders it unconditionally. */
+            content: string;
+            created_at: string;
+            booster: components["schemas"]["Person"];
+            recording: components["schemas"]["Recording"];
+        };
+        /**
+         * @description A single item in the /files.json feed. An optional-field superset over three
+         *     wire variants — a full Upload recording, a Basecamp Document recording, and a
+         *     rich-text attachment wrapped in a recording envelope (distinguished by
+         *     `attachable_sgid` and blob metadata). Every field is optional; a given
+         *     instance populates only the fields of the variant it represents. Unknown
+         *     fields are ignored by every SDK decoder, so the superset need not enumerate
+         *     every field of the Upload/Document recordings.
+         */
+        EverythingFile: {
+            /**
+             * Format: int64
+             * @description Recording (Upload/Document) or attachment id.
+             */
+            id?: number;
+            status?: string;
+            visible_to_clients?: boolean;
+            created_at?: string;
+            updated_at?: string;
+            title?: string;
+            inherits_status?: boolean;
+            /** @description "Upload", "Document", or "Attachment". */
+            type?: string;
+            url?: string;
+            app_url?: string;
+            bookmark_url?: string;
+            subscription_url?: string;
+            /** Format: int32 */
+            comments_count?: number;
+            comments_url?: string;
+            /** Format: int32 */
+            boosts_count?: number;
+            boosts_url?: string;
+            /** Format: int32 */
+            position?: number;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["RecordingBucket"];
+            creator?: components["schemas"]["Person"];
+            /**
+             * @description Present on the rich-text attachment variant: signed global id of the
+             *     attachment (uploads/documents omit it).
+             */
+            attachable_sgid?: string;
+            content_type?: string;
+            /** Format: int64 */
+            byte_size?: number;
+            filename?: string;
+            download_url?: string;
+            app_download_url?: string;
+            /**
+             * Format: int32
+             * @description Pixel width; null for non-image blobs and may be float-spelled (1024.0).
+             */
+            width?: number | null;
+            /**
+             * Format: int32
+             * @description Pixel height; null for non-image blobs and may be float-spelled (1024.0).
+             */
+            height?: number | null;
+            /** @description Rich-text description (upload/document variants). */
+            description?: string;
+            description_attachments?: components["schemas"]["RichTextAttachment"][];
+            /** @description Rich-text body of the Document variant (uploads/attachments omit it). */
+            content?: string;
+            content_attachments?: components["schemas"]["RichTextAttachment"][];
+        };
         /** @enum {string} */
         FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         ForbiddenErrorResponseContent: {
@@ -3428,6 +3674,14 @@ export interface components {
         GetClientReplyResponseContent: components["schemas"]["ClientReply"];
         GetCommentResponseContent: components["schemas"]["Comment"];
         GetDocumentResponseContent: components["schemas"]["Document"];
+        GetEverythingBoostsResponseContent: components["schemas"]["EverythingBoost"][];
+        GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
+        GetEverythingCommentsResponseContent: components["schemas"]["Recording"][];
+        GetEverythingFilesResponseContent: components["schemas"]["EverythingFile"][];
+        GetEverythingForwardsResponseContent: components["schemas"]["Recording"][];
+        GetEverythingMessagesResponseContent: components["schemas"]["Recording"][];
+        GetEverythingOverdueCardsResponseContent: components["schemas"]["Card"][];
+        GetEverythingOverdueTodosResponseContent: components["schemas"]["Todo"][];
         GetForwardReplyResponseContent: components["schemas"]["ForwardReply"];
         GetForwardResponseContent: components["schemas"]["Forward"];
         GetGaugeNeedleResponseContent: components["schemas"]["GaugeNeedle"];
@@ -4075,6 +4329,39 @@ export interface components {
             subscription_url?: string;
             /**
              * Format: int32
+             * @description Boost count/URL. Carried on boostable recordings — notably the account-wide
+             *     aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
+             *     partials render with `boostable: true`. Optional (absent on non-boostable
+             *     recordings and on the base/webhook partial).
+             */
+            boosts_count?: number;
+            boosts_url?: string;
+            /**
+             * @description Message subject. Present on `Message` recordings — notably the account-wide
+             *     `/messages.json` aggregate feed, whose message partial renders `subject`.
+             */
+            subject?: string;
+            category?: components["schemas"]["RecordingCategory"];
+            /**
+             * @description Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
+             *     (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
+             *     feed, whose answer partial renders `group_on`.
+             */
+            group_on?: string;
+            /**
+             * @description Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably
+             *     the `/forwards.json` aggregate feed, whose forward partial renders `from`.
+             */
+            from?: string;
+            /**
+             * Format: int32
+             * @description Reply count/URL for an inbox forward. Present on `Inbox::Forward`
+             *     recordings — notably the `/forwards.json` aggregate feed.
+             */
+            replies_count?: number;
+            replies_url?: string;
+            /**
+             * Format: int32
              * @description Ordinal position within the project's External links section. Present on
              *     `Door` (external-link) recordings.
              */
@@ -4098,6 +4385,17 @@ export interface components {
             name: string;
             type: string;
         };
+        /**
+         * @description A message category (type) as rendered by the shared recordings/_category
+         *     partial: id, display name, and icon. Present on categorized Message
+         *     recordings.
+         */
+        RecordingCategory: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            icon?: string;
+        };
         RecordingParent: {
             /** Format: int64 */
             id: number;
@@ -4105,6 +4403,7 @@ export interface components {
             type: string;
             url: string;
             app_url: string;
+            bucket?: components["schemas"]["RecordingBucket"];
         };
         ReplaceTodoRequestContent: {
             content: string;
@@ -5367,6 +5666,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingBoosts: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingBoosts 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingBoostsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -7571,6 +7929,62 @@ export interface operations {
             };
         };
     };
+    GetEverythingOverdueCards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingOverdueCards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingOverdueCardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     ListCampfires: {
         parameters: {
             query?: never;
@@ -8468,6 +8882,65 @@ export interface operations {
             };
         };
     };
+    GetEverythingCheckins: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingCheckins 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingCheckinsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     ListPingablePeople: {
         parameters: {
             query?: never;
@@ -8866,6 +9339,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingComments: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingComments 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingCommentsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -9309,6 +9841,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingFiles: {
+        parameters: {
+            query?: {
+                /** @description Filter by file kind: all (default), images, pdfs, documents, or videos. */
+                kind?: string;
+                /** @description Restrict to files created by the given people (repeatable). */
+                "people_ids[]"?: number[];
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingFiles 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingFilesResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingForwards: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingForwards 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingForwardsResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */
@@ -10310,6 +10964,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingMessages: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingMessages 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingMessagesResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -16684,6 +17397,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetEverythingOverdueTodos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetEverythingOverdueTodos 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetEverythingOverdueTodosResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

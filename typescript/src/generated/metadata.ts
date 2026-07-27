@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-27T06:14:40.561Z",
+  "generated": "2026-07-27T17:58:56.990Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -101,6 +101,22 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      }
+    },
+    "GetEverythingBoosts": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetBoost": {
@@ -520,6 +536,17 @@ const metadata: MetadataOutput = {
         ]
       }
     },
+    "GetEverythingOverdueCards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
     "ListCampfires": {
       "retry": {
         "maxAttempts": 3,
@@ -706,6 +733,22 @@ const metadata: MetadataOutput = {
         ]
       }
     },
+    "GetEverythingCheckins": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
     "ListPingablePeople": {
       "retry": {
         "maxAttempts": 3,
@@ -803,6 +846,22 @@ const metadata: MetadataOutput = {
         ]
       }
     },
+    "GetEverythingComments": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
     "GetComment": {
       "retry": {
         "maxAttempts": 3,
@@ -890,6 +949,38 @@ const metadata: MetadataOutput = {
       },
       "idempotent": {
         "natural": true
+      }
+    },
+    "GetEverythingFiles": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
+      }
+    },
+    "GetEverythingForwards": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetGaugeNeedle": {
@@ -1093,6 +1184,22 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      }
+    },
+    "GetEverythingMessages": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      },
+      "pagination": {
+        "style": "link",
+        "totalCountHeader": "X-Total-Count",
+        "maxPageSize": 50
       }
     },
     "GetMessage": {
@@ -2414,6 +2521,17 @@ const metadata: MetadataOutput = {
       }
     },
     "CreateTodo": {
+      "retry": {
+        "maxAttempts": 3,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetEverythingOverdueTodos": {
       "retry": {
         "maxAttempts": 3,
         "baseDelayMs": 1000,

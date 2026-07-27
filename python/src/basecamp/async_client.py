@@ -350,6 +350,12 @@ class AsyncAccountClient:
         return self._service("timeline", lambda: AsyncTimelineService(self))
 
     @property
+    def everything(self):
+        from basecamp.generated.services.everything import AsyncEverythingService
+
+        return self._service("everything", lambda: AsyncEverythingService(self))
+
+    @property
     def tools(self):
         from basecamp.generated.services.tools import AsyncToolsService
 

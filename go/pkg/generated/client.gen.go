@@ -849,6 +849,78 @@ type EventDetails struct {
 	RemovedPersonIds     []int64 `json:"removed_person_ids,omitempty"`
 }
 
+// EverythingBoost A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
+// shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
+// kept source-compatible for existing callers), this feed renders each boost's
+// `recording` through the FULL recording projection, so it gets a dedicated
+// element type carrying the complete `Recording`.
+type EverythingBoost struct {
+	Booster Person `json:"booster"`
+
+	// Content The boost's content (the reaction/emoji). BC3 renders it unconditionally.
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	Recording Recording `json:"recording"`
+}
+
+// EverythingFile A single item in the /files.json feed. An optional-field superset over three
+// wire variants — a full Upload recording, a Basecamp Document recording, and a
+// rich-text attachment wrapped in a recording envelope (distinguished by
+// `attachable_sgid` and blob metadata). Every field is optional; a given
+// instance populates only the fields of the variant it represents. Unknown
+// fields are ignored by every SDK decoder, so the superset need not enumerate
+// every field of the Upload/Document recordings.
+type EverythingFile struct {
+	AppDownloadUrl *string `json:"app_download_url,omitempty"`
+	AppUrl         *string `json:"app_url,omitempty"`
+
+	// AttachableSgid Present on the rich-text attachment variant: signed global id of the
+	// attachment (uploads/documents omit it).
+	AttachableSgid *string         `json:"attachable_sgid,omitempty"`
+	BookmarkUrl    *string         `json:"bookmark_url,omitempty"`
+	BoostsCount    *int32          `json:"boosts_count,omitempty"`
+	BoostsUrl      *string         `json:"boosts_url,omitempty"`
+	Bucket         RecordingBucket `json:"bucket,omitempty"`
+	ByteSize       *int64          `json:"byte_size,omitempty"`
+	CommentsCount  *int32          `json:"comments_count,omitempty"`
+	CommentsUrl    *string         `json:"comments_url,omitempty"`
+
+	// Content Rich-text body of the Document variant (uploads/attachments omit it).
+	Content            *string              `json:"content,omitempty"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
+	ContentType        *string              `json:"content_type,omitempty"`
+	CreatedAt          *time.Time           `json:"created_at,omitempty"`
+	Creator            Person               `json:"creator,omitempty"`
+
+	// Description Rich-text description (upload/document variants).
+	Description            *string              `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	DownloadUrl            *string              `json:"download_url,omitempty"`
+	Filename               *string              `json:"filename,omitempty"`
+
+	// Height Pixel height; null for non-image blobs and may be float-spelled (1024.0).
+	Height *types.FlexInt `json:"height,omitempty"`
+
+	// Id Recording (Upload/Document) or attachment id.
+	Id              *int64          `json:"id,omitempty"`
+	InheritsStatus  *bool           `json:"inherits_status,omitempty"`
+	Parent          RecordingParent `json:"parent,omitempty"`
+	Position        *int32          `json:"position,omitempty"`
+	Status          *string         `json:"status,omitempty"`
+	SubscriptionUrl *string         `json:"subscription_url,omitempty"`
+	Title           *string         `json:"title,omitempty"`
+
+	// Type "Upload", "Document", or "Attachment".
+	Type             *string    `json:"type,omitempty"`
+	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
+	Url              *string    `json:"url,omitempty"`
+	VisibleToClients *bool      `json:"visible_to_clients,omitempty"`
+
+	// Width Pixel width; null for non-image blobs and may be float-spelled (1024.0).
+	Width *types.FlexInt `json:"width,omitempty"`
+}
+
 // FirstWeekDay defines model for FirstWeekDay.
 type FirstWeekDay string
 
@@ -1040,6 +1112,30 @@ type GetCommentResponseContent = Comment
 
 // GetDocumentResponseContent defines model for GetDocumentResponseContent.
 type GetDocumentResponseContent = Document
+
+// GetEverythingBoostsResponseContent defines model for GetEverythingBoostsResponseContent.
+type GetEverythingBoostsResponseContent = []EverythingBoost
+
+// GetEverythingCheckinsResponseContent defines model for GetEverythingCheckinsResponseContent.
+type GetEverythingCheckinsResponseContent = []Recording
+
+// GetEverythingCommentsResponseContent defines model for GetEverythingCommentsResponseContent.
+type GetEverythingCommentsResponseContent = []Recording
+
+// GetEverythingFilesResponseContent defines model for GetEverythingFilesResponseContent.
+type GetEverythingFilesResponseContent = []EverythingFile
+
+// GetEverythingForwardsResponseContent defines model for GetEverythingForwardsResponseContent.
+type GetEverythingForwardsResponseContent = []Recording
+
+// GetEverythingMessagesResponseContent defines model for GetEverythingMessagesResponseContent.
+type GetEverythingMessagesResponseContent = []Recording
+
+// GetEverythingOverdueCardsResponseContent defines model for GetEverythingOverdueCardsResponseContent.
+type GetEverythingOverdueCardsResponseContent = []Card
+
+// GetEverythingOverdueTodosResponseContent defines model for GetEverythingOverdueTodosResponseContent.
+type GetEverythingOverdueTodosResponseContent = []Todo
 
 // GetForwardReplyResponseContent defines model for GetForwardReplyResponseContent.
 type GetForwardReplyResponseContent = ForwardReply
@@ -1822,12 +1918,24 @@ type RateLimitErrorResponseContent struct {
 
 // Recording defines model for Recording.
 type Recording struct {
-	AppUrl        string          `json:"app_url"`
-	BookmarkUrl   string          `json:"bookmark_url,omitempty"`
-	Bucket        RecordingBucket `json:"bucket"`
-	CommentsCount int32           `json:"comments_count,omitempty"`
-	CommentsUrl   string          `json:"comments_url,omitempty"`
-	Content       string          `json:"content,omitempty"`
+	AppUrl      string `json:"app_url"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+
+	// BoostsCount Boost count/URL. Carried on boostable recordings — notably the account-wide
+	// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
+	// partials render with `boostable: true`. Optional (absent on non-boostable
+	// recordings and on the base/webhook partial).
+	BoostsCount *int32          `json:"boosts_count,omitempty"`
+	BoostsUrl   *string         `json:"boosts_url,omitempty"`
+	Bucket      RecordingBucket `json:"bucket"`
+
+	// Category A message category (type) as rendered by the shared recordings/_category
+	// partial: id, display name, and icon. Present on categorized Message
+	// recordings.
+	Category      RecordingCategory `json:"category,omitempty"`
+	CommentsCount int32             `json:"comments_count,omitempty"`
+	CommentsUrl   string            `json:"comments_url,omitempty"`
+	Content       string            `json:"content,omitempty"`
 
 	// ContentAttachments Rich-text companion arrays carried through the generic recording
 	// projection (`to_recordable_partial_path` renders the full type-specific
@@ -1849,24 +1957,42 @@ type Recording struct {
 
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status"`
-	Parent                 RecordingParent      `json:"parent,omitempty"`
+
+	// From Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably
+	// the `/forwards.json` aggregate feed, whose forward partial renders `from`.
+	From *string `json:"from,omitempty"`
+
+	// GroupOn Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
+	// (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
+	// feed, whose answer partial renders `group_on`.
+	GroupOn        *types.Date     `json:"group_on,omitempty"`
+	Id             int64           `json:"id"`
+	InheritsStatus bool            `json:"inherits_status"`
+	Parent         RecordingParent `json:"parent,omitempty"`
 
 	// Position Ordinal position within the project's External links section. Present on
 	// `Door` (external-link) recordings.
 	Position int32 `json:"position,omitempty"`
 
+	// RepliesCount Reply count/URL for an inbox forward. Present on `Inbox::Forward`
+	// recordings — notably the `/forwards.json` aggregate feed.
+	RepliesCount *int32  `json:"replies_count,omitempty"`
+	RepliesUrl   *string `json:"replies_url,omitempty"`
+
 	// Service Metadata describing the recognized external service backing an external link
 	// (`Door` recording): its display name, a canonical example URL, a short code,
 	// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
 	// is `other` for a generic link.
-	Service         DoorService `json:"service,omitempty"`
-	Status          string      `json:"status"`
-	SubscriptionUrl string      `json:"subscription_url,omitempty"`
-	Title           string      `json:"title"`
-	Type            string      `json:"type"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	Service DoorService `json:"service,omitempty"`
+	Status  string      `json:"status"`
+
+	// Subject Message subject. Present on `Message` recordings — notably the account-wide
+	// `/messages.json` aggregate feed, whose message partial renders `subject`.
+	Subject         *string   `json:"subject,omitempty"`
+	SubscriptionUrl string    `json:"subscription_url,omitempty"`
+	Title           string    `json:"title"`
+	Type            string    `json:"type"`
+	UpdatedAt       time.Time `json:"updated_at"`
 
 	// Url API URL of the recording. Exception: in the `type=Door` (external-link)
 	// projection, `url` is the door's **external destination address** (e.g. the
@@ -1883,13 +2009,23 @@ type RecordingBucket struct {
 	Type string `json:"type"`
 }
 
+// RecordingCategory A message category (type) as rendered by the shared recordings/_category
+// partial: id, display name, and icon. Present on categorized Message
+// recordings.
+type RecordingCategory struct {
+	Icon *string `json:"icon,omitempty"`
+	Id   int64   `json:"id"`
+	Name string  `json:"name"`
+}
+
 // RecordingParent defines model for RecordingParent.
 type RecordingParent struct {
-	AppUrl string `json:"app_url"`
-	Id     int64  `json:"id"`
-	Title  string `json:"title"`
-	Type   string `json:"type"`
-	Url    string `json:"url"`
+	AppUrl string          `json:"app_url"`
+	Bucket RecordingBucket `json:"bucket,omitempty"`
+	Id     int64           `json:"id"`
+	Title  string          `json:"title"`
+	Type   string          `json:"type"`
+	Url    string          `json:"url"`
 }
 
 // ReplaceTodoRequestContent defines model for ReplaceTodoRequestContent.
@@ -3032,6 +3168,12 @@ type CreateAttachmentParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// GetEverythingBoostsParams defines parameters for GetEverythingBoosts.
+type GetEverythingBoostsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListCampfireLinesParams defines parameters for ListCampfireLines.
 type ListCampfireLinesParams struct {
 	// Sort created_at|updated_at
@@ -3056,6 +3198,12 @@ type CreateCampfireUploadParams struct {
 	Name string `form:"name" json:"name"`
 }
 
+// GetEverythingCheckinsParams defines parameters for GetEverythingCheckins.
+type GetEverythingCheckinsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListClientApprovalsParams defines parameters for ListClientApprovals.
 type ListClientApprovalsParams struct {
 	// Sort created_at|updated_at
@@ -3074,6 +3222,30 @@ type ListClientCorrespondencesParams struct {
 	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
 }
 
+// GetEverythingCommentsParams defines parameters for GetEverythingComments.
+type GetEverythingCommentsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingFilesParams defines parameters for GetEverythingFiles.
+type GetEverythingFilesParams struct {
+	// Kind Filter by file kind: all (default), images, pdfs, documents, or videos.
+	Kind string `form:"kind,omitempty" json:"kind,omitempty"`
+
+	// PeopleIds Restrict to files created by the given people (repeatable).
+	PeopleIds *[]int64 `form:"people_ids[],omitempty" json:"people_ids[],omitempty"`
+
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
+// GetEverythingForwardsParams defines parameters for GetEverythingForwards.
+type GetEverythingForwardsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // ListForwardsParams defines parameters for ListForwards.
 type ListForwardsParams struct {
 	// Sort created_at|updated_at
@@ -3090,6 +3262,12 @@ type ListMessagesParams struct {
 
 	// Direction asc|desc
 	Direction string `form:"direction,omitempty" json:"direction,omitempty"`
+}
+
+// GetEverythingMessagesParams defines parameters for GetEverythingMessages.
+type GetEverythingMessagesParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetMyDueAssignmentsParams defines parameters for GetMyDueAssignments.
@@ -3779,6 +3957,9 @@ type ClientInterface interface {
 	// CreateAttachmentWithBody request with any body
 	CreateAttachmentWithBody(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEverythingBoosts request
+	GetEverythingBoosts(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteBoost request
 	DeleteBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3912,6 +4093,9 @@ type ClientInterface interface {
 
 	MoveCardColumn(ctx context.Context, accountId string, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEverythingOverdueCards request
+	GetEverythingOverdueCards(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListCampfires request
 	ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3962,6 +4146,9 @@ type ClientInterface interface {
 	// CreateCampfireUploadWithBody request with any body
 	CreateCampfireUploadWithBody(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEverythingCheckins request
+	GetEverythingCheckins(ctx context.Context, accountId string, params *GetEverythingCheckinsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListPingablePeople request
 	ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -3982,6 +4169,9 @@ type ClientInterface interface {
 
 	// GetClientReply request
 	GetClientReply(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingComments request
+	GetEverythingComments(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetComment request
 	GetComment(ctx context.Context, accountId string, commentId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4009,6 +4199,12 @@ type ClientInterface interface {
 	UpdateDocumentWithBody(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateDocument(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingFiles request
+	GetEverythingFiles(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingForwards request
+	GetEverythingForwards(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DestroyGaugeNeedle request
 	DestroyGaugeNeedle(ctx context.Context, accountId string, needleId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4067,6 +4263,9 @@ type ClientInterface interface {
 	CreateMessageWithBody(ctx context.Context, accountId string, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateMessage(ctx context.Context, accountId string, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEverythingMessages request
+	GetEverythingMessages(ctx context.Context, accountId string, params *GetEverythingMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMessage request
 	GetMessage(ctx context.Context, accountId string, messageId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -4437,6 +4636,9 @@ type ClientInterface interface {
 
 	CreateTodo(ctx context.Context, accountId string, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetEverythingOverdueTodos request
+	GetEverythingOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// TrashTodo request
 	TrashTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -4599,6 +4801,16 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, accountId string,
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// GetEverythingBoosts is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingBoosts(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingBoostsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingBoosts", reqEditors...)
 
 }
 
@@ -5194,6 +5406,16 @@ func (c *Client) MoveCardColumn(ctx context.Context, accountId string, cardTable
 
 }
 
+// GetEverythingOverdueCards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingOverdueCards(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingOverdueCardsRequest(c.Server, accountId)
+	}, true, "GetEverythingOverdueCards", reqEditors...)
+
+}
+
 // ListCampfires is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListCampfires(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5396,6 +5618,16 @@ func (c *Client) CreateCampfireUploadWithBody(ctx context.Context, accountId str
 
 }
 
+// GetEverythingCheckins is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingCheckins(ctx context.Context, accountId string, params *GetEverythingCheckinsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingCheckinsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingCheckins", reqEditors...)
+
+}
+
 // ListPingablePeople is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) ListPingablePeople(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -5463,6 +5695,16 @@ func (c *Client) GetClientReply(ctx context.Context, accountId string, recording
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetClientReplyRequest(c.Server, accountId, recordingId, replyId)
 	}, true, "GetClientReply", reqEditors...)
+
+}
+
+// GetEverythingComments is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingComments(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingCommentsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingComments", reqEditors...)
 
 }
 
@@ -5557,6 +5799,26 @@ func (c *Client) UpdateDocument(ctx context.Context, accountId string, documentI
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateDocumentRequest(c.Server, accountId, documentId, body)
 	}, true, "UpdateDocument", reqEditors...)
+
+}
+
+// GetEverythingFiles is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingFiles(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingFilesRequest(c.Server, accountId, params)
+	}, true, "GetEverythingFiles", reqEditors...)
+
+}
+
+// GetEverythingForwards is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingForwards(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingForwardsRequest(c.Server, accountId, params)
+	}, true, "GetEverythingForwards", reqEditors...)
 
 }
 
@@ -5793,6 +6055,16 @@ func (c *Client) CreateMessage(ctx context.Context, accountId string, boardId in
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// GetEverythingMessages is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingMessages(ctx context.Context, accountId string, params *GetEverythingMessagesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingMessagesRequest(c.Server, accountId, params)
+	}, true, "GetEverythingMessages", reqEditors...)
 
 }
 
@@ -7256,6 +7528,16 @@ func (c *Client) CreateTodo(ctx context.Context, accountId string, todolistId in
 
 }
 
+// GetEverythingOverdueTodos is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetEverythingOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetEverythingOverdueTodosRequest(c.Server, accountId)
+	}, true, "GetEverythingOverdueTodos", reqEditors...)
+
+}
+
 // TrashTodo is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) TrashTodo(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -7853,6 +8135,62 @@ func NewCreateAttachmentRequestWithBody(server string, accountId string, params 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetEverythingBoostsRequest generates requests for GetEverythingBoosts
+func NewGetEverythingBoostsRequest(server string, accountId string, params *GetEverythingBoostsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/boosts.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -9494,6 +9832,40 @@ func NewMoveCardColumnRequestWithBody(server string, accountId string, cardTable
 	return req, nil
 }
 
+// NewGetEverythingOverdueCardsRequest generates requests for GetEverythingOverdueCards
+func NewGetEverythingOverdueCardsRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/cards/overdue.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListCampfiresRequest generates requests for ListCampfires
 func NewListCampfiresRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -10251,6 +10623,62 @@ func NewCreateCampfireUploadRequestWithBody(server string, accountId string, cam
 	return req, nil
 }
 
+// NewGetEverythingCheckinsRequest generates requests for GetEverythingCheckins
+func NewGetEverythingCheckinsRequest(server string, accountId string, params *GetEverythingCheckinsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/checkins.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListPingablePeopleRequest generates requests for ListPingablePeople
 func NewListPingablePeopleRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -10600,6 +11028,62 @@ func NewGetClientReplyRequest(server string, accountId string, recordingId int64
 	return req, nil
 }
 
+// NewGetEverythingCommentsRequest generates requests for GetEverythingComments
+func NewGetEverythingCommentsRequest(server string, accountId string, params *GetEverythingCommentsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/comments.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCommentRequest generates requests for GetComment
 func NewGetCommentRequest(server string, accountId string, commentId int64) (*http.Request, error) {
 	var err error
@@ -10922,6 +11406,150 @@ func NewUpdateDocumentRequestWithBody(server string, accountId string, documentI
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetEverythingFilesRequest generates requests for GetEverythingFiles
+func NewGetEverythingFilesRequest(server string, accountId string, params *GetEverythingFilesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/files.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Kind != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "kind", runtime.ParamLocationQuery, params.Kind); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PeopleIds != nil && len(*params.PeopleIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "people_ids[]", runtime.ParamLocationQuery, *params.PeopleIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEverythingForwardsRequest generates requests for GetEverythingForwards
+func NewGetEverythingForwardsRequest(server string, accountId string, params *GetEverythingForwardsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/forwards.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -11712,6 +12340,62 @@ func NewCreateMessageRequestWithBody(server string, accountId string, boardId in
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetEverythingMessagesRequest generates requests for GetEverythingMessages
+func NewGetEverythingMessagesRequest(server string, accountId string, params *GetEverythingMessagesParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/messages.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -16836,6 +17520,40 @@ func NewCreateTodoRequestWithBody(server string, accountId string, todolistId in
 	return req, nil
 }
 
+// NewGetEverythingOverdueTodosRequest generates requests for GetEverythingOverdueTodos
+func NewGetEverythingOverdueTodosRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/todos/overdue.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewTrashTodoRequest generates requests for TrashTodo
 func NewTrashTodoRequest(server string, accountId string, todoId int64) (*http.Request, error) {
 	var err error
@@ -18098,6 +18816,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateAccountLogo":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateAccountName":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingBoosts":                {Idempotent: true, HasSensitiveParams: false},
 	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
@@ -18131,6 +18850,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetCardTable":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateCardColumn":                   {Idempotent: false, HasSensitiveParams: false},
 	"MoveCardColumn":                     {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingOverdueCards":          {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfires":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetCampfire":                        {Idempotent: true, HasSensitiveParams: false},
 	"ListChatbots":                       {Idempotent: true, HasSensitiveParams: false},
@@ -18145,6 +18865,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateCampfireLine":                 {Idempotent: true, HasSensitiveParams: false},
 	"ListCampfireUploads":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateCampfireUpload":               {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingCheckins":              {Idempotent: true, HasSensitiveParams: false},
 	"ListPingablePeople":                 {Idempotent: true, HasSensitiveParams: false},
 	"ListClientApprovals":                {Idempotent: true, HasSensitiveParams: false},
 	"GetClientApproval":                  {Idempotent: true, HasSensitiveParams: false},
@@ -18152,6 +18873,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetClientCorrespondence":            {Idempotent: true, HasSensitiveParams: false},
 	"ListClientReplies":                  {Idempotent: true, HasSensitiveParams: false},
 	"GetClientReply":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingComments":              {Idempotent: true, HasSensitiveParams: false},
 	"GetComment":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateComment":                      {Idempotent: true, HasSensitiveParams: false},
 	"DeleteTool":                         {Idempotent: true, HasSensitiveParams: false},
@@ -18159,6 +18881,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateTool":                         {Idempotent: true, HasSensitiveParams: false},
 	"GetDocument":                        {Idempotent: true, HasSensitiveParams: false},
 	"UpdateDocument":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingFiles":                 {Idempotent: true, HasSensitiveParams: false},
+	"GetEverythingForwards":              {Idempotent: true, HasSensitiveParams: false},
 	"DestroyGaugeNeedle":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetGaugeNeedle":                     {Idempotent: true, HasSensitiveParams: false},
 	"UpdateGaugeNeedle":                  {Idempotent: true, HasSensitiveParams: false},
@@ -18175,6 +18899,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMessageBoard":                    {Idempotent: true, HasSensitiveParams: false},
 	"ListMessages":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateMessage":                      {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingMessages":              {Idempotent: true, HasSensitiveParams: false},
 	"GetMessage":                         {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessage":                      {Idempotent: true, HasSensitiveParams: false},
 	"GetMyAssignments":                   {Idempotent: true, HasSensitiveParams: false},
@@ -18276,6 +19001,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateTodolistGroup":                {Idempotent: false, HasSensitiveParams: false},
 	"ListTodos":                          {Idempotent: true, HasSensitiveParams: false},
 	"CreateTodo":                         {Idempotent: false, HasSensitiveParams: false},
+	"GetEverythingOverdueTodos":          {Idempotent: true, HasSensitiveParams: false},
 	"TrashTodo":                          {Idempotent: true, HasSensitiveParams: false},
 	"GetTodo":                            {Idempotent: true, HasSensitiveParams: false},
 	"ReplaceTodo":                        {Idempotent: true, HasSensitiveParams: false},
@@ -19254,6 +19980,9 @@ type ClientWithResponsesInterface interface {
 	// CreateAttachmentWithBodyWithResponse request with any body
 	CreateAttachmentWithBodyWithResponse(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
 
+	// GetEverythingBoostsWithResponse request
+	GetEverythingBoostsWithResponse(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*GetEverythingBoostsResponse, error)
+
 	// DeleteBoostWithResponse request
 	DeleteBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*DeleteBoostResponse, error)
 
@@ -19387,6 +20116,9 @@ type ClientWithResponsesInterface interface {
 
 	MoveCardColumnWithResponse(ctx context.Context, accountId string, cardTableId int64, body MoveCardColumnJSONRequestBody, reqEditors ...RequestEditorFn) (*MoveCardColumnResponse, error)
 
+	// GetEverythingOverdueCardsWithResponse request
+	GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error)
+
 	// ListCampfiresWithResponse request
 	ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error)
 
@@ -19437,6 +20169,9 @@ type ClientWithResponsesInterface interface {
 	// CreateCampfireUploadWithBodyWithResponse request with any body
 	CreateCampfireUploadWithBodyWithResponse(ctx context.Context, accountId string, campfireId int64, params *CreateCampfireUploadParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateCampfireUploadResponse, error)
 
+	// GetEverythingCheckinsWithResponse request
+	GetEverythingCheckinsWithResponse(ctx context.Context, accountId string, params *GetEverythingCheckinsParams, reqEditors ...RequestEditorFn) (*GetEverythingCheckinsResponse, error)
+
 	// ListPingablePeopleWithResponse request
 	ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error)
 
@@ -19457,6 +20192,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetClientReplyWithResponse request
 	GetClientReplyWithResponse(ctx context.Context, accountId string, recordingId int64, replyId int64, reqEditors ...RequestEditorFn) (*GetClientReplyResponse, error)
+
+	// GetEverythingCommentsWithResponse request
+	GetEverythingCommentsWithResponse(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*GetEverythingCommentsResponse, error)
 
 	// GetCommentWithResponse request
 	GetCommentWithResponse(ctx context.Context, accountId string, commentId int64, reqEditors ...RequestEditorFn) (*GetCommentResponse, error)
@@ -19484,6 +20222,12 @@ type ClientWithResponsesInterface interface {
 	UpdateDocumentWithBodyWithResponse(ctx context.Context, accountId string, documentId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
 
 	UpdateDocumentWithResponse(ctx context.Context, accountId string, documentId int64, body UpdateDocumentJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateDocumentResponse, error)
+
+	// GetEverythingFilesWithResponse request
+	GetEverythingFilesWithResponse(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*GetEverythingFilesResponse, error)
+
+	// GetEverythingForwardsWithResponse request
+	GetEverythingForwardsWithResponse(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*GetEverythingForwardsResponse, error)
 
 	// DestroyGaugeNeedleWithResponse request
 	DestroyGaugeNeedleWithResponse(ctx context.Context, accountId string, needleId int64, reqEditors ...RequestEditorFn) (*DestroyGaugeNeedleResponse, error)
@@ -19542,6 +20286,9 @@ type ClientWithResponsesInterface interface {
 	CreateMessageWithBodyWithResponse(ctx context.Context, accountId string, boardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
 
 	CreateMessageWithResponse(ctx context.Context, accountId string, boardId int64, body CreateMessageJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateMessageResponse, error)
+
+	// GetEverythingMessagesWithResponse request
+	GetEverythingMessagesWithResponse(ctx context.Context, accountId string, params *GetEverythingMessagesParams, reqEditors ...RequestEditorFn) (*GetEverythingMessagesResponse, error)
 
 	// GetMessageWithResponse request
 	GetMessageWithResponse(ctx context.Context, accountId string, messageId int64, reqEditors ...RequestEditorFn) (*GetMessageResponse, error)
@@ -19912,6 +20659,9 @@ type ClientWithResponsesInterface interface {
 
 	CreateTodoWithResponse(ctx context.Context, accountId string, todolistId int64, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
+	// GetEverythingOverdueTodosWithResponse request
+	GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error)
+
 	// TrashTodoWithResponse request
 	TrashTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error)
 
@@ -20177,6 +20927,40 @@ func (r CreateAttachmentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateAttachmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingBoostsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingBoostsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingBoostsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingBoostsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingBoostsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -21320,6 +22104,40 @@ func (r MoveCardColumnResponse) ContentType() string {
 	return ""
 }
 
+type GetEverythingOverdueCardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingOverdueCardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingOverdueCardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingOverdueCardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingOverdueCardsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListCampfiresResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -21799,6 +22617,40 @@ func (r CreateCampfireUploadResponse) ContentType() string {
 	return ""
 }
 
+type GetEverythingCheckinsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingCheckinsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingCheckinsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingCheckinsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingCheckinsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListPingablePeopleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -22031,6 +22883,40 @@ func (r GetClientReplyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetClientReplyResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingCommentsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingCommentsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingCommentsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingCommentsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingCommentsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22271,6 +23157,74 @@ func (r UpdateDocumentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateDocumentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingFilesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingFilesResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingFilesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingFilesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingFilesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingForwardsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingForwardsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingForwardsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingForwardsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingForwardsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -22818,6 +23772,40 @@ func (r CreateMessageResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateMessageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetEverythingMessagesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingMessagesResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingMessagesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingMessagesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingMessagesResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -26281,6 +27269,40 @@ func (r CreateTodoResponse) ContentType() string {
 	return ""
 }
 
+type GetEverythingOverdueTodosResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetEverythingOverdueTodosResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEverythingOverdueTodosResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEverythingOverdueTodosResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetEverythingOverdueTodosResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type TrashTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27225,6 +28247,15 @@ func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.C
 	return ParseCreateAttachmentResponse(rsp)
 }
 
+// GetEverythingBoostsWithResponse request returning *GetEverythingBoostsResponse
+func (c *ClientWithResponses) GetEverythingBoostsWithResponse(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*GetEverythingBoostsResponse, error) {
+	rsp, err := c.GetEverythingBoosts(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingBoostsResponse(rsp)
+}
+
 // DeleteBoostWithResponse request returning *DeleteBoostResponse
 func (c *ClientWithResponses) DeleteBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*DeleteBoostResponse, error) {
 	rsp, err := c.DeleteBoost(ctx, accountId, boostId, reqEditors...)
@@ -27658,6 +28689,15 @@ func (c *ClientWithResponses) MoveCardColumnWithResponse(ctx context.Context, ac
 	return ParseMoveCardColumnResponse(rsp)
 }
 
+// GetEverythingOverdueCardsWithResponse request returning *GetEverythingOverdueCardsResponse
+func (c *ClientWithResponses) GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error) {
+	rsp, err := c.GetEverythingOverdueCards(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingOverdueCardsResponse(rsp)
+}
+
 // ListCampfiresWithResponse request returning *ListCampfiresResponse
 func (c *ClientWithResponses) ListCampfiresWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListCampfiresResponse, error) {
 	rsp, err := c.ListCampfires(ctx, accountId, reqEditors...)
@@ -27816,6 +28856,15 @@ func (c *ClientWithResponses) CreateCampfireUploadWithBodyWithResponse(ctx conte
 	return ParseCreateCampfireUploadResponse(rsp)
 }
 
+// GetEverythingCheckinsWithResponse request returning *GetEverythingCheckinsResponse
+func (c *ClientWithResponses) GetEverythingCheckinsWithResponse(ctx context.Context, accountId string, params *GetEverythingCheckinsParams, reqEditors ...RequestEditorFn) (*GetEverythingCheckinsResponse, error) {
+	rsp, err := c.GetEverythingCheckins(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingCheckinsResponse(rsp)
+}
+
 // ListPingablePeopleWithResponse request returning *ListPingablePeopleResponse
 func (c *ClientWithResponses) ListPingablePeopleWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*ListPingablePeopleResponse, error) {
 	rsp, err := c.ListPingablePeople(ctx, accountId, reqEditors...)
@@ -27877,6 +28926,15 @@ func (c *ClientWithResponses) GetClientReplyWithResponse(ctx context.Context, ac
 		return nil, err
 	}
 	return ParseGetClientReplyResponse(rsp)
+}
+
+// GetEverythingCommentsWithResponse request returning *GetEverythingCommentsResponse
+func (c *ClientWithResponses) GetEverythingCommentsWithResponse(ctx context.Context, accountId string, params *GetEverythingCommentsParams, reqEditors ...RequestEditorFn) (*GetEverythingCommentsResponse, error) {
+	rsp, err := c.GetEverythingComments(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingCommentsResponse(rsp)
 }
 
 // GetCommentWithResponse request returning *GetCommentResponse
@@ -27964,6 +29022,24 @@ func (c *ClientWithResponses) UpdateDocumentWithResponse(ctx context.Context, ac
 		return nil, err
 	}
 	return ParseUpdateDocumentResponse(rsp)
+}
+
+// GetEverythingFilesWithResponse request returning *GetEverythingFilesResponse
+func (c *ClientWithResponses) GetEverythingFilesWithResponse(ctx context.Context, accountId string, params *GetEverythingFilesParams, reqEditors ...RequestEditorFn) (*GetEverythingFilesResponse, error) {
+	rsp, err := c.GetEverythingFiles(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingFilesResponse(rsp)
+}
+
+// GetEverythingForwardsWithResponse request returning *GetEverythingForwardsResponse
+func (c *ClientWithResponses) GetEverythingForwardsWithResponse(ctx context.Context, accountId string, params *GetEverythingForwardsParams, reqEditors ...RequestEditorFn) (*GetEverythingForwardsResponse, error) {
+	rsp, err := c.GetEverythingForwards(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingForwardsResponse(rsp)
 }
 
 // DestroyGaugeNeedleWithResponse request returning *DestroyGaugeNeedleResponse
@@ -28148,6 +29224,15 @@ func (c *ClientWithResponses) CreateMessageWithResponse(ctx context.Context, acc
 		return nil, err
 	}
 	return ParseCreateMessageResponse(rsp)
+}
+
+// GetEverythingMessagesWithResponse request returning *GetEverythingMessagesResponse
+func (c *ClientWithResponses) GetEverythingMessagesWithResponse(ctx context.Context, accountId string, params *GetEverythingMessagesParams, reqEditors ...RequestEditorFn) (*GetEverythingMessagesResponse, error) {
+	rsp, err := c.GetEverythingMessages(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingMessagesResponse(rsp)
 }
 
 // GetMessageWithResponse request returning *GetMessageResponse
@@ -29323,6 +30408,15 @@ func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, accoun
 	return ParseCreateTodoResponse(rsp)
 }
 
+// GetEverythingOverdueTodosWithResponse request returning *GetEverythingOverdueTodosResponse
+func (c *ClientWithResponses) GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error) {
+	rsp, err := c.GetEverythingOverdueTodos(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEverythingOverdueTodosResponse(rsp)
+}
+
 // TrashTodoWithResponse request returning *TrashTodoResponse
 func (c *ClientWithResponses) TrashTodoWithResponse(ctx context.Context, accountId string, todoId int64, reqEditors ...RequestEditorFn) (*TrashTodoResponse, error) {
 	rsp, err := c.TrashTodo(ctx, accountId, todoId, reqEditors...)
@@ -29901,6 +30995,60 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingBoostsResponse parses an HTTP response from a GetEverythingBoostsWithResponse call
+func ParseGetEverythingBoostsResponse(rsp *http.Response) (*GetEverythingBoostsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingBoostsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingBoostsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -31832,6 +32980,60 @@ func ParseMoveCardColumnResponse(rsp *http.Response) (*MoveCardColumnResponse, e
 	return response, nil
 }
 
+// ParseGetEverythingOverdueCardsResponse parses an HTTP response from a GetEverythingOverdueCardsWithResponse call
+func ParseGetEverythingOverdueCardsResponse(rsp *http.Response) (*GetEverythingOverdueCardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingOverdueCardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingOverdueCardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListCampfiresResponse parses an HTTP response from a ListCampfiresWithResponse call
 func ParseListCampfiresResponse(rsp *http.Response) (*ListCampfiresResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32618,6 +33820,60 @@ func ParseCreateCampfireUploadResponse(rsp *http.Response) (*CreateCampfireUploa
 	return response, nil
 }
 
+// ParseGetEverythingCheckinsResponse parses an HTTP response from a GetEverythingCheckinsWithResponse call
+func ParseGetEverythingCheckinsResponse(rsp *http.Response) (*GetEverythingCheckinsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingCheckinsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingCheckinsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListPingablePeopleResponse parses an HTTP response from a ListPingablePeopleWithResponse call
 func ParseListPingablePeopleResponse(rsp *http.Response) (*ListPingablePeopleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -32983,6 +34239,60 @@ func ParseGetClientReplyResponse(rsp *http.Response) (*GetClientReplyResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingCommentsResponse parses an HTTP response from a GetEverythingCommentsWithResponse call
+func ParseGetEverythingCommentsResponse(rsp *http.Response) (*GetEverythingCommentsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingCommentsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingCommentsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -33378,6 +34688,114 @@ func ParseUpdateDocumentResponse(rsp *http.Response) (*UpdateDocumentResponse, e
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingFilesResponse parses an HTTP response from a GetEverythingFilesWithResponse call
+func ParseGetEverythingFilesResponse(rsp *http.Response) (*GetEverythingFilesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingFilesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingFilesResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingForwardsResponse parses an HTTP response from a GetEverythingForwardsWithResponse call
+func ParseGetEverythingForwardsResponse(rsp *http.Response) (*GetEverythingForwardsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingForwardsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingForwardsResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -34268,6 +35686,60 @@ func ParseCreateMessageResponse(rsp *http.Response) (*CreateMessageResponse, err
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingMessagesResponse parses an HTTP response from a GetEverythingMessagesWithResponse call
+func ParseGetEverythingMessagesResponse(rsp *http.Response) (*GetEverythingMessagesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingMessagesResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingMessagesResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent
@@ -39934,6 +41406,60 @@ func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEverythingOverdueTodosResponse parses an HTTP response from a GetEverythingOverdueTodosWithResponse call
+func ParseGetEverythingOverdueTodosResponse(rsp *http.Response) (*GetEverythingOverdueTodosResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEverythingOverdueTodosResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetEverythingOverdueTodosResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent

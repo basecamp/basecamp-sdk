@@ -1,9 +1,12 @@
 ---
 gap: everything-aggregates
-status: addressed-in-bc3-pr-11627
+status: partial-coverage
 detected: 2026-05-01
 sdk_demand: high
 bc3_pr: 11627
+smithy_refs:
+  - "EverythingService flat family: GetEverythingMessages/Comments/Checkins/Forwards/Boosts/Files + GetEverythingOverdueTodos/OverdueCards (spec/basecamp.smithy)"
+  - "EverythingFile superset (spec/basecamp.smithy)"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3c
@@ -112,16 +115,58 @@ merged doc.
 
 ## SDK absorption plan when this lands
 
-- New `EverythingService` with **17** operations matching the merged contract
-  (one per endpoint in the frontmatter route list). Re-verify the operation
-  list against `doc/api/sections/everything.md` at absorption time.
-- Two response families: a bucket-grouped shape for the todo/card filter
-  sub-routes (bucket + grouped recordings + steps) and flat recording arrays
-  for the overdue lists and the 6 roots. Reuse existing recording shapes
-  (`Todo`, `Card`, `Message`, etc.) for the elements.
-- Do **not** model the `/<resource>/recent.json` aliases — internal web feeds,
-  not API contract. Do not model bare `/todos.json` / `/cards.json` (HTML
-  shells).
-- Model the `/files.json` `kind` and `people_ids[]` query filters.
-- Canary fixture: cover at least one operation per group (8 groups) to catch
-  shape drift. Pairwise check: BC4 absent → BC5 present is fine.
+Absorbed in **two phases** across a stacked PR pair. This entry stays
+`partial-coverage` until **both** phases land; it flips to `absorbed-in-sdk`
+only when all 17 routes are modeled.
+
+**PR-5 (flat family) — DONE.** A new `EverythingService` with the 8 flat-family
+operations:
+
+- Six recency-ordered, Link-paginated roots — `GetEverythingMessages`,
+  `GetEverythingComments`, `GetEverythingCheckins`, `GetEverythingForwards`
+  (element = the generic `Recording` projection the wire actually returns, which
+  embeds `bucket`), `GetEverythingBoosts` (element = `Boost`, carrying its
+  `booster` and nested `recording`), and `GetEverythingFiles`.
+- Two unpaginated, oldest-due-date-first arrays — `GetEverythingOverdueTodos`
+  (`Todo`) and `GetEverythingOverdueCards` (`Card`) — modeled as plain full
+  arrays (single-member output, no pagination → bare array via the
+  `smithy-bare-arrays` transform), tested as complete oldest-first with **no**
+  Link-following.
+- `/files.json` is **heterogeneous** (Upload + Document + attachment-envelope);
+  modeled as the optional-field superset `EverythingFile` (the cross-cutting
+  untagged-polymorphism default), with the `kind` and repeatable `people_ids[]`
+  query filters. **Runtime decode proof:** every SDK (Go, TS, Ruby, Python,
+  Kotlin, Swift) has a non-empty test decoding all three variants in one array.
+- The generator auto-derives the `EverythingService` from the `Everything` tag;
+  client wiring added where hand-written (Go accessor, TS `defineService` **plus
+  package-root re-export**, Ruby `def everything`, Python sync+async properties;
+  Kotlin/Swift auto-wired). `EverythingFile`/`Boost` added to the TS and Kotlin
+  generator type registries so the paginated methods advertise `ListResult<T>`
+  rather than a raw array alias; the generator now resolves `$ref` array aliases
+  so the unpaginated overdue methods no longer mis-advertise `dict`/`Hash`.
+- Each paginated flat op carries a `page` `@httpQuery` param, forwarded by the
+  Go wrapper (a positive `page` fetches that page; `page 0` follows the Link
+  header) — previously the Go `page` argument was silently ignored.
+- `EverythingFile` optional timestamps/booleans are pointer-preserving (Go) so
+  re-marshaling the superset omits absent-variant fields instead of fabricating
+  a zero timestamp or dropping an explicit `false`.
+- Go wrappers with multi-page Link-following (paginated roots) and plain
+  full-array decode (overdue); the flat-aggregate mirror of `GetMyAssignments`.
+- **Tests:** Go multi-page/overdue/files/page-forwarding tests, plus happy-path
+  per-op tests for all 8 flat ops in TS/Ruby/Python and per-variant `/files.json`
+  decode in all six SDKs.
+- **Conformance/canary:** `paths.json` path-assertion entries + mock-runner
+  dispatch (Go/TS/Kotlin) for all 8 flat ops; a live-canary entry per group in
+  `live-my-surface.json` with matching `live-dispatch` cases (live canary
+  dormant → validates statically).
+
+**PR-5b (bucket-grouped family) — PENDING.** The 9 todo/card filter sub-routes
+(`/todos/{open,completed,unassigned,no_due_date}.json`,
+`/cards/{open,completed,unassigned,no_due_date,not_now}.json`) return a
+paginated array of `{bucket, todos|cards}` with steps. Modeled + covered
+(tests, page params, conformance, canary) in PR-5b, after which this entry
+flips to `absorbed-in-sdk`.
+
+Exclusions honored: never model the `/<resource>/recent.json` aliases (internal
+web feeds) or the bare `/todos.json` / `/cards.json` roots (HTML shells).
+Pairwise check: BC4 absent → BC5 present is fine.

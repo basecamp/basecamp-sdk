@@ -347,6 +347,19 @@ export {
   TimelineService,
 } from "./generated/services/timeline.js";
 
+// Everything aggregates service - generated
+export {
+  EverythingService,
+  type EverythingBoost,
+  type EverythingFile,
+  type EverythingMessagesEverythingOptions,
+  type EverythingCommentsEverythingOptions,
+  type EverythingCheckinsEverythingOptions,
+  type EverythingForwardsEverythingOptions,
+  type EverythingBoostsEverythingOptions,
+  type EverythingFilesEverythingOptions,
+} from "./generated/services/everything.js";
+
 // Search & Reports services - generated
 export {
   SearchService,
@@ -403,6 +416,7 @@ export {
 // Boosts service - generated
 export {
   BoostsService,
+  type Boost,
   type ListForRecordingBoostOptions,
   type CreateForRecordingBoostRequest,
   type ListForEventBoostOptions,

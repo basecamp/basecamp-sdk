@@ -1000,6 +1000,137 @@ final class GeneratedServiceTests: XCTestCase {
         let sentURL = transport.lastRequest!.request.url!.absoluteString
         XCTAssertTrue(sentURL.hasSuffix("/my/readings/bubble_ups.json"), "Got \(sentURL)")
     }
+
+    // MARK: - Everything /files.json heterogeneous feed
+
+    // Proves runtime decode of the /files.json "everything" feed through the full
+    // service lifecycle (.convertFromSnakeCase): a single non-empty array carrying
+    // three distinct variants — a full Upload recording, a Basecamp Document
+    // recording, and a rich-text Attachment envelope — each asserted on real
+    // per-variant fields. The Upload width is float-spelled (1024.0) on the wire;
+    // Foundation's JSONDecoder folds that into the model's Int32 field.
+    func testEverythingFilesDecodesHeterogeneousFeed() async throws {
+        let fixture = """
+        [
+          {
+            "id": 900,
+            "type": "Upload",
+            "status": "active",
+            "visible_to_clients": false,
+            "title": "logo.png",
+            "inherits_status": true,
+            "filename": "logo.png",
+            "content_type": "image/png",
+            "byte_size": 1281,
+            "width": 1024.0,
+            "height": 768.0,
+            "url": "https://3.basecampapi.com/1/buckets/2/uploads/900.json",
+            "app_url": "https://3.basecamp.com/1/buckets/2/uploads/900",
+            "download_url": "https://3.basecampapi.com/1/buckets/2/uploads/900/download/logo.png",
+            "app_download_url": "https://storage.3.basecamp.com/1/buckets/2/uploads/900/download/logo.png",
+            "bucket": { "id": 2, "name": "The Leto Laptop", "type": "Project" },
+            "creator": { "id": 1, "name": "Victor Cooper" }
+          },
+          {
+            "id": 901,
+            "type": "Document",
+            "status": "active",
+            "visible_to_clients": false,
+            "title": "Spec",
+            "inherits_status": true,
+            "content_type": "text/html",
+            "url": "https://3.basecampapi.com/1/buckets/2/documents/901.json",
+            "app_url": "https://3.basecamp.com/1/buckets/2/documents/901",
+            "bucket": { "id": 2, "name": "The Leto Laptop", "type": "Project" },
+            "creator": { "id": 1, "name": "Victor Cooper" }
+          },
+          {
+            "id": 902,
+            "type": "Attachment",
+            "attachable_sgid": "sgid-902",
+            "filename": "chart.avif",
+            "content_type": "image/avif",
+            "byte_size": 4096,
+            "width": null,
+            "height": null,
+            "download_url": "https://storage.3.basecamp.com/1/blobs/902/download/chart.avif",
+            "parent": {
+              "id": 800,
+              "title": "A message",
+              "type": "Message",
+              "app_url": "https://3.basecamp.com/1/buckets/2/messages/800",
+              "url": "https://3.basecampapi.com/1/buckets/2/messages/800.json"
+            }
+          }
+        ]
+        """
+        let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8),
+                                      headers: ["X-Total-Count": "3"])
+        let account = makeTestAccountClient(transport: transport)
+
+        let files = try await account.everything.everythingFiles()
+        XCTAssertEqual(files.count, 3)
+
+        // [0]: full Upload recording (float-spelled width folds into Int32)
+        XCTAssertEqual(files[0].type, "Upload")
+        XCTAssertEqual(files[0].filename, "logo.png")
+        XCTAssertNotNil(files[0].appDownloadUrl)
+        XCTAssertEqual(files[0].width, 1024)
+
+        // [1]: Basecamp Document recording
+        XCTAssertEqual(files[1].type, "Document")
+        XCTAssertEqual(files[1].title, "Spec")
+
+        // [2]: rich-text Attachment envelope
+        XCTAssertEqual(files[2].type, "Attachment")
+        XCTAssertEqual(files[2].attachableSgid, "sgid-902")
+        XCTAssertNotNil(files[2].parent)
+        XCTAssertNil(files[2].width)
+
+        let sentURL = transport.lastRequest!.request.url!.absoluteString
+        XCTAssertTrue(sentURL.hasSuffix("/files.json"), "Got \(sentURL)")
+    }
+
+    func testEverythingBoostsRecordingCarriesBucket() async throws {
+        let fixture = """
+        [
+          {
+            "id": 5001,
+            "content": "👏",
+            "created_at": "2024-01-15T10:00:00Z",
+            "booster": { "id": 1, "name": "Victor Cooper" },
+            "recording": {
+              "id": 800,
+              "type": "Message",
+              "status": "active",
+              "visible_to_clients": false,
+              "created_at": "2024-01-15T10:00:00Z",
+              "updated_at": "2024-01-15T10:00:00Z",
+              "inherits_status": true,
+              "title": "A message",
+              "subject": "A message",
+              "url": "https://3.basecampapi.com/1/buckets/9/messages/800.json",
+              "app_url": "https://3.basecamp.com/1/buckets/9/messages/800",
+              "bucket": { "id": 9, "name": "The Leto Laptop", "type": "Project" },
+              "creator": { "id": 7, "name": "Ann Perkins" }
+            }
+          }
+        ]
+        """
+        let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8))
+        let account = makeTestAccountClient(transport: transport)
+
+        let boosts = try await account.everything.everythingBoosts()
+
+        XCTAssertEqual(boosts.count, 1)
+        let recording = try XCTUnwrap(boosts[0].recording)
+        // The boosted recording is the full projection: bucket (required), creator,
+        // and the type-specific message subject all decode.
+        XCTAssertEqual(recording.bucket.id, 9)
+        XCTAssertEqual(recording.bucket.name, "The Leto Laptop")
+        XCTAssertEqual(recording.creator.name, "Ann Perkins")
+        XCTAssertEqual(recording.subject, "A message")
+    }
 }
 
 /// Records operation-start callbacks so tests can assert emitted metadata.

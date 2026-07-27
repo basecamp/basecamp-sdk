@@ -59,6 +59,7 @@ import { TodolistGroupsService } from "./generated/services/todolist-groups.js";
 import { ToolsService } from "./generated/services/tools.js";
 import { TimesheetsService } from "./generated/services/timesheets.js";
 import { TimelineService } from "./generated/services/timeline.js";
+import { EverythingService } from "./generated/services/everything.js";
 import { ClientVisibilityService } from "./generated/services/client-visibility.js";
 import { BoostsService } from "./generated/services/boosts.js";
 import { AccountService } from "./generated/services/account.js";
@@ -174,6 +175,8 @@ export interface BasecampClient extends RawClient {
   readonly timesheets: TimesheetsService;
   /** Timeline service - get project timeline */
   readonly timeline: TimelineService;
+  /** Everything service - account-wide aggregate listings */
+  readonly everything: EverythingService;
   /** Client visibility service - manage client visibility */
   readonly clientVisibility: ClientVisibilityService;
   /** Boosts service - manage recording boosts */
@@ -409,6 +412,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("tools", () => new ToolsService(client, hooks, fetchPage, maxPages));
   defineService("timesheets", () => new TimesheetsService(client, hooks, fetchPage, maxPages));
   defineService("timeline", () => new TimelineService(client, hooks, fetchPage, maxPages));
+  defineService("everything", () => new EverythingService(client, hooks, fetchPage, maxPages));
   defineService("clientVisibility", () => new ClientVisibilityService(client, hooks, fetchPage, maxPages));
   defineService("boosts", () => new BoostsService(client, hooks, fetchPage, maxPages));
   defineService("account", () => new AccountService(client, hooks, fetchPage, maxPages, authenticatedFetch, baseUrl));
