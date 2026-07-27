@@ -1,0 +1,31 @@
+scripts/check-kotlin-optional-arrays-and-scalars.rb
+  s_4df49d42d6c9e3::t_9ef377b928d428 4-206,209
+Makefile
+  s_4df49d42d6c9e3::t_4e13edaeba9e21 870
+  s_4df49d42d6c9e3::t_7be8d680757860 802
+  s_4df49d42d6c9e3::t_51e378cbc22f13 834-840
+scripts/check-kotlin-optional-arrays-and-scalars.sh
+  s_4df49d42d6c9e3::t_7ac30c80df7e24 2-17
+rubric-audit.json
+  s_4df49d42d6c9e3::t_0eb860abeab330 17
+.github/workflows/test.yml
+  s_4df49d42d6c9e3::t_f4c452c55e6731 382-383
+SPEC.md
+  s_4df49d42d6c9e3::t_3117f78c59a6c1 720-731
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cc21eb2b3c75429055f7ec2a44869b2601fb7201",
+  "prompts": {},
+  "sessions": {
+    "s_4df49d42d6c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8432f7a9-be4e-4dec-8f6f-9306ed534d9a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
