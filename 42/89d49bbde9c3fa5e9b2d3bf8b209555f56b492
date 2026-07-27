@@ -1,0 +1,25 @@
+scripts/check-kotlin-optional-arrays-and-scalars.rb
+  s_4df49d42d6c9e3::t_5fd069fc279fe8 56-60
+  s_4df49d42d6c9e3::t_9ff1209eefc4c9 167-187,191-196,201-203
+  s_4df49d42d6c9e3::t_85dc84071b0ea8 219
+  s_4df49d42d6c9e3::t_76d6d0aee94fb0 93-94,237
+  s_4df49d42d6c9e3::t_bbe3f279768bf9 220
+rubric-audit.json
+  s_4df49d42d6c9e3::t_46cfe96ecb3f48 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4289d49bbde9c3fa5e9b2d3bf8b209555f56b492",
+  "prompts": {},
+  "sessions": {
+    "s_4df49d42d6c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8432f7a9-be4e-4dec-8f6f-9306ed534d9a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
