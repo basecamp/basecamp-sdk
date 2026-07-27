@@ -6,6 +6,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "./setup.js";
 import { createBasecampClient, normalizeUrlPath } from "../src/client.js";
 import type { BasecampHooks } from "../src/hooks.js";
+import { BasecampError } from "../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -415,6 +416,128 @@ describe("BasecampClient", () => {
 
       const result = await client.GET("/projects.json");
       expect(result.data).toEqual([]);
+    });
+
+    // The timeout signal and any caller-supplied signal are combined with
+    // AbortSignal.any (Node >= 20.3, guaranteed by the >=22.12.0 engines
+    // floor). Both inputs have to stay live: the timeout must still fire when
+    // the caller passes no signal, and a caller abort must still win when it
+    // fires first. Test both directions so a regression in either input of the
+    // combined signal is caught.
+    it("aborts on timeout when the caller supplies no signal", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, async () => {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        requestTimeoutMs: 50,
+      });
+
+      const startedAt = Date.now();
+      // Assert the error identity, not just "it rejected": AbortSignal.timeout
+      // aborts with TimeoutError, and this pins that contract so a regression
+      // back to a generic AbortError is caught.
+      await expect(client.GET("/projects.json")).rejects.toMatchObject({
+        name: "TimeoutError",
+      });
+
+      // Must abort on the timeout, not by waiting out the 1000ms handler.
+      expect(Date.now() - startedAt).toBeLessThan(900);
+    });
+
+    it("propagates a caller-supplied signal through the combined signal", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, async () => {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        // Long enough that the request timeout cannot be what aborts us.
+        requestTimeoutMs: 30000,
+      });
+
+      const controller = new AbortController();
+      const abortTimer = setTimeout(() => controller.abort(), 50);
+
+      try {
+        const startedAt = Date.now();
+        // A caller abort surfaces as AbortError, distinct from the timeout's
+        // TimeoutError — so this also proves it was the caller's signal, not
+        // the (30s) timeout, that won.
+        await expect(
+          client.GET("/projects.json", { signal: controller.signal })
+        ).rejects.toMatchObject({ name: "AbortError" });
+
+        // Aborting promptly proves the caller's signal reached the request; the
+        // 30s timeout signal could not have fired.
+        expect(Date.now() - startedAt).toBeLessThan(900);
+      } finally {
+        clearTimeout(abortTimer);
+      }
+    });
+  });
+
+  describe("requestTimeoutMs validation", () => {
+    // AbortSignal.timeout only schedules a non-negative signed-32-bit integer
+    // faithfully. Everything else either throws a bare RangeError per request or
+    // is silently clamped to 1ms, so the bound is enforced at construction.
+    // Table-driven so each rejected shape is named rather than merged into one
+    // assertion.
+    const invalid: Array<[string, number]> = [
+      ["negative", -1],
+      ["NaN", NaN],
+      ["Infinity", Infinity],
+      ["fractional", 1.5],
+      ["above the signed 32-bit timer range", 2_147_483_648],
+      ["above 2^32-1", 4_294_967_296],
+    ];
+
+    it.each(invalid)("rejects a %s timeout at construction", (_label, value) => {
+      // Catch and toMatchObject rather than toThrowError(objectContaining(...)):
+      // both assert the same thing, but this one names the mismatched field on
+      // failure instead of reporting "expected error to match asymmetric matcher".
+      let caught: unknown;
+      try {
+        createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+          requestTimeoutMs: value,
+        });
+      } catch (e: unknown) {
+        caught = e;
+      }
+
+      expect(caught).toBeInstanceOf(BasecampError);
+      expect(caught).toMatchObject({
+        name: "BasecampError",
+        code: "usage",
+        message: expect.stringContaining("'requestTimeoutMs' must be an integer"),
+      });
+    });
+
+    it.each([
+      ["zero", 0],
+      ["a typical value", 30000],
+      ["the maximum", 2_147_483_647],
+    ])("accepts %s", (_label, value) => {
+      expect(() =>
+        createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+          requestTimeoutMs: value,
+        })
+      ).not.toThrow();
     });
   });
 

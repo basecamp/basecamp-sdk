@@ -9,7 +9,7 @@ Thank you for your interest in contributing to the Basecamp SDK. This document p
 | SDK | Requirements |
 |-----|-------------|
 | Go | Go 1.26+, [golangci-lint](https://golangci-lint.run/welcome/install/) |
-| TypeScript | Node.js 18+, npm |
+| TypeScript | Node.js 22.12+, npm |
 | Ruby | Ruby 3.2+, Bundler |
 | Swift | Swift 6.0+, Xcode 16+ |
 | Kotlin | JDK 17+, Kotlin 2.0+ |

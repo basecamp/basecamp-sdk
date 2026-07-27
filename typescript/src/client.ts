@@ -76,6 +76,13 @@ import { AuthorizationService } from "./services/authorization.js";
 export type { paths };
 
 /**
+ * Largest delay `AbortSignal.timeout` schedules faithfully: Node's timers are
+ * backed by a signed 32-bit int, and anything above this is clamped to 1ms with
+ * a TimeoutOverflowWarning rather than honored.
+ */
+const MAX_TIMEOUT_MS = 2_147_483_647;
+
+/**
  * Raw client type from openapi-fetch.
  * Use this when you need direct access to GET/POST/PUT/DELETE methods.
  */
@@ -269,6 +276,25 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     throw new BasecampError("usage", "Either 'auth' or 'accessToken' is required");
   }
 
+  // AbortSignal.timeout accepts only a non-negative integer that fits a signed
+  // 32-bit timer. Outside that range Node either throws a bare RangeError
+  // (fractional, negative, or > 2^32-1) or — worse — silently clamps to 1ms with
+  // a TimeoutOverflowWarning (2^31 .. 2^32-1), which would abort every request
+  // almost immediately. Both would surface per request, far from the call that
+  // misconfigured it, and both are behavior changes from the old setTimeout,
+  // which coerced such values to 0. Fail fast at construction instead, like the
+  // other config checks.
+  if (
+    !Number.isInteger(requestTimeoutMs) ||
+    requestTimeoutMs < 0 ||
+    requestTimeoutMs > MAX_TIMEOUT_MS
+  ) {
+    throw new BasecampError(
+      "usage",
+      `'requestTimeoutMs' must be an integer between 0 and ${MAX_TIMEOUT_MS}, got ${requestTimeoutMs}`
+    );
+  }
+
   const authStrategy: AuthStrategy = auth ?? bearerAuth(accessToken!);
 
   // Validate configuration (skip HTTPS check for localhost in dev/test)
@@ -442,20 +468,19 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
       }
       request.headers.set("Accept", "application/json");
 
-      // Apply request timeout (Node 18-compatible: no AbortSignal.any)
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), requestTimeoutMs);
-      if (request.signal) {
-        request.signal.addEventListener("abort", () => controller.abort(), {
-          once: true,
-        });
-      }
+      // Apply request timeout, preserving any caller-supplied signal.
+      // AbortSignal.timeout's timer is unref'd, so unlike a bare setTimeout it
+      // never holds the event loop open after the request settles.
+      const timeoutSignal = AbortSignal.timeout(requestTimeoutMs);
+      const signal = request.signal
+        ? AbortSignal.any([request.signal, timeoutSignal])
+        : timeoutSignal;
 
       return new Request(request.url, {
         method: request.method,
         headers: request.headers,
         body: request.body,
-        signal: controller.signal,
+        signal,
         duplex: request.body ? "half" : undefined,
       } as RequestInit);
     },
