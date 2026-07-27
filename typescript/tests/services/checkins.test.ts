@@ -10,7 +10,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient, type BasecampClient } from "../../src/client.js";
-import { BasecampError } from "../../src/errors.js";
 
 // Minimal valid QuestionSchedule, so the createQuestion validation tests vary
 // only the field under test.
@@ -19,7 +18,7 @@ const SCHEDULE = {
   days: [1, 2, 3, 4, 5],
   hour: 16,
   minute: 0,
-} as never;
+};
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 

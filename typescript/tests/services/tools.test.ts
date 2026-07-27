@@ -117,7 +117,9 @@ describe("ToolsService", () => {
     });
 
     it("requires a tool type", async () => {
-      await expect(client.tools.create(456, { toolType: "" })).rejects.toThrow(BasecampError);
+      await expect(
+        client.tools.create(456, { toolType: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Tool type is required" });
     });
 
     // visibleToClients is tri-state: undefined omits the key, true/false are sent
