@@ -730,7 +730,17 @@ Enforced for Kotlin arrays and primitive scalars by `make kt-check-optional-arra
 
 For a **writable** optional scalar, an explicit `false` / `0` / `""` is a different instruction to the server than absence, and `omitempty` destroys exactly that distinction — the field becomes unsendable at its zero value. A meaningful fraction of the affected generated Go fields are request-shaped (`*RequestContent`), so this is not a hypothetical.
 
-Any waiver of the pointer requirement for Go must therefore be **response-only or field-specific, and must say which**. The per-field escape hatch is the existing `x-go-type-skip-optional-pointer: false` precedent, applied per schema — not a global generator flag.
+Any waiver of the pointer requirement for Go must therefore be **response-only or field-specific, and must say which** — never a change to the global generator flag.
+
+The relevant knobs, so the direction is unambiguous:
+
+| Setting | Effect |
+|---|---|
+| `prefer-skip-optional-pointer: true` (`go/oapi-codegen.yaml`, global) | Optional fields are **value-typed** by default — this is the current baseline, and the source of the decode collapse |
+| `x-go-type-skip-optional-pointer: false` (per field) | **Forces a pointer**, restoring the nil-vs-zero distinction. Already applied to `id`/`*_id` fields and to optional booleans in `*RequestContent` schemas by `scripts/enhance-openapi-go-types.sh` |
+| `x-go-type-skip-optional-pointer: true` (per field) | **Waives** the pointer for that field. Already applied to `time.Time` and `types.Date` fields |
+
+So the per-field mechanism for *fixing* a collapsed field is `false`, and a deliberate waiver is `true`. Either way it is decided per schema.
 
 ### 204 No Content
 

@@ -47,14 +47,21 @@
 #
 # --- Two levels of enforcement -------------------------------------------------
 #
-#   * Schema-checked (generated/models/<Component>.kt whose basename is an
-#     OpenAPI component): each property is cross-checked against the component's
+#   * Schema-checked — each property is cross-checked against its component's
 #     `required` set and declared nullability, so BOTH halves of the guarantee
-#     are proven — a required member mistakenly emitted as `T? = null` is
-#     caught, not silently accepted.
-#   * Structural (everything else — request/param types under
-#     generated/services, supporting model types not present as components):
-#     requiredness cannot be derived, so only a defaulted property is
+#     are proven: a required member mistakenly emitted as `T? = null` is caught,
+#     not silently accepted. This covers two kinds of class:
+#       - generated/models/<Component>.kt, whose basename is the component;
+#       - generated/services request bodies, where `<OperationId>Body` resolves
+#         to the `<OperationId>RequestContent` component. Request bodies are
+#         where a wrong requiredness actually drops data on a write, so they are
+#         resolved rather than skipped.
+#     A member of a schema-backed class that resolves to no property is an
+#     ERROR (renamed member, typo'd @SerialName), not a silent downgrade —
+#     except for the narrow SYNTHESIZED_MEMBERS allowlist below.
+#   * Structural — only the query-parameter `*Options` classes and supporting
+#     non-component models remain here. They have no body schema, so
+#     requiredness cannot be derived and only a defaulted property is
 #     constrained: it must be nullable and default to `null`.
 #
 # Pins the Kotlin scalar fix (#424) and the optional-array fix (#433) against
@@ -123,7 +130,55 @@ def parse_property(line)
   return nil unless kind
 
   serial = line[/@SerialName\("([^"]+)"\)/, 1]
-  [ serial || field, type_part, default_part, kind ]
+  [ serial, field, type_part, default_part, kind ]
+end
+
+# camelCase -> snake_case, for the request-body classes under generated/services.
+# Those are plain (non-@Serializable) body holders, so unlike the models they
+# carry no @SerialName to recover the wire name from; the service method does
+# the snake_case mapping when it builds the JSON.
+def snake_case(name)
+  name.gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase
+end
+
+# The schema key a generated member corresponds to: an explicit @SerialName wins;
+# otherwise prefer the field name as-is, falling back to its snake_case form.
+def wire_key(serial, field, known_props)
+  return serial if serial
+  return field if known_props&.key?(field)
+
+  snake = snake_case(field)
+  known_props&.key?(snake) ? snake : field
+end
+
+# Members a generator synthesizes onto a schema-backed class, which therefore
+# have no counterpart in the component's `properties`. Keep this list minimal
+# and justified — everything else absent from `properties` is an error.
+#
+#   Person.system_label — companion emitted alongside flexible-integer id
+#   fields; carried on the wire but not modeled as a schema property.
+SYNTHESIZED_MEMBERS = {
+  "Person" => %w[system_label].freeze
+}.freeze
+
+# Resolve the OpenAPI component backing a generated Kotlin class.
+#
+# Model classes are named for their component directly. Service request-body
+# classes are named `<OperationId>Body` and correspond to the
+# `<OperationId>RequestContent` component, so requiredness for request bodies —
+# where omitting a required field actually drops data on a write — is resolved
+# rather than skipped. Query-parameter `*Options` classes have no body schema
+# and correctly resolve to nil, leaving them on the structural path.
+def resolve_component(class_name, components)
+  return nil unless class_name
+  return class_name if components.key?(class_name)
+
+  if class_name.end_with?("Body")
+    candidate = "#{class_name.delete_suffix('Body')}RequestContent"
+    return candidate if components.key?(candidate)
+  end
+
+  nil
 end
 
 # A schema member is nullable when the spec spells `type: [T, "null"]` or sets
@@ -138,20 +193,27 @@ end
 
 files.each do |path|
   rel = path.sub("#{PROJECT_ROOT}/", "")
-  component_name =
-    if path.start_with?("#{MODELS_DIR}/")
-      base = File.basename(path, ".kt")
-      base if components.key?(base)
-    end
-  component = component_name ? components[component_name] : nil
-  required_fields = component ? (component["required"] || []) : nil
-  known_props = component ? (component["properties"] || {}) : nil
+  in_models = path.start_with?("#{MODELS_DIR}/")
+  # In models/ the file basename IS the component. In services/ a single file
+  # holds several data classes, so the enclosing class is tracked as we scan.
+  file_component = in_models ? File.basename(path, ".kt") : nil
+  current_class = nil
 
   File.foreach(path, encoding: "UTF-8").with_index(1) do |line, lineno|
+    if (m = line.match(/\bdata class (\w+)\(/))
+      current_class = m[1]
+    end
+
     parsed = parse_property(line)
     next unless parsed
 
-    wire, type_part, default_part, kind = parsed
+    component_name = resolve_component(file_component || current_class, components)
+    component = component_name ? components[component_name] : nil
+    required_fields = component ? (component["required"] || []) : nil
+    known_props = component ? (component["properties"] || {}) : nil
+
+    serial, field, type_part, default_part, kind = parsed
+    wire = wire_key(serial, field, known_props)
     nullable = type_part.end_with?("?")
     has_default = !default_part.nil?
     noun = kind == :array ? "array" : "scalar"
@@ -181,8 +243,23 @@ files.each do |path|
       next
     end
 
-    # Structural path: requiredness unknown (request/param types, supporting
-    # non-component models). Only a defaulted property is constrained.
+    # A member of a schema-backed class that is absent from the component's
+    # `properties` is either a generator-synthesized companion (allowlisted) or
+    # a real mismatch — a renamed/dropped property, or a typo'd @SerialName —
+    # which would otherwise slip silently onto the weaker structural path and
+    # quietly void the schema-backed guarantee for that member.
+    if component && !known_props&.key?(wire)
+      unless SYNTHESIZED_MEMBERS[component_name]&.include?(wire)
+        errors << "#{rel}:#{lineno}: `#{wire}` is emitted on schema-backed class " \
+                  "`#{component_name}` but is not a property of that component — " \
+                  "requiredness cannot be checked. Fix the name, or add it to " \
+                  "SYNTHESIZED_MEMBERS if the generator synthesizes it."
+      end
+      next
+    end
+
+    # Structural path: requiredness unknown (query-param `*Options` classes and
+    # supporting non-component models). Only a defaulted property is constrained.
     next unless has_default
 
     if default_part == "emptyList()"
