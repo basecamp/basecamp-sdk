@@ -1,0 +1,21 @@
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_2c5d06271c5300 872-875,878,1969-1970,2004,2009,2020-2021,2032
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_99d386bc5dc28d 4,1420,1424,1430-1431,1439-1440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "39c4735e8e472995c9364581a2461a48ce7d1ffd",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
