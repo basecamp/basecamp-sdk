@@ -188,7 +188,8 @@ jobs:
           } > body.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.0 # zizmor: ignore[superfluous-actions] -- consider removal
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        # zizmor: ignore[superfluous-actions] -- consider removal
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Basecamp SDK ${{ steps.version.outputs.version }}
