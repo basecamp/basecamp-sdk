@@ -1,7 +1,11 @@
 typescript/src/generated/schema.d.ts
   s_8d633484dc870e::t_19cb8c98484dbd 3017
+  s_8d633484dc870e::t_3f622d032c7f35 4577
 ruby/lib/basecamp/generated/types.rb
   s_8d633484dc870e::t_19cb8c98484dbd 4
+  s_8d633484dc870e::t_3f622d032c7f35 3165,3178,3188
+go/pkg/basecamp/everything_test.go
+  s_8d633484dc870e::t_0b484a095faba3 344
 ---
 {
   "schema_version": "authorship/3.0.0",
