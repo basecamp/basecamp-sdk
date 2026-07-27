@@ -1,0 +1,25 @@
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_3e2693cda808c7 352-362
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_24da5ba7fddca3 1967-1977,2051-2059
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_1bc3609493d874 4,3100,3123,3158,3211-3239
+typescript/src/generated/services/everything.ts
+  s_8d633484dc870e::t_ddcc4c67654741 16-17,168,175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "772036b1c0b241706bbbca40d2c6cdd80881165d",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
