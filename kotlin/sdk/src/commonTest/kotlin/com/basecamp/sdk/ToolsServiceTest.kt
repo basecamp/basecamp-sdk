@@ -94,4 +94,35 @@ class ToolsServiceTest {
 
         client.close()
     }
+
+    // visibleToClients is tri-state: null omits the key, true/false are sent
+    // verbatim. An explicit false must reach the wire. Only Chat::Transcript and
+    // Kanban::Board honor it; all other tool types ignore it.
+    @Test
+    fun createToolSendsVisibleToClientsTriState() = runTest {
+        var capturedBody: String? = null
+        val client = mockClient { request ->
+            capturedBody = request.body.toByteArray().decodeToString()
+            respond(
+                content = toolJson(802, "Campfire"),
+                status = HttpStatusCode.Created,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+        val account = client.forAccount("12345")
+
+        account.tools.create(bucketId = 456, body = CreateToolBody(toolType = "Chat::Transcript"))
+        assertFalse(json.parseToJsonElement(capturedBody!!).jsonObject.containsKey("visible_to_clients"))
+
+        account.tools.create(bucketId = 456, body = CreateToolBody(toolType = "Chat::Transcript", visibleToClients = true))
+        val trueObj = json.parseToJsonElement(capturedBody!!).jsonObject
+        assertEquals(true, trueObj["visible_to_clients"]!!.jsonPrimitive.content.toBoolean())
+
+        account.tools.create(bucketId = 456, body = CreateToolBody(toolType = "Chat::Transcript", visibleToClients = false))
+        val falseObj = json.parseToJsonElement(capturedBody!!).jsonObject
+        assertTrue(falseObj.containsKey("visible_to_clients"))
+        assertEquals(false, falseObj["visible_to_clients"]!!.jsonPrimitive.content.toBoolean())
+
+        client.close()
+    }
 }

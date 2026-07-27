@@ -513,6 +513,39 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertNil(sentJSON["title"])
     }
 
+    // visibleToClients is tri-state: nil omits the key (encodeIfPresent), true/false
+    // are sent verbatim. An explicit false must reach the wire, not be dropped. Only
+    // Chat::Transcript and Kanban::Board honor it; all other tool types ignore it.
+    private func sentToolBody(visibleToClients: Bool?) async throws -> [String: Any] {
+        let responseJSON: [String: Any] = [
+            "id": 802, "name": "chat", "title": "Campfire", "enabled": true,
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z",
+        ]
+        let transport = MockTransport(statusCode: 201, data: try JSONSerialization.data(withJSONObject: responseJSON))
+        let account = makeTestAccountClient(transport: transport)
+        _ = try await account.tools.create(
+            bucketId: 456,
+            req: CreateToolRequest(toolType: "Chat::Transcript", visibleToClients: visibleToClients)
+        )
+        return try JSONSerialization.jsonObject(with: transport.lastRequest!.request.httpBody!) as! [String: Any]
+    }
+
+    func testToolsServiceCreateOmitsVisibleToClientsWhenNil() async throws {
+        let sentJSON = try await sentToolBody(visibleToClients: nil)
+        XCTAssertNil(sentJSON["visible_to_clients"], "nil must omit the key")
+    }
+
+    func testToolsServiceCreateSendsVisibleToClientsTrue() async throws {
+        let sentJSON = try await sentToolBody(visibleToClients: true)
+        XCTAssertEqual(sentJSON["visible_to_clients"] as? Bool, true)
+    }
+
+    func testToolsServiceCreateSendsVisibleToClientsFalse() async throws {
+        let sentJSON = try await sentToolBody(visibleToClients: false)
+        XCTAssertNotNil(sentJSON["visible_to_clients"], "explicit false must be sent, not dropped")
+        XCTAssertEqual(sentJSON["visible_to_clients"] as? Bool, false)
+    }
+
     // MARK: - Campfire line operations
 
     private func campfireLineJSON(id: Int, content: String) -> [String: Any] {

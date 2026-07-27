@@ -84,6 +84,27 @@ class TestSyncTools:
         assert info.resource_id is None
 
     @respx.mock
+    def test_create_visible_to_clients_tristate(self):
+        # visible_to_clients is tri-state: unset omits the key (_compact drops None),
+        # true/false are sent verbatim. An explicit false must reach the wire. Only
+        # Chat::Transcript and Kanban::Board honor it; all other tool types ignore it.
+        route = respx.post("https://3.basecampapi.com/12345/buckets/456/dock/tools.json").mock(
+            return_value=httpx.Response(201, json=_tool())
+        )
+        account = Client(access_token="test-token").for_account("12345")
+
+        account.tools.create(bucket_id=456, tool_type="Chat::Transcript")
+        assert "visible_to_clients" not in json.loads(route.calls[-1].request.content)
+
+        account.tools.create(bucket_id=456, tool_type="Chat::Transcript", visible_to_clients=True)
+        assert json.loads(route.calls[-1].request.content)["visible_to_clients"] is True
+
+        account.tools.create(bucket_id=456, tool_type="Chat::Transcript", visible_to_clients=False)
+        body = json.loads(route.calls[-1].request.content)
+        assert "visible_to_clients" in body
+        assert body["visible_to_clients"] is False
+
+    @respx.mock
     def test_create_raises_validation_error_on_422(self):
         route = respx.post("https://3.basecampapi.com/12345/buckets/456/dock/tools.json").mock(
             return_value=httpx.Response(422, json={"error": "Tool type is not included in the list"})
@@ -150,6 +171,27 @@ class TestAsyncTools:
         assert info.operation == "create"
         assert info.project_id == 456
         assert info.resource_id is None
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_create_visible_to_clients_tristate(self):
+        # Async counterpart of the sync tri-state test: unset omits the key,
+        # true/false are sent verbatim, and an explicit false reaches the wire.
+        route = respx.post("https://3.basecampapi.com/12345/buckets/456/dock/tools.json").mock(
+            return_value=httpx.Response(201, json=_tool())
+        )
+        account = AsyncClient(access_token="test-token").for_account("12345")
+
+        await account.tools.create(bucket_id=456, tool_type="Chat::Transcript")
+        assert "visible_to_clients" not in json.loads(route.calls[-1].request.content)
+
+        await account.tools.create(bucket_id=456, tool_type="Chat::Transcript", visible_to_clients=True)
+        assert json.loads(route.calls[-1].request.content)["visible_to_clients"] is True
+
+        await account.tools.create(bucket_id=456, tool_type="Chat::Transcript", visible_to_clients=False)
+        body = json.loads(route.calls[-1].request.content)
+        assert "visible_to_clients" in body
+        assert body["visible_to_clients"] is False
 
     @pytest.mark.asyncio
     @respx.mock

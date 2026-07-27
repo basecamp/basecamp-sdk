@@ -524,6 +524,7 @@ class CreateTodolistRequestContent(TypedDict):
 class CreateToolRequestContent(TypedDict):
     title: NotRequired[str]
     tool_type: str
+    visible_to_clients: NotRequired[bool]
 
 
 class CreateUploadRequestContent(TypedDict):

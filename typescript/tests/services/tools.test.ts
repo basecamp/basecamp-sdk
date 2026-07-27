@@ -117,6 +117,36 @@ describe("ToolsService", () => {
     it("requires a tool type", async () => {
       await expect(client.tools.create(456, { toolType: "" })).rejects.toThrow(BasecampError);
     });
+
+    // visibleToClients is tri-state: undefined omits the key, true/false are sent
+    // verbatim. An explicit false must reach the wire (not be dropped). Only
+    // Chat::Transcript and Kanban::Board honor it; all other tool types ignore it.
+    it("should send visible_to_clients tri-state in request body", async () => {
+      const bucketId = 456;
+      const toolType = "Chat::Transcript";
+      const mockTool = { id: 335, name: "chat", title: "Campfire", enabled: true, position: 5 };
+      let capturedBody: Record<string, unknown> = {};
+
+      server.use(
+        http.post(
+          `${BASE_URL}/buckets/${bucketId}/dock/tools.json`,
+          async ({ request }) => {
+            capturedBody = (await request.json()) as Record<string, unknown>;
+            return HttpResponse.json(mockTool, { status: 201 });
+          }
+        )
+      );
+
+      await client.tools.create(bucketId, { toolType });
+      expect("visible_to_clients" in capturedBody).toBe(false);
+
+      await client.tools.create(bucketId, { toolType, visibleToClients: true });
+      expect(capturedBody.visible_to_clients).toBe(true);
+
+      await client.tools.create(bucketId, { toolType, visibleToClients: false });
+      expect("visible_to_clients" in capturedBody).toBe(true);
+      expect(capturedBody.visible_to_clients).toBe(false);
+    });
   });
 
   describe("update", () => {

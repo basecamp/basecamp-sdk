@@ -7222,6 +7222,9 @@ structure CreateToolInput {
 
   /// Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
   title: String
+
+  /// Create the tool already visible to clients. Honored only for tool types that manage their own client visibility (Chat::Transcript, Kanban::Board), which otherwise start hidden; every other tool type ignores it and inherits the project default.
+  visible_to_clients: Boolean
 }
 
 structure CreateToolOutput {

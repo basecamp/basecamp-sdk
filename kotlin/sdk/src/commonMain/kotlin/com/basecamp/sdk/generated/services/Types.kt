@@ -613,7 +613,8 @@ data class RepositionTodoBody(
 /** Request body for CreateTool. */
 data class CreateToolBody(
     val toolType: String,
-    val title: String? = null
+    val title: String? = null,
+    val visibleToClients: Boolean? = null
 )
 
 /** Request body for UpdateTool. */

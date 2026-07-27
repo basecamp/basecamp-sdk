@@ -27,6 +27,13 @@ type Tool struct {
 type CreateToolOptions struct {
 	// Title for the new tool. If empty, Basecamp assigns the next available default title for the tool type.
 	Title string
+	// VisibleToClients sets client visibility at create time (optional, tri-state).
+	// nil omits the field so the server applies its own default visibility rule; a
+	// non-nil value is sent verbatim, and an explicit false reaches the wire (the
+	// pointer distinguishes unset from false). Honored only for tool types that
+	// manage their own client visibility (Chat::Transcript, Kanban::Board); every
+	// other tool type ignores it and inherits the project default.
+	VisibleToClients *bool
 }
 
 // UpdateToolRequest specifies the parameters for updating (renaming) a tool.
@@ -106,8 +113,11 @@ func (s *ToolsService) Create(ctx context.Context, bucketID int64, toolType stri
 	body := generated.CreateToolJSONRequestBody{
 		ToolType: toolType,
 	}
-	if opts != nil && opts.Title != "" {
-		body.Title = opts.Title
+	if opts != nil {
+		if opts.Title != "" {
+			body.Title = opts.Title
+		}
+		body.VisibleToClients = opts.VisibleToClients
 	}
 
 	resp, err := s.client.parent.gen.CreateToolWithResponse(ctx, s.client.accountID, bucketID, body)

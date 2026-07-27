@@ -23,6 +23,8 @@ export interface CreateToolRequest {
   toolType: string;
   /** Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type. */
   title?: string;
+  /** Create the tool already visible to clients. Honored only for tool types that manage their own client visibility (Chat::Transcript, Kanban::Board), which otherwise start hidden; every other tool type ignores it and inherits the project default. */
+  visibleToClients?: boolean;
 }
 
 /**
@@ -83,6 +85,7 @@ export class ToolsService extends BaseService {
           body: {
             tool_type: req.toolType,
             title: req.title,
+            visible_to_clients: req.visibleToClients,
           },
         })
     );
