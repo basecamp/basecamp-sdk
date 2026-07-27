@@ -77,16 +77,29 @@ type TimelineAttachment struct {
 	Width  *int32 `json:"width,omitempty"`
 	Height *int32 `json:"height,omitempty"`
 
-	// Upload-recording variant.
-	Type             *string    `json:"type,omitempty"`
-	Title            *string    `json:"title,omitempty"`
-	Status           *string    `json:"status,omitempty"`
-	CreatedAt        *time.Time `json:"created_at,omitempty"`
-	UpdatedAt        *time.Time `json:"updated_at,omitempty"`
-	RecordingURL     *string    `json:"url,omitempty"`
-	AppURL           *string    `json:"app_url,omitempty"`
-	AppDownloadURL   *string    `json:"app_download_url,omitempty"`
-	VisibleToClients *bool      `json:"visible_to_clients,omitempty"`
+	// Upload-recording variant — the full uploads/_upload projection.
+	Type                   *string              `json:"type,omitempty"`
+	Title                  *string              `json:"title,omitempty"`
+	Status                 *string              `json:"status,omitempty"`
+	InheritsStatus         *bool                `json:"inherits_status,omitempty"`
+	CreatedAt              *time.Time           `json:"created_at,omitempty"`
+	UpdatedAt              *time.Time           `json:"updated_at,omitempty"`
+	RecordingURL           *string              `json:"url,omitempty"`
+	AppURL                 *string              `json:"app_url,omitempty"`
+	BookmarkURL            *string              `json:"bookmark_url,omitempty"`
+	SubscriptionURL        *string              `json:"subscription_url,omitempty"`
+	CommentsCount          *int32               `json:"comments_count,omitempty"`
+	CommentsURL            *string              `json:"comments_url,omitempty"`
+	BoostsCount            *int32               `json:"boosts_count,omitempty"`
+	BoostsURL              *string              `json:"boosts_url,omitempty"`
+	Position               *int32               `json:"position,omitempty"`
+	Parent                 *Parent              `json:"parent,omitempty"`
+	Bucket                 *Bucket              `json:"bucket,omitempty"`
+	Creator                *Person              `json:"creator,omitempty"`
+	Description            *string              `json:"description,omitempty"`
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+	AppDownloadURL         *string              `json:"app_download_url,omitempty"`
+	VisibleToClients       *bool                `json:"visible_to_clients,omitempty"`
 
 	// Rich-text attachment/blob variant.
 	AttachableSGID *string `json:"attachable_sgid,omitempty"`
@@ -522,10 +535,19 @@ func timelineAttachmentFromGenerated(ga generated.TimelineAttachment) TimelineAt
 		Type:             ga.Type,
 		Title:            ga.Title,
 		Status:           ga.Status,
+		InheritsStatus:   ga.InheritsStatus,
 		CreatedAt:        ga.CreatedAt,
 		UpdatedAt:        ga.UpdatedAt,
 		RecordingURL:     ga.Url,
 		AppURL:           ga.AppUrl,
+		BookmarkURL:      ga.BookmarkUrl,
+		SubscriptionURL:  ga.SubscriptionUrl,
+		CommentsCount:    ga.CommentsCount,
+		CommentsURL:      ga.CommentsUrl,
+		BoostsCount:      ga.BoostsCount,
+		BoostsURL:        ga.BoostsUrl,
+		Position:         ga.Position,
+		Description:      ga.Description,
 		AppDownloadURL:   ga.AppDownloadUrl,
 		VisibleToClients: ga.VisibleToClients,
 		AttachableSGID:   ga.AttachableSgid,
@@ -544,6 +566,29 @@ func timelineAttachmentFromGenerated(ga generated.TimelineAttachment) TimelineAt
 	if ga.Height != nil {
 		h := int32(*ga.Height)
 		a.Height = &h
+	}
+	if ga.Parent != nil {
+		a.Parent = &Parent{
+			ID:     ga.Parent.Id,
+			Title:  ga.Parent.Title,
+			Type:   ga.Parent.Type,
+			URL:    ga.Parent.Url,
+			AppURL: ga.Parent.AppUrl,
+		}
+	}
+	if ga.Bucket != nil {
+		a.Bucket = &Bucket{
+			ID:   ga.Bucket.Id,
+			Name: ga.Bucket.Name,
+			Type: ga.Bucket.Type,
+		}
+	}
+	if ga.Creator != nil {
+		creator := personFromGenerated(*ga.Creator)
+		a.Creator = &creator
+	}
+	if len(ga.DescriptionAttachments) > 0 {
+		a.DescriptionAttachments = richTextAttachmentsFromGenerated(ga.DescriptionAttachments)
 	}
 	return a
 }

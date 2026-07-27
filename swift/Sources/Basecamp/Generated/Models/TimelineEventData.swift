@@ -2,7 +2,13 @@
 import Foundation
 
 public struct TimelineEventData: Codable, Sendable {
-    public var allDay: Bool?
-    public var endsAt: String?
-    public var startsAt: String?
+    public let allDay: Bool
+    public let endsAt: String
+    public let startsAt: String
+
+    public init(allDay: Bool, endsAt: String, startsAt: String) {
+        self.allDay = allDay
+        self.endsAt = endsAt
+        self.startsAt = startsAt
+    }
 }

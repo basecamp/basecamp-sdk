@@ -4267,11 +4267,13 @@ export interface components {
         };
         /**
          * @description A single timeline-event attachment. This is an optional-field superset over
-         *     two wire variants — a full Upload recording (upload-kind recordings) and a
-         *     rich-text attachment/blob partial (all other recordings) — so one element
-         *     type decodes either. Every field is optional; a given instance populates
-         *     only the fields of the variant it represents. Unknown fields are ignored by
-         *     every SDK decoder, so the superset need not enumerate every Upload field.
+         *     two wire variants — a full Upload recording (upload-kind recordings, rendered
+         *     by BC3's uploads/_upload partial: the complete recording projection + rich-
+         *     text description + the upload body) and a rich-text attachment/blob partial
+         *     (all other recordings) — so one element type decodes either. Every field is
+         *     optional; a given instance populates only the fields of the variant it
+         *     represents. The upload-recording variant enumerates the full documented
+         *     projection so no documented field is silently dropped on decode.
          */
         TimelineAttachment: {
             /**
@@ -4306,6 +4308,8 @@ export interface components {
             title?: string;
             /** @description Publication status of the upload recording (e.g. "active"). */
             status?: string;
+            /** @description Whether the recording inherits its status from its parent. */
+            inherits_status?: boolean;
             /** @description When the upload recording was created. */
             created_at?: string;
             /** @description When the upload recording was last updated. */
@@ -4314,6 +4318,36 @@ export interface components {
             url?: string;
             /** @description Web URL of the upload recording. */
             app_url?: string;
+            /** @description Personal bookmark toggle URL for the current user. */
+            bookmark_url?: string;
+            /** @description Subscription URL; present only when the recording is subscribable. */
+            subscription_url?: string;
+            /**
+             * Format: int32
+             * @description Number of comments on the recording.
+             */
+            comments_count?: number;
+            /** @description API URL for the recording's comments. */
+            comments_url?: string;
+            /**
+             * Format: int32
+             * @description Number of boosts on the recording.
+             */
+            boosts_count?: number;
+            /** @description API URL for the recording's boosts. */
+            boosts_url?: string;
+            /**
+             * Format: int32
+             * @description Position within its parent; present only when the recording is positioned.
+             */
+            position?: number;
+            parent?: components["schemas"]["RecordingParent"];
+            bucket?: components["schemas"]["TodoBucket"];
+            creator?: components["schemas"]["Person"];
+            /** @description Rich-text description of the upload (HTML), when present. */
+            description?: string;
+            /** @description Rich-text attachments referenced by the description. */
+            description_attachments?: components["schemas"]["RichTextAttachment"][];
             /** @description Web download URL (upload-recording variant). */
             app_download_url?: string;
             /** @description Whether the upload recording is visible to clients. */
@@ -4385,9 +4419,14 @@ export interface components {
          *     SDKs type them as plain strings.
          */
         TimelineEventData: {
-            all_day?: boolean;
-            starts_at?: string;
-            ends_at?: string;
+            /**
+             * @description Whether the entry is all-day. BC3 emits all three members unconditionally
+             *     whenever the data object is present (schedule_entry_* events), so they are
+             *     required within this struct.
+             */
+            all_day: boolean;
+            starts_at: string;
+            ends_at: string;
         };
         TimesheetEntry: {
             /** Format: int64 */

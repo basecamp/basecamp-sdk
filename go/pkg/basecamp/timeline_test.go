@@ -119,6 +119,13 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 				{
 					"id": 900,
 					"type": "Upload",
+						"inherits_status": true, "created_at": "2024-03-15T10:30:00Z", "updated_at": "2024-03-15T10:31:00Z",
+						"bookmark_url": "https://3.basecampapi.com/1/my/bookmarks/sgid-900.json", "subscription_url": "https://3.basecampapi.com/1/buckets/2/recordings/900/subscription.json",
+						"comments_count": 3, "comments_url": "https://3.basecampapi.com/1/buckets/2/recordings/900/comments.json", "boosts_count": 5, "boosts_url": "https://3.basecampapi.com/1/buckets/2/recordings/900/boosts.json",
+						"position": 2, "description": "<div>Schematic</div>", "description_attachments": [],
+						"parent": { "id": 800, "title": "Assets", "type": "Vault", "url": "https://3.basecampapi.com/1/buckets/2/vaults/800.json", "app_url": "https://3.basecamp.com/1/buckets/2/vaults/800" },
+						"bucket": { "id": 2, "name": "Test Project", "type": "Project" },
+						"creator": { "id": 55, "name": "Uploader Person" },
 					"status": "active",
 					"visible_to_clients": false,
 					"title": "Diagram",
@@ -205,6 +212,36 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 	// nil (absent), not a fabricated empty string, per SPEC §10.
 	if up[0].AttachableSGID != nil {
 		t.Errorf("upload variant should not carry attachable_sgid, got %q", *up[0].AttachableSGID)
+	}
+	// Full uploads/_upload projection: the documented recording fields must decode
+	// (they are not silently dropped). Spot-check across scalars, urls, counts,
+	// and the nested parent/bucket/creator objects.
+	if up[0].InheritsStatus == nil || !*up[0].InheritsStatus {
+		t.Errorf("expected inherits_status true, got %v", up[0].InheritsStatus)
+	}
+	if up[0].CommentsCount == nil || *up[0].CommentsCount != 3 || up[0].BoostsCount == nil || *up[0].BoostsCount != 5 {
+		t.Errorf("expected comments_count=3 boosts_count=5, got c=%v b=%v", up[0].CommentsCount, up[0].BoostsCount)
+	}
+	if up[0].Position == nil || *up[0].Position != 2 {
+		t.Errorf("expected position 2, got %v", up[0].Position)
+	}
+	if strv(up[0].BookmarkURL) == "" || strv(up[0].SubscriptionURL) == "" || strv(up[0].CommentsURL) == "" || strv(up[0].BoostsURL) == "" {
+		t.Errorf("expected recording urls decoded, got %+v", up[0])
+	}
+	if strv(up[0].Description) != "<div>Schematic</div>" {
+		t.Errorf("expected description decoded, got %q", strv(up[0].Description))
+	}
+	if up[0].Parent == nil || up[0].Parent.ID != 800 || up[0].Parent.Type != "Vault" {
+		t.Errorf("expected parent {800, Vault}, got %+v", up[0].Parent)
+	}
+	if up[0].Bucket == nil || up[0].Bucket.ID != 2 || up[0].Bucket.Name != "Test Project" {
+		t.Errorf("expected bucket {2, Test Project}, got %+v", up[0].Bucket)
+	}
+	if up[0].Creator == nil || up[0].Creator.Name != "Uploader Person" {
+		t.Errorf("expected creator 'Uploader Person', got %+v", up[0].Creator)
+	}
+	if up[0].CreatedAt == nil || up[0].UpdatedAt == nil {
+		t.Errorf("expected created_at/updated_at decoded, got c=%v u=%v", up[0].CreatedAt, up[0].UpdatedAt)
 	}
 
 	// Rich-text attachment/blob variant

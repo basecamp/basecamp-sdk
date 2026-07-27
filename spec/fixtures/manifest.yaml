@@ -195,3 +195,13 @@ excluded_schemas:
       carries a @required description_attachments array not represented in any
       shared fixture.
     issue: 429
+  TimelineAttachment:
+    reason: >-
+      No shared JSON fixture. TimelineAttachment is the optional-field superset
+      over a timeline event's upload-recording and rich-text/blob attachment
+      variants; the upload variant carries the full recording projection,
+      including a description_attachments RichTextAttachment array. It is
+      exercised only inline in the per-SDK timeline tests (the Upload-variant and
+      blob-variant fixtures), so its rich-text array has no shared-fixture
+      representative. Its round-trip is proven by those inline tests.
+    issue: 434

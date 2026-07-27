@@ -27287,7 +27287,7 @@
       },
       "TimelineAttachment": {
         "type": "object",
-        "description": "A single timeline-event attachment. This is an optional-field superset over\ntwo wire variants — a full Upload recording (upload-kind recordings) and a\nrich-text attachment/blob partial (all other recordings) — so one element\ntype decodes either. Every field is optional; a given instance populates\nonly the fields of the variant it represents. Unknown fields are ignored by\nevery SDK decoder, so the superset need not enumerate every Upload field.",
+        "description": "A single timeline-event attachment. This is an optional-field superset over\ntwo wire variants — a full Upload recording (upload-kind recordings, rendered\nby BC3's uploads/_upload partial: the complete recording projection + rich-\ntext description + the upload body) and a rich-text attachment/blob partial\n(all other recordings) — so one element type decodes either. Every field is\noptional; a given instance populates only the fields of the variant it\nrepresents. The upload-recording variant enumerates the full documented\nprojection so no documented field is silently dropped on decode.",
         "properties": {
           "id": {
             "type": "integer",
@@ -27354,6 +27354,11 @@
             "description": "Publication status of the upload recording (e.g. \"active\").",
             "x-go-type-skip-optional-pointer": false
           },
+          "inherits_status": {
+            "type": "boolean",
+            "description": "Whether the recording inherits its status from its parent.",
+            "x-go-type-skip-optional-pointer": false
+          },
           "created_at": {
             "type": "string",
             "description": "When the upload recording was created.",
@@ -27381,6 +27386,68 @@
             "type": "string",
             "description": "Web URL of the upload recording.",
             "x-go-type-skip-optional-pointer": false
+          },
+          "bookmark_url": {
+            "type": "string",
+            "description": "Personal bookmark toggle URL for the current user.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "subscription_url": {
+            "type": "string",
+            "description": "Subscription URL; present only when the recording is subscribable.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "comments_count": {
+            "type": "integer",
+            "description": "Number of comments on the recording.",
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "comments_url": {
+            "type": "string",
+            "description": "API URL for the recording's comments.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "boosts_count": {
+            "type": "integer",
+            "description": "Number of boosts on the recording.",
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "boosts_url": {
+            "type": "string",
+            "description": "API URL for the recording's boosts.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "position": {
+            "type": "integer",
+            "description": "Position within its parent; present only when the recording is positioned.",
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TodoBucket",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "description": {
+            "type": "string",
+            "description": "Rich-text description of the upload (HTML), when present.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "Rich-text attachments referenced by the description."
           },
           "app_download_url": {
             "type": "string",
@@ -27507,7 +27574,8 @@
         "description": "Schedule-entry timing carried on schedule_entry_* timeline events. starts_at\nand ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed\nentries, or a bare date (YYYY-MM-DD) when all_day is true. Modeled as\nISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass\nmapping them to types.FlexibleTime so date-only values decode; the other\nSDKs type them as plain strings.",
         "properties": {
           "all_day": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the entry is all-day. BC3 emits all three members unconditionally\nwhenever the data object is present (schedule_entry_* events), so they are\nrequired within this struct."
           },
           "starts_at": {
             "type": "string",
@@ -27525,7 +27593,12 @@
             },
             "x-go-type-skip-optional-pointer": true
           }
-        }
+        },
+        "required": [
+          "all_day",
+          "ends_at",
+          "starts_at"
+        ]
       },
       "TimesheetEntry": {
         "type": "object",

@@ -7686,8 +7686,14 @@ structure TimelineEvent {
 /// mapping them to types.FlexibleTime so date-only values decode; the other
 /// SDKs type them as plain strings.
 structure TimelineEventData {
+  /// Whether the entry is all-day. BC3 emits all three members unconditionally
+  /// whenever the data object is present (schedule_entry_* events), so they are
+  /// required within this struct.
+  @required
   all_day: Boolean
+  @required
   starts_at: ISO8601Timestamp
+  @required
   ends_at: ISO8601Timestamp
 }
 
@@ -7696,11 +7702,13 @@ list TimelineAttachmentList {
 }
 
 /// A single timeline-event attachment. This is an optional-field superset over
-/// two wire variants — a full Upload recording (upload-kind recordings) and a
-/// rich-text attachment/blob partial (all other recordings) — so one element
-/// type decodes either. Every field is optional; a given instance populates
-/// only the fields of the variant it represents. Unknown fields are ignored by
-/// every SDK decoder, so the superset need not enumerate every Upload field.
+/// two wire variants — a full Upload recording (upload-kind recordings, rendered
+/// by BC3's uploads/_upload partial: the complete recording projection + rich-
+/// text description + the upload body) and a rich-text attachment/blob partial
+/// (all other recordings) — so one element type decodes either. Every field is
+/// optional; a given instance populates only the fields of the variant it
+/// represents. The upload-recording variant enumerates the full documented
+/// projection so no documented field is silently dropped on decode.
 structure TimelineAttachment {
   /// Attachment or upload-recording id.
   id: Long
@@ -7720,13 +7728,15 @@ structure TimelineAttachment {
   /// Pixel height; null for non-image blobs and may be float-spelled (1024.0).
   height: Integer
 
-  // ----- upload-recording variant -----
+  // ----- upload-recording variant (full uploads/_upload projection) -----
   /// Recording type, e.g. "Upload" (upload-recording variant).
   type: String
   /// Title of the upload recording.
   title: String
   /// Publication status of the upload recording (e.g. "active").
   status: String
+  /// Whether the recording inherits its status from its parent.
+  inherits_status: Boolean
   /// When the upload recording was created.
   created_at: ISO8601Timestamp
   /// When the upload recording was last updated.
@@ -7735,6 +7745,30 @@ structure TimelineAttachment {
   url: String
   /// Web URL of the upload recording.
   app_url: String
+  /// Personal bookmark toggle URL for the current user.
+  bookmark_url: String
+  /// Subscription URL; present only when the recording is subscribable.
+  subscription_url: String
+  /// Number of comments on the recording.
+  comments_count: Integer
+  /// API URL for the recording's comments.
+  comments_url: String
+  /// Number of boosts on the recording.
+  boosts_count: Integer
+  /// API URL for the recording's boosts.
+  boosts_url: String
+  /// Position within its parent; present only when the recording is positioned.
+  position: Integer
+  /// The recording's parent (message board, todolist, vault, …).
+  parent: RecordingParent
+  /// The bucket (project) the recording lives in.
+  bucket: TodoBucket
+  /// The person who created the recording.
+  creator: Person
+  /// Rich-text description of the upload (HTML), when present.
+  description: UploadDescription
+  /// Rich-text attachments referenced by the description.
+  description_attachments: RichTextAttachmentList
   /// Web download URL (upload-recording variant).
   app_download_url: String
   /// Whether the upload recording is visible to clients.

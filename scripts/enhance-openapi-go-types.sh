@@ -241,7 +241,23 @@ walk(
   (.caption // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.key // empty) += { "x-go-type-skip-optional-pointer": false } |
   (.preview_url // empty) += { "x-go-type-skip-optional-pointer": false } |
-  (.thumbnail_url // empty) += { "x-go-type-skip-optional-pointer": false }
+  (.thumbnail_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  # Upload-recording projection fields (mirroring uploads/_upload). Optional in
+  # the superset, so each must be pointer-backed for the same presence reason:
+  # a plain string/int/bool/struct-with-omitempty cannot distinguish absent from
+  # an explicit empty/zero/default value.
+  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.bookmark_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.subscription_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.parent // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.bucket // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.creator // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.description // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
 # Sixth pass: Person.id → types.FlexibleInt64
