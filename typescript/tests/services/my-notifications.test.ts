@@ -41,6 +41,8 @@ describe("MyNotificationsService", () => {
             ],
             reads: [],
             memories: [],
+            bubble_ups_count: 0,
+            scheduled_bubble_ups_count: 0,
           });
         })
       );
@@ -74,6 +76,8 @@ describe("MyNotificationsService", () => {
             ],
             reads: [],
             memories: [],
+            bubble_ups_count: 0,
+            scheduled_bubble_ups_count: 0,
           });
         })
       );
@@ -106,6 +110,8 @@ describe("MyNotificationsService", () => {
             ],
             reads: [],
             memories: [],
+            bubble_ups_count: 0,
+            scheduled_bubble_ups_count: 0,
           });
         })
       );
@@ -138,6 +144,8 @@ describe("MyNotificationsService", () => {
             ],
             reads: [],
             memories: [],
+            bubble_ups_count: 0,
+            scheduled_bubble_ups_count: 0,
           });
         })
       );

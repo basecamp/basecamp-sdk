@@ -36,6 +36,8 @@ class TestSystemActorNormalization:
                     ],
                     "reads": [],
                     "memories": [],
+                    "bubble_ups_count": 0,
+                    "scheduled_bubble_ups_count": 0,
                 },
             )
         )
@@ -72,6 +74,8 @@ class TestSystemActorNormalization:
                     ],
                     "reads": [],
                     "memories": [],
+                    "bubble_ups_count": 0,
+                    "scheduled_bubble_ups_count": 0,
                 },
             )
         )

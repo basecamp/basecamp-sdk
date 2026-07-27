@@ -31,7 +31,7 @@ func TestMyNotificationsService_Get(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"unreads":[{"id":1,"title":"New comment"}],"reads":[],"memories":[]}`))
+		w.Write([]byte(`{"unreads":[{"id":1,"title":"New comment"}],"reads":[],"memories":[],"bubble_ups_count":0,"scheduled_bubble_ups_count":0}`))
 	})
 
 	result, err := svc.Get(context.Background(), 0)
@@ -53,7 +53,7 @@ func TestMyNotificationsService_Get_WithPage(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"unreads":[],"reads":[],"memories":[]}`))
+		w.Write([]byte(`{"unreads":[],"reads":[],"memories":[],"bubble_ups_count":0,"scheduled_bubble_ups_count":0}`))
 	})
 
 	_, err := svc.Get(context.Background(), 2)
