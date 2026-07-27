@@ -1,0 +1,132 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Answer.kt
+  s_8d633484dc870e::t_b17d96eec905d9 32,35
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardStep.kt
+  s_8d633484dc870e::t_b17d96eec905d9 29,31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Schedule.kt
+  s_8d633484dc870e::t_b17d96eec905d9 28-30
+openapi.json
+  s_8d633484dc870e::t_c14f38e3e4387f 27300-27301,27306-27307,27311-27312,27317-27318,27344-27345,27349-27350,27354-27355,27377-27378,27382-27383,27387-27388,27397-27398,27402-27403,27407-27408,27412-27413,27417-27418,27427-27428,27432-27433
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/WebhookDelivery.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_b17d96eec905d9 2102,2105,2108,2111,2114,2117,2123,2126,2135,2138,2144,2147,2150,2153,2156,2159,2165
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEventData.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Project.kt
+  s_8d633484dc870e::t_b17d96eec905d9 27,30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Questionnaire.kt
+  s_8d633484dc870e::t_b17d96eec905d9 30
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todoset.kt
+  s_8d633484dc870e::t_b17d96eec905d9 29-30,33,35-36
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_fb1fa32d7b005c 214-221,226-244
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Tool.kt
+  s_8d633484dc870e::t_b17d96eec905d9 22
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Card.kt
+  s_8d633484dc870e::t_b17d96eec905d9 31,35,37,44
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/DockItem.kt
+  s_8d633484dc870e::t_b17d96eec905d9 21
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Event.kt
+  s_8d633484dc870e::t_b17d96eec905d9 21
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/MessageBoard.kt
+  s_8d633484dc870e::t_b17d96eec905d9 28-29
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Message.kt
+  s_8d633484dc870e::t_b17d96eec905d9 33,36
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientApproval.kt
+  s_8d633484dc870e::t_b17d96eec905d9 34
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Comment.kt
+  s_8d633484dc870e::t_b17d96eec905d9 31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEvent.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15,18
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/WebhookCopyBucket.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/QuestionSchedule.kt
+  s_8d633484dc870e::t_b17d96eec905d9 17-21
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Document.kt
+  s_8d633484dc870e::t_b17d96eec905d9 31,33,35
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CardColumn.kt
+  s_8d633484dc870e::t_b17d96eec905d9 29,32-33
+go/pkg/basecamp/timeline.go
+  s_8d633484dc870e::t_59cdc4dc60bf61 517
+  s_8d633484dc870e::t_be4a31c8256db8 63-68,71-74,80-83,86-88,91-99
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Vault.kt
+  s_8d633484dc870e::t_b17d96eec905d9 28,30,32,34
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Upload.kt
+  s_8d633484dc870e::t_b17d96eec905d9 32,34,37,44
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Recording.kt
+  s_8d633484dc870e::t_b17d96eec905d9 32
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todolist.kt
+  s_8d633484dc870e::t_b17d96eec905d9 32,34,36,41
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientCorrespondence.kt
+  s_8d633484dc870e::t_b17d96eec905d9 33
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CampfireLineAttachment.kt
+  s_8d633484dc870e::t_b17d96eec905d9 19
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ForwardReply.kt
+  s_8d633484dc870e::t_b17d96eec905d9 31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TodolistGroup.kt
+  s_8d633484dc870e::t_b17d96eec905d9 31,33-34
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Todo.kt
+  s_8d633484dc870e::t_b17d96eec905d9 32,34,36,42
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/WebhookDeliveryResponse.kt
+  s_8d633484dc870e::t_b17d96eec905d9 16
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Forward.kt
+  s_8d633484dc870e::t_b17d96eec905d9 34
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineAttachment.kt
+  s_8d633484dc870e::t_b17d96eec905d9 16,18,33,39
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ClientApprovalResponse.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15,17,21,29
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Inbox.kt
+  s_8d633484dc870e::t_b17d96eec905d9 28-29
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Webhook.kt
+  s_8d633484dc870e::t_b17d96eec905d9 21
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_b17d96eec905d9 24922-24923,24928-24929,24933-24934,24939-24940,24966-24967,24971-24972,24976-24977,24999-25000,25004-25005,25009-25010,25019-25020,25024-25025,25029-25030,25034-25035,25039-25040,25049-25050,25054-25055
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Person.kt
+  s_8d633484dc870e::t_b17d96eec905d9 29-32,36-40
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/CampfireLine.kt
+  s_8d633484dc870e::t_b17d96eec905d9 31
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Question.kt
+  s_8d633484dc870e::t_b17d96eec905d9 30,32
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/ScheduleEntry.kt
+  s_8d633484dc870e::t_b17d96eec905d9 32,35,39
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/WebhookEvent.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15
+go/pkg/basecamp/timeline_test.go
+  s_8d633484dc870e::t_c2f81018efeae4 198,204-207,215,218
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TimelineDecodeTest.kt
+  s_8d633484dc870e::t_12d813bf874e75 120-122
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/WebhookCopy.kt
+  s_8d633484dc870e::t_b17d96eec905d9 15
+go/pkg/basecamp/test_helpers_test.go
+  s_8d633484dc870e::t_7fe360987e8876 85-93
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Campfire.kt
+  s_8d633484dc870e::t_b17d96eec905d9 29
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_8d633484dc870e::t_fd9c21f2191443 185-189,191-192,194-195
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_41249f862867c9::t_7e4ea4de6e25a5 940-953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "936e456f3750730d6f859aa9f9fe372dcc9ab2fc",
+  "prompts": {},
+  "sessions": {
+    "s_41249f862867c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3206f65bde268e8a",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
