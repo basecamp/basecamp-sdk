@@ -416,6 +416,63 @@ describe("BasecampClient", () => {
       const result = await client.GET("/projects.json");
       expect(result.data).toEqual([]);
     });
+
+    // The timeout signal and any caller-supplied signal are combined with
+    // AbortSignal.any (Node >= 20.3, guaranteed by the >=22.12.0 engines
+    // floor). Both inputs have to stay live: the timeout must still fire when
+    // the caller passes no signal, and a caller abort must still win when it
+    // fires first. Test both directions so a regression in either input of the
+    // combined signal is caught.
+    it("aborts on timeout when the caller supplies no signal", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, async () => {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        requestTimeoutMs: 50,
+      });
+
+      const startedAt = Date.now();
+      await expect(client.GET("/projects.json")).rejects.toThrow();
+
+      // Must abort on the timeout, not by waiting out the 2000ms handler.
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+    });
+
+    it("propagates a caller-supplied signal through the combined signal", async () => {
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, async () => {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return HttpResponse.json([]);
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+        enableRetry: false,
+        // Long enough that the request timeout cannot be what aborts us.
+        requestTimeoutMs: 30000,
+      });
+
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 50);
+
+      const startedAt = Date.now();
+      await expect(
+        client.GET("/projects.json", { signal: controller.signal })
+      ).rejects.toThrow();
+
+      // Aborting promptly proves the caller's signal reached the request; the
+      // 30s timeout signal could not have fired.
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+    });
   });
 
   describe("hooks integration", () => {

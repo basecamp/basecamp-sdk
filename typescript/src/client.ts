@@ -442,20 +442,19 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
       }
       request.headers.set("Accept", "application/json");
 
-      // Apply request timeout (Node 18-compatible: no AbortSignal.any)
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), requestTimeoutMs);
-      if (request.signal) {
-        request.signal.addEventListener("abort", () => controller.abort(), {
-          once: true,
-        });
-      }
+      // Apply request timeout, preserving any caller-supplied signal.
+      // AbortSignal.timeout's timer is unref'd, so unlike a bare setTimeout it
+      // never holds the event loop open after the request settles.
+      const timeoutSignal = AbortSignal.timeout(requestTimeoutMs);
+      const signal = request.signal
+        ? AbortSignal.any([request.signal, timeoutSignal])
+        : timeoutSignal;
 
       return new Request(request.url, {
         method: request.method,
         headers: request.headers,
         body: request.body,
-        signal: controller.signal,
+        signal,
         duplex: request.body ? "half" : undefined,
       } as RequestInit);
     },
