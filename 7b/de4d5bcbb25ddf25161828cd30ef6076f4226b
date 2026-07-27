@@ -1,0 +1,23 @@
+python/tests/services/test_notifications.py
+  s_8d633484dc870e::t_361e18cbf74966 39-40,77-78
+typescript/tests/services/my-notifications.test.ts
+  s_8d633484dc870e::t_e338d8b46b51e2 44-45,79-80,113-114,147-148
+go/pkg/basecamp/my_notifications_test.go
+  s_8d633484dc870e::t_e338d8b46b51e2 34,56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7bde4d5bcbb25ddf25161828cd30ef6076f4226b",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
