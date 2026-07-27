@@ -1,0 +1,19 @@
+go/pkg/basecamp/my_notifications_test.go
+  s_8d633484dc870e::t_1d23c62731b9c9 217-219,275-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9de9e0a0540fed4468595193e01d3deb29542da0",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

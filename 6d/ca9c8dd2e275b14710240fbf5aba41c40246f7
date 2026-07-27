@@ -1,0 +1,20 @@
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_ac30061f8247d4 4,3424,3430-3433,3436-3437,3440-3442,3447,3449-3450,3456,3471-3474,3477-3478,3481-3483,3488,3490-3491,3497,3566-3569
+  s_8d633484dc870e::t_800d242cfac131 3570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6dca9c8dd2e275b14710240fbf5aba41c40246f7",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
