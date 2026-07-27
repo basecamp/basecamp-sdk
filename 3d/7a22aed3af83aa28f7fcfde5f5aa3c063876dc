@@ -1,0 +1,40 @@
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_8d633484dc870e::t_5d46e1b700a824 949-955
+  s_8d633484dc870e::t_7d20e5eed45e0f 903-913,918,922
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_74f8b4fc470ed5 4
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_74f8b4fc470ed5 4,3582
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEventData.kt
+  s_8d633484dc870e::t_74f8b4fc470ed5 16-17
+openapi.json
+  s_8d633484dc870e::t_74f8b4fc470ed5 27581-27584,27589,27592-27595,27600
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_a388def7e14443 185-192,194,201
+go/pkg/basecamp/timeline_test.go
+  s_8d633484dc870e::t_898a4afee23572 280-300
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_74f8b4fc470ed5 25203-25206,25211,25214-25217,25222
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_74f8b4fc470ed5 40
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_74f8b4fc470ed5 1434-1435
+swift/Sources/Basecamp/Generated/Models/TimelineEventData.swift
+  s_8d633484dc870e::t_74f8b4fc470ed5 6-7,9,14-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3d7a22aed3af83aa28f7fcfde5f5aa3c063876dc",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
