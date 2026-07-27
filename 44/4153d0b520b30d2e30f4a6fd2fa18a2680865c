@@ -1,0 +1,38 @@
+Makefile
+  s_4b0e7357e2c0fe::t_eeb723f0a96b33 619
+  s_4b0e7357e2c0fe::t_d995ec3b0d5a24 928-929
+  s_4b0e7357e2c0fe::t_64aa233797e069 644-646,651-661
+  s_4b0e7357e2c0fe::t_62f1e99b93fa2d 877
+  s_4b0e7357e2c0fe::t_4ac59b7b4b014c 662
+SPEC.md
+  s_4b0e7357e2c0fe::t_9ae27872abdb9c 1345,1347
+  s_4b0e7357e2c0fe::t_5eba9eedee9485 1355-1357,1363
+.github/workflows/test.yml
+  s_4b0e7357e2c0fe::t_c0b08773db53ad 105-110
+  s_4b0e7357e2c0fe::t_8bd23d874fdcf7 378-383
+scripts/check-kotlin-generated-drift.sh
+  s_4b0e7357e2c0fe::t_03e3cae94d99e5 42-51,54-60,63
+  s_4b0e7357e2c0fe::t_03c698e2b977ee 18-19
+  s_4b0e7357e2c0fe::t_eec2cbfcc2c3d9 26-27,38-40
+  s_4b0e7357e2c0fe::t_3e14ce340ea763 1-17,20-25,41,52-53,61-62,64-65,89,94
+  s_4b0e7357e2c0fe::t_d92b3ed0e68c5f 66-74,76-78
+  s_4b0e7357e2c0fe::t_7c8df292b9e0f0 75,79-84,88,90-93
+  s_4b0e7357e2c0fe::t_f4c163a2521fe3 28-37
+  s_4b0e7357e2c0fe::t_084b0167dc2d0c 85-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "444153d0b520b30d2e30f4a6fd2fa18a2680865c",
+  "prompts": {},
+  "sessions": {
+    "s_4b0e7357e2c0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5919a1e2-b689-433b-b4e7-dc3c8266a5d9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
