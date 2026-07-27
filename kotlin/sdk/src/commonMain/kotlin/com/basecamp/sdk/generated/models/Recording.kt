@@ -34,6 +34,7 @@ data class Recording(
     @SerialName("boosts_count") val boostsCount: Int? = null,
     @SerialName("boosts_url") val boostsUrl: String? = null,
     val subject: String? = null,
+    val category: RecordingCategory? = null,
     @SerialName("group_on") val groupOn: String? = null,
     val from: String? = null,
     @SerialName("replies_count") val repliesCount: Int? = null,

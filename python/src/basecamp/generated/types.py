@@ -1221,6 +1221,7 @@ class Recording(TypedDict):
     boosts_count: NotRequired[int]
     boosts_url: NotRequired[str]
     bucket: RecordingBucket
+    category: NotRequired[RecordingCategory]
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
     content: NotRequired[str]
@@ -1252,6 +1253,12 @@ class RecordingBucket(TypedDict):
     id: int
     name: str
     type: str
+
+
+class RecordingCategory(TypedDict):
+    icon: NotRequired[str]
+    id: int
+    name: str
 
 
 class RecordingParent(TypedDict):

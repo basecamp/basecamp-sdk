@@ -4340,6 +4340,7 @@ export interface components {
              *     `/messages.json` aggregate feed, whose message partial renders `subject`.
              */
             subject?: string;
+            category?: components["schemas"]["RecordingCategory"];
             /**
              * @description Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
              *     (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
@@ -4382,6 +4383,17 @@ export interface components {
             id: number;
             name: string;
             type: string;
+        };
+        /**
+         * @description A message category (type) as rendered by the shared recordings/_category
+         *     partial: id, display name, and icon. Present on categorized Message
+         *     recordings.
+         */
+        RecordingCategory: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            icon?: string;
         };
         RecordingParent: {
             /** Format: int64 */

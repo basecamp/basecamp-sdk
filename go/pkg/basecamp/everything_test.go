@@ -41,7 +41,7 @@ func TestEverythingService_Messages_MultiPage(t *testing.T) {
 		page1++
 		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/messages.json?page=2>; rel="next"`, serverURL))
 		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`[{"id":1,"type":"Message","title":"First","subject":"First subject","boosts_count":4,"boosts_url":"https://x/1/boosts.json","url":"https://x/1.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/1","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}},{"id":2,"type":"Message","title":"Second","url":"https://x/2.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/2","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}}]`))
+		_, _ = w.Write([]byte(`[{"id":1,"type":"Message","title":"First","subject":"First subject","category":{"id":77,"name":"FYI","icon":"💡"},"boosts_count":4,"boosts_url":"https://x/1/boosts.json","url":"https://x/1.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/1","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}},{"id":2,"type":"Message","title":"Second","url":"https://x/2.json","status":"active","visible_to_clients":false,"created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","inherits_status":true,"app_url":"https://x/2","bucket":{"id":9,"name":"P","type":"Project"},"parent":{"id":8,"title":"MB","type":"Message::Board"},"creator":{"id":1,"name":"A"}}]`))
 	})
 	serverURL = url
 
@@ -68,6 +68,9 @@ func TestEverythingService_Messages_MultiPage(t *testing.T) {
 	}
 	if result.Recordings[0].BoostsCount != 4 || result.Recordings[0].BoostsURL == "" {
 		t.Errorf("expected boost data decoded, got count=%d url=%q", result.Recordings[0].BoostsCount, result.Recordings[0].BoostsURL)
+	}
+	if result.Recordings[0].Category == nil || result.Recordings[0].Category.Name != "FYI" {
+		t.Errorf("expected message category decoded, got %+v", result.Recordings[0].Category)
 	}
 	if result.Meta.TotalCount != 3 {
 		t.Errorf("expected TotalCount 3, got %d", result.Meta.TotalCount)

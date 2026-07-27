@@ -6321,6 +6321,11 @@ structure Recording {
   /// `/messages.json` aggregate feed, whose message partial renders `subject`.
   subject: String
 
+  /// Message category (type), when the message is filed under one. Rendered by
+  /// the shared recordings/_category partial (present on categorized `Message`
+  /// recordings, e.g. in the `/messages.json` aggregate feed).
+  category: RecordingCategory
+
   /// Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
   /// (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
   /// feed, whose answer partial renders `group_on`.
@@ -6358,6 +6363,17 @@ structure Recording {
   bucket: RecordingBucket
   @required
   creator: Person
+}
+
+/// A message category (type) as rendered by the shared recordings/_category
+/// partial: id, display name, and icon. Present on categorized Message
+/// recordings.
+structure RecordingCategory {
+  @required
+  id: Long
+  @required
+  name: String
+  icon: String
 }
 
 /// Metadata describing the recognized external service backing an external link

@@ -67,13 +67,14 @@ type Recording struct {
 	// (/messages.json, /comments.json, /checkins.json, /forwards.json), whose
 	// type-specific partials render them on top of the base recording projection.
 	// Populated only on the matching recording type; absent otherwise.
-	BoostsCount  int    `json:"boosts_count,omitempty"`
-	BoostsURL    string `json:"boosts_url,omitempty"`
-	Subject      string `json:"subject,omitempty"`
-	GroupOn      string `json:"group_on,omitempty"`
-	From         string `json:"from,omitempty"`
-	RepliesCount int    `json:"replies_count,omitempty"`
-	RepliesURL   string `json:"replies_url,omitempty"`
+	BoostsCount  int                `json:"boosts_count,omitempty"`
+	BoostsURL    string             `json:"boosts_url,omitempty"`
+	Subject      string             `json:"subject,omitempty"`
+	Category     *RecordingCategory `json:"category,omitempty"`
+	GroupOn      string             `json:"group_on,omitempty"`
+	From         string             `json:"from,omitempty"`
+	RepliesCount int                `json:"replies_count,omitempty"`
+	RepliesURL   string             `json:"replies_url,omitempty"`
 	// Position, Description, and Service are door-specific (external-link)
 	// fields, populated only on Door recordings returned by the type=Door
 	// recordings query (the only endpoint that returns the full door shape).
@@ -84,6 +85,14 @@ type Recording struct {
 	Parent      *Parent      `json:"parent,omitempty"`
 	Bucket      *Bucket      `json:"bucket,omitempty"`
 	Creator     *Person      `json:"creator,omitempty"`
+}
+
+// RecordingCategory is a message category (type): id, display name, and icon.
+// Present on categorized Message recordings (e.g. the /messages.json feed).
+type RecordingCategory struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Icon string `json:"icon,omitempty"`
 }
 
 // DoorService describes the recognized external service backing an external
@@ -461,6 +470,14 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 	if gr.Creator.Id != 0 || gr.Creator.Name != "" {
 		creator := personFromGenerated(gr.Creator)
 		r.Creator = &creator
+	}
+
+	if gr.Category.Id != 0 || gr.Category.Name != "" {
+		r.Category = &RecordingCategory{
+			ID:   gr.Category.Id,
+			Name: gr.Category.Name,
+			Icon: gr.Category.Icon,
+		}
 	}
 
 	r.ContentAttachments = richTextAttachmentsPtrFromGenerated(gr.ContentAttachments)

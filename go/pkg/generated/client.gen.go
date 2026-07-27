@@ -1923,12 +1923,17 @@ type Recording struct {
 	// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
 	// partials render with `boostable: true`. Optional (absent on non-boostable
 	// recordings and on the base/webhook partial).
-	BoostsCount   int32           `json:"boosts_count,omitempty"`
-	BoostsUrl     string          `json:"boosts_url,omitempty"`
-	Bucket        RecordingBucket `json:"bucket"`
-	CommentsCount int32           `json:"comments_count,omitempty"`
-	CommentsUrl   string          `json:"comments_url,omitempty"`
-	Content       string          `json:"content,omitempty"`
+	BoostsCount int32           `json:"boosts_count,omitempty"`
+	BoostsUrl   string          `json:"boosts_url,omitempty"`
+	Bucket      RecordingBucket `json:"bucket"`
+
+	// Category A message category (type) as rendered by the shared recordings/_category
+	// partial: id, display name, and icon. Present on categorized Message
+	// recordings.
+	Category      RecordingCategory `json:"category,omitempty"`
+	CommentsCount int32             `json:"comments_count,omitempty"`
+	CommentsUrl   string            `json:"comments_url,omitempty"`
+	Content       string            `json:"content,omitempty"`
 
 	// ContentAttachments Rich-text companion arrays carried through the generic recording
 	// projection (`to_recordable_partial_path` renders the full type-specific
@@ -2000,6 +2005,15 @@ type RecordingBucket struct {
 	Id   int64  `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"`
+}
+
+// RecordingCategory A message category (type) as rendered by the shared recordings/_category
+// partial: id, display name, and icon. Present on categorized Message
+// recordings.
+type RecordingCategory struct {
+	Icon string `json:"icon,omitempty"`
+	Id   int64  `json:"id"`
+	Name string `json:"name"`
 }
 
 // RecordingParent defines model for RecordingParent.

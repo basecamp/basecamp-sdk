@@ -460,6 +460,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   TimelineEvent: ["TimelineEvent", "entity"],
   Notification: ["Notification", "entity"],
   Boost: ["Boost", "entity"],
+  EverythingBoost: ["EverythingBoost", "entity"],
   EverythingFile: ["EverythingFile", "entity"],
   TimesheetEntry: ["TimesheetEntry", "entity"],
 };

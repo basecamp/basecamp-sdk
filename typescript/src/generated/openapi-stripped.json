@@ -25258,6 +25258,9 @@
             "type": "string",
             "description": "Message subject. Present on `Message` recordings — notably the account-wide\n`/messages.json` aggregate feed, whose message partial renders `subject`."
           },
+          "category": {
+            "$ref": "#/components/schemas/RecordingCategory"
+          },
           "group_on": {
             "type": "string",
             "description": "Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer\n(`Question::Answer`) recordings — notably the `/checkins.json` aggregate\nfeed, whose answer partial renders `group_on`.",
@@ -25335,6 +25338,27 @@
           "id",
           "name",
           "type"
+        ]
+      },
+      "RecordingCategory": {
+        "type": "object",
+        "description": "A message category (type) as rendered by the shared recordings/_category\npartial: id, display name, and icon. Present on categorized Message\nrecordings.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "name": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       },
       "RecordingParent": {
