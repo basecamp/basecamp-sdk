@@ -1,0 +1,36 @@
+scripts/check-kotlin-generated-drift.sh
+  s_4b0e7357e2c0fe::t_f4c163a2521fe3 27-36
+  s_4b0e7357e2c0fe::t_c4f0f7fa71bea3 49-53,56
+  s_4b0e7357e2c0fe::t_7c8df292b9e0f0 59-68,72,74-77
+  s_4b0e7357e2c0fe::t_084b0167dc2d0c 69-71
+  s_4b0e7357e2c0fe::t_eec2cbfcc2c3d9 25-26,37-39
+  s_4b0e7357e2c0fe::t_3e14ce340ea763 1-24,40-48,54-55,57-58,73,78
+Makefile
+  s_4b0e7357e2c0fe::t_64aa233797e069 644-646,651-661
+  s_4b0e7357e2c0fe::t_4ac59b7b4b014c 662
+  s_4b0e7357e2c0fe::t_eeb723f0a96b33 619
+  s_4b0e7357e2c0fe::t_d995ec3b0d5a24 928-929
+  s_4b0e7357e2c0fe::t_62f1e99b93fa2d 877
+SPEC.md
+  s_4b0e7357e2c0fe::t_5eba9eedee9485 1355-1357,1363
+  s_4b0e7357e2c0fe::t_9ae27872abdb9c 1345,1347
+.github/workflows/test.yml
+  s_4b0e7357e2c0fe::t_c0b08773db53ad 105-110
+  s_4b0e7357e2c0fe::t_8bd23d874fdcf7 378-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6c53cc7de87c4872b971c1af0fbf4b5673a52486",
+  "prompts": {},
+  "sessions": {
+    "s_4b0e7357e2c0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5919a1e2-b689-433b-b4e7-dc3c8266a5d9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
