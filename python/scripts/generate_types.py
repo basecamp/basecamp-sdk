@@ -114,7 +114,41 @@ def main() -> None:
         required_fields = set(schema.get("required", []))
         props = schema["properties"]
 
+        # A JSON key that is a Python keyword (e.g. `from` on Inbox::Forward) or
+        # otherwise not a valid identifier cannot be a class-based TypedDict field
+        # without mangling the key. Appending `_` (from_) would make the public
+        # typing lie about the real wire key. When any key needs that, emit the
+        # whole TypedDict with the functional TypedDict("Name", {...}) syntax,
+        # which preserves the real JSON keys verbatim.
+        needs_functional = any(
+            (p in PYTHON_KEYWORDS) or (not p.isidentifier()) for p in props
+        )
+
         lines.append("")
+        if needs_functional:
+            if schema.get("deprecated"):
+                reason = escape_py_string(schema.get("x-deprecated-reason") or "deprecated")
+                lines.append(f"# Deprecated: {reason}")
+            lines.append(f'{name} = TypedDict("{name}", {{')
+            for prop_name in sorted(props):
+                prop = props[prop_name]
+                is_optional = prop_name not in required_fields
+                py_type = schema_to_type(prop, schemas, optional=is_optional)
+                if prop.get("deprecated"):
+                    reason = escape_py_string(prop.get("x-deprecated-reason") or "deprecated")
+                    lines.append(f"    # deprecated (source-only): {reason}")
+                # Value types are string-quoted forward references: the functional
+                # TypedDict evaluates its dict values eagerly, so referencing a
+                # schema defined later in the file (alphabetical order) would raise
+                # NameError. Quoting defers resolution, matching class-based
+                # annotations under `from __future__ import annotations`.
+                lines.append(f'    "{prop_name}": "{py_type}",')
+                if "FlexibleInt64" in str(prop.get("x-go-type", "")):
+                    lines.append('    "system_label": "NotRequired[str]",')
+            lines.append("})")
+            generated_count += 1
+            continue
+
         lines.append(f"class {name}(TypedDict):")
         # Documentation-only deprecation (see #406): a real class docstring for a
         # wholly deprecated TypedDict. TypedDicts have no runtime docstring hook
@@ -128,8 +162,7 @@ def main() -> None:
             prop = props[prop_name]
             is_optional = prop_name not in required_fields
             py_type = schema_to_type(prop, schemas, optional=is_optional)
-            # Escape Python keywords by appending underscore
-            field_name = f"{prop_name}_" if prop_name in PYTHON_KEYWORDS else prop_name
+            field_name = prop_name
             # TypedDict fields carry no directive; label deprecation honestly as a
             # source-only comment (see #406).
             if prop.get("deprecated"):
