@@ -53,9 +53,11 @@
 #     not silently accepted. This covers two kinds of class:
 #       - generated/models/<Component>.kt, whose basename is the component;
 #       - generated/services request bodies, where `<OperationId>Body` resolves
-#         to the `<OperationId>RequestContent` component. Request bodies are
-#         where a wrong requiredness actually drops data on a write, so they are
-#         resolved rather than skipped.
+#         through the operation's `requestBody` reference in the spec — NOT a
+#         `<OperationId>RequestContent` name guess, which would silently miss
+#         the aliased bodies (CreateAnswer -> QuestionAnswerPayload). Request
+#         bodies are where a wrong requiredness actually drops data on a write,
+#         so they are resolved rather than skipped.
 #     A member of a schema-backed class that resolves to no property is an
 #     ERROR (renamed member, typo'd @SerialName), not a silent downgrade —
 #     except for the narrow SYNTHESIZED_MEMBERS allowlist below.
@@ -88,7 +90,8 @@ end
 
 # Read as UTF-8 regardless of process locale (LC_ALL=C would otherwise read as
 # US-ASCII and choke on the spec's / generated code's UTF-8 bytes).
-components = JSON.parse(File.read(OPENAPI_FILE, encoding: "UTF-8")).dig("components", "schemas") || {}
+spec = JSON.parse(File.read(OPENAPI_FILE, encoding: "UTF-8"))
+components = spec.dig("components", "schemas") || {}
 
 errors = []
 
@@ -161,21 +164,43 @@ SYNTHESIZED_MEMBERS = {
   "Person" => %w[system_label].freeze
 }.freeze
 
+# operationId => request-body component name, read from the spec's paths rather
+# than guessed from a naming convention. Most operations use
+# `<OperationId>RequestContent`, but some reference a shared payload component
+# instead (CreateAnswer -> QuestionAnswerPayload, UpdateAnswer ->
+# QuestionAnswerUpdatePayload). Deriving the map means an alias can never
+# silently drop a request body onto the weaker structural path.
+def build_request_body_map(spec)
+  map = {}
+  (spec["paths"] || {}).each_value do |ops|
+    ops.each do |verb, op|
+      next unless %w[get post put patch delete].include?(verb)
+      next unless op.is_a?(Hash)
+
+      oid = op["operationId"]
+      ref = op.dig("requestBody", "content", "application/json", "schema", "$ref")
+      map[oid] = ref.split("/").last if oid && ref
+    end
+  end
+  map
+end
+
 # Resolve the OpenAPI component backing a generated Kotlin class.
 #
 # Model classes are named for their component directly. Service request-body
-# classes are named `<OperationId>Body` and correspond to the
-# `<OperationId>RequestContent` component, so requiredness for request bodies —
-# where omitting a required field actually drops data on a write — is resolved
-# rather than skipped. Query-parameter `*Options` classes have no body schema
-# and correctly resolve to nil, leaving them on the structural path.
-def resolve_component(class_name, components)
+# classes are named `<OperationId>Body`; their component comes from the
+# operation's `requestBody` reference, so requiredness for request bodies —
+# where a wrong answer drops data on a write — is resolved rather than skipped,
+# aliases included. Query-parameter `*Options` classes have no body schema and
+# correctly resolve to nil, leaving them on the structural path.
+def resolve_component(class_name, components, request_bodies)
   return nil unless class_name
   return class_name if components.key?(class_name)
 
   if class_name.end_with?("Body")
-    candidate = "#{class_name.delete_suffix('Body')}RequestContent"
-    return candidate if components.key?(candidate)
+    operation = class_name.delete_suffix("Body")
+    from_spec = request_bodies[operation]
+    return from_spec if from_spec && components.key?(from_spec)
   end
 
   nil
@@ -190,6 +215,8 @@ def schema_nullable?(prop_schema)
   type = prop_schema["type"]
   type.is_a?(Array) && type.include?("null")
 end
+
+request_bodies = build_request_body_map(spec)
 
 files.each do |path|
   rel = path.sub("#{PROJECT_ROOT}/", "")
@@ -207,7 +234,7 @@ files.each do |path|
     parsed = parse_property(line)
     next unless parsed
 
-    component_name = resolve_component(file_component || current_class, components)
+    component_name = resolve_component(file_component || current_class, components, request_bodies)
     component = component_name ? components[component_name] : nil
     required_fields = component ? (component["required"] || []) : nil
     known_props = component ? (component["properties"] || {}) : nil
