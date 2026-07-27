@@ -20,6 +20,22 @@ from gen_common import escape_py_string  # noqa: E402
 PYTHON_KEYWORDS = set(keyword.kwlist)
 
 
+def _wants_system_label(prop_name: str, prop: dict, props: dict) -> bool:
+    """Whether to inject the synthetic ``system_label`` companion field.
+
+    System actors (e.g. LocalPerson) carry a non-numeric label in their ``id``,
+    surfaced as ``system_label``. Inject it only for the ``id`` field (not any
+    other FlexibleInt64 property), and never when the schema already declares a
+    real ``system_label`` property — otherwise the TypedDict would get a
+    duplicate key.
+    """
+    return (
+        prop_name == "id"
+        and "FlexibleInt64" in str(prop.get("x-go-type", ""))
+        and "system_label" not in props
+    )
+
+
 def quote_schema_refs(py_type: str, schema_names: set[str]) -> str:
     """Quote whole-word schema-name identifiers in a type annotation as forward
     references, leaving qualifiers (NotRequired, Optional, list) and builtins
@@ -162,7 +178,7 @@ def main() -> None:
                 # __required_keys__ and none in __optional_keys__, breaking runtime
                 # introspection. E.g. NotRequired[TodoBucket] -> NotRequired["TodoBucket"].
                 lines.append(f'    "{prop_name}": {quote_schema_refs(py_type, schema_names)},')
-                if "FlexibleInt64" in str(prop.get("x-go-type", "")):
+                if _wants_system_label(prop_name, prop, props):
                     lines.append('    "system_label": NotRequired[str],')
             lines.append("})")
             generated_count += 1
@@ -192,7 +208,7 @@ def main() -> None:
             lines.append(f"    {field_name}: {py_type}")
             # Add system_label field after id for flexible integer fields
             # (system actors like LocalPerson have non-numeric labels as id)
-            if "FlexibleInt64" in str(prop.get("x-go-type", "")):
+            if _wants_system_label(prop_name, prop, props):
                 lines.append("    system_label: NotRequired[str]")
 
         generated_count += 1
