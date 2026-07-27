@@ -34,7 +34,9 @@ trap 'rm -rf "$TMPDIR_BASE"' EXIT
 
 REGEN="$TMPDIR_BASE/client.gen.go"
 TMP_CONFIG="$TMPDIR_BASE/oapi-codegen.yaml"
-GEN_LOG="$TMPDIR_BASE/generate.log"
+# Separate log per phase so a later failure never clobbers earlier diagnostics.
+GEN_LOG="$TMPDIR_BASE/oapi-codegen.log"
+NORM_LOG="$TMPDIR_BASE/normalize.log"
 
 # Copy the committed config, overriding only the `output:` line to an absolute
 # temp path. `output-options:` (a different key) is left untouched; the
@@ -50,9 +52,9 @@ if ! (cd "$GO_DIR" && go tool oapi-codegen -config "$TMP_CONFIG" ../openapi.json
 fi
 
 # Apply the same normalization the committed file receives (see generate.go).
-if ! "$SCRIPT_DIR/normalize-go-deprecation-godoc.sh" "$REGEN" > "$GEN_LOG" 2>&1; then
+if ! "$SCRIPT_DIR/normalize-go-deprecation-godoc.sh" "$REGEN" > "$NORM_LOG" 2>&1; then
   echo "ERROR: normalization failed:" >&2
-  cat "$GEN_LOG" >&2
+  cat "$NORM_LOG" >&2
   exit 1
 fi
 
