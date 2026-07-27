@@ -269,6 +269,17 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
     throw new BasecampError("usage", "Either 'auth' or 'accessToken' is required");
   }
 
+  // AbortSignal.timeout throws a bare RangeError for a negative, NaN, or
+  // non-finite delay — per request, and far from the call that misconfigured it.
+  // (The previous setTimeout coerced such values to 0, aborting immediately.)
+  // Fail fast at construction instead, like the other config checks.
+  if (!Number.isFinite(requestTimeoutMs) || requestTimeoutMs < 0) {
+    throw new BasecampError(
+      "usage",
+      `'requestTimeoutMs' must be a non-negative finite number, got ${requestTimeoutMs}`
+    );
+  }
+
   const authStrategy: AuthStrategy = auth ?? bearerAuth(accessToken!);
 
   // Validate configuration (skip HTTPS check for localhost in dev/test)

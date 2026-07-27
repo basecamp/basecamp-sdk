@@ -4,7 +4,7 @@
   "private": true,
   "description": "TypeScript SDK for the Basecamp API",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.12.0"
   },
   "type": "module",
   "main": "typescript/dist/index.js",

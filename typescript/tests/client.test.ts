@@ -426,7 +426,7 @@ describe("BasecampClient", () => {
     it("aborts on timeout when the caller supplies no signal", async () => {
       server.use(
         http.get(`${BASE_URL}/projects.json`, async () => {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return HttpResponse.json([]);
         })
       );
@@ -447,13 +447,13 @@ describe("BasecampClient", () => {
       });
 
       // Must abort on the timeout, not by waiting out the 2000ms handler.
-      expect(Date.now() - startedAt).toBeLessThan(1000);
+      expect(Date.now() - startedAt).toBeLessThan(500);
     });
 
     it("propagates a caller-supplied signal through the combined signal", async () => {
       server.use(
         http.get(`${BASE_URL}/projects.json`, async () => {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return HttpResponse.json([]);
         })
       );
@@ -480,7 +480,7 @@ describe("BasecampClient", () => {
 
         // Aborting promptly proves the caller's signal reached the request; the
         // 30s timeout signal could not have fired.
-        expect(Date.now() - startedAt).toBeLessThan(1000);
+        expect(Date.now() - startedAt).toBeLessThan(500);
       } finally {
         clearTimeout(abortTimer);
       }
