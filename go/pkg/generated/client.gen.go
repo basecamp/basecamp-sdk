@@ -2013,9 +2013,9 @@ type RecordingBucket struct {
 // partial: id, display name, and icon. Present on categorized Message
 // recordings.
 type RecordingCategory struct {
-	Icon string `json:"icon,omitempty"`
-	Id   int64  `json:"id"`
-	Name string `json:"name"`
+	Icon *string `json:"icon,omitempty"`
+	Id   int64   `json:"id"`
+	Name string  `json:"name"`
 }
 
 // RecordingParent defines model for RecordingParent.

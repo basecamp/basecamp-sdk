@@ -96,7 +96,9 @@ type Recording struct {
 type RecordingCategory struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
-	Icon string `json:"icon,omitempty"`
+	// Icon is optional (a category may omit it); pointer-backed so an absent icon
+	// (nil) is distinct from an explicit empty string, per SPEC.md §10.
+	Icon *string `json:"icon,omitempty"`
 }
 
 // DoorService describes the recognized external service backing an external

@@ -349,6 +349,10 @@ walk(
   (.replies_url // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
+# RecordingCategory.icon is optional (a category may omit its icon), so make it
+# pointer-backed too — an empty string must not stand in for absence (SPEC.md §10).
+.components.schemas.RecordingCategory.properties.icon += { "x-go-type-skip-optional-pointer": false }
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.

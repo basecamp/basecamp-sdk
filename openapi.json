@@ -27840,7 +27840,8 @@
             "type": "string"
           },
           "icon": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           }
         },
         "required": [
