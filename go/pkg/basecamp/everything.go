@@ -36,8 +36,10 @@ type RecordingsPage struct {
 // recording through the full recording projection, so it carries a complete
 // *Recording.
 type EverythingBoost struct {
+	// Content, CreatedAt, Booster, and Recording are always present on the
+	// /boosts.json feed (BC3 renders them unconditionally), so they are required.
 	ID        int64      `json:"id"`
-	Content   string     `json:"content,omitempty"`
+	Content   string     `json:"content"`
 	CreatedAt time.Time  `json:"created_at"`
 	Booster   *Person    `json:"booster,omitempty"`
 	Recording *Recording `json:"recording,omitempty"`

@@ -2,23 +2,23 @@
 import Foundation
 
 public struct EverythingBoost: Codable, Sendable {
+    public let booster: Person
+    public let content: String
     public let createdAt: String
     public let id: Int
-    public var booster: Person?
-    public var content: String?
-    public var recording: Recording?
+    public let recording: Recording
 
     public init(
+        booster: Person,
+        content: String,
         createdAt: String,
         id: Int,
-        booster: Person? = nil,
-        content: String? = nil,
-        recording: Recording? = nil
+        recording: Recording
     ) {
-        self.createdAt = createdAt
-        self.id = id
         self.booster = booster
         self.content = content
+        self.createdAt = createdAt
+        self.id = id
         self.recording = recording
     }
 }

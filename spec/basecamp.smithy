@@ -9032,13 +9032,18 @@ list EverythingBoostList {
 structure EverythingBoost {
   @required
   id: BoostId
+  /// The boost's content (the reaction/emoji). BC3 renders it unconditionally.
+  @required
   content: String
   @required
   created_at: ISO8601Timestamp
+  /// The person who boosted. BC3 renders it unconditionally on this feed.
+  @required
   booster: Person
 
   /// The boosted recording, rendered as the full recording projection (not the
-  /// reduced parent shape).
+  /// reduced parent shape). BC3 renders it unconditionally on this feed.
+  @required
   recording: Recording
 }
 

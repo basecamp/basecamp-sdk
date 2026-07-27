@@ -66,15 +66,19 @@ type Recording struct {
 	// are type-specific fields carried by the account-wide aggregate feeds
 	// (/messages.json, /comments.json, /checkins.json, /forwards.json), whose
 	// type-specific partials render them on top of the base recording projection.
-	// Populated only on the matching recording type; absent otherwise.
-	BoostsCount  int                `json:"boosts_count,omitempty"`
-	BoostsURL    string             `json:"boosts_url,omitempty"`
-	Subject      string             `json:"subject,omitempty"`
+	// They are populated only on the matching recording type (boosts_* on
+	// boostable recordings, subject on Message, group_on on Question::Answer,
+	// from/replies_* on Inbox::Forward), so they are pointer-backed: nil (absent)
+	// omits, and an explicit value — including an empty string or a zero count —
+	// round-trips, per SPEC.md §10.
+	BoostsCount  *int               `json:"boosts_count,omitempty"`
+	BoostsURL    *string            `json:"boosts_url,omitempty"`
+	Subject      *string            `json:"subject,omitempty"`
 	Category     *RecordingCategory `json:"category,omitempty"`
-	GroupOn      string             `json:"group_on,omitempty"`
-	From         string             `json:"from,omitempty"`
-	RepliesCount int                `json:"replies_count,omitempty"`
-	RepliesURL   string             `json:"replies_url,omitempty"`
+	GroupOn      *string            `json:"group_on,omitempty"`
+	From         *string            `json:"from,omitempty"`
+	RepliesCount *int               `json:"replies_count,omitempty"`
+	RepliesURL   *string            `json:"replies_url,omitempty"`
 	// Position, Description, and Service are door-specific (external-link)
 	// fields, populated only on Door recordings returned by the type=Door
 	// recordings query (the only endpoint that returns the full door shape).
@@ -434,15 +438,22 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		CommentsCount:    int(gr.CommentsCount),
 		CommentsURL:      gr.CommentsUrl,
 		SubscriptionURL:  gr.SubscriptionUrl,
-		BoostsCount:      int(gr.BoostsCount),
 		BoostsURL:        gr.BoostsUrl,
 		Subject:          gr.Subject,
 		From:             gr.From,
-		RepliesCount:     int(gr.RepliesCount),
 		RepliesURL:       gr.RepliesUrl,
 	}
-	if !gr.GroupOn.IsZero() {
-		r.GroupOn = gr.GroupOn.String()
+	if gr.BoostsCount != nil {
+		v := int(*gr.BoostsCount)
+		r.BoostsCount = &v
+	}
+	if gr.RepliesCount != nil {
+		v := int(*gr.RepliesCount)
+		r.RepliesCount = &v
+	}
+	if gr.GroupOn != nil {
+		s := gr.GroupOn.String()
+		r.GroupOn = &s
 	}
 
 	if gr.Id != 0 {

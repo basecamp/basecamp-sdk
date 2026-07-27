@@ -614,11 +614,11 @@ class EventDetails(TypedDict):
 
 
 class EverythingBoost(TypedDict):
-    booster: NotRequired[Person]
-    content: NotRequired[str]
+    booster: Person
+    content: str
     created_at: str
     id: int
-    recording: NotRequired[Recording]
+    recording: Recording
 
 
 class EverythingFile(TypedDict):

@@ -63,11 +63,11 @@ func TestEverythingService_Messages_MultiPage(t *testing.T) {
 	}
 	// Type-specific message fields must decode (not dropped by the generic
 	// recording projection): subject and the boostable counts.
-	if result.Recordings[0].Subject != "First subject" {
-		t.Errorf("expected message subject decoded, got %q", result.Recordings[0].Subject)
+	if strv(result.Recordings[0].Subject) != "First subject" {
+		t.Errorf("expected message subject decoded, got %v", result.Recordings[0].Subject)
 	}
-	if result.Recordings[0].BoostsCount != 4 || result.Recordings[0].BoostsURL == "" {
-		t.Errorf("expected boost data decoded, got count=%d url=%q", result.Recordings[0].BoostsCount, result.Recordings[0].BoostsURL)
+	if result.Recordings[0].BoostsCount == nil || *result.Recordings[0].BoostsCount != 4 || strv(result.Recordings[0].BoostsURL) == "" {
+		t.Errorf("expected boost data decoded, got count=%v url=%v", result.Recordings[0].BoostsCount, result.Recordings[0].BoostsURL)
 	}
 	if result.Recordings[0].Category == nil || result.Recordings[0].Category.Name != "FYI" {
 		t.Errorf("expected message category decoded, got %+v", result.Recordings[0].Category)
@@ -300,7 +300,7 @@ func TestEverythingService_TypeSpecificFeedFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("checkins error: %v", err)
 	}
-	if len(ci.Recordings) != 1 || ci.Recordings[0].GroupOn != "2026-07-20" {
+	if len(ci.Recordings) != 1 || strv(ci.Recordings[0].GroupOn) != "2026-07-20" {
 		t.Errorf("expected check-in group_on 2026-07-20, got %+v", ci.Recordings)
 	}
 
@@ -321,8 +321,8 @@ func TestEverythingService_TypeSpecificFeedFields(t *testing.T) {
 		t.Fatalf("expected 1 forward, got %d", len(fw.Recordings))
 	}
 	f := fw.Recordings[0]
-	if f.Subject != "FW: Invoice" || f.From != "vendor@example.com" || f.RepliesCount != 2 || f.RepliesURL == "" {
-		t.Errorf("expected forward type-specific fields, got subject=%q from=%q replies=%d url=%q", f.Subject, f.From, f.RepliesCount, f.RepliesURL)
+	if strv(f.Subject) != "FW: Invoice" || strv(f.From) != "vendor@example.com" || f.RepliesCount == nil || *f.RepliesCount != 2 || strv(f.RepliesURL) == "" {
+		t.Errorf("expected forward type-specific fields, got subject=%v from=%v replies=%v url=%v", f.Subject, f.From, f.RepliesCount, f.RepliesURL)
 	}
 }
 
@@ -363,7 +363,7 @@ func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
 	if b.Recording.Creator == nil || b.Recording.Creator.Name != "Ann Perkins" {
 		t.Errorf("expected full projection creator, got %+v", b.Recording.Creator)
 	}
-	if b.Recording.URL == "" || b.Recording.Subject != "A message" {
-		t.Errorf("expected full projection url+subject, got url=%q subject=%q", b.Recording.URL, b.Recording.Subject)
+	if b.Recording.URL == "" || strv(b.Recording.Subject) != "A message" {
+		t.Errorf("expected full projection url+subject, got url=%q subject=%v", b.Recording.URL, b.Recording.Subject)
 	}
 }

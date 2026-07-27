@@ -22314,7 +22314,8 @@
             "x-go-type-skip-optional-pointer": false
           },
           "content": {
-            "type": "string"
+            "type": "string",
+            "description": "The boost's content (the reaction/emoji). BC3 renders it unconditionally."
           },
           "created_at": {
             "type": "string",
@@ -22332,8 +22333,11 @@
           }
         },
         "required": [
+          "booster",
+          "content",
           "created_at",
-          "id"
+          "id",
+          "recording"
         ]
       },
       "EverythingFile": {
@@ -25249,14 +25253,17 @@
           "boosts_count": {
             "type": "integer",
             "description": "Boost count/URL. Carried on boostable recordings — notably the account-wide\naggregate feeds (`/messages.json`, `/comments.json`), whose type-specific\npartials render with `boostable: true`. Optional (absent on non-boostable\nrecordings and on the base/webhook partial).",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
           },
           "boosts_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "subject": {
             "type": "string",
-            "description": "Message subject. Present on `Message` recordings — notably the account-wide\n`/messages.json` aggregate feed, whose message partial renders `subject`."
+            "description": "Message subject. Present on `Message` recordings — notably the account-wide\n`/messages.json` aggregate feed, whose message partial renders `subject`.",
+            "x-go-type-skip-optional-pointer": false
           },
           "category": {
             "$ref": "#/components/schemas/RecordingCategory"
@@ -25268,19 +25275,22 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true
+            "x-go-type-skip-optional-pointer": false
           },
           "from": {
             "type": "string",
-            "description": "Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably\nthe `/forwards.json` aggregate feed, whose forward partial renders `from`."
+            "description": "Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably\nthe `/forwards.json` aggregate feed, whose forward partial renders `from`.",
+            "x-go-type-skip-optional-pointer": false
           },
           "replies_count": {
             "type": "integer",
             "description": "Reply count/URL for an inbox forward. Present on `Inbox::Forward`\nrecordings — notably the `/forwards.json` aggregate feed.",
-            "format": "int32"
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
           },
           "replies_url": {
-            "type": "string"
+            "type": "string",
+            "x-go-type-skip-optional-pointer": false
           },
           "position": {
             "type": "integer",

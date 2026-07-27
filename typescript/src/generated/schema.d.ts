@@ -3450,10 +3450,11 @@ export interface components {
         EverythingBoost: {
             /** Format: int64 */
             id: number;
-            content?: string;
+            /** @description The boost's content (the reaction/emoji). BC3 renders it unconditionally. */
+            content: string;
             created_at: string;
-            booster?: components["schemas"]["Person"];
-            recording?: components["schemas"]["Recording"];
+            booster: components["schemas"]["Person"];
+            recording: components["schemas"]["Recording"];
         };
         /**
          * @description A single item in the /files.json feed. An optional-field superset over three

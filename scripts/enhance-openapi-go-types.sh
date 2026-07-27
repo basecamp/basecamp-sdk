@@ -329,6 +329,26 @@ walk(
   (.content // empty) += { "x-go-type-skip-optional-pointer": false }
 )
 |
+# Fifth-h pass: the Recording aggregate-feed type-specific scalars are presence-
+# faithful. BC3 renders boosts_count/subject/group_on/from/replies_count/
+# replies_url conditionally (only on the matching recording type — boosts_count
+# via boostable, subject on Message, group_on on Question::Answer, from/replies_*
+# on Inbox::Forward). Per SPEC.md §10 an optional scalar must round-trip absence,
+# so a plain int/string with omitempty (which cannot distinguish absent from an
+# explicit 0/"") is not acceptable. Make them pointer-backed (*int32 / *string /
+# *types.Date) so nil (absent) omits and an explicit value is preserved. Scoped
+# to the new fields only — the pre-existing comments_count/comments_url debt is
+# out of scope here.
+.components.schemas.Recording.properties |= (
+  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.subject // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.group_on // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.from // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.replies_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.replies_url // empty) += { "x-go-type-skip-optional-pointer": false }
+)
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.
