@@ -1,0 +1,25 @@
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_19cb8c98484dbd 3017
+  s_8d633484dc870e::t_3f622d032c7f35 4589
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_19cb8c98484dbd 4
+  s_8d633484dc870e::t_3f622d032c7f35 3165,3178,3188
+go/pkg/basecamp/everything_test.go
+  s_8d633484dc870e::t_0b484a095faba3 347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b1f5badf603aa348e11bf41b0ded8cee07f0928e",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
