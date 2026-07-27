@@ -35,6 +35,11 @@ class Config:
         # Validation
         if self.timeout <= 0:
             raise ValueError("timeout must be positive")
+        # bool is an int subclass; exclude it so True/False don't masquerade as a
+        # retry count. A non-integer max_retries would make the total-attempt
+        # bound fractional (e.g. 0.5 → zero requests), so reject it here.
+        if isinstance(self.max_retries, bool) or not isinstance(self.max_retries, int):
+            raise ValueError("max_retries must be an integer")
         if self.max_retries < 0:
             raise ValueError("max_retries must be non-negative")
         if self.base_delay < 0:

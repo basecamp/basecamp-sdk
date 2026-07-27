@@ -146,12 +146,16 @@ class AsyncHttpClient:
         files: dict | None = None,
         allow_cross_origin: bool = False,
     ) -> httpx.Response:
+        # max_retries is a TOTAL attempt count (config validation guarantees it
+        # is >= 0). 0 is accepted as a compatibility exception and means a single
+        # attempt with no retry.
+        max_attempts = self._config.max_retries if self._config.max_retries > 0 else 1
         attempt = 0
         last_error: BasecampError | None = None
 
         while True:
             attempt += 1
-            if attempt > self._config.max_retries + 1:
+            if attempt > max_attempts:
                 break
 
             try:
@@ -170,7 +174,7 @@ class AsyncHttpClient:
                 if not e.retryable:
                     raise
                 last_error = e
-                if attempt > self._config.max_retries:
+                if attempt >= max_attempts:
                     break
                 delay = self._calculate_delay(attempt, e.retry_after)
                 safe_hook(
@@ -184,7 +188,8 @@ class AsyncHttpClient:
 
         if last_error:
             raise last_error
-        raise ApiError(f"Request failed after {self._config.max_retries} retries")
+        noun = "attempt" if max_attempts == 1 else "attempts"
+        raise ApiError(f"Request failed after {max_attempts} {noun}")
 
     async def _single_request(
         self,

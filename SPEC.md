@@ -127,7 +127,10 @@ All validation errors are `BasecampError(code: "usage")` (see §6 error taxonomy
 1. Parse `base_url`. → `⊥ BasecampError(code: "usage")` if malformed.
 2. If `base_url` is not the default (`https://3.basecampapi.com`) and not localhost (§9), enforce HTTPS. → `⊥ BasecampError(code: "usage", message: "base URL must use HTTPS")` if scheme ≠ `https`.
 3. Validate `timeout > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
-4. Validate `max_retries ≥ 1`. → `⊥ BasecampError(code: "usage")` otherwise. (`max_retries` is total attempts including the initial request; 0 would mean no request is made.) **Divergence:** Ruby and Go currently accept `max_retries = 0`; the spec prescribes `≥ 1` as the intended contract.
+4. Validate `max_retries ≥ 1`. → `⊥ BasecampError(code: "usage")` otherwise. (`max_retries` is total attempts including the initial request; 0 would mean no request is made.) **Divergence:** the SDKs handle `max_retries = 0` in three distinct outcomes across four implementations, none of which is the spec's `⊥`:
+   - **Generated Go** (low-level `pkg/generated` client) and **Python** (sync + async): accept `0` as a compatibility exception and make a single attempt with no retry. Both reject a *negative* value as a configuration error (generated Go: `WithRetryConfig`/`doWithRetry` return a plain `error`; Python: `Config` raises `ValueError` at construction).
+   - **Ruby:** `0` passes config validation, but the GET-only retry loop's `break if attempt > max_retries` fires before the first request, so it makes **zero** requests and raises `Basecamp::ApiError("Request failed after 0 attempts")`.
+   - **Hand-written Go** (`pkg/basecamp` client): rejects `0` — `NewClient` panics `"basecamp: max retries must be at least 1"` (its GET/download loops treat `MaxRetries` as the total attempt count with a minimum of 1).
 5. Validate `max_pages > 0`. → `⊥ BasecampError(code: "usage")` otherwise.
 6. Normalize `base_url`: strip trailing `/`.
 
