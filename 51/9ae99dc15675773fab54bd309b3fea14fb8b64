@@ -1,0 +1,19 @@
+scripts/check-kotlin-optional-arrays-and-scalars.rb
+  s_4df49d42d6c9e3::t_e6365839ed7e5a 167-172,183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "519ae99dc15675773fab54bd309b3fea14fb8b64",
+  "prompts": {},
+  "sessions": {
+    "s_4df49d42d6c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8432f7a9-be4e-4dec-8f6f-9306ed534d9a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
