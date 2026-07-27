@@ -44,8 +44,12 @@ on the existing create/update endpoints:
 - The remaining `recurrence_schedule` attributes shown in the read payload
   (`hour`, `minute`, `start_date`, `duration`, `end_date`) are **derived**
   from `starts_at`/`ends_at`/`recurs_until` and **ignored on input**.
-- An **invalid `recurrence_schedule` is silently discarded on create**: the
-  entry is created without recurring (no validation error).
+- An **invalid `recurrence_schedule` is silently discarded on create** — for
+  malformed/other invalid shapes the entry is created without recurring (no
+  validation error). This does **not** apply to *uncomputable* schedules
+  (`week_instance: 0` and the like), which BC3 #12362 now rejects with a
+  validation error at create time (see below); silent-discard covers only the
+  remaining invalid shapes.
 - Update: adding a `recurrence_schedule` makes a non-recurring entry recur.
   An entry that **already recurs can't be changed** through the update
   endpoint — it redirects to the entry's first occurrence, like Get a

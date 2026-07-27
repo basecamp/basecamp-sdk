@@ -4,11 +4,11 @@
 # across all six SDKs and matches the source of truth.
 #
 # The source of truth is behavior-model.json:
-#   * idempotent == true            → the 69 naturally-idempotent mutations
+#   * idempotent == true            → the naturally-idempotent mutations
 #   * idempotent OR readonly == true → the idempotent∪readonly set Go bakes idempotency
 #                                      into at generation time (GET/HEAD are
 #                                      idempotent by construction, so Go folds
-#                                      the 100 read-only ops into its retry set).
+#                                      the read-only ops into its retry set).
 #
 # Every SDK's generated idempotency set must equal the appropriate source set
 # EXACTLY (set equality, both directions — not subset):
