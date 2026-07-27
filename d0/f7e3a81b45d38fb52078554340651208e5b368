@@ -1,0 +1,45 @@
+swift/Sources/Basecamp/Generated/Models/Boost.swift
+  s_8d633484dc870e::t_63ae38ba0579e2 9,16
+spec/basecamp.smithy
+  s_8d633484dc870e::t_e3701e8314ba9f 2938-2941
+  s_8d633484dc870e::t_7a60efa90b1818 8217-8221
+openapi.json
+  s_8d633484dc870e::t_63ae38ba0579e2 22511,27706-27708
+swift/Sources/Basecamp/Generated/Models/RecordingParent.swift
+  s_8d633484dc870e::t_63ae38ba0579e2 10,17-18,25
+go/pkg/basecamp/todos.go
+  s_8d633484dc870e::t_9998ebb6a1c03c 120-123
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_63ae38ba0579e2 20032,25227-25229
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Boost.kt
+  s_8d633484dc870e::t_63ae38ba0579e2 19
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_63ae38ba0579e2 133-137,1969-1974
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/RecordingParent.kt
+  s_8d633484dc870e::t_63ae38ba0579e2 19-20
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_63ae38ba0579e2 78,1244
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_63ae38ba0579e2 2858,4346
+go/pkg/basecamp/boosts.go
+  s_8d633484dc870e::t_95f7c3e474a5d4 376
+  s_8d633484dc870e::t_7b453ea99dfba2 23-26
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_63ae38ba0579e2 4,273,3111,3124,3134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d0f7e3a81b45d38fb52078554340651208e5b368",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
