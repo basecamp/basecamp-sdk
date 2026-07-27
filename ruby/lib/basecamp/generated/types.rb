@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T06:14:41Z
+# Generated: 2026-07-27T07:19:14Z
 
 require "json"
 require "time"
