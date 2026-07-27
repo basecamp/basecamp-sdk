@@ -5,10 +5,10 @@ detected: 2026-07-24
 sdk_demand: high
 bc3_pr: 11628
 smithy_refs:
-  - "GetMyNotificationsOutput.bubble_ups_count member (spec/basecamp.smithy:8745)"
-  - "GetMyNotificationsOutput.scheduled_bubble_ups_count member (spec/basecamp.smithy:8751)"
-  - "GetMyNotificationsInput.limit_bubble_ups member (spec/basecamp.smithy:8735)"
-  - "GetBubbleUps operation (spec/basecamp.smithy:8803)"
+  - "GetMyNotificationsOutput.bubble_ups_count member"
+  - "GetMyNotificationsOutput.scheduled_bubble_ups_count member"
+  - "GetMyNotificationsInput.limit_bubble_ups member"
+  - "GetBubbleUps operation"
 bc3_refs:
   introduced_in: master
   routes:

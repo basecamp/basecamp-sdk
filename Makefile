@@ -838,8 +838,8 @@ kt-check-optional-arrays:
 	@./scripts/check-kotlin-optional-arrays.sh
 
 # Verify idempotency classification is identical across all six SDKs and matches
-# behavior-model.json (the 69 idempotent mutations; Go additionally folds in the
-# 100 read-only ops for 169). Bash+jq — runs anywhere, enforced in CI.
+# behavior-model.json (the naturally-idempotent mutations; Go additionally folds
+# in the read-only ops). Bash+jq — runs anywhere, enforced in CI.
 check-idempotency-parity:
 	@./scripts/check-idempotency-parity
 

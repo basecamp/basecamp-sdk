@@ -4,16 +4,16 @@
 # across all six SDKs and matches the source of truth.
 #
 # The source of truth is behavior-model.json:
-#   * idempotent == true            → the 69 naturally-idempotent mutations
+#   * idempotent == true            → the naturally-idempotent mutations
 #   * idempotent OR readonly == true → the idempotent∪readonly set Go bakes idempotency
 #                                      into at generation time (GET/HEAD are
 #                                      idempotent by construction, so Go folds
-#                                      the 100 read-only ops into its retry set).
+#                                      the read-only ops into its retry set).
 #
 # Every SDK's generated idempotency set must equal the appropriate source set
 # EXACTLY (set equality, both directions — not subset):
 #
-#   * Non-Go SDKs' idempotent set == the 69.
+#   * Non-Go SDKs' idempotent set == the naturally-idempotent set (count = expected_idempotent).
 #   * Go's Idempotent:true set     == the idempotent∪readonly set (count = expected_union).
 #
 # Go is checked FOUR ways, because the retry gate consumes an inline call-site
@@ -29,7 +29,7 @@
 #
 # TypeScript is additionally checked on its `.natural`-gated set (the retry gate
 # is `if (opMeta?.idempotent?.natural)`, typescript/src/client.ts): that set must
-# also equal the 69, closing the gate-predicate-vs-classification divergence.
+# also equal the naturally-idempotent set, closing the gate-predicate-vs-classification divergence.
 #
 # Cross-platform hygiene: operation names are emitted with POSIX character
 # classes (no \w/\s PCRE assumptions) and compared with `comm`.
@@ -69,7 +69,7 @@ pass=0
 compare() {
     local label="$1" expected="$2" actual="$3"
     local missing extra
-    # Fail closed: every set in this check is non-empty (the 69 idempotent, or the union set). An
+    # Fail closed: every set in this check is non-empty (the naturally-idempotent set, or the union set). An
     # empty file means an extraction (grep/jq/awk/sed) matched nothing — a
     # broken adapter, not a real "empty == empty" match — so `comm` producing
     # no diff must not be counted as a pass.
@@ -102,21 +102,21 @@ echo "==> Checking idempotency-classification parity across six SDKs"
 # ---- Source of truth (behavior-model.json) -----------------------------------
 BM=behavior-model.json
 jq -r '.operations | to_entries[] | select(.value.idempotent == true) | .key' "$BM" \
-    | sort > "$WORK/idempotent69"
+    | sort > "$WORK/idempotentSet"
 jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.readonly == true) | .key' "$BM" \
     | sort > "$WORK/unionSet"
 
 # Expected source-of-truth counts. Bump `expected_union` deliberately when an
 # absorption adds readonly/idempotent operations (e.g. this stack's Bubble Ups
-# and Everything GET families). idempotent stays 69 (new GETs are not flagged
+# and Everything GET families). the naturally-idempotent count (expected_idempotent) stays put (new GETs are not flagged
 # idempotent:true).
 expected_idempotent=69
 expected_union=187
-n69=$(wc -l < "$WORK/idempotent69" | tr -d ' ')
+nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
-echo "    source of truth: $n69 idempotent, $nUnion idempotent∪readonly"
-if [[ "$n69" != "$expected_idempotent" || "$nUnion" != "$expected_union" ]]; then
-    echo "  FAIL: unexpected source-of-truth counts (idempotent=$n69 want $expected_idempotent, union=$nUnion want $expected_union)"
+echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"
+if [[ "$nIdempotent" != "$expected_idempotent" || "$nUnion" != "$expected_union" ]]; then
+    echo "  FAIL: unexpected source-of-truth counts (idempotent=$nIdempotent want $expected_idempotent, union=$nUnion want $expected_union)"
     echo "        behavior-model.json changed shape — update this check deliberately."
     fail=$((fail + 1))
 fi
@@ -124,12 +124,12 @@ fi
 # ---- Python (metadata.json, flat root map) -----------------------------------
 jq -r 'to_entries[] | select(.value.idempotent == true) | .key' \
     python/src/basecamp/generated/metadata.json | sort > "$WORK/python"
-compare "Python idempotent set == 69" "$WORK/idempotent69" "$WORK/python"
+compare "Python idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/python"
 
 # ---- Ruby (metadata.json, .operations wrapper, .idempotent.natural) ----------
 jq -r '.operations | to_entries[] | select(.value.idempotent.natural == true) | .key' \
     ruby/lib/basecamp/generated/metadata.json | sort > "$WORK/ruby"
-compare "Ruby idempotent set == 69" "$WORK/idempotent69" "$WORK/ruby"
+compare "Ruby idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/ruby"
 
 # ---- Kotlin (Metadata.kt, positional "Op" to OperationConfig(true, …)) -------
 # idempotent is the first positional arg of OperationConfig; match by position,
@@ -137,13 +137,13 @@ compare "Ruby idempotent set == 69" "$WORK/idempotent69" "$WORK/ruby"
 grep -oE '"[[:alnum:]]+" to OperationConfig\(true,' \
     kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt \
     | sed -E 's/"([[:alnum:]]+)".*/\1/' | sort > "$WORK/kotlin"
-compare "Kotlin idempotent set == 69" "$WORK/idempotent69" "$WORK/kotlin"
+compare "Kotlin idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/kotlin"
 
 # ---- Swift (Metadata.swift, string literals in idempotentOperations Set) -----
 awk '/idempotentOperations: Set<String> = \[/{f=1; next} /^[[:space:]]*\]/{f=0} f' \
     swift/Sources/Basecamp/Generated/Metadata.swift \
     | grep -oE '"[[:alnum:]]+"' | tr -d '"' | sort > "$WORK/swift"
-compare "Swift idempotent set == 69" "$WORK/idempotent69" "$WORK/swift"
+compare "Swift idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/swift"
 
 # ---- TypeScript (metadata.ts, multiline JSON-style `const metadata` object) --
 # Extract the object literal and parse with jq — a single-line grep can't read
@@ -154,14 +154,14 @@ sed -n '/^const metadata: MetadataOutput = {/,/^};/p' typescript/src/generated/m
 # Primary: the set with an `idempotent` config present.
 jq -r '.operations | to_entries[] | select(.value.idempotent != null) | .key' "$TS_JSON" \
     | sort > "$WORK/ts"
-compare "TypeScript idempotent set == 69" "$WORK/idempotent69" "$WORK/ts"
+compare "TypeScript idempotent set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/ts"
 # Additional: the `.natural`-gated set (the actual retry-gate predicate,
 # typescript/src/client.ts). Pins that the gate predicate matches the
 # classification — an idempotent entry missing `natural:true` would silently
 # stop retrying in TS.
 jq -r '.operations | to_entries[] | select(.value.idempotent.natural == true) | .key' "$TS_JSON" \
     | sort > "$WORK/ts_natural"
-compare "TypeScript .natural-gated set == 69" "$WORK/idempotent69" "$WORK/ts_natural"
+compare "TypeScript .natural-gated set == $expected_idempotent" "$WORK/idempotentSet" "$WORK/ts_natural"
 
 # ---- Go (client.gen.go) — four assertions -----------------------------------
 GO=go/pkg/generated/client.gen.go
