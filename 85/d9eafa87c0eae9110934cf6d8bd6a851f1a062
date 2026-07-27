@@ -1,0 +1,19 @@
+scripts/check-ruby-service-drift.sh
+  s_b1a0736794598e::t_28f1ae3f1d4a65 89-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "85d9eafa87c0eae9110934cf6d8bd6a851f1a062",
+  "prompts": {},
+  "sessions": {
+    "s_b1a0736794598e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69f5a50d-66ad-4430-b746-40380fcf8835",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
