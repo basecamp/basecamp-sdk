@@ -99,6 +99,9 @@ jobs:
       - name: Check service layer drift
         run: ../scripts/check-service-drift.sh
 
+      - name: Check generated client drift
+        run: ../scripts/check-go-generated-drift.sh
+
       - name: Check auth-routable consumer invariants
         run: ../scripts/check-auth-routable-consumers.sh
 
@@ -163,6 +166,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check generated code drift
+        run: ../scripts/check-typescript-service-drift.sh
+
       - name: Verify root pack includes compiled SDK
         working-directory: .
         run: |
@@ -217,6 +223,13 @@ jobs:
       - name: Lint
         if: matrix.ruby == '3.3'
         run: bundle exec rubocop
+
+      # Regenerate-and-diff freshness gate. Runs on the canonical matrix entry
+      # only (like Lint / conformance); the generated output is Ruby-version
+      # independent, so one entry is sufficient.
+      - name: Check generated code drift
+        if: matrix.ruby == '3.3'
+        run: ../scripts/check-ruby-service-drift.sh
 
       - name: Test
         run: bundle exec rake test
