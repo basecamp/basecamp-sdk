@@ -38,16 +38,36 @@ TMP_CONFIG="$TMPDIR_BASE/oapi-codegen.yaml"
 GEN_LOG="$TMPDIR_BASE/oapi-codegen.log"
 NORM_LOG="$TMPDIR_BASE/normalize.log"
 
-# Copy the committed config, overriding only the `output:` line to an absolute
-# temp path. `output-options:` (a different key) is left untouched; the
-# user-template paths stay relative and resolve against the go/ working dir.
-sed "s#^output: .*#output: $REGEN#" "$GO_DIR/oapi-codegen.yaml" > "$TMP_CONFIG"
+# Copy the committed config, overriding only the top-level `output:` line to an
+# absolute temp path. The match tolerates leading/trailing whitespace so a
+# reformat of oapi-codegen.yaml doesn't silently slip through; `output-options:`
+# (a different key) is left untouched, and the user-template paths stay relative
+# and resolve against the go/ working dir.
+sed -E "s#^[[:space:]]*output:[[:space:]]*.*#output: $REGEN#" "$GO_DIR/oapi-codegen.yaml" > "$TMP_CONFIG"
+
+# Assert the override actually took effect. If the substitution missed (e.g. the
+# config was reformatted in a way this pattern doesn't match), the temp config
+# would keep the committed relative `output:` path and oapi-codegen would write
+# into the working tree — silently breaking the non-mutating guarantee AND making
+# the diff compare the committed file against itself. Fail loudly instead.
+if ! grep -qF "output: $REGEN" "$TMP_CONFIG"; then
+  echo "ERROR: could not redirect oapi-codegen output to a temp path." >&2
+  echo "       Unexpected 'output:' format in go/oapi-codegen.yaml." >&2
+  exit 1
+fi
 
 echo "==> Regenerating Go client into a temp directory (non-mutating)..."
 # Run from go/ so the relative user-template paths in the config resolve.
 if ! (cd "$GO_DIR" && go tool oapi-codegen -config "$TMP_CONFIG" ../openapi.json) > "$GEN_LOG" 2>&1; then
   echo "ERROR: oapi-codegen failed:" >&2
   cat "$GEN_LOG" >&2
+  exit 1
+fi
+
+# The temp output must exist — its absence would mean oapi-codegen wrote
+# somewhere else (e.g. the committed tree), which must never happen.
+if [ ! -f "$REGEN" ]; then
+  echo "ERROR: oapi-codegen did not write the expected temp output ($REGEN)." >&2
   exit 1
 fi
 

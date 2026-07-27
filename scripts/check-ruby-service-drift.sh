@@ -49,7 +49,10 @@ echo "==> Checking metadata.json freshness..."
 META_TMP="$TMPDIR_BASE/metadata.json"
 (cd "$ROOT_DIR/ruby" && ruby scripts/generate-metadata.rb) > "$META_TMP"
 
-if ! diff -q <(normalize_stamp "$GENERATED_DIR/metadata.json") <(normalize_stamp "$META_TMP") > /dev/null; then
+if [ ! -f "$GENERATED_DIR/metadata.json" ]; then
+  echo "ERROR: committed metadata.json is missing. Run 'make rb-generate'"
+  DRIFT=1
+elif ! diff -q <(normalize_stamp "$GENERATED_DIR/metadata.json") <(normalize_stamp "$META_TMP") > /dev/null; then
   echo "ERROR: metadata.json is out of date. Run 'make rb-generate'"
   diff <(normalize_stamp "$GENERATED_DIR/metadata.json") <(normalize_stamp "$META_TMP") || true
   DRIFT=1
@@ -66,7 +69,10 @@ echo "==> Checking types.rb freshness..."
 TYPES_TMP="$TMPDIR_BASE/types.rb"
 (cd "$ROOT_DIR/ruby" && ruby scripts/generate-types.rb) > "$TYPES_TMP"
 
-if ! diff -q <(normalize_stamp "$GENERATED_DIR/types.rb") <(normalize_stamp "$TYPES_TMP") > /dev/null; then
+if [ ! -f "$GENERATED_DIR/types.rb" ]; then
+  echo "ERROR: committed types.rb is missing. Run 'make rb-generate'"
+  DRIFT=1
+elif ! diff -q <(normalize_stamp "$GENERATED_DIR/types.rb") <(normalize_stamp "$TYPES_TMP") > /dev/null; then
   echo "ERROR: types.rb is out of date. Run 'make rb-generate'"
   diff <(normalize_stamp "$GENERATED_DIR/types.rb") <(normalize_stamp "$TYPES_TMP") || true
   DRIFT=1
@@ -86,21 +92,26 @@ mkdir -p "$SERVICES_TMP"
 
 SERVICES_COMMITTED="$TMPDIR_BASE/services_committed"
 mkdir -p "$SERVICES_COMMITTED"
-# Copy the WHOLE committed services/ tree (not just *.rb) so any stray extra
-# artifact — a non-.rb file or a nested directory the generator never emits —
-# surfaces as drift against the generated set. The generator writes only
-# *_service.rb into an empty temp dir, so anything else here is extra.
-cp -R "$GENERATED_DIR/services/." "$SERVICES_COMMITTED/"
-# Exclude the hand-written base class (lives alongside generated services but is
-# not produced by the generator; it carries no @generated marker).
-rm -f "$SERVICES_COMMITTED/base_service.rb"
-
-if ! diff -rq "$SERVICES_COMMITTED" "$SERVICES_TMP" > /dev/null; then
-  echo "ERROR: Generated services are out of date. Run 'make rb-generate-services'"
-  diff -rq "$SERVICES_COMMITTED" "$SERVICES_TMP" || true
+if [ ! -d "$GENERATED_DIR/services" ]; then
+  echo "ERROR: committed services/ directory is missing. Run 'make rb-generate-services'"
   DRIFT=1
 else
-  echo "Generated services are up to date"
+  # Copy the WHOLE committed services/ tree (not just *.rb) so any stray extra
+  # artifact — a non-.rb file or a nested directory the generator never emits —
+  # surfaces as drift against the generated set. The generator writes only
+  # *_service.rb into an empty temp dir, so anything else here is extra.
+  cp -R "$GENERATED_DIR/services/." "$SERVICES_COMMITTED/"
+  # Exclude the hand-written base class (lives alongside generated services but
+  # is not produced by the generator; it carries no @generated marker).
+  rm -f "$SERVICES_COMMITTED/base_service.rb"
+
+  if ! diff -rq "$SERVICES_COMMITTED" "$SERVICES_TMP" > /dev/null; then
+    echo "ERROR: Generated services are out of date. Run 'make rb-generate-services'"
+    diff -rq "$SERVICES_COMMITTED" "$SERVICES_TMP" || true
+    DRIFT=1
+  else
+    echo "Generated services are up to date"
+  fi
 fi
 
 # ---------------------------------------------------------------------------
