@@ -1,0 +1,19 @@
+ruby/lib/basecamp/generated/types.rb
+  s_b6df11cb4749ee::t_e7733ad4e36f0d 4,3616
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6ac03a4d1b211cbf4d55148e3da093aeda5e6c63",
+  "prompts": {},
+  "sessions": {
+    "s_b6df11cb4749ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7134c241-9a85-456c-af45-363f15488c71",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
