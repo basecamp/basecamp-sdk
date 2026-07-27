@@ -6,6 +6,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "./setup.js";
 import { createBasecampClient, normalizeUrlPath } from "../src/client.js";
 import type { BasecampHooks } from "../src/hooks.js";
+import { BasecampError } from "../src/errors.js";
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -503,19 +504,26 @@ describe("BasecampClient", () => {
     ];
 
     it.each(invalid)("rejects a %s timeout at construction", (_label, value) => {
-      expect(() =>
+      // Catch and toMatchObject rather than toThrowError(objectContaining(...)):
+      // both assert the same thing, but this one names the mismatched field on
+      // failure instead of reporting "expected error to match asymmetric matcher".
+      let caught: unknown;
+      try {
         createBasecampClient({
           accountId: "12345",
           accessToken: "test-token",
           requestTimeoutMs: value,
-        })
-      ).toThrowError(
-        expect.objectContaining({
-          name: "BasecampError",
-          code: "usage",
-          message: expect.stringContaining("'requestTimeoutMs' must be an integer"),
-        })
-      );
+        });
+      } catch (e: unknown) {
+        caught = e;
+      }
+
+      expect(caught).toBeInstanceOf(BasecampError);
+      expect(caught).toMatchObject({
+        name: "BasecampError",
+        code: "usage",
+        message: expect.stringContaining("'requestTimeoutMs' must be an integer"),
+      });
     });
 
     it.each([
