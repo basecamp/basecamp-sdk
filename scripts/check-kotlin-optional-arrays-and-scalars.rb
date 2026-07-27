@@ -164,6 +164,12 @@ SYNTHESIZED_MEMBERS = {
   "Person" => %w[system_label].freeze
 }.freeze
 
+# Every operation field an OpenAPI 3 path item may carry. Filtering on this set
+# also skips the non-operation siblings (`parameters`, `summary`, `servers`,
+# `$ref`). Listing all eight rather than just the common five means an operation
+# added on an unusual method cannot silently bypass the schema-backed check.
+OPENAPI_OPERATION_METHODS = %w[get put post delete options head patch trace].freeze
+
 # operationId => request-body component name, read from the spec's paths rather
 # than guessed from a naming convention. Most operations use
 # `<OperationId>RequestContent`, but some reference a shared payload component
@@ -174,7 +180,7 @@ def build_request_body_map(spec)
   map = {}
   (spec["paths"] || {}).each_value do |ops|
     ops.each do |verb, op|
-      next unless %w[get post put patch delete].include?(verb)
+      next unless OPENAPI_OPERATION_METHODS.include?(verb)
       next unless op.is_a?(Hash)
 
       oid = op["operationId"]
