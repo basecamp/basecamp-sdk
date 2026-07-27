@@ -1,0 +1,31 @@
+openapi.json
+  s_8d633484dc870e::t_224e55f45c2463 5635
+ruby/lib/basecamp/generated/services/everything_service.rb
+  s_8d633484dc870e::t_224e55f45c2463 28
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/everything.kt
+  s_8d633484dc870e::t_224e55f45c2463 58
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_224e55f45c2463 5035
+SPEC.md
+  s_8d633484dc870e::t_4a4a523ca52010 1553
+spec/basecamp.smithy
+  s_8d633484dc870e::t_54b006f5bb01ba 8813-8814
+typescript/src/generated/services/everything.ts
+  s_8d633484dc870e::t_224e55f45c2463 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fbc1aafdc860636568a4975559f23f6fda20ee21",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

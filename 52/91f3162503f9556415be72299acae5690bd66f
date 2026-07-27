@@ -1,0 +1,29 @@
+python/scripts/generate_types.py
+  s_8d633484dc870e::t_e8ed95507adcca 140-145,147
+  s_8d633484dc870e::t_a11d14f49ed952 117-126,128-139,146,148-151,165
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_e3662a5b0becc9 4
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_e3662a5b0becc9 4
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_e3662a5b0becc9 40
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_71134c7687946f 664-666,688-689,1222-1224,1256-1257
+  s_8d633484dc870e::t_e3662a5b0becc9 667-687,1225-1255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5291f3162503f9556415be72299acae5690bd66f",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

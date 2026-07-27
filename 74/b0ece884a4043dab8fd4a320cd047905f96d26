@@ -1,0 +1,27 @@
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_4c11b233d49247 40
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_4c11b233d49247 4
+python/scripts/generate_types.py
+  s_8d633484dc870e::t_390b3b363d633e 23-38
+  s_8d633484dc870e::t_18c6a6e60e69f1 181
+  s_8d633484dc870e::t_87f1fc25f58f7a 211
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_4c11b233d49247 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "74b0ece884a4043dab8fd4a320cd047905f96d26",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
