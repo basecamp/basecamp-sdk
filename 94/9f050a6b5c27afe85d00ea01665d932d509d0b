@@ -1,0 +1,24 @@
+scripts/check-ruby-service-drift.sh
+  s_b1a0736794598e::t_b00f4c7adb34da 95-96,99-114
+  s_b1a0736794598e::t_e25b43927b50f6 52-55
+  s_b1a0736794598e::t_0233b9820f2e22 72-75
+scripts/check-go-generated-drift.sh
+  s_b1a0736794598e::t_a956ce2eb70986 67-73
+  s_b1a0736794598e::t_d1edbdf445a146 41-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "949f050a6b5c27afe85d00ea01665d932d509d0b",
+  "prompts": {},
+  "sessions": {
+    "s_b1a0736794598e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69f5a50d-66ad-4430-b746-40380fcf8835",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
