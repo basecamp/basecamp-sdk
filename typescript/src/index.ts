@@ -350,6 +350,7 @@ export {
 // Everything aggregates service - generated
 export {
   EverythingService,
+  type EverythingBoost,
   type EverythingFile,
   type EverythingMessagesEverythingOptions,
   type EverythingCommentsEverythingOptions,
