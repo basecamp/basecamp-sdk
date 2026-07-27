@@ -16,6 +16,6 @@ data class CampfireLineAttachment(
     val url: String? = null,
     val filename: String? = null,
     @SerialName("content_type") val contentType: String? = null,
-    @SerialName("byte_size") val byteSize: Long = 0L,
+    @SerialName("byte_size") val byteSize: Long? = null,
     @SerialName("download_url") val downloadUrl: String? = null
 )

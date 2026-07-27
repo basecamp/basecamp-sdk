@@ -25,7 +25,7 @@ data class Inbox(
     val bucket: TodoBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val position: Int = 0,
-    @SerialName("forwards_count") val forwardsCount: Int = 0,
+    val position: Int? = null,
+    @SerialName("forwards_count") val forwardsCount: Int? = null,
     @SerialName("forwards_url") val forwardsUrl: String? = null
 )

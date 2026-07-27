@@ -12,13 +12,13 @@ import kotlinx.serialization.json.JsonObject
  */
 @Serializable
 data class ClientApprovalResponse(
-    val id: Long = 0L,
+    val id: Long? = null,
     val status: String? = null,
-    @SerialName("visible_to_clients") val visibleToClients: Boolean = false,
+    @SerialName("visible_to_clients") val visibleToClients: Boolean? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     val title: String? = null,
-    @SerialName("inherits_status") val inheritsStatus: Boolean = false,
+    @SerialName("inherits_status") val inheritsStatus: Boolean? = null,
     val type: String? = null,
     @SerialName("app_url") val appUrl: String? = null,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
@@ -26,5 +26,5 @@ data class ClientApprovalResponse(
     val bucket: RecordingBucket? = null,
     val creator: Person? = null,
     val content: String? = null,
-    val approved: Boolean = false
+    val approved: Boolean? = null
 )

@@ -1,6 +1,19 @@
 [
   {
     "mode": "live",
+    "name": "GetProgressReport account feed validates against the timeline schema",
+    "description": "Exercises the account activity feed and validates each timeline event against the schema, including the additive kind/avatars_sample/data/attachments fields. Live-dormant: validates statically until credentials are provisioned.",
+    "operation": "GetProgressReport",
+    "method": "GET",
+    "path": "/reports/progress.json",
+    "tags": ["live", "read-only"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
+  },
+  {
+    "mode": "live",
     "name": "ListProjects returns a list and validates against schema",
     "description": "Smoke check + schema validation for the canonical list endpoint. Required fields are enforced per spec; new BC5-only fields surface as extras-observed.",
     "operation": "ListProjects",

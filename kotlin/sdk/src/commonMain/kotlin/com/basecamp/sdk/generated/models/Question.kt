@@ -27,8 +27,8 @@ data class Question(
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    val paused: Boolean = false,
+    val paused: Boolean? = null,
     val schedule: QuestionSchedule? = null,
-    @SerialName("answers_count") val answersCount: Int = 0,
+    @SerialName("answers_count") val answersCount: Int? = null,
     @SerialName("answers_url") val answersUrl: String? = null
 )

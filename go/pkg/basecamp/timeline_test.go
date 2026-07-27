@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -79,6 +80,256 @@ func TestTimelineEvent_Unmarshal(t *testing.T) {
 	expectedTime := time.Date(2024, 3, 15, 10, 30, 0, 0, time.UTC)
 	if !event.CreatedAt.Equal(expectedTime) {
 		t.Errorf("expected CreatedAt %v, got %v", expectedTime, event.CreatedAt)
+	}
+}
+
+// TestTimelineEvent_AdditiveFields exercises runtime decode of the additive
+// fields: a non-empty avatars_sample, the schedule-entry data payload with a
+// date-only (all_day) starts_at/ends_at, and BOTH heterogeneous attachment
+// variants — a full Upload recording and a rich-text attachment/blob partial —
+// in a single non-empty array. Empty arrays / shape-only tests do not prove
+// polymorphic decode, so both variants carry real per-variant fields here.
+func TestTimelineEvent_AdditiveFields(t *testing.T) {
+	data := `[
+		{
+			"id": 1,
+			"created_at": "2024-03-15T10:30:00Z",
+			"kind": "chat_transcript_rollup",
+			"avatars_sample": [
+				"https://3.basecampapi.com/1/people/aaa/avatar",
+				"https://3.basecampapi.com/1/people/bbb/avatar"
+			]
+		},
+		{
+			"id": 2,
+			"created_at": "2024-03-15T10:31:00Z",
+			"kind": "schedule_entry_created",
+			"avatars_sample": [],
+			"data": {
+				"all_day": true,
+				"starts_at": "2025-10-30",
+				"ends_at": "2025-10-30"
+			}
+		},
+		{
+			"id": 3,
+			"created_at": "2024-03-15T10:32:00Z",
+			"kind": "upload_created",
+			"avatars_sample": [],
+			"attachments": [
+				{
+					"id": 900,
+					"type": "Upload",
+						"inherits_status": true, "created_at": "2024-03-15T10:30:00Z", "updated_at": "2024-03-15T10:31:00Z",
+						"bookmark_url": "https://3.basecampapi.com/1/my/bookmarks/sgid-900.json", "subscription_url": "https://3.basecampapi.com/1/buckets/2/recordings/900/subscription.json",
+						"comments_count": 3, "comments_url": "https://3.basecampapi.com/1/buckets/2/recordings/900/comments.json", "boosts_count": 5, "boosts_url": "https://3.basecampapi.com/1/buckets/2/recordings/900/boosts.json",
+						"position": 2, "description": "<div>Schematic</div>", "description_attachments": [],
+						"parent": { "id": 800, "title": "Assets", "type": "Vault", "url": "https://3.basecampapi.com/1/buckets/2/vaults/800.json", "app_url": "https://3.basecamp.com/1/buckets/2/vaults/800" },
+						"bucket": { "id": 2, "name": "Test Project", "type": "Project" },
+						"creator": { "id": 55, "name": "Uploader Person" },
+					"status": "active",
+					"visible_to_clients": false,
+					"title": "Diagram",
+					"filename": "diagram.png",
+					"content_type": "image/png",
+					"byte_size": 20480,
+					"width": 1024.0,
+					"height": 768.0,
+					"url": "https://3.basecampapi.com/1/buckets/2/uploads/900.json",
+					"app_url": "https://3.basecamp.com/1/buckets/2/uploads/900",
+					"download_url": "https://3.basecampapi.com/1/buckets/2/uploads/900/download/diagram.png",
+					"app_download_url": "https://3.basecamp.com/1/buckets/2/uploads/900/download"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"created_at": "2024-03-15T10:33:00Z",
+			"kind": "comment_created",
+			"avatars_sample": [],
+			"attachments": [
+				{
+					"id": 500,
+					"attachable_sgid": "sgid-attachable-500",
+					"sgid": "sgid-500",
+					"status_url": "https://3.basecampapi.com/1/attachments/sgid-500/status.json",
+					"caption": "See attached",
+					"filename": "notes.pdf",
+					"content_type": "application/pdf",
+					"byte_size": 4096,
+					"key": "blobkey500",
+					"width": null,
+					"height": null,
+					"previewable": true,
+					"download_url": "https://3.basecampapi.com/1/blobs/blobkey500/download/notes.pdf",
+					"preview_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/full",
+					"thumbnail_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/card"
+				}
+			]
+		}
+	]`
+
+	var events []TimelineEvent
+	if err := json.Unmarshal([]byte(data), &events); err != nil {
+		t.Fatalf("failed to unmarshal timeline events: %v", err)
+	}
+	if len(events) != 4 {
+		t.Fatalf("expected 4 events, got %d", len(events))
+	}
+
+	// avatars_sample non-empty
+	if got := events[0].AvatarsSample; len(got) != 2 || got[0] == "" {
+		t.Errorf("expected 2 avatar URLs, got %v", got)
+	}
+
+	// data with date-only all-day timing (FlexibleTime accepts date-only)
+	ev := events[1]
+	if ev.Data == nil {
+		t.Fatal("expected data on schedule_entry_created event")
+	}
+	if !ev.Data.AllDay {
+		t.Error("expected all_day true")
+	}
+	wantDate := time.Date(2025, 10, 30, 0, 0, 0, 0, time.UTC)
+	if !ev.Data.StartsAt.Equal(wantDate) {
+		t.Errorf("expected StartsAt %v, got %v", wantDate, ev.Data.StartsAt)
+	}
+	if !ev.Data.EndsAt.Equal(wantDate) {
+		t.Errorf("expected EndsAt %v, got %v", wantDate, ev.Data.EndsAt)
+	}
+
+	// Upload-recording attachment variant
+	up := events[2].Attachments
+	if len(up) != 1 {
+		t.Fatalf("expected 1 upload attachment, got %d", len(up))
+	}
+	if strv(up[0].Type) != "Upload" || strv(up[0].Filename) != "diagram.png" || up[0].AppDownloadURL == nil {
+		t.Errorf("upload variant fields not decoded: %+v", up[0])
+	}
+	if up[0].Width == nil || *up[0].Width != 1024 {
+		t.Errorf("expected float-spelled width 1024, got %v", up[0].Width)
+	}
+	// Presence-faithful: the Upload variant omits attachable_sgid, so it must be
+	// nil (absent), not a fabricated empty string, per SPEC §10.
+	if up[0].AttachableSGID != nil {
+		t.Errorf("upload variant should not carry attachable_sgid, got %q", *up[0].AttachableSGID)
+	}
+	// Full uploads/_upload projection: the documented recording fields must decode
+	// (they are not silently dropped). Spot-check across scalars, urls, counts,
+	// and the nested parent/bucket/creator objects.
+	if up[0].InheritsStatus == nil || !*up[0].InheritsStatus {
+		t.Errorf("expected inherits_status true, got %v", up[0].InheritsStatus)
+	}
+	if up[0].CommentsCount == nil || *up[0].CommentsCount != 3 || up[0].BoostsCount == nil || *up[0].BoostsCount != 5 {
+		t.Errorf("expected comments_count=3 boosts_count=5, got c=%v b=%v", up[0].CommentsCount, up[0].BoostsCount)
+	}
+	if up[0].Position == nil || *up[0].Position != 2 {
+		t.Errorf("expected position 2, got %v", up[0].Position)
+	}
+	if strv(up[0].BookmarkURL) == "" || strv(up[0].SubscriptionURL) == "" || strv(up[0].CommentsURL) == "" || strv(up[0].BoostsURL) == "" {
+		t.Errorf("expected recording urls decoded, got %+v", up[0])
+	}
+	if strv(up[0].Description) != "<div>Schematic</div>" {
+		t.Errorf("expected description decoded, got %q", strv(up[0].Description))
+	}
+	if up[0].Parent == nil || up[0].Parent.ID != 800 || up[0].Parent.Type != "Vault" {
+		t.Errorf("expected parent {800, Vault}, got %+v", up[0].Parent)
+	}
+	if up[0].Bucket == nil || up[0].Bucket.ID != 2 || up[0].Bucket.Name != "Test Project" {
+		t.Errorf("expected bucket {2, Test Project}, got %+v", up[0].Bucket)
+	}
+	if up[0].Creator == nil || up[0].Creator.Name != "Uploader Person" {
+		t.Errorf("expected creator 'Uploader Person', got %+v", up[0].Creator)
+	}
+	if up[0].CreatedAt == nil || up[0].UpdatedAt == nil {
+		t.Errorf("expected created_at/updated_at decoded, got c=%v u=%v", up[0].CreatedAt, up[0].UpdatedAt)
+	}
+	// Presence-faithful: the fixture carries an explicit "description_attachments": [],
+	// so the pointer must be non-nil (present) and empty, and re-marshal as [] not
+	// be dropped by omitempty.
+	if up[0].DescriptionAttachments == nil {
+		t.Error("expected present empty description_attachments (non-nil), got nil")
+	} else if len(*up[0].DescriptionAttachments) != 0 {
+		t.Errorf("expected empty description_attachments, got %d", len(*up[0].DescriptionAttachments))
+	}
+	if b, _ := json.Marshal(up[0]); !strings.Contains(string(b), `"description_attachments":[]`) {
+		t.Errorf("expected present empty array to round-trip as []; got %s", string(b))
+	}
+
+	// Rich-text attachment/blob variant
+	att := events[3].Attachments
+	if len(att) != 1 {
+		t.Fatalf("expected 1 blob attachment, got %d", len(att))
+	}
+	if strv(att[0].AttachableSGID) != "sgid-attachable-500" || strv(att[0].Caption) != "See attached" || strv(att[0].Key) != "blobkey500" {
+		t.Errorf("attachment variant fields not decoded: %+v", att[0])
+	}
+	if att[0].Previewable == nil || !*att[0].Previewable || strv(att[0].ThumbnailURL) == "" {
+		t.Errorf("attachment variant preview fields not decoded: %+v", att[0])
+	}
+	if att[0].Width != nil || att[0].Height != nil {
+		t.Errorf("expected nil width/height for non-image blob, got w=%v h=%v", att[0].Width, att[0].Height)
+	}
+	// Presence-faithful: the attachment variant carries no upload timestamps or
+	// visibility, so those pointers stay nil (and re-marshal omits them).
+	if att[0].CreatedAt != nil || att[0].VisibleToClients != nil {
+		t.Errorf("expected nil upload-variant fields on attachment, got created_at=%v visible=%v", att[0].CreatedAt, att[0].VisibleToClients)
+	}
+}
+
+// TestTimelineEventData_NullBounds verifies a schedule-entry event whose timing
+// bounds are JSON null decodes cleanly (the bounds are required-and-nullable:
+// always present, value may be null). Go decodes null to the zero FlexibleTime;
+// the static SDKs type the bounds `string | null` so they don't fail to decode.
+func TestTimelineEventData_NullBounds(t *testing.T) {
+	data := `[{"id":9,"created_at":"2024-03-15T10:31:00Z","kind":"schedule_entry_created","data":{"all_day":true,"starts_at":null,"ends_at":null}}]`
+	var events []TimelineEvent
+	if err := json.Unmarshal([]byte(data), &events); err != nil {
+		t.Fatalf("failed to unmarshal event with null bounds: %v", err)
+	}
+	if events[0].Data == nil {
+		t.Fatal("expected data to be present")
+	}
+	if !events[0].Data.AllDay {
+		t.Error("expected all_day true")
+	}
+	if !events[0].Data.StartsAt.IsZero() || !events[0].Data.EndsAt.IsZero() {
+		t.Errorf("expected null bounds to decode as zero time, got starts=%v ends=%v", events[0].Data.StartsAt, events[0].Data.EndsAt)
+	}
+}
+
+// TestTimelineAttachment_PresenceFaithfulRoundTrip verifies that re-marshaling a
+// decoded attachment-variant superset omits the absent upload-variant fields
+// (no fabricated zero timestamp, no dropped explicit false) — the reason the
+// optional timestamps/booleans are pointers.
+func TestTimelineAttachment_PresenceFaithfulRoundTrip(t *testing.T) {
+	// Attachment variant: explicit previewable:false, no created_at/updated_at,
+	// no visible_to_clients.
+	src := `{"id":500,"attachable_sgid":"sgid-500","filename":"notes.pdf","previewable":false}`
+	var a TimelineAttachment
+	if err := json.Unmarshal([]byte(src), &a); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if a.Previewable == nil || *a.Previewable != false {
+		t.Fatalf("expected explicit previewable=false preserved, got %v", a.Previewable)
+	}
+	out, err := json.Marshal(a)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var round map[string]any
+	if err := json.Unmarshal(out, &round); err != nil {
+		t.Fatalf("re-unmarshal: %v", err)
+	}
+	// Absent upload-variant fields must NOT be fabricated on re-marshal.
+	for _, k := range []string{"created_at", "updated_at", "visible_to_clients"} {
+		if _, present := round[k]; present {
+			t.Errorf("re-marshal fabricated absent field %q: %s", k, out)
+		}
+	}
+	// Explicit false must survive the round trip (not dropped by omitempty).
+	if v, ok := round["previewable"]; !ok || v != false {
+		t.Errorf("re-marshal dropped explicit previewable=false: %s", out)
 	}
 }
 

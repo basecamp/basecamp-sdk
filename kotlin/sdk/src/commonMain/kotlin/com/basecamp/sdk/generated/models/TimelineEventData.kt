@@ -6,14 +6,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /**
- * WebhookCopy entity from the Basecamp API.
+ * TimelineEventData entity from the Basecamp API.
  *
  * @generated from OpenAPI spec — do not edit directly
  */
 @Serializable
-data class WebhookCopy(
-    val id: Long? = null,
-    val url: String? = null,
-    @SerialName("app_url") val appUrl: String? = null,
-    val bucket: WebhookCopyBucket? = null
+data class TimelineEventData(
+    @SerialName("all_day") val allDay: Boolean,
+    @SerialName("starts_at") val startsAt: String?,
+    @SerialName("ends_at") val endsAt: String?
 )

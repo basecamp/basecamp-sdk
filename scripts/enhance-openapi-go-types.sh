@@ -176,6 +176,102 @@ walk(
   "x-go-type-skip-optional-pointer": true
 }
 |
+# Fifth-b pass: override starts_at/ends_at on TimelineEventData to use
+# types.FlexibleTime. Same all-day date-only wire form as ScheduleEntry: the
+# schedule_entry_* timeline events carry a date ("2006-01-02") when all_day is
+# true, which time.Time cannot parse. Overrides the first pass _at to time.Time.
+# Also nullable: BC3 emits all three members unconditionally when the data object
+# is present (so they are @required for presence), but starts_at/ends_at may be
+# JSON null (starts_at_date_or_time returns nil for an entry with no bound). These
+# are @required, so `nullable: true` alone would NOT nullable them in Kotlin/Swift
+# (a required field stays non-null `String`, and a null bound fails decode). Encode
+# the value nullability as a `type: ["string","null"]` union — the required-and-
+# nullable treatment used for Wormhole.destination_url / SearchType.key — so every
+# static SDK models them required-but-nullable (`string | null`). Go keeps its
+# FlexibleTime value type (via x-go-type), which already decodes null to the zero
+# time.
+.components.schemas.TimelineEventData.properties.starts_at += {
+  "type": ["string", "null"],
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
+|
+.components.schemas.TimelineEventData.properties.ends_at += {
+  "type": ["string", "null"],
+  "x-go-type": "types.FlexibleTime",
+  "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+  "x-go-type-skip-optional-pointer": true
+}
+|
+# Fifth-c pass: TimelineAttachment width/height → nullable *types.FlexInt
+# The attachment/blob variant serializes pixel dimensions float-spelled (1024.0)
+# and null for non-image blobs, exactly like RichTextAttachment. Keep the
+# optional pointer and mark nullable so the present-null value types faithfully.
+.components.schemas.TimelineAttachment.properties |= (
+  (.width // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  } |
+  (.height // empty) += {
+    "nullable": true,
+    "x-go-type": "types.FlexInt",
+    "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
+    "x-go-type-skip-optional-pointer": false
+  }
+)
+|
+# Fifth-e pass: TimelineAttachment presence-faithful optional fields.
+# The optional-field superset populates only one variant per instance, so ALL of
+# its optional fields must round-trip presence: a plain time.Time re-marshals an
+# absent field as the zero time, a plain bool with omitempty drops an explicit
+# false, a plain int drops an explicit zero, and a plain string cannot tell an
+# absent field from an explicit empty (SPEC.md §10 forbids empty-string as an
+# absence sentinel). Make them all pointers so nil (absent) omits and an explicit
+# value is preserved. width/height are handled by the Fifth-c FlexInt pass.
+.components.schemas.TimelineAttachment.properties |= (
+  (.created_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.updated_at // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.visible_to_clients // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.previewable // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.id // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.byte_size // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.content_type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.filename // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.type // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.title // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.app_download_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.attachable_sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.sgid // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.status_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.caption // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.key // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.preview_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.thumbnail_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  # Upload-recording projection fields (mirroring uploads/_upload). Optional in
+  # the superset, so each must be pointer-backed for the same presence reason:
+  # a plain string/int/bool/struct-with-omitempty cannot distinguish absent from
+  # an explicit empty/zero/default value.
+  (.inherits_status // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.bookmark_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.subscription_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.comments_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_count // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.boosts_url // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.position // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.parent // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.bucket // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.creator // empty) += { "x-go-type-skip-optional-pointer": false } |
+  (.description // empty) += { "x-go-type-skip-optional-pointer": false }
+)
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.

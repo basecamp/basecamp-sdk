@@ -27285,6 +27285,222 @@
           "updated_at"
         ]
       },
+      "TimelineAttachment": {
+        "type": "object",
+        "description": "A single timeline-event attachment. This is an optional-field superset over\ntwo wire variants — a full Upload recording (upload-kind recordings, rendered\nby BC3's uploads/_upload partial: the complete recording projection + rich-\ntext description + the upload body) and a rich-text attachment/blob partial\n(all other recordings) — so one element type decodes either. Every field is\noptional; a given instance populates only the fields of the variant it\nrepresents. The upload-recording variant enumerates the full documented\nprojection so no documented field is silently dropped on decode.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Attachment or upload-recording id.",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "content_type": {
+            "type": "string",
+            "description": "MIME type of the file.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "byte_size": {
+            "type": "integer",
+            "description": "Size of the file in bytes.",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "filename": {
+            "type": "string",
+            "description": "Original filename.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "download_url": {
+            "type": "string",
+            "description": "Authenticated download URL for the file.",
+            "x-basecamp-auth-routable-url": {},
+            "x-go-type-skip-optional-pointer": false
+          },
+          "width": {
+            "type": "integer",
+            "description": "Pixel width; null for non-image blobs and may be float-spelled (1024.0).",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "height": {
+            "type": "integer",
+            "description": "Pixel height; null for non-image blobs and may be float-spelled (1024.0).",
+            "format": "int32",
+            "nullable": true,
+            "x-go-type": "types.FlexInt",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "type": {
+            "type": "string",
+            "description": "Recording type, e.g. \"Upload\" (upload-recording variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the upload recording.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "status": {
+            "type": "string",
+            "description": "Publication status of the upload recording (e.g. \"active\").",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "inherits_status": {
+            "type": "boolean",
+            "description": "Whether the recording inherits its status from its parent.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "created_at": {
+            "type": "string",
+            "description": "When the upload recording was created.",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "When the upload recording was last updated.",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": false
+          },
+          "url": {
+            "type": "string",
+            "description": "API URL of the upload recording.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "app_url": {
+            "type": "string",
+            "description": "Web URL of the upload recording.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "bookmark_url": {
+            "type": "string",
+            "description": "Personal bookmark toggle URL for the current user.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "subscription_url": {
+            "type": "string",
+            "description": "Subscription URL; present only when the recording is subscribable.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "comments_count": {
+            "type": "integer",
+            "description": "Number of comments on the recording.",
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "comments_url": {
+            "type": "string",
+            "description": "API URL for the recording's comments.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "boosts_count": {
+            "type": "integer",
+            "description": "Number of boosts on the recording.",
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "boosts_url": {
+            "type": "string",
+            "description": "API URL for the recording's boosts.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "position": {
+            "type": "integer",
+            "description": "Position within its parent; present only when the recording is positioned.",
+            "format": "int32",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "parent": {
+            "$ref": "#/components/schemas/RecordingParent",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/TodoBucket",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "creator": {
+            "$ref": "#/components/schemas/Person",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "description": {
+            "type": "string",
+            "description": "Rich-text description of the upload (HTML), when present.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "description_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            },
+            "description": "Rich-text attachments referenced by the description."
+          },
+          "app_download_url": {
+            "type": "string",
+            "description": "Web download URL (upload-recording variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "visible_to_clients": {
+            "type": "boolean",
+            "description": "Whether the upload recording is visible to clients.",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "attachable_sgid": {
+            "type": "string",
+            "description": "Signed global id of the attachable (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "sgid": {
+            "type": "string",
+            "description": "Signed global id of the attachment (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "status_url": {
+            "type": "string",
+            "description": "URL to poll attachment processing status (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "caption": {
+            "type": "string",
+            "description": "Caption text, if any (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "key": {
+            "type": "string",
+            "description": "Storage key of the underlying blob (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "previewable": {
+            "type": "boolean",
+            "description": "Whether the blob can be previewed (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "preview_url": {
+            "type": "string",
+            "description": "Full-size preview URL (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "description": "Thumbnail preview URL (attachment variant).",
+            "x-go-type-skip-optional-pointer": false
+          }
+        }
+      },
       "TimelineEvent": {
         "type": "object",
         "properties": {
@@ -27302,7 +27518,8 @@
             "x-go-type-skip-optional-pointer": true
           },
           "kind": {
-            "type": "string"
+            "type": "string",
+            "description": "What kind of activity the event records. Open, non-exhaustive vocabulary —\nBC3 documents \"common values include\" and adds new kinds over time, so\ntreat unrecognized values as valid. Common values include message_created,\ncomment_created, todo_created, todo_completed, upload_created,\ndocument_created, google_document_created, schedule_entry_created,\nschedule_entry_rescheduled, question_created, question_answer_created,\nchat_transcript_rollup, kanban_card_created, kanban_card_completed,\ninbox_forward_created, client_correspondence_created, dock_created, and\nproject_access_changed."
           },
           "parent_recording_id": {
             "type": "integer",
@@ -27330,10 +27547,64 @@
           "summary_excerpt": {
             "type": "string"
           },
+          "avatars_sample": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Avatar URLs of participants — populated for chat_transcript_rollup events\n(the people summarized in the rollup); an empty array otherwise."
+          },
           "bucket": {
             "$ref": "#/components/schemas/TodoBucket"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TimelineEventData"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineAttachment"
+            },
+            "description": "Files attached to the event's recording, when it has any. Heterogeneous:\nan upload-kind recording contributes its full Upload shape, while other\nrecordings contribute rich-text attachment/blob partials. Modeled as an\noptional-field superset so a single element type decodes either variant;\nconsumers should treat the per-variant fields as present-or-absent."
           }
         }
+      },
+      "TimelineEventData": {
+        "type": "object",
+        "description": "Schedule-entry timing carried on schedule_entry_* timeline events. starts_at\nand ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed\nentries, or a bare date (YYYY-MM-DD) when all_day is true. Modeled as\nISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass\nmapping them to types.FlexibleTime so date-only values decode; the other\nSDKs type them as plain strings.",
+        "properties": {
+          "all_day": {
+            "type": "boolean",
+            "description": "Whether the entry is all-day. BC3 emits all three members unconditionally\nwhenever the data object is present (schedule_entry_* events), so they are\nrequired within this struct."
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-go-type": "types.FlexibleTime",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-go-type": "types.FlexibleTime",
+            "x-go-type-import": {
+              "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
+            },
+            "x-go-type-skip-optional-pointer": true
+          }
+        },
+        "required": [
+          "all_day",
+          "ends_at",
+          "starts_at"
+        ]
       },
       "TimesheetEntry": {
         "type": "object",

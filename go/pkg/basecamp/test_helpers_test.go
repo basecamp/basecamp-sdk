@@ -82,3 +82,12 @@ func decodeRequestBody(t *testing.T, r *http.Request) map[string]any {
 
 // intPtr returns a pointer to an int value. Used in tests for *int fields.
 func intPtr(v int) *int { return &v }
+
+// strv nil-safely dereferences an optional *string (nil -> ""). Used by the
+// optional-field superset tests (TimelineAttachment, EverythingFile).
+func strv(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}

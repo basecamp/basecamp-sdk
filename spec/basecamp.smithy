@@ -7640,7 +7640,18 @@ list TimelineEventList {
 structure TimelineEvent {
   id: Long
   created_at: ISO8601Timestamp
+
+  /// What kind of activity the event records. Open, non-exhaustive vocabulary —
+  /// BC3 documents "common values include" and adds new kinds over time, so
+  /// treat unrecognized values as valid. Common values include message_created,
+  /// comment_created, todo_created, todo_completed, upload_created,
+  /// document_created, google_document_created, schedule_entry_created,
+  /// schedule_entry_rescheduled, question_created, question_answer_created,
+  /// chat_transcript_rollup, kanban_card_created, kanban_card_completed,
+  /// inbox_forward_created, client_correspondence_created, dock_created, and
+  /// project_access_changed.
   kind: String
+
   parent_recording_id: Long
   url: String
   app_url: String
@@ -7649,7 +7660,137 @@ structure TimelineEvent {
   target: String
   title: String
   summary_excerpt: String
+
+  /// Avatar URLs of participants — populated for chat_transcript_rollup events
+  /// (the people summarized in the rollup); an empty array otherwise.
+  avatars_sample: StringList
+
   bucket: TodoBucket
+
+  /// Event-specific payload. Present only for schedule_entry_created and
+  /// schedule_entry_rescheduled events, where it carries the entry's timing.
+  data: TimelineEventData
+
+  /// Files attached to the event's recording, when it has any. Heterogeneous:
+  /// an upload-kind recording contributes its full Upload shape, while other
+  /// recordings contribute rich-text attachment/blob partials. Modeled as an
+  /// optional-field superset so a single element type decodes either variant;
+  /// consumers should treat the per-variant fields as present-or-absent.
+  attachments: TimelineAttachmentList
+}
+
+/// Schedule-entry timing carried on schedule_entry_* timeline events. starts_at
+/// and ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed
+/// entries, or a bare date (YYYY-MM-DD) when all_day is true. Modeled as
+/// ISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass
+/// mapping them to types.FlexibleTime so date-only values decode; the other
+/// SDKs type them as plain strings.
+structure TimelineEventData {
+  /// Whether the entry is all-day. BC3 emits all three members unconditionally
+  /// whenever the data object is present (schedule_entry_* events), so they are
+  /// required within this struct.
+  @required
+  all_day: Boolean
+  @required
+  starts_at: ISO8601Timestamp
+  @required
+  ends_at: ISO8601Timestamp
+}
+
+list TimelineAttachmentList {
+  member: TimelineAttachment
+}
+
+/// A single timeline-event attachment. This is an optional-field superset over
+/// two wire variants — a full Upload recording (upload-kind recordings, rendered
+/// by BC3's uploads/_upload partial: the complete recording projection + rich-
+/// text description + the upload body) and a rich-text attachment/blob partial
+/// (all other recordings) — so one element type decodes either. Every field is
+/// optional; a given instance populates only the fields of the variant it
+/// represents. The upload-recording variant enumerates the full documented
+/// projection so no documented field is silently dropped on decode.
+structure TimelineAttachment {
+  /// Attachment or upload-recording id.
+  id: Long
+
+  // ----- shared by both variants -----
+  /// MIME type of the file.
+  content_type: String
+  /// Size of the file in bytes.
+  byte_size: Long
+  /// Original filename.
+  filename: String
+  /// Authenticated download URL for the file.
+  @basecampAuthRoutableUrl
+  download_url: String
+  /// Pixel width; null for non-image blobs and may be float-spelled (1024.0).
+  width: Integer
+  /// Pixel height; null for non-image blobs and may be float-spelled (1024.0).
+  height: Integer
+
+  // ----- upload-recording variant (full uploads/_upload projection) -----
+  /// Recording type, e.g. "Upload" (upload-recording variant).
+  type: String
+  /// Title of the upload recording.
+  title: String
+  /// Publication status of the upload recording (e.g. "active").
+  status: String
+  /// Whether the recording inherits its status from its parent.
+  inherits_status: Boolean
+  /// When the upload recording was created.
+  created_at: ISO8601Timestamp
+  /// When the upload recording was last updated.
+  updated_at: ISO8601Timestamp
+  /// API URL of the upload recording.
+  url: String
+  /// Web URL of the upload recording.
+  app_url: String
+  /// Personal bookmark toggle URL for the current user.
+  bookmark_url: String
+  /// Subscription URL; present only when the recording is subscribable.
+  subscription_url: String
+  /// Number of comments on the recording.
+  comments_count: Integer
+  /// API URL for the recording's comments.
+  comments_url: String
+  /// Number of boosts on the recording.
+  boosts_count: Integer
+  /// API URL for the recording's boosts.
+  boosts_url: String
+  /// Position within its parent; present only when the recording is positioned.
+  position: Integer
+  /// The recording's parent (message board, todolist, vault, …).
+  parent: RecordingParent
+  /// The bucket (project) the recording lives in.
+  bucket: TodoBucket
+  /// The person who created the recording.
+  creator: Person
+  /// Rich-text description of the upload (HTML), when present.
+  description: UploadDescription
+  /// Rich-text attachments referenced by the description.
+  description_attachments: RichTextAttachmentList
+  /// Web download URL (upload-recording variant).
+  app_download_url: String
+  /// Whether the upload recording is visible to clients.
+  visible_to_clients: Boolean
+
+  // ----- rich-text attachment/blob variant -----
+  /// Signed global id of the attachable (attachment variant).
+  attachable_sgid: String
+  /// Signed global id of the attachment (attachment variant).
+  sgid: String
+  /// URL to poll attachment processing status (attachment variant).
+  status_url: String
+  /// Caption text, if any (attachment variant).
+  caption: String
+  /// Storage key of the underlying blob (attachment variant).
+  key: String
+  /// Whether the blob can be previewed (attachment variant).
+  previewable: Boolean
+  /// Full-size preview URL (attachment variant).
+  preview_url: String
+  /// Thumbnail preview URL (attachment variant).
+  thumbnail_url: String
 }
 
 // ===== Reports Shapes =====

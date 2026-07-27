@@ -25,8 +25,8 @@ data class Schedule(
     val bucket: TodoBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val position: Int = 0,
-    @SerialName("include_due_assignments") val includeDueAssignments: Boolean = false,
-    @SerialName("entries_count") val entriesCount: Int = 0,
+    val position: Int? = null,
+    @SerialName("include_due_assignments") val includeDueAssignments: Boolean? = null,
+    @SerialName("entries_count") val entriesCount: Int? = null,
     @SerialName("entries_url") val entriesUrl: String? = null
 )

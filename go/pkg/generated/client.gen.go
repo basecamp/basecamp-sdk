@@ -2091,20 +2091,179 @@ type Template struct {
 	Url         string     `json:"url,omitempty"`
 }
 
+// TimelineAttachment A single timeline-event attachment. This is an optional-field superset over
+// two wire variants — a full Upload recording (upload-kind recordings, rendered
+// by BC3's uploads/_upload partial: the complete recording projection + rich-
+// text description + the upload body) and a rich-text attachment/blob partial
+// (all other recordings) — so one element type decodes either. Every field is
+// optional; a given instance populates only the fields of the variant it
+// represents. The upload-recording variant enumerates the full documented
+// projection so no documented field is silently dropped on decode.
+type TimelineAttachment struct {
+	// AppDownloadUrl Web download URL (upload-recording variant).
+	AppDownloadUrl *string `json:"app_download_url,omitempty"`
+
+	// AppUrl Web URL of the upload recording.
+	AppUrl *string `json:"app_url,omitempty"`
+
+	// AttachableSgid Signed global id of the attachable (attachment variant).
+	AttachableSgid *string `json:"attachable_sgid,omitempty"`
+
+	// BookmarkUrl Personal bookmark toggle URL for the current user.
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
+
+	// BoostsCount Number of boosts on the recording.
+	BoostsCount *int32 `json:"boosts_count,omitempty"`
+
+	// BoostsUrl API URL for the recording's boosts.
+	BoostsUrl *string     `json:"boosts_url,omitempty"`
+	Bucket    *TodoBucket `json:"bucket,omitempty"`
+
+	// ByteSize Size of the file in bytes.
+	ByteSize *int64 `json:"byte_size,omitempty"`
+
+	// Caption Caption text, if any (attachment variant).
+	Caption *string `json:"caption,omitempty"`
+
+	// CommentsCount Number of comments on the recording.
+	CommentsCount *int32 `json:"comments_count,omitempty"`
+
+	// CommentsUrl API URL for the recording's comments.
+	CommentsUrl *string `json:"comments_url,omitempty"`
+
+	// ContentType MIME type of the file.
+	ContentType *string `json:"content_type,omitempty"`
+
+	// CreatedAt When the upload recording was created.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	Creator   *Person    `json:"creator,omitempty"`
+
+	// Description Rich-text description of the upload (HTML), when present.
+	Description *string `json:"description,omitempty"`
+
+	// DescriptionAttachments Rich-text attachments referenced by the description.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
+
+	// DownloadUrl Authenticated download URL for the file.
+	DownloadUrl *string `json:"download_url,omitempty"`
+
+	// Filename Original filename.
+	Filename *string `json:"filename,omitempty"`
+
+	// Height Pixel height; null for non-image blobs and may be float-spelled (1024.0).
+	Height *types.FlexInt `json:"height,omitempty"`
+
+	// Id Attachment or upload-recording id.
+	Id *int64 `json:"id,omitempty"`
+
+	// InheritsStatus Whether the recording inherits its status from its parent.
+	InheritsStatus *bool `json:"inherits_status,omitempty"`
+
+	// Key Storage key of the underlying blob (attachment variant).
+	Key    *string          `json:"key,omitempty"`
+	Parent *RecordingParent `json:"parent,omitempty"`
+
+	// Position Position within its parent; present only when the recording is positioned.
+	Position *int32 `json:"position,omitempty"`
+
+	// PreviewUrl Full-size preview URL (attachment variant).
+	PreviewUrl *string `json:"preview_url,omitempty"`
+
+	// Previewable Whether the blob can be previewed (attachment variant).
+	Previewable *bool `json:"previewable,omitempty"`
+
+	// Sgid Signed global id of the attachment (attachment variant).
+	Sgid *string `json:"sgid,omitempty"`
+
+	// Status Publication status of the upload recording (e.g. "active").
+	Status *string `json:"status,omitempty"`
+
+	// StatusUrl URL to poll attachment processing status (attachment variant).
+	StatusUrl *string `json:"status_url,omitempty"`
+
+	// SubscriptionUrl Subscription URL; present only when the recording is subscribable.
+	SubscriptionUrl *string `json:"subscription_url,omitempty"`
+
+	// ThumbnailUrl Thumbnail preview URL (attachment variant).
+	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
+
+	// Title Title of the upload recording.
+	Title *string `json:"title,omitempty"`
+
+	// Type Recording type, e.g. "Upload" (upload-recording variant).
+	Type *string `json:"type,omitempty"`
+
+	// UpdatedAt When the upload recording was last updated.
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
+	// Url API URL of the upload recording.
+	Url *string `json:"url,omitempty"`
+
+	// VisibleToClients Whether the upload recording is visible to clients.
+	VisibleToClients *bool `json:"visible_to_clients,omitempty"`
+
+	// Width Pixel width; null for non-image blobs and may be float-spelled (1024.0).
+	Width *types.FlexInt `json:"width,omitempty"`
+}
+
 // TimelineEvent defines model for TimelineEvent.
 type TimelineEvent struct {
-	Action            string     `json:"action,omitempty"`
-	AppUrl            string     `json:"app_url,omitempty"`
-	Bucket            TodoBucket `json:"bucket,omitempty"`
-	CreatedAt         time.Time  `json:"created_at,omitempty"`
-	Creator           Person     `json:"creator,omitempty"`
-	Id                *int64     `json:"id,omitempty"`
-	Kind              string     `json:"kind,omitempty"`
-	ParentRecordingId *int64     `json:"parent_recording_id,omitempty"`
-	SummaryExcerpt    string     `json:"summary_excerpt,omitempty"`
-	Target            string     `json:"target,omitempty"`
-	Title             string     `json:"title,omitempty"`
-	Url               string     `json:"url,omitempty"`
+	Action string `json:"action,omitempty"`
+	AppUrl string `json:"app_url,omitempty"`
+
+	// Attachments Files attached to the event's recording, when it has any. Heterogeneous:
+	// an upload-kind recording contributes its full Upload shape, while other
+	// recordings contribute rich-text attachment/blob partials. Modeled as an
+	// optional-field superset so a single element type decodes either variant;
+	// consumers should treat the per-variant fields as present-or-absent.
+	Attachments []TimelineAttachment `json:"attachments,omitempty"`
+
+	// AvatarsSample Avatar URLs of participants — populated for chat_transcript_rollup events
+	// (the people summarized in the rollup); an empty array otherwise.
+	AvatarsSample []string   `json:"avatars_sample,omitempty"`
+	Bucket        TodoBucket `json:"bucket,omitempty"`
+	CreatedAt     time.Time  `json:"created_at,omitempty"`
+	Creator       Person     `json:"creator,omitempty"`
+
+	// Data Schedule-entry timing carried on schedule_entry_* timeline events. starts_at
+	// and ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed
+	// entries, or a bare date (YYYY-MM-DD) when all_day is true. Modeled as
+	// ISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass
+	// mapping them to types.FlexibleTime so date-only values decode; the other
+	// SDKs type them as plain strings.
+	Data TimelineEventData `json:"data,omitempty"`
+	Id   *int64            `json:"id,omitempty"`
+
+	// Kind What kind of activity the event records. Open, non-exhaustive vocabulary —
+	// BC3 documents "common values include" and adds new kinds over time, so
+	// treat unrecognized values as valid. Common values include message_created,
+	// comment_created, todo_created, todo_completed, upload_created,
+	// document_created, google_document_created, schedule_entry_created,
+	// schedule_entry_rescheduled, question_created, question_answer_created,
+	// chat_transcript_rollup, kanban_card_created, kanban_card_completed,
+	// inbox_forward_created, client_correspondence_created, dock_created, and
+	// project_access_changed.
+	Kind              string `json:"kind,omitempty"`
+	ParentRecordingId *int64 `json:"parent_recording_id,omitempty"`
+	SummaryExcerpt    string `json:"summary_excerpt,omitempty"`
+	Target            string `json:"target,omitempty"`
+	Title             string `json:"title,omitempty"`
+	Url               string `json:"url,omitempty"`
+}
+
+// TimelineEventData Schedule-entry timing carried on schedule_entry_* timeline events. starts_at
+// and ends_at are date-or-timestamp: a full ISO 8601 timestamp for timed
+// entries, or a bare date (YYYY-MM-DD) when all_day is true. Modeled as
+// ISO8601Timestamp (mirroring ScheduleEntry), with the Go enhancement pass
+// mapping them to types.FlexibleTime so date-only values decode; the other
+// SDKs type them as plain strings.
+type TimelineEventData struct {
+	// AllDay Whether the entry is all-day. BC3 emits all three members unconditionally
+	// whenever the data object is present (schedule_entry_* events), so they are
+	// required within this struct.
+	AllDay   bool               `json:"all_day"`
+	EndsAt   types.FlexibleTime `json:"ends_at"`
+	StartsAt types.FlexibleTime `json:"starts_at"`
 }
 
 // TimesheetEntry defines model for TimesheetEntry.

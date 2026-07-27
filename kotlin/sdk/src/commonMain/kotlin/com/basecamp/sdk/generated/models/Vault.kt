@@ -25,12 +25,12 @@ data class Vault(
     val bucket: TodoBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
-    val position: Int = 0,
+    val position: Int? = null,
     val parent: RecordingParent? = null,
-    @SerialName("documents_count") val documentsCount: Int = 0,
+    @SerialName("documents_count") val documentsCount: Int? = null,
     @SerialName("documents_url") val documentsUrl: String? = null,
-    @SerialName("uploads_count") val uploadsCount: Int = 0,
+    @SerialName("uploads_count") val uploadsCount: Int? = null,
     @SerialName("uploads_url") val uploadsUrl: String? = null,
-    @SerialName("vaults_count") val vaultsCount: Int = 0,
+    @SerialName("vaults_count") val vaultsCount: Int? = null,
     @SerialName("vaults_url") val vaultsUrl: String? = null
 )

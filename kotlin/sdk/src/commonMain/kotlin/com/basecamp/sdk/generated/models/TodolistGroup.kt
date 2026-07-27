@@ -28,10 +28,10 @@ data class TodolistGroup(
     val name: String,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
-    @SerialName("comments_count") val commentsCount: Int = 0,
+    @SerialName("comments_count") val commentsCount: Int? = null,
     @SerialName("comments_url") val commentsUrl: String? = null,
-    val position: Int = 0,
-    val completed: Boolean = false,
+    val position: Int? = null,
+    val completed: Boolean? = null,
     @SerialName("completed_ratio") val completedRatio: String? = null,
     @SerialName("todos_url") val todosUrl: String? = null,
     @SerialName("app_todos_url") val appTodosUrl: String? = null

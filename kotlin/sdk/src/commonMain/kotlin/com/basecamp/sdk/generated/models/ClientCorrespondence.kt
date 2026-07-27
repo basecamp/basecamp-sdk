@@ -30,6 +30,6 @@ data class ClientCorrespondence(
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
     @SerialName("subscription_url") val subscriptionUrl: String? = null,
     val content: String? = null,
-    @SerialName("replies_count") val repliesCount: Int = 0,
+    @SerialName("replies_count") val repliesCount: Int? = null,
     @SerialName("replies_url") val repliesUrl: String? = null
 )
