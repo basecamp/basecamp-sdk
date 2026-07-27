@@ -1,0 +1,27 @@
+SPEC.md
+  s_4df49d42d6c9e3::t_8b18b9be3220ef 733-743
+scripts/check-kotlin-optional-arrays-and-scalars.rb
+  s_4df49d42d6c9e3::t_d197e0e1bd74e8 133-151
+  s_4df49d42d6c9e3::t_a353667b7585f4 152-153,214
+  s_4df49d42d6c9e3::t_350b600d95e1ae 154-181
+  s_4df49d42d6c9e3::t_4d7bb3b68ccdf8 50,52-64
+  s_4df49d42d6c9e3::t_6c830b9d7c5b4c 196-200,203-206,210-213
+  s_4df49d42d6c9e3::t_1a2bfd3676d65c 215-216
+  s_4df49d42d6c9e3::t_0c86dbb8212557 246-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e44b79791c7305acc03ce373e801be29a02af677",
+  "prompts": {},
+  "sessions": {
+    "s_4df49d42d6c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8432f7a9-be4e-4dec-8f6f-9306ed534d9a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
