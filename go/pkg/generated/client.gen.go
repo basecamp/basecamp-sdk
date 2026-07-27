@@ -869,11 +869,13 @@ type EventDetails struct {
 // `recording` through the FULL recording projection, so it gets a dedicated
 // element type carrying the complete `Recording`.
 type EverythingBoost struct {
-	Booster   Person    `json:"booster,omitempty"`
-	Content   string    `json:"content,omitempty"`
+	Booster Person `json:"booster"`
+
+	// Content The boost's content (the reaction/emoji). BC3 renders it unconditionally.
+	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 	Id        int64     `json:"id"`
-	Recording Recording `json:"recording,omitempty"`
+	Recording Recording `json:"recording"`
 }
 
 // EverythingFile A single item in the /files.json feed. An optional-field superset over three
@@ -1964,8 +1966,8 @@ type Recording struct {
 	// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
 	// partials render with `boostable: true`. Optional (absent on non-boostable
 	// recordings and on the base/webhook partial).
-	BoostsCount int32           `json:"boosts_count,omitempty"`
-	BoostsUrl   string          `json:"boosts_url,omitempty"`
+	BoostsCount *int32          `json:"boosts_count,omitempty"`
+	BoostsUrl   *string         `json:"boosts_url,omitempty"`
 	Bucket      RecordingBucket `json:"bucket"`
 
 	// Category A message category (type) as rendered by the shared recordings/_category
@@ -1999,12 +2001,12 @@ type Recording struct {
 
 	// From Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably
 	// the `/forwards.json` aggregate feed, whose forward partial renders `from`.
-	From string `json:"from,omitempty"`
+	From *string `json:"from,omitempty"`
 
 	// GroupOn Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
 	// (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
 	// feed, whose answer partial renders `group_on`.
-	GroupOn        types.Date      `json:"group_on,omitempty"`
+	GroupOn        *types.Date     `json:"group_on,omitempty"`
 	Id             int64           `json:"id"`
 	InheritsStatus bool            `json:"inherits_status"`
 	Parent         RecordingParent `json:"parent,omitempty"`
@@ -2015,8 +2017,8 @@ type Recording struct {
 
 	// RepliesCount Reply count/URL for an inbox forward. Present on `Inbox::Forward`
 	// recordings — notably the `/forwards.json` aggregate feed.
-	RepliesCount int32  `json:"replies_count,omitempty"`
-	RepliesUrl   string `json:"replies_url,omitempty"`
+	RepliesCount *int32  `json:"replies_count,omitempty"`
+	RepliesUrl   *string `json:"replies_url,omitempty"`
 
 	// Service Metadata describing the recognized external service backing an external link
 	// (`Door` recording): its display name, a canonical example URL, a short code,
@@ -2027,7 +2029,7 @@ type Recording struct {
 
 	// Subject Message subject. Present on `Message` recordings — notably the account-wide
 	// `/messages.json` aggregate feed, whose message partial renders `subject`.
-	Subject         string    `json:"subject,omitempty"`
+	Subject         *string   `json:"subject,omitempty"`
 	SubscriptionUrl string    `json:"subscription_url,omitempty"`
 	Title           string    `json:"title"`
 	Type            string    `json:"type"`

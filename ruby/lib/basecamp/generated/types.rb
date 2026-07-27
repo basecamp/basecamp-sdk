@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T08:24:49Z
+# Generated: 2026-07-27T10:13:36Z
 
 require "json"
 require "time"
@@ -1417,27 +1417,27 @@ module Basecamp
     # EverythingBoost
     class EverythingBoost
       include TypeHelpers
-      attr_accessor :created_at, :id, :booster, :content, :recording
+      attr_accessor :booster, :content, :created_at, :id, :recording
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[created_at id].freeze
+        %i[booster content created_at id recording].freeze
       end
 
       def initialize(data = {})
-        @created_at = parse_datetime(data["created_at"])
-        @id = parse_integer(data["id"])
         @booster = parse_type(data["booster"], "Person")
         @content = data["content"]
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
         @recording = parse_type(data["recording"], "Recording")
       end
 
       def to_h
         {
-          "created_at" => @created_at,
-          "id" => @id,
           "booster" => @booster,
           "content" => @content,
+          "created_at" => @created_at,
+          "id" => @id,
           "recording" => @recording,
         }.compact
       end
