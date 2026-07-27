@@ -1,0 +1,41 @@
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_f4e780dfc9aec0 4428-4429
+openapi.json
+  s_8d633484dc870e::t_f4e780dfc9aec0 27586-27587,27595-27596
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_f4e780dfc9aec0 25208-25209,25217-25218
+go/pkg/basecamp/timeline_test.go
+  s_8d633484dc870e::t_538842f90b89f4 10
+  s_8d633484dc870e::t_d3764bf319e419 247-257
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_f4e780dfc9aec0 40
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_f4e780dfc9aec0 4
+go/pkg/basecamp/timeline.go
+  s_8d633484dc870e::t_eb7194d0054754 594
+  s_8d633484dc870e::t_f4e780dfc9aec0 81-99,106
+  s_8d633484dc870e::t_037763cc7830fe 100-105
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_f4e780dfc9aec0 4
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_ffb45f06cb58b2 197
+  s_8d633484dc870e::t_11103965589957 183-188,190
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_f4e780dfc9aec0 1434-1435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ba93c290e013c54077edb663a1736e5736e77b67",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
