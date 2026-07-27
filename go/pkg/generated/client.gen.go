@@ -863,6 +863,19 @@ type EventDetails struct {
 	RemovedPersonIds     []int64 `json:"removed_person_ids,omitempty"`
 }
 
+// EverythingBoost A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
+// shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
+// kept source-compatible for existing callers), this feed renders each boost's
+// `recording` through the FULL recording projection, so it gets a dedicated
+// element type carrying the complete `Recording`.
+type EverythingBoost struct {
+	Booster   Person    `json:"booster,omitempty"`
+	Content   string    `json:"content,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	Recording Recording `json:"recording,omitempty"`
+}
+
 // EverythingFile A single item in the /files.json feed. An optional-field superset over three
 // wire variants — a full Upload recording, a Basecamp Document recording, and a
 // rich-text attachment wrapped in a recording envelope (distinguished by
@@ -1113,7 +1126,7 @@ type GetCommentResponseContent = Comment
 type GetDocumentResponseContent = Document
 
 // GetEverythingBoostsResponseContent defines model for GetEverythingBoostsResponseContent.
-type GetEverythingBoostsResponseContent = []Boost
+type GetEverythingBoostsResponseContent = []EverythingBoost
 
 // GetEverythingCheckinsResponseContent defines model for GetEverythingCheckinsResponseContent.
 type GetEverythingCheckinsResponseContent = []Recording
@@ -1944,8 +1957,15 @@ type RateLimitErrorResponseContent struct {
 
 // Recording defines model for Recording.
 type Recording struct {
-	AppUrl        string          `json:"app_url"`
-	BookmarkUrl   string          `json:"bookmark_url,omitempty"`
+	AppUrl      string `json:"app_url"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+
+	// BoostsCount Boost count/URL. Carried on boostable recordings — notably the account-wide
+	// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
+	// partials render with `boostable: true`. Optional (absent on non-boostable
+	// recordings and on the base/webhook partial).
+	BoostsCount   int32           `json:"boosts_count,omitempty"`
+	BoostsUrl     string          `json:"boosts_url,omitempty"`
 	Bucket        RecordingBucket `json:"bucket"`
 	CommentsCount int32           `json:"comments_count,omitempty"`
 	CommentsUrl   string          `json:"comments_url,omitempty"`
@@ -1971,24 +1991,42 @@ type Recording struct {
 
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
-	Id                     int64                `json:"id"`
-	InheritsStatus         bool                 `json:"inherits_status"`
-	Parent                 RecordingParent      `json:"parent,omitempty"`
+
+	// From Sender of an inbox forward. Present on `Inbox::Forward` recordings — notably
+	// the `/forwards.json` aggregate feed, whose forward partial renders `from`.
+	From string `json:"from,omitempty"`
+
+	// GroupOn Check-in grouping date (YYYY-MM-DD). Present on automatic check-in answer
+	// (`Question::Answer`) recordings — notably the `/checkins.json` aggregate
+	// feed, whose answer partial renders `group_on`.
+	GroupOn        types.Date      `json:"group_on,omitempty"`
+	Id             int64           `json:"id"`
+	InheritsStatus bool            `json:"inherits_status"`
+	Parent         RecordingParent `json:"parent,omitempty"`
 
 	// Position Ordinal position within the project's External links section. Present on
 	// `Door` (external-link) recordings.
 	Position int32 `json:"position,omitempty"`
 
+	// RepliesCount Reply count/URL for an inbox forward. Present on `Inbox::Forward`
+	// recordings — notably the `/forwards.json` aggregate feed.
+	RepliesCount int32  `json:"replies_count,omitempty"`
+	RepliesUrl   string `json:"replies_url,omitempty"`
+
 	// Service Metadata describing the recognized external service backing an external link
 	// (`Door` recording): its display name, a canonical example URL, a short code,
 	// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
 	// is `other` for a generic link.
-	Service         DoorService `json:"service,omitempty"`
-	Status          string      `json:"status"`
-	SubscriptionUrl string      `json:"subscription_url,omitempty"`
-	Title           string      `json:"title"`
-	Type            string      `json:"type"`
-	UpdatedAt       time.Time   `json:"updated_at"`
+	Service DoorService `json:"service,omitempty"`
+	Status  string      `json:"status"`
+
+	// Subject Message subject. Present on `Message` recordings — notably the account-wide
+	// `/messages.json` aggregate feed, whose message partial renders `subject`.
+	Subject         string    `json:"subject,omitempty"`
+	SubscriptionUrl string    `json:"subscription_url,omitempty"`
+	Title           string    `json:"title"`
+	Type            string    `json:"type"`
+	UpdatedAt       time.Time `json:"updated_at"`
 
 	// Url API URL of the recording. Exception: in the `type=Door` (external-link)
 	// projection, `url` is the door's **external destination address** (e.g. the
@@ -2261,11 +2299,13 @@ type Template struct {
 }
 
 // TimelineAttachment A single timeline-event attachment. This is an optional-field superset over
-// two wire variants — a full Upload recording (upload-kind recordings) and a
-// rich-text attachment/blob partial (all other recordings) — so one element
-// type decodes either. Every field is optional; a given instance populates
-// only the fields of the variant it represents. Unknown fields are ignored by
-// every SDK decoder, so the superset need not enumerate every Upload field.
+// two wire variants — a full Upload recording (upload-kind recordings, rendered
+// by BC3's uploads/_upload partial: the complete recording projection + rich-
+// text description + the upload body) and a rich-text attachment/blob partial
+// (all other recordings) — so one element type decodes either. Every field is
+// optional; a given instance populates only the fields of the variant it
+// represents. The upload-recording variant enumerates the full documented
+// projection so no documented field is silently dropped on decode.
 type TimelineAttachment struct {
 	// AppDownloadUrl Web download URL (upload-recording variant).
 	AppDownloadUrl *string `json:"app_download_url,omitempty"`
@@ -2276,17 +2316,40 @@ type TimelineAttachment struct {
 	// AttachableSgid Signed global id of the attachable (attachment variant).
 	AttachableSgid *string `json:"attachable_sgid,omitempty"`
 
+	// BookmarkUrl Personal bookmark toggle URL for the current user.
+	BookmarkUrl *string `json:"bookmark_url,omitempty"`
+
+	// BoostsCount Number of boosts on the recording.
+	BoostsCount *int32 `json:"boosts_count,omitempty"`
+
+	// BoostsUrl API URL for the recording's boosts.
+	BoostsUrl *string     `json:"boosts_url,omitempty"`
+	Bucket    *TodoBucket `json:"bucket,omitempty"`
+
 	// ByteSize Size of the file in bytes.
 	ByteSize *int64 `json:"byte_size,omitempty"`
 
 	// Caption Caption text, if any (attachment variant).
 	Caption *string `json:"caption,omitempty"`
 
+	// CommentsCount Number of comments on the recording.
+	CommentsCount *int32 `json:"comments_count,omitempty"`
+
+	// CommentsUrl API URL for the recording's comments.
+	CommentsUrl *string `json:"comments_url,omitempty"`
+
 	// ContentType MIME type of the file.
 	ContentType *string `json:"content_type,omitempty"`
 
 	// CreatedAt When the upload recording was created.
 	CreatedAt *time.Time `json:"created_at,omitempty"`
+	Creator   *Person    `json:"creator,omitempty"`
+
+	// Description Rich-text description of the upload (HTML), when present.
+	Description *string `json:"description,omitempty"`
+
+	// DescriptionAttachments Rich-text attachments referenced by the description.
+	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
 
 	// DownloadUrl Authenticated download URL for the file.
 	DownloadUrl *string `json:"download_url,omitempty"`
@@ -2300,8 +2363,15 @@ type TimelineAttachment struct {
 	// Id Attachment or upload-recording id.
 	Id *int64 `json:"id,omitempty"`
 
+	// InheritsStatus Whether the recording inherits its status from its parent.
+	InheritsStatus *bool `json:"inherits_status,omitempty"`
+
 	// Key Storage key of the underlying blob (attachment variant).
-	Key *string `json:"key,omitempty"`
+	Key    *string          `json:"key,omitempty"`
+	Parent *RecordingParent `json:"parent,omitempty"`
+
+	// Position Position within its parent; present only when the recording is positioned.
+	Position *int32 `json:"position,omitempty"`
 
 	// PreviewUrl Full-size preview URL (attachment variant).
 	PreviewUrl *string `json:"preview_url,omitempty"`
@@ -2317,6 +2387,9 @@ type TimelineAttachment struct {
 
 	// StatusUrl URL to poll attachment processing status (attachment variant).
 	StatusUrl *string `json:"status_url,omitempty"`
+
+	// SubscriptionUrl Subscription URL; present only when the recording is subscribable.
+	SubscriptionUrl *string `json:"subscription_url,omitempty"`
 
 	// ThumbnailUrl Thumbnail preview URL (attachment variant).
 	ThumbnailUrl *string `json:"thumbnail_url,omitempty"`
@@ -2392,9 +2465,12 @@ type TimelineEvent struct {
 // mapping them to types.FlexibleTime so date-only values decode; the other
 // SDKs type them as plain strings.
 type TimelineEventData struct {
-	AllDay   bool               `json:"all_day,omitempty"`
-	EndsAt   types.FlexibleTime `json:"ends_at,omitempty"`
-	StartsAt types.FlexibleTime `json:"starts_at,omitempty"`
+	// AllDay Whether the entry is all-day. BC3 emits all three members unconditionally
+	// whenever the data object is present (schedule_entry_* events), so they are
+	// required within this struct.
+	AllDay   bool               `json:"all_day"`
+	EndsAt   types.FlexibleTime `json:"ends_at"`
+	StartsAt types.FlexibleTime `json:"starts_at"`
 }
 
 // TimesheetEntry defines model for TimesheetEntry.
@@ -22700,6 +22776,7 @@ type GetEverythingOverdueCardsResponse struct {
 	JSON200      *GetEverythingOverdueCardsResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -28171,6 +28248,7 @@ type GetEverythingOverdueTodosResponse struct {
 	JSON200      *GetEverythingOverdueTodosResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
 
@@ -33960,6 +34038,13 @@ func ParseGetEverythingOverdueCardsResponse(rsp *http.Response) (*GetEverythingO
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent
@@ -42895,6 +42980,13 @@ func ParseGetEverythingOverdueTodosResponse(rsp *http.Response) (*GetEverythingO
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

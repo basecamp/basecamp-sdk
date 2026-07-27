@@ -13,8 +13,6 @@ import type { PaginationOptions } from "../../pagination.js";
 // Types
 // =============================================================================
 
-/** Boost entity from the Basecamp API. */
-export type Boost = components["schemas"]["Boost"];
 /** BucketCardsGroup entity from the Basecamp API. */
 export type BucketCardsGroup = components["schemas"]["BucketCardsGroup"];
 /** Card entity from the Basecamp API. */
@@ -165,14 +163,14 @@ export class EverythingService extends BaseService {
   /**
    * Get every boost across all accessible projects, newest-first (paginated).
    * @param options - Optional query parameters
-   * @returns All Boost across all pages, with .meta.totalCount
+   * @returns All results across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
    * const result = await client.everything.everythingBoosts();
    * ```
    */
-  async everythingBoosts(options?: EverythingBoostsEverythingOptions): Promise<ListResult<Boost>> {
+  async everythingBoosts(options?: EverythingBoostsEverythingOptions): Promise<components["schemas"]["GetEverythingBoostsResponseContent"]> {
     return this.requestPaginated(
       {
         service: "Everything",

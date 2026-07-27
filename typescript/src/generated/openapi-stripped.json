@@ -21199,7 +21199,8 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true
+            "x-go-type-skip-optional-pointer": true,
+            "nullable": true
           },
           "completed": {
             "type": "boolean"
@@ -27489,7 +27490,8 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true
+            "x-go-type-skip-optional-pointer": true,
+            "nullable": true
           },
           "due_on": {
             "type": "string",
@@ -27497,7 +27499,8 @@
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true
+            "x-go-type-skip-optional-pointer": true,
+            "nullable": true
           },
           "assignees": {
             "type": "array",

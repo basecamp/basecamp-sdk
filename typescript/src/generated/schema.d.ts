@@ -3104,7 +3104,7 @@ export interface components {
             content?: string;
             description?: string;
             description_attachments: components["schemas"]["RichTextAttachment"][];
-            due_on?: string;
+            due_on?: string | null;
             completed?: boolean;
             completed_at?: string;
             /** Format: int32 */
@@ -5029,8 +5029,8 @@ export interface components {
             completed?: boolean;
             content: string;
             description_attachments: components["schemas"]["RichTextAttachment"][];
-            starts_on?: string;
-            due_on?: string;
+            starts_on?: string | null;
+            due_on?: string | null;
             assignees?: components["schemas"]["Person"][];
             completion_subscribers?: components["schemas"]["Person"][];
             completion_url?: string;

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T01:18:25Z
+# Generated: 2026-07-27T06:48:27Z
 
 require "json"
 require "time"
@@ -1406,6 +1406,39 @@ module Basecamp
           "added_person_ids" => @added_person_ids,
           "notified_recipient_ids" => @notified_recipient_ids,
           "removed_person_ids" => @removed_person_ids,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # EverythingBoost
+    class EverythingBoost
+      include TypeHelpers
+      attr_accessor :created_at, :id, :booster, :content, :recording
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at id].freeze
+      end
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @booster = parse_type(data["booster"], "Person")
+        @content = data["content"]
+        @recording = parse_type(data["recording"], "Recording")
+      end
+
+      def to_h
+        {
+          "created_at" => @created_at,
+          "id" => @id,
+          "booster" => @booster,
+          "content" => @content,
+          "recording" => @recording,
         }.compact
       end
 
@@ -3064,7 +3097,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :parent, :position, :service, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3085,15 +3118,22 @@ module Basecamp
         @url = data["url"]
         @visible_to_clients = parse_boolean(data["visible_to_clients"])
         @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
         @content = data["content"]
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @description = data["description"]
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @from = data["from"]
+        @group_on = data["group_on"]
         @parent = parse_type(data["parent"], "RecordingParent")
         @position = parse_integer(data["position"])
+        @replies_count = parse_integer(data["replies_count"])
+        @replies_url = data["replies_url"]
         @service = parse_type(data["service"], "DoorService")
+        @subject = data["subject"]
         @subscription_url = data["subscription_url"]
       end
 
@@ -3112,15 +3152,22 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
           "content" => @content,
           "content_attachments" => @content_attachments,
           "description" => @description,
           "description_attachments" => @description_attachments,
+          "from" => @from,
+          "group_on" => @group_on,
           "parent" => @parent,
           "position" => @position,
+          "replies_count" => @replies_count,
+          "replies_url" => @replies_url,
           "service" => @service,
+          "subject" => @subject,
           "subscription_url" => @subscription_url,
         }.compact
       end
@@ -3593,26 +3640,39 @@ module Basecamp
     # TimelineAttachment
     class TimelineAttachment
       include TypeHelpers
-      attr_accessor :app_download_url, :app_url, :attachable_sgid, :byte_size, :caption, :content_type, :created_at, :download_url, :filename, :height, :id, :key, :preview_url, :previewable, :sgid, :status, :status_url, :thumbnail_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
+      attr_accessor :app_download_url, :app_url, :attachable_sgid, :bookmark_url, :boosts_count, :boosts_url, :bucket, :byte_size, :caption, :comments_count, :comments_url, :content_type, :created_at, :creator, :description, :description_attachments, :download_url, :filename, :height, :id, :inherits_status, :key, :parent, :position, :preview_url, :previewable, :sgid, :status, :status_url, :subscription_url, :thumbnail_url, :title, :type, :updated_at, :url, :visible_to_clients, :width
 
       def initialize(data = {})
         @app_download_url = data["app_download_url"]
         @app_url = data["app_url"]
         @attachable_sgid = data["attachable_sgid"]
+        @bookmark_url = data["bookmark_url"]
+        @boosts_count = parse_integer(data["boosts_count"])
+        @boosts_url = data["boosts_url"]
+        @bucket = parse_type(data["bucket"], "TodoBucket")
         @byte_size = parse_integer(data["byte_size"])
         @caption = data["caption"]
+        @comments_count = parse_integer(data["comments_count"])
+        @comments_url = data["comments_url"]
         @content_type = data["content_type"]
         @created_at = parse_datetime(data["created_at"])
+        @creator = parse_type(data["creator"], "Person")
+        @description = data["description"]
+        @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @download_url = data["download_url"]
         @filename = data["filename"]
         @height = parse_integer(data["height"])
         @id = parse_integer(data["id"])
+        @inherits_status = parse_boolean(data["inherits_status"])
         @key = data["key"]
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @position = parse_integer(data["position"])
         @preview_url = data["preview_url"]
         @previewable = parse_boolean(data["previewable"])
         @sgid = data["sgid"]
         @status = data["status"]
         @status_url = data["status_url"]
+        @subscription_url = data["subscription_url"]
         @thumbnail_url = data["thumbnail_url"]
         @title = data["title"]
         @type = data["type"]
@@ -3627,20 +3687,33 @@ module Basecamp
           "app_download_url" => @app_download_url,
           "app_url" => @app_url,
           "attachable_sgid" => @attachable_sgid,
+          "bookmark_url" => @bookmark_url,
+          "boosts_count" => @boosts_count,
+          "boosts_url" => @boosts_url,
+          "bucket" => @bucket,
           "byte_size" => @byte_size,
           "caption" => @caption,
+          "comments_count" => @comments_count,
+          "comments_url" => @comments_url,
           "content_type" => @content_type,
           "created_at" => @created_at,
+          "creator" => @creator,
+          "description" => @description,
+          "description_attachments" => @description_attachments,
           "download_url" => @download_url,
           "filename" => @filename,
           "height" => @height,
           "id" => @id,
+          "inherits_status" => @inherits_status,
           "key" => @key,
+          "parent" => @parent,
+          "position" => @position,
           "preview_url" => @preview_url,
           "previewable" => @previewable,
           "sgid" => @sgid,
           "status" => @status,
           "status_url" => @status_url,
+          "subscription_url" => @subscription_url,
           "thumbnail_url" => @thumbnail_url,
           "title" => @title,
           "type" => @type,
@@ -3708,6 +3781,11 @@ module Basecamp
     class TimelineEventData
       include TypeHelpers
       attr_accessor :all_day, :ends_at, :starts_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[all_day ends_at starts_at].freeze
+      end
 
       def initialize(data = {})
         @all_day = parse_boolean(data["all_day"])

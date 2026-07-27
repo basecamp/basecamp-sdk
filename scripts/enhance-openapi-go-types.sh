@@ -353,6 +353,21 @@ walk(
 # pointer-backed too — an empty string must not stand in for absence (SPEC.md §10).
 .components.schemas.RecordingCategory.properties.icon += { "x-go-type-skip-optional-pointer": false }
 |
+# Fifth-g pass: Todo/Card date fields are always-present nullable.
+# BC3 renders due_on (and, for to-dos, starts_on) unconditionally through the
+# shared todos/_todo and cards/_card partials — the key is always emitted and is
+# JSON null when the record has no date (documented across the resource docs and
+# the account-wide feeds, e.g. /todos/no_due_date.json). Mark them nullable so
+# the static-type SDKs type them `string | null` and the schema (AJV) accepts a
+# null value instead of the types lying. Go keeps its types.Date value type
+# (the _on pass already sets skip-optional-pointer: true), and types.Date decodes
+# JSON null to the zero Date, so no Go change is needed.
+.components.schemas.Todo.properties.due_on += { "nullable": true }
+|
+.components.schemas.Todo.properties.starts_on += { "nullable": true }
+|
+.components.schemas.Card.properties.due_on += { "nullable": true }
+|
 # Sixth pass: Person.id → types.FlexibleInt64
 # The API sometimes returns person IDs as JSON strings (e.g. in notification
 # responses); Go rejects those into int64 fields. Scoped to Person schema only.
