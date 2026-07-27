@@ -4,6 +4,10 @@ require "simplecov"
 SimpleCov.start do
   add_filter "/test/"
   add_filter "/generated/"
+  # Build-time code generators, not shipped library code. test/scripts/ loads
+  # them to unit-test their pure helpers; their emit paths run under `make
+  # rb-generate` and are covered by the regenerate-and-diff freshness gate.
+  add_filter "/scripts/"
   enable_coverage :branch
   minimum_coverage line: 90, branch: 60
 end
