@@ -102,6 +102,12 @@ jobs:
       - name: Check generated client drift
         run: ../scripts/check-go-generated-drift.sh
 
+      - name: Check url-routes freshness
+        # url-routes.json is a generated Go artifact (//go:embed in url.go).
+        # Runs from repo root regardless of this job's `working-directory: go`.
+        working-directory: .
+        run: make url-routes-check
+
       - name: Check auth-routable consumer invariants
         run: ../scripts/check-auth-routable-consumers.sh
 
@@ -369,15 +375,12 @@ jobs:
         run: ./gradlew :basecamp-sdk:check
 
       - name: Check generated code drift
-        run: |
-          ./gradlew :generator:run --args="--openapi ../openapi.json --behavior ../behavior-model.json --output sdk/src/commonMain/kotlin/com/basecamp/sdk/generated"
-          if [ -n "$(git status --porcelain -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/)" ]; then
-            echo "::error::Generated Kotlin code is out of date. Run 'make kt-generate-services' and commit."
-            git status --short -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/
-            git diff --stat -- sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ || true
-            exit 1
-          fi
-          echo "Generated code is up to date"
+        # Regenerate-and-diff freshness gate via the root Make target, which
+        # runs the shared non-mutating scripts/check-kotlin-generated-drift.sh
+        # (regenerates into a temp dir; never touches the working tree). Runs
+        # from repo root regardless of this job's `working-directory: kotlin`.
+        working-directory: .
+        run: make kt-check-generated-drift
 
       - name: Check optional-array invariant
         run: ruby ../scripts/check-kotlin-optional-arrays.rb

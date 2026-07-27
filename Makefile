@@ -616,7 +616,7 @@ conformance-canary:
 # Kotlin SDK targets
 #------------------------------------------------------------------------------
 
-.PHONY: kt-generate-services kt-build kt-test kt-check kt-check-drift kt-clean gradle-stop
+.PHONY: kt-generate-services kt-build kt-test kt-check kt-check-drift kt-check-generated-drift kt-clean gradle-stop
 
 # Generate Kotlin services from OpenAPI
 kt-generate-services:
@@ -641,15 +641,24 @@ kt-check: kt-test
 #
 # NOTE: this is an operation-level *coverage* check (operationId sets match),
 # NOT a regenerate-and-diff freshness gate like check-{python,ruby,typescript}-
-# service-drift.sh or check-go-generated-drift.sh. The authoritative
-# regenerate-and-diff for Kotlin runs only in CI (the "Check generated code
-# drift" step of the test-kotlin job in .github/workflows/test.yml), which
-# regenerates and fails on any committed drift. Kotlin is intentionally a
-# CI-only exception to the non-mutating regen-and-diff program for now;
-# promoting it to a root-invocable non-mutating gate is tracked as a follow-up.
+# service-drift.sh or check-go-generated-drift.sh. It stays in the default
+# `make check` because it is fast (jq/grep, no JVM). The authoritative
+# regenerate-and-diff freshness gate is kt-check-generated-drift below.
 kt-check-drift:
 	@echo "==> Checking Kotlin service drift..."
 	@./scripts/check-kotlin-service-drift.sh
+
+# Regenerate-and-diff freshness gate for the whole generated Kotlin tree — the
+# Kotlin sibling of check-{python,ruby,swift,typescript}-service-drift.sh and
+# check-go-generated-drift.sh, completing 6-SDK parity. Non-mutating: it
+# regenerates into a temp dir and diffs, so it detects both missing and extra
+# files. Deliberately NOT part of the default `make check`: a `:generator:run`
+# is a heavy JVM/Gradle-daemon startup, so it runs as its own target and in CI
+# (the test-kotlin job's "Check generated code drift" step) rather than adding
+# seconds of local latency to every `make check`.
+kt-check-generated-drift:
+	@echo "==> Checking Kotlin generated drift (regenerate-and-diff)..."
+	@./scripts/check-kotlin-generated-drift.sh
 
 # Clean Kotlin build artifacts
 kt-clean:
@@ -865,7 +874,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays check-idempotency-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts
@@ -916,7 +925,8 @@ help:
 	@echo "  kt-build             Build Kotlin SDK"
 	@echo "  kt-test              Run Kotlin tests"
 	@echo "  kt-check             Run all Kotlin checks"
-	@echo "  kt-check-drift       Check service drift vs OpenAPI spec"
+	@echo "  kt-check-drift       Check service drift vs OpenAPI spec (fast coverage)"
+	@echo "  kt-check-generated-drift  Regenerate-and-diff freshness gate (heavy; CI + on demand)"
 	@echo "  kt-clean             Remove Kotlin build artifacts"
 	@echo "  gradle-stop          Stop any lingering Gradle daemons"
 	@echo ""
