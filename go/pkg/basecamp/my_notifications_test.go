@@ -31,7 +31,7 @@ func TestMyNotificationsService_Get(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
-		w.Write([]byte(`{"unreads":[{"id":1,"title":"New comment"}],"reads":[],"memories":[],"bubble_ups_count":0,"scheduled_bubble_ups_count":0}`))
+		w.Write([]byte(`{"unreads":[{"id":1,"title":"New comment","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}],"reads":[],"memories":[],"bubble_ups_count":0,"scheduled_bubble_ups_count":0}`))
 	})
 
 	result, err := svc.Get(context.Background(), 0)
@@ -75,13 +75,13 @@ func TestMyNotificationsService_Get_LimitBubbleUps(t *testing.T) {
 		// scheduled_bubble_ups key intentionally omitted; counts still present.
 		w.Write([]byte(`{
 			"unreads": [], "reads": [], "memories": [],
-			"bubble_ups": [{"id": 10, "title": "Bubbled"}, {"id": 11, "title": "Bubbled 2"}],
+			"bubble_ups": [{"id": 10, "title": "Bubbled", "created_at": "2026-07-21T00:00:00Z", "updated_at": "2026-07-21T00:00:00Z"}, {"id": 11, "title": "Bubbled 2", "created_at": "2026-07-21T00:00:00Z", "updated_at": "2026-07-21T00:00:00Z"}],
 			"bubble_ups_count": 5,
 			"scheduled_bubble_ups_count": 3
 		}`))
 	})
 
-	result, err := svc.Get(context.Background(), 0, WithLimitBubbleUps())
+	result, err := svc.GetWithOptions(context.Background(), 0, WithLimitBubbleUps())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -119,14 +119,14 @@ func TestMyNotificationsService_BubbleUps_MultiPage(t *testing.T) {
 			page2Hits++
 			w.WriteHeader(200)
 			// scheduled bubble-up, ordered after the current ones
-			w.Write([]byte(`[{"id":30,"title":"Scheduled","bubble_up_at":"2026-08-01T00:00:00Z"}]`))
+			w.Write([]byte(`[{"id":30,"title":"Scheduled","bubble_up_at":"2026-08-01T00:00:00Z","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}]`))
 			return
 		}
 		page1Hits++
 		// page 1: two current bubble-ups, with a Link header to page 2
 		w.Header().Set("Link", fmt.Sprintf(`<%s/99999/my/readings/bubble_ups.json?page=2>; rel="next"`, serverURL))
 		w.WriteHeader(200)
-		w.Write([]byte(`[{"id":10,"title":"Current A"},{"id":11,"title":"Current B"}]`))
+		w.Write([]byte(`[{"id":10,"title":"Current A","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"},{"id":11,"title":"Current B","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}]`))
 	}))
 	t.Cleanup(server.Close)
 	serverURL = server.URL
@@ -172,7 +172,7 @@ func TestMyNotificationsService_BubbleUps_SinglePage(t *testing.T) {
 		// A Link header is present but must NOT be followed for an explicit page.
 		w.Header().Set("Link", `</99999/my/readings/bubble_ups.json?page=3>; rel="next"`)
 		w.WriteHeader(200)
-		w.Write([]byte(`[{"id":30,"title":"Scheduled"}]`))
+		w.Write([]byte(`[{"id":30,"title":"Scheduled","created_at":"2026-07-21T00:00:00Z","updated_at":"2026-07-21T00:00:00Z"}]`))
 	})
 
 	result, err := svc.BubbleUps(context.Background(), 2)
@@ -184,6 +184,11 @@ func TestMyNotificationsService_BubbleUps_SinglePage(t *testing.T) {
 	}
 	if len(result.BubbleUps) != 1 {
 		t.Errorf("expected 1 bubble_up for single page, got %d", len(result.BubbleUps))
+	}
+	// A next-page Link is present but not followed in explicit-page mode, so the
+	// result must advertise itself as a partial view.
+	if !result.Meta.Truncated {
+		t.Error("expected Meta.Truncated=true when a next-page Link is present in single-page mode")
 	}
 }
 

@@ -113,9 +113,26 @@ func WithLimitBubbleUps() MyNotificationsGetOption {
 }
 
 // Get returns notifications for the current user.
-// page is optional; pass 0 to use the default (page 1). Optional functional
-// options (e.g. WithLimitBubbleUps) tune the request.
-func (s *MyNotificationsService) Get(ctx context.Context, page int32, opts ...MyNotificationsGetOption) (result *NotificationsResult, err error) {
+// page is optional; pass 0 to use the default (page 1).
+//
+// This preserves the original two-argument signature; adding a variadic
+// parameter here would change the method's type and break method values and
+// interface satisfaction for existing callers. Use GetWithOptions to tune the
+// request with functional options.
+func (s *MyNotificationsService) Get(ctx context.Context, page int32) (result *NotificationsResult, err error) {
+	return s.get(ctx, page)
+}
+
+// GetWithOptions returns notifications for the current user, tuned by optional
+// functional options (e.g. WithLimitBubbleUps). page is optional; pass 0 to use
+// the default (page 1).
+func (s *MyNotificationsService) GetWithOptions(ctx context.Context, page int32, opts ...MyNotificationsGetOption) (result *NotificationsResult, err error) {
+	return s.get(ctx, page, opts...)
+}
+
+// get is the shared implementation behind Get and GetWithOptions; both report
+// the same "Get" operation identity to hooks.
+func (s *MyNotificationsService) get(ctx context.Context, page int32, opts ...MyNotificationsGetOption) (result *NotificationsResult, err error) {
 	op := OperationInfo{
 		Service: "MyNotifications", Operation: "Get",
 		ResourceType: "notification", IsMutation: false,
@@ -228,9 +245,13 @@ func (s *MyNotificationsService) BubbleUps(ctx context.Context, page int32) (res
 
 	totalCount := parseTotalCount(resp.HTTPResponse)
 
-	// A positive page disables auto-pagination (single page only).
+	// A positive page disables auto-pagination (single page only). The caller
+	// still needs to know the returned page is a partial view, so report
+	// Truncated when the response carries a rel="next" Link (more pages exist)
+	// even though we deliberately do not follow it here.
 	if page > 0 {
-		return &BubbleUpsResult{BubbleUps: items, Meta: ListMeta{TotalCount: totalCount}}, nil
+		truncated := parseNextLink(resp.HTTPResponse.Header.Get("Link")) != ""
+		return &BubbleUpsResult{BubbleUps: items, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 	}
 
 	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(items), 0)
