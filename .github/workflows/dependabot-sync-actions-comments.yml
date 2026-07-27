@@ -21,9 +21,9 @@ permissions: {}
 
 jobs:
   sync:
-    uses: basecamp/.github/.github/workflows/dependabot-sync-actions-comments.yml@06fd9cf3d96439d0c5a8ca6ccc2ed2dd23552d9e
+    uses: basecamp/.github/.github/workflows/dependabot-sync-actions-comments.yml@d7a98882c52e021fa0d4ae31e92e56d03dcce774
     permissions:
-      contents: read
+      contents: write
       actions: write
       pull-requests: write
     # The deploy key is scoped to this repo's dependabot-sync environment
