@@ -214,7 +214,9 @@ func TestMyNotificationsService_Get_SentinelCreatorID(t *testing.T) {
 				}
 			}],
 			"reads": [],
-			"memories": []
+			"memories": [],
+			"bubble_ups_count": 0,
+			"scheduled_bubble_ups_count": 0
 		}`))
 	})
 
@@ -270,7 +272,9 @@ func TestMyNotificationsService_Get_StringCreatorIDWithoutPersonableType(t *test
 				]
 			}],
 			"reads": [],
-			"memories": []
+			"memories": [],
+			"bubble_ups_count": 0,
+			"scheduled_bubble_ups_count": 0
 		}`))
 	})
 
