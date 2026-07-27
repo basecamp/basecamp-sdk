@@ -13,6 +13,6 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class TimelineEventData(
     @SerialName("all_day") val allDay: Boolean,
-    @SerialName("starts_at") val startsAt: String,
-    @SerialName("ends_at") val endsAt: String
+    @SerialName("starts_at") val startsAt: String?,
+    @SerialName("ends_at") val endsAt: String?
 )

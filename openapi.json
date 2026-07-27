@@ -27578,22 +27578,26 @@
             "description": "Whether the entry is all-day. BC3 emits all three members unconditionally\nwhenever the data object is present (schedule_entry_* events), so they are\nrequired within this struct."
           },
           "starts_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true,
-            "nullable": true
+            "x-go-type-skip-optional-pointer": true
           },
           "ends_at": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "x-go-type": "types.FlexibleTime",
             "x-go-type-import": {
               "path": "github.com/basecamp/basecamp-sdk/go/pkg/types"
             },
-            "x-go-type-skip-optional-pointer": true,
-            "nullable": true
+            "x-go-type-skip-optional-pointer": true
           }
         },
         "required": [

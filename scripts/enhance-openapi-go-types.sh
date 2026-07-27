@@ -182,19 +182,23 @@ walk(
 # true, which time.Time cannot parse. Overrides the first pass _at to time.Time.
 # Also nullable: BC3 emits all three members unconditionally when the data object
 # is present (so they are @required for presence), but starts_at/ends_at may be
-# JSON null (starts_at_date_or_time returns nil for an entry with no bound). Mark
-# them nullable so the static-type SDKs model them required-but-nullable
-# (`string | null`, not `string | null | undefined`); Go keeps its FlexibleTime
-# value type, which already decodes null to the zero time.
+# JSON null (starts_at_date_or_time returns nil for an entry with no bound). These
+# are @required, so `nullable: true` alone would NOT nullable them in Kotlin/Swift
+# (a required field stays non-null `String`, and a null bound fails decode). Encode
+# the value nullability as a `type: ["string","null"]` union — the required-and-
+# nullable treatment used for Wormhole.destination_url / SearchType.key — so every
+# static SDK models them required-but-nullable (`string | null`). Go keeps its
+# FlexibleTime value type (via x-go-type), which already decodes null to the zero
+# time.
 .components.schemas.TimelineEventData.properties.starts_at += {
-  "nullable": true,
+  "type": ["string", "null"],
   "x-go-type": "types.FlexibleTime",
   "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
   "x-go-type-skip-optional-pointer": true
 }
 |
 .components.schemas.TimelineEventData.properties.ends_at += {
-  "nullable": true,
+  "type": ["string", "null"],
   "x-go-type": "types.FlexibleTime",
   "x-go-type-import": {"path": "github.com/basecamp/basecamp-sdk/go/pkg/types"},
   "x-go-type-skip-optional-pointer": true

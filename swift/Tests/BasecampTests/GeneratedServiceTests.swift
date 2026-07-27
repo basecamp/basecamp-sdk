@@ -900,15 +900,26 @@ final class GeneratedServiceTests: XCTestCase {
                 "thumbnail_url": "https://3.basecampapi.com/1/blobs/blobkey500/previews/card"
               }
             ]
+          },
+          {
+            "id": 5,
+            "created_at": "2024-03-15T10:34:00Z",
+            "kind": "schedule_entry_created",
+            "avatars_sample": [],
+            "data": {
+              "all_day": true,
+              "starts_at": null,
+              "ends_at": null
+            }
           }
         ]
         """
         let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8),
-                                      headers: ["X-Total-Count": "4"])
+                                      headers: ["X-Total-Count": "5"])
         let account = makeTestAccountClient(transport: transport)
 
         let events = try await account.timeline.projectTimeline(projectId: 2)
-        XCTAssertEqual(events.count, 4)
+        XCTAssertEqual(events.count, 5)
 
         // events[0]: populated avatars_sample
         XCTAssertEqual(events[0].avatarsSample?.count, 2)
@@ -935,6 +946,13 @@ final class GeneratedServiceTests: XCTestCase {
         XCTAssertEqual(blob.key, "blobkey500")
         XCTAssertEqual(blob.previewable, true)
         XCTAssertNil(blob.width)
+
+        // events[4]: schedule-entry with JSON null bounds — required-and-nullable,
+        // so the event decodes and the bounds are nil (not a decode failure).
+        XCTAssertNotNil(events[4].data)
+        XCTAssertEqual(events[4].data?.allDay, true)
+        XCTAssertNil(events[4].data?.startsAt)
+        XCTAssertNil(events[4].data?.endsAt)
     }
 }
 

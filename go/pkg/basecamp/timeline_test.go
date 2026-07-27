@@ -277,6 +277,27 @@ func TestTimelineEvent_AdditiveFields(t *testing.T) {
 	}
 }
 
+// TestTimelineEventData_NullBounds verifies a schedule-entry event whose timing
+// bounds are JSON null decodes cleanly (the bounds are required-and-nullable:
+// always present, value may be null). Go decodes null to the zero FlexibleTime;
+// the static SDKs type the bounds `string | null` so they don't fail to decode.
+func TestTimelineEventData_NullBounds(t *testing.T) {
+	data := `[{"id":9,"created_at":"2024-03-15T10:31:00Z","kind":"schedule_entry_created","data":{"all_day":true,"starts_at":null,"ends_at":null}}]`
+	var events []TimelineEvent
+	if err := json.Unmarshal([]byte(data), &events); err != nil {
+		t.Fatalf("failed to unmarshal event with null bounds: %v", err)
+	}
+	if events[0].Data == nil {
+		t.Fatal("expected data to be present")
+	}
+	if !events[0].Data.AllDay {
+		t.Error("expected all_day true")
+	}
+	if !events[0].Data.StartsAt.IsZero() || !events[0].Data.EndsAt.IsZero() {
+		t.Errorf("expected null bounds to decode as zero time, got starts=%v ends=%v", events[0].Data.StartsAt, events[0].Data.EndsAt)
+	}
+}
+
 // TestTimelineAttachment_PresenceFaithfulRoundTrip verifies that re-marshaling a
 // decoded attachment-variant superset omits the absent upload-variant fields
 // (no fabricated zero timestamp, no dropped explicit false) — the reason the

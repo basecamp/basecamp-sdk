@@ -1431,8 +1431,8 @@ class TimelineEvent(TypedDict):
 
 class TimelineEventData(TypedDict):
     all_day: bool
-    ends_at: Optional[str]
-    starts_at: Optional[str]
+    ends_at: str | None
+    starts_at: str | None
 
 
 class TimesheetEntry(TypedDict):
