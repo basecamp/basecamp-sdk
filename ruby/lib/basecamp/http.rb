@@ -377,7 +377,8 @@ module Basecamp
         end
       end
 
-      raise last_error || Basecamp::ApiError.new("Request failed after #{@config.max_retries} retries")
+      noun = @config.max_retries == 1 ? "attempt" : "attempts"
+      raise last_error || Basecamp::ApiError.new("Request failed after #{@config.max_retries} #{noun}")
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false)

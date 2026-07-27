@@ -653,6 +653,13 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 			return nil, err
 		}
 
+		// MaxRetries is the total attempt count. After the final attempt there is
+		// no retry, so don't sleep the backoff delay or fire OnRetry for an
+		// attempt that will never happen — return the last error immediately.
+		if attempt >= c.httpOpts.MaxRetries {
+			break
+		}
+
 		c.logger.Debug("retrying request", "attempt", attempt, "maxRetries", c.httpOpts.MaxRetries, "delay", delay, "error", lastErr)
 
 		// Notify hooks about the retry
@@ -667,7 +674,11 @@ func (c *Client) doRequestURL(ctx context.Context, method, url string, body any)
 		}
 	}
 
-	return nil, fmt.Errorf("request failed after %d retries: %w", c.httpOpts.MaxRetries, lastErr)
+	noun := "attempts"
+	if c.httpOpts.MaxRetries == 1 {
+		noun = "attempt"
+	}
+	return nil, fmt.Errorf("request failed after %d %s: %w", c.httpOpts.MaxRetries, noun, lastErr)
 }
 
 func (c *Client) singleRequest(ctx context.Context, method, url string, body any, attempt int) (*Response, error) {

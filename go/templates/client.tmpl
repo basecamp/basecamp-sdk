@@ -12,7 +12,12 @@ type HttpRequestDoer interface {
 
 // RetryConfig configures retry behavior for idempotent operations.
 type RetryConfig struct {
-	// MaxRetries is the maximum number of retry attempts (default: 3)
+	// MaxRetries is the TOTAL number of attempts for an idempotent operation,
+	// including the initial request — not the number of retries after the first
+	// attempt (default: 3, so up to 3 attempts total). A value of 0 is accepted
+	// as a compatibility exception and means a single attempt with no retry; a
+	// negative value is a configuration error rejected by WithRetryConfig and
+	// doWithRetry.
 	MaxRetries int
 	// BaseDelay is the initial delay between retries (default: 1s)
 	BaseDelay time.Duration
@@ -100,9 +105,32 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 	}
 }
 
+// effectiveMaxAttempts resolves RetryConfig.MaxRetries (a TOTAL attempt count)
+// into the number of attempts an idempotent operation should make:
+//   - MaxRetries < 0  → configuration error (a plain error; the low-level
+//     generated package has no BasecampError usage type).
+//   - MaxRetries == 0 → 1 attempt (compatibility exception; no retry).
+//   - MaxRetries > 0  → MaxRetries attempts.
+//
+// Every non-error result is >= 1, so doWithRetry always makes at least one
+// attempt (never returns a nil response with a nil error).
+func (cfg RetryConfig) effectiveMaxAttempts() (int, error) {
+	if cfg.MaxRetries < 0 {
+		return 0, fmt.Errorf("basecamp: invalid RetryConfig: MaxRetries must be >= 0, got %d", cfg.MaxRetries)
+	}
+	if cfg.MaxRetries == 0 {
+		return 1, nil
+	}
+	return cfg.MaxRetries, nil
+}
+
 // WithRetryConfig allows setting custom retry configuration for idempotent operations.
+// It returns a configuration error if cfg.MaxRetries is negative.
 func WithRetryConfig(cfg RetryConfig) ClientOption {
 	return func(c *{{ $clientTypeName }}) error {
+		if _, err := cfg.effectiveMaxAttempts(); err != nil {
+			return err
+		}
 		c.RetryConfig = cfg
 		return nil
 	}
@@ -132,9 +160,15 @@ func isRetryableStatus(statusCode int) bool {
 
 // doWithRetry executes a request with retry logic for idempotent operations.
 func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	maxAttempts := 1
-	if isIdempotent {
-		maxAttempts = c.RetryConfig.MaxRetries + 1
+	// MaxRetries is a TOTAL attempt count. Re-validate here (not just in
+	// WithRetryConfig) because RetryConfig is publicly mutable after client
+	// construction.
+	maxAttempts, err := c.RetryConfig.effectiveMaxAttempts()
+	if err != nil {
+		return nil, err
+	}
+	if !isIdempotent {
+		maxAttempts = 1
 	}
 
 	var lastResp *http.Response

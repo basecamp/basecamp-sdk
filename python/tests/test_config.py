@@ -62,6 +62,16 @@ class TestValidation:
         c = Config(max_retries=0)
         assert c.max_retries == 0
 
+    def test_max_retries_fractional_raises(self):
+        # A non-integer would make the total-attempt bound fractional
+        # (e.g. 0.5 → zero requests), so it must be rejected at construction.
+        with pytest.raises(ValueError, match="max_retries must be an integer"):
+            Config(max_retries=0.5)
+
+    def test_max_retries_bool_raises(self):
+        with pytest.raises(ValueError, match="max_retries must be an integer"):
+            Config(max_retries=True)
+
 
 class TestHttpsEnforcement:
     def test_http_non_localhost_raises(self):

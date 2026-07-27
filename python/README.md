@@ -76,7 +76,7 @@ asyncio.run(main())
 |----------|-------------|---------|
 | `BASECAMP_BASE_URL` | API base URL | `https://3.basecampapi.com` |
 | `BASECAMP_TIMEOUT` | Request timeout (seconds) | `30` |
-| `BASECAMP_MAX_RETRIES` | Maximum retries (up to N+1 total attempts) | `3` |
+| `BASECAMP_MAX_RETRIES` | Total attempts including the initial request | `3` |
 
 ### Programmatic Configuration
 
@@ -455,7 +455,7 @@ The SDK automatically retries failed requests with exponential backoff:
 - **401 responses** - Token refresh attempted, then single retry for all methods (regardless of idempotency)
 - **Backoff** - Exponential with jitter (`base_delay * 2^(attempt-1) + random() * max_jitter`)
 - **Retry-After** - Respected for 429 responses (overrides calculated backoff)
-- **Max retries** - Controlled by `config.max_retries` (default: 3 retries, up to 4 total attempts including the initial request)
+- **Max retries** - Controlled by `config.max_retries` (a total attempt count including the initial request; default: 3 attempts. `0` means a single request with no retry)
 
 ## Observability
 

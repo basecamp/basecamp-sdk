@@ -6,7 +6,9 @@ import httpx
 import pytest
 import respx
 
+from basecamp._async_http import AsyncHttpClient
 from basecamp._http import HttpClient
+from basecamp.async_auth import AsyncBearerAuth, AsyncStaticTokenProvider
 from basecamp.auth import BearerAuth, StaticTokenProvider
 from basecamp.config import Config
 from basecamp.errors import (
@@ -140,6 +142,68 @@ class TestRetryBehavior:
         with pytest.raises(ApiError):
             client.post("/test", json_body={"x": 1})
         assert route.call_count == 1
+
+
+def make_async_client(max_retries=3, base_delay=0.001, max_jitter=0.0, timeout=30.0):
+    config = Config(
+        base_url="https://3.basecampapi.com",
+        max_retries=max_retries,
+        base_delay=base_delay,
+        max_jitter=max_jitter,
+        timeout=timeout,
+    )
+    auth = AsyncBearerAuth(AsyncStaticTokenProvider("test-token"))
+    return AsyncHttpClient(config, auth, BasecampHooks())
+
+
+class TestTotalAttemptSemantics:
+    """max_retries is a TOTAL attempt count (including the initial request), not
+    the number of retries after the first attempt. 3 → 3 attempts, 0 → a single
+    attempt with no retry. Sync and async transports must agree."""
+
+    @pytest.mark.parametrize(
+        "max_retries,want_attempts",
+        [(0, 1), (1, 1), (3, 3)],
+    )
+    @respx.mock
+    def test_sync_attempt_count(self, max_retries, want_attempts):
+        route = respx.get("https://3.basecampapi.com/test").mock(return_value=httpx.Response(503))
+        client = make_client(max_retries=max_retries)
+        with pytest.raises(ApiError):
+            client.get("/test")
+        assert route.call_count == want_attempts
+
+    @pytest.mark.parametrize(
+        "max_retries,want_attempts",
+        [(0, 1), (1, 1), (3, 3)],
+    )
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_attempt_count(self, max_retries, want_attempts):
+        route = respx.get("https://3.basecampapi.com/test").mock(return_value=httpx.Response(503))
+        client = make_async_client(max_retries=max_retries)
+        with pytest.raises(ApiError):
+            await client.get("/test")
+        assert route.call_count == want_attempts
+
+    @respx.mock
+    def test_sync_succeeds_on_final_allowed_attempt(self):
+        # 3 attempts: two 503s then a 200 — the success on the last allowed
+        # attempt proves the loop makes exactly max_retries attempts.
+        route = respx.get("https://3.basecampapi.com/test")
+        route.side_effect = [
+            httpx.Response(503),
+            httpx.Response(503),
+            httpx.Response(200, json={"ok": True}),
+        ]
+        client = make_client(max_retries=3)
+        resp = client.get("/test")
+        assert resp.status_code == 200
+        assert route.call_count == 3
+
+    def test_negative_max_retries_rejected_at_construction(self):
+        with pytest.raises(ValueError):
+            Config(base_url="https://3.basecampapi.com", max_retries=-1)
 
 
 class TestNetworkErrors:
