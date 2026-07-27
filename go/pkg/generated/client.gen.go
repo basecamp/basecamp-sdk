@@ -2230,9 +2230,18 @@ type SearchResult struct {
 	// projection. A given result is one recording type, so it carries only
 	// the array matching its rich-text attribute (`content_attachments` for a
 	// Comment/Message, `description_attachments` for a Todo); a webhook-sourced
-	// result carries neither. Optional (no `@required`), non-nullable. Distinct
-	// from the generic `attachments` key (the recording's aggregate downloadable
-	// files), which is a separate projection concern and not modeled here.
+	// result carries neither. Optional (no `@required`), non-nullable.
+	//
+	// Search results additionally repeat this same array under a generic
+	// `attachments` key. It is a redundant projection, not a distinct
+	// aggregate: `searches/show.json.jbuilder` emits
+	// `recording.downloadable_attachments`, which delegates to the recordable's
+	// sole `rich_text_content`, through the same `attachments/_attachment`
+	// partial that `recordings/_rich_text.json.jbuilder` uses to build the
+	// companion array. `RichText.rich_text_attribute` permits exactly one
+	// rich-text attribute per model, so the two keys always carry identical
+	// elements. Modeling `attachments` would duplicate the field, so it is
+	// deliberately not modeled.
 	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
 	CreatedAt          time.Time            `json:"created_at,omitempty"`
 	Creator            Person               `json:"creator,omitempty"`

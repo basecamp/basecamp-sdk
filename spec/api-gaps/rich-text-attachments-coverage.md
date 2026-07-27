@@ -90,9 +90,23 @@ SDK decodes now carries its companion array, reusing `RichTextAttachment` +
 
 **Explicitly out of scope (not "absorbed" — accurate status per item):**
 
-- **Generic `attachments` key on SearchResult** (`searches/show:25`): the
-  recording's aggregate downloadable files, a *different* projection concern, not
-  a rich-text companion array. Not modeled; tracked in #428.
+- **Generic `attachments` key on SearchResult** (`searches/show:25`):
+  **deliberately not modeled — it is a redundant projection of the companion
+  array, not a distinct aggregate.** (Corrected: an earlier version of this
+  entry called it "the recording's aggregate downloadable files, a *different*
+  projection concern". That was wrong, and #428 — filed on that premise — is
+  closed as a result.) Verified against bc3 `c308693171`:
+  `searches/show.json.jbuilder:25` emits
+  `recording.downloadable_attachments` through the `attachments/_attachment`
+  partial; `Recording::Attachables` delegates `downloadable_attachments` to
+  `attachable_rich_text_content`, i.e. `recordable.rich_text_content`; and
+  `recordings/_rich_text.json.jbuilder:3` builds the companion array from
+  `rich_text&.downloadable_attachments` through that *same* partial. Since
+  `RichText.rich_text_attribute` registers exactly one attribute per model
+  (`RichText::ATTRIBUTES[model_name.name] = attribute_name`, and a second call
+  raises `NotImplementedError`), the two keys always carry identical elements.
+  Modeling `attachments` would duplicate `content_attachments` /
+  `description_attachments` under a second name.
 - **everything/aggregates endpoints** (`everything/*`, which also render full
   partials): **unmodeled in the SDK** — no decode path exists to carry an array
   into. Covered by the separate `everything-aggregates.md` gap
