@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T07:34:03Z
+# Generated: 2026-07-27T08:24:49Z
 
 require "json"
 require "time"
@@ -3829,7 +3829,7 @@ module Basecamp
           "all_day" => @all_day,
           "ends_at" => @ends_at,
           "starts_at" => @starts_at,
-        }.compact
+        }.reject { |k, v| v.nil? && !["ends_at", "starts_at"].include?(k) }
       end
 
       def to_json(*args)
