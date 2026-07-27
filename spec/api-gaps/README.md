@@ -57,6 +57,9 @@ making the absorption journey publicly auditable.
 | [rich-text-attachments-coverage](rich-text-attachments-coverage.md) | absorbed-in-sdk | n/a | medium |
 | [visible-to-clients-on-creates](visible-to-clients-on-creates.md) | absorbed-in-sdk | post-train | medium |
 | [external-links-doors](external-links-doors.md) | addressed-in-bc3-pr-12375 | post-train | low |
+| [my-bookmarks](my-bookmarks.md) | addressed-in-bc3-pr-12383 | master | medium |
+| [my-drafts](my-drafts.md) | addressed-in-bc3-pr-12381 | master | medium |
+| [my-assignments-priorities](my-assignments-priorities.md) | addressed-in-bc3-pr-12380 | master | medium |
 | [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | addressed-in-bc3-pr-12386 | post-train | low |
 | [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 
@@ -71,13 +74,29 @@ making the absorption journey publicly auditable.
 > classification record (Stacks — renamed Folders in the product — are
 > web-only on both `four` and `master`).
 >
-> Provenance pin advanced to `ca1d34bc` (2026-07-24) as part of absorbing the
-> create-time `visible_to_clients` contract. The single commit past #403's
-> `338b7a11` pin — bc3 #12398 ("Disable Vips support for Matlib files":
-> `config/initializers/vips.rb`, its loader-policy test, and `bin/test-in-container`)
-> — is a reviewed no-op for the SDK: an image-loader security policy and a
-> container test script, with no route, controller, doc, or modeled API contract
-> change.
+> Provenance pin advanced to `c3086931` (2026-07-26). The earlier
+> `ca1d34bc..d7bc88da` sub-range — 30 commits — is a reviewed no-op for the SDK:
+> **26** UI/CSS/JS/lexxy commits (including their PR merge commits
+> #12208/#12399/#12400/#12401); the **3** duplicate-cookie migration code commits
+> (`88cb86d2a`, `52f1e9974`, `7d86f1d06`) that touch only
+> `app/controllers/concerns/authenticate/by_cookie.rb` (a session-cookie concern)
+> and its test; and the **1** merge commit of the cookie PR (#12335, `d7bc88da`).
+> The `d7bc88da..640389c2` step is a **single** commit — BC3 **#12383** ("Add My
+> Bookmarks JSON API", `640389c2`) — a real, net-new API surface (paginated
+> `GET /my/bookmarks.json` plus `GET`/`POST`(201)/`DELETE`(204)
+> `/recordings/{id}/bookmark.json`, the two mutations idempotent), registered in
+> [`my-bookmarks.md`](my-bookmarks.md). The final `640389c2..c3086931` step is
+> **two** net-new API commits, both registered (not absorbed here):
+> BC3 **#12381** ("Add My Drafts API", `123b2320`) — paginated
+> `GET /my/drafts.json` returning a flat draft envelope across the user's active
+> projects — in [`my-drafts.md`](my-drafts.md); and BC3 **#12380** ("My Tasks:
+> harden Up Next reorder and document the assignment API", `c3086931`) — the
+> Up Next priority-management writes `POST /my/priorities.json`,
+> `DELETE /my/priorities/{id}.json`, and `POST /my/priority_moves.json` (all
+> `204`, the reorder with a documented 400/422/404 error contract) — in
+> [`my-assignments-priorities.md`](my-assignments-priorities.md). SDK absorption
+> of all three is tracked as follow-ups. The pin **date advances** to 2026-07-26,
+> so the SDK spec/API version bumps with this sync.
 
 The detector also maintains [`allowlist.yml`](allowlist.yml) for routes
 classified as not-an-API-resource or absorbed under another entry. Allowlist
