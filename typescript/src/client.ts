@@ -76,16 +76,16 @@ import { AuthorizationService } from "./services/authorization.js";
 export type { paths };
 
 /**
- * Raw client type from openapi-fetch.
- * Use this when you need direct access to GET/POST/PUT/DELETE methods.
- */
-/**
  * Largest delay `AbortSignal.timeout` schedules faithfully: Node's timers are
  * backed by a signed 32-bit int, and anything above this is clamped to 1ms with
  * a TimeoutOverflowWarning rather than honored.
  */
 const MAX_TIMEOUT_MS = 2_147_483_647;
 
+/**
+ * Raw client type from openapi-fetch.
+ * Use this when you need direct access to GET/POST/PUT/DELETE methods.
+ */
 export type RawClient = ReturnType<typeof createClient<paths>>;
 
 /**

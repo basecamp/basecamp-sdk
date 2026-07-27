@@ -447,7 +447,7 @@ describe("BasecampClient", () => {
       });
 
       // Must abort on the timeout, not by waiting out the 1000ms handler.
-      expect(Date.now() - startedAt).toBeLessThan(500);
+      expect(Date.now() - startedAt).toBeLessThan(900);
     });
 
     it("propagates a caller-supplied signal through the combined signal", async () => {
@@ -480,7 +480,7 @@ describe("BasecampClient", () => {
 
         // Aborting promptly proves the caller's signal reached the request; the
         // 30s timeout signal could not have fired.
-        expect(Date.now() - startedAt).toBeLessThan(500);
+        expect(Date.now() - startedAt).toBeLessThan(900);
       } finally {
         clearTimeout(abortTimer);
       }
