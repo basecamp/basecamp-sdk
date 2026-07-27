@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import keyword
+import re
 import sys
 from pathlib import Path
 
@@ -17,6 +18,22 @@ from gen_common import escape_py_string  # noqa: E402
 
 # Python keywords that can't be used as field names in TypedDicts
 PYTHON_KEYWORDS = set(keyword.kwlist)
+
+
+def quote_schema_refs(py_type: str, schema_names: set[str]) -> str:
+    """Quote whole-word schema-name identifiers in a type annotation as forward
+    references, leaving qualifiers (NotRequired, Optional, list) and builtins
+    (str, int, bool, Any, None) bare. Used only for functional-syntax TypedDicts,
+    where the value expressions are evaluated eagerly: the qualifier must stay
+    live so required/optional keys resolve correctly, while a schema defined later
+    in the file must be deferred to avoid NameError.
+    """
+
+    def repl(m: re.Match) -> str:
+        tok = m.group(0)
+        return f'"{tok}"' if tok in schema_names else tok
+
+    return re.sub(r"[A-Za-z_][A-Za-z0-9_]*", repl, py_type)
 
 
 def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> str:
@@ -105,6 +122,7 @@ def main() -> None:
     lines.append("")
 
     # Sort schemas alphabetically for deterministic output
+    schema_names = set(schemas)
     generated_count = 0
     for name in sorted(schemas):
         schema = schemas[name]
@@ -137,14 +155,15 @@ def main() -> None:
                 if prop.get("deprecated"):
                     reason = escape_py_string(prop.get("x-deprecated-reason") or "deprecated")
                     lines.append(f"    # deprecated (source-only): {reason}")
-                # Value types are string-quoted forward references: the functional
-                # TypedDict evaluates its dict values eagerly, so referencing a
-                # schema defined later in the file (alphabetical order) would raise
-                # NameError. Quoting defers resolution, matching class-based
-                # annotations under `from __future__ import annotations`.
-                lines.append(f'    "{prop_name}": "{py_type}",')
+                # Forward-reference only the schema-name identifiers (types defined
+                # later in the file), leaving NotRequired/list/Optional and builtins
+                # bare so the functional TypedDict still SEES the NotRequired
+                # qualifier at construction time — otherwise every field lands in
+                # __required_keys__ and none in __optional_keys__, breaking runtime
+                # introspection. E.g. NotRequired[TodoBucket] -> NotRequired["TodoBucket"].
+                lines.append(f'    "{prop_name}": {quote_schema_refs(py_type, schema_names)},')
                 if "FlexibleInt64" in str(prop.get("x-go-type", "")):
-                    lines.append('    "system_label": "NotRequired[str]",')
+                    lines.append('    "system_label": NotRequired[str],')
             lines.append("})")
             generated_count += 1
             continue
