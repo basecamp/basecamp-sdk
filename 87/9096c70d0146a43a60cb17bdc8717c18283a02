@@ -119,6 +119,7 @@ ruby/lib/basecamp/generated/types.rb
   s_8d633484dc870e::t_1e26001466cfd6 3590,3595
   s_8d633484dc870e::t_f8d78f7dd036fa 9
   s_8d633484dc870e::t_8f6e226e5b9c08 4,6,8,10
+  s_8d633484dc870e::t_4bbef54e03f220 5
 kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/TimelineEvent.kt
   s_8d633484dc870e::t_234d34679797bc 26,29
   s_8d633484dc870e::t_5512a011cbb15c 27-28
@@ -160,6 +161,7 @@ ruby/lib/basecamp/generated/metadata.json
   s_8d633484dc870e::t_a27a89589ed0c9 1202-1215
   s_8d633484dc870e::t_7fe4cdc1561b8b 1216-1217
   s_8d633484dc870e::t_8f6e226e5b9c08 4,6,8,10
+  s_8d633484dc870e::t_4bbef54e03f220 5
 conformance/tests/live-my-surface.json
   s_20c69161b1ea93::t_533a99da0ce4f8 2-3
   s_8d633484dc870e::t_6c4cd0e0958846 4-14
