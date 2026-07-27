@@ -1342,8 +1342,9 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `provenance-check` | Embedded provenance matches `spec/api-provenance.json` |
 | `sync-spec-version-check` | Smithy service version matches the shared date in `spec/api-provenance.json` |
 | `sync-api-version-check` | `API_VERSION` constants match `openapi.json` `info.version` across all SDKs |
+| `url-routes-check` | `go/pkg/basecamp/url-routes.json` (embedded via `//go:embed`) matches regeneration from `openapi.json` |
 | `go-check-drift` | Go generated services match current OpenAPI spec |
-| `kt-check-drift` | Kotlin generated services match current OpenAPI spec |
+| `kt-check-drift` | Kotlin generated services match current OpenAPI spec (operation-level coverage) |
 | `go-check` | Go: lint + test |
 | `ts-check` | TypeScript: typecheck + test |
 | `rb-check` | Ruby: test + rubocop |
@@ -1351,14 +1352,15 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `swift-check` | Swift: build + test |
 | `conformance` | All conformance test categories pass with documented waivers (go, kotlin, typescript, ruby runners) |
 
-Full dependency chain: `check: sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check go-check-drift kt-check-drift go-check ts-check rb-check kt-check swift-check conformance`
+Representative dependency chain (see the Makefile `check:` line for the authoritative, complete list): `check: … sync-api-version-check url-routes-check go-check-drift … kt-check-drift … go-check ts-check rb-check kt-check swift-check py-check conformance …`
+
+Regenerate-and-diff freshness gates now exist for all six SDKs' generated output. Five run inside `make check` — `check-go-generated-drift.sh`, `check-typescript-service-drift.sh`, `check-ruby-service-drift.sh`, `check-python-service-drift.sh`, and `check-swift-service-drift.sh` (via `swift-check-drift`). The sixth, Kotlin's `kt-check-generated-drift`, is a heavier Gradle/JVM run kept out of the default `make check` and exercised as its own target plus the `test-kotlin` CI job; the fast, coverage-only `kt-check-drift` remains in `make check`.
 
 ### Advisory (not in `make check` today)
 
 | Target | Status |
 |--------|--------|
-| `url-routes-check` | Exists as Makefile target but not wired into `check` |
-| TS/Ruby/Swift drift checks | Not yet implemented (only Go and Kotlin have them) |
+| `kt-check-generated-drift` | Kotlin regenerate-and-diff freshness gate; runs as a standalone target and in the `test-kotlin` CI job (kept out of default `make check` to avoid JVM/Gradle startup latency) |
 | `audit-check` | Defined in the Makefile convention (external governance reference in `basecamp/sdk` `MAKEFILE-CONVENTION.md`) but no target exists in this repo's Makefile |
 
 ---
