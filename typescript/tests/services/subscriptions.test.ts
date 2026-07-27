@@ -2,7 +2,7 @@
  * Tests for the SubscriptionsService class (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - This service performs no client-side validation; the API validates
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -170,6 +170,5 @@ describe("SubscriptionsService", () => {
       expect(subscription.count).toBe(2);
     });
 
-    // Note: Client-side validation removed - generated services let API validate
   });
 });

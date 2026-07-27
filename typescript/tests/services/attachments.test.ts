@@ -3,7 +3,7 @@
  *
  * Note: Generated services are spec-conformant:
  * - create() signature: create(data, contentType, name) - not create({ filename, contentType, data })
- * - No client-side validation (API validates)
+ * - This service performs no client-side validation; the API validates
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -83,7 +83,6 @@ describe("AttachmentsService", () => {
       expect(capturedContentType).toBe("image/png");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
 
     it("should work with ArrayBuffer data", async () => {
       server.use(

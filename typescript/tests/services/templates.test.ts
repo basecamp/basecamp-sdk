@@ -2,7 +2,8 @@
  * Tests for the TemplatesService (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - Client-side checks: create() rejects a missing name, createProject() rejects a
+ *   missing project; the API validates the rest
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -112,7 +113,13 @@ describe("TemplatesService", () => {
       expect(template.name).toBe("New Template");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing name", async () => {
+      await expect(
+        client.templates.create({ name: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Name is required" });
+    });
   });
 
   describe("update", () => {
@@ -139,7 +146,6 @@ describe("TemplatesService", () => {
       expect(template.name).toBe("Updated Template");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
   });
 
   describe("delete", () => {
@@ -184,7 +190,13 @@ describe("TemplatesService", () => {
       expect(construction.status).toBe("pending");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing project", async () => {
+      await expect(
+        client.templates.createProject(1, { project: undefined as never })
+      ).rejects.toMatchObject({ code: "validation", message: "Project is required" });
+    });
   });
 
   describe("getConstruction", () => {

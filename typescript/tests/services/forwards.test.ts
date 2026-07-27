@@ -2,7 +2,7 @@
  * Tests for the ForwardsService class (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - Client-side check: createReply() rejects missing content; the API validates the rest
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -215,6 +215,12 @@ describe("ForwardsService", () => {
       expect(reply.content).toBe("<p>New reply content</p>");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects missing content", async () => {
+      await expect(
+        client.forwards.createReply(1, { content: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Content is required" });
+    });
   });
 });

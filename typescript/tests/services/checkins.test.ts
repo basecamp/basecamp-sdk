@@ -2,13 +2,24 @@
  * Tests for the CheckinsService (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - Client-side checks: required fields on createQuestion (title, schedule),
+ *   createAnswer and updateAnswer (content), plus a YYYY-MM-DD format check on
+ *   groupOn. Everything else the API validates.
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup.js";
 import { createBasecampClient, type BasecampClient } from "../../src/client.js";
 import { BasecampError } from "../../src/errors.js";
+
+// Minimal valid QuestionSchedule, so the createQuestion validation tests vary
+// only the field under test.
+const SCHEDULE = {
+  frequency: "every_day",
+  days: [1, 2, 3, 4, 5],
+  hour: 16,
+  minute: 0,
+} as never;
 
 const BASE_URL = "https://3.basecampapi.com/12345";
 
@@ -195,7 +206,16 @@ describe("CheckinsService", () => {
       expect(question.title).toBe("What are your blockers?");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects createQuestion with a missing title or schedule", async () => {
+      await expect(
+        client.checkins.createQuestion(1, { title: "", schedule: SCHEDULE })
+      ).rejects.toMatchObject({ code: "validation", message: "Title is required" });
+      await expect(
+        client.checkins.createQuestion(1, { title: "Standup", schedule: undefined as never })
+      ).rejects.toMatchObject({ code: "validation", message: "Schedule is required" });
+    });
   });
 
   describe("updateQuestion", () => {
@@ -361,7 +381,16 @@ describe("CheckinsService", () => {
       expect(answer.content).toBe("<p>Finished the feature!</p>");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects createAnswer with missing content or a malformed groupOn", async () => {
+      await expect(
+        client.checkins.createAnswer(1, { content: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Content is required" });
+      await expect(
+        client.checkins.createAnswer(1, { content: "Done", groupOn: "03/15/2026" })
+      ).rejects.toMatchObject({ code: "validation", message: "Group on must be in YYYY-MM-DD format" });
+    });
   });
 
   describe("updateAnswer", () => {
@@ -398,6 +427,15 @@ describe("CheckinsService", () => {
       expect(receivedBody!.group_on).toBe("2025-03-01");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects updateAnswer with missing content or a malformed groupOn", async () => {
+      await expect(
+        client.checkins.updateAnswer(50, { content: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Content is required" });
+      await expect(
+        client.checkins.updateAnswer(50, { content: "Done", groupOn: "2026-3-1" })
+      ).rejects.toMatchObject({ code: "validation", message: "Group on must be in YYYY-MM-DD format" });
+    });
   });
 });

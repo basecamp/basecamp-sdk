@@ -3,7 +3,7 @@
  *
  * Note: Generated services are spec-conformant:
  * - No domain-specific trash() method (use recordings.trash() instead)
- * - No client-side validation (API validates)
+ * - Client-side check: create() rejects a missing attachableSgid; the API validates the rest
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -193,7 +193,13 @@ describe("UploadsService", () => {
       expect(capturedBody?.base_name).toBe("custom-name");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing attachableSgid", async () => {
+      await expect(
+        service.create(1001, { attachableSgid: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Attachable sgid is required" });
+    });
   });
 
   describe("update", () => {

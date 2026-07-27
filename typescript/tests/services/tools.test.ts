@@ -4,6 +4,8 @@
  * Note: Generated services are spec-conformant:
  * - update() and reposition() take request objects, not bare params
  * - Request fields follow the generated OpenAPI shapes
+ * - Client-side checks: create() rejects a missing toolType, update() rejects a
+ *   missing title; the API validates the rest
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -175,7 +177,13 @@ describe("ToolsService", () => {
       expect(tool.title).toBe("Sprint Backlog");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing title", async () => {
+      await expect(
+        client.tools.update(1, { title: "" })
+      ).rejects.toMatchObject({ code: "validation", message: "Title is required" });
+    });
   });
 
   describe("delete", () => {
@@ -247,6 +255,5 @@ describe("ToolsService", () => {
       ).resolves.toBeUndefined();
     });
 
-    // Note: Client-side validation removed - generated services let API validate
   });
 });

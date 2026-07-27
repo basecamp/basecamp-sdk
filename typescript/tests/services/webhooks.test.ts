@@ -2,7 +2,7 @@
  * Tests for the WebhooksService class (generated from OpenAPI spec)
  *
  * Note: Generated services are spec-conformant:
- * - No client-side validation (API validates)
+ * - Client-side checks: create() rejects a missing payloadUrl or types; the API validates the rest
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -207,7 +207,16 @@ describe("WebhooksService", () => {
       expect(webhook.payload_url).toBe("https://example.com/new-webhook");
     });
 
-    // Note: Client-side validation removed - generated services let API validate
+    // Client-side validation short-circuits before any HTTP call. No MSW handler
+    // is registered here, so a leaked request fails via onUnhandledRequest: "error".
+    it("rejects a missing payloadUrl or types", async () => {
+      await expect(
+        client.webhooks.create(1, { payloadUrl: "", types: ["Todo"] })
+      ).rejects.toMatchObject({ code: "validation", message: "Payload url is required" });
+      await expect(
+        client.webhooks.create(1, { payloadUrl: "https://example.com/hook", types: undefined as never })
+      ).rejects.toMatchObject({ code: "validation", message: "Types is required" });
+    });
   });
 
   describe("update", () => {
