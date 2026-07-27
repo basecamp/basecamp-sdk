@@ -1,0 +1,42 @@
+go/pkg/basecamp/recordings.go
+  s_8d633484dc870e::t_a13b9946c6e6a2 99-101
+AGENTS.md
+  s_8d633484dc870e::t_46eb942fd57246 34
+  s_8d633484dc870e::t_f9a5dbfa205302 9-13
+python/src/basecamp/generated/services/_base.py
+  s_8d633484dc870e::t_dff28c711d419c 106-110
+scripts/enhance-openapi-go-types.sh
+  s_8d633484dc870e::t_1a4c8b169bc93d 352-355
+python/src/basecamp/generated/services/_async_base.py
+  s_8d633484dc870e::t_72293ecaf494c3 99-103
+go.work.sum
+  s_8d633484dc870e::t_749206084ab0ac 82
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_e55ebabeca7af1 2016-2018
+openapi.json
+  s_8d633484dc870e::t_d10716a3dbab1d 27798-27799
+ruby/lib/basecamp/generated/metadata.json
+  s_8d633484dc870e::t_5cee96ebb00be4 4
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_81d436b0e5ba1d 4
+typescript/src/generated/metadata.ts
+  s_8d633484dc870e::t_9c31647c29ab8f 40
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_f20e7a7331ec26 25319-25320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4efed287b4c3bbb04a49e560d88c094da676ae87",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
