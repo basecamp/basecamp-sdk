@@ -1,0 +1,22 @@
+conformance/runner/typescript/live-dispatch.ts
+  s_8d633484dc870e::t_af6eb9de205720 113-116
+go/pkg/basecamp/recordings_test.go
+  s_8d633484dc870e::t_d252ea5cd0b8fe 376-402,404
+  s_8d633484dc870e::t_13132553cf6af6 342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "07fef7fb8819434618c6370ca4008d1e5f8fe4ef",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
