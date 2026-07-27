@@ -39,7 +39,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
       - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v6.9.9
         # zizmor: ignore[cache-poisoning] -- cached deps are for testing, not release artifact generation
         with:
           go-version-file: 'go/go.mod'
