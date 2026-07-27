@@ -163,6 +163,22 @@ targets:
     pointer: "/description_attachments/0"
     schema: RichTextAttachment
 
+  # Gauge is a docked tool: bc3 app/views/api/gauges/_gauge.json.jbuilder renders
+  # the base recordings/recording partial (no commentable/boostable), then — only
+  # when `gauge.any_needles?` — the rich-text partial for the last needle plus
+  # enabled/last_needle_*/previous_needle_position. The fixture is the
+  # has-needles variant so the optional description_attachments array is present.
+  - id: gauge-get
+    fixture: gauges/get.json
+    pointer: ""
+    schema: Gauge
+  # gauges/needles/_needle.json.jbuilder renders the base partial WITH
+  # commentable + boostable, then rich text, color, and position.
+  - id: gauge-needle-get
+    fixture: gauges/needle_get.json
+    pointer: ""
+    schema: GaugeNeedle
+
 covered_schemas:
   Comment: [comment-get]
   Message: [message-get]
@@ -181,20 +197,10 @@ covered_schemas:
   Todo: [todo-get]
   SearchResult: [search-result-0]
   RichTextAttachment: [richtext-comment-0, richtext-upload-0]
+  Gauge: [gauge-get]
+  GaugeNeedle: [gauge-needle-get]
 
 excluded_schemas:
-  Gauge:
-    reason: >-
-      No shared JSON fixture. Gauge is exercised only inline in
-      go/pkg/basecamp/gauges_test.go, so its optional non-nullable
-      description_attachments array has no manifest'd representative.
-    issue: 429
-  GaugeNeedle:
-    reason: >-
-      No shared JSON fixture (same Gauge inline-only situation). GaugeNeedle
-      carries a @required description_attachments array not represented in any
-      shared fixture.
-    issue: 429
   TimelineAttachment:
     reason: >-
       No shared JSON fixture. TimelineAttachment is the optional-field superset
