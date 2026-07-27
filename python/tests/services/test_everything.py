@@ -345,6 +345,9 @@ class TestEverythingOverdueFeeds:
         assert result[0]["type"] == "Todo"
         assert result[0]["due_on"] == "2024-01-01"
         assert result[0]["due_on"] < result[1]["due_on"]
+        # No X-Total-Count header on this unpaginated feed: total_count must fall
+        # back to the array length (not the parser's 0 sentinel).
+        assert result.meta.total_count == 2
 
     @respx.mock
     def test_overdue_cards_returns_oldest_first_bare_array(self):

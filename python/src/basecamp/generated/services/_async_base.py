@@ -97,10 +97,13 @@ class AsyncBaseService:
             items = response.json()
             _normalize_person_ids(items)
             # Unpaginated feeds return the whole collection at once and often omit
-            # X-Total-Count. When the header is absent the returned array *is* the
-            # complete set, so the true total is its length — don't report None.
-            total_count = parse_total_count(dict(response.headers))
-            if total_count is None:
+            # X-Total-Count. parse_total_count returns 0 (not None) for a missing
+            # header, so detect header presence directly: when it is absent the
+            # returned array *is* the complete set, and its length is the true total.
+            headers = dict(response.headers)
+            if any(k.lower() == "x-total-count" for k in headers):
+                total_count = parse_total_count(headers)
+            else:
                 total_count = len(items)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
