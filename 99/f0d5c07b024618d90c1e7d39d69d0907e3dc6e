@@ -1,0 +1,21 @@
+typescript/src/index.ts
+  s_8d633484dc870e::t_2cb15465e71a12 353
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_2a471b6152851c 4,3778
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "99f0d5c07b024618d90c1e7d39d69d0907e3dc6e",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
