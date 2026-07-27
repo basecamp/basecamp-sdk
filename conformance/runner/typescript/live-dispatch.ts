@@ -81,6 +81,32 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     },
   },
 
+  ListRecordings: {
+    fixtures: [],
+    call: async (ctx) => {
+      // Backs the type=Door external-links canary; validates the door shape
+      // (external url + service + description) against the Recording schema.
+      //
+      // maxItems caps pagination: without it, requestPaginated would follow every
+      // Link page for an account with many Door recordings — potentially a large
+      // number of credentialed requests and an oversized snapshot. A handful of
+      // rows is plenty to validate the Recording (Door) schema.
+      const result = await ctx.client.recordings.list("Door", { maxItems: 5 });
+      return { resolvedIds: {}, result };
+    },
+  },
+
+  GetProgressReport: {
+    fixtures: [],
+    call: async (ctx) => {
+      // maxItems caps pagination: the progress feed can be very long on an
+      // active account, and requestPaginated would otherwise follow every Link
+      // page. A small sample is enough to validate the TimelineEvent schema.
+      const result = await ctx.client.reports.progress({ maxItems: 5 });
+      return { resolvedIds: {}, result };
+    },
+  },
+
   GetBubbleUps: {
     fixtures: [],
     call: async (ctx) => {

@@ -1,7 +1,10 @@
 package basecamp
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -268,6 +271,7 @@ func TestRecordingType_Constants(t *testing.T) {
 	}{
 		{RecordingTypeComment, "Comment"},
 		{RecordingTypeDocument, "Document"},
+		{RecordingTypeDoor, "Door"},
 		{RecordingTypeKanbanCard, "Kanban::Card"},
 		{RecordingTypeKanbanStep, "Kanban::Step"},
 		{RecordingTypeMessage, "Message"},
@@ -283,6 +287,126 @@ func TestRecordingType_Constants(t *testing.T) {
 		if string(tc.typ) != tc.expected {
 			t.Errorf("RecordingType %v: expected %q, got %q", tc.typ, tc.expected, string(tc.typ))
 		}
+	}
+}
+
+// TestRecording_UnmarshalDoor verifies that a type=Door recording (external
+// link) decodes with the full door shape — the outside url, the service struct,
+// the description, and the position. The fixture is driven through the real
+// RecordingsService.List pipeline (generated decode -> recordingFromGenerated)
+// so it fails if the generated Door fields or the converter assignments regress,
+// not merely if the hand-written Recording type can decode the JSON.
+func TestRecording_UnmarshalDoor(t *testing.T) {
+	data := `[
+		{
+			"id": 1069480290,
+			"status": "active",
+			"visible_to_clients": false,
+			"created_at": "2026-07-22T15:51:54.872Z",
+			"updated_at": "2026-07-22T15:51:54.886Z",
+			"title": "Design system",
+			"inherits_status": true,
+			"type": "Door",
+			"url": "https://www.figma.com/file/abc123/Design-system",
+			"app_url": "https://3.basecampapi.com/195539477/buckets/2085958504/dock/doors/1069480290",
+			"position": 8,
+			"bucket": {"id": 2085958504, "name": "The Leto Laptop", "type": "Project"},
+			"creator": {"id": 1049715913, "name": "Victor Cooper"},
+			"service": {
+				"name": "Figma",
+				"example_url": "https://www.figma.com/file/aGVsbG8gZmlnbWEgZmlsZQ",
+				"code": "figma",
+				"valid_patterns": ["(.*?\\.)?figma\\.com(\\/.*)?"],
+				"supporting_text": "a file or project on Figma"
+			},
+			"description": "<div>Shared Figma workspace</div>"
+		}
+	]`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/99999/projects/recordings.json" {
+			t.Errorf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("type"); got != "Door" {
+			t.Errorf("expected type=Door query, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(data))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	result, err := client.ForAccount("99999").Recordings().List(context.Background(), RecordingTypeDoor, nil)
+	if err != nil {
+		t.Fatalf("List(Door) failed: %v", err)
+	}
+	if len(result.Recordings) != 1 {
+		t.Fatalf("expected 1 recording, got %d", len(result.Recordings))
+	}
+	d := result.Recordings[0]
+	if d.Type != "Door" {
+		t.Errorf("expected type Door, got %q", d.Type)
+	}
+	if d.URL != "https://www.figma.com/file/abc123/Design-system" {
+		t.Errorf("expected external url, got %q", d.URL)
+	}
+	if d.Position != 8 {
+		t.Errorf("expected position 8, got %d", d.Position)
+	}
+	if d.Description != "<div>Shared Figma workspace</div>" {
+		t.Errorf("unexpected description: %q", d.Description)
+	}
+	if d.Service == nil {
+		t.Fatal("expected service struct to be non-nil for a Door")
+	}
+	if d.Service.Name != "Figma" || d.Service.Code != "figma" {
+		t.Errorf("unexpected service name/code: %q/%q", d.Service.Name, d.Service.Code)
+	}
+	if len(d.Service.ValidPatterns) != 1 || d.Service.ValidPatterns[0] == "" {
+		t.Errorf("expected 1 valid_pattern, got %v", d.Service.ValidPatterns)
+	}
+	if d.Service.SupportingText != "a file or project on Figma" {
+		t.Errorf("unexpected supporting_text: %q", d.Service.SupportingText)
+	}
+}
+
+// TestRecording_ListNonDoorOmitsDoorFields verifies a non-door recording, driven
+// through the real RecordingsService.List pipeline (generated decode ->
+// recordingFromGenerated), leaves the door-specific fields empty. Routing it
+// through List (rather than a direct unmarshal) exercises the same converter
+// path production uses, so it would catch a regression that wrongly populated
+// the door fields for a non-door type.
+func TestRecording_ListNonDoorOmitsDoorFields(t *testing.T) {
+	data := `[{"id": 1, "type": "Message", "title": "Hi", "url": "https://x/1.json"}]`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("type"); got != "Message" {
+			t.Errorf("expected type=Message query, got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(data))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	client := NewClient(cfg, &StaticTokenProvider{Token: "test-token"})
+	result, err := client.ForAccount("99999").Recordings().List(context.Background(), RecordingTypeMessage, nil)
+	if err != nil {
+		t.Fatalf("List(Message) failed: %v", err)
+	}
+	if len(result.Recordings) != 1 {
+		t.Fatalf("expected 1 recording, got %d", len(result.Recordings))
+	}
+	r := result.Recordings[0]
+	if r.Service != nil {
+		t.Errorf("expected nil service for non-door, got %+v", r.Service)
+	}
+	if r.Description != "" || r.Position != 0 {
+		t.Errorf("expected empty door fields, got description=%q position=%d", r.Description, r.Position)
 	}
 }
 

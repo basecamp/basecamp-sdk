@@ -584,6 +584,14 @@ class Document(TypedDict):
     visible_to_clients: bool
 
 
+class DoorService(TypedDict):
+    code: NotRequired[str]
+    example_url: NotRequired[str]
+    name: NotRequired[str]
+    supporting_text: NotRequired[str]
+    valid_patterns: NotRequired[list[str]]
+
+
 class EnableOutOfOfficeRequestContent(TypedDict):
     out_of_office: OutOfOfficePayload
 
@@ -1174,10 +1182,13 @@ class Recording(TypedDict):
     content_attachments: NotRequired[list[RichTextAttachment]]
     created_at: str
     creator: Person
+    description: NotRequired[str]
     description_attachments: NotRequired[list[RichTextAttachment]]
     id: int
     inherits_status: bool
-    parent: RecordingParent
+    parent: NotRequired[RecordingParent]
+    position: NotRequired[int]
+    service: NotRequired[DoorService]
     status: str
     subscription_url: NotRequired[str]
     title: str

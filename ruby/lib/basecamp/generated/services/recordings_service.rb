@@ -8,7 +8,7 @@ module Basecamp
     class RecordingsService < BaseService
 
       # List recordings of a given type across projects
-      # @param type [String] Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
+      # @param type [String] Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault
       # @param bucket [String, nil] bucket
       # @param status [String, nil] active|archived|trashed
       # @param sort [String, nil] created_at|updated_at

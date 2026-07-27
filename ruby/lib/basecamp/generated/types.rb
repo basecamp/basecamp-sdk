@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T08:07:39Z
+# Generated: 2026-07-27T08:13:10Z
 
 require "json"
 require "time"
@@ -1261,6 +1261,34 @@ module Basecamp
           "content" => @content,
           "position" => @position,
           "subscription_url" => @subscription_url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # DoorService
+    class DoorService
+      include TypeHelpers
+      attr_accessor :code, :example_url, :name, :supporting_text, :valid_patterns
+
+      def initialize(data = {})
+        @code = data["code"]
+        @example_url = data["example_url"]
+        @name = data["name"]
+        @supporting_text = data["supporting_text"]
+        @valid_patterns = data["valid_patterns"]
+      end
+
+      def to_h
+        {
+          "code" => @code,
+          "example_url" => @example_url,
+          "name" => @name,
+          "supporting_text" => @supporting_text,
+          "valid_patterns" => @valid_patterns,
         }.compact
       end
 
@@ -2900,11 +2928,11 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :content_attachments, :description_attachments, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :parent, :position, :service, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator id inherits_status parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bucket created_at creator id inherits_status status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
@@ -2914,7 +2942,6 @@ module Basecamp
         @creator = parse_type(data["creator"], "Person")
         @id = parse_integer(data["id"])
         @inherits_status = parse_boolean(data["inherits_status"])
-        @parent = parse_type(data["parent"], "RecordingParent")
         @status = data["status"]
         @title = data["title"]
         @type = data["type"]
@@ -2926,7 +2953,11 @@ module Basecamp
         @comments_url = data["comments_url"]
         @content = data["content"]
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
+        @description = data["description"]
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
+        @parent = parse_type(data["parent"], "RecordingParent")
+        @position = parse_integer(data["position"])
+        @service = parse_type(data["service"], "DoorService")
         @subscription_url = data["subscription_url"]
       end
 
@@ -2938,7 +2969,6 @@ module Basecamp
           "creator" => @creator,
           "id" => @id,
           "inherits_status" => @inherits_status,
-          "parent" => @parent,
           "status" => @status,
           "title" => @title,
           "type" => @type,
@@ -2950,7 +2980,11 @@ module Basecamp
           "comments_url" => @comments_url,
           "content" => @content,
           "content_attachments" => @content_attachments,
+          "description" => @description,
           "description_attachments" => @description_attachments,
+          "parent" => @parent,
+          "position" => @position,
+          "service" => @service,
           "subscription_url" => @subscription_url,
         }.compact
       end

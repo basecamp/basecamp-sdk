@@ -10253,10 +10253,10 @@
           {
             "name": "type",
             "in": "query",
-            "description": "Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault",
+            "description": "Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault",
             "schema": {
               "type": "string",
-              "description": "Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault"
+              "description": "Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault"
             },
             "required": true,
             "examples": {
@@ -23844,6 +23844,30 @@
           "visible_to_clients"
         ]
       },
+      "DoorService": {
+        "type": "object",
+        "description": "Metadata describing the recognized external service backing an external link\n(`Door` recording): its display name, a canonical example URL, a short code,\nthe URL patterns Basecamp recognizes for it, and human supporting text. `code`\nis `other` for a generic link.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "example_url": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "valid_patterns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supporting_text": {
+            "type": "string"
+          }
+        }
+      },
       "EnableCardColumnOnHoldResponseContent": {
         "$ref": "#/components/schemas/CardColumn"
       },
@@ -26591,7 +26615,8 @@
             "type": "string"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "API URL of the recording. Exception: in the `type=Door` (external-link)\nprojection, `url` is the door's **external destination address** (e.g. the\nFigma/Dropbox URL) and `app_url` is the Basecamp redirector — see the\ndoor-specific `service`/`description` fields below."
           },
           "app_url": {
             "type": "string"
@@ -26626,6 +26651,18 @@
           "subscription_url": {
             "type": "string"
           },
+          "position": {
+            "type": "integer",
+            "description": "Ordinal position within the project's External links section. Present on\n`Door` (external-link) recordings.",
+            "format": "int32"
+          },
+          "description": {
+            "type": "string",
+            "description": "Rich-text (HTML) description shown beneath an external link. Present only\non `Door` recordings returned by the `type=Door` recordings query (the only\nendpoint that returns the full door shape). The external destination\naddress is `url` (not this field); `app_url` is the Basecamp redirector.\nSee `spec/api-gaps/external-links-doors.md`."
+          },
+          "service": {
+            "$ref": "#/components/schemas/DoorService"
+          },
           "parent": {
             "$ref": "#/components/schemas/RecordingParent"
           },
@@ -26643,7 +26680,6 @@
           "creator",
           "id",
           "inherits_status",
-          "parent",
           "status",
           "title",
           "type",

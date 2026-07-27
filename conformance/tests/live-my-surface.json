@@ -182,5 +182,19 @@
       { "type": "liveCallSucceeds" },
       { "type": "liveSchemaValidate" }
     ]
+  },
+  {
+    "mode": "live",
+    "name": "ListRecordings type=Door decodes the external-link (door) shape",
+    "description": "DECODING coverage for the absorbed external-links/doors list surface (spec/api-gaps/external-links-doors.md, bc3 #12375). Drives the type=Door recordings query and validates each recording against the Recording schema, including the door-specific url/service/description/position fields. Live-dormant: validates statically until credentials are provisioned. Create/image/composite remain residual gaps (see the entry).",
+    "operation": "ListRecordings",
+    "method": "GET",
+    "path": "/projects/recordings.json",
+    "queryParams": { "type": "Door" },
+    "tags": ["live", "read-only", "bc5-additive"],
+    "liveAssertions": [
+      { "type": "liveCallSucceeds" },
+      { "type": "liveSchemaValidate" }
+    ]
   }
 ]

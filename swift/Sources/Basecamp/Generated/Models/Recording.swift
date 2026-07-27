@@ -8,7 +8,6 @@ public struct Recording: Codable, Sendable {
     public let creator: Person
     public let id: Int
     public let inheritsStatus: Bool
-    public let parent: RecordingParent
     public let status: String
     public let title: String
     public let type: String
@@ -20,7 +19,11 @@ public struct Recording: Codable, Sendable {
     public var commentsUrl: String?
     public var content: String?
     public var contentAttachments: [RichTextAttachment]?
+    public var description: String?
     public var descriptionAttachments: [RichTextAttachment]?
+    public var parent: RecordingParent?
+    public var position: Int32?
+    public var service: DoorService?
     public var subscriptionUrl: String?
 
     public init(
@@ -30,7 +33,6 @@ public struct Recording: Codable, Sendable {
         creator: Person,
         id: Int,
         inheritsStatus: Bool,
-        parent: RecordingParent,
         status: String,
         title: String,
         type: String,
@@ -42,7 +44,11 @@ public struct Recording: Codable, Sendable {
         commentsUrl: String? = nil,
         content: String? = nil,
         contentAttachments: [RichTextAttachment]? = nil,
+        description: String? = nil,
         descriptionAttachments: [RichTextAttachment]? = nil,
+        parent: RecordingParent? = nil,
+        position: Int32? = nil,
+        service: DoorService? = nil,
         subscriptionUrl: String? = nil
     ) {
         self.appUrl = appUrl
@@ -51,7 +57,6 @@ public struct Recording: Codable, Sendable {
         self.creator = creator
         self.id = id
         self.inheritsStatus = inheritsStatus
-        self.parent = parent
         self.status = status
         self.title = title
         self.type = type
@@ -63,7 +68,11 @@ public struct Recording: Codable, Sendable {
         self.commentsUrl = commentsUrl
         self.content = content
         self.contentAttachments = contentAttachments
+        self.description = description
         self.descriptionAttachments = descriptionAttachments
+        self.parent = parent
+        self.position = position
+        self.service = service
         self.subscriptionUrl = subscriptionUrl
     }
 }

@@ -17,6 +17,7 @@ type RecordingType string
 const (
 	RecordingTypeComment        RecordingType = "Comment"
 	RecordingTypeDocument       RecordingType = "Document"
+	RecordingTypeDoor           RecordingType = "Door"
 	RecordingTypeKanbanCard     RecordingType = "Kanban::Card"
 	RecordingTypeKanbanStep     RecordingType = "Kanban::Step"
 	RecordingTypeMessage        RecordingType = "Message"
@@ -61,9 +62,28 @@ type Recording struct {
 	CommentsCount          int                   `json:"comments_count,omitempty"`
 	CommentsURL            string                `json:"comments_url,omitempty"`
 	SubscriptionURL        string                `json:"subscription_url,omitempty"`
-	Parent                 *Parent               `json:"parent,omitempty"`
-	Bucket                 *Bucket               `json:"bucket,omitempty"`
-	Creator                *Person               `json:"creator,omitempty"`
+	// Position, Description, and Service are door-specific (external-link)
+	// fields, populated only on Door recordings returned by the type=Door
+	// recordings query (the only endpoint that returns the full door shape).
+	// See spec/api-gaps/external-links-doors.md.
+	Position    int32        `json:"position,omitempty"`
+	Description string       `json:"description,omitempty"`
+	Service     *DoorService `json:"service,omitempty"`
+	Parent      *Parent      `json:"parent,omitempty"`
+	Bucket      *Bucket      `json:"bucket,omitempty"`
+	Creator     *Person      `json:"creator,omitempty"`
+}
+
+// DoorService describes the recognized external service backing an external
+// link (Door recording): its display name, a canonical example URL, a short
+// code (or "other" for a generic link), the URL patterns Basecamp recognizes,
+// and human supporting text.
+type DoorService struct {
+	Name           string   `json:"name,omitempty"`
+	ExampleURL     string   `json:"example_url,omitempty"`
+	Code           string   `json:"code,omitempty"`
+	ValidPatterns  []string `json:"valid_patterns,omitempty"`
+	SupportingText string   `json:"supporting_text,omitempty"`
 }
 
 // DefaultRecordingLimit is the default number of recordings to return when no limit is specified.
@@ -424,6 +444,20 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 
 	r.ContentAttachments = richTextAttachmentsPtrFromGenerated(gr.ContentAttachments)
 	r.DescriptionAttachments = richTextAttachmentsPtrFromGenerated(gr.DescriptionAttachments)
+
+	// Door-specific fields (populated only for type=Door recordings).
+	r.Position = gr.Position
+	r.Description = gr.Description
+	if gr.Service.Name != "" || gr.Service.Code != "" || gr.Service.ExampleUrl != "" ||
+		gr.Service.SupportingText != "" || len(gr.Service.ValidPatterns) > 0 {
+		r.Service = &DoorService{
+			Name:           gr.Service.Name,
+			ExampleURL:     gr.Service.ExampleUrl,
+			Code:           gr.Service.Code,
+			ValidPatterns:  append([]string(nil), gr.Service.ValidPatterns...),
+			SupportingText: gr.Service.SupportingText,
+		}
+	}
 
 	return r
 }

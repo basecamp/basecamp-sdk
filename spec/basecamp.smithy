@@ -6220,7 +6220,7 @@ structure EventDetails {
 
 // ===== Recording Shapes =====
 
-@documentation("Comment|Document|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault")
+@documentation("Comment|Document|Door|Kanban::Card|Kanban::Step|Message|Question::Answer|Schedule::Entry|Todo|Todolist|Upload|Vault")
 string RecordingType
 
 @documentation("active|archived|trashed")
@@ -6253,6 +6253,10 @@ structure Recording {
   inherits_status: Boolean
   @required
   type: String
+  /// API URL of the recording. Exception: in the `type=Door` (external-link)
+  /// projection, `url` is the door's **external destination address** (e.g. the
+  /// Figma/Dropbox URL) and `app_url` is the Basecamp redirector — see the
+  /// door-specific `service`/`description` fields below.
   @required
   url: String
   @required
@@ -6272,12 +6276,42 @@ structure Recording {
   comments_count: Integer
   comments_url: String
   subscription_url: String
-  @required
+
+  /// Ordinal position within the project's External links section. Present on
+  /// `Door` (external-link) recordings.
+  position: Integer
+
+  /// Rich-text (HTML) description shown beneath an external link. Present only
+  /// on `Door` recordings returned by the `type=Door` recordings query (the only
+  /// endpoint that returns the full door shape). The external destination
+  /// address is `url` (not this field); `app_url` is the Basecamp redirector.
+  /// See `spec/api-gaps/external-links-doors.md`.
+  description: String
+
+  /// Metadata about the recognized external service the link's `url` points to
+  /// (Figma, Dropbox, GitHub, …). Present only on `Door` recordings.
+  service: DoorService
+
+  /// Parent container of the recording. Optional because `Door` (external-link)
+  /// recordings have no parent recording — the `type=Door` projection omits it,
+  /// so a strict decoder must tolerate its absence.
   parent: RecordingParent
   @required
   bucket: RecordingBucket
   @required
   creator: Person
+}
+
+/// Metadata describing the recognized external service backing an external link
+/// (`Door` recording): its display name, a canonical example URL, a short code,
+/// the URL patterns Basecamp recognizes for it, and human supporting text. `code`
+/// is `other` for a generic link.
+structure DoorService {
+  name: String
+  example_url: String
+  code: String
+  valid_patterns: StringList
+  supporting_text: String
 }
 
 // =============================================================================
