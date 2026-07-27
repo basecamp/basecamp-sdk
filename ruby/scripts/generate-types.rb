@@ -87,6 +87,33 @@ def generate_helpers
   HELPERS
 end
 
+# Renders a deprecation +reason+ as one or more Ruby comment lines (#406).
+#
+# A reason can be sourced from a multi-line OpenAPI description. Interpolating
+# one into a single "# @deprecated ..." line would leave every continuation on a
+# bare, un-commented source line, which is a syntax error in the generated
+# types.rb — Ruby is the only owned generator exposed this way (Python escapes
+# the reason, Kotlin/TypeScript emit block comments). Splitting on line
+# boundaries and prefixing each line with the comment leader keeps the output
+# valid for any reason.
+#
+# +indent+ is the leading source indentation; +tag_prefix+ is inserted between
+# the "# " leader and the YARD tag (the per-attribute site nests its tag under
+# an @!attribute directive). Continuation lines are indented two columns past
+# the tag so YARD folds them into the same tag's text.
+#
+# Single-line reasons render byte-identically to the previous single-line
+# interpolation, so this is output-neutral for the current spec.
+def deprecation_doc_lines(reason, indent:, tag_prefix: '')
+  lines = reason.to_s.split(/\r?\n/, -1)
+  out = [ "#{indent}# #{tag_prefix}@deprecated #{lines.first}" ]
+  continuation = "#{indent}# #{tag_prefix}  "
+  lines.drop(1).each do |line|
+    out << (line.empty? ? "#{indent}#" : "#{continuation}#{line}")
+  end
+  out
+end
+
 # Main execution
 if __FILE__ == $PROGRAM_NAME
   openapi_path = ARGV[0] || File.expand_path('../../openapi.json', __dir__)
@@ -128,7 +155,7 @@ if __FILE__ == $PROGRAM_NAME
     # not individual params, so a class-level @deprecated tag documents a wholly
     # deprecated type.
     if schema['deprecated']
-      puts "    # @deprecated #{schema['x-deprecated-reason'] || 'deprecated'}"
+      puts deprecation_doc_lines(schema['x-deprecated-reason'] || 'deprecated', indent: '    ')
     end
     puts "    class #{name}"
     puts '      include TypeHelpers'
@@ -147,7 +174,7 @@ if __FILE__ == $PROGRAM_NAME
 
       ruby_name = k.gsub(/([A-Z])/, '_\1').downcase.gsub(/^_/, '')
       puts "      # @!attribute [rw] #{ruby_name}"
-      puts "      #   @deprecated #{ps['x-deprecated-reason'] || 'deprecated'}"
+      puts deprecation_doc_lines(ps['x-deprecated-reason'] || 'deprecated', indent: '      ', tag_prefix: '  ')
     end
 
     puts "      attr_accessor #{attr_names.map { |n| ":#{n}" }.join(", ")}"
