@@ -1,0 +1,58 @@
+go/pkg/basecamp/generated_retry_test.go
+  s_4b0e7357e2c0fe::t_776ccc72a7b819 122-127,130-148,153,155,157-158,160-161
+  s_4b0e7357e2c0fe::t_2a50019465d853 5,8,15-20
+  s_4b0e7357e2c0fe::t_16e3abd8efb2e3 21
+  s_4b0e7357e2c0fe::t_a8c5f657f18465 109-113
+  s_4b0e7357e2c0fe::t_48fbfecce77e9a 1-4,6-7,9-14,22-108,114-121,128-129,149-152,154,156,159,162-163
+go/pkg/basecamp/client_retry_finalattempt_test.go
+  s_4b0e7357e2c0fe::t_3a9751500f4e12 1-54
+python/src/basecamp/_http.py
+  s_4b0e7357e2c0fe::t_155e5f82995f54 191-192
+  s_4b0e7357e2c0fe::t_7198db737e69b2 149-152,158,177
+python/tests/test_http.py
+  s_4b0e7357e2c0fe::t_507789ee85bc4f 147-154,156-208
+  s_4b0e7357e2c0fe::t_e40cbf2418f09a 9
+  s_4b0e7357e2c0fe::t_37123c89be2454 155
+  s_4b0e7357e2c0fe::t_bae85816b8677e 11
+python/src/basecamp/config.py
+  s_4b0e7357e2c0fe::t_cbfe487a1ff21e 38-42
+go/pkg/generated/client.gen.go
+  s_4b0e7357e2c0fe::t_d956c9fb60699d 3822-3827,3915-3933,3935,3938-3940,3970-3978
+ruby/lib/basecamp/http.rb
+  s_4b0e7357e2c0fe::t_2e53185efd7882 380-381
+python/src/basecamp/_async_http.py
+  s_4b0e7357e2c0fe::t_56c2b61aa4522a 149-152,158
+  s_4b0e7357e2c0fe::t_357aed2f7ecf13 191-192
+  s_4b0e7357e2c0fe::t_64dae4bb699e64 177
+go/pkg/basecamp/client.go
+  s_4b0e7357e2c0fe::t_92161a24065fbb 656-662
+  s_4b0e7357e2c0fe::t_92ea28885385c8 677-681
+go/templates/client.tmpl
+  s_4b0e7357e2c0fe::t_2ab159f015e62f 108-126,128,131-133
+  s_4b0e7357e2c0fe::t_9c718615c9a728 163-171
+  s_4b0e7357e2c0fe::t_a21f4a531d0a59 15-20
+python/README.md
+  s_4b0e7357e2c0fe::t_49c155e43cbe7f 458
+  s_4b0e7357e2c0fe::t_3c1a5dbb504377 79
+SPEC.md
+  s_4b0e7357e2c0fe::t_eaecbe8b1851c8 131-133
+  s_4b0e7357e2c0fe::t_13661b58a31ba2 130
+python/tests/test_config.py
+  s_4b0e7357e2c0fe::t_131c9fe36d76fd 65-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0dd8303bbf025c3d8c7e7abf2fe9b2ed1062d266",
+  "prompts": {},
+  "sessions": {
+    "s_4b0e7357e2c0fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5919a1e2-b689-433b-b4e7-dc3c8266a5d9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
