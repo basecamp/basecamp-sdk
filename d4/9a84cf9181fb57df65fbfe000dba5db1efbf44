@@ -1,0 +1,29 @@
+CONTRIBUTING.md
+  s_4df49d42d6c9e3::t_a14b5c58b7c85f 12
+typescript/tests/client.test.ts
+  s_4df49d42d6c9e3::t_a14b5c58b7c85f 429,450,456,483
+typescript/src/client.ts
+  s_4df49d42d6c9e3::t_a14b5c58b7c85f 272-282
+conformance/runner/typescript/package.json
+  s_4df49d42d6c9e3::t_a14b5c58b7c85f 6
+package.json
+  s_4df49d42d6c9e3::t_a14b5c58b7c85f 7
+conformance/runner/typescript/package-lock.json
+  s_4df49d42d6c9e3::t_18d05e9e726c19 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d49a84cf9181fb57df65fbfe000dba5db1efbf44",
+  "prompts": {},
+  "sessions": {
+    "s_4df49d42d6c9e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8432f7a9-be4e-4dec-8f6f-9306ed534d9a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
