@@ -16,5 +16,5 @@ data class Boost(
     @SerialName("created_at") val createdAt: String,
     val content: String? = null,
     val booster: Person? = null,
-    val recording: BoostRecording? = null
+    val recording: RecordingParent? = null
 )

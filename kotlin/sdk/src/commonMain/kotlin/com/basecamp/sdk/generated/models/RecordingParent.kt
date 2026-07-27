@@ -16,5 +16,6 @@ data class RecordingParent(
     val title: String,
     val type: String,
     val url: String,
-    @SerialName("app_url") val appUrl: String
+    @SerialName("app_url") val appUrl: String,
+    val bucket: RecordingBucket? = null
 )

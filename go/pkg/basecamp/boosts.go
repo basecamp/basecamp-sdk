@@ -20,21 +20,10 @@ type Boost struct {
 	CreatedAt time.Time `json:"created_at"`
 	Booster   *Person   `json:"booster,omitempty"`
 	// Recording is the boosted recording on the feeds that embed it — my/boosts
-	// and the account-wide everything/boosts. It is a compact projection carrying
-	// the recording identity plus its bucket for project context. Absent on the
-	// per-recording boosts list.
-	Recording *BoostRecording `json:"recording,omitempty"`
-}
-
-// BoostRecording is the boosted recording as embedded in the boosts feeds: the
-// compact identity fields plus the bucket for project context.
-type BoostRecording struct {
-	ID     int64   `json:"id,omitempty"`
-	Title  string  `json:"title,omitempty"`
-	Type   string  `json:"type,omitempty"`
-	URL    string  `json:"url,omitempty"`
-	AppURL string  `json:"app_url,omitempty"`
-	Bucket *Bucket `json:"bucket,omitempty"`
+	// and the account-wide everything/boosts. It reuses the shared Parent
+	// projection, whose optional Bucket carries the project context for those
+	// feeds. Absent on the per-recording boosts list.
+	Recording *Parent `json:"recording,omitempty"`
 }
 
 // BoostListOptions specifies options for listing boosts.
@@ -384,7 +373,7 @@ func boostFromGenerated(gb generated.Boost) Boost {
 	}
 
 	if gb.Recording.Id != 0 || gb.Recording.Title != "" {
-		rec := BoostRecording{
+		rec := Parent{
 			ID:     gb.Recording.Id,
 			Title:  gb.Recording.Title,
 			Type:   gb.Recording.Type,

@@ -2954,6 +2954,10 @@ structure RecordingParent {
   url: String
   @required
   app_url: String
+  // Optional project context. Absent for a recording's `parent` reference (same
+  // bucket as the recording); populated when a boost feed embeds the boosted
+  // recording (my/boosts, everything/boosts) so callers can identify its project.
+  bucket: RecordingBucket
 }
 
 // ===== Message Shapes (Batch 1) =====
@@ -8229,27 +8233,11 @@ structure Boost {
   created_at: ISO8601Timestamp
   booster: Person
   // The boosted recording on the feeds that embed it (my/boosts,
-  // everything/boosts); absent on the per-recording boosts list. A dedicated
-  // compact projection: the RecordingParent identity fields PLUS `bucket`, so an
-  // account-wide boost keeps its project context without forcing strict decoders
-  // to require the full Recording's dozen-plus fields on a compact projection.
-  recording: BoostRecording
-}
-
-/// The boosted recording as embedded in the boosts feeds: the compact
-/// RecordingParent identity fields plus the `bucket` for project context.
-structure BoostRecording {
-  @required
-  id: Long
-  @required
-  title: String
-  @required
-  type: String
-  @required
-  url: String
-  @required
-  app_url: String
-  bucket: RecordingBucket
+  // everything/boosts); absent on the per-recording boosts list. Kept as the
+  // shared RecordingParent (unchanged public type) so this additive coverage
+  // does not break existing Boost callers; RecordingParent now carries an
+  // optional `bucket` so an account-wide boost keeps its project context.
+  recording: RecordingParent
 }
 
 // =============================================================================

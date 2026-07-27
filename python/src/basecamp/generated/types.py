@@ -75,16 +75,7 @@ class Boost(TypedDict):
     content: NotRequired[str]
     created_at: str
     id: int
-    recording: NotRequired[BoostRecording]
-
-
-class BoostRecording(TypedDict):
-    app_url: str
-    bucket: NotRequired[RecordingBucket]
-    id: int
-    title: str
-    type: str
-    url: str
+    recording: NotRequired[RecordingParent]
 
 
 class Campfire(TypedDict):
@@ -1250,6 +1241,7 @@ class RecordingBucket(TypedDict):
 
 class RecordingParent(TypedDict):
     app_url: str
+    bucket: NotRequired[RecordingBucket]
     id: int
     title: str
     type: str

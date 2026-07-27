@@ -7,18 +7,21 @@ public struct RecordingParent: Codable, Sendable {
     public let title: String
     public let type: String
     public let url: String
+    public var bucket: RecordingBucket?
 
     public init(
         appUrl: String,
         id: Int,
         title: String,
         type: String,
-        url: String
+        url: String,
+        bucket: RecordingBucket? = nil
     ) {
         self.appUrl = appUrl
         self.id = id
         self.title = title
         self.type = type
         self.url = url
+        self.bucket = bucket
     }
 }

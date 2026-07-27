@@ -117,6 +117,10 @@ type Parent struct {
 	Type   string `json:"type"`
 	URL    string `json:"url"`
 	AppURL string `json:"app_url"`
+	// Bucket is optional project context: nil for a recording's parent reference
+	// (same bucket as the recording), populated when a boost feed embeds the
+	// boosted recording (my/boosts, everything/boosts).
+	Bucket *Bucket `json:"bucket,omitempty"`
 }
 
 // Bucket represents the project (bucket) containing a todo.

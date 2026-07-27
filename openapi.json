@@ -22553,45 +22553,12 @@
             "$ref": "#/components/schemas/Person"
           },
           "recording": {
-            "$ref": "#/components/schemas/BoostRecording"
+            "$ref": "#/components/schemas/RecordingParent"
           }
         },
         "required": [
           "created_at",
           "id"
-        ]
-      },
-      "BoostRecording": {
-        "type": "object",
-        "description": "The boosted recording as embedded in the boosts feeds: the compact\nRecordingParent identity fields plus the `bucket` for project context.",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "title": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "app_url": {
-            "type": "string"
-          },
-          "bucket": {
-            "$ref": "#/components/schemas/RecordingBucket"
-          }
-        },
-        "required": [
-          "app_url",
-          "id",
-          "title",
-          "type",
-          "url"
         ]
       },
       "Campfire": {
@@ -27781,6 +27748,9 @@
           },
           "app_url": {
             "type": "string"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/RecordingBucket"
           }
         },
         "required": [

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-26T21:50:17Z
+# Generated: 2026-07-27T01:09:54Z
 
 require "json"
 require "time"
@@ -270,7 +270,7 @@ module Basecamp
         @id = parse_integer(data["id"])
         @booster = parse_type(data["booster"], "Person")
         @content = data["content"]
-        @recording = parse_type(data["recording"], "BoostRecording")
+        @recording = parse_type(data["recording"], "RecordingParent")
       end
 
       def to_h
@@ -280,41 +280,6 @@ module Basecamp
           "booster" => @booster,
           "content" => @content,
           "recording" => @recording,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # BoostRecording
-    class BoostRecording
-      include TypeHelpers
-      attr_accessor :app_url, :id, :title, :type, :url, :bucket
-
-      # @return [Array<Symbol>]
-      def self.required_fields
-        %i[app_url id title type url].freeze
-      end
-
-      def initialize(data = {})
-        @app_url = data["app_url"]
-        @id = parse_integer(data["id"])
-        @title = data["title"]
-        @type = data["type"]
-        @url = data["url"]
-        @bucket = parse_type(data["bucket"], "RecordingBucket")
-      end
-
-      def to_h
-        {
-          "app_url" => @app_url,
-          "id" => @id,
-          "title" => @title,
-          "type" => @type,
-          "url" => @url,
-          "bucket" => @bucket,
         }.compact
       end
 
@@ -3143,7 +3108,7 @@ module Basecamp
     # RecordingParent
     class RecordingParent
       include TypeHelpers
-      attr_accessor :app_url, :id, :title, :type, :url
+      attr_accessor :app_url, :id, :title, :type, :url, :bucket
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3156,6 +3121,7 @@ module Basecamp
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
+        @bucket = parse_type(data["bucket"], "RecordingBucket")
       end
 
       def to_h
@@ -3165,6 +3131,7 @@ module Basecamp
           "title" => @title,
           "type" => @type,
           "url" => @url,
+          "bucket" => @bucket,
         }.compact
       end
 
