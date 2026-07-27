@@ -1,0 +1,62 @@
+typescript/tests/services/everything.test.ts
+  s_8d633484dc870e::t_8c4fc74a734181 237-242
+  s_8d633484dc870e::t_5cfdc43ca42d77 264-265,267
+  s_8d633484dc870e::t_195be2fc43b345 263,266,268
+swift/Sources/Basecamp/Generated/Models/BoostRecording.swift
+  s_8d633484dc870e::t_27db88d47791d6 1-27
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Boost.kt
+  s_8d633484dc870e::t_27db88d47791d6 19
+go/pkg/basecamp/everything_test.go
+  s_8d633484dc870e::t_35b36c54b273a5 274-306
+python/src/basecamp/generated/types.py
+  s_8d633484dc870e::t_27db88d47791d6 78-87
+typescript/src/generated/schema.d.ts
+  s_8d633484dc870e::t_27db88d47791d6 2858-2871
+python/tests/services/test_everything.py
+  s_8d633484dc870e::t_444090cf24e8eb 187-192
+  s_8d633484dc870e::t_d47520fc5ce535 325-328
+typescript/src/generated/openapi-stripped.json
+  s_8d633484dc870e::t_27db88d47791d6 20032,20040-20070
+  s_8d633484dc870e::t_0dca7feb63f448 20071-20072
+go/pkg/basecamp/boosts.go
+  s_8d633484dc870e::t_f732cbe4f9c908 397
+  s_8d633484dc870e::t_7c36589dedd60c 22-37
+  s_8d633484dc870e::t_0add979086394e 387,394-396
+go/pkg/generated/client.gen.go
+  s_8d633484dc870e::t_17654f48834d58 133-136
+  s_8d633484dc870e::t_27db88d47791d6 137-151
+swift/Sources/Basecamp/Generated/Models/Boost.swift
+  s_8d633484dc870e::t_27db88d47791d6 9,16
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_8d633484dc870e::t_e55c17a9bf0e04 1093-1123
+  s_8d633484dc870e::t_c6cea39bb667ef 1126-1133
+  s_8d633484dc870e::t_7f5748b5e552b8 1137
+  s_8d633484dc870e::t_b8e5e4b77d5d7d 1124-1125
+  s_8d633484dc870e::t_bb0971fb79299e 1134-1136
+ruby/lib/basecamp/generated/types.rb
+  s_8d633484dc870e::t_27db88d47791d6 4,273,291-317,319,323
+  s_8d633484dc870e::t_9973736643f2e9 318,320-322,324-325
+openapi.json
+  s_8d633484dc870e::t_27db88d47791d6 22511,22519-22549
+  s_8d633484dc870e::t_65dd390c96a88d 22550-22551
+spec/basecamp.smithy
+  s_8d633484dc870e::t_e80bceba683ad5 8212-8233
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/BoostRecording.kt
+  s_8d633484dc870e::t_27db88d47791d6 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d1cfb71fe2e4a918f0f3acf47c45c66fa4c59223",
+  "prompts": {},
+  "sessions": {
+    "s_8d633484dc870e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4052bd49-3f11-461f-9cd9-d20e1314433d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
