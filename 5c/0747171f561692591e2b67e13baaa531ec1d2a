@@ -1,0 +1,19 @@
+.github/workflows/dependabot-sync-actions-comments.yml
+  s_7cd130483cb0ba::t_a56c82521d1df7 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5c0747171f561692591e2b67e13baaa531ec1d2a",
+  "prompts": {},
+  "sessions": {
+    "s_7cd130483cb0ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e70042f8-3788-4966-bca1-06b7839d136b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
