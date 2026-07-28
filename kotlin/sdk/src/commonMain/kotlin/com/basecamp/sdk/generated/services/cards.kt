@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class CardsService(client: AccountClient) : BaseService(client) {
+open class CardsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a card by ID
@@ -37,7 +37,7 @@ class CardsService(client: AccountClient) : BaseService(client) {
      * @param cardId The card ID
      * @param body Request body
      */
-    suspend fun update(cardId: Long, body: UpdateCardBody): Card {
+    suspend fun updateVerbatim(cardId: Long, body: UpdateCardBody): Card {
         val info = OperationInfo(
             service = "Cards",
             operation = "UpdateCard",

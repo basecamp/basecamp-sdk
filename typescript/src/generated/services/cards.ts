@@ -18,9 +18,9 @@ import { Errors } from "../../errors.js";
 export type Card = components["schemas"]["Card"];
 
 /**
- * Request parameters for update.
+ * Request parameters for updateVerbatim.
  */
-export interface UpdateCardRequest {
+export interface UpdateVerbatimCardRequest {
   /** Title */
   title?: string;
   /** Text content */
@@ -110,10 +110,10 @@ export class CardsService extends BaseService {
    *
    * @example
    * ```ts
-   * const result = await client.cards.update(123, { });
+   * const result = await client.cards.updateVerbatim(123, { });
    * ```
    */
-  async update(cardId: number, req: UpdateCardRequest): Promise<Card> {
+  async updateVerbatim(cardId: number, req: UpdateVerbatimCardRequest): Promise<Card> {
     if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
       throw Errors.validation("Due on must be in YYYY-MM-DD format");
     }

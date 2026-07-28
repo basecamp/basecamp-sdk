@@ -1551,11 +1551,16 @@ func (s *CardsService) Create{{.Suffix}}(ctx context.Context{{genParamArgs $path
 }
 {{end}}{{end}}
 {{else if eq $opid "UpdateCard"}}
-func (s *CardsService) UpdateWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
+{{/* The plain Update name belongs to the merge-safe composite in
+     pkg/basecamp/cards.go. BC3's kanban/cards_controller.rb builds
+     card_update_params as `{ due_on: nil }.merge(card_params)`, so a sparse
+     verbatim PUT silently erases the due date (#467). The raw single-PUT path
+     stays reachable under a name that says what it does. */}}
+func (s *CardsService) UpdateVerbatimWithBody(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, contentType string, body io.Reader, reqEditors... RequestEditorFn) (*http.Response, error) {
 	return s.client.{{$opid}}WithBody(ctx{{genParamNames .PathParams}}{{if $hasParams}}, params{{end}}, contentType, body, reqEditors...)
 }
 {{range .Bodies}}{{if .IsSupportedByClient}}
-func (s *CardsService) Update{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
+func (s *CardsService) UpdateVerbatim{{.Suffix}}(ctx context.Context{{genParamArgs $pathParams}}{{if $hasParams}}, params *{{$opid}}Params{{end}}, body {{$opid}}{{.NameTag}}RequestBody, reqEditors... RequestEditorFn) (*http.Response, error) {
 	return s.client.{{$opid}}{{.Suffix}}(ctx{{genParamNames $pathParams}}{{if $hasParams}}, params{{end}}, body, reqEditors...)
 }
 {{end}}{{end}}
