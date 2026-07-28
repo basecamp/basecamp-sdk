@@ -1,0 +1,25 @@
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_434b1bce769790 963-1006
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_11e01464f368ac 674-680,689-692
+  s_86d0793371d0f3::t_c49c0ba9e970d5 693
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_434b1bce769790 287-292,299-302
+  s_86d0793371d0f3::t_020a688905ac3f 303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0af01a40189515294aeabb500733d3b80f351f1b",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
