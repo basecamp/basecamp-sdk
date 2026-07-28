@@ -878,6 +878,22 @@ class TestPollDeviceToken:
         assert now["t"] <= 20
 
 
+class TestPollDeviceTokenExact200:
+    @respx.mock
+    @pytest.mark.parametrize("status", [201, 202])
+    def test_non_200_success_is_terminal(self, status):
+        # RFC 8628/6749 token responses are exactly 200 (SPEC §16): a
+        # nonstandard 2xx carrying an access_token must not complete polling.
+        _queue_token_responses([httpx.Response(status, json=TOKEN_RESPONSE)])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == status
+
+
 class TestPerformDeviceLogin:
     @respx.mock
     def test_capability_guard_no_device_grant_is_unavailable_and_does_not_poll(self):

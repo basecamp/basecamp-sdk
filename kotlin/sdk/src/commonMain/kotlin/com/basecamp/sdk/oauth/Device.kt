@@ -447,7 +447,11 @@ private suspend fun postDeviceTokenPoll(
     // it carries authorization_pending/slow_down and other OAuth errors.
     val body = readBoundedText(response, MAX_DEVICE_BODY_BYTES)
 
-    if (status in 200..299) {
+    // Exactly HTTP 200, not any 2xx: RFC 8628/6749 token responses are 200, and
+    // SPEC §16 pins the contract. A nonstandard 201/202 carrying an access_token
+    // must not prematurely complete polling — it falls through to the OAuth-error
+    // path below and terminates as api_error (http_<status>).
+    if (status == 200) {
         val raw = try {
             deviceJson.decodeFromString<RawDeviceTokenResponse>(body)
         } catch (e: SerializationException) {
@@ -499,7 +503,9 @@ private suspend fun postDeviceTokenPoll(
             ),
         )
     } else {
-        // 4xx: the OAuth error is carried in the body (3xx already returned above).
+        // Non-200 (a 4xx OAuth error, or a nonstandard 2xx): the OAuth error is
+        // carried in the body (3xx already returned above); a body without an
+        // error code falls back to http_<status> and terminates as api_error.
         val error = try {
             // An explicit empty "error" decodes cleanly (the field is a required
             // non-null String, so no SerializationException fires) — normalize it to

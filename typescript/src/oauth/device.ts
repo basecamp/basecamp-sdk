@@ -495,7 +495,11 @@ async function postDeviceToken(
       });
     }
     const data = parsed as RawTokenResponse | OAuthErrorResponse;
-    if (response.ok) {
+    // Exactly HTTP 200, not response.ok (any 2xx): RFC 8628/6749 token
+    // responses are 200, and SPEC §16 pins the contract. A nonstandard 201/202
+    // carrying an access_token must not prematurely complete polling — it
+    // falls through to the OAuth-error path and terminates as api_error.
+    if (response.status === 200) {
       const token = data as RawTokenResponse;
       // Non-empty string, not merely truthy: a numeric access_token is not a
       // usable credential and must fail as api_error, not be returned downstream.

@@ -524,7 +524,11 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		}
 	}
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	// Exactly HTTP 200, not any 2xx: RFC 8628/6749 token responses are 200, and
+	// SPEC §16 pins the contract. A nonstandard 201/202 carrying an access_token
+	// must not prematurely complete polling — it falls through to the OAuth-error
+	// parse below and terminates as api_error (http_<status>).
+	if resp.StatusCode == http.StatusOK {
 		// expires_in decodes via *float64, not Token's plain int: a pointer keeps
 		// an explicit "expires_in":0 distinguishable from an omitted field (a
 		// plain int makes 0 look absent and skip validation), and float64 accepts

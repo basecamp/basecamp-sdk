@@ -722,6 +722,23 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollNon200SuccessIsTerminal() = runTest {
+        // RFC 8628/6749 token responses are exactly 200 (SPEC §16): a
+        // nonstandard 201/202 carrying an access_token must not complete polling.
+        for (status in listOf(HttpStatusCode.Created, HttpStatusCode.Accepted)) {
+            val engine = MockEngine { respond(tokenJson, status, jsonHeaders) }
+            val client = HttpClient(engine)
+
+            val e = assertFailsWith<BasecampException.Api> {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+            assertEquals("api_error", e.code)
+            assertEquals(status.value, e.httpStatus)
+            client.close()
+        }
+    }
+
+    @Test
     fun pollAcceptsTokenWithoutExpiresIn() = runTest {
         // Absent expires_in (RFC 6749 §5.1) is allowed — the token has no expiry.
         val body = """{"access_token":"tok","token_type":"Bearer"}"""

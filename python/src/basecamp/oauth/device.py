@@ -587,7 +587,11 @@ def _post_device_token(
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device token response is not a JSON object", http_status=status)
 
-    if 200 <= status < 300:
+    # Exactly HTTP 200, not any 2xx: RFC 8628/6749 token responses are 200, and
+    # SPEC §16 pins the contract. A nonstandard 201/202 carrying an access_token
+    # must not prematurely complete polling — it falls through to the OAuth-error
+    # path below and terminates as api_error (http_<status>).
+    if status == 200:
         return _PollResult(token=_build_token(data, status))
 
     # Validate ``error`` as a non-empty string: a non-string (e.g. ``{"error": 123}``)

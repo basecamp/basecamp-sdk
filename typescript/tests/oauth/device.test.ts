@@ -1247,3 +1247,22 @@ describe("DeviceFlowError retryability", () => {
     expect(JSON.parse(JSON.stringify(err)).reason).toBe("access_denied");
   });
 });
+
+describe("pollDeviceToken exact-200 contract", () => {
+  it.each([201, 202])("treats a %d carrying an access_token as terminal api_error", async (status) => {
+    // RFC 8628/6749 token responses are exactly 200 (SPEC §16): a nonstandard
+    // 2xx must not prematurely complete polling.
+    queueTokenResponses([{ status, body: tokenResponse }]);
+
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: recordingSleep().fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+});

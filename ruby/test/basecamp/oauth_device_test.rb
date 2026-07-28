@@ -370,6 +370,24 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal 200, error.http_status
   end
 
+  def test_poll_non_200_success_is_terminal
+    # RFC 8628/6749 token responses are exactly 200 (SPEC.md §16): a
+    # nonstandard 201/202 carrying an access_token must not complete polling.
+    [ 201, 202 ].each do |status|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response, status: status))
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+      assert_equal status, error.http_status
+    end
+  end
+
   def test_poll_accepts_token_response_without_expires_in
     # expires_in is optional (RFC 6749 §5.1): absent means no known expiry, so
     # the Token carries nil expires_in/expires_at rather than raising.

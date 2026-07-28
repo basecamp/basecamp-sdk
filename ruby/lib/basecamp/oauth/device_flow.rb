@@ -546,7 +546,12 @@ module Basecamp
 
             data = parse_json_object(body, status, "device token")
 
-            if (200..299).cover?(status)
+            # Exactly HTTP 200, not any 2xx: RFC 8628/6749 token responses are
+            # 200, and SPEC.md §16 pins the contract. A nonstandard 201/202
+            # carrying an access_token must not prematurely complete polling —
+            # it falls through to the OAuth-error path below and terminates as
+            # api_error (http_<status>).
+            if status == 200
               access_token = data["access_token"]
               # Require a genuine non-empty String — not a truthy/coercible value.
               unless access_token.is_a?(String) && !access_token.empty?

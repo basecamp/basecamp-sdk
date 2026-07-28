@@ -1508,3 +1508,20 @@ func TestPollDeviceToken_ExpiresAtIsWallClock(t *testing.T) {
 		t.Errorf("ExpiresAt = %v, want ~1h from wall-clock now (not the injected clock)", token.ExpiresAt)
 	}
 }
+
+func TestPollDeviceToken_Non200SuccessIsTerminal(t *testing.T) {
+	// RFC 8628/6749 token responses are exactly 200 (SPEC §16). A nonstandard
+	// 201/202 carrying an access_token must not complete polling — it is a
+	// terminal api_error, never an accepted token.
+	for _, status := range []int{201, 202} {
+		srv, _ := queueTokenResponses(t, []struct {
+			status int
+			body   map[string]any
+		}{{status, tokenBody}})
+		sleep := &recordingSleep{}
+
+		_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+			WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+		assertBasecampCode(t, err, basecamp.CodeAPI)
+	}
+}
