@@ -76,6 +76,7 @@ def _post_form_bounded(
     timeout: float,
     max_body_bytes: int,
     read_body: Callable[[int], bool] = lambda _status: True,
+    on_headers: Callable[[Any], None] | None = None,
 ) -> tuple[int, bytes]:
     """SSRF-hardened form POST: suppress redirects, bound the timeout, and read
     the body under a genuine streaming cap that aborts once ``max_body_bytes`` is
@@ -104,6 +105,7 @@ def _post_form_bounded(
         timeout=timeout,
         max_body_bytes=max_body_bytes,
         read_body=read_body,
+        on_headers=on_headers,
         context="Device flow",
     )
 
@@ -260,6 +262,22 @@ class _PollResult:
     token: OAuthToken | None = None
     error: str | None = None
     status: int = 0
+    #: Raw Retry-After header on an OAuth-error response, consumed by the
+    #: loop's 429 too_many_requests handling only.
+    retry_after: str | None = None
+
+
+def _parse_retry_after_seconds(header: str | None) -> int:
+    """Validate a Retry-After delta for the 429 poll contract (SPEC §16): a
+    positive integral number of seconds no greater than
+    :data:`MAX_DEVICE_SECONDS` (the shared 32-bit-ms timer bound). Anything
+    else — missing, an HTTP-date, fractional, non-positive, or overflowing —
+    returns 0 so the caller falls back to the current interval.
+    """
+    if header is None or not header.strip().isdigit():
+        return 0
+    value = int(header.strip())
+    return value if 0 < value <= MAX_DEVICE_SECONDS else 0
 
 
 def _validated_clock_sample(value: object, entry: str) -> float:
@@ -394,6 +412,10 @@ def poll_device_token(
         # authorization_pending endpoint would be polled indefinitely.
         return _validated_clock_sample(clock(), "poll_device_token")
 
+    # One-shot next-wait override from a 429 too_many_requests Retry-After
+    # (SPEC §16): consumed by the next wait, never inflating the slow_down
+    # interval. 0 = none.
+    override_seconds = 0
     # An absolute issuance-anchored deadline (perform_device_login passes
     # issued_at + expires_in) beats re-anchoring: clock time elapsing between
     # the caller's remaining-lifetime computation and this entry — a process
@@ -436,7 +458,9 @@ def poll_device_token(
         remaining = deadline - _sample_clock()
         if remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
-        _wait_cancellable(min(max(interval_seconds, backoff_seconds), remaining), should_cancel, sleep)
+        wait = min(max(interval_seconds, backoff_seconds, override_seconds), remaining)
+        override_seconds = 0  # one-shot: consumed by this wait, then gone
+        _wait_cancellable(wait, should_cancel, sleep)
 
         if should_cancel is not None and should_cancel():
             raise DeviceFlowError("cancelled", "Device flow cancelled")
@@ -480,6 +504,14 @@ def poll_device_token(
 
         error = result.error
         if error == "authorization_pending":
+            continue
+        if error == "too_many_requests" and result.status == 429:
+            # Retryable ONLY as the exact 429 + too_many_requests pair
+            # (SPEC §16). The next wait honors a positive integral Retry-After
+            # delta via a one-shot max(interval, Retry-After) override — a
+            # missing/malformed header falls back to the current interval, and
+            # the override decays after one wait.
+            override_seconds = _parse_retry_after_seconds(result.retry_after)
             continue
         if error == "slow_down":
             interval_seconds += SLOW_DOWN_INCREMENT_SECONDS
@@ -597,13 +629,16 @@ def _post_device_token(
     # A 3xx token response is an api fault whose body is unused — skip draining it
     # so a slow redirect body can't time out and be retried by the poll loop until
     # expiry. A 4xx body IS read (it carries authorization_pending/slow_down).
+    captured_headers: list[Any] = []
     status, body = _post_form_bounded(
         token_endpoint,
         params,
         timeout,
         max_body_bytes,
         read_body=lambda s: s == 200 or 400 <= s < 500,
+        on_headers=captured_headers.append,
     )
+    retry_after = captured_headers[0].get("Retry-After") if captured_headers else None
 
     # A redirect is never a token-endpoint outcome. Classify it before parsing
     # so a 3xx body carrying {"error": "authorization_pending"} cannot keep the
@@ -662,7 +697,7 @@ def _post_device_token(
     error = (
         truncate(raw_error) if 400 <= status < 500 and isinstance(raw_error, str) and raw_error else f"http_{status}"
     )
-    return _PollResult(error=error, status=status)
+    return _PollResult(error=error, status=status, retry_after=retry_after)
 
 
 def perform_device_login(

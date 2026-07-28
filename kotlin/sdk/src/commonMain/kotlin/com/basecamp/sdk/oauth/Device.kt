@@ -366,6 +366,10 @@ suspend fun pollDeviceToken(
     // cadence: each wait is max(interval, backoff), a timeout doubles the
     // backoff (capped), and any completed round-trip resets it to the interval.
     var backoffSeconds = intervalSeconds
+    // One-shot next-wait override from a 429 too_many_requests Retry-After
+    // (SPEC §16): consumed by the next wait, never inflating the slow_down
+    // interval. 0 = none.
+    var overrideSeconds = 0L
 
     val params = parametersOf(
         "grant_type" to listOf(DEVICE_CODE_GRANT_TYPE),
@@ -384,7 +388,8 @@ suspend fun pollDeviceToken(
             // Clamp the wait to the time remaining so a long interval or an
             // exponential backoff can never overshoot the monotonic deadline.
             val remaining = -deadline.elapsedNow()
-            val wait = minOf(maxOf(intervalSeconds, backoffSeconds).seconds, remaining)
+            val wait = minOf(maxOf(intervalSeconds, backoffSeconds, overrideSeconds).seconds, remaining)
+            overrideSeconds = 0L // one-shot: consumed by this wait, then gone
             delay(if (wait > Duration.ZERO) wait else Duration.ZERO)
 
             val postRemaining = -deadline.elapsedNow()
@@ -437,6 +442,14 @@ suspend fun pollDeviceToken(
             when (result) {
                 is PollResult.Token -> return result.token
                 PollResult.Pending -> continue
+                is PollResult.TooManyRequests -> {
+                    // The next wait honors the validated Retry-After via a
+                    // one-shot max(interval, Retry-After) override — 0 (missing/
+                    // malformed) falls back to the current interval, and the
+                    // override decays after one wait.
+                    overrideSeconds = result.retryAfterSeconds
+                    continue
+                }
                 PollResult.SlowDown -> {
                     intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS
                     // Re-sync the backoff to the GROWN interval (the reset above used
@@ -470,7 +483,28 @@ private sealed interface PollResult {
     data object SlowDown : PollResult
     data object AccessDenied : PollResult
     data object Expired : PollResult
+
+    /**
+     * The exact 429 + too_many_requests pair (SPEC §16): retryable with a
+     * one-shot next-wait override. [retryAfterSeconds] is the validated
+     * Retry-After delta, 0 when missing/malformed (→ current interval).
+     */
+    data class TooManyRequests(val retryAfterSeconds: Long) : PollResult
     data class Other(val error: String, val status: Int) : PollResult
+}
+
+/**
+ * Validates a Retry-After delta for the 429 poll contract (SPEC §16): a
+ * positive integral number of seconds no greater than [MAX_DEVICE_SECONDS]
+ * (the shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
+ * fractional, non-positive, or overflowing — returns 0 so the caller falls
+ * back to the current interval.
+ */
+private fun parseRetryAfterSeconds(header: String?): Long {
+    val trimmed = header?.trim() ?: return 0
+    if (!trimmed.all { it.isDigit() } || trimmed.isEmpty()) return 0
+    val value = trimmed.toLongOrNull() ?: return 0
+    return if (value in 1..MAX_DEVICE_SECONDS) value else 0
 }
 
 private suspend fun postDeviceTokenPoll(
@@ -614,11 +648,16 @@ private suspend fun postDeviceTokenPoll(
                 "http_$status"
             }
         }
-        when (error) {
-            "authorization_pending" -> PollResult.Pending
-            "slow_down" -> PollResult.SlowDown
-            "access_denied" -> PollResult.AccessDenied
-            "expired_token" -> PollResult.Expired
+        when {
+            error == "authorization_pending" -> PollResult.Pending
+            error == "slow_down" -> PollResult.SlowDown
+            error == "access_denied" -> PollResult.AccessDenied
+            error == "expired_token" -> PollResult.Expired
+            // Retryable ONLY as the exact 429 + too_many_requests pair
+            // (SPEC §16); too_many_requests on any other status stays terminal
+            // via Other below.
+            error == "too_many_requests" && status == 429 ->
+                PollResult.TooManyRequests(parseRetryAfterSeconds(response.headers["Retry-After"]))
             else -> PollResult.Other(error, status)
         }
     }

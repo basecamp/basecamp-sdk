@@ -296,7 +296,7 @@ module Basecamp
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @param skip_status [Proc, nil] statuses whose body is never read
       # @return [Array(Integer, String)] status and (possibly empty) body
-      def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil)
+      def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil, on_headers: nil)
         # Response state first, before ANY call the def-level rescues could
         # catch, so every rescue path sees it assigned (the completed_at guard
         # means it is only READ once genuinely populated).
@@ -498,6 +498,9 @@ module Basecamp
 
           http.request(request) do |response|
             status = response.code.to_i
+            # Headers are available before any body read; the device poll loop
+            # uses this to read Retry-After without widening the return shape.
+            on_headers&.call(response)
             if skip_status&.call(status)
               # Deadline first for a status NOT known in time: headers that
               # become runnable past the monotonic deadline (but before the
@@ -563,15 +566,15 @@ module Basecamp
         end
         [ status, chunks.join.force_encoding(Encoding::UTF_8) ]
       rescue SkipBody => e
-        [ e.status, "" ]
+          [ e.status, "" ]
       rescue Timeout::Error, Errno::ETIMEDOUT => e
-        # Timeout::Error covers Net::OpenTimeout/ReadTimeout/WriteTimeout alike
-        # (a peer that accepts the connection but stops READING trips the write
-        # timeout). Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT:
-        # both must map with the timeouts — the exact pair faraday-net_http
-        # rescues — or the device poll would terminate instead of applying its
-        # transient backoff.
-        raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
+          # Timeout::Error covers Net::OpenTimeout/ReadTimeout/WriteTimeout alike
+          # (a peer that accepts the connection but stops READING trips the write
+          # timeout). Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT:
+          # both must map with the timeouts — the exact pair faraday-net_http
+          # rescues — or the device poll would terminate instead of applying its
+          # transient backoff.
+          raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
       rescue IOError, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
              SystemCallError, SocketError, Zlib::Error => e
         # The clock outranks the watchdog FLAG: a wire fault observed past the
@@ -606,8 +609,8 @@ module Basecamp
 
         raise Faraday::SSLError, e.message
       ensure
-        watchdog&.kill
-        watchdog&.join
+          watchdog&.kill
+          watchdog&.join
       end
 
       # Fetches +url+ and returns the parsed JSON object (a Hash).

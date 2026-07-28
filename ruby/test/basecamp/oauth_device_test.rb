@@ -18,7 +18,7 @@ class OAuthDeviceTest < Minitest::Test
   # A Faraday-shaped double that returns a scripted sequence of outcomes. Each
   # step is either a StandardError (raised) or a Hash (a status/body response).
   class SequencedHttpClient
-    Response = Struct.new(:status, :body)
+    Response = Struct.new(:status, :body, :headers)
 
     # Exposed so cancellation tests can flip a probe the moment a request
     # has been attempted (index goes positive before a step raises).
@@ -34,7 +34,7 @@ class OAuthDeviceTest < Minitest::Test
       @index += 1
       raise step if step.is_a?(StandardError)
 
-      Response.new(step[:status], step[:body])
+      Response.new(step[:status], step[:body], step[:headers] || {})
     end
   end
 
@@ -1399,5 +1399,122 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal :expired, error.reason
     assert_equal [ 3 ], waits # clamped to the 3s remaining, not the full 900s
     assert_not_requested(polled)
+  end
+
+  # --- poll_device_token 429 handling ---------------------------------------
+
+  def json429(retry_after: nil)
+    headers = { "Content-Type" => "application/json" }
+    headers["Retry-After"] = retry_after if retry_after
+    { status: 429, body: { "error" => "too_many_requests" }.to_json, headers: headers }
+  end
+
+  def test_poll_retries_after_429_with_retry_after_override
+    stub_request(:post, TOKEN_ENDPOINT).to_return(
+      json429(retry_after: "30"),
+      json(token_response)
+    )
+    waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    assert_equal "device_access_token", token.access_token
+    # Initial 5s wait, then the one-shot max(interval, Retry-After) = 30s.
+    assert_equal [ 5, 30 ], waits
+  end
+
+  def test_poll_429_missing_or_malformed_retry_after_falls_back_to_interval
+    [ nil, "abc", "1.5", "-1", "0", "99999999999999999999" ].each do |header|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(
+        json429(retry_after: header),
+        json(token_response)
+      )
+      waits, sleeper = recording_sleeper
+
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+
+      assert_equal [ 5, 5 ], waits, "header=#{header.inspect}"
+    end
+  end
+
+  def test_poll_429_retry_after_override_decays_after_one_wait
+    stub_request(:post, TOKEN_ENDPOINT).to_return(
+      json429(retry_after: "30"),
+      json({ "error" => "authorization_pending" }, status: 400),
+      json(token_response)
+    )
+    waits, sleeper = recording_sleeper
+
+    Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    # 5s initial, 30s one-shot override, then back to the 5s interval.
+    assert_equal [ 5, 30, 5 ], waits
+  end
+
+  def test_poll_429_wrong_pair_stays_terminal
+    [
+      json({ "error" => "rate_limited" }, status: 429),
+      json({ "error" => "too_many_requests" }, status: 400)
+    ].each do |response|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(response)
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+    end
+  end
+
+  def test_poll_429_wait_clamped_to_expiry
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json429(retry_after: "3600"))
+    waits, sleeper = recording_sleeper
+    # Scripted monotonic clock: deadline anchors at t=0 with a 20s lifetime.
+    # The second iteration's huge Retry-After override must clamp to the 14s
+    # remaining, and the post-wait check then expires the flow.
+    clock = scripted_clock([ 0, 0, 5, 6, 20 ])
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 20,
+        sleeper: sleeper, clock: clock
+      )
+    end
+    assert_equal :expired, error.reason
+    assert_equal [ 5, 14 ], waits
+  end
+
+  def test_poll_cancellation_during_429_wait
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json429(retry_after: "30"))
+    slept = { total: 0.0 }
+    cancelled = { flag: false }
+    # The cancellable wait chunks each interval, so count elapsed time: once
+    # past the first 5s wait we are inside the post-429 override wait.
+    sleeper = lambda do |seconds|
+      slept[:total] += seconds
+      cancelled[:flag] = true if slept[:total] > 5.0
+    end
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        sleeper: sleeper, cancelled: -> { cancelled[:flag] }
+      )
+    end
+    assert_equal :cancelled, error.reason
   end
 end

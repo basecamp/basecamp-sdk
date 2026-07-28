@@ -1252,6 +1252,126 @@ class TestPollDeviceTokenExact200:
             )
         assert exc_info.value.code == "api_error"
         assert exc_info.value.http_status == status
+class TestPollDeviceToken429:
+    TOO_MANY = {"error": "too_many_requests"}
+
+    @respx.mock
+    def test_retries_after_429_with_retry_after_override(self):
+        _queue_token_responses(
+            [
+                httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "30"}),
+                httpx.Response(200, json=TOKEN_RESPONSE),
+            ]
+        )
+        sleep = RecordingSleep()
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
+        )
+
+        assert token.access_token == "device_access_token"  # gitleaks:allow
+        # Initial 5s wait, then the one-shot max(interval, Retry-After) = 30s.
+        assert sleep.waits == [5, 30]
+
+    @respx.mock
+    @pytest.mark.parametrize("headers", [{}, {"Retry-After": "abc"}, {"Retry-After": "1.5"}, {"Retry-After": "-1"}, {"Retry-After": "0"}, {"Retry-After": "99999999999999999999"}])
+    def test_missing_or_malformed_retry_after_falls_back_to_interval(self, headers):
+        _queue_token_responses(
+            [
+                httpx.Response(429, json=self.TOO_MANY, headers=headers),
+                httpx.Response(200, json=TOKEN_RESPONSE),
+            ]
+        )
+        sleep = RecordingSleep()
+
+        poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
+        )
+
+        assert sleep.waits == [5, 5]
+
+    @respx.mock
+    def test_retry_after_override_decays_after_one_wait(self):
+        _queue_token_responses(
+            [
+                httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "30"}),
+                httpx.Response(400, json={"error": "authorization_pending"}),
+                httpx.Response(200, json=TOKEN_RESPONSE),
+            ]
+        )
+        sleep = RecordingSleep()
+
+        poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
+        )
+
+        # 5s initial, 30s one-shot override, then back to the 5s interval.
+        assert sleep.waits == [5, 30, 5]
+
+    @respx.mock
+    @pytest.mark.parametrize(
+        ("status", "body"),
+        [(429, {"error": "rate_limited"}), (400, {"error": "too_many_requests"})],
+    )
+    def test_wrong_pair_stays_terminal(self, status, body):
+        _queue_token_responses([httpx.Response(status, json=body, headers={"Retry-After": "30"})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+
+    @respx.mock
+    def test_429_wait_clamped_to_expiry(self):
+        _queue_token_responses(
+            [httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "3600"})]
+        )
+        sleep = RecordingSleep()
+        # Scripted monotonic clock: deadline anchors at t=0 with a 20s
+        # lifetime. The second iteration's huge Retry-After override must clamp
+        # to the 14s remaining, and the post-wait check then expires the flow.
+        times = [0, 0, 5, 6, 20]
+        state = {"i": 0}
+
+        def clock() -> float:
+            value = times[min(state["i"], len(times) - 1)]
+            state["i"] += 1
+            return value
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123",
+                interval=5, expires_in=20, sleep=sleep, clock=clock,
+            )
+        assert exc_info.value.reason == "expired"
+        assert sleep.waits == [5, 14]
+
+    @respx.mock
+    def test_cancellation_during_429_wait(self):
+        _queue_token_responses(
+            [httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "30"})]
+        )
+        slept = {"total": 0.0}
+        cancelled = {"flag": False}
+
+        def sleep(seconds: float) -> None:
+            # The cancellable wait chunks each interval, so count elapsed time:
+            # once past the first 5s wait we are inside the post-429 override
+            # wait — cancel there.
+            slept["total"] += seconds
+            if slept["total"] > 5.0:
+                cancelled["flag"] = True
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123",
+                interval=5, expires_in=900, sleep=sleep,
+                should_cancel=lambda: cancelled["flag"],
+            )
+        assert exc_info.value.reason == "cancelled"
+
+
 class TestPollDeviceTokenResource:
     @respx.mock
     def test_captures_resource(self):

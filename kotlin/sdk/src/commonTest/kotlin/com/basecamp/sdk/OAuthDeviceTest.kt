@@ -540,6 +540,149 @@ class OAuthDeviceTest {
         assertEquals(0, displayed, "display must never fire for a cancelled flow")
     }
 
+    // =========================================================================
+    // pollDeviceToken 429 too_many_requests handling (SPEC §16)
+    // =========================================================================
+
+    private val tooManyJson = """{"error":"too_many_requests"}"""
+
+    private fun headers429(retryAfter: String? = null) =
+        if (retryAfter == null) {
+            jsonHeaders
+        } else {
+            headersOf(
+                HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                HttpHeaders.RetryAfter to listOf(retryAfter),
+            )
+        }
+
+    @Test
+    fun pollRetriesAfter429WithRetryAfterOverride() = runTest {
+        val pollTimes = mutableListOf<Long>()
+        var i = 0
+        val engine = MockEngine {
+            pollTimes.add(testScheduler.currentTime)
+            i += 1
+            if (i == 1) {
+                respond(tooManyJson, HttpStatusCode.TooManyRequests, headers429("30"))
+            } else {
+                respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
+            }
+        }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+        assertEquals("device_access_token", token.accessToken)
+        // Initial 5s wait, then the one-shot max(interval, Retry-After) = 30s.
+        assertEquals(listOf(5_000L, 35_000L), pollTimes)
+        client.close()
+    }
+
+    @Test
+    fun poll429MalformedRetryAfterFallsBackToInterval() = runTest {
+        for (header in listOf(null, "abc", "1.5", "-1", "0", "99999999999999999999")) {
+            val pollTimes = mutableListOf<Long>()
+            var i = 0
+            val start = testScheduler.currentTime
+            val engine = MockEngine {
+                pollTimes.add(testScheduler.currentTime - start)
+                i += 1
+                if (i == 1) {
+                    respond(tooManyJson, HttpStatusCode.TooManyRequests, headers429(header))
+                } else {
+                    respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
+                }
+            }
+            val client = HttpClient(engine)
+
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+            // Fallback: both waits are the plain 5s interval.
+            assertEquals(listOf(5_000L, 10_000L), pollTimes, "header=$header")
+            client.close()
+        }
+    }
+
+    @Test
+    fun poll429RetryAfterOverrideDecaysAfterOneWait() = runTest {
+        val pollTimes = mutableListOf<Long>()
+        val responses = listOf(
+            Triple(HttpStatusCode.TooManyRequests, tooManyJson, "30"),
+            Triple(HttpStatusCode.BadRequest, errorJson("authorization_pending"), null),
+            Triple(HttpStatusCode.OK, tokenJson, null),
+        )
+        var i = 0
+        val engine = MockEngine {
+            pollTimes.add(testScheduler.currentTime)
+            val (status, body, retryAfter) = responses[minOf(i, responses.size - 1)]
+            i += 1
+            respond(body, status, headers429(retryAfter))
+        }
+        val client = HttpClient(engine)
+
+        pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+        // 5s initial, 30s one-shot override, then back to the 5s interval —
+        // cumulative poll times 5s, 35s, 40s.
+        assertEquals(listOf(5_000L, 35_000L, 40_000L), pollTimes)
+        client.close()
+    }
+
+    @Test
+    fun poll429WrongPairStaysTerminal() = runTest {
+        val cases = listOf(
+            HttpStatusCode.TooManyRequests to errorJson("rate_limited"),
+            HttpStatusCode.BadRequest to tooManyJson,
+        )
+        for ((status, body) in cases) {
+            val engine = MockEngine { respond(body, status, headers429("30")) }
+            val client = HttpClient(engine)
+
+            val e = assertFailsWith<BasecampException.Api> {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+            assertEquals("api_error", e.code)
+            client.close()
+        }
+    }
+
+    @Test
+    fun poll429WaitClampedToDeadline() = runTest {
+        // interval 5s, code lifetime 20s. The 429's huge Retry-After would wait
+        // 3600s, but the deadline at t=20s clamps the wait so expiry fires then.
+        val pollTimes = mutableListOf<Long>()
+        val engine = MockEngine {
+            pollTimes.add(testScheduler.currentTime)
+            respond(tooManyJson, HttpStatusCode.TooManyRequests, headers429("3600"))
+        }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.DeviceFlow> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 20, testTimeSource, client)
+        }
+        assertEquals(BasecampException.DEVICE_EXPIRED, e.reason)
+        // One poll at t=5s; the override wait clamps to the 15s remaining and
+        // the loop expires at t=20s without a second poll.
+        assertEquals(listOf(5_000L), pollTimes)
+        client.close()
+    }
+
+    @Test
+    fun pollPropagatesCancellationDuring429Wait() = runTest {
+        // The 429 override parks the loop in a 30s delay; a 10s timeout cancels
+        // mid-override-wait and the CancellationException must propagate.
+        val engine = MockEngine { respond(tooManyJson, HttpStatusCode.TooManyRequests, headers429("30")) }
+        val client = HttpClient(engine)
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(10_000) {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+        }
+        client.close()
+    }
+
     @Test
     fun pollCancelledDuringTokenRoundTripNeverReturnsAToken() = runTest {
         // The mock engine cancels the flow's job as it serves the TOKEN,

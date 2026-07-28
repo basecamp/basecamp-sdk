@@ -461,6 +461,10 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
   // two, so intermittent timeouts never permanently inflate the poll cadence.
   let intervalSeconds = params.interval;
   let backoffSeconds = intervalSeconds;
+  // One-shot next-wait override from a 429 too_many_requests Retry-After
+  // (SPEC §16): consumed by the next wait, never inflating the slow_down
+  // interval. 0 = none.
+  let overrideWaitSeconds = 0;
   const deadline = params.deadlineAtMs ?? nowMs + expiresIn * 1000;
 
   const body = new URLSearchParams();
@@ -492,7 +496,11 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     // max(1, floor(...)): floor stays inside the remaining lifetime, and the
     // 1ms floor keeps a caller-supplied sub-millisecond interval from
     // degrading into a 0ms hot loop.
-    const waitMs = Math.max(1, Math.floor(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs)));
+    const waitMs = Math.max(1, Math.floor(Math.min(
+      Math.max(intervalSeconds, backoffSeconds, overrideWaitSeconds) * 1000,
+      remainingMs
+    )));
+    overrideWaitSeconds = 0; // one-shot: consumed by this wait, then gone
     try {
       // Race the injected sleep against the signal: a custom sleepFn that
       // ignores its signal argument must not hold a cancelled poll open until
@@ -560,6 +568,19 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     switch (result.error) {
       case "authorization_pending":
         continue;
+      case "too_many_requests":
+        // Retryable ONLY as the exact 429 + too_many_requests pair (SPEC §16).
+        // The next wait honors a positive integral Retry-After delta via a
+        // one-shot max(interval, Retry-After) override — a missing/malformed
+        // header falls back to the current interval, and the override decays
+        // after one wait.
+        if (result.status !== 429) {
+          throw new BasecampError("api_error", `Device token request failed: ${result.error}`, {
+            httpStatus: result.status,
+          });
+        }
+        overrideWaitSeconds = parseRetryAfterSeconds(result.retryAfter);
+        continue;
       case "slow_down":
         intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS;
         backoffSeconds = intervalSeconds;
@@ -578,7 +599,21 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
 
 type TokenPollResult =
   | { kind: "token"; token: OAuthToken }
-  | { kind: "error"; error: string; status: number };
+  | { kind: "error"; error: string; status: number; retryAfter: string | null };
+
+/**
+ * Validates a Retry-After delta for the 429 poll contract (SPEC §16): a
+ * positive integral number of seconds no greater than MAX_DEVICE_SECONDS (the
+ * shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
+ * fractional, non-positive, or overflowing — returns 0 so the caller falls
+ * back to the current interval.
+ */
+function parseRetryAfterSeconds(header: string | null): number {
+  if (!header || !/^\d+$/.test(header.trim())) return 0;
+  const parsed = parseInt(header, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > MAX_DEVICE_SECONDS) return 0;
+  return parsed;
+}
 
 async function postDeviceToken(
   tokenEndpoint: string,
@@ -742,7 +777,7 @@ async function postDeviceToken(
         response.status >= 400 && response.status < 500 && typeof rawError === "string" && rawError !== ""
           ? truncateErrorMessage(rawError)
           : `http_${response.status}`;
-      return { kind: "error", error, status: response.status };
+      return { kind: "error", error, status: response.status, retryAfter: response.headers.get("Retry-After") };
     });
   } finally {
     clearTimeout(timeoutId);

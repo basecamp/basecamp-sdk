@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -411,6 +412,10 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 		intervalSeconds = defaultDeviceInterval
 	}
 	backoffSeconds := intervalSeconds
+	// One-shot next-wait override from a 429 too_many_requests Retry-After
+	// (SPEC §16): consumed by the next wait, never inflating the slow_down
+	// interval. 0 = none.
+	overrideSeconds := 0
 
 	form := url.Values{}
 	form.Set("grant_type", DeviceCodeGrantType)
@@ -432,7 +437,8 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 		// backoff, whichever is larger, clamped to the time left before the
 		// deadline so a long backoff never overshoots expiry; the deadline
 		// check below then terminates the flow promptly.
-		wait := time.Duration(max(intervalSeconds, backoffSeconds)) * time.Second
+		wait := time.Duration(max(intervalSeconds, backoffSeconds, overrideSeconds)) * time.Second
+		overrideSeconds = 0 // one-shot: consumed by this wait, then gone
 		if remaining < wait {
 			wait = remaining
 		}
@@ -483,6 +489,18 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 			switch result.oauthError {
 			case "authorization_pending":
 				continue
+			case "too_many_requests":
+				// Retryable ONLY as the exact 429 + too_many_requests pair
+				// (SPEC §16). The next wait honors a positive integral
+				// Retry-After delta via a one-shot max(interval, Retry-After)
+				// override — a missing/malformed header falls back to the
+				// current interval, and the override decays after one wait.
+				if result.status != http.StatusTooManyRequests {
+					return nil, basecamp.ErrAPI(result.status,
+						fmt.Sprintf("device token request failed: %s", result.oauthError))
+				}
+				overrideSeconds = parseRetryAfterSeconds(result.retryAfter)
+				continue
 			case "slow_down":
 				intervalSeconds += slowDownIncrementSeconds
 				// Re-sync the backoff to the GROWN interval: the reset above used
@@ -527,6 +545,22 @@ type pollResult struct {
 	oauthError string
 	status     int
 	err        error
+	// retryAfter is the raw Retry-After header on an OAuth-error response,
+	// consumed by the loop's 429 too_many_requests handling only.
+	retryAfter string
+}
+
+// parseRetryAfterSeconds validates a Retry-After delta for the 429 poll
+// contract (SPEC §16): a positive integral number of seconds no greater than
+// maxDeviceSeconds (the shared 32-bit-ms timer bound). Anything else —
+// missing, an HTTP-date, fractional, non-positive, or overflowing — returns 0
+// so the caller falls back to the current interval.
+func parseRetryAfterSeconds(header string) int {
+	v, err := strconv.Atoi(strings.TrimSpace(header))
+	if err != nil || v <= 0 || v > maxDeviceSeconds {
+		return 0
+	}
+	return v
 }
 
 // postDeviceToken performs one token-endpoint poll and classifies the outcome.
@@ -694,7 +728,8 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			}
 		}
 	}
-	return pollResult{kind: pollOAuthError, oauthError: oauthError, status: resp.StatusCode}
+	return pollResult{kind: pollOAuthError, oauthError: oauthError, status: resp.StatusCode,
+		retryAfter: resp.Header.Get("Retry-After")}
 }
 
 // PerformDeviceLogin runs the full RFC 8628 device authorization grant against
