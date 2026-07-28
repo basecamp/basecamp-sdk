@@ -1,0 +1,23 @@
+ruby/test/basecamp/services/search_service_test.rb
+  s_69156f95c4fbc4::t_7ab740b75f9166 16-23,36-45
+typescript/node_modules
+  s_69156f95c4fbc4::t_9fa738d759c434 1
+typescript/tests/services/search.test.ts
+  s_69156f95c4fbc4::t_2f858c931a3148 36-42,51-56,91-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "985acd0bf90b19229b1fdb908398853b41aa4c17",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

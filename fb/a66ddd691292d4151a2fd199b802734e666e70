@@ -1,0 +1,25 @@
+.gitignore
+  s_69156f95c4fbc4::t_eb7ae4c961a2b4 11
+ruby/test/basecamp/generated_types_test.rb
+  s_69156f95c4fbc4::t_aefe084c423401 130-155
+ruby/test/basecamp/services/search_service_test.rb
+  s_69156f95c4fbc4::t_70c64d906a426e 20-21,25-26
+typescript/.gitignore
+  s_69156f95c4fbc4::t_56db1738fd2c55 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fba66ddd691292d4151a2fd199b802734e666e70",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
