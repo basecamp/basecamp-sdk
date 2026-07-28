@@ -528,3 +528,53 @@ func TestAuthManager_AccessToken_NoExpiryIsNotRefreshed(t *testing.T) {
 		t.Error("no-expiry credentials must never be force-refreshed")
 	}
 }
+
+func TestAuthManager_Refresh_OmittedExpiresInClearsStaleExpiry(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// A refresh response that omits expires_in must CLEAR the old expiry:
+	// keeping the stale past ExpiresAt would force a refresh on every
+	// subsequent AccessToken call despite the fresh token.
+	refreshes := 0
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		refreshes++
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "new-access",
+			"refresh_token": "new-refresh",
+		})
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	origin := NormalizeBaseURL(ts.URL)
+	_ = store.Save(origin, &Credentials{
+		AccessToken:   "old-access",
+		RefreshToken:  "old-refresh",
+		ExpiresAt:     1, // long past
+		TokenEndpoint: ts.URL + "/token",
+	})
+
+	m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+
+	// First call refreshes (stale expiry) and stores the new token with no
+	// known expiry; the second call must use it as-is.
+	for i := 0; i < 2; i++ {
+		tok, err := m.AccessToken(context.Background())
+		if err != nil {
+			t.Fatalf("call %d: %v", i+1, err)
+		}
+		if tok != "new-access" {
+			t.Errorf("call %d: token = %q", i+1, tok)
+		}
+	}
+	if refreshes != 1 {
+		t.Errorf("refreshes = %d, want exactly 1 (stale expiry cleared)", refreshes)
+	}
+
+	creds, _ := store.Load(origin)
+	if creds.ExpiresAt != 0 {
+		t.Errorf("ExpiresAt = %d, want 0 (no known expiry)", creds.ExpiresAt)
+	}
+}

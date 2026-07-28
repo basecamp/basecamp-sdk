@@ -389,6 +389,12 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	}
 	if tokenResp.ExpiresIn > 0 {
 		creds.ExpiresAt = time.Now().Unix() + tokenResp.ExpiresIn
+	} else {
+		// A refresh response may legally omit expires_in. Leaving the OLD
+		// (already-passed) ExpiresAt would mark the fresh token expired and
+		// force a refresh on EVERY subsequent call — clear to 0, the
+		// no-known-expiry state AccessToken never force-refreshes.
+		creds.ExpiresAt = 0
 	}
 	// An omitted (or null) resource preserves the stored binding
 	// (carry-forward, like an omitted rotated refresh_token); a present one
