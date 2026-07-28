@@ -414,15 +414,15 @@ suspend fun pollDeviceToken(
             // the current server-driven interval.
             backoffSeconds = intervalSeconds
 
+            // Re-check cancellation before classifying ANY completed round
+            // trip: a custom engine that ignores coroutine cancellation can
+            // complete a 200, a terminal 4xx (access_denied, expired_token),
+            // or a malformed response after the caller cancelled — the native
+            // CancellationException must win over every completed outcome
+            // (Go/TS re-check ctx/signal at the same seam).
+            currentCoroutineContext().ensureActive()
             when (result) {
-                // Re-check cancellation before handing back the credential: a
-                // custom engine that ignores coroutine cancellation can
-                // complete a 200 after the caller cancelled (Go/TS re-check
-                // ctx/signal at the same seam).
-                is PollResult.Token -> {
-                    currentCoroutineContext().ensureActive()
-                    return result.token
-                }
+                is PollResult.Token -> return result.token
                 PollResult.Pending -> continue
                 PollResult.SlowDown -> {
                     intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS

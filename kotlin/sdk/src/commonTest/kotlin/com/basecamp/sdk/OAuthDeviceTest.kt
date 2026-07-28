@@ -563,6 +563,29 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollCancelledDuringTokenRoundTripBeatsTerminalError() = runTest {
+        // Cancellation must also win over a TERMINAL error completed after the
+        // caller cancelled: an engine that ignores cancellation and serves
+        // access_denied must surface the native CancellationException, not
+        // the DeviceFlow(access_denied) classification.
+        val job = Job()
+        val engine = MockEngine {
+            job.cancel()
+            respond(errorJson("access_denied"), HttpStatusCode.BadRequest, jsonHeaders)
+        }
+        val client = HttpClient(engine)
+        try {
+            assertFailsWith<CancellationException> {
+                withContext(job) {
+                    pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+                }
+            }
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
     fun requestCancelledDuringRoundTripNeverReturnsACode() = runTest {
         // Same seam on the authorization request: a code pair served by an
         // engine that ignores cancellation must not reach a direct caller.
