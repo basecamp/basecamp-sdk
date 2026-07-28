@@ -1408,7 +1408,10 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               wait rule above) and then decays — it never permanently inflates
               the slow_down-driven interval. A missing, malformed, fractional,
               non-positive, or overflowing Retry-After falls back to the current
-              interval. Cancellation stays live through the (possibly longer)
+              interval. Parsing trims ONLY ASCII SP and HTAB around the value
+              (RFC 9110 optional whitespace): delta-seconds is 1*DIGIT, so a
+              value wrapped in any other whitespace (NBSP, Unicode spaces) is
+              malformed and falls back — never trimmed into validity. Cancellation stays live through the (possibly longer)
               wait. ONLY this exact combination is retryable: a 429 without
               error=too_many_requests, or too_many_requests on any other
               status, stays terminal (api_error) like any unrecognized error.

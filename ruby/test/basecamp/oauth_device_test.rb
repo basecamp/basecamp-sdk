@@ -1427,7 +1427,7 @@ class OAuthDeviceTest < Minitest::Test
   end
 
   def test_poll_429_missing_or_malformed_retry_after_falls_back_to_interval
-    [ nil, "abc", "1.5", "-1", "0", "99999999999999999999" ].each do |header|
+    [ nil, "abc", "1.5", "-1", "0", "99999999999999999999", "\u00a030", "\u200930" ].each do |header|
       stub_request(:post, TOKEN_ENDPOINT).to_return(
         json429(retry_after: header),
         json(token_response)

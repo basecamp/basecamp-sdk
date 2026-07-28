@@ -1041,6 +1041,10 @@ class TestParseRetryAfterSeconds:
         assert _parse_retry_after_seconds("9" * 5000) == 0
         assert _parse_retry_after_seconds("+30") == 0
         assert _parse_retry_after_seconds(" 30 ") == 30
+        assert _parse_retry_after_seconds("\t30\t") == 30  # ASCII OWS (RFC 9110: SP/HTAB)
+        assert _parse_retry_after_seconds("\u00a030") == 0  # NBSP is not OWS
+        assert _parse_retry_after_seconds("30\u00a0") == 0
+        assert _parse_retry_after_seconds("\u200930") == 0  # thin space is not OWS
         assert _parse_retry_after_seconds("30") == 30
 
 

@@ -15,6 +15,7 @@ import {
   DeviceFlowError,
   DEVICE_CODE_GRANT_TYPE,
 } from "../../src/oauth/index.js";
+import { parseRetryAfterSeconds } from "../../src/oauth/device.js";
 import type { OAuthConfig, DeviceAuthorization } from "../../src/oauth/types.js";
 import { BasecampError } from "../../src/errors.js";
 
@@ -1845,6 +1846,19 @@ describe("pollDeviceToken 429 handling", () => {
       expect(waits).toEqual([5000, 5000]);
     }
   );
+
+  it("trims only ASCII SP/HTAB around a Retry-After delta (RFC 9110 OWS)", () => {
+    // Direct parser test: msw cannot carry NBSP header values (the Python
+    // suite tests its parser directly for the same reason). Unicode
+    // whitespace must never trim a malformed value into validity.
+    expect(parseRetryAfterSeconds(" 30 ")).toBe(30);
+    expect(parseRetryAfterSeconds("\t30\t")).toBe(30);
+    expect(parseRetryAfterSeconds(" \t30\t ")).toBe(30);
+    expect(parseRetryAfterSeconds("\u00a030")).toBe(0);
+    expect(parseRetryAfterSeconds("30\u00a0")).toBe(0);
+    expect(parseRetryAfterSeconds("\u200930")).toBe(0);
+    expect(parseRetryAfterSeconds("\n30\n")).toBe(0);
+  });
 
   it("decays the Retry-After override after one wait", async () => {
     queueTokenResponses429([

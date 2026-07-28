@@ -2092,8 +2092,32 @@ func TestPollDeviceToken_RetriesAfter429WithRetryAfterOverride(t *testing.T) {
 	assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 30 * time.Second})
 }
 
+func TestParseRetryAfterSeconds_ASCIIOWSOnly(t *testing.T) {
+	// RFC 9110: delta-seconds is 1*DIGIT and optional whitespace is ONLY
+	// SP/HTAB. Unicode whitespace (NBSP above all) must not be trimmed into
+	// validity — strings.TrimSpace would accept NBSP+"30" as 30.
+	for _, tc := range []struct {
+		header string
+		want   int
+	}{
+		{" 30 ", 30},
+		{"\t30\t", 30},
+		{" \t30\t ", 30},
+		{"\u00a030", 0},
+		{"30\u00a0", 0},
+		{"\u200930", 0},
+		{"\n30\n", 0},
+	} {
+		if got := parseRetryAfterSeconds(tc.header); got != tc.want {
+			t.Errorf("parseRetryAfterSeconds(%q) = %d, want %d", tc.header, got, tc.want)
+		}
+	}
+}
+
 func TestPollDeviceToken_429MalformedRetryAfterFallsBackToInterval(t *testing.T) {
-	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999", "+30"} {
+	// The final case runs NBSP+"30" end-to-end through a real HTTP round trip
+	// (Go passes obs-text header bytes through unmodified).
+	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999", "+30", "\u00a030"} {
 		t.Run("header="+header, func(t *testing.T) {
 			srv := queueTokenResponses429(t, []struct {
 				status     int

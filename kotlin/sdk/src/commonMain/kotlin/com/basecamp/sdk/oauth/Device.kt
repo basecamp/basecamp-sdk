@@ -501,7 +501,9 @@ private sealed interface PollResult {
  * back to the current interval.
  */
 private fun parseRetryAfterSeconds(header: String?): Long {
-    val trimmed = header?.trim() ?: return 0
+    // ASCII SP/HTAB only (RFC 9110 OWS) — NOT String.trim(), whose Unicode
+    // whitespace (NBSP above all) would trim a malformed value into validity.
+    val trimmed = header?.trim { it == ' ' || it == '\t' } ?: return 0
     // ASCII '0'..'9' only — NOT Char.isDigit(), which is Unicode-aware and
     // accepts digit-shaped non-ASCII (fullwidth "１２", Arabic-Indic "٣٠")
     // that toLongOrNull() then converts, treating a malformed HTTP

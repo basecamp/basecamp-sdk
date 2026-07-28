@@ -555,9 +555,11 @@ type pollResult struct {
 // positive, no greater than maxDeviceSeconds (the shared 32-bit-ms timer
 // bound). Anything else — missing, an HTTP-date, signed ("+30"), fractional,
 // non-positive, or overflowing — returns 0 so the caller falls back to the
-// current interval.
+// current interval. Trimming is ASCII SP/HTAB only (RFC 9110 OWS) — NOT
+// strings.TrimSpace, whose Unicode whitespace (NBSP above all) would trim a
+// malformed value into validity.
 func parseRetryAfterSeconds(header string) int {
-	trimmed := strings.TrimSpace(header)
+	trimmed := strings.Trim(header, " \t")
 	if trimmed == "" {
 		return 0
 	}

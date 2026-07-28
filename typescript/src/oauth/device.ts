@@ -606,11 +606,15 @@ type TokenPollResult =
  * positive integral number of seconds no greater than MAX_DEVICE_SECONDS (the
  * shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
  * fractional, non-positive, or overflowing — returns 0 so the caller falls
- * back to the current interval.
+ * back to the current interval. Trimming is ASCII SP/HTAB only (RFC 9110
+ * OWS) — NOT String.prototype.trim(), whose Unicode whitespace (NBSP above
+ * all) would trim a malformed value into validity.
  */
-function parseRetryAfterSeconds(header: string | null): number {
-  if (!header || !/^\d+$/.test(header.trim())) return 0;
-  const parsed = parseInt(header, 10);
+export function parseRetryAfterSeconds(header: string | null): number {
+  if (!header) return 0;
+  const trimmed = header.replace(/^[ \t]+|[ \t]+$/g, "");
+  if (!/^\d+$/.test(trimmed)) return 0;
+  const parsed = parseInt(trimmed, 10);
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > MAX_DEVICE_SECONDS) return 0;
   return parsed;
 }

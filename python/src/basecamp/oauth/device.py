@@ -283,10 +283,14 @@ def _parse_retry_after_seconds(header: str | None) -> int:
     (``"00000000030"`` = 30) is honored; the 10-significant-digit ceiling
     comfortably covers MAX_DEVICE_SECONDS (7 digits) while keeping ``int()``
     total.
+
+    Trimming is ASCII SP/HTAB only (RFC 9110 OWS) — NOT bare ``str.strip()``,
+    whose Unicode whitespace (NBSP above all) would trim a malformed value
+    into validity.
     """
-    if header is None or not re.fullmatch(r"[0-9]+", header.strip()):
+    if header is None or not re.fullmatch(r"[0-9]+", header.strip(" \t")):
         return 0
-    significant = header.strip().lstrip("0")
+    significant = header.strip(" \t").lstrip("0")
     if not significant or len(significant) > 10:
         # All zeros (value 0, non-positive) or too many significant digits
         # (overflows the ceiling regardless) → interval fallback.
