@@ -690,6 +690,33 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        // Merge-safe composite: GET then PUT, resending the fetched due_on.
+        "UpdateCard" -> {
+            val cardId = tc.pathParams.longParam("cardId")
+            val rb = tc.requestBody
+            account.cards.update(
+                cardId,
+                title = rb?.get("title")?.jsonPrimitive?.contentOrNull,
+                content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
+                dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
+                assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+            )
+            DispatchResult()
+        }
+
+        // Raw single PUT, no read-before-write.
+        "UpdateCardVerbatim" -> {
+            val cardId = tc.pathParams.longParam("cardId")
+            val rb = tc.requestBody
+            account.cards.updateVerbatim(cardId, UpdateCardBody(
+                title = rb?.get("title")?.jsonPrimitive?.contentOrNull,
+                content = rb?.get("content")?.jsonPrimitive?.contentOrNull,
+                dueOn = rb?.get("due_on")?.jsonPrimitive?.contentOrNull,
+                assigneeIds = rb?.get("assignee_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+            ))
+            DispatchResult()
+        }
+
         // Synthetic scenario key (not a wire operation): exercises the
         // read-modify-write edit closure by assigning each fixture key
         // onto the corresponding TodoFields member.

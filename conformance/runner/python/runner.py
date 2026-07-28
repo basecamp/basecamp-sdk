@@ -26,6 +26,7 @@ from basecamp.errors import BasecampError
 # Wire keys for todo write operations; identical to the Python kwarg /
 # edit-attribute names, so fixtures map onto the SDK surface directly.
 _TODO_WRITE_FIELDS = ("content", "description", "assignee_ids", "completion_subscriber_ids", "due_on", "starts_on", "notify")
+_CARD_WRITE_FIELDS = ("title", "content", "due_on", "assignee_ids")
 
 # Sentinel distinguishing "key absent from the JSON body" from a present None.
 _MISSING = object()
@@ -100,6 +101,18 @@ class OperationMapper:
                 return self._account.todos.update(
                     todo_id=path_params["todoId"],
                     **{k: body[k] for k in _TODO_WRITE_FIELDS if k in body},
+                )
+            case "UpdateCard":
+                # Merge-safe composite: GET then PUT, resending the fetched due_on.
+                return self._account.cards.update(
+                    card_id=path_params["cardId"],
+                    **{k: body[k] for k in _CARD_WRITE_FIELDS if k in body},
+                )
+            case "UpdateCardVerbatim":
+                # Raw single PUT, no read-before-write.
+                return self._account.cards.update_verbatim(
+                    card_id=path_params["cardId"],
+                    **{k: body[k] for k in _CARD_WRITE_FIELDS if k in body},
                 )
             case "EditTodo":
                 # Synthetic scenario key (not a wire op): drive the edit

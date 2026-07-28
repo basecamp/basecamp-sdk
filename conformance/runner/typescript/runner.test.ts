@@ -234,6 +234,32 @@ async function executeOperation(
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));
         break;
 
+      case "UpdateCard":
+        // Merge-safe composite: GET then PUT, resending the fetched due_on.
+        await client.cards.update(Number(params.cardId), {
+          ...(body.title !== undefined ? { title: String(body.title) } : {}),
+          ...(body.content !== undefined ? { content: String(body.content) } : {}),
+          ...(body.due_on !== undefined
+            ? { dueOn: body.due_on === "" ? null : String(body.due_on) }
+            : {}),
+          ...(body.assignee_ids !== undefined
+            ? { assigneeIds: body.assignee_ids as number[] }
+            : {}),
+        });
+        break;
+
+      case "UpdateCardVerbatim":
+        // Raw single PUT, no read-before-write.
+        await client.cards.updateVerbatim(Number(params.cardId), {
+          ...(body.title !== undefined ? { title: String(body.title) } : {}),
+          ...(body.content !== undefined ? { content: String(body.content) } : {}),
+          ...(body.due_on !== undefined ? { dueOn: String(body.due_on) } : {}),
+          ...(body.assignee_ids !== undefined
+            ? { assigneeIds: body.assignee_ids as number[] }
+            : {}),
+        });
+        break;
+
       case "EditTodo":
         // Synthetic scenario key: read-modify-write via the edit callback,
         // assigning each fixture-present key onto the mapped TodoFields member.

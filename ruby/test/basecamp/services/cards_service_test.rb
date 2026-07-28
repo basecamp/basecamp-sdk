@@ -55,18 +55,51 @@ class CardsServiceTest < Minitest::Test
     assert_equal "New Feature", card["title"]
   end
 
-  def test_update_card
-    # Generated service: /card_tables/cards/{id} without .json
+  def test_update_verbatim_card
+    # Generated service: /card_tables/cards/{id} without .json. The raw path
+    # sends exactly one PUT with no read-before-write.
     updated_card = sample_card(id: 200, title: "Updated Title")
     stub_put("/12345/card_tables/cards/200", response_body: updated_card)
 
-    card = @account.cards.update(
+    card = @account.cards.update_verbatim(
       card_id: 200,
       title: "Updated Title",
       content: "<p>New content</p>"
     )
 
     assert_equal "Updated Title", card["title"]
+  end
+
+  def test_update_card_preserves_due_on
+    # BC3 merges the body over `{ due_on: nil }`, so a sparse PUT erases the
+    # due date. The merge-safe update reads first and resends it.
+    current = sample_card(id: 200, title: "Old Title").merge("due_on" => "2024-02-01")
+    updated_card = sample_card(id: 200, title: "Updated Title")
+    stub_get("/12345/card_tables/cards/200", response_body: current)
+    stub_put("/12345/card_tables/cards/200", response_body: updated_card)
+
+    card = @account.cards.update(card_id: 200, title: "Updated Title")
+
+    assert_equal "Updated Title", card["title"]
+    assert_requested(:put, "#{BASE_URL}/12345/card_tables/cards/200") do |req|
+      body = JSON.parse(req.body)
+      body["due_on"] == "2024-02-01" &&
+        body["title"] == "Updated Title" &&
+        # Never echoed back: BC3 filters assignee ids through reachable_people.
+        !body.key?("assignee_ids")
+    end
+  end
+
+  def test_update_card_clears_due_on_by_omission
+    updated_card = sample_card(id: 200, title: "Updated Title")
+    stub_put("/12345/card_tables/cards/200", response_body: updated_card)
+
+    @account.cards.update(card_id: 200, due_on: "")
+
+    # Clearing is omission, never `{"due_on": null}` (SPEC section 18).
+    assert_requested(:put, "#{BASE_URL}/12345/card_tables/cards/200") do |req|
+      !JSON.parse(req.body).key?("due_on")
+    end
   end
 
   def test_move_card

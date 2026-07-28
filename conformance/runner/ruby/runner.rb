@@ -156,6 +156,12 @@ class OperationMapper
         todo_id: path_params["todoId"],
         **todo_write_kwargs(body)
       )
+    when "UpdateCard"
+      # Merge-safe composite: GET then PUT, resending the fetched due_on.
+      @account.cards.update(card_id: path_params["cardId"], **card_write_kwargs(body))
+    when "UpdateCardVerbatim"
+      # Raw single PUT, no read-before-write.
+      @account.cards.update_verbatim(card_id: path_params["cardId"], **card_write_kwargs(body))
     when "EditTodo"
       @account.todos.edit(todo_id: path_params["todoId"]) do |t|
         (body || {}).each { |key, value| t.public_send("#{key}=", value) }
@@ -210,6 +216,13 @@ class OperationMapper
   TODO_WRITE_KEYS = %w[
     content description assignee_ids completion_subscriber_ids due_on starts_on notify
   ].freeze
+
+  CARD_WRITE_KEYS = %w[title content due_on assignee_ids].freeze
+
+  def card_write_kwargs(body)
+    CARD_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
+  end
 
   def todo_write_kwargs(body)
     TODO_WRITE_KEYS.select { |key| (body || {}).key?(key) } \

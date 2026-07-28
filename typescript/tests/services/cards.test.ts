@@ -100,22 +100,75 @@ describe("CardsService", () => {
     });
   });
 
-  describe("update", () => {
-    it("should update a card", async () => {
+  describe("updateVerbatim", () => {
+    it("sends a single PUT with no read-before-write", async () => {
       const cardId = 42;
+      const methods: string[] = [];
 
       server.use(
         http.put(`${BASE_URL}/card_tables/cards/${cardId}`, async ({ request }) => {
+          methods.push("PUT");
           const body = (await request.json()) as Record<string, unknown>;
           expect(body.title).toBe("Updated card");
+          // The raw path is sharp: an unset due_on stays off the wire, and BC3
+          // reads that as a clear.
+          expect(body.due_on).toBeUndefined();
           return HttpResponse.json(sampleCard(cardId));
         })
       );
 
-      const card = await client.cards.update(cardId, {
+      const card = await client.cards.updateVerbatim(cardId, {
         title: "Updated card",
       });
       expect(card.id).toBe(cardId);
+      expect(methods).toEqual(["PUT"]);
+    });
+  });
+
+  describe("update (merge-safe)", () => {
+    it("refetches and resends due_on when the caller does not address it", async () => {
+      const cardId = 42;
+      const methods: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/card_tables/cards/${cardId}`, () => {
+          methods.push("GET");
+          return HttpResponse.json({ ...sampleCard(cardId), due_on: "2024-02-01" });
+        }),
+        http.put(`${BASE_URL}/card_tables/cards/${cardId}`, async ({ request }) => {
+          methods.push("PUT");
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.title).toBe("Updated card");
+          // BC3 merges the body over `{ due_on: nil }`, so omitting due_on
+          // would erase the date.
+          expect(body.due_on).toBe("2024-02-01");
+          expect(body.assignee_ids).toBeUndefined();
+          return HttpResponse.json(sampleCard(cardId));
+        })
+      );
+
+      const card = await client.cards.update(cardId, { title: "Updated card" });
+      expect(card.id).toBe(cardId);
+      expect(methods).toEqual(["GET", "PUT"]);
+    });
+
+    it("clears the due date by omitting due_on, with no GET", async () => {
+      const cardId = 42;
+      const methods: string[] = [];
+
+      server.use(
+        http.put(`${BASE_URL}/card_tables/cards/${cardId}`, async ({ request }) => {
+          methods.push("PUT");
+          const body = (await request.json()) as Record<string, unknown>;
+          // Never `{"due_on": null}` — that would violate body compaction.
+          expect(body.due_on).toBeUndefined();
+          expect("due_on" in body).toBe(false);
+          return HttpResponse.json(sampleCard(cardId));
+        })
+      );
+
+      await client.cards.update(cardId, { dueOn: null });
+      expect(methods).toEqual(["PUT"]);
     });
   });
 

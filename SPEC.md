@@ -275,6 +275,32 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 
 The OpenAPI spec uses 12 coarse tags (e.g., `Automation`, `Todos`, `Files`). The service generators split these into 46 fine-grained services using a two-table mapping: `TAG_TO_SERVICE` (tag → default service name) and `SERVICE_SPLITS` (tag → {service → [operationIds]}). For example, the `Todos` tag splits into `Todos`, `Todolists`, `Todosets`, `TodolistGroups`; the `Files` tag splits into `Attachments`, `Uploads`, `Vaults`, `Documents`. These mappings are defined in each language's generator script and produce identical service sets across SDKs.
 
+### Merge-Safe Write Surface (Cards)
+
+BC3 builds a card's update params as `{ due_on: nil }.merge(card_params)`
+(`kanban/cards_controller.rb`), so **any** update whose body omits `due_on` erases the card's due
+date. A sparse PUT — the natural thing to write, and what every generated SDK produced — is
+therefore destructive.
+
+- **`update`** — merge-safe. GETs the card and resends the existing `due_on` when the caller left it
+  unaddressed, then PUTs. The extra GET is paid for only in that case; naming the due date
+  explicitly skips it. `due_on` is tri-state: unaddressed preserves, an explicit empty clears, a
+  date sets. Clearing is encoded by **omitting** `due_on` — never by sending null (§18).
+- **`updateVerbatim`** — the raw single PUT, no read-before-write. Sharp by construction: omitting
+  `due_on` clears it.
+
+The composite deliberately does **not** resend everything. BC3 filters incoming assignee IDs through
+`reachable_people`, so echoing assignees back would silently unassign anyone who has since lost board
+access; only the caller's own `title`/`content`/`assignee_ids` go out, plus `due_on`.
+
+Not atomic: a concurrent due-date change landing between the GET and the PUT is overwritten with the
+value the call read. The window is one round-trip.
+
+Presence detection is language-native: Go `*string` (nil preserves, pointer-to-empty clears),
+TypeScript `dueOn?: string | null`, Ruby/Python `nil`/`None` kwarg defaults with `""` to clear,
+Kotlin nullable parameters with `""` to clear, Swift a `DueDate` enum (`.preserve`/`.clear`/`.on`)
+because an optional cannot carry three states.
+
 ### Merge-Safe Write Surface (Todos)
 
 The `PUT /{accountId}/todos/{todoId}` endpoint is **full replace, omission clears** (spec operation `ReplaceTodo`, `content` required, declared via `x-basecamp-write-semantics: {mode: "replace", clearsOmitted: true}` and the `write` clause in `behavior-model.json`). Every SDK exposes a three-method, two-state surface over it:
@@ -1270,9 +1296,14 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 2. **Composition, not substitution.** It composes existing generated operations (e.g. GET → overlay → full PUT); it never introduces a wire operation the spec lacks — fix the spec and regenerate instead.
 3. **Native hook identities.** Hooks observe the constituent wire operations under their normal per-language identities; composites never mint synthetic operation names.
 4. **Conformance-covered.** The composite's behavior is encoded in `conformance/tests/` fixtures run by every runner (with native test mirrors where a runner does not exist yet, e.g. Swift).
-5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/todos-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
+5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/*-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
+6. **The raw operation stays reachable.** When a composite takes over the plain method name, the generated single-request method is renamed (via `METHOD_NAME_OVERRIDES`) rather than hidden, and gets its own conformance case asserting it makes exactly one request with no read-before-write. Without that second case, later generator drift could silently turn both public methods into composite behavior and nothing would notice.
 
-Current composites: Todos `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
+Current composites:
+- **Todos** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
+- **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
+
+**Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where the server treats an omitted key as a clear — as BC3 does for `due_on` — omission *is* the clear encoding, and it is the only one all six SDKs can express identically: five strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`).
 
 ---
 

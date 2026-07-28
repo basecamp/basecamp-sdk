@@ -538,6 +538,46 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Update(ctx, todoID, req)
 		return operationResult{err: err}
 
+	case "UpdateCard":
+		// Merge-safe composite: GET then PUT, resending the fetched due_on.
+		cardID := getInt64Param(tc.PathParams, "cardId")
+		req := &basecamp.UpdateCardRequest{}
+		if v := getStringParam(tc.RequestBody, "title"); v != "" {
+			req.Title = &v
+		}
+		if v := getStringParam(tc.RequestBody, "content"); v != "" {
+			req.Content = &v
+		}
+		if v, ok := tc.RequestBody["due_on"]; ok {
+			s, _ := v.(string)
+			req.DueOn = &s
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
+			req.AssigneeIDs = ids
+		}
+		_, err := account.Cards().Update(ctx, cardID, req)
+		return operationResult{err: err}
+
+	case "UpdateCardVerbatim":
+		// Raw single PUT, no read-before-write.
+		cardID := getInt64Param(tc.PathParams, "cardId")
+		req := &basecamp.UpdateCardRequest{}
+		if v := getStringParam(tc.RequestBody, "title"); v != "" {
+			req.Title = &v
+		}
+		if v := getStringParam(tc.RequestBody, "content"); v != "" {
+			req.Content = &v
+		}
+		if v, ok := tc.RequestBody["due_on"]; ok {
+			s, _ := v.(string)
+			req.DueOn = &s
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
+			req.AssigneeIDs = ids
+		}
+		_, err := account.Cards().UpdateVerbatim(ctx, cardID, req)
+		return operationResult{err: err}
+
 	case "EditTodo":
 		// Synthetic scenario key (not a wire operation): drives the SDK's
 		// edit closure, assigning each fixture requestBody key onto the
