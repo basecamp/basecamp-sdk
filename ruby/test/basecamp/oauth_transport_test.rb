@@ -486,6 +486,65 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
+  def test_watchdog_kill_cannot_leak_a_half_closed_socket
+    # Completion racing the deadline: the watchdog can be INSIDE http.finish —
+    # after do_finish clears started? but before the socket close — when the
+    # ensure's kill fires. Un-fixed, the thread dies mid-close and the request
+    # side skips its own close (started? is already false): the socket leaks
+    # until GC. The instrumented subclass widens that window so the kill lands
+    # inside it deterministically; the deferred-interrupt fix must still
+    # complete the close before the thread dies.
+    # The shape needs a KEEP-ALIVE response that completes cleanly (any raise
+    # inside the response block makes Net::HTTP's own transport rescue close
+    # the socket) with the deadline firing between the response block and the
+    # request-side ensure — the instrumented request tail-sleep pins the main
+    # thread there while the deadline fires.
+    server = TCPServer.new("127.0.0.1", 0)
+    @servers << server
+    @server_threads << Thread.new do
+      loop do
+        conn = server.accept
+        @conns << conn
+        while (line = conn.gets) && line != "\r\n"; end
+        conn.write("HTTP/1.1 204 No Content\r\n\r\n") # keep-alive: socket survives the request
+      rescue IOError, SystemCallError
+        break
+      end
+    end
+    endpoint = "http://127.0.0.1:#{server.addr[1]}"
+
+    sockets = []
+    instrumented = Class.new(Net::HTTP) do
+      define_method(:do_finish) do
+        @started = false
+        sockets << @socket if @socket
+        sleep(0.5) # widened started?-cleared -> socket-close window
+        @socket&.close
+        @socket = nil
+      end
+
+      define_method(:request) do |req, body = nil, &block|
+        result = super(req, body, &block)
+        sleep(0.2) # let the deadline fire before the request-side ensure runs
+        result
+      end
+    end
+
+    uri = URI.parse(endpoint)
+    http = instrumented.new(uri.hostname, uri.port)
+    original_new = Net::HTTP.method(:new)
+    Net::HTTP.define_singleton_method(:new) { |*| http }
+    begin
+      status, = Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/token", timeout: 0.1)
+      assert_equal 204, status
+    ensure
+      Net::HTTP.define_singleton_method(:new, original_new)
+    end
+
+    assert_not_empty sockets, "watchdog never entered the close window"
+    assert sockets.all?(&:closed?), "the deadline-racing close must complete: no socket may leak"
+  end
+
   def test_watchdog_threads_do_not_leak
     endpoint, = start_server do |conn|
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")

@@ -320,7 +320,12 @@ module Basecamp
           # thread the moment the request completes, so the loop cannot outlive
           # the call.
           loop do
-            begin
+            # The ensure's kill must never land INSIDE finish: interrupted
+            # after do_finish clears started? but before the socket close,
+            # BOTH closers skip — the request-side ensure sees started? false
+            # and this thread is dead — leaking the socket until GC. Defer the
+            # kill across each close attempt; it lands at the sleep below.
+            Thread.handle_interrupt(Object => :never) do
               http.finish
             rescue IOError
               # Not started: still connecting, or between implicit reopens.
