@@ -10,6 +10,7 @@ import { DeviceFlowError } from "./device-errors.js";
 import {
   requestDeviceAuthorization,
   pollDeviceToken,
+  throwIfAborted,
   DEVICE_CODE_GRANT_TYPE,
   defaultClock,
   type MonotonicClock,
@@ -71,12 +72,23 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
     );
   }
 
+  // Honor a cancellation raised before any work: an already-aborted signal
+  // must not fire the authorization request or surface a code via display.
+  throwIfAborted(signal);
+
   const auth = await requestDeviceAuthorization({
     deviceAuthorizationEndpoint: config.deviceAuthorizationEndpoint,
     clientId,
     scope,
     fetch: customFetch,
+    // Threaded so an abort DURING the request cancels it in flight and
+    // surfaces as the contractual cancelled — never a code shown post-cancel.
+    signal,
   });
+
+  // Re-check before surfacing the code: an abort racing the request's
+  // completion must not reach the display hook.
+  throwIfAborted(signal);
 
   // The code's lifetime starts at issuance, not after display: a slow display
   // hook must eat into the deadline, never reset it. Capture the monotonic clock

@@ -1359,3 +1359,53 @@ describe("resolveDeviceTimeoutMs ceiling", () => {
     expect(requests).toBe(1);
   });
 });
+
+describe("performDeviceLogin cancellation around the authorization request", () => {
+  it("makes no request and never fires display when already aborted", async () => {
+    let requests = 0;
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () => {
+        requests += 1;
+        return HttpResponse.json(deviceAuthResponse);
+      })
+    );
+    const controller = new AbortController();
+    controller.abort();
+    const displayed: unknown[] = [];
+
+    await expect(
+      performDeviceLogin({
+        config,
+        clientId: "basecamp-cli",
+        display: (auth) => { displayed.push(auth); },
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ reason: "cancelled" });
+    expect(requests).toBe(0);
+    expect(displayed).toEqual([]);
+  });
+
+  it("an abort during the authorization request never reaches display", async () => {
+    // The mock endpoint aborts the signal as it serves the code pair, so the
+    // entry check passes and only the in-flight/post-request handling can
+    // catch it — the display hook must never fire for a cancelled flow.
+    const controller = new AbortController();
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () => {
+        controller.abort();
+        return HttpResponse.json(deviceAuthResponse);
+      })
+    );
+    const displayed: unknown[] = [];
+
+    await expect(
+      performDeviceLogin({
+        config,
+        clientId: "basecamp-cli",
+        display: (auth) => { displayed.push(auth); },
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ reason: "cancelled" });
+    expect(displayed).toEqual([]);
+  });
+});

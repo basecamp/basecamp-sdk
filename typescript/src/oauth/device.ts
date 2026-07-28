@@ -116,18 +116,21 @@ export interface RequestDeviceAuthorizationParams {
   fetch?: typeof globalThis.fetch;
   /** Request timeout in milliseconds (default: 30000). */
   timeoutMs?: number;
+  /** Cancellation signal — aborting rejects with DeviceFlowError("cancelled"). */
+  signal?: AbortSignal;
 }
 
 /**
  * Requests a device/user code pair (RFC 8628 §3.1–3.2).
  *
- * @throws DeviceFlowError("transport") on a network failure; BasecampError on
+ * @throws DeviceFlowError("cancelled") when the signal aborts;
+ *   DeviceFlowError("transport") on a network failure; BasecampError on
  *   validation / non-2xx.
  */
 export async function requestDeviceAuthorization(
   params: RequestDeviceAuthorizationParams
 ): Promise<DeviceAuthorization> {
-  const { deviceAuthorizationEndpoint, clientId, scope, fetch: customFetch = globalThis.fetch, timeoutMs = DEFAULT_DEVICE_TIMEOUT_MS } = params;
+  const { deviceAuthorizationEndpoint, clientId, scope, fetch: customFetch = globalThis.fetch, timeoutMs = DEFAULT_DEVICE_TIMEOUT_MS, signal } = params;
 
   requireSecureEndpoint(deviceAuthorizationEndpoint, "device authorization endpoint");
   if (!clientId) {
@@ -141,6 +144,12 @@ export async function requestDeviceAuthorization(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), resolveDeviceTimeoutMs(timeoutMs));
+  // Chain the caller's cancellation into the request like postDeviceToken:
+  // an already-aborted signal must not fire the POST at all, and an abort
+  // mid-request surfaces as the contractual cancelled — never transport.
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort, { once: true });
+  if (signal?.aborted) controller.abort();
   let response: Response;
   let text: string;
   try {
@@ -155,6 +164,9 @@ export async function requestDeviceAuthorization(
         redirect: "manual",
       });
     } catch (err) {
+      if (isAbort(err) && signal?.aborted) {
+        throw new DeviceFlowError("cancelled", "Device flow cancelled");
+      }
       throw new DeviceFlowError("transport", `Device authorization request failed: ${errMessage(err)}`, {
         cause: err instanceof Error ? err : undefined,
       });
@@ -181,12 +193,16 @@ export async function requestDeviceAuthorization(
       text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device authorization");
     } catch (err) {
       if (err instanceof BasecampError) throw err;
+      if (isAbort(err) && signal?.aborted) {
+        throw new DeviceFlowError("cancelled", "Device flow cancelled");
+      }
       throw new DeviceFlowError("transport", `Device authorization response read failed: ${errMessage(err)}`, {
         cause: err instanceof Error ? err : undefined,
       });
     }
   } finally {
     clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", onAbort);
   }
 
   let data: unknown;
@@ -655,7 +671,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-function throwIfAborted(signal?: AbortSignal): void {
+export function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) {
     throw new DeviceFlowError("cancelled", "Device flow cancelled");
   }
