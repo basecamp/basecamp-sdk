@@ -1774,3 +1774,26 @@ func TestPollDeviceToken_CancelledDuringIgnoredTransportBeats200(t *testing.T) {
 		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
 	}
 }
+
+func TestPollDeviceToken_CancelledDuringIgnoredTransportBeatsTerminalError(t *testing.T) {
+	// Cancellation must also win over a TERMINAL error completed after the
+	// caller cancelled: a context-ignoring transport returning access_denied
+	// (or any 4xx/malformed response) post-cancellation must surface
+	// cancelled, not the terminal classification.
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{{http.StatusBadRequest, map[string]any{"error": "access_denied"}}})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	client := &http.Client{Transport: &contextIgnoringTransport{base: tlsClient(srv).Transport, cancel: cancel}}
+	sleep := &recordingSleep{}
+
+	_, err := PollDeviceToken(ctx, srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(client), WithDeviceSleep(sleep.fn))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowCancelled {
+		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
+	}
+}

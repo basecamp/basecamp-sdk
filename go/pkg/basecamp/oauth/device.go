@@ -422,17 +422,17 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 		// per-request timeout: near expiry, a stalled token POST must not hold
 		// the flow past the monotonic deadline for the full request budget.
 		result := postDeviceToken(ctx, cfg, tokenEndpoint, form, min(cfg.timeout, postRemaining))
+		// Re-check cancellation before classifying ANY completed round trip:
+		// an injected RoundTripper that ignores the request context can
+		// complete a 200, a terminal 4xx (access_denied, expired_token), or a
+		// malformed response after ctx is cancelled — the caller asked to
+		// stop, so cancelled wins over every completed outcome. Mirrors the
+		// post-authorization re-check and the Py/Rb post-round-trip probes.
+		if err := ctx.Err(); err != nil {
+			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
+		}
 		switch result.kind {
 		case pollToken:
-			// Re-check cancellation before returning the credential: an
-			// injected RoundTripper that ignores the request context can
-			// complete a 200 after ctx is cancelled — the caller asked to
-			// stop, so cancelled wins over the token. Mirrors the
-			// post-authorization re-check and the Py/Rb post-round-trip
-			// probes.
-			if err := ctx.Err(); err != nil {
-				return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
-			}
 			return result.token, nil
 		case pollCancelled:
 			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: result.err}
