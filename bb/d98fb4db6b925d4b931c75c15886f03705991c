@@ -1,0 +1,58 @@
+go/templates/client.tmpl
+  s_effaf9ebecb0f4::t_740c9ac2f5dc7b 575-579
+  s_effaf9ebecb0f4::t_0208ecc12886e3 606-615
+  s_effaf9ebecb0f4::t_9a74fd79debd69 173-180
+go/pkg/basecamp/generated_perop_retry_test.go
+  s_effaf9ebecb0f4::t_092c23f56ec5b8 1-80,82-100
+  s_effaf9ebecb0f4::t_d65c911aa44198 81
+python/src/basecamp/generated/services/_async_base.py
+  s_effaf9ebecb0f4::t_7782cfdb670bb5 55-57
+  s_effaf9ebecb0f4::t_5b251d0a2d7e34 97-99
+  s_effaf9ebecb0f4::t_3db464e7fe59eb 215,235,255,264-271,280,313-315,323,350-352,356,381
+SPEC.md
+  s_effaf9ebecb0f4::t_c4a1531dd02452 111-112
+python/src/basecamp/_async_http.py
+  s_effaf9ebecb0f4::t_52e854a2197132 314-325
+  s_effaf9ebecb0f4::t_f84211f2450cf5 51
+  s_effaf9ebecb0f4::t_9c8d1f91282500 53,93,119,135,149,155,313
+python/src/basecamp/_http.py
+  s_effaf9ebecb0f4::t_237c86404fc403 135
+  s_effaf9ebecb0f4::t_256ae512e76dc7 50,52
+  s_effaf9ebecb0f4::t_daa2cf4ab238fa 92
+  s_effaf9ebecb0f4::t_72c889ec6c998f 149,155
+  s_effaf9ebecb0f4::t_157cea2fc5437d 313-325
+  s_effaf9ebecb0f4::t_b8371ef4a75afe 119
+python/src/basecamp/generated/services/_base.py
+  s_effaf9ebecb0f4::t_5a1ee2aa1f75d1 267-273
+  s_effaf9ebecb0f4::t_a53d2ce99d64ba 353-354
+  s_effaf9ebecb0f4::t_1bda706f8f78fb 316-317
+  s_effaf9ebecb0f4::t_ce4bfef98cc46c 62
+  s_effaf9ebecb0f4::t_967ade4efbfdcc 102,218,238,258,274,283,318,326,355,359,384
+scripts/check-retry-metadata-parity.py
+  s_effaf9ebecb0f4::t_3a1f08264c0d5e 1-93,101-229
+  s_effaf9ebecb0f4::t_ebcf3144ff9a37 94-100
+Makefile
+  s_effaf9ebecb0f4::t_966b5e2f59b4da 857-859
+  s_effaf9ebecb0f4::t_e4da03436b9df1 882
+  s_effaf9ebecb0f4::t_7d3aae92913e3d 811
+go/pkg/generated/client.gen.go
+  s_effaf9ebecb0f4::t_ddc15f859de1dd 3989-3996,19575-19579,19586-19811
+python/tests/test_http.py
+  s_effaf9ebecb0f4::t_cf5cf497f260f0 392-464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bbd98fb4db6b925d4b931c75c15886f03705991c",
+  "prompts": {},
+  "sessions": {
+    "s_effaf9ebecb0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9d6aa32-1196-4ab5-8699-c047b7e5bbb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
