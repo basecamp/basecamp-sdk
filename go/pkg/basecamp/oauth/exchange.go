@@ -170,7 +170,10 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 		return nil, fmt.Errorf("parsing token response: %w", err)
 	}
 	if rawResource.Resource != nil && *rawResource.Resource == "" {
-		return nil, fmt.Errorf("token response resource must be a non-empty string when present")
+		// A typed api fault (SPEC §16), not a bare error: callers classify
+		// malformed server responses via errors.As(*basecamp.Error) and need
+		// the HTTP status — matching the device-token and AuthManager paths.
+		return nil, basecamp.ErrAPI(resp.StatusCode, "token response resource must be a non-empty string when present")
 	}
 
 	// Calculate ExpiresAt from ExpiresIn
