@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-07-26"
+  version: "2026-07-28"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -2718,6 +2718,15 @@ structure UpdateScheduleEntryInput {
   starts_at: ISO8601Timestamp
   ends_at: ISO8601Timestamp
   description: ScheduleEntryDescription
+  /// Replaces the entry's participants.
+  ///
+  /// Omitting this member preserves the current participants; sending an empty
+  /// array clears them. That guarantee is BC3-side and recent: until
+  /// basecamp/bc3#12425, `Schedules::EntriesController#update` called
+  /// `replace_participants` unconditionally, so any update omitting the key —
+  /// including the shape in BC3's own "Update a schedule entry" doc example —
+  /// silently removed every participant and notified each one. The controller
+  /// now guards on the request actually addressing participants.
   participant_ids: PersonIdList
   all_day: Boolean
   notify: Boolean

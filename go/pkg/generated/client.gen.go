@@ -2953,10 +2953,20 @@ type UpdateQuestionResponseContent = Question
 
 // UpdateScheduleEntryRequestContent defines model for UpdateScheduleEntryRequestContent.
 type UpdateScheduleEntryRequestContent struct {
-	AllDay         *bool     `json:"all_day,omitempty"`
-	Description    string    `json:"description,omitempty"`
-	EndsAt         time.Time `json:"ends_at,omitempty"`
-	Notify         *bool     `json:"notify,omitempty"`
+	AllDay      *bool     `json:"all_day,omitempty"`
+	Description string    `json:"description,omitempty"`
+	EndsAt      time.Time `json:"ends_at,omitempty"`
+	Notify      *bool     `json:"notify,omitempty"`
+
+	// ParticipantIds Replaces the entry's participants.
+	//
+	// Omitting this member preserves the current participants; sending an empty
+	// array clears them. That guarantee is BC3-side and recent: until
+	// basecamp/bc3#12425, `Schedules::EntriesController#update` called
+	// `replace_participants` unconditionally, so any update omitting the key —
+	// including the shape in BC3's own "Update a schedule entry" doc example —
+	// silently removed every participant and notified each one. The controller
+	// now guards on the request actually addressing participants.
 	ParticipantIds []int64   `json:"participant_ids,omitempty"`
 	StartsAt       time.Time `json:"starts_at,omitempty"`
 	Summary        string    `json:"summary,omitempty"`

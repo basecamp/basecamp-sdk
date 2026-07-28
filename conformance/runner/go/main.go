@@ -538,6 +538,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Update(ctx, todoID, req)
 		return operationResult{err: err}
 
+	case "UpdateScheduleEntry":
+		// Participants are presence-bearing: absent means "leave them alone"
+		// (BC3 preserves only because the key is missing), an empty non-nil
+		// slice means "remove everyone".
+		entryID := getInt64Param(tc.PathParams, "entryId")
+		req := &basecamp.UpdateScheduleEntryRequest{
+			Summary:  getStringParam(tc.RequestBody, "summary"),
+			StartsAt: getStringParam(tc.RequestBody, "starts_at"),
+			EndsAt:   getStringParam(tc.RequestBody, "ends_at"),
+		}
+		if ids, ok := getInt64SliceParam(tc.RequestBody, "participant_ids"); ok {
+			req.ParticipantIDs = ids
+		}
+		_, err := account.Schedules().UpdateEntry(ctx, entryID, req)
+		return operationResult{err: err}
+
 	case "UpdateCard":
 		// Merge-safe composite: GET then PUT, resending the fetched due_on.
 		_, err := account.Cards().Update(ctx, getInt64Param(tc.PathParams, "cardId"), cardUpdateRequest(tc.RequestBody))

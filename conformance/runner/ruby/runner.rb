@@ -156,6 +156,10 @@ class OperationMapper
         todo_id: path_params["todoId"],
         **todo_write_kwargs(body)
       )
+    when "UpdateScheduleEntry"
+      # Only pass keys the fixture carries: compact_params strips nil, so an
+      # absent participant_ids stays off the wire while [] survives.
+      @account.schedules.update_entry(entry_id: path_params["entryId"], **schedule_entry_write_kwargs(body))
     when "UpdateCard"
       # Merge-safe composite: GET then PUT, resending the fetched due_on.
       @account.cards.update(card_id: path_params["cardId"], **card_write_kwargs(body))
@@ -216,6 +220,13 @@ class OperationMapper
   TODO_WRITE_KEYS = %w[
     content description assignee_ids completion_subscriber_ids due_on starts_on notify
   ].freeze
+
+  SCHEDULE_ENTRY_WRITE_KEYS = %w[summary starts_at ends_at description participant_ids all_day notify].freeze
+
+  def schedule_entry_write_kwargs(body)
+    SCHEDULE_ENTRY_WRITE_KEYS.select { |key| (body || {}).key?(key) } \
+      .to_h { |key| [key.to_sym, body[key]] }
+  end
 
   CARD_WRITE_KEYS = %w[title content due_on assignee_ids].freeze
 
