@@ -306,16 +306,23 @@ module Basecamp
           remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
           sleep(remaining) if remaining.positive?
           deadline_fired = true
-          # Retry until the session exists to close: the deadline can fire while
-          # the session is still CONNECTING (finish then raises IOError), and a
-          # one-shot close would leave the subsequent header read unbounded. The
-          # ensure below kills this thread the moment the request completes, so
-          # the loop cannot outlive the call.
-          begin
-            http.finish
-          rescue IOError
+          # Close the session and KEEP closing until the ensure below kills this
+          # thread. A one-shot close is wrong twice over: finish raises IOError
+          # while the session is still CONNECTING (a single failed attempt would
+          # leave the subsequent header read unbounded), and Net::HTTP#request
+          # implicitly RE-STARTS a finished session — a close that landed
+          # between the post-connect deadline re-check and the request write
+          # would hand the reopened connection a fresh, unwatched header wait.
+          # Looping bounds any such reopen to one tick. The ensure kills this
+          # thread the moment the request completes, so the loop cannot outlive
+          # the call.
+          loop do
+            begin
+              http.finish
+            rescue IOError
+              # Not started: still connecting, or between implicit reopens.
+            end
             sleep(0.05)
-            retry
           end
         end
 
@@ -335,6 +342,13 @@ module Basecamp
           raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
           session.request(request) do |response|
+            # Net::HTTP#request implicitly re-starts a finished session: if the
+            # watchdog's close landed between the deadline re-check above and
+            # the request write, this round trip rode a fresh post-deadline
+            # connection. The watchdog loop closes such a connection within a
+            # tick; this classifies a round trip that beat the next tick.
+            raise ReadDeadlineExceeded if deadline_fired
+
             status = response.code.to_i
             # Status-first: a skipped status's body is NEVER read — the raise
             # unwinds through start, whose ensure closes the socket undrained.

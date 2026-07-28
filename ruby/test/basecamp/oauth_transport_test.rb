@@ -377,6 +377,69 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
+  def test_watchdog_close_racing_the_request_cannot_reopen_past_the_deadline
+    # Net::HTTP#request implicitly re-starts a finished session. If the
+    # watchdog's close lands between stream_http's post-connect deadline
+    # re-check and the request write, the request would ride a fresh
+    # post-deadline connection — and a bodyless response would surface as
+    # SUCCESS after the wall clock expired. Lose the race deterministically:
+    # hold the request until the watchdog has finished the session, exactly
+    # the window the race occupies. Not start_server: its accept loop dies on
+    # the watchdog-closed first connection, and the reopened connection must
+    # get a real, instant response for the un-fixed code to "succeed".
+    server = TCPServer.new("127.0.0.1", 0)
+    @servers << server
+    @server_threads << Thread.new do
+      loop do
+        conn = server.accept
+        @conns << conn
+        begin
+          while (line = conn.gets) && line != "\r\n"; end
+          conn.write("HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n")
+          conn.close
+        rescue IOError, SystemCallError
+          # Connection #1 dies under the watchdog's close; keep accepting.
+        end
+      rescue IOError, SystemCallError
+        break # listener closed in teardown
+      end
+    end
+    endpoint = "http://127.0.0.1:#{server.addr[1]}"
+
+    instrumented = Class.new(Net::HTTP) do
+      def hold_next_request!
+        @hold_next_request = true
+      end
+
+      def request(req, body = nil, &block)
+        if @hold_next_request
+          @hold_next_request = false
+          sleep(0.005) while started?
+        end
+        super
+      end
+    end
+
+    uri = URI.parse(endpoint)
+    http = instrumented.new(uri.hostname, uri.port)
+    http.hold_next_request!
+
+    # Hand the instrumented instance to stream_http (minitest 6 dropped
+    # minitest/mock, so restore the singleton by hand).
+    original_new = Net::HTTP.method(:new)
+    Net::HTTP.define_singleton_method(:new) { |*| http }
+    begin
+      # Either deadline classification is correct: the response-block re-check
+      # raises the bounded-read marker, and the persistent watchdog loop may
+      # close the reopened connection mid-flight first (surfacing as timeout).
+      assert_raises(Basecamp::Oauth::Fetcher::ReadDeadlineExceeded, Faraday::TimeoutError) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/token", timeout: 0.3)
+      end
+    ensure
+      Net::HTTP.define_singleton_method(:new, original_new)
+    end
+  end
+
   def test_watchdog_threads_do_not_leak
     endpoint, = start_server do |conn|
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
