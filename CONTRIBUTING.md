@@ -233,7 +233,26 @@ All SDKs are generated from a single Smithy specification. When adding support f
 
 6. **Update documentation**:
    - Add to the services table in each SDK's README
-   - Add to CHANGELOG under `[Unreleased]`
+   - Note which release-note section the change belongs in. There is no
+     CHANGELOG in this repo — release notes are generated from **PR labels** by
+     `.github/release.yml`, and an unlabeled PR falls into **Other**. Applying
+     labels needs triage rights, so if you don't have them, say which section
+     fits in the PR description and a maintainer will label it:
+
+     | Section | Labels |
+     |---|---|
+     | ⚠️ Breaking Changes | `breaking` |
+     | Features | `enhancement` |
+     | Bug Fixes | `bug` |
+     | CI & Infrastructure | `ci`, `dependencies`, `github-actions` |
+     | Documentation | `documentation` |
+     | Other | anything else |
+
+     A PR may carry several — `breaking` plus `bug` is common — and language
+     labels (`go`, `python`, …) are applied automatically and don't affect
+     categorization. `ci` is configured in `.github/release.yml` but does not
+     yet exist as a repository label; use `github-actions` for workflow changes
+     until it does.
 
 ## Spec-shape lints
 
