@@ -4753,8 +4753,37 @@ export interface components {
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
-            content?: string;
-            description?: string;
+            /**
+             * @description Always present, always null. `api/searches/show.json.jbuilder` renders the
+             *     recording's own partial and then unconditionally overwrites `content` with
+             *     `nil` to strip the large HTML body out of the search payload. The key is
+             *     therefore guaranteed present on every result — required — and its value is
+             *     guaranteed null. Read `plain_text_content` instead.
+             */
+            content: string | null;
+            /**
+             * @description Always present, always null — the description-attribute counterpart to
+             *     `content`. Read `plain_text_description` instead.
+             */
+            description: string | null;
+            /**
+             * @description A highlighted, truncated excerpt of the recording's content — **not** plain
+             *     text despite the name. `excerpt_and_highlight_matches` converts the rich
+             *     text with `to_plain_text`, escapes it with `html_escape_once`, then wraps
+             *     each query match in `<mark class="circled-text"><span></span>…</mark>` and
+             *     truncates the result to 300 characters. Treat it as an HTML fragment.
+             *
+             *     Optional and non-nullable: emitted only when the underlying recordable
+             *     responds to `content`, so a result whose type has no content attribute
+             *     omits the key entirely rather than sending null.
+             */
+            plain_text_content?: string;
+            /**
+             * @description The description-attribute counterpart to `plain_text_content`, with the
+             *     same highlighting, escaping, and 300-character truncation. Optional and
+             *     non-nullable — omitted when the recordable has no description attribute.
+             */
+            plain_text_description?: string;
             /**
              * @description Rich-text companion arrays carried through the polymorphic search
              *     projection. A given result is one recording type, so it carries only

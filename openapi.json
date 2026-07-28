@@ -29388,10 +29388,28 @@
             "$ref": "#/components/schemas/Person"
           },
           "content": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Always present, always null. `api/searches/show.json.jbuilder` renders the\nrecording's own partial and then unconditionally overwrites `content` with\n`nil` to strip the large HTML body out of the search payload. The key is\ntherefore guaranteed present on every result — required — and its value is\nguaranteed null. Read `plain_text_content` instead.",
+            "x-go-type": "*string"
           },
           "description": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Always present, always null — the description-attribute counterpart to\n`content`. Read `plain_text_description` instead.",
+            "x-go-type": "*string"
+          },
+          "plain_text_content": {
+            "type": "string",
+            "description": "A highlighted, truncated excerpt of the recording's content — **not** plain\ntext despite the name. `excerpt_and_highlight_matches` converts the rich\ntext with `to_plain_text`, escapes it with `html_escape_once`, then wraps\neach query match in `<mark class=\"circled-text\"><span></span>…</mark>` and\ntruncates the result to 300 characters. Treat it as an HTML fragment.\n\nOptional and non-nullable: emitted only when the underlying recordable\nresponds to `content`, so a result whose type has no content attribute\nomits the key entirely rather than sending null."
+          },
+          "plain_text_description": {
+            "type": "string",
+            "description": "The description-attribute counterpart to `plain_text_content`, with the\nsame highlighting, escaping, and 300-character truncation. Optional and\nnon-nullable — omitted when the recordable has no description attribute."
           },
           "content_attachments": {
             "type": "array",
@@ -29413,6 +29431,8 @@
         },
         "required": [
           "app_url",
+          "content",
+          "description",
           "id",
           "title",
           "type",

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -56,8 +57,23 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 	if r1.Subject != "We won Leto!" {
 		t.Errorf("expected subject 'We won Leto!', got %q", r1.Subject)
 	}
-	if r1.Content != "<div>Hello everyone! We got the Leto Laptop project! Time to get started.</div>" {
-		t.Errorf("unexpected content: %q", r1.Content)
+	// Content is always present on the wire and always null — the search
+	// projection strips the HTML body. A non-nil pointer would mean the
+	// projection changed.
+	if r1.Content != nil {
+		t.Errorf("expected nil Content on a search result, got %q", *r1.Content)
+	}
+	if r1.Description != nil {
+		t.Errorf("expected nil Description on a search result, got %q", *r1.Description)
+	}
+	if r1.PlainTextContent == "" {
+		t.Error("expected PlainTextContent to carry the highlighted excerpt")
+	}
+	if !strings.Contains(r1.PlainTextContent, `<mark class="circled-text">`) {
+		t.Errorf("PlainTextContent is an HTML fragment with highlighted matches, got %q", r1.PlainTextContent)
+	}
+	if r1.PlainTextDescription != "" {
+		t.Errorf("a Message has no description attribute, so PlainTextDescription should be absent, got %q", r1.PlainTextDescription)
 	}
 	if r1.URL != "https://3.basecampapi.com/195539477/buckets/2085958499/messages/1069479351.json" {
 		t.Errorf("unexpected URL: %q", r1.URL)
@@ -116,8 +132,17 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 	if r2.Title != "Design specs for Leto display" {
 		t.Errorf("expected title 'Design specs for Leto display', got %q", r2.Title)
 	}
-	if r2.Description != "Create detailed specifications for the Leto laptop display panel" {
-		t.Errorf("unexpected description: %q", r2.Description)
+	if r2.Content != nil {
+		t.Errorf("expected nil Content on a search result, got %q", *r2.Content)
+	}
+	if r2.Description != nil {
+		t.Errorf("expected nil Description on a search result, got %q", *r2.Description)
+	}
+	if !strings.Contains(r2.PlainTextDescription, `<mark class="circled-text">`) {
+		t.Errorf("expected a highlighted excerpt in PlainTextDescription, got %q", r2.PlainTextDescription)
+	}
+	if r2.PlainTextContent != "" {
+		t.Errorf("a Todo has no content attribute, so PlainTextContent should be absent, got %q", r2.PlainTextContent)
 	}
 	if r2.Parent == nil {
 		t.Fatal("expected Parent to be non-nil for second result")
@@ -140,8 +165,11 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 	if r3.Type != "Comment" {
 		t.Errorf("expected type 'Comment', got %q", r3.Type)
 	}
-	if r3.Content != "<div>The Leto keyboard layout looks great. Let's finalize it.</div>" {
-		t.Errorf("unexpected content for comment: %q", r3.Content)
+	if r3.Content != nil {
+		t.Errorf("expected nil Content on a search result, got %q", *r3.Content)
+	}
+	if !strings.Contains(r3.PlainTextContent, `<mark class="circled-text">`) {
+		t.Errorf("expected a highlighted excerpt in PlainTextContent, got %q", r3.PlainTextContent)
 	}
 
 	// Verify timestamps are parsed

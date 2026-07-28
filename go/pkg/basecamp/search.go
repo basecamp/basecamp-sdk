@@ -25,8 +25,23 @@ type SearchResult struct {
 	Parent           *Parent   `json:"parent,omitempty"`
 	Bucket           *Bucket   `json:"bucket,omitempty"`
 	Creator          *Person   `json:"creator,omitempty"`
-	Content          string    `json:"content,omitempty"`
-	Description      string    `json:"description,omitempty"`
+	// Content and Description are always present on the wire and always null:
+	// api/searches/show.json.jbuilder renders the recording's own partial and
+	// then unconditionally overwrites both with nil to keep the large HTML body
+	// out of the search payload. They are modeled as pointers so the guaranteed
+	// null round-trips faithfully rather than collapsing to "". Read
+	// PlainTextContent and PlainTextDescription instead.
+	Content     *string `json:"content"`
+	Description *string `json:"description"`
+	// PlainTextContent and PlainTextDescription are highlighted, truncated
+	// excerpts — NOT plain text despite the name. BC3 converts the rich text
+	// with to_plain_text, escapes it with html_escape_once, wraps each query
+	// match in <mark class="circled-text"><span></span>…</mark>, and truncates
+	// to 300 characters. Treat them as HTML fragments. Optional and
+	// non-nullable: a result whose recordable has no such attribute omits the
+	// key rather than sending null.
+	PlainTextContent     string `json:"plain_text_content,omitempty"`
+	PlainTextDescription string `json:"plain_text_description,omitempty"`
 	// ContentAttachments and DescriptionAttachments are the rich text companion
 	// arrays carried through the polymorphic search projection. A given result
 	// is one recording type, so it carries only the array matching its rich text
@@ -316,19 +331,21 @@ func searchTypesFromGenerated(gts []generated.SearchType) []SearchType {
 // searchResultFromGenerated converts a generated SearchResult to our clean SearchResult type.
 func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 	sr := SearchResult{
-		Status:           gsr.Status,
-		VisibleToClients: gsr.VisibleToClients,
-		CreatedAt:        gsr.CreatedAt,
-		UpdatedAt:        gsr.UpdatedAt,
-		Title:            gsr.Title,
-		InheritsStatus:   gsr.InheritsStatus,
-		Type:             gsr.Type,
-		URL:              gsr.Url,
-		AppURL:           gsr.AppUrl,
-		BookmarkURL:      gsr.BookmarkUrl,
-		Content:          gsr.Content,
-		Description:      gsr.Description,
-		Subject:          gsr.Subject,
+		Status:               gsr.Status,
+		VisibleToClients:     gsr.VisibleToClients,
+		CreatedAt:            gsr.CreatedAt,
+		UpdatedAt:            gsr.UpdatedAt,
+		Title:                gsr.Title,
+		InheritsStatus:       gsr.InheritsStatus,
+		Type:                 gsr.Type,
+		URL:                  gsr.Url,
+		AppURL:               gsr.AppUrl,
+		BookmarkURL:          gsr.BookmarkUrl,
+		Content:              gsr.Content,
+		Description:          gsr.Description,
+		PlainTextContent:     gsr.PlainTextContent,
+		PlainTextDescription: gsr.PlainTextDescription,
+		Subject:              gsr.Subject,
 	}
 
 	if gsr.Id != 0 {
