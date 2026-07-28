@@ -1,0 +1,10 @@
+{
+  "name": "resource-empty-rejected",
+  "description": "A present-but-empty resource is a malformed response — an empty binding is not a binding (SPEC §16).",
+  "operation": "refreshToken",
+  "response": {
+    "status": 200,
+    "body": { "access_token": "tok", "token_type": "Bearer", "resource": "" }
+  },
+  "expect": { "outcome": "reject" }
+}

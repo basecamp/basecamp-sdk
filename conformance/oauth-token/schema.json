@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basecamp.com/schemas/oauth-token-fixture.json",
+  "title": "OAuth Token Wire-Behavior Fixture",
+  "description": "Data-only, cross-language fixture describing one token-endpoint wire behavior: what a refresh request sends (the RFC 8707 resource form parameter) and how a token response's resource member decodes (round-trip, absent/null as unset, present-empty/non-string rejected). Lifecycle behavior — response-omission preservation across a stored credential — is deliberately NOT modeled here: it lives in per-manager tests (TS TokenManager, Go AuthManager, CLI). Validated by `make oauth-token-fixtures-check`. Kotlin mirrors these scenarios in code (its established pattern); Go/TS/Python/Ruby load these files directly.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "operation", "response", "expect"],
+  "properties": {
+    "name": { "type": "string", "description": "Kebab-case fixture identifier." },
+    "description": { "type": "string" },
+    "operation": {
+      "type": "string",
+      "enum": ["refreshToken"],
+      "description": "Which entry point the harness drives. refreshToken exercises both the sent form and the response decode in one round-trip."
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Inputs to the refresh call beyond the harness's fixed endpoint/refresh-token/client-id.",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "RFC 8707 resource indicator passed to the refresh call. Omit to exercise the unset path."
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body"],
+      "properties": {
+        "status": { "type": "integer", "minimum": 100, "maximum": 599, "default": 200 },
+        "body": {
+          "type": "object",
+          "description": "Raw JSON token response the mock endpoint returns, verbatim — including malformed resource values the SDK must reject."
+        }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "enum": ["token", "reject"],
+          "description": "token: the call returns a token. reject: the call fails (Go surfaces a plain error; the other SDKs raise their api_error taxonomy)."
+        },
+        "resource": {
+          "type": "string",
+          "description": "On `token`: the exact resource value the returned token must carry."
+        },
+        "resourceAbsent": {
+          "type": "boolean",
+          "description": "On `token`: the returned token must carry NO resource (unset/nil/undefined)."
+        },
+        "formResource": {
+          "type": "string",
+          "description": "The exact `resource` form value the refresh request must have sent."
+        },
+        "formResourceAbsent": {
+          "type": "boolean",
+          "description": "The refresh request must NOT have sent a `resource` form key at all."
+        }
+      },
+      "allOf": [
+        {
+          "description": "A token fixture must pin the resource expectation one way or the other.",
+          "if": { "required": ["outcome"], "properties": { "outcome": { "const": "token" } } },
+          "then": { "anyOf": [{ "required": ["resource"] }, { "required": ["resourceAbsent"] }] }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "resource-round-trip",
+  "description": "A token response carrying an RFC 8707 resource indicator round-trips onto the returned token.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 200,
+    "body": { "access_token": "tok", "token_type": "Bearer", "resource": "urn:bc:account:42" }
+  },
+  "expect": { "outcome": "token", "resource": "urn:bc:account:42" }
+}

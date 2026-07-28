@@ -1,0 +1,10 @@
+{
+  "name": "refresh-omits-resource",
+  "description": "A refresh with no resource set sends no resource form key at all — never an empty value.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 200,
+    "body": { "access_token": "tok", "token_type": "Bearer" }
+  },
+  "expect": { "outcome": "token", "resourceAbsent": true, "formResourceAbsent": true }
+}

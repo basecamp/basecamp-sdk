@@ -1,0 +1,10 @@
+{
+  "name": "resource-non-string-rejected",
+  "description": "A non-string resource is a malformed response and must be rejected, never coerced.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 200,
+    "body": { "access_token": "tok", "token_type": "Bearer", "resource": 7 }
+  },
+  "expect": { "outcome": "reject" }
+}

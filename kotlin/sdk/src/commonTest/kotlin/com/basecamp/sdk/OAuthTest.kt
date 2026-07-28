@@ -373,6 +373,34 @@ class OAuthTest {
     }
 
     @Test
+    fun refreshTokenRejectsNonStringResourceAsApiError() = runTest {
+        // Mirrors conformance/oauth-token 05-resource-non-string-rejected: a
+        // wrong-typed resource fails deserialization, surfaced as api_error.
+        val engine = MockEngine { _ ->
+            respond(
+                content = """{"access_token": "a", "resource": 7}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        try {
+            refreshToken(
+                tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                refreshToken = "refresh-456",
+                clientId = "basecamp-cli",
+                client = httpClient,
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Api) {
+            assertEquals("api_error", e.code)
+        } finally {
+            httpClient.close()
+        }
+    }
+
+    @Test
     fun refreshTokenRejectsEmptyResourceAsApiError() = runTest {
         val engine = MockEngine { _ ->
             respond(
