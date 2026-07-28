@@ -33,9 +33,11 @@ export interface DeviceLoginOptions {
    */
   display: (auth: DeviceAuthorization) => void | Promise<void>;
   /**
-   * Cancellation signal for the polling loop — deliberately scoped to the only
-   * long-lived phase. The initial device-code request is bounded by its own
-   * 30s timeout, and the display hook is the caller's code.
+   * Cancellation signal for the WHOLE flow: checked before any work, threaded
+   * into the device-code request (an abort cancels it in flight), re-checked
+   * before the display hook, and honored throughout the polling loop. An
+   * abort anywhere rejects with DeviceFlowError("cancelled") — a code is
+   * never surfaced after cancellation.
    */
   signal?: AbortSignal;
   /** Injectable monotonic clock (ms) for the polling deadline. */

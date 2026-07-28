@@ -1657,3 +1657,40 @@ func countingHTTPServer(t *testing.T) (*httptest.Server, *int) {
 	t.Cleanup(srv.Close)
 	return srv, &calls
 }
+
+func TestPerformDeviceLogin_CancelAfterAuthorizationNeverReachesDisplay(t *testing.T) {
+	// A ctx cancelled while the authorization request is in flight — here the
+	// mock endpoint cancels it as it serves the code pair, modeling an
+	// injected transport that ignores request cancellation — must surface as
+	// cancelled without ever invoking the display hook.
+	ctx, cancel := context.WithCancel(context.Background())
+	mux := http.NewServeMux()
+	var srv *httptest.Server
+	mux.HandleFunc("/device", func(w http.ResponseWriter, _ *http.Request) {
+		cancel()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(deviceAuthBody)
+	})
+	srv = httptest.NewTLSServer(mux)
+	t.Cleanup(srv.Close)
+
+	endpoint := srv.URL + "/device"
+	cfg := &Config{
+		Issuer:                      srv.URL,
+		TokenEndpoint:               srv.URL + "/token",
+		DeviceAuthorizationEndpoint: &endpoint,
+		GrantTypesSupported:         []string{DeviceCodeGrantType, "refresh_token"},
+	}
+
+	displayed := 0
+	_, err := PerformDeviceLogin(ctx, cfg, "basecamp-cli", func(DeviceAuthorization) { displayed++ },
+		WithDeviceHTTPClient(tlsClient(srv)))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowCancelled {
+		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
+	}
+	if displayed != 0 {
+		t.Errorf("display fired %d times for a cancelled flow, want 0", displayed)
+	}
+}

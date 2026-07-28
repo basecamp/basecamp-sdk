@@ -132,6 +132,12 @@ export async function requestDeviceAuthorization(
 ): Promise<DeviceAuthorization> {
   const { deviceAuthorizationEndpoint, clientId, scope, fetch: customFetch = globalThis.fetch, timeoutMs = DEFAULT_DEVICE_TIMEOUT_MS, signal } = params;
 
+  // An already-aborted signal makes no request at all — reject before the
+  // fetch path so a direct caller cannot send (or a recording customFetch
+  // observe) a device-code request post-cancellation. performDeviceLogin
+  // checks at its own entry too; this covers direct callers.
+  throwIfAborted(signal);
+
   requireSecureEndpoint(deviceAuthorizationEndpoint, "device authorization endpoint");
   if (!clientId) {
     throw new BasecampError("validation", "Client ID is required for device authorization");

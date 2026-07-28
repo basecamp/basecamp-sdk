@@ -659,6 +659,15 @@ func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, di
 		return nil, err
 	}
 
+	// Re-check cancellation before surfacing the code: a ctx cancelled after
+	// the request completed (or under an injected RoundTripper that ignores
+	// request cancellation) must never reach the display hook — matching the
+	// Py/Rb/TS orchestrators' post-request re-check. The in-flight case is
+	// covered by the request's own context threading.
+	if err := ctx.Err(); err != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
+	}
+
 	// Anchor the code's lifetime at issuance so a slow display hook cannot yield a
 	// fresh full polling window.
 	deadline := cfg.clock().Add(time.Duration(auth.ExpiresIn) * time.Second)

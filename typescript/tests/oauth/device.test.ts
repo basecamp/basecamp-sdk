@@ -1360,6 +1360,28 @@ describe("resolveDeviceTimeoutMs ceiling", () => {
   });
 });
 
+describe("requestDeviceAuthorization direct-caller cancellation", () => {
+  it("makes no fetch when the signal is already aborted", async () => {
+    let fetches = 0;
+    const countingFetch: typeof globalThis.fetch = async (input, init) => {
+      fetches += 1;
+      return globalThis.fetch(input, init);
+    };
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      requestDeviceAuthorization({
+        deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+        clientId: "basecamp-cli",
+        fetch: countingFetch,
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ reason: "cancelled" });
+    expect(fetches).toBe(0);
+  });
+});
+
 describe("performDeviceLogin cancellation around the authorization request", () => {
   it("makes no request and never fires display when already aborted", async () => {
     let requests = 0;
