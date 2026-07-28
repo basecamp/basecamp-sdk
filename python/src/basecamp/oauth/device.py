@@ -68,7 +68,12 @@ _CANCEL_POLL_INTERVAL = 0.1
 
 #: Extra time (seconds) to let a timed-out request's async cancellation/cleanup
 #: unwind before the caller abandons the (daemon) worker and returns a timeout.
-_WORKER_JOIN_GRACE = 5.0
+#: Kept SMALL so the caller's worst-case block stays ~timeout: near expiry the
+#: request budget is clamped to the remaining code lifetime, and this grace is
+#: the only overshoot past the polling deadline — cleanup after a wait_for
+#: cancellation is just closing a socket, and joining with no grace at all
+#: would race a request that completes right at the deadline.
+_WORKER_JOIN_GRACE = 1.0
 
 # Cap on a device-flow response body (1 MiB) — these responses are tiny; a
 # larger one is a fault, so abort rather than buffer it. Mirrors discovery.

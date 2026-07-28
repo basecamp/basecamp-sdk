@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -1592,6 +1593,7 @@ func TestPollDeviceToken_TerminalStatusClassifiedWithoutDrainingBody(t *testing.
 			w.WriteHeader(status)
 			_, _ = w.Write(bytes.Repeat([]byte("x"), 2*1024*1024))
 		}))
+		t.Cleanup(srv.Close)
 
 		sleep := &recordingSleep{}
 		_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
@@ -1600,6 +1602,22 @@ func TestPollDeviceToken_TerminalStatusClassifiedWithoutDrainingBody(t *testing.
 		if !strings.Contains(err.Error(), fmt.Sprintf("status %d", status)) {
 			t.Errorf("want a status-%d error (not a size-cap error), got %v", status, err)
 		}
-		srv.Close()
+	}
+}
+
+func TestNewDeviceConfig_OversizedTimeoutFallsBackToDefault(t *testing.T) {
+	// A huge positive timeout (math.MaxInt64 ≈ 292y) would hold a stalled
+	// request open effectively forever — it must fall back to the default like
+	// zero/negative values, mirroring the other SDKs' 3600 s ceilings.
+	for _, d := range []time.Duration{time.Duration(math.MaxInt64), maxDeviceRequestTimeout + time.Second} {
+		cfg := newDeviceConfig([]DeviceOption{WithDeviceTimeout(d)})
+		if cfg.timeout != defaultDeviceRequestTimeout {
+			t.Errorf("timeout %v: got %v, want the %v default", d, cfg.timeout, defaultDeviceRequestTimeout)
+		}
+	}
+	// The ceiling itself is valid (inclusive bound).
+	cfg := newDeviceConfig([]DeviceOption{WithDeviceTimeout(maxDeviceRequestTimeout)})
+	if cfg.timeout != maxDeviceRequestTimeout {
+		t.Errorf("ceiling: got %v, want %v", cfg.timeout, maxDeviceRequestTimeout)
 	}
 }

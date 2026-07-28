@@ -31,6 +31,13 @@ const (
 	maxBackoffSeconds = 60
 	// defaultDeviceRequestTimeout bounds each individual HTTP round-trip.
 	defaultDeviceRequestTimeout = 30 * time.Second
+
+	// maxDeviceRequestTimeout caps a caller-supplied per-request timeout (the
+	// shared 3600 s ceiling — Python's _MAX_DEVICE_REQUEST_TIMEOUT, TS's
+	// resolveDeviceTimeoutMs bound, Ruby's Fetcher::MAX_REQUEST_TIMEOUT). A
+	// huge value like math.MaxInt64 would hold a stalled request open
+	// effectively forever, defeating the flow's bounded-request guarantee.
+	maxDeviceRequestTimeout = time.Hour
 	// maxDeviceSeconds caps expires_in/interval at 2147483 s (~24.8 days) — the
 	// largest whole-second duration whose millisecond form fits a 32-bit signed
 	// timer, shared across all five SDKs (SPEC.md). Far above any legitimate
@@ -96,8 +103,8 @@ func WithDeviceScope(scope string) DeviceOption {
 	}
 }
 
-// WithDeviceTimeout bounds each individual HTTP round-trip. Zero or negative
-// leaves the default (30s).
+// WithDeviceTimeout bounds each individual HTTP round-trip. Zero, negative,
+// or beyond the shared 3600 s ceiling leaves the default (30s).
 func WithDeviceTimeout(d time.Duration) DeviceOption {
 	return func(cfg *deviceConfig) { cfg.timeout = d }
 }
@@ -134,7 +141,9 @@ func newDeviceConfig(opts []DeviceOption) deviceConfig {
 	for _, o := range opts {
 		o(&cfg)
 	}
-	if cfg.timeout <= 0 {
+	// Non-positive AND oversized values both fall back to the default: the
+	// same normalize-at-entry discipline as the other SDKs' timeout ceilings.
+	if cfg.timeout <= 0 || cfg.timeout > maxDeviceRequestTimeout {
 		cfg.timeout = defaultDeviceRequestTimeout
 	}
 	// Suppress redirects on every device-flow POST so a 3xx surfaces as a non-2xx
@@ -539,9 +548,9 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 	}
 
 	// Exactly HTTP 200, not any 2xx: RFC 8628/6749 token responses are 200, and
-	// SPEC §16 pins the contract. A nonstandard 201/202 carrying an access_token
-	// must not prematurely complete polling — it falls through to the OAuth-error
-	// parse below and terminates as api_error (http_<status>).
+	// SPEC §16 pins the contract. A nonstandard 201/202 never reaches here — the
+	// status-first gate above already terminated every non-200/non-4xx as
+	// api_error (http_<status>) without reading its body.
 	if resp.StatusCode == http.StatusOK {
 		// expires_in decodes via *float64, not Token's plain int: a pointer keeps
 		// an explicit "expires_in":0 distinguishable from an omitted field (a

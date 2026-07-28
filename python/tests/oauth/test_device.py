@@ -911,6 +911,8 @@ class TestPollDeviceTokenTerminalStatusBodySkip:
         assert exc_info.value.code == "api_error"
         assert f"status {status}" in str(exc_info.value)
 
+
+class TestPollDeviceTokenTimeoutNormalization:
     @respx.mock
     def test_invalid_timeout_normalizes_at_entry(self):
         # timeout=None previously reached min(None, float) → raw TypeError
