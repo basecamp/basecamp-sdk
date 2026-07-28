@@ -1,0 +1,29 @@
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_1e5a58f27b5098 196-198,205
+  s_86d0793371d0f3::t_777bf52f9ade75 674
+  s_86d0793371d0f3::t_9f851d4a39b17b 119-120,126-127,133,147-152,167-169
+typescript/src/oauth/device-login.ts
+  s_86d0793371d0f3::t_1e5a58f27b5098 75-78,84-86,89-91
+  s_86d0793371d0f3::t_777bf52f9ade75 13
+  s_86d0793371d0f3::t_481b6528237d3e 92
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_a627140aedae34 1362-1411
+ruby/lib/basecamp/oauth/oauth_error.rb
+  s_86d0793371d0f3::t_ab3301d2c7ede7 7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "986158cc955775ebb4979c3405be15802d3780c3",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
