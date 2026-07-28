@@ -671,6 +671,13 @@ def perform_device_login(
             "The selected authorization server does not support the device authorization grant",
         )
 
+    # Honor a cancellation raised BEFORE the flow does any work: the sync
+    # authorization POST cannot observe the probe in flight, so without this
+    # entry check an already-cancelled flow still performs the request and
+    # invokes the display hook.
+    if should_cancel is not None and should_cancel():
+        raise DeviceFlowError("cancelled", "Device flow cancelled")
+
     auth = request_device_authorization(
         config.device_authorization_endpoint,
         client_id,
@@ -678,6 +685,11 @@ def perform_device_login(
         timeout=timeout,
         max_body_bytes=max_body_bytes,
     )
+
+    # Re-check after the round-trip, before surfacing the code: a cancel set
+    # while the authorization request was in flight must not reach display.
+    if should_cancel is not None and should_cancel():
+        raise DeviceFlowError("cancelled", "Device flow cancelled")
 
     # The code's lifetime starts at issuance, not after display: a slow display
     # hook must eat into the deadline, never reset it. Measure the elapsed time

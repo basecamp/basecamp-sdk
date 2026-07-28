@@ -960,6 +960,50 @@ class TestPollDeviceTokenCancelAfterRoundTrip:
         assert exc_info.value.reason == "cancelled"
 
 
+class TestPerformDeviceLoginCancellation:
+    @respx.mock
+    def test_already_cancelled_flow_makes_no_request(self):
+        route = respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+        displayed = []
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=displayed.append,
+                sleep=RecordingSleep(),
+                should_cancel=lambda: True,
+            )
+        assert exc_info.value.reason == "cancelled"
+        assert len(route.calls) == 0
+        assert displayed == []
+
+    @respx.mock
+    def test_cancel_during_the_authorization_request_never_reaches_display(self):
+        # The mock endpoint flips the probe as it serves the code pair, so the
+        # entry check passes and only the post-request re-check can catch it —
+        # the display hook must never fire for a cancelled flow.
+        state = {"cancelled": False}
+
+        def serve(_request):
+            state["cancelled"] = True
+            return httpx.Response(200, json=DEVICE_AUTH_RESPONSE)
+
+        respx.post(DEVICE_ENDPOINT).mock(side_effect=serve)
+        displayed = []
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=displayed.append,
+                sleep=RecordingSleep(),
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+        assert displayed == []
+
+
 class TestPollDeviceTokenExact200:
     @respx.mock
     @pytest.mark.parametrize("status", [201, 202])

@@ -284,11 +284,22 @@ module Basecamp
             )
           end
 
+          # Honor a cancellation raised BEFORE the flow does any work: the sync
+          # authorization POST cannot observe the probe in flight, so without
+          # this entry check an already-cancelled flow still performs the
+          # request and invokes the display hook.
+          raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
+
           auth = request_device_authorization(
             device_authorization_endpoint: config.device_authorization_endpoint,
             client_id: client_id, scope: scope,
             http_client: http_client, timeout: timeout, max_body_bytes: max_body_bytes
           )
+
+          # Re-check after the round-trip, before surfacing the code: a cancel
+          # set while the authorization request was in flight must not reach
+          # the display hook.
+          raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
           # The code's lifetime starts at ISSUANCE, not after display: a slow
           # display hook must eat into the deadline, never reset it. Anchor the
