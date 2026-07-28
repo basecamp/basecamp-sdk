@@ -227,6 +227,12 @@ export async function requestDeviceAuthorization(
     });
   }
 
+  // Re-check after the round-trip: a custom fetch that ignores its
+  // AbortSignal can complete after the abort, and a direct caller must get
+  // cancelled — never a code minted post-cancellation. (performDeviceLogin
+  // re-checks too; this covers direct callers.)
+  throwIfAborted(signal);
+
   return validateDeviceAuthorization(data as RawDeviceAuthorization, response.status);
 }
 
@@ -321,6 +327,13 @@ export interface PollDeviceTokenParams {
   interval: number;
   /** Code lifetime in seconds (monotonic deadline). */
   expiresIn: number;
+  /**
+   * Absolute monotonic deadline (ms, same clock as `clock`) anchoring the
+   * code's expiry at ISSUANCE. When set it overrides the `clock() + expiresIn`
+   * anchoring so time elapsed before this call is never handed back to the
+   * lifetime; `expiresIn` still gates the caller-input validation.
+   */
+  deadlineAtMs?: number;
   /** Cancellation signal — aborting rejects with DeviceFlowError("cancelled"). */
   signal?: AbortSignal;
   /** Injectable monotonic clock (ms). Default performance.now(). */
@@ -384,7 +397,7 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
   // two, so intermittent timeouts never permanently inflate the poll cadence.
   let intervalSeconds = params.interval;
   let backoffSeconds = intervalSeconds;
-  const deadline = clock() + expiresIn * 1000;
+  const deadline = params.deadlineAtMs ?? clock() + expiresIn * 1000;
 
   const body = new URLSearchParams();
   body.set("grant_type", DEVICE_CODE_GRANT_TYPE);

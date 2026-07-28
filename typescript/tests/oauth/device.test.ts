@@ -1410,6 +1410,56 @@ describe("performDeviceLogin abort during an async display hook", () => {
   });
 });
 
+describe("requestDeviceAuthorization post-completion abort", () => {
+  it("returns cancelled when a signal-ignoring fetch completes after the abort", async () => {
+    const controller = new AbortController();
+    // A fetch that IGNORES its AbortSignal: aborts the caller mid-flight and
+    // completes the response anyway.
+    const ignoringFetch: typeof globalThis.fetch = async () => {
+      controller.abort();
+      return HttpResponse.json(deviceAuthResponse);
+    };
+
+    await expect(
+      requestDeviceAuthorization({
+        deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+        clientId: "basecamp-cli",
+        fetch: ignoringFetch,
+        signal: controller.signal,
+      })
+    ).rejects.toMatchObject({ reason: "cancelled" });
+  });
+});
+
+describe("performDeviceLogin issuance-anchored polling deadline", () => {
+  it("does not hand display time back to the code lifetime", async () => {
+    // Stepped clock: issuance at t=0; display consumes 890 of the 900s
+    // lifetime; polls then advance past the 900s issuance deadline. Without
+    // the absolute-deadline handoff, pollDeviceToken would re-anchor at its
+    // own entry clock() and grant a fresh 10s from there PLUS the drift
+    // between the two clock reads.
+    const times = [0, 890_000, 890_000, 890_000, 901_000];
+    let i = 0;
+    const clock = () => times[Math.min(i++, times.length - 1)];
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () => HttpResponse.json(deviceAuthResponse)),
+      mswHttp.post(TOKEN_ENDPOINT, () =>
+        HttpResponse.json({ error: "authorization_pending" }, { status: 400 })
+      )
+    );
+
+    await expect(
+      performDeviceLogin({
+        config,
+        clientId: "basecamp-cli",
+        display: () => {},
+        clock,
+        sleepFn: recordingSleep().fn,
+      })
+    ).rejects.toMatchObject({ reason: "expired" });
+  });
+});
+
 describe("performDeviceLogin cancellation around the authorization request", () => {
   it("makes no request and never fires display when already aborted", async () => {
     let requests = 0;

@@ -110,7 +110,13 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
       return;
     }
     Promise.resolve()
-      .then(() => display(auth))
+      .then(() => {
+        // The abort can win between scheduling and this deferred callback —
+        // the outer promise has already rejected then, but this callback still
+        // runs. Re-check so a cancelled flow never surfaces the code.
+        if (signal?.aborted) return undefined;
+        return display(auth);
+      })
       .then(
         () => {
           signal?.removeEventListener("abort", onAbort);
@@ -133,6 +139,10 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
     deviceCode: auth.deviceCode,
     interval: auth.interval,
     expiresIn: remainingSeconds,
+    // Absolute issuance-anchored deadline: clock time elapsing between the
+    // remainingSeconds computation above and pollDeviceToken's own clock()
+    // anchor would otherwise be handed BACK to the code's lifetime.
+    deadlineAtMs: issuedAt + auth.expiresIn * 1000,
     signal,
     clock,
     fetch: customFetch,
