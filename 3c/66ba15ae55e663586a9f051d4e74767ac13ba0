@@ -1,0 +1,20 @@
+CONTRIBUTING.md
+  s_69156f95c4fbc4::t_95ca21fa874cf1 236-246
+  s_69156f95c4fbc4::t_05c164ed1f88a4 247-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3c66ba15ae55e663586a9f051d4e74767ac13ba0",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
