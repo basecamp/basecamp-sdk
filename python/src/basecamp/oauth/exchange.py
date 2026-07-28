@@ -57,9 +57,14 @@ def refresh_token(
     *,
     client_id: str | None = None,
     client_secret: str | None = None,
+    resource: str | None = None,
     use_legacy_format: bool = False,
 ) -> OAuthToken:
     """Refresh an access token.
+
+    Pass *resource* to echo the stored token's RFC 8707 resource indicator —
+    BC5 multi-account refresh tokens reject a refresh without it (SPEC §16);
+    it is sent only when set.
 
     Set *use_legacy_format* to ``True`` for Launchpad's non-standard
     ``type=refresh`` format instead of the standard ``grant_type``.
@@ -80,6 +85,8 @@ def refresh_token(
         params["client_id"] = client_id
     if client_secret is not None:
         params["client_secret"] = client_secret
+    if resource is not None:
+        params["resource"] = resource
 
     return _token_request(token_endpoint, params)
 
@@ -146,12 +153,23 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
     if not data.get("access_token"):
         raise OAuthError("api_error", "Token response missing access_token")
 
+    # resource: absent and JSON null are unset; when present it must be a
+    # non-empty string (SPEC §16) — an empty binding is not a binding.
+    resource = data.get("resource")
+    if resource is not None and (not isinstance(resource, str) or not resource):
+        raise OAuthError(
+            "api_error",
+            "Token response resource must be a non-empty string when present",
+            http_status=response.status_code,
+        )
+
     return OAuthToken(
         access_token=data["access_token"],
         token_type=data.get("token_type", "Bearer"),
         refresh_token=data.get("refresh_token"),
         expires_in=data.get("expires_in"),
         scope=data.get("scope"),
+        resource=resource,
     )
 
 

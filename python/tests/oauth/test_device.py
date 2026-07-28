@@ -1252,6 +1252,39 @@ class TestPollDeviceTokenExact200:
             )
         assert exc_info.value.code == "api_error"
         assert exc_info.value.http_status == status
+class TestPollDeviceTokenResource:
+    @respx.mock
+    def test_captures_resource(self):
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "resource": "urn:bc:account:42"})])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+        )
+
+        assert token.resource == "urn:bc:account:42"
+
+    @respx.mock
+    def test_null_resource_is_absent(self):
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "resource": None})])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+        )
+
+        assert token.resource is None
+
+    @respx.mock
+    @pytest.mark.parametrize("resource", ["", 7])
+    def test_malformed_resource_rejected(self, resource):
+        _queue_token_responses([httpx.Response(200, json={**TOKEN_RESPONSE, "resource": resource})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+
+        assert exc_info.value.code == "api_error"
+        assert "resource" in str(exc_info.value)
 
 
 class TestPerformDeviceLogin:

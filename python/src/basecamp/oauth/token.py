@@ -14,6 +14,12 @@ class OAuthToken:
     expires_in: int | None = None
     expires_at: float | None = field(default=None)
     scope: str | None = None
+    #: RFC 8707 resource indicator the token is bound to (BC5:
+    #: ``urn:bc:account:<id>``). Echo it as the ``resource`` parameter when
+    #: refreshing — BC5 multi-account refresh tokens reject a refresh
+    #: without it (SPEC §16). Appended last: earlier fields keep their
+    #: positional slots.
+    resource: str | None = None
 
     def __post_init__(self) -> None:
         # Calculate expires_at from expires_in when not explicitly provided.

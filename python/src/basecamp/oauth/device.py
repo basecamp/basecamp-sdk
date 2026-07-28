@@ -562,12 +562,23 @@ def _build_token(data: dict[str, Any], status: int) -> OAuthToken:
     if scope is not None and not isinstance(scope, str):
         raise OAuthError("api_error", "Device token response scope must be a string", http_status=status)
 
+    # resource: absent and JSON null are unset; when present it must be a
+    # non-empty string (SPEC §16) — an empty binding is not a binding.
+    resource = data.get("resource")
+    if resource is not None and (not isinstance(resource, str) or not resource):
+        raise OAuthError(
+            "api_error",
+            "Device token response resource must be a non-empty string when present",
+            http_status=status,
+        )
+
     return OAuthToken(
         access_token=access_token,
         token_type=token_type,
         refresh_token=refresh_token,
         expires_in=expires_in,
         scope=scope,
+        resource=resource,
     )
 
 

@@ -143,3 +143,57 @@ class TestRefreshToken:
         body = request.content.decode()
         assert "type=refresh" in body
         assert "grant_type" not in body
+
+
+class TestResourceIndicator:
+    @respx.mock
+    def test_refresh_sends_resource_when_set(self):
+        route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+
+        refresh_token(
+            TOKEN_ENDPOINT,
+            refresh_tok="refresh-tok-123",
+            client_id="basecamp-cli",
+            resource="urn:bc:account:42",
+        )
+
+        body = route.calls[0].request.content.decode()
+        assert "resource=urn%3Abc%3Aaccount%3A42" in body
+
+    @respx.mock
+    def test_refresh_omits_resource_when_unset(self):
+        route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+
+        refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123")
+
+        body = route.calls[0].request.content.decode()
+        assert "resource=" not in body
+
+    @respx.mock
+    def test_token_response_resource_round_trips(self):
+        respx.post(TOKEN_ENDPOINT).mock(
+            return_value=httpx.Response(200, json={**TOKEN_RESPONSE, "resource": "urn:bc:account:42"})
+        )
+
+        token = refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123")
+
+        assert token.resource == "urn:bc:account:42"
+
+    @respx.mock
+    def test_token_response_null_resource_is_absent(self):
+        respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json={**TOKEN_RESPONSE, "resource": None}))
+
+        token = refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123")
+
+        assert token.resource is None
+
+    @respx.mock
+    @pytest.mark.parametrize("resource", ["", 7])
+    def test_token_response_malformed_resource_rejected(self, resource):
+        respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json={**TOKEN_RESPONSE, "resource": resource}))
+
+        with pytest.raises(OAuthError) as exc_info:
+            refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123")
+
+        assert exc_info.value.code == "api_error"
+        assert "resource" in str(exc_info.value)

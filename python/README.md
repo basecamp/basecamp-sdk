@@ -182,11 +182,16 @@ else:  # result.kind == "fallback"
     config = discover_launchpad()  # result.reason explains why
 ```
 
-**Selection.** Pass `expected_issuer="https://3.basecamp.com"` for an explicit,
-authoritative choice (raises `expected_issuer_unavailable` if it is not
-advertised — never a silent fallback). Without it, the SDK identifies BC5 by
-exclusion: exactly one non-Launchpad issuer is selected; two or more raise
-`ambiguous_issuers`; zero falls back to Launchpad.
+**Selection.** Pass `expected_issuer="https://app.basecamp.com"` (the
+production canonical issuer) for an explicit, authoritative choice (raises
+`expected_issuer_unavailable` if it is not advertised — never a silent
+fallback). Without it, the SDK identifies BC5 by exclusion: exactly one
+non-Launchpad issuer is selected; two or more raise `ambiguous_issuers`; zero
+falls back to Launchpad.
+
+Pass bare origins — no trailing slash. Issuer binding is code-point exact, so
+`https://app.basecamp.com/` would mismatch the advertised issuer and silently
+soft-fall back to Launchpad.
 
 **Stage-sensitive fallback.** `discover_from_resource` returns a
 `DiscoveryResult` that is either `selected` or a soft `fallback` whose `reason`
@@ -263,7 +268,13 @@ new_token = refresh_token(
     refresh_tok=token.refresh_token,
     client_id="your-client-id",
     client_secret="your-client-secret",
+    # Echo the stored token's RFC 8707 resource indicator. BC5 multi-account
+    # refresh tokens (e.g. basecamp-cli device logins) REJECT a refresh
+    # without it (400 invalid_request); it is sent only when set.
+    resource=token.resource,
 )
+# A refresh response MAY omit resource (the binding is unchanged) — persist
+# `new_token.resource or token.resource` so the next refresh still echoes it.
 ```
 
 ### Launchpad Legacy Format
@@ -313,7 +324,10 @@ client = Client(access_token=token.access_token)
 The capability guard requires both `config.device_authorization_endpoint` and
 `"urn:ietf:params:oauth:grant-type:device_code"` in `config.grant_types_supported`;
 otherwise it raises `DeviceFlowError(reason="unavailable")` before any request.
-An omitted `scope` lets the server apply its default (`read`).
+An omitted `scope` lets the server apply its default (`read`) — prefer pinning
+it explicitly with `scope="read"`. The returned token MAY carry an RFC 8707
+`resource` indicator (`token.resource`) — persist it and echo it on refresh
+(see Token Refresh above).
 
 The two building blocks compose directly when you want finer control:
 
