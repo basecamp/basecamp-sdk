@@ -352,6 +352,31 @@ class OAuthTransportTest < Minitest::Test
     assert_equal "network", error.type
   end
 
+  def test_classify_stream_error_maps_every_forced_close_shape_after_deadline
+    # Deterministic exception-shape matrix: once the watchdog deadline fired,
+    # the forced close can surface as IOError, SystemCallError, or SocketError
+    # depending on platform/read phase — every shape must classify as the
+    # timeout (the poll's transient-backoff signal), and as a connection
+    # failure before the deadline. The live-socket test exercises only the
+    # common IOError path.
+    shapes = [
+      IOError.new("closed stream"),
+      Errno::ECONNRESET.new,
+      Errno::EBADF.new,
+      SocketError.new("socket closed"),
+      Net::HTTPBadResponse.new("wrong status line"),
+      Zlib::DataError.new("invalid stored block lengths")
+    ]
+
+    shapes.each do |shape|
+      after = Basecamp::Oauth::Fetcher.classify_stream_error(shape, true)
+      assert_kind_of Faraday::TimeoutError, after, "post-deadline #{shape.class} must be a timeout"
+
+      before = Basecamp::Oauth::Fetcher.classify_stream_error(shape, false)
+      assert_kind_of Faraday::ConnectionFailed, before, "pre-deadline #{shape.class} must be a connection failure"
+    end
+  end
+
   def test_watchdog_threads_do_not_leak
     endpoint, = start_server do |conn|
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")

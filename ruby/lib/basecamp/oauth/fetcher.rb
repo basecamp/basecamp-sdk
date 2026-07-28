@@ -90,6 +90,25 @@ module Basecamp
         value.is_a?(Integer) && value >= 0
       end
 
+      # Classifies a wire fault from {stream_http}'s read into the Faraday error
+      # the caller rescues. Once the watchdog DEADLINE has fired, the forced
+      # close can surface in the blocked reader as IOError, a SystemCallError
+      # (ECONNRESET/EBADF and friends), or SocketError depending on platform
+      # and read phase — ALL of them are the timeout then, or the device poll
+      # would terminate as transport instead of applying its transient backoff.
+      # Before the deadline they are genuine wire faults: a peer closing
+      # mid-headers, a malformed status line/header (the Net parse errors are
+      # direct StandardError subclasses, not IOError, so they must be mapped
+      # explicitly or they leak raw), or malformed compressed bytes from
+      # Net::HTTP's automatic Content-Encoding decode (Zlib::Error).
+      def self.classify_stream_error(error, deadline_fired)
+        if deadline_fired
+          Faraday::TimeoutError.new("OAuth request exceeded the timeout deadline")
+        else
+          Faraday::ConnectionFailed.new(error.message)
+        end
+      end
+
       # Raised internally to abort a streaming read once the cap is exceeded.
       # Never escapes this module — it is mapped to an OauthError.
       class BodyTooLarge < StandardError; end
@@ -342,27 +361,14 @@ module Basecamp
         # rescues — or the device poll would terminate instead of applying its
         # transient backoff.
         raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
-      rescue IOError => e
-        # The watchdog's close raises IOError in the blocked reader; only map it
-        # to a timeout when the deadline actually fired — any other IOError (a
-        # peer closing mid-headers, for example) is a connection failure.
-        raise Faraday::TimeoutError, "OAuth request exceeded the timeout deadline" if deadline_fired
-
-        raise Faraday::ConnectionFailed, e.message
+      rescue IOError, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
+             SystemCallError, SocketError, Zlib::Error => e
+        raise classify_stream_error(e, deadline_fired)
       rescue OpenSSL::SSL::SSLError => e
         # TLS failures (an unverifiable peer certificate above all) map to
         # Faraday::SSLError exactly as faraday-net_http maps them, so the
         # default and injected paths classify certificate rejection alike.
         raise Faraday::SSLError, e.message
-      rescue Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
-             SystemCallError, SocketError, Zlib::Error => e
-        # The parse errors are direct StandardError subclasses (not IOError), so
-        # a malformed status line / header must be mapped here explicitly or it
-        # would leak raw from the public discovery/device APIs. Zlib::Error
-        # covers Net::HTTP's automatic Content-Encoding decode: a 2xx carrying
-        # malformed gzip/deflate bytes raises Zlib::DataError mid-read_body —
-        # a corrupt transport payload, mapped like every other wire fault.
-        raise Faraday::ConnectionFailed, e.message
       ensure
         watchdog&.kill
         watchdog&.join
