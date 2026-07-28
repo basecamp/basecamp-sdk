@@ -1125,6 +1125,50 @@ func TestPollDeviceToken_ExpiredBeforeFirstWaitDoesNotSleep(t *testing.T) {
 	}
 }
 
+func TestPerformDeviceLogin_CancelDuringDisplayBeatsExpiry(t *testing.T) {
+	// A display hook that both cancels the flow and consumes the whole code
+	// lifetime (a prompt closing in response to cancellation) must surface
+	// cancelled, not expired.
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		body := map[string]any{}
+		for k, v := range deviceAuthBody {
+			body[k] = v
+		}
+		body["expires_in"] = 10
+		_ = json.NewEncoder(w).Encode(body)
+	}))
+	defer srv.Close()
+
+	endpoint := srv.URL + "/device"
+	config := &Config{
+		Issuer:                      srv.URL,
+		TokenEndpoint:               srv.URL + "/token",
+		DeviceAuthorizationEndpoint: &endpoint,
+		GrantTypesSupported:         []string{DeviceCodeGrantType, "refresh_token"},
+	}
+
+	// Clock: t0 at issuance, then past the 10s lifetime once display returns.
+	times := []time.Time{time.Unix(0, 0), time.Unix(100, 0)}
+	idx := 0
+	clock := func() time.Time {
+		tm := times[min(idx, len(times)-1)]
+		idx++
+		return tm
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := PerformDeviceLogin(ctx, config, "basecamp-cli",
+		func(DeviceAuthorization) { cancel() },
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceClock(clock))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowCancelled {
+		t.Fatalf("want DeviceFlowError(cancelled) — cancellation inside display wins over expiry — got %v", err)
+	}
+}
+
 func TestPerformDeviceLogin_RechecksDeadlineAfterDisplay(t *testing.T) {
 	polled := false
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

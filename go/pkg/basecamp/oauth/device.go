@@ -698,8 +698,13 @@ func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, di
 	// fresh full polling window.
 	deadline := cfg.clock().Add(time.Duration(auth.ExpiresIn) * time.Second)
 
-	if display != nil {
-		display(*auth)
+	display(*auth)
+
+	// Cancellation raised INSIDE the display hook (a prompt closing in
+	// response to cancellation) wins over expiry: a hook that both cancels
+	// and consumes the lifetime must surface cancelled, not expired.
+	if err := ctx.Err(); err != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
 	}
 
 	// Charge display time against the code's lifetime. If the hook consumed the

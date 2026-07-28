@@ -643,6 +643,11 @@ suspend fun performDeviceLogin(
     // a slow display counts against the lifetime instead of resetting it.
     val deadline = timeSource.markNow() + auth.expiresIn.seconds
     display(auth)
+    // Cancellation raised INSIDE the display hook (a prompt closing in
+    // response to cancellation) wins over expiry: a hook that both cancels
+    // and consumes the lifetime must propagate the native
+    // CancellationException, not DeviceFlow(expired).
+    currentCoroutineContext().ensureActive()
     // If the display hook already consumed the whole lifetime, the code is dead on
     // arrival: fail fast rather than open a doomed poll.
     if (deadline.hasPassedNow()) {

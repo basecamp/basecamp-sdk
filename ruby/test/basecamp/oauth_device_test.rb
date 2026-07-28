@@ -961,6 +961,32 @@ class OAuthDeviceTest < Minitest::Test
     assert_not_requested(polled)
   end
 
+  def test_perform_cancel_during_display_beats_expiry
+    # A display hook that both cancels the flow and consumes the whole code
+    # lifetime (a prompt closing in response to cancellation) must surface
+    # cancelled, not expired.
+    stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response)) # expires_in 900
+    _waits, sleeper = recording_sleeper
+    clock = scripted_clock([ 0, 950 ])
+    state = { cancelled: false }
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT ]
+    )
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.perform_device_login(
+        config: config, client_id: "basecamp-cli",
+        display: ->(_auth) { state[:cancelled] = true },
+        cancelled: -> { state[:cancelled] },
+        clock: clock, sleeper: sleeper
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+  end
+
   def test_perform_anchors_deadline_at_issuance_so_slow_display_shrinks_remaining
     stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response)) # expires_in 900, interval 5
     polled = stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response))

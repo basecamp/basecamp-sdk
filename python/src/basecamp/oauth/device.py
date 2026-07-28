@@ -701,6 +701,11 @@ def perform_device_login(
     # across the hook against the monotonic clock and check expiry before polling.
     issued_at = clock()
     display(auth)
+    # Cancellation raised DURING the display hook (a prompt closing in
+    # response to cancellation) wins over expiry: a hook that both cancels
+    # and consumes the lifetime must surface cancelled, not expired.
+    if should_cancel is not None and should_cancel():
+        raise DeviceFlowError("cancelled", "Device flow cancelled")
     remaining = auth.expires_in - (clock() - issued_at)
     if remaining <= 0:
         raise DeviceFlowError("expired", "Device code expired before authorization completed")

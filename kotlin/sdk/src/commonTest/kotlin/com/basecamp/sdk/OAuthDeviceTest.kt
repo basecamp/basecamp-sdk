@@ -1080,4 +1080,41 @@ class OAuthDeviceTest {
         assertFalse(polled, "a code that expired during display must not be polled")
         client.close()
     }
+
+    @Test
+    fun performCancelDuringDisplayBeatsExpiry() = runTest {
+        // A display hook that both cancels the flow and consumes the whole
+        // code lifetime (a prompt closing in response to cancellation) must
+        // propagate the native CancellationException, not DeviceFlow(expired).
+        val engine = MockEngine { respond(deviceAuthJson, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val config = OAuthConfig(
+            issuer = origin,
+            tokenEndpoint = tokenEndpoint,
+            deviceAuthorizationEndpoint = deviceEndpoint,
+            grantTypesSupported = listOf(DEVICE_CODE_GRANT_TYPE, "refresh_token"),
+        )
+
+        val clock = TestTimeSource()
+        val job = Job()
+        try {
+            assertFailsWith<CancellationException> {
+                withContext(job) {
+                    performDeviceLogin(
+                        config = config,
+                        clientId = "basecamp-cli",
+                        display = {
+                            job.cancel()
+                            clock += 900.seconds
+                        },
+                        timeSource = clock,
+                        client = client,
+                    )
+                }
+            }
+        } finally {
+            client.close()
+        }
+    }
 }

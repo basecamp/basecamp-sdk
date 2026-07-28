@@ -1003,6 +1003,32 @@ class TestPerformDeviceLoginCancellation:
         assert exc_info.value.reason == "cancelled"
         assert displayed == []
 
+    @respx.mock
+    def test_cancel_during_display_beats_expiry(self):
+        # A display hook that both cancels the flow and consumes the whole
+        # code lifetime (a prompt closing in response to cancellation) must
+        # surface cancelled, not expired.
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+        state = {"cancelled": False}
+
+        def display(_auth):
+            state["cancelled"] = True
+
+        # issued_at = 0; the clock reads 950 after the hook — past the 900s
+        # lifetime. Cancellation must still win.
+        times = iter([0.0, 950.0, 950.0, 950.0])
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=display,
+                clock=lambda: next(times),
+                sleep=RecordingSleep(),
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+
 
 class TestPollDeviceTokenExact200:
     @respx.mock

@@ -308,6 +308,11 @@ module Basecamp
           # raise +expired+ without a single poll.
           issued_at = clock.call
           display.call(auth)
+          # Cancellation raised DURING the display hook (a prompt closing in
+          # response to cancellation) wins over expiry: a hook that both
+          # cancels and consumes the lifetime must surface cancelled.
+          raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
+
           remaining = auth.expires_in - (clock.call - issued_at)
           if remaining <= 0
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed")
