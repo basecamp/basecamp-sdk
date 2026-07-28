@@ -13,8 +13,14 @@ class SearchServiceTest < Minitest::Test
     results = [
       # The search projection carries the matching type's rich-text companion
       # array; a Message result surfaces content_attachments.
-      { "id" => 1, "title" => "Quarterly Report", "type" => "Message", "content_attachments" => [] },
-      { "id" => 2, "title" => "Q1 Report Draft", "type" => "Document", "content_attachments" => [] }
+      # BC3 emits `json.content nil` / `json.description nil` unconditionally on
+      # every search result, so both keys are always present and always null. A
+      # stub that omits them is a payload the API cannot produce.
+      { "id" => 1, "title" => "Quarterly Report", "type" => "Message", "content_attachments" => [],
+        "content" => nil, "description" => nil,
+        "plain_text_content" => "Q1 <mark class=\"circled-text\"><span></span>Report</mark> summary." },
+      { "id" => 2, "title" => "Q1 Report Draft", "type" => "Document", "content_attachments" => [],
+        "content" => nil, "description" => nil }
     ]
     stub_request(:get, "https://3.basecampapi.com/12345/search.json")
       .with(query: { q: "quarterly report" })
@@ -27,6 +33,16 @@ class SearchServiceTest < Minitest::Test
     # The optional projection array surfaces on each matching-type result.
     assert_equal [], result[0]["content_attachments"]
     assert_equal [], result[1]["content_attachments"]
+
+    # Present and null, never absent.
+    result.each do |r|
+      assert r.key?("content"), "content must be present on every search result"
+      assert_nil r["content"]
+      assert r.key?("description"), "description must be present on every search result"
+      assert_nil r["description"]
+    end
+    assert_includes result[0]["plain_text_content"], "circled-text"
+    assert_nil result[1]["plain_text_content"]
   end
 
   def test_search_with_sort
