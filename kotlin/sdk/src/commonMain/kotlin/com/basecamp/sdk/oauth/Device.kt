@@ -231,6 +231,11 @@ suspend fun requestDeviceAuthorization(
                     cause = e,
                 )
             }
+            // A custom engine that ignores coroutine cancellation can complete
+            // a valid response after the caller cancelled: re-check before
+            // handing back a usable device code (Go/TS re-check ctx/signal at
+            // the same seam).
+            currentCoroutineContext().ensureActive()
             validateDeviceAuthorization(raw, status)
         }
     } catch (e: CancellationException) {
@@ -410,7 +415,14 @@ suspend fun pollDeviceToken(
             backoffSeconds = intervalSeconds
 
             when (result) {
-                is PollResult.Token -> return result.token
+                // Re-check cancellation before handing back the credential: a
+                // custom engine that ignores coroutine cancellation can
+                // complete a 200 after the caller cancelled (Go/TS re-check
+                // ctx/signal at the same seam).
+                is PollResult.Token -> {
+                    currentCoroutineContext().ensureActive()
+                    return result.token
+                }
                 PollResult.Pending -> continue
                 PollResult.SlowDown -> {
                     intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS

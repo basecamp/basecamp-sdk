@@ -541,6 +541,49 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollCancelledDuringTokenRoundTripNeverReturnsAToken() = runTest {
+        // The mock engine cancels the flow's job as it serves the TOKEN,
+        // modeling an engine that completes while ignoring cancellation — the
+        // success branch must re-check and never hand back the credential.
+        val job = Job()
+        val engine = MockEngine {
+            job.cancel()
+            respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
+        }
+        val client = HttpClient(engine)
+        try {
+            assertFailsWith<CancellationException> {
+                withContext(job) {
+                    pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+                }
+            }
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun requestCancelledDuringRoundTripNeverReturnsACode() = runTest {
+        // Same seam on the authorization request: a code pair served by an
+        // engine that ignores cancellation must not reach a direct caller.
+        val job = Job()
+        val engine = MockEngine {
+            job.cancel()
+            respond(deviceAuthJson, HttpStatusCode.OK, jsonHeaders)
+        }
+        val client = HttpClient(engine)
+        try {
+            assertFailsWith<CancellationException> {
+                withContext(job) {
+                    requestDeviceAuthorization(deviceEndpoint, "basecamp-cli", client = client)
+                }
+            }
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
     fun pollRejectsEmptyAccessToken() = runTest {
         // A 2xx whose access_token is blank must be an api_error, never an accepted
         // token and never a retryable transport error.
