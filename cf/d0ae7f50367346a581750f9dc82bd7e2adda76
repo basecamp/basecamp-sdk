@@ -1,0 +1,23 @@
+python/tests/services/test_todolists_service.py
+  s_69156f95c4fbc4::t_1c94b2089b8fc6 18-35,106,121,139,155
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_69156f95c4fbc4::t_98c2d610366fd4 39-42,44,51-55
+typescript/tests/services/todolists.test.ts
+  s_69156f95c4fbc4::t_372e7554aad90b 44-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cfd0ae7f50367346a581750f9dc82bd7e2adda76",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
