@@ -1,0 +1,75 @@
+go/pkg/generated/client.gen.go
+  s_effaf9ebecb0f4::t_92efcebd7613ad 3977-4064,4082-4127,4134-4180
+go/templates/client.tmpl
+  s_effaf9ebecb0f4::t_6ef713186b548f 185-187,189-196
+  s_effaf9ebecb0f4::t_493e88064aa8d3 319-324,326-327,332-338,342-343,360-362
+  s_effaf9ebecb0f4::t_a2188e957f196e 344
+  s_effaf9ebecb0f4::t_72cffa764e3e7f 296-305
+  s_effaf9ebecb0f4::t_a7a2afcb916dee 177-183
+  s_effaf9ebecb0f4::t_90f130dbef3b0a 197,283-285,287-288,308,310-311,318,325,328-331,363
+  s_effaf9ebecb0f4::t_1b11f3538d0e91 211-219
+  s_effaf9ebecb0f4::t_1fc81eea3d69ee 266-273,345-347,349-354,357-359,364
+  s_effaf9ebecb0f4::t_51e6b66a125819 229-248
+  s_effaf9ebecb0f4::t_6eaeb6be352453 339-341
+  s_effaf9ebecb0f4::t_ba406f5d846159 355-356
+  s_effaf9ebecb0f4::t_6900fb338feaf6 274-282,286,289-295,306-307,309
+  s_effaf9ebecb0f4::t_54fc8a517f0e1c 161-165,188,220,222-228
+  s_effaf9ebecb0f4::t_a51698fd57806e 184,198-207
+  s_effaf9ebecb0f4::t_478d92acb0d89f 348
+  s_effaf9ebecb0f4::t_6f9669c297f0c5 166-176,208-210,221
+go/pkg/basecamp/helpers.go
+  s_effaf9ebecb0f4::t_0cfce1fe9f5941 4,13-17
+  s_effaf9ebecb0f4::t_47fdf728dfd347 46
+go/pkg/basecamp/projects_test.go
+  s_effaf9ebecb0f4::t_8909ac2d7dac69 6,12,327-368
+go/pkg/basecamp/generated_withbody_replay_test.go
+  s_effaf9ebecb0f4::t_cc086a5dc43844 270-295,301
+  s_effaf9ebecb0f4::t_77e415633804f8 214-215,226-227,240-242,251-252
+  s_effaf9ebecb0f4::t_01437b7b9a7138 546-597,602-634
+  s_effaf9ebecb0f4::t_67a8b00f24cedf 598-601
+  s_effaf9ebecb0f4::t_483afd811f9a3b 435-504
+  s_effaf9ebecb0f4::t_bcc24ca3043038 505-545
+  s_effaf9ebecb0f4::t_0d9be75302987e 384-400,402-406,411-417,421,427-431
+  s_effaf9ebecb0f4::t_9277ff7c83ad1e 638-687
+  s_effaf9ebecb0f4::t_c99b72191700cc 6-8,13
+  s_effaf9ebecb0f4::t_8df8614242695a 143,147
+  s_effaf9ebecb0f4::t_c1b13c06ccc479 50-52
+  s_effaf9ebecb0f4::t_dc4e493399f15d 401,407-410,418-420,422-426,432-434
+  s_effaf9ebecb0f4::t_d3b07290fcd6ea 262-269,296-300,302-380
+  s_effaf9ebecb0f4::t_b535b720400404 163-168,173,180,182-183
+  s_effaf9ebecb0f4::t_b5b2e859ffa4f3 383
+  s_effaf9ebecb0f4::t_4ed57b9bcceb1b 635-636,735-765
+  s_effaf9ebecb0f4::t_3247eb47fd4b79 1-5,9-10,12,14-49,53-142,144-146,148-162,169-172,174-179,181,184-213,216-225,228-239,243-250,253-261,381-382,688-734
+  s_effaf9ebecb0f4::t_e70eda25ec9b5d 11
+  s_e137b3f4823dbb::t_7e1ad887829ed0 637
+go/pkg/basecamp/helpers_test.go
+  s_effaf9ebecb0f4::t_172be49be48d16 4
+  s_effaf9ebecb0f4::t_13800a0da17426 172-174,176-182,185-190,195
+  s_effaf9ebecb0f4::t_c2f0450da29957 175
+go/pkg/basecamp/account_service.go
+  s_effaf9ebecb0f4::t_2e07ab365b1d69 221-222,229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8845976089bbfc8e0b9343cbc75cde3909ed2eae",
+  "prompts": {},
+  "sessions": {
+    "s_e137b3f4823dbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "217f4f52-5dae-4e7b-8af1-ebad5d5a2590",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_effaf9ebecb0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9d6aa32-1196-4ab5-8699-c047b7e5bbb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
