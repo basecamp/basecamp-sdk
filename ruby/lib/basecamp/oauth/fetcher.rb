@@ -5,6 +5,7 @@ require "json"
 require "net/http"
 require "openssl"
 require "uri"
+require "zlib"
 
 module Basecamp
   module Oauth
@@ -354,10 +355,13 @@ module Basecamp
         # default and injected paths classify certificate rejection alike.
         raise Faraday::SSLError, e.message
       rescue Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
-             SystemCallError, SocketError => e
+             SystemCallError, SocketError, Zlib::Error => e
         # The parse errors are direct StandardError subclasses (not IOError), so
         # a malformed status line / header must be mapped here explicitly or it
-        # would leak raw from the public discovery/device APIs.
+        # would leak raw from the public discovery/device APIs. Zlib::Error
+        # covers Net::HTTP's automatic Content-Encoding decode: a 2xx carrying
+        # malformed gzip/deflate bytes raises Zlib::DataError mid-read_body —
+        # a corrupt transport payload, mapped like every other wire fault.
         raise Faraday::ConnectionFailed, e.message
       ensure
         watchdog&.kill

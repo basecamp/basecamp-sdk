@@ -336,6 +336,22 @@ class OAuthTransportTest < Minitest::Test
     assert error.retryable
   end
 
+  def test_malformed_gzip_body_is_a_transport_failure
+    # Net::HTTP auto-decodes Content-Encoding; malformed gzip bytes raise
+    # Zlib::DataError mid-read_body, which must map through the documented
+    # transport classification (Faraday::ConnectionFailed → the public
+    # network OauthError) — never leak Zlib::DataError raw.
+    endpoint, = start_server do |conn|
+      body = "not gzip at all"
+      conn.write("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}")
+    end
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.discover(endpoint)
+    end
+    assert_equal "network", error.type
+  end
+
   def test_watchdog_threads_do_not_leak
     endpoint, = start_server do |conn|
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
