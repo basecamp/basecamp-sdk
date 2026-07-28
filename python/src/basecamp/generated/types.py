@@ -1406,15 +1406,17 @@ class SearchResult(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
-    content: NotRequired[str]
+    content: str | None
     content_attachments: NotRequired[list[RichTextAttachment]]
     created_at: NotRequired[str]
     creator: NotRequired[Person]
-    description: NotRequired[str]
+    description: str | None
     description_attachments: NotRequired[list[RichTextAttachment]]
     id: int
     inherits_status: NotRequired[bool]
     parent: NotRequired[RecordingParent]
+    plain_text_content: NotRequired[str]
+    plain_text_description: NotRequired[str]
     status: NotRequired[str]
     subject: NotRequired[str]
     title: str

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-27T18:27:05Z
+# Generated: 2026-07-28T06:50:08Z
 
 require "json"
 require "time"
@@ -3511,29 +3511,31 @@ module Basecamp
     # SearchResult
     class SearchResult
       include TypeHelpers
-      attr_accessor :app_url, :id, :title, :type, :url, :bookmark_url, :bucket, :content, :content_attachments, :created_at, :creator, :description, :description_attachments, :inherits_status, :parent, :status, :subject, :updated_at, :visible_to_clients
+      attr_accessor :app_url, :content, :description, :id, :title, :type, :url, :bookmark_url, :bucket, :content_attachments, :created_at, :creator, :description_attachments, :inherits_status, :parent, :plain_text_content, :plain_text_description, :status, :subject, :updated_at, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url id title type url].freeze
+        %i[app_url content description id title type url].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
+        @content = data["content"]
+        @description = data["description"]
         @id = parse_integer(data["id"])
         @title = data["title"]
         @type = data["type"]
         @url = data["url"]
         @bookmark_url = data["bookmark_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
-        @content = data["content"]
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
-        @description = data["description"]
         @description_attachments = parse_array(data["description_attachments"], "RichTextAttachment")
         @inherits_status = parse_boolean(data["inherits_status"])
         @parent = parse_type(data["parent"], "RecordingParent")
+        @plain_text_content = data["plain_text_content"]
+        @plain_text_description = data["plain_text_description"]
         @status = data["status"]
         @subject = data["subject"]
         @updated_at = parse_datetime(data["updated_at"])
@@ -3543,25 +3545,27 @@ module Basecamp
       def to_h
         {
           "app_url" => @app_url,
+          "content" => @content,
+          "description" => @description,
           "id" => @id,
           "title" => @title,
           "type" => @type,
           "url" => @url,
           "bookmark_url" => @bookmark_url,
           "bucket" => @bucket,
-          "content" => @content,
           "content_attachments" => @content_attachments,
           "created_at" => @created_at,
           "creator" => @creator,
-          "description" => @description,
           "description_attachments" => @description_attachments,
           "inherits_status" => @inherits_status,
           "parent" => @parent,
+          "plain_text_content" => @plain_text_content,
+          "plain_text_description" => @plain_text_description,
           "status" => @status,
           "subject" => @subject,
           "updated_at" => @updated_at,
           "visible_to_clients" => @visible_to_clients,
-        }.compact
+        }.reject { |k, v| v.nil? && !["content", "description"].include?(k) }
       end
 
       def to_json(*args)

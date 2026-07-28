@@ -127,6 +127,32 @@ class GeneratedTypesTest < Minitest::Test
     assert_equal "Message", real_option.to_h["key"]
   end
 
+  # SearchResult.content and SearchResult.description are required-and-nullable:
+  # api/searches/show.json.jbuilder renders the recording's own partial and then
+  # unconditionally overwrites both with nil to keep the large HTML body out of
+  # the search payload, so the keys are always present and always null. to_h must
+  # preserve those explicit nulls rather than compacting them away — a consumer
+  # has to be able to tell "the projection stripped this" from "absent".
+  def test_search_result_preserves_null_content_and_description
+    result = Basecamp::Types::SearchResult.new(
+      "id" => 1, "title" => "Quarterly Report", "type" => "Message",
+      "url" => "https://3.basecampapi.com/12345/buckets/1/messages/1.json",
+      "app_url" => "https://3.basecamp.com/12345/buckets/1/messages/1",
+      "content" => nil, "description" => nil,
+      "plain_text_content" => "Q1 <mark class=\"circled-text\"><span></span>Report</mark> summary."
+    )
+    hash = result.to_h
+
+    assert hash.key?("content"), "required-nullable content must stay present"
+    assert_nil hash["content"]
+    assert hash.key?("description"), "required-nullable description must stay present"
+    assert_nil hash["description"]
+    # The excerpt is the opposite contract: optional and non-nullable.
+    assert_includes hash["plain_text_content"], "circled-text"
+    assert_equal %i[app_url content description id title type url],
+                 Basecamp::Types::SearchResult.required_fields
+  end
+
   # Wormhole.color and Wormhole.destination_url are required-and-nullable: the bc3
   # jbuilder always emits them, null when unset/unlinked. to_h must preserve those
   # explicit nulls (the destination_url is the only field identifying the target),

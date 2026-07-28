@@ -8,7 +8,7 @@ spec/build/
 conformance/runner/go/conformance-runner
 conformance/runner/go/go
 conformance/runner/ruby/Gemfile.lock
-conformance/runner/typescript/node_modules/
+conformance/runner/typescript/node_modules
 
 # Claude Code session files (except skills, which are committed)
 .claude/*

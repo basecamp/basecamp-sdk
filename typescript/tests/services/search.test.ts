@@ -33,6 +33,13 @@ describe("SearchService", () => {
           status: "active",
           url: "https://example.com/1",
           app_url: "https://basecamp.com/1",
+          // BC3 emits `json.content nil` / `json.description nil`
+          // unconditionally on every search result, so the keys are always
+          // present and always null. A stub that omits them is a payload the
+          // API cannot produce, and would let the required-and-nullable
+          // contract regress unnoticed.
+          content: null,
+          description: null,
         },
         {
           id: 2,
@@ -41,6 +48,12 @@ describe("SearchService", () => {
           status: "active",
           url: "https://example.com/2",
           app_url: "https://basecamp.com/2",
+          content: null,
+          description: null,
+          // The searchable text lives here instead — a highlighted, truncated
+          // excerpt, not plain text despite the name.
+          plain_text_content:
+            'Notes from the <mark class="circled-text"><span></span>Leto</mark> kickoff.',
           // The search projection carries the matching type's rich-text
           // companion array; a Message result surfaces content_attachments.
           content_attachments: [
@@ -75,6 +88,16 @@ describe("SearchService", () => {
       expect(results).toHaveLength(2);
       // The optional projection array surfaces on the matching-type result.
       expect(results[1]!.content_attachments).toHaveLength(1);
+
+      // The contract: present and null, never absent.
+      for (const r of results) {
+        expect(r.content).toBeNull();
+        expect(r.description).toBeNull();
+      }
+      expect(results[1]!.plain_text_content).toContain(
+        'mark class="circled-text"',
+      );
+      expect(results[0]!.plain_text_content).toBeUndefined();
       expect(results[1]!.content_attachments![0]!.width).toBe(1024);
       expect(results[0]!.title).toBe("Project Plan");
       expect(results[1]!.type).toBe("Message");

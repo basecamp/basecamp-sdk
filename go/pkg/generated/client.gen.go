@@ -2224,7 +2224,13 @@ type SearchResult struct {
 	AppUrl      string          `json:"app_url"`
 	BookmarkUrl string          `json:"bookmark_url,omitempty"`
 	Bucket      RecordingBucket `json:"bucket,omitempty"`
-	Content     string          `json:"content,omitempty"`
+
+	// Content Always present, always null. `api/searches/show.json.jbuilder` renders the
+	// recording's own partial and then unconditionally overwrites `content` with
+	// `nil` to strip the large HTML body out of the search payload. The key is
+	// therefore guaranteed present on every result — required — and its value is
+	// guaranteed null. Read `plain_text_content` instead.
+	Content *string `json:"content"`
 
 	// ContentAttachments Rich-text companion arrays carried through the polymorphic search
 	// projection. A given result is one recording type, so it carries only
@@ -2245,20 +2251,39 @@ type SearchResult struct {
 	ContentAttachments []RichTextAttachment `json:"content_attachments,omitempty"`
 	CreatedAt          time.Time            `json:"created_at,omitempty"`
 	Creator            Person               `json:"creator,omitempty"`
-	Description        string               `json:"description,omitempty"`
+
+	// Description Always present, always null — the description-attribute counterpart to
+	// `content`. Read `plain_text_description` instead.
+	Description *string `json:"description"`
 
 	// DescriptionAttachments See `content_attachments` — the description-attribute companion array.
 	DescriptionAttachments []RichTextAttachment `json:"description_attachments,omitempty"`
 	Id                     int64                `json:"id"`
 	InheritsStatus         bool                 `json:"inherits_status,omitempty"`
 	Parent                 RecordingParent      `json:"parent,omitempty"`
-	Status                 string               `json:"status,omitempty"`
-	Subject                string               `json:"subject,omitempty"`
-	Title                  string               `json:"title"`
-	Type                   string               `json:"type"`
-	UpdatedAt              time.Time            `json:"updated_at,omitempty"`
-	Url                    string               `json:"url"`
-	VisibleToClients       bool                 `json:"visible_to_clients,omitempty"`
+
+	// PlainTextContent A highlighted, truncated excerpt of the recording's content — **not** plain
+	// text despite the name. `excerpt_and_highlight_matches` converts the rich
+	// text with `to_plain_text`, escapes it with `html_escape_once`, then wraps
+	// each query match in `<mark class="circled-text"><span></span>…</mark>` and
+	// truncates the result to 300 characters. Treat it as an HTML fragment.
+	//
+	// Optional and non-nullable: emitted only when the underlying recordable
+	// responds to `content`, so a result whose type has no content attribute
+	// omits the key entirely rather than sending null.
+	PlainTextContent string `json:"plain_text_content,omitempty"`
+
+	// PlainTextDescription The description-attribute counterpart to `plain_text_content`, with the
+	// same highlighting, escaping, and 300-character truncation. Optional and
+	// non-nullable — omitted when the recordable has no description attribute.
+	PlainTextDescription string    `json:"plain_text_description,omitempty"`
+	Status               string    `json:"status,omitempty"`
+	Subject              string    `json:"subject,omitempty"`
+	Title                string    `json:"title"`
+	Type                 string    `json:"type"`
+	UpdatedAt            time.Time `json:"updated_at,omitempty"`
+	Url                  string    `json:"url"`
+	VisibleToClients     bool      `json:"visible_to_clients,omitempty"`
 }
 
 // SearchType A selectable search filter option. `key` is the value passed back as a
