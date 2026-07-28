@@ -1,0 +1,38 @@
+typescript/tests/oauth/oauth.test.ts
+  s_86d0793371d0f3::t_4cf93ca2a01e4f 465-521
+typescript/tests/oauth/token-manager.test.ts
+  s_86d0793371d0f3::t_e026be6e5d3de7 251-292
+typescript/src/oauth/exchange.ts
+  s_86d0793371d0f3::t_00e71bb4c58cec 350-357,367
+  s_86d0793371d0f3::t_a9a6de10cf26a5 164-166
+typescript/src/oauth/types.ts
+  s_86d0793371d0f3::t_dac7e89f1efed4 117-123,161-166
+  s_86d0793371d0f3::t_ecc82116f6d4b7 184
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_98816492b4bd9e 637-643,653
+typescript/README.md
+  s_86d0793371d0f3::t_f19e0918889849 274-275
+  s_86d0793371d0f3::t_b52d67b201e7b7 202-203,208-210
+  s_86d0793371d0f3::t_5681097ccaabf2 300-303,306-308,310-312
+  s_86d0793371d0f3::t_8fc5f561429c61 211
+typescript/src/oauth/token-manager.ts
+  s_86d0793371d0f3::t_ab38c5298e0b2a 149-151,155-162
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_8cb9c0daf84170 1320,1583-1631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "01cda0d65524bfdba762033454b29473c331bfd9",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
