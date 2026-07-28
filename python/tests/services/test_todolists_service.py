@@ -15,6 +15,24 @@ from basecamp.hooks import BasecampHooks, OperationInfo
 BASE = "https://3.basecampapi.com/12345"
 
 
+def _todolist(name: str) -> dict:
+    """Minimal Todolist payload for the metadata/hook tests.
+
+    These tests are about operation identity and resource-id scoping, not
+    payload shape — but a stub must not contradict the contract either.
+    bubble_up_url is @required on Todolist (todolists/_todolist.json.jbuilder
+    always passes bubbleupable: true), so it belongs here even though nothing
+    below reads it. Full-shape coverage lives in spec/fixtures, which
+    `make check-fixture-coverage` validates.
+    """
+    return {
+        "id": 2,
+        "name": name,
+        "description_attachments": [],
+        "bubble_up_url": "https://3.basecampapi.com/12345/buckets/1/recordings/2/bubble_up.json",
+    }
+
+
 class _RecordingHooks(BasecampHooks):
     def __init__(self) -> None:
         self.operations: list[OperationInfo] = []
@@ -85,9 +103,7 @@ class TestAsyncReposition:
 class TestSyncTodolistMetadata:
     @respx.mock
     def test_get_scopes_resource_to_todolist_id(self):
-        respx.get(f"{BASE}/todolists/2").mock(
-            return_value=httpx.Response(200, json={"id": 2, "name": "Sprint Tasks", "description_attachments": []})
-        )
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist("Sprint Tasks")))
 
         hooks = _RecordingHooks()
         c = Client(access_token="test-token", hooks=hooks)
@@ -102,9 +118,7 @@ class TestSyncTodolistMetadata:
 
     @respx.mock
     def test_update_scopes_resource_to_todolist_id(self):
-        respx.put(f"{BASE}/todolists/2").mock(
-            return_value=httpx.Response(200, json={"id": 2, "name": "Updated List", "description_attachments": []})
-        )
+        respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist("Updated List")))
 
         hooks = _RecordingHooks()
         c = Client(access_token="test-token", hooks=hooks)
@@ -122,9 +136,7 @@ class TestAsyncTodolistMetadata:
     @pytest.mark.asyncio
     @respx.mock
     async def test_get_scopes_resource_to_todolist_id(self):
-        respx.get(f"{BASE}/todolists/2").mock(
-            return_value=httpx.Response(200, json={"id": 2, "name": "Sprint Tasks", "description_attachments": []})
-        )
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist("Sprint Tasks")))
 
         hooks = _RecordingHooks()
         c = AsyncClient(access_token="test-token", hooks=hooks)
@@ -140,9 +152,7 @@ class TestAsyncTodolistMetadata:
     @pytest.mark.asyncio
     @respx.mock
     async def test_update_scopes_resource_to_todolist_id(self):
-        respx.put(f"{BASE}/todolists/2").mock(
-            return_value=httpx.Response(200, json={"id": 2, "name": "Updated List", "description_attachments": []})
-        )
+        respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist("Updated List")))
 
         hooks = _RecordingHooks()
         c = AsyncClient(access_token="test-token", hooks=hooks)

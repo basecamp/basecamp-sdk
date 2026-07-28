@@ -41,6 +41,11 @@ describe("TodolistsService", () => {
       const todolist = await client.todolists.get(id);
       expect(todolist.id).toBe(id);
       expect(todolist.name).toBe(todolistFixture.name);
+      // bubble_up_url is @required on Todolist: todolists/_todolist.json.jbuilder
+      // renders the shared recording partial with bubbleupable: true
+      // unconditionally, so every projection of this shape carries it. The stub
+      // is the canonical fixture, so this also proves the fixture carries it.
+      expect(todolist.bubble_up_url).toBeDefined();
     });
 
     it("should throw not_found for missing todolist", async () => {

@@ -36,15 +36,23 @@ class TodolistsServiceTest < Minitest::Test
     assert_equal "archived", result.first["status"]
   end
 
+  # Uses the canonical fixture rather than a hand-rolled hash: Todolist has a
+  # dozen required members (bubble_up_url among them) and a minimal stub is a
+  # payload BC3 cannot produce. spec/fixtures is validated by
+  # `make check-fixture-coverage`, so this stub cannot drift from the contract.
   def test_get
-    response = { "id" => 2, "name" => "Sprint Tasks", "description_attachments" => [] }
+    response = load_fixture("todolists/get.json")
 
     # Generated service uses /todolists/{id} without .json
     stub_request(:get, %r{https://3\.basecampapi\.com/12345/todolists/\d+$})
       .to_return(status: 200, body: response.to_json, headers: { "Content-Type" => "application/json" })
 
     result = @account.todolists.get(id: 2)
-    assert_equal "Sprint Tasks", result["name"]
+    assert_equal response["name"], result["name"]
+    # bubble_up_url is @required on Todolist: todolists/_todolist.json.jbuilder
+    # renders the shared recording partial with bubbleupable: true
+    # unconditionally, so every projection of this shape carries it.
+    assert result.key?("bubble_up_url"), "required bubble_up_url must be present"
   end
 
   def test_create
