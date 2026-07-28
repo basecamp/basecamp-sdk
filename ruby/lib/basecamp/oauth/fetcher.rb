@@ -396,6 +396,14 @@ module Basecamp
               chunks << chunk
             end
           end
+          # Final monotonic re-check AFTER the response completes: a peer can
+          # deliver the last body chunk just before the deadline and the
+          # terminating EOF just after it — read_body runs no further per-chunk
+          # check, and the request thread can process that completion before
+          # the watchdog sets deadline_fired. A completed response is never
+          # accepted past the advertised total-request bound. (Skipped statuses
+          # keep status-first classification — SkipBody unwinds before this.)
+          raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
         ensure
           # Block-form start would close the session itself; with the explicit
           # start (needed so ONLY connection setup sits under Timeout.timeout)

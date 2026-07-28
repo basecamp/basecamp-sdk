@@ -544,6 +544,49 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
+  def test_completed_response_is_never_accepted_past_the_deadline
+    # The narrow race the watchdog cannot cover: the last body chunk lands
+    # just before the deadline and the completion lands just after it, with
+    # the request thread processing completion before the watchdog sets
+    # deadline_fired. The instrumented request tail-sleep makes the ordering
+    # deterministic: the response completes cleanly, then the deadline passes
+    # before stream_http can return — the final monotonic re-check must
+    # refuse the completed response.
+    server = TCPServer.new("127.0.0.1", 0)
+    @servers << server
+    @server_threads << Thread.new do
+      loop do
+        conn = server.accept
+        @conns << conn
+        while (line = conn.gets) && line != "\r\n"; end
+        conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+      rescue IOError, SystemCallError
+        break
+      end
+    end
+    endpoint = "http://127.0.0.1:#{server.addr[1]}"
+
+    instrumented = Class.new(Net::HTTP) do
+      def request(req, body = nil, &block)
+        result = super
+        sleep(0.4) # completion processed; deadline passes before returning
+        result
+      end
+    end
+
+    uri = URI.parse(endpoint)
+    http = instrumented.new(uri.hostname, uri.port)
+    original_new = Net::HTTP.method(:new)
+    Net::HTTP.define_singleton_method(:new) { |*| http }
+    begin
+      assert_raises(Basecamp::Oauth::Fetcher::ReadDeadlineExceeded) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/token", timeout: 0.2)
+      end
+    ensure
+      Net::HTTP.define_singleton_method(:new, original_new)
+    end
+  end
+
   def test_watchdog_kill_cannot_leak_a_half_closed_socket
     # Completion racing the deadline: the watchdog can be INSIDE http.finish —
     # after do_finish clears started? but before the socket close — when the
@@ -593,8 +636,12 @@ class OAuthTransportTest < Minitest::Test
     original_new = Net::HTTP.method(:new)
     Net::HTTP.define_singleton_method(:new) { |*| http }
     begin
-      status, = Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/token", timeout: 0.1)
-      assert_equal 204, status
+      # The final post-request deadline re-check now refuses the completed
+      # 204 (it finished past the wall clock); the leak property under test
+      # is unchanged — the watchdog's close must still complete.
+      assert_raises(Basecamp::Oauth::Fetcher::ReadDeadlineExceeded) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/token", timeout: 0.1)
+      end
     ensure
       Net::HTTP.define_singleton_method(:new, original_new)
     end
