@@ -1,0 +1,28 @@
+go/pkg/generated/client.gen.go
+  s_effaf9ebecb0f4::t_92efcebd7613ad 3977-4068,4086-4093,4100-4106,4111-4146
+go/pkg/basecamp/generated_withbody_replay_test.go
+  s_effaf9ebecb0f4::t_3247eb47fd4b79 1-252,297-345
+  s_effaf9ebecb0f4::t_cc086a5dc43844 253-296
+go/templates/client.tmpl
+  s_effaf9ebecb0f4::t_ebe3d54cc0be8d 330
+  s_effaf9ebecb0f4::t_54fc8a517f0e1c 161-177,189-194,199-203,210-252,329
+  s_effaf9ebecb0f4::t_4b6fe4664516b4 178-188,195-198,204-209
+  s_effaf9ebecb0f4::t_1fc81eea3d69ee 270-277,295-297,299-328
+  s_effaf9ebecb0f4::t_261b379cd3586b 284-290,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cdb333b3c325ecad849632ee1bd824b19acb197f",
+  "prompts": {},
+  "sessions": {
+    "s_effaf9ebecb0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9d6aa32-1196-4ab5-8699-c047b7e5bbb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
