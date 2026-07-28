@@ -283,7 +283,10 @@ if (isTokenExpired(token)) {
 For input-constrained clients (CLIs, TVs) the SDK implements the OAuth 2.0 device
 authorization grant. The public `basecamp-cli` client is pre-registered with
 `token_endpoint_auth_method: none` — it sends no client secret, and an omitted
-scope defaults to `read`.
+scope defaults to `read` (prefer pinning it explicitly with `scope = "read"`).
+Pass bare origins everywhere (no trailing slash): issuer binding is code-point
+exact, so `https://app.basecamp.com/` would silently soft-fall back to
+Launchpad.
 
 ```kotlin
 import com.basecamp.sdk.BasecampClient
@@ -316,6 +319,20 @@ val token = performDeviceLogin(
 val client = BasecampClient {
     accessToken(token.accessToken)
 }
+
+// BC5 device logins as basecamp-cli mint MULTI-ACCOUNT refresh tokens: the
+// token carries an RFC 8707 resource indicator (token.resource,
+// "urn:bc:account:<id>"), and refreshing without echoing it is rejected
+// (400 invalid_request). Persist token.resource alongside the tokens and
+// echo it on refresh:
+val fresh = refreshToken(
+    tokenEndpoint = config.tokenEndpoint,
+    refreshToken = token.refreshToken!!,
+    clientId = "basecamp-cli",  // public client — no secret
+    resource = token.resource,
+)
+// A refresh response MAY omit resource (the binding is unchanged) — persist
+// `fresh.resource ?: token.resource` so the next refresh still echoes it.
 ```
 
 The two building blocks are also public if you need finer control:

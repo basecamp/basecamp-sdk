@@ -312,6 +312,92 @@ class OAuthTest {
         httpClient.close()
     }
 
+    @Test
+    fun refreshTokenSendsResourceWhenSetAndOmitsWhenUnset() = runTest {
+        var lastBody = ""
+        val engine = MockEngine { request ->
+            lastBody = request.body.toByteArray().decodeToString()
+            respond(
+                content = """{"access_token": "new-access"}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        refreshToken(
+            tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+            refreshToken = "refresh-456",
+            clientId = "basecamp-cli",
+            client = httpClient,
+            resource = "urn:bc:account:42",
+        )
+        assertTrue(lastBody.contains("resource=urn%3Abc%3Aaccount%3A42"))
+
+        refreshToken(
+            tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+            refreshToken = "refresh-456",
+            clientId = "basecamp-cli",
+            client = httpClient,
+        )
+        assertTrue(!lastBody.contains("resource="))
+
+        httpClient.close()
+    }
+
+    @Test
+    fun refreshTokenCapturesResourceAndTreatsNullAsAbsent() = runTest {
+        suspend fun tokenFor(resourceJson: String): OAuthToken {
+            val engine = MockEngine { _ ->
+                respond(
+                    content = """{"access_token": "a", "resource": $resourceJson}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                )
+            }
+            val httpClient = HttpClient(engine)
+            try {
+                return refreshToken(
+                    tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                    refreshToken = "refresh-456",
+                    clientId = "basecamp-cli",
+                    client = httpClient,
+                )
+            } finally {
+                httpClient.close()
+            }
+        }
+
+        assertEquals("urn:bc:account:42", tokenFor("\"urn:bc:account:42\"").resource)
+        assertEquals(null, tokenFor("null").resource)
+    }
+
+    @Test
+    fun refreshTokenRejectsEmptyResourceAsApiError() = runTest {
+        val engine = MockEngine { _ ->
+            respond(
+                content = """{"access_token": "a", "resource": ""}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        try {
+            refreshToken(
+                tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                refreshToken = "refresh-456",
+                clientId = "basecamp-cli",
+                client = httpClient,
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Api) {
+            assertTrue(e.message!!.contains("resource"))
+        } finally {
+            httpClient.close()
+        }
+    }
+
     // =========================================================================
     // PKCE challenge is correct SHA-256 of verifier
     // =========================================================================

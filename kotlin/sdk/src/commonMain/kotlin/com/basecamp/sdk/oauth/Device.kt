@@ -143,6 +143,7 @@ private data class RawDeviceTokenResponse(
     @SerialName("token_type") val tokenType: String? = null,
     @SerialName("expires_in") val expiresIn: Double? = null,
     val scope: String? = null,
+    val resource: String? = null,
 )
 
 /** Raw RFC 8628 device authorization response; all fields nullable to validate. */
@@ -564,6 +565,15 @@ private suspend fun postDeviceTokenPoll(
                 )
             }
         } ?: "Bearer"
+        // resource: absent and JSON null decode to null (unset); when present
+        // it must be non-empty (SPEC §16) — an empty binding is not a binding.
+        // A non-string resource fails deserialization above.
+        if (raw.resource != null && raw.resource.isEmpty()) {
+            throw BasecampException.Api(
+                "Device token response resource must be a non-empty string when present",
+                httpStatus = status,
+            )
+        }
         val now = currentTimeMillis()
         val expiresAt = expiresInSeconds?.let { now + it * 1000 }
         PollResult.Token(
@@ -574,6 +584,7 @@ private suspend fun postDeviceTokenPoll(
                 expiresIn = expiresInSeconds,
                 expiresAt = expiresAt,
                 scope = raw.scope,
+                resource = raw.resource,
             ),
         )
     } else {

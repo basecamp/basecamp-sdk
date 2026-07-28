@@ -966,6 +966,41 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollCapturesResourceAndTreatsNullAsAbsent() = runTest {
+        // resource (RFC 8707) round-trips onto the token; JSON null is absent.
+        val body = """{"access_token":"tok","token_type":"Bearer","resource":"urn:bc:account:42"}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        assertEquals("urn:bc:account:42", token.resource)
+        client.close()
+
+        val nullBody = """{"access_token":"tok","token_type":"Bearer","resource":null}"""
+        val nullEngine = MockEngine { respond(nullBody, HttpStatusCode.OK, jsonHeaders) }
+        val nullClient = HttpClient(nullEngine)
+
+        val nullToken = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, nullClient)
+        assertNull(nullToken.resource)
+        nullClient.close()
+    }
+
+    @Test
+    fun pollRejectsEmptyResourceOn2xx() = runTest {
+        // A present-but-empty resource is malformed (SPEC §16) — an empty
+        // binding is not a binding. Uniform with Go/Python/Ruby/TS.
+        val body = """{"access_token":"tok","token_type":"Bearer","resource":""}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        }
+        assertEquals("api_error", e.code)
+        client.close()
+    }
+
+    @Test
     fun pollAcceptsTokenWithoutExpiresIn() = runTest {
         // Absent expires_in (RFC 6749 §5.1) is allowed — the token has no expiry.
         val body = """{"access_token":"tok","token_type":"Bearer"}"""
