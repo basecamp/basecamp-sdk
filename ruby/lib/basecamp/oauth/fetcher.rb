@@ -214,6 +214,13 @@ module Basecamp
       #    raises IOError in the blocked reader — verified on a live socket).
       #    +max_retries = 0+ is load-bearing: Net::HTTP's idempotent-retry would
       #    otherwise silently REOPEN the connection the watchdog just closed.
+      #    Scope: the watchdog governs from session-start on. The CONNECTION
+      #    phases (TCP connect, proxy CONNECT, TLS handshake) are not
+      #    watchdog-interruptible — Net::HTTP marks the session started only
+      #    after they complete — but each is natively bounded by open_timeout,
+      #    and a post-connect deadline re-check refuses the request when setup
+      #    consumed the budget. Total wall clock is a small multiple of the
+      #    timeout, never unbounded.
       #
       # The body streams under the same cap + deadline as the Faraday path, and
       # redirects are structurally never followed (+Net::HTTP#request+ has no
@@ -296,6 +303,17 @@ module Basecamp
         chunks = []
         total = 0
         http.start do |session|
+          # The connection phases (TCP connect, proxy CONNECT, TLS handshake)
+          # are each natively bounded by open_timeout — the watchdog cannot
+          # interrupt them because Net::HTTP only marks the session started
+          # once they complete (finish raises IOError until then). Re-check the
+          # deadline the moment the session is up: if setup consumed the whole
+          # budget, fail now rather than granting the request a fresh header
+          # wait. Worst-case wall clock is a small multiple of the timeout
+          # (per-phase native bounds + watchdog from headers on), never
+          # unbounded.
+          raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
           session.request(request) do |response|
             status = response.code.to_i
             # Status-first: a skipped status's body is NEVER read — the raise
