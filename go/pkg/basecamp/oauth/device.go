@@ -617,6 +617,10 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			TokenType    *string  `json:"token_type"`
 			ExpiresIn    *float64 `json:"expires_in"`
 			Scope        *string  `json:"scope"`
+			// *string like token_type: absent and JSON null map to nil, while
+			// a present-but-empty "" is malformed (SPEC §16 resource rule) —
+			// a plain string could not tell those apart.
+			Resource *string `json:"resource"`
 		}
 		if err := json.Unmarshal(body, &raw); err != nil {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: fmt.Errorf("parsing device token response: %w", err)}
@@ -626,6 +630,9 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		}
 		if raw.TokenType != nil && *raw.TokenType == "" {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response token_type must be a non-empty string")}
+		}
+		if raw.Resource != nil && *raw.Resource == "" {
+			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response resource must be a non-empty string when present")}
 		}
 		token := Token{
 			AccessToken: raw.AccessToken,
@@ -639,6 +646,9 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		}
 		if raw.TokenType != nil {
 			token.TokenType = *raw.TokenType
+		}
+		if raw.Resource != nil {
+			token.Resource = *raw.Resource
 		}
 		// When present, expires_in must be a positive WHOLE number of seconds no
 		// greater than maxTokenLifetimeSeconds — an explicit 0, a fractional

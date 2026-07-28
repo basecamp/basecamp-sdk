@@ -318,3 +318,91 @@ func TestCredentialStore_UsingKeyring(t *testing.T) {
 		t.Error("expected UsingKeyring=false")
 	}
 }
+
+func TestAuthManager_Refresh_EchoesClientIDAndResource(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// The refresh response deliberately OMITS resource: the stored binding
+	// must be echoed on the form and survive the rotation (SPEC §16).
+	var gotClientID, gotResource string
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		gotClientID = r.PostFormValue("client_id")
+		gotResource = r.PostFormValue("resource")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "new-access",
+			"refresh_token": "new-refresh",
+			"expires_in":    3600,
+		})
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	origin := NormalizeBaseURL(ts.URL)
+	_ = store.Save(origin, &Credentials{
+		AccessToken:   "old-access",
+		RefreshToken:  "old-refresh",
+		ExpiresAt:     1,
+		TokenEndpoint: ts.URL + "/token",
+		ClientID:      "basecamp-cli",
+		Resource:      "urn:bc:account:42",
+	})
+
+	cfg := &Config{BaseURL: ts.URL}
+	m := NewAuthManagerWithStore(cfg, ts.Client(), store)
+
+	if err := m.Refresh(context.Background()); err != nil {
+		t.Fatalf("Refresh: %v", err)
+	}
+	if gotClientID != "basecamp-cli" {
+		t.Errorf("client_id form value = %q, want basecamp-cli", gotClientID)
+	}
+	if gotResource != "urn:bc:account:42" {
+		t.Errorf("resource form value = %q, want urn:bc:account:42", gotResource)
+	}
+
+	creds, _ := store.Load(origin)
+	if creds.Resource != "urn:bc:account:42" {
+		t.Errorf("stored Resource = %q, want preserved urn:bc:account:42", creds.Resource)
+	}
+	if creds.ClientID != "basecamp-cli" {
+		t.Errorf("stored ClientID = %q, want basecamp-cli", creds.ClientID)
+	}
+}
+
+func TestAuthManager_Refresh_ResponseResourceReplacesStored(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "new-access",
+			"resource":     "urn:bc:account:7",
+		})
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	origin := NormalizeBaseURL(ts.URL)
+	_ = store.Save(origin, &Credentials{
+		AccessToken:   "old-access",
+		RefreshToken:  "old-refresh",
+		ExpiresAt:     1,
+		TokenEndpoint: ts.URL + "/token",
+		Resource:      "urn:bc:account:42",
+	})
+
+	cfg := &Config{BaseURL: ts.URL}
+	m := NewAuthManagerWithStore(cfg, ts.Client(), store)
+
+	if err := m.Refresh(context.Background()); err != nil {
+		t.Fatalf("Refresh: %v", err)
+	}
+	creds, _ := store.Load(origin)
+	if creds.Resource != "urn:bc:account:7" {
+		t.Errorf("stored Resource = %q, want replaced urn:bc:account:7", creds.Resource)
+	}
+}

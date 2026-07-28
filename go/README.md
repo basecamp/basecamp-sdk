@@ -255,7 +255,41 @@ between polls, enforces a monotonic expiry deadline, sustains `slow_down` bumps
 cancellation. The clock (`oauth.WithDeviceClock`) and inter-poll wait
 (`oauth.WithDeviceSleep`) are injectable for deterministic tests; scope is
 omitted from the authorization request unless set with `oauth.WithDeviceScope`,
-so the server applies its default (`read`).
+so the server applies its default (`read`) — prefer pinning it explicitly.
+
+### Persisting device-login credentials (RFC 8707 resource echo)
+
+BC5 device logins as `basecamp-cli` mint **multi-account** refresh tokens: the
+token response carries an RFC 8707 `resource` indicator
+(`urn:bc:account:<id>`, on `token.Resource`), and every refresh of a
+multi-account token MUST send it back or the server rejects the refresh
+(400 `invalid_request`). `AuthManager` echoes the stored `resource` (and
+submits the stored `client_id` — BC5 public clients send no secret)
+automatically, and preserves the stored value when a refresh response omits
+it.
+
+The oauth helpers return an `*oauth.Token`; they never write the root
+package's `Credentials`. After a device login (or code exchange) the caller
+bridges the two — saving the client id it used and the token's resource so
+later refreshes can echo them:
+
+```go
+authMgr := basecamp.NewAuthManager(cfg, httpClient)
+err = authMgr.Store().Save(basecamp.NormalizeBaseURL(cfg.BaseURL), &basecamp.Credentials{
+    AccessToken:   token.AccessToken,
+    RefreshToken:  token.RefreshToken,
+    ExpiresAt:     token.ExpiresAt.Unix(),
+    Scope:         token.Scope,
+    TokenEndpoint: result.Config.TokenEndpoint,
+    ClientID:      "basecamp-cli",       // the id the login used
+    Resource:      token.Resource,       // the account binding to echo on refresh
+})
+```
+
+Pass the discovered base origin without a trailing slash everywhere a base URL
+or issuer is expected: discovery binds the issuer code-point exact, so
+`https://app.basecamp.com/` (trailing slash) would silently soft-fall back to
+Launchpad.
 
 ## Configuration
 

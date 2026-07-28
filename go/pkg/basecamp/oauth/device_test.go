@@ -1985,3 +1985,61 @@ func TestPollDeviceToken_CancelledDuringIgnoredTransportBeatsTerminalError(t *te
 		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
 	}
 }
+
+func TestPollDeviceToken_CapturesResource(t *testing.T) {
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{
+		{http.StatusOK, map[string]any{
+			"access_token":  "device_access_token",
+			"refresh_token": "device_refresh_token",
+			"resource":      "urn:bc:account:42",
+		}},
+	})
+	sleep := &recordingSleep{}
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.Resource != "urn:bc:account:42" {
+		t.Errorf("Resource = %q, want urn:bc:account:42", token.Resource)
+	}
+}
+
+func TestPollDeviceToken_ResourceValidation(t *testing.T) {
+	cases := []struct {
+		name     string
+		resource any
+		wantErr  bool
+	}{
+		{"null resource is absent", nil, false},
+		{"empty resource is malformed", "", true},
+		{"non-string resource is malformed", 7, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"access_token": "device_access_token", "resource": tc.resource}
+			srv, _ := queueTokenResponses(t, []struct {
+				status int
+				body   map[string]any
+			}{{http.StatusOK, body}})
+			sleep := &recordingSleep{}
+
+			token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+				WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+			if tc.wantErr {
+				assertBasecampCode(t, err, basecamp.CodeAPI)
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if token.Resource != "" {
+				t.Errorf("Resource = %q, want unset", token.Resource)
+			}
+		})
+	}
+}

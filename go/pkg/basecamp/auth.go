@@ -24,6 +24,22 @@ type Credentials struct {
 	Scope         string `json:"scope"`
 	TokenEndpoint string `json:"token_endpoint"`
 	UserID        string `json:"user_id,omitempty"`
+
+	// ClientID is the OAuth client the tokens were issued to. BC5 public
+	// clients (token_endpoint_auth_method: none) authenticate refreshes by
+	// client_id alone, so refresh submits it when present.
+	ClientID string `json:"client_id,omitempty"`
+
+	// Resource is the RFC 8707 resource indicator the tokens are bound to
+	// (BC5: urn:bc:account:<id>). Refresh echoes it and preserves it when a
+	// refresh response omits it — BC5 multi-account refresh tokens reject a
+	// refresh without it (SPEC §16).
+	//
+	// The oauth helpers only return an oauth.Token; after a device login or
+	// code exchange the CALLER saves Credentials carrying the ClientID it
+	// used and the token's Resource (see the README OAuth section) — there is
+	// no automatic bridge from oauth.Token to Credentials.
+	Resource string `json:"resource,omitempty"`
 }
 
 // TokenProvider is the interface for obtaining access tokens.
@@ -317,6 +333,12 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", creds.RefreshToken)
+	if creds.ClientID != "" {
+		data.Set("client_id", creds.ClientID)
+	}
+	if creds.Resource != "" {
+		data.Set("resource", creds.Resource)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
@@ -339,6 +361,10 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 		ExpiresIn    int64  `json:"expires_in"`
+		// *string so an omitted (or null) resource is distinguishable from a
+		// present one: omission preserves the stored value, presence replaces
+		// it (SPEC §16 lifecycle rule).
+		Resource *string `json:"resource"`
 	}
 	const maxTokenResponseSize int64 = 1 << 20 // 1 MB
 	body, err := limitedReadAll(resp.Body, maxTokenResponseSize)
@@ -355,6 +381,11 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	}
 	if tokenResp.ExpiresIn > 0 {
 		creds.ExpiresAt = time.Now().Unix() + tokenResp.ExpiresIn
+	}
+	// An omitted resource preserves the stored binding (carry-forward, like an
+	// omitted rotated refresh_token); a present one replaces it.
+	if tokenResp.Resource != nil && *tokenResp.Resource != "" {
+		creds.Resource = *tokenResp.Resource
 	}
 
 	return m.store.Save(origin, creds)

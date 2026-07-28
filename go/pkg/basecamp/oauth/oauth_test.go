@@ -539,3 +539,84 @@ func TestNewDeviceConfig_TimeoutClamp(t *testing.T) {
 		})
 	}
 }
+
+func TestExchanger_Refresh_ResourceEcho(t *testing.T) {
+	tests := []struct {
+		name         string
+		resource     string
+		wantSent     bool
+		wantResource string
+	}{
+		{name: "resource sent when set", resource: "urn:bc:account:123", wantSent: true, wantResource: "urn:bc:account:123"},
+		{name: "resource omitted when unset", resource: "", wantSent: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var sawResourceKey bool
+			var receivedResource string
+
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = r.ParseForm()
+				_, sawResourceKey = r.PostForm["resource"]
+				receivedResource = r.PostFormValue("resource")
+				_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "new_access"})
+			}))
+			defer server.Close()
+
+			e := NewExchanger(server.Client())
+			_, err := e.Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+				ClientID:      "basecamp-cli",
+				Resource:      tt.resource,
+			})
+			if err != nil {
+				t.Fatalf("Refresh() error = %v", err)
+			}
+			if sawResourceKey != tt.wantSent {
+				t.Errorf("resource form key present = %v, want %v", sawResourceKey, tt.wantSent)
+			}
+			if receivedResource != tt.wantResource {
+				t.Errorf("resource form value = %q, want %q", receivedResource, tt.wantResource)
+			}
+		})
+	}
+}
+
+func TestExchanger_TokenResponseResource(t *testing.T) {
+	tests := []struct {
+		name         string
+		response     string
+		wantErr      bool
+		wantResource string
+	}{
+		{name: "resource round-trips", response: `{"access_token":"a","resource":"urn:bc:account:42"}`, wantResource: "urn:bc:account:42"},
+		{name: "absent resource is unset", response: `{"access_token":"a"}`, wantResource: ""},
+		{name: "null resource is unset", response: `{"access_token":"a","resource":null}`, wantResource: ""},
+		{name: "empty resource rejected", response: `{"access_token":"a","resource":""}`, wantErr: true},
+		{name: "non-string resource rejected", response: `{"access_token":"a","resource":7}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			defer server.Close()
+
+			e := NewExchanger(server.Client())
+			token, err := e.Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+			})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Refresh() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && token.Resource != tt.wantResource {
+				t.Errorf("token.Resource = %q, want %q", token.Resource, tt.wantResource)
+			}
+		})
+	}
+}

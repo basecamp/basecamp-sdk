@@ -87,6 +87,9 @@ func (e *Exchanger) Refresh(ctx context.Context, req RefreshRequest) (*Token, er
 	if req.ClientSecret != "" {
 		data.Set("client_secret", req.ClientSecret)
 	}
+	if req.Resource != "" {
+		data.Set("resource", req.Resource)
+	}
 
 	return e.doTokenRequest(ctx, req.TokenEndpoint, data)
 }
@@ -153,6 +156,21 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	var token Token
 	if err := json.Unmarshal(body, &token); err != nil {
 		return nil, fmt.Errorf("parsing token response: %w", err)
+	}
+
+	// resource re-decodes through a *string because Token's plain string field
+	// cannot distinguish an absent field from an explicit "": absent and JSON
+	// null map to unset (nil), while a present-but-empty resource is a
+	// malformed response (SPEC §16) — an empty binding is not a binding. A
+	// non-string resource already failed the Token unmarshal above.
+	var rawResource struct {
+		Resource *string `json:"resource"`
+	}
+	if err := json.Unmarshal(body, &rawResource); err != nil {
+		return nil, fmt.Errorf("parsing token response: %w", err)
+	}
+	if rawResource.Resource != nil && *rawResource.Resource == "" {
+		return nil, fmt.Errorf("token response resource must be a non-empty string when present")
 	}
 
 	// Calculate ExpiresAt from ExpiresIn
