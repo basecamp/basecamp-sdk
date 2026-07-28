@@ -379,7 +379,7 @@ def poll_device_token(
     # remaining-lifetime clamp takes min() against it, and an invalid runtime
     # value (None → TypeError from min, a negative, an oversized 1e100) must
     # resolve to the device budget BEFORE any arithmetic touches it.
-    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_DEVICE_REQUEST_TIMEOUT)
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_REQUEST_TIMEOUT)
 
     # The server-driven interval (initial value + sustained slow_down bumps) is
     # tracked SEPARATELY from the transient timeout backoff: each wait is
