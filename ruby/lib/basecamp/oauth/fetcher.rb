@@ -358,17 +358,23 @@ module Basecamp
           raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
           http.request(request) do |response|
+            status = response.code.to_i
+            # Status-first: a skipped status's body is NEVER read — the raise
+            # unwinds to the ensure below, which closes the socket undrained.
+            # This outranks the deadline-race check below (SPEC §16): a
+            # completed response's KNOWN status must classify as its api_error
+            # even when the deadline fired while the headers were in flight —
+            # a discovery 500 or token redirect must never soften into a
+            # retryable timeout.
+            raise SkipBody.new(status) if skip_status&.call(status)
+
             # Net::HTTP#request implicitly re-starts a finished session: if the
             # watchdog's close landed between the deadline re-check above and
             # the request write, this round trip rode a fresh post-deadline
             # connection. The watchdog loop closes such a connection within a
-            # tick; this classifies a round trip that beat the next tick.
+            # tick; this classifies a non-skipped round trip that beat the
+            # next tick, BEFORE its body is read.
             raise ReadDeadlineExceeded if deadline_fired
-
-            status = response.code.to_i
-            # Status-first: a skipped status's body is NEVER read — the raise
-            # unwinds to the ensure below, which closes the socket undrained.
-            raise SkipBody.new(status) if skip_status&.call(status)
 
             response.read_body do |chunk|
               raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
