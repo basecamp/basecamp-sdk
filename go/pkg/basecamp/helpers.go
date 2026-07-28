@@ -82,6 +82,8 @@ func checkResponse(resp *http.Response, body []byte) error {
 	serverMsg, serverHint := parseErrorBody(body)
 
 	switch resp.StatusCode {
+	case http.StatusBadRequest:
+		return &Error{Code: CodeValidation, Message: msgOrDefault(serverMsg, "validation error"), Hint: serverHint, HTTPStatus: 400, RequestID: requestID}
 	case http.StatusUnauthorized:
 		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
 	case http.StatusForbidden:

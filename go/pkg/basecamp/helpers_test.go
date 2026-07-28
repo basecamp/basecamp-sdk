@@ -27,6 +27,7 @@ func TestCheckResponse_ErrorCodes(t *testing.T) {
 		wantCode  string
 		wantRetry bool
 	}{
+		{400, CodeValidation, false},
 		{401, CodeAuth, false},
 		{403, CodeForbidden, false},
 		{404, CodeNotFound, false},

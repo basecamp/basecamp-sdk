@@ -50,6 +50,23 @@
     "tags": ["error-mapping", "not-found", "structured-error"]
   },
   {
+    "name": "400 maps to validation error code",
+    "description": "Verifies that 400 Bad Request maps to structured error with code 'validation' and retryable=false",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 400, "headers": {"X-Request-Id": "req-bad-400"}, "body": {"error": "Bad request"}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorField", "path": "httpStatus", "expected": 400},
+      {"type": "errorField", "path": "retryable", "expected": false}
+    ],
+    "tags": ["error-mapping", "validation", "structured-error"]
+  },
+  {
     "name": "422 maps to validation error code",
     "description": "Verifies that 422 Unprocessable Entity maps to structured error with code 'validation'",
     "operation": "CreateProject",
