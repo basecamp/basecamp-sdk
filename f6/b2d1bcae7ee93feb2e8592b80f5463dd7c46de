@@ -1,0 +1,19 @@
+python/tests/oauth/test_device.py
+  s_e7f35ff4dfc068::t_c08fd1fb665ae3 932-933
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f6b2d1bcae7ee93feb2e8592b80f5463dd7c46de",
+  "prompts": {},
+  "sessions": {
+    "s_e7f35ff4dfc068": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26213cdd-36a0-4e69-820b-1d68a49b16d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
