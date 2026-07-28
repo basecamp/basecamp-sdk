@@ -159,53 +159,75 @@ export async function requestDeviceAuthorization(
   let response: Response;
   let text: string;
   try {
-    try {
-      response = await customFetch(deviceAuthorizationEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-        body: body.toString(),
-        signal: controller.signal,
-        // Never chase an attacker-influenced Location: a 3xx surfaces below as a
-        // non-2xx api_error rather than a followed request.
-        redirect: "manual",
-      });
-    } catch (err) {
-      if (isAbort(err) && signal?.aborted) {
-        throw new DeviceFlowError("cancelled", "Device flow cancelled");
+    // The whole round trip runs INSIDE a race against the controller's signal:
+    // a cooperative fetch rejects on abort anyway, but a custom fetch that
+    // ignores its AbortSignal must not hold this call past its timeout or hand
+    // back a code pair after cancellation — the race rejects the moment the
+    // timeout or the caller's abort fires, and a late settlement is discarded.
+    ({ response, text } = await raceAbort(controller.signal, async () => {
+      let raced: Response;
+      try {
+        raced = await customFetch(deviceAuthorizationEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+          body: body.toString(),
+          signal: controller.signal,
+          // Never chase an attacker-influenced Location: a 3xx surfaces below as a
+          // non-2xx api_error rather than a followed request.
+          redirect: "manual",
+        });
+      } catch (err) {
+        if (isAbort(err) && signal?.aborted) {
+          throw new DeviceFlowError("cancelled", "Device flow cancelled");
+        }
+        throw new DeviceFlowError("transport", `Device authorization request failed: ${errMessage(err)}`, {
+          cause: err instanceof Error ? err : undefined,
+        });
       }
-      throw new DeviceFlowError("transport", `Device authorization request failed: ${errMessage(err)}`, {
-        cause: err instanceof Error ? err : undefined,
-      });
-    }
-    // A non-2xx (including a suppressed 3xx) is a hard failure whose body is
-    // unused, so surface it by status BEFORE draining the body. Otherwise a
-    // slow/never-ending error body could time out mid-read and be misclassified
-    // as a retryable transport failure instead of the api_error it is.
-    if (response.status < 200 || response.status >= 300) {
-      // Release the unread stream (non-blocking) so repeated failures don't retain
-      // sockets / connection-pool resources; the status error surfaces immediately.
-      void response.body?.cancel().catch(() => {});
-      throw new BasecampError("api_error", `Device authorization failed with status ${response.status}`, {
-        httpStatus: response.status,
-      });
-    }
-    // Bounded/streaming read: an oversized body aborts before it is fully
-    // buffered. The abort timer stays armed until the read completes, so a
-    // stalled response STREAM times out just like a stalled request; an
-    // oversized body is already api_error, and any other stream failure
-    // (including the timeout's AbortError) maps to transport rather than
-    // escaping raw.
-    try {
-      text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device authorization");
-    } catch (err) {
-      if (err instanceof BasecampError) throw err;
-      if (isAbort(err) && signal?.aborted) {
-        throw new DeviceFlowError("cancelled", "Device flow cancelled");
+      // A non-2xx (including a suppressed 3xx) is a hard failure whose body is
+      // unused, so surface it by status BEFORE draining the body. Otherwise a
+      // slow/never-ending error body could time out mid-read and be misclassified
+      // as a retryable transport failure instead of the api_error it is.
+      if (raced.status < 200 || raced.status >= 300) {
+        // Release the unread stream (non-blocking) so repeated failures don't retain
+        // sockets / connection-pool resources; the status error surfaces immediately.
+        void raced.body?.cancel().catch(() => {});
+        throw new BasecampError("api_error", `Device authorization failed with status ${raced.status}`, {
+          httpStatus: raced.status,
+        });
       }
-      throw new DeviceFlowError("transport", `Device authorization response read failed: ${errMessage(err)}`, {
-        cause: err instanceof Error ? err : undefined,
-      });
+      // Bounded/streaming read: an oversized body aborts before it is fully
+      // buffered. The abort timer stays armed until the read completes, so a
+      // stalled response STREAM times out just like a stalled request; an
+      // oversized body is already api_error, and any other stream failure
+      // (including the timeout's AbortError) maps to transport rather than
+      // escaping raw.
+      let racedText: string;
+      try {
+        racedText = await readBodyBounded(raced, MAX_DEVICE_BODY_BYTES, "device authorization");
+      } catch (err) {
+        if (err instanceof BasecampError) throw err;
+        if (isAbort(err) && signal?.aborted) {
+          throw new DeviceFlowError("cancelled", "Device flow cancelled");
+        }
+        throw new DeviceFlowError("transport", `Device authorization response read failed: ${errMessage(err)}`, {
+          cause: err instanceof Error ? err : undefined,
+        });
+      }
+      return { response: raced, text: racedText };
+    }));
+  } catch (err) {
+    // Already-classified failures from the raced work pass through; a raw
+    // AbortError here means the race itself lost — the caller aborted, or the
+    // timeout fired while a non-cooperative fetch refused to settle.
+    if (err instanceof DeviceFlowError || err instanceof BasecampError) throw err;
+    if (isAbort(err) && signal?.aborted) {
+      throw new DeviceFlowError("cancelled", "Device flow cancelled");
     }
+    if (isAbort(err)) {
+      throw new DeviceFlowError("transport", "Device authorization request failed: timed out");
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
     signal?.removeEventListener("abort", onAbort);
@@ -540,136 +562,144 @@ async function postDeviceToken(
   // does not proceed (and even return a token) after cancellation.
   if (signal?.aborted) controller.abort();
   try {
-    const response = await customFetch(tokenEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-      body: body.toString(),
-      signal: controller.signal,
-      // Never chase a Location: a redirected token poll is treated as an
-      // api_error below rather than followed.
-      redirect: "manual",
+    // The whole round trip runs INSIDE a race against the controller's signal
+    // (which fires on the per-request timeout AND the caller's abort): a custom
+    // fetch that ignores its AbortSignal must not hold the poll past its
+    // timeout or hand back a token after cancellation. The race's AbortError
+    // classifies in the poll loop exactly like a cooperative fetch's — caller
+    // abort → cancelled, timeout → transient backoff.
+    return await raceAbort(controller.signal, async () => {
+      const response = await customFetch(tokenEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+        body: body.toString(),
+        signal: controller.signal,
+        // Never chase a Location: a redirected token poll is treated as an
+        // api_error below rather than followed.
+        redirect: "manual",
+      });
+      // A suppressed 3xx is never a valid OAuth response and its body is unused —
+      // fail by status BEFORE draining the body. Otherwise a redirect that slowly
+      // streams its body could time out mid-read and be misclassified as a
+      // connection timeout, which the poll loop would back off and retry (until the
+      // device code expires) instead of surfacing the api_error now.
+      if (response.status >= 300 && response.status < 400) {
+        // Release the unread stream (non-blocking) so a redirecting endpoint under a
+        // long poll can't retain sockets / connection-pool resources.
+        void response.body?.cancel().catch(() => {});
+        throw new BasecampError("api_error", `Device token endpoint returned redirect status ${response.status}`, {
+          httpStatus: response.status,
+        });
+      }
+      // Every remaining status outside 200 and 4xx is terminal WITHOUT its body
+      // (only a 200 carries the token and only a 4xx the OAuth error code) —
+      // classify it before the read, like the 3xx above, so a 201/500 that
+      // stalls while streaming its body cannot abort mid-read and be retried as
+      // a transient timeout until the code expires.
+      if (response.status !== 200 && !(response.status >= 400 && response.status < 500)) {
+        void response.body?.cancel().catch(() => {});
+        throw new BasecampError("api_error", `Device token request failed with status ${response.status}`, {
+          httpStatus: response.status,
+        });
+      }
+      // Bounded/streaming read: an oversized body aborts before it is fully buffered.
+      // A 4xx still reads the body — that is how authorization_pending/slow_down and
+      // other OAuth errors are carried.
+      const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device token");
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new BasecampError("api_error", "Failed to parse device token response", {
+          httpStatus: response.status,
+        });
+      }
+      // A valid-JSON-but-non-object body (null, array, number, string) is a
+      // malformed OAuth response — fail as api_error before any property deref,
+      // never a raw crash on `data.access_token`/`data.error`.
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new BasecampError("api_error", "Device token response is not a JSON object", {
+          httpStatus: response.status,
+        });
+      }
+      const data = parsed as RawTokenResponse | OAuthErrorResponse;
+      // Exactly HTTP 200, not response.ok (any 2xx): RFC 8628/6749 token
+      // responses are 200, and SPEC §16 pins the contract. A nonstandard 201/202
+      // carrying an access_token must not prematurely complete polling — it
+      // falls through to the OAuth-error path and terminates as api_error.
+      if (response.status === 200) {
+        const token = data as RawTokenResponse;
+        // Non-empty string, not merely truthy: a numeric access_token is not a
+        // usable credential and must fail as api_error, not be returned downstream.
+        if (!isNonEmptyString(token.access_token)) {
+          throw new BasecampError("api_error", "Device token response missing or non-string access_token", {
+            httpStatus: response.status,
+          });
+        }
+        // expires_in is optional (RFC 6749 §5.1), but when present it must be a
+        // finite positive WHOLE number within MAX_TOKEN_LIFETIME_SECONDS. A
+        // non-finite value (1e400 → Infinity) or a very large finite one would flow
+        // into Date arithmetic and yield an Invalid Date whose getTime() is NaN, so
+        // expiry checks downstream would treat the token as never expiring. Whole
+        // seconds match the device-duration rule — every SDK validates the decoded
+        // numeric value explicitly to reject a fractional lifetime; an
+        // integer-valued float (3600.0) is still accepted.
+        if (token.expires_in != null &&
+            (typeof token.expires_in !== "number" || !Number.isInteger(token.expires_in) ||
+              token.expires_in <= 0 || token.expires_in > MAX_TOKEN_LIFETIME_SECONDS)) {
+          throw new BasecampError(
+            "api_error",
+            `Device token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`,
+            { httpStatus: response.status }
+          );
+        }
+        // token_type/refresh_token/scope are optional strings — a non-string value
+        // is a malformed response, not a usable credential field.
+        if (token.token_type != null && !isNonEmptyString(token.token_type)) {
+          throw new BasecampError("api_error", "Device token response token_type must be a non-empty string", {
+            httpStatus: response.status,
+          });
+        }
+        if (token.refresh_token != null && typeof token.refresh_token !== "string") {
+          throw new BasecampError("api_error", "Device token response refresh_token must be a string", {
+            httpStatus: response.status,
+          });
+        }
+        if (token.scope != null && typeof token.scope !== "string") {
+          throw new BasecampError("api_error", "Device token response scope must be a string", {
+            httpStatus: response.status,
+          });
+        }
+        return {
+          kind: "token",
+          token: {
+            accessToken: token.access_token,
+            refreshToken: token.refresh_token,
+            tokenType: token.token_type || "Bearer",
+            expiresIn: token.expires_in ?? undefined,
+            expiresAt: token.expires_in != null ? new Date(Date.now() + token.expires_in * 1000) : undefined,
+            scope: token.scope,
+          },
+        };
+      }
+      // Recognize OAuth protocol error codes ONLY on a 4xx (RFC 8628 §3.5 error
+      // responses are 400-class): a nonstandard 2xx (201/202) or a 5xx carrying
+      // a crafted authorization_pending body must not keep the loop polling —
+      // only a 200 can produce a token and only a 4xx a protocol state. The
+      // `error` must also be a non-empty string: a non-string (`{"error": 123}`)
+      // is not an OAuth error code. Everything else falls back to http_<status>,
+      // which the loop terminates as api_error.
+      const rawError = (data as { error?: unknown }).error;
+      // truncateErrorMessage at extraction (SPEC §9's 500-unit cap): the server
+      // controls this string and an unrecognized value is interpolated into the
+      // api_error message. Real protocol codes are short, so classification is
+      // unaffected.
+      const error =
+        response.status >= 400 && response.status < 500 && typeof rawError === "string" && rawError !== ""
+          ? truncateErrorMessage(rawError)
+          : `http_${response.status}`;
+      return { kind: "error", error, status: response.status };
     });
-    // A suppressed 3xx is never a valid OAuth response and its body is unused —
-    // fail by status BEFORE draining the body. Otherwise a redirect that slowly
-    // streams its body could time out mid-read and be misclassified as a
-    // connection timeout, which the poll loop would back off and retry (until the
-    // device code expires) instead of surfacing the api_error now.
-    if (response.status >= 300 && response.status < 400) {
-      // Release the unread stream (non-blocking) so a redirecting endpoint under a
-      // long poll can't retain sockets / connection-pool resources.
-      void response.body?.cancel().catch(() => {});
-      throw new BasecampError("api_error", `Device token endpoint returned redirect status ${response.status}`, {
-        httpStatus: response.status,
-      });
-    }
-    // Every remaining status outside 200 and 4xx is terminal WITHOUT its body
-    // (only a 200 carries the token and only a 4xx the OAuth error code) —
-    // classify it before the read, like the 3xx above, so a 201/500 that
-    // stalls while streaming its body cannot abort mid-read and be retried as
-    // a transient timeout until the code expires.
-    if (response.status !== 200 && !(response.status >= 400 && response.status < 500)) {
-      void response.body?.cancel().catch(() => {});
-      throw new BasecampError("api_error", `Device token request failed with status ${response.status}`, {
-        httpStatus: response.status,
-      });
-    }
-    // Bounded/streaming read: an oversized body aborts before it is fully buffered.
-    // A 4xx still reads the body — that is how authorization_pending/slow_down and
-    // other OAuth errors are carried.
-    const text = await readBodyBounded(response, MAX_DEVICE_BODY_BYTES, "device token");
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new BasecampError("api_error", "Failed to parse device token response", {
-        httpStatus: response.status,
-      });
-    }
-    // A valid-JSON-but-non-object body (null, array, number, string) is a
-    // malformed OAuth response — fail as api_error before any property deref,
-    // never a raw crash on `data.access_token`/`data.error`.
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-      throw new BasecampError("api_error", "Device token response is not a JSON object", {
-        httpStatus: response.status,
-      });
-    }
-    const data = parsed as RawTokenResponse | OAuthErrorResponse;
-    // Exactly HTTP 200, not response.ok (any 2xx): RFC 8628/6749 token
-    // responses are 200, and SPEC §16 pins the contract. A nonstandard 201/202
-    // carrying an access_token must not prematurely complete polling — it
-    // falls through to the OAuth-error path and terminates as api_error.
-    if (response.status === 200) {
-      const token = data as RawTokenResponse;
-      // Non-empty string, not merely truthy: a numeric access_token is not a
-      // usable credential and must fail as api_error, not be returned downstream.
-      if (!isNonEmptyString(token.access_token)) {
-        throw new BasecampError("api_error", "Device token response missing or non-string access_token", {
-          httpStatus: response.status,
-        });
-      }
-      // expires_in is optional (RFC 6749 §5.1), but when present it must be a
-      // finite positive WHOLE number within MAX_TOKEN_LIFETIME_SECONDS. A
-      // non-finite value (1e400 → Infinity) or a very large finite one would flow
-      // into Date arithmetic and yield an Invalid Date whose getTime() is NaN, so
-      // expiry checks downstream would treat the token as never expiring. Whole
-      // seconds match the device-duration rule — every SDK validates the decoded
-      // numeric value explicitly to reject a fractional lifetime; an
-      // integer-valued float (3600.0) is still accepted.
-      if (token.expires_in != null &&
-          (typeof token.expires_in !== "number" || !Number.isInteger(token.expires_in) ||
-            token.expires_in <= 0 || token.expires_in > MAX_TOKEN_LIFETIME_SECONDS)) {
-        throw new BasecampError(
-          "api_error",
-          `Device token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`,
-          { httpStatus: response.status }
-        );
-      }
-      // token_type/refresh_token/scope are optional strings — a non-string value
-      // is a malformed response, not a usable credential field.
-      if (token.token_type != null && !isNonEmptyString(token.token_type)) {
-        throw new BasecampError("api_error", "Device token response token_type must be a non-empty string", {
-          httpStatus: response.status,
-        });
-      }
-      if (token.refresh_token != null && typeof token.refresh_token !== "string") {
-        throw new BasecampError("api_error", "Device token response refresh_token must be a string", {
-          httpStatus: response.status,
-        });
-      }
-      if (token.scope != null && typeof token.scope !== "string") {
-        throw new BasecampError("api_error", "Device token response scope must be a string", {
-          httpStatus: response.status,
-        });
-      }
-      return {
-        kind: "token",
-        token: {
-          accessToken: token.access_token,
-          refreshToken: token.refresh_token,
-          tokenType: token.token_type || "Bearer",
-          expiresIn: token.expires_in ?? undefined,
-          expiresAt: token.expires_in != null ? new Date(Date.now() + token.expires_in * 1000) : undefined,
-          scope: token.scope,
-        },
-      };
-    }
-    // Recognize OAuth protocol error codes ONLY on a 4xx (RFC 8628 §3.5 error
-    // responses are 400-class): a nonstandard 2xx (201/202) or a 5xx carrying
-    // a crafted authorization_pending body must not keep the loop polling —
-    // only a 200 can produce a token and only a 4xx a protocol state. The
-    // `error` must also be a non-empty string: a non-string (`{"error": 123}`)
-    // is not an OAuth error code. Everything else falls back to http_<status>,
-    // which the loop terminates as api_error.
-    const rawError = (data as { error?: unknown }).error;
-    // truncateErrorMessage at extraction (SPEC §9's 500-unit cap): the server
-    // controls this string and an unrecognized value is interpolated into the
-    // api_error message. Real protocol codes are short, so classification is
-    // unaffected.
-    const error =
-      response.status >= 400 && response.status < 500 && typeof rawError === "string" && rawError !== ""
-        ? truncateErrorMessage(rawError)
-        : `http_${response.status}`;
-    return { kind: "error", error, status: response.status };
   } finally {
     clearTimeout(timeoutId);
     signal?.removeEventListener("abort", onAbort);
@@ -684,6 +714,37 @@ function abortError(): Error {
   const err = new Error("Aborted");
   err.name = "AbortError";
   return err;
+}
+
+/**
+ * Races `run` against `signal`: rejects with AbortError the moment the signal
+ * fires, even if the underlying promise NEVER settles. A cooperative fetch
+ * already rejects on abort — this enforces the same contract on a custom fetch
+ * that ignores its AbortSignal, so a late 200 cannot hand back a result and a
+ * never-settling fetch cannot hold the public call past its timeout. An
+ * already-aborted signal rejects without invoking `run`. A late settlement is
+ * discarded (settling an already-settled promise is a no-op), and its
+ * rejection path stays handled — no unhandled rejection escapes.
+ */
+function raceAbort<T>(signal: AbortSignal, run: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+    run().then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (err) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(err);
+      }
+    );
+  });
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {

@@ -622,6 +622,57 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("usage");
   });
 
+  it("does not accept a late 200 from a fetch that outlives the per-request timeout", async () => {
+    // A non-cooperative fetch that ignores its AbortSignal and settles with a
+    // valid 200 AFTER the per-request timeout fired: the race must discard the
+    // late result (timeout → transient backoff), and the flow must end by its
+    // own deadline — never by accepting the late token.
+    let calls = 0;
+    const lateFetch = (async () => {
+      calls += 1;
+      await new Promise((r) => setTimeout(r, 50));
+      return new Response(JSON.stringify(tokenResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    // Clock: deadline anchored at 0; after round 1's timeout the clock jumps
+    // past the deadline so round 2 surfaces expired.
+    const times = [0, 0, 0, 1_000_000];
+    let idx = 0;
+    const clock = () => times[Math.min(idx++, times.length - 1)];
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      timeoutMs: 1,
+      fetch: lateFetch,
+      clock,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("expired");
+    expect(calls).toBe(1);
+  });
+
+  it("releases the call at its timeout when a fetch never settles", async () => {
+    // The starkest non-cooperative fetch: a promise that NEVER settles. The
+    // public call must still return on its own schedule — the race, not the
+    // fetch, owns the timeout.
+    const neverFetch = (() =>
+      new Promise<Response>(() => {})) as unknown as typeof fetch;
+    const err = await requestDeviceAuthorization({
+      deviceAuthorizationEndpoint: DEVICE_ENDPOINT,
+      clientId: "basecamp-cli",
+      fetch: neverFetch,
+      timeoutMs: 20,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("transport");
+  });
+
   it("does not return a token when a signal-ignoring fetch completes after abort", async () => {
     // A custom fetch that ignores its AbortSignal can complete a 200 AFTER the
     // caller aborted. The success branch must re-check the signal before
