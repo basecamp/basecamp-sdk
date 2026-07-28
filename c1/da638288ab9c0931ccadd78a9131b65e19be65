@@ -1,0 +1,45 @@
+conformance/runner/ruby/runner.rb
+  s_69156f95c4fbc4::t_4ad603c6a292aa 159-164
+  s_69156f95c4fbc4::t_6d3bcc7a326d95 220-226
+conformance/runner/python/runner.py
+  s_69156f95c4fbc4::t_6d3bcc7a326d95 29
+  s_69156f95c4fbc4::t_4ad603c6a292aa 105-116
+conformance/tests/cards_write.json
+  s_69156f95c4fbc4::t_bdbacf994e2cd0 1-561
+swift/Tests/BasecampTests/CardsServiceExtensionsTests.swift
+  s_69156f95c4fbc4::t_a2157d13303e6d 1-62,81-158
+  s_69156f95c4fbc4::t_ef466d6e9abea3 65
+  s_69156f95c4fbc4::t_68a22b3a0bf4f7 63-64,66-80
+SPEC.md
+  s_69156f95c4fbc4::t_caaa8886590f62 278-303,1299-1304,1306
+conformance/runner/typescript/runner.test.ts
+  s_69156f95c4fbc4::t_4ad603c6a292aa 230-255
+conformance/runner/go/main.go
+  s_69156f95c4fbc4::t_953eeae3bcee61 541-580
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_69156f95c4fbc4::t_63dadcd137c7ff 693-719
+typescript/tests/services/cards.test.ts
+  s_69156f95c4fbc4::t_4e2171daa3d3fb 103-104,106,110,113-115,120,124-171
+ruby/test/basecamp/services/cards_service_test.rb
+  s_69156f95c4fbc4::t_e8806c12192ebb 79,84,86-89,95,99-101
+  s_69156f95c4fbc4::t_45ade4b34bb81e 58-60,64,73-78,80-83,85,90-94,96-98,102-103
+  s_69156f95c4fbc4::t_ceeb5d34d6c4c8 104
+AGENTS.md
+  s_69156f95c4fbc4::t_c14b8fc2d81920 12,15,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c1da638288ab9c0931ccadd78a9131b65e19be65",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

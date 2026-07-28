@@ -1,0 +1,41 @@
+conformance/runner/go/main.go
+  s_2f9a7c1c5bac9e::t_4ca8f42647a885 543,548,1306-1329
+conformance/tests/cards_write.json
+  s_69156f95c4fbc4::t_adf980d4b3e3e7 557-1128
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/CardsServiceTest.kt
+  s_69156f95c4fbc4::t_a52aa1fc2ebed0 1-126
+python/tests/services/test_cards.py
+  s_86d0793371d0f3::t_53327300e8af10 1-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "079e9111b0b13fc47b4e940d52b50d208e424198",
+  "prompts": {},
+  "sessions": {
+    "s_2f9a7c1c5bac9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e10693-5840-43ac-af1c-f34b57b021c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

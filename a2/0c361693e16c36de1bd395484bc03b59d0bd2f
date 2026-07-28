@@ -1,0 +1,40 @@
+python/src/basecamp/services/cards.py
+  s_69156f95c4fbc4::t_0c99d2a9c0bf5e 61,67,69,85,91,93
+  s_69156f95c4fbc4::t_e56e6c67ef8224 1-60,62-66,68,70-84,86-90,92,94-100
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/CardsService.kt
+  s_69156f95c4fbc4::t_c07daf87e125bc 1-69
+ruby/lib/basecamp.rb
+  s_69156f95c4fbc4::t_e2081afa132a6e 13-17
+typescript/src/client.ts
+  s_69156f95c4fbc4::t_1fcea91b3b6acc 33
+swift/Sources/Basecamp/CardsServiceExtensions.swift
+  s_69156f95c4fbc4::t_01638981a0f27b 1-73
+ruby/lib/basecamp/services/cards_extensions.rb
+  s_69156f95c4fbc4::t_65c21bb58a9201 1-67
+typescript/src/services/cards-extensions.ts
+  s_69156f95c4fbc4::t_087721b9b5ee0d 1-90,94-103
+  s_69156f95c4fbc4::t_b170b1638384c3 91-93
+python/src/basecamp/async_client.py
+  s_69156f95c4fbc4::t_2a158dbcf0a6f1 294
+typescript/src/index.ts
+  s_69156f95c4fbc4::t_1fcea91b3b6acc 179,183-189
+  s_69156f95c4fbc4::t_be9291eea949a4 190
+python/src/basecamp/client.py
+  s_69156f95c4fbc4::t_2a158dbcf0a6f1 295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a20c361693e16c36de1bd395484bc03b59d0bd2f",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
