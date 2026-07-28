@@ -316,7 +316,7 @@ END
 
 ### Error Code Table
 
-Status-mapped codes are verified per the Verification column. Most are `[conformance]`-verified; 400→`validation` is `[static]` (no conformance test). Client-side codes (`usage`, `network`, `ambiguous`) and exit codes are `[static]`.
+Status-mapped codes are verified per the Verification column and are `[conformance]`-verified. Client-side codes (`usage`, `network`, `ambiguous`) and exit codes are `[static]`.
 
 | Code | Exit Code | HTTP Status | Retryable | Description | Verification |
 |------|-----------|-------------|-----------|-------------|-------------|
@@ -329,11 +329,11 @@ Status-mapped codes are verified per the Verification column. Most are `[conform
 | `api_error` | 7 | 500, 502, 503, 504 | true | Server-side error | `[conformance]` |
 | `ambiguous` | 8 | — | false | Multiple matches found (CLI disambiguation) | `[static]` |
 | `validation` | 9 | 422 | false | Request validation failed | `[conformance]` |
-| `validation` | 9 | 400 | false | Request validation failed | `[static]` |
+| `validation` | 9 | 400 | false | Request validation failed | `[conformance]` |
 
 ### HTTP Status Mapping Algorithm
 
-Each mapping below is `[conformance]`-verified except step 5 (400 → `validation`) which is `[static]`.
+Each explicitly enumerated status mapping below (steps 1–10) is `[conformance]`-verified. The two catch-all fallback steps (11: general 5xx; 12: any other non-mapped status) have no dedicated conformance case and are `[static]`.
 
 Given an HTTP response with status code `status` and body `body`:
 
@@ -341,14 +341,14 @@ Given an HTTP response with status code `status` and body `body`:
 2. If `status == 403` → `BasecampError(code: "forbidden", http_status: 403, retryable: false)`.
 3. If `status == 404` → `BasecampError(code: "not_found", http_status: 404, retryable: false)`.
 4. If `status == 429` → `BasecampError(code: "rate_limit", http_status: 429, retryable: true, retry_after: parseRetryAfter(headers))`.
-5. If `status == 400` → `BasecampError(code: "validation", http_status: 400, retryable: false)`. `[CONFLICT: Go currently maps 400 to "api_error" (falls through to default case). The spec prescribes "validation" to match other SDKs. No conformance test exists for 400 specifically.]` `[static]`
+5. If `status == 400` → `BasecampError(code: "validation", http_status: 400, retryable: false)`.
 6. If `status == 422` → `BasecampError(code: "validation", http_status: 422, retryable: false)`.
 7. If `status == 500` → `BasecampError(code: "api_error", http_status: 500, retryable: true)`.
 8. If `status == 502` → `BasecampError(code: "api_error", http_status: 502, retryable: true)`.
 9. If `status == 503` → `BasecampError(code: "api_error", http_status: 503, retryable: true)`.
 10. If `status == 504` → `BasecampError(code: "api_error", http_status: 504, retryable: true)`.
-11. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`.
-12. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`.
+11. If `status >= 500` → `BasecampError(code: "api_error", http_status: status, retryable: true)`. `[static]`
+12. Otherwise → `BasecampError(code: "api_error", http_status: status, retryable: false)`. `[static]`
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
 
@@ -772,7 +772,7 @@ All 4xx and 5xx responses must produce typed `BasecampError` errors (not silentl
 
 Status codes 401, 403, 404, and 422 must NOT be retried. Conformance tests assert `requestCount == 1` for these statuses. `[conformance]`
 
-Status code 400 must also NOT be retried. This is a `[static]` contract (no dedicated conformance test exists for 400).
+Status code 400 must also NOT be retried. The error-mapping conformance suite asserts `retryable == false` for 400 (mapped to `validation`), so its non-retryable classification is `[conformance]`-verified; there is no dedicated `requestCount` fixture for 400. `[conformance]`
 
 ### Retry Exhaustion
 
@@ -1494,6 +1494,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `error-mapping.json` | 401 → auth_required | §6 |
 | `error-mapping.json` | 403 → forbidden | §6 |
 | `error-mapping.json` | 404 → not_found | §6 |
+| `error-mapping.json` | 400 → validation | §6 |
 | `error-mapping.json` | 422 → validation | §6 |
 | `error-mapping.json` | 429 → rate_limit | §6 |
 | `error-mapping.json` | 500 → api_error | §6 |
