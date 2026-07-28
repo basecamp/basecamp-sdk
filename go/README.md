@@ -278,15 +278,21 @@ later refreshes can echo them:
 // its discovery result to result.Config, an *oauth.Config — a different type).
 sdkCfg := &basecamp.Config{BaseURL: "https://3.basecampapi.com"}
 authMgr := basecamp.NewAuthManager(sdkCfg, httpClient)
-err = authMgr.Store().Save(basecamp.NormalizeBaseURL(sdkCfg.BaseURL), &basecamp.Credentials{
+creds := &basecamp.Credentials{
     AccessToken:   token.AccessToken,
     RefreshToken:  token.RefreshToken,
-    ExpiresAt:     token.ExpiresAt.Unix(),
     Scope:         token.Scope,
     TokenEndpoint: result.Config.TokenEndpoint,
     ClientID:      "basecamp-cli",       // the id the login used
     Resource:      token.Resource,       // the account binding to echo on refresh
-})
+}
+// A token response may omit expires_in; a zero ExpiresAt means no known
+// expiry (never force-refreshed) — storing zero-time.Unix()'s negative value
+// would instead mark the fresh token expired.
+if !token.ExpiresAt.IsZero() {
+    creds.ExpiresAt = token.ExpiresAt.Unix()
+}
+err = authMgr.Store().Save(basecamp.NormalizeBaseURL(sdkCfg.BaseURL), creds)
 ```
 
 Pass the discovered base origin without a trailing slash everywhere a base URL

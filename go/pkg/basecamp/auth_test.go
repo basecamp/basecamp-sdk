@@ -491,3 +491,40 @@ func TestAuthManager_Refresh_NonStringResourceIsAPIError(t *testing.T) {
 		t.Errorf("want *basecamp.Error with code %q, got %v", CodeAPI, err)
 	}
 }
+
+func TestAuthManager_AccessToken_NoExpiryIsNotRefreshed(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// ExpiresAt <= 0 means no known expiry (a token response may omit
+	// expires_in): the credential is used as-is — a forced refresh would
+	// hard-fail a fresh, usable token that carries no refresh token.
+	refreshed := false
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		refreshed = true
+		http.NotFound(w, r)
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	origin := NormalizeBaseURL(ts.URL)
+	for _, expiresAt := range []int64{0, -62135596800} { // zero and time.Time{}.Unix()
+		_ = store.Save(origin, &Credentials{
+			AccessToken:   "fresh-access",
+			TokenEndpoint: ts.URL + "/token",
+			ExpiresAt:     expiresAt,
+		})
+
+		m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+		tok, err := m.AccessToken(context.Background())
+		if err != nil {
+			t.Fatalf("ExpiresAt=%d: %v", expiresAt, err)
+		}
+		if tok != "fresh-access" {
+			t.Errorf("ExpiresAt=%d: token = %q", expiresAt, tok)
+		}
+	}
+	if refreshed {
+		t.Error("no-expiry credentials must never be force-refreshed")
+	}
+}

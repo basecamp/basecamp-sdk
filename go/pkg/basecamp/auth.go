@@ -270,8 +270,13 @@ func (m *AuthManager) AccessToken(ctx context.Context) (string, error) {
 		return "", ErrAuth("Not authenticated")
 	}
 
-	// Check if token is expired (with 5 minute buffer)
-	if time.Now().Unix() >= creds.ExpiresAt-300 {
+	// Check if token is expired (with 5 minute buffer). ExpiresAt <= 0 means
+	// NO KNOWN EXPIRY (a token response may legally omit expires_in — the
+	// device/exchange parsers leave ExpiresAt zero, and refreshLocked stores
+	// no expiry when the server sends none): such credentials are used as-is,
+	// never force-refreshed — a fresh token without a refresh token would
+	// otherwise hard-fail here despite being perfectly usable.
+	if creds.ExpiresAt > 0 && time.Now().Unix() >= creds.ExpiresAt-300 {
 		if err := m.refreshLocked(ctx, origin, creds); err != nil {
 			return "", err
 		}
