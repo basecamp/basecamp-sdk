@@ -1125,6 +1125,38 @@ func TestPollDeviceToken_ExpiredBeforeFirstWaitDoesNotSleep(t *testing.T) {
 	}
 }
 
+func TestPerformDeviceLogin_NilDisplayIsUsageError(t *testing.T) {
+	// A nil display is the only mechanism that surfaces the verification URI
+	// and user code: skipping it would mint a code nobody can approve and
+	// poll until expiry. Reject as usage BEFORE any request.
+	requests := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(deviceAuthBody)
+	}))
+	defer srv.Close()
+
+	endpoint := srv.URL + "/device"
+	config := &Config{
+		Issuer:                      srv.URL,
+		TokenEndpoint:               srv.URL + "/token",
+		DeviceAuthorizationEndpoint: &endpoint,
+		GrantTypesSupported:         []string{DeviceCodeGrantType, "refresh_token"},
+	}
+
+	_, err := PerformDeviceLogin(context.Background(), config, "basecamp-cli", nil,
+		WithDeviceHTTPClient(tlsClient(srv)))
+
+	var bcErr *basecamp.Error
+	if !errors.As(err, &bcErr) || bcErr.Code != basecamp.CodeUsage {
+		t.Fatalf("want *basecamp.Error(usage) for nil display, got %T: %v", err, err)
+	}
+	if requests != 0 {
+		t.Errorf("requests = %d, want 0 — the guard must reject before any request", requests)
+	}
+}
+
 func TestPerformDeviceLogin_CancelDuringDisplayBeatsExpiry(t *testing.T) {
 	// A display hook that both cancels the flow and consumes the whole code
 	// lifetime (a prompt closing in response to cancellation) must surface

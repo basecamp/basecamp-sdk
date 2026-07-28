@@ -678,6 +678,14 @@ func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, di
 		return nil, &DeviceFlowError{Reason: DeviceFlowUnavailable}
 	}
 
+	// A nil display is a usage error, not a skippable step: it is the ONLY
+	// mechanism that surfaces the verification URI and user code, so skipping
+	// it would mint a code nobody can approve and poll until it expires.
+	// Reject before any request is issued.
+	if display == nil {
+		return nil, &basecamp.Error{Code: basecamp.CodeUsage, Message: "PerformDeviceLogin: display callback is required"}
+	}
+
 	cfg := newDeviceConfig(opts)
 
 	auth, err := RequestDeviceAuthorization(ctx, *config.DeviceAuthorizationEndpoint, clientID, opts...)
