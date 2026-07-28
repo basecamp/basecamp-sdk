@@ -82,6 +82,33 @@ var tokenBody = map[string]any{
 	"expires_in":    3600,
 }
 
+func TestRequestDeviceAuthorization_CompletionAfterCancelIsCancelled(t *testing.T) {
+	// A custom RoundTripper that ignores the request context can complete a
+	// VALID response after the caller cancelled. The success path must re-check
+	// the parent context before handing back a usable device code — never a
+	// device authorization returned after the caller asked to stop.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	body, err := json.Marshal(deviceAuthBody)
+	if err != nil {
+		t.Fatalf("marshaling fixture: %v", err)
+	}
+	client := &http.Client{Transport: completeAfterCancelTransport{cancel: cancel, body: string(body)}}
+	auth, err := RequestDeviceAuthorization(ctx, "https://device.example.com/oauth/device", "basecamp-cli",
+		WithDeviceHTTPClient(client))
+	if auth != nil {
+		t.Fatal("device authorization must not be returned after cancellation")
+	}
+	var dfErr *DeviceFlowError
+	if !errors.As(err, &dfErr) {
+		t.Fatalf("expected *DeviceFlowError, got %T: %v", err, err)
+	}
+	if dfErr.Reason != DeviceFlowCancelled {
+		t.Errorf("Reason = %v, want DeviceFlowCancelled", dfErr.Reason)
+	}
+}
+
 func TestRequestDeviceAuthorization_OmitsScopeAndValidates(t *testing.T) {
 	var sentScope string
 	var scopePresent bool
@@ -1458,6 +1485,24 @@ func (t cancelOnReadTransport) RoundTrip(req *http.Request) (*http.Response, err
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": {"application/json"}},
 		Body:       cancelOnReadBody(t),
+		Request:    req,
+	}, nil
+}
+
+// completeAfterCancelTransport ignores the request context entirely: it cancels
+// the caller's context and then completes a VALID response anyway, modeling a
+// custom RoundTripper that does not honor cancellation.
+type completeAfterCancelTransport struct {
+	cancel context.CancelFunc
+	body   string
+}
+
+func (t completeAfterCancelTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.cancel()
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(t.body)),
 		Request:    req,
 	}, nil
 }

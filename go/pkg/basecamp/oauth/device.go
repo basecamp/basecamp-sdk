@@ -286,6 +286,14 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		// so a failed 2xx-body parse still reports which response it came from.
 		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", HTTPStatus: resp.StatusCode, Cause: err}
 	}
+	// A custom RoundTripper that ignores the request context can complete a
+	// valid response after the caller cancelled: re-check the parent context
+	// before handing back a usable device code, exactly as the token poll's
+	// success branch does. PerformDeviceLogin re-checks later, but that does
+	// not protect direct callers.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+	}
 	return validateDeviceAuthorization(raw, resp.StatusCode)
 }
 
