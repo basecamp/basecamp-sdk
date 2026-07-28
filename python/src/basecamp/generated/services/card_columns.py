@@ -59,6 +59,7 @@ class CardColumnsService(BaseService):
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
             "GET",
             f"/card_tables/columns/{column_id}",
+            operation="GetCardColumn",
         )
 
     def update(self, *, column_id: int, title: str | None = None, description: str | None = None) -> dict[str, Any]:
@@ -158,6 +159,7 @@ class AsyncCardColumnsService(AsyncBaseService):
             OperationInfo(service="cardcolumns", operation="get", is_mutation=False, resource_id=column_id),
             "GET",
             f"/card_tables/columns/{column_id}",
+            operation="GetCardColumn",
         )
 
     async def update(

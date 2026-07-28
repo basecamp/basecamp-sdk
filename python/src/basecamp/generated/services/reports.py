@@ -13,7 +13,9 @@ from basecamp.hooks import OperationInfo
 class ReportsService(BaseService):
     def progress(self) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="reports", operation="progress", is_mutation=False), "/reports/progress.json"
+            OperationInfo(service="reports", operation="progress", is_mutation=False),
+            "/reports/progress.json",
+            operation="GetProgressReport",
         )
 
     def upcoming(self, *, window_starts_on: str | None = None, window_ends_on: str | None = None) -> dict[str, Any]:
@@ -22,6 +24,7 @@ class ReportsService(BaseService):
             "GET",
             "/reports/schedules/upcoming.json",
             params=self._compact(window_starts_on=window_starts_on, window_ends_on=window_ends_on),
+            operation="GetUpcomingSchedule",
         )
 
     def assigned(self, *, person_id: int, group_by: str | None = None) -> dict[str, Any]:
@@ -30,6 +33,7 @@ class ReportsService(BaseService):
             "GET",
             f"/reports/todos/assigned/{person_id}",
             params=self._compact(group_by=group_by),
+            operation="GetAssignedTodos",
         )
 
     def overdue(self) -> dict[str, Any]:
@@ -37,6 +41,7 @@ class ReportsService(BaseService):
             OperationInfo(service="reports", operation="overdue", is_mutation=False),
             "GET",
             "/reports/todos/overdue.json",
+            operation="GetOverdueTodos",
         )
 
     def person_progress(self, *, person_id: int) -> dict[str, Any]:
@@ -44,13 +49,16 @@ class ReportsService(BaseService):
             OperationInfo(service="reports", operation="person_progress", is_mutation=False, resource_id=person_id),
             f"/reports/users/progress/{person_id}.json",
             "events",
+            operation="GetPersonProgress",
         )
 
 
 class AsyncReportsService(AsyncBaseService):
     async def progress(self) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="reports", operation="progress", is_mutation=False), "/reports/progress.json"
+            OperationInfo(service="reports", operation="progress", is_mutation=False),
+            "/reports/progress.json",
+            operation="GetProgressReport",
         )
 
     async def upcoming(
@@ -61,6 +69,7 @@ class AsyncReportsService(AsyncBaseService):
             "GET",
             "/reports/schedules/upcoming.json",
             params=self._compact(window_starts_on=window_starts_on, window_ends_on=window_ends_on),
+            operation="GetUpcomingSchedule",
         )
 
     async def assigned(self, *, person_id: int, group_by: str | None = None) -> dict[str, Any]:
@@ -69,6 +78,7 @@ class AsyncReportsService(AsyncBaseService):
             "GET",
             f"/reports/todos/assigned/{person_id}",
             params=self._compact(group_by=group_by),
+            operation="GetAssignedTodos",
         )
 
     async def overdue(self) -> dict[str, Any]:
@@ -76,6 +86,7 @@ class AsyncReportsService(AsyncBaseService):
             OperationInfo(service="reports", operation="overdue", is_mutation=False),
             "GET",
             "/reports/todos/overdue.json",
+            operation="GetOverdueTodos",
         )
 
     async def person_progress(self, *, person_id: int) -> dict[str, Any]:
@@ -83,4 +94,5 @@ class AsyncReportsService(AsyncBaseService):
             OperationInfo(service="reports", operation="person_progress", is_mutation=False, resource_id=person_id),
             f"/reports/users/progress/{person_id}.json",
             "events",
+            operation="GetPersonProgress",
         )

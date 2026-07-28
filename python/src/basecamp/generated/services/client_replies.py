@@ -15,6 +15,7 @@ class ClientRepliesService(BaseService):
         return self._request_paginated(
             OperationInfo(service="clientreplies", operation="list", is_mutation=False, resource_id=recording_id),
             f"/client/recordings/{recording_id}/replies.json",
+            operation="ListClientReplies",
         )
 
     def get(self, *, recording_id: int, reply_id: int) -> dict[str, Any]:
@@ -22,6 +23,7 @@ class ClientRepliesService(BaseService):
             OperationInfo(service="clientreplies", operation="get", is_mutation=False, resource_id=reply_id),
             "GET",
             f"/client/recordings/{recording_id}/replies/{reply_id}",
+            operation="GetClientReply",
         )
 
 
@@ -30,6 +32,7 @@ class AsyncClientRepliesService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="clientreplies", operation="list", is_mutation=False, resource_id=recording_id),
             f"/client/recordings/{recording_id}/replies.json",
+            operation="ListClientReplies",
         )
 
     async def get(self, *, recording_id: int, reply_id: int) -> dict[str, Any]:
@@ -37,4 +40,5 @@ class AsyncClientRepliesService(AsyncBaseService):
             OperationInfo(service="clientreplies", operation="get", is_mutation=False, resource_id=reply_id),
             "GET",
             f"/client/recordings/{recording_id}/replies/{reply_id}",
+            operation="GetClientReply",
         )

@@ -16,6 +16,7 @@ class ProjectsService(BaseService):
             OperationInfo(service="projects", operation="list", is_mutation=False),
             "/projects.json",
             params=self._compact(status=status),
+            operation="ListProjects",
         )
 
     def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
@@ -32,6 +33,7 @@ class ProjectsService(BaseService):
             OperationInfo(service="projects", operation="get", is_mutation=False, project_id=project_id),
             "GET",
             f"/projects/{project_id}",
+            operation="GetProject",
         )
 
     def update(
@@ -68,6 +70,7 @@ class AsyncProjectsService(AsyncBaseService):
             OperationInfo(service="projects", operation="list", is_mutation=False),
             "/projects.json",
             params=self._compact(status=status),
+            operation="ListProjects",
         )
 
     async def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
@@ -84,6 +87,7 @@ class AsyncProjectsService(AsyncBaseService):
             OperationInfo(service="projects", operation="get", is_mutation=False, project_id=project_id),
             "GET",
             f"/projects/{project_id}",
+            operation="GetProject",
         )
 
     async def update(

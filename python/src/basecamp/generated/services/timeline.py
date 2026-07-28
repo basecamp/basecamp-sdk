@@ -17,6 +17,7 @@ class TimelineService(BaseService):
                 service="timeline", operation="get_project_timeline", is_mutation=False, project_id=project_id
             ),
             f"/projects/{project_id}/timeline.json",
+            operation="GetProjectTimeline",
         )
 
 
@@ -27,4 +28,5 @@ class AsyncTimelineService(AsyncBaseService):
                 service="timeline", operation="get_project_timeline", is_mutation=False, project_id=project_id
             ),
             f"/projects/{project_id}/timeline.json",
+            operation="GetProjectTimeline",
         )

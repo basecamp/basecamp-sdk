@@ -18,6 +18,7 @@ class TimesheetsService(BaseService):
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            operation="GetProjectTimesheet",
         )
 
     def for_recording(
@@ -27,6 +28,7 @@ class TimesheetsService(BaseService):
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            operation="GetRecordingTimesheet",
         )
 
     def create(
@@ -45,6 +47,7 @@ class TimesheetsService(BaseService):
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
             "/reports/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            operation="GetTimesheetReport",
         )
 
     def get(self, *, entry_id: int) -> dict[str, Any]:
@@ -52,6 +55,7 @@ class TimesheetsService(BaseService):
             OperationInfo(service="timesheets", operation="get", is_mutation=False, resource_id=entry_id),
             "GET",
             f"/timesheet_entries/{entry_id}",
+            operation="GetTimesheetEntry",
         )
 
     def update(
@@ -80,6 +84,7 @@ class AsyncTimesheetsService(AsyncBaseService):
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            operation="GetProjectTimesheet",
         )
 
     async def for_recording(
@@ -89,6 +94,7 @@ class AsyncTimesheetsService(AsyncBaseService):
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            operation="GetRecordingTimesheet",
         )
 
     async def create(
@@ -109,6 +115,7 @@ class AsyncTimesheetsService(AsyncBaseService):
             OperationInfo(service="timesheets", operation="report", is_mutation=False),
             "/reports/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            operation="GetTimesheetReport",
         )
 
     async def get(self, *, entry_id: int) -> dict[str, Any]:
@@ -116,6 +123,7 @@ class AsyncTimesheetsService(AsyncBaseService):
             OperationInfo(service="timesheets", operation="get", is_mutation=False, resource_id=entry_id),
             "GET",
             f"/timesheet_entries/{entry_id}",
+            operation="GetTimesheetEntry",
         )
 
     async def update(

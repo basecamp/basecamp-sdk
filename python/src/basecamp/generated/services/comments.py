@@ -16,6 +16,7 @@ class CommentsService(BaseService):
             OperationInfo(service="comments", operation="get", is_mutation=False, resource_id=comment_id),
             "GET",
             f"/comments/{comment_id}",
+            operation="GetComment",
         )
 
     def update(self, *, comment_id: int, content: str) -> dict[str, Any]:
@@ -31,6 +32,7 @@ class CommentsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
+            operation="ListComments",
         )
 
     def create(self, *, recording_id: int, content: str) -> dict[str, Any]:
@@ -49,6 +51,7 @@ class AsyncCommentsService(AsyncBaseService):
             OperationInfo(service="comments", operation="get", is_mutation=False, resource_id=comment_id),
             "GET",
             f"/comments/{comment_id}",
+            operation="GetComment",
         )
 
     async def update(self, *, comment_id: int, content: str) -> dict[str, Any]:
@@ -64,6 +67,7 @@ class AsyncCommentsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="comments", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/comments.json",
+            operation="ListComments",
         )
 
     async def create(self, *, recording_id: int, content: str) -> dict[str, Any]:

@@ -13,7 +13,10 @@ from basecamp.hooks import OperationInfo
 class AccountService(BaseService):
     def get_account(self) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="account", operation="get_account", is_mutation=False), "GET", "/account.json"
+            OperationInfo(service="account", operation="get_account", is_mutation=False),
+            "GET",
+            "/account.json",
+            operation="GetAccount",
         )
 
     def update_account_logo(self, *, content: bytes, filename: str, content_type: str) -> None:
@@ -49,7 +52,10 @@ class AccountService(BaseService):
 class AsyncAccountService(AsyncBaseService):
     async def get_account(self) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="account", operation="get_account", is_mutation=False), "GET", "/account.json"
+            OperationInfo(service="account", operation="get_account", is_mutation=False),
+            "GET",
+            "/account.json",
+            operation="GetAccount",
         )
 
     async def update_account_logo(self, *, content: bytes, filename: str, content_type: str) -> None:

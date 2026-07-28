@@ -16,6 +16,7 @@ class VaultsService(BaseService):
             OperationInfo(service="vaults", operation="get", is_mutation=False, resource_id=vault_id),
             "GET",
             f"/vaults/{vault_id}",
+            operation="GetVault",
         )
 
     def update(self, *, vault_id: int, title: str | None = None) -> dict[str, Any]:
@@ -31,6 +32,7 @@ class VaultsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="vaults", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/vaults.json",
+            operation="ListVaults",
         )
 
     def create(self, *, vault_id: int, title: str) -> dict[str, Any]:
@@ -49,6 +51,7 @@ class AsyncVaultsService(AsyncBaseService):
             OperationInfo(service="vaults", operation="get", is_mutation=False, resource_id=vault_id),
             "GET",
             f"/vaults/{vault_id}",
+            operation="GetVault",
         )
 
     async def update(self, *, vault_id: int, title: str | None = None) -> dict[str, Any]:
@@ -64,6 +67,7 @@ class AsyncVaultsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="vaults", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/vaults.json",
+            operation="ListVaults",
         )
 
     async def create(self, *, vault_id: int, title: str) -> dict[str, Any]:

@@ -17,6 +17,7 @@ class MyNotificationsService(BaseService):
             "GET",
             "/my/readings.json",
             params=self._compact(page=page, limit_bubble_ups=limit_bubble_ups),
+            operation="GetMyNotifications",
         )
 
     def get_bubble_ups(self, *, page: int | None = None) -> ListResult:
@@ -24,6 +25,7 @@ class MyNotificationsService(BaseService):
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
             "/my/readings/bubble_ups.json",
             params=self._compact(page=page),
+            operation="GetBubbleUps",
         )
 
     def mark_as_read(self, *, readables: list[str]) -> None:
@@ -45,6 +47,7 @@ class AsyncMyNotificationsService(AsyncBaseService):
             "GET",
             "/my/readings.json",
             params=self._compact(page=page, limit_bubble_ups=limit_bubble_ups),
+            operation="GetMyNotifications",
         )
 
     async def get_bubble_ups(self, *, page: int | None = None) -> ListResult:
@@ -52,6 +55,7 @@ class AsyncMyNotificationsService(AsyncBaseService):
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
             "/my/readings/bubble_ups.json",
             params=self._compact(page=page),
+            operation="GetBubbleUps",
         )
 
     async def mark_as_read(self, *, readables: list[str]) -> None:

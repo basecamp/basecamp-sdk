@@ -16,6 +16,7 @@ class TodolistsService(BaseService):
             OperationInfo(service="todolists", operation="get", is_mutation=False, resource_id=id),
             "GET",
             f"/todolists/{id}",
+            operation="GetTodolistOrGroup",
         )
 
     def update(self, *, id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
@@ -41,6 +42,7 @@ class TodolistsService(BaseService):
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
             f"/todosets/{todoset_id}/todolists.json",
             params=self._compact(status=status),
+            operation="ListTodolists",
         )
 
     def create(
@@ -61,6 +63,7 @@ class AsyncTodolistsService(AsyncBaseService):
             OperationInfo(service="todolists", operation="get", is_mutation=False, resource_id=id),
             "GET",
             f"/todolists/{id}",
+            operation="GetTodolistOrGroup",
         )
 
     async def update(self, *, id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
@@ -86,6 +89,7 @@ class AsyncTodolistsService(AsyncBaseService):
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
             f"/todosets/{todoset_id}/todolists.json",
             params=self._compact(status=status),
+            operation="ListTodolists",
         )
 
     async def create(

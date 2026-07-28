@@ -48,9 +48,9 @@ class AsyncHttpClient:
     def base_url(self) -> str:
         return self._config.base_url
 
-    async def get(self, url: str, *, params: dict | None = None) -> httpx.Response:
+    async def get(self, url: str, *, params: dict | None = None, operation: str | None = None) -> httpx.Response:
         url = self._build_url(url)
-        return await self._request_with_retry("GET", url, params=params)
+        return await self._request_with_retry("GET", url, params=params, operation=operation)
 
     async def get_absolute(self, url: str, *, params: dict | None = None) -> httpx.Response:
         if not _security.is_localhost(url):
@@ -90,6 +90,7 @@ class AsyncHttpClient:
                 params=params,
                 content=content,
                 content_type=content_type,
+                operation=operation,
             )
         return await self._single_request(
             "POST",
@@ -115,7 +116,7 @@ class AsyncHttpClient:
         safe_content_type = content_type.replace("\r", "").replace("\n", "")
         files = {field: (safe_filename, content, safe_content_type)}
         if operation and self._is_retryable_operation(operation):
-            return await self._request_with_retry(method, url, files=files)
+            return await self._request_with_retry(method, url, files=files, operation=operation)
         return await self._single_request(method, url, files=files)
 
     async def get_no_retry(self, url: str) -> httpx.Response:
@@ -131,7 +132,7 @@ class AsyncHttpClient:
         self, method: str, url: str, *, json_body: dict | None = None, operation: str | None = None
     ) -> httpx.Response:
         if operation and self._is_retryable_operation(operation):
-            return await self._request_with_retry(method, url, json_body=json_body)
+            return await self._request_with_retry(method, url, json_body=json_body, operation=operation)
         return await self._single_request(method, url, json_body=json_body)
 
     async def _request_with_retry(
@@ -145,11 +146,13 @@ class AsyncHttpClient:
         content_type: str | None = None,
         files: dict | None = None,
         allow_cross_origin: bool = False,
+        operation: str | None = None,
     ) -> httpx.Response:
         # max_retries is a TOTAL attempt count (config validation guarantees it
         # is >= 0). 0 is accepted as a compatibility exception and means a single
         # attempt with no retry.
         max_attempts = self._config.max_retries if self._config.max_retries > 0 else 1
+        max_attempts = self._apply_operation_retry_max(operation, max_attempts)
         attempt = 0
         last_error: BasecampError | None = None
 
@@ -307,3 +310,16 @@ class AsyncHttpClient:
     def _is_retryable_operation(self, operation: str) -> bool:
         op_meta = self._metadata.get(operation, {})
         return op_meta.get("idempotent", False)
+
+    def _apply_operation_retry_max(self, operation: str | None, max_attempts: int) -> int:
+        # Apply the per-operation retry ceiling from metadata as an upper bound on
+        # attempts: effective = min(client cap, operation's retry.max). The
+        # ceiling can only reduce attempts below the client-configured cap, never
+        # raise them, so a client that lowered its cap is still honored. An
+        # operation with no metadata (or no retry.max) leaves the cap unchanged.
+        if not operation:
+            return max_attempts
+        op_max = self._metadata.get(operation, {}).get("retry", {}).get("max")
+        if isinstance(op_max, int) and 0 < op_max < max_attempts:
+            return op_max
+        return max_attempts

@@ -15,6 +15,7 @@ class WebhooksService(BaseService):
         return self._request_paginated(
             OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
+            operation="ListWebhooks",
         )
 
     def create(
@@ -33,6 +34,7 @@ class WebhooksService(BaseService):
             OperationInfo(service="webhooks", operation="get", is_mutation=False, resource_id=webhook_id),
             "GET",
             f"/webhooks/{webhook_id}",
+            operation="GetWebhook",
         )
 
     def update(
@@ -65,6 +67,7 @@ class AsyncWebhooksService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
+            operation="ListWebhooks",
         )
 
     async def create(
@@ -83,6 +86,7 @@ class AsyncWebhooksService(AsyncBaseService):
             OperationInfo(service="webhooks", operation="get", is_mutation=False, resource_id=webhook_id),
             "GET",
             f"/webhooks/{webhook_id}",
+            operation="GetWebhook",
         )
 
     async def update(

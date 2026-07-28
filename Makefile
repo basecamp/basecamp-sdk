@@ -808,7 +808,7 @@ tools:
 # Spec-shape lints
 #------------------------------------------------------------------------------
 
-.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars check-fixture-coverage check-idempotency-parity
+.PHONY: check-bucket-flat-parity validate-api-gaps check-deprecation-parity kt-check-optional-arrays-and-scalars check-fixture-coverage check-idempotency-parity check-retry-metadata-parity
 
 # Verify every bucket-scoped GET list operation has a flat-path counterpart
 # (or is justified in spec/bucket-scoped-allowlist.txt). Cross-project SDK
@@ -854,6 +854,9 @@ kt-check-optional-arrays-and-scalars:
 check-idempotency-parity:
 	@./scripts/check-idempotency-parity
 
+check-retry-metadata-parity:
+	@python3 ./scripts/check-retry-metadata-parity.py
+
 #------------------------------------------------------------------------------
 # Combined targets
 #------------------------------------------------------------------------------
@@ -876,7 +879,7 @@ generate:
 	@echo "==> Generation complete"
 
 # Run all checks (Smithy + Go + TypeScript + Ruby + Kotlin + Swift + Python + Behavior Model + Conformance + Provenance + Actions lint)
-check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars check-idempotency-parity
+check: lint-actions sync-spec-version-check smithy-check behavior-model-check provenance-check sync-api-version-check url-routes-check go-check-drift go-check-wrapper-drift go-check-generated-drift auth-routable-check kt-check-drift swift-check-drift go-check ts-check rb-check kt-check swift-check py-check conformance check-bucket-flat-parity validate-api-gaps check-deprecation-parity check-fixture-coverage kt-check-optional-arrays-and-scalars check-idempotency-parity check-retry-metadata-parity
 	@echo "==> All checks passed"
 
 # Clean all build artifacts

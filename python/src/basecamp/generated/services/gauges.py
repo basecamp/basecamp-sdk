@@ -16,6 +16,7 @@ class GaugesService(BaseService):
             OperationInfo(service="gauges", operation="get_gauge_needle", is_mutation=False, resource_id=needle_id),
             "GET",
             f"/gauge_needles/{needle_id}",
+            operation="GetGaugeNeedle",
         )
 
     def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
@@ -48,6 +49,7 @@ class GaugesService(BaseService):
         return self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
+            operation="ListGaugeNeedles",
         )
 
     def create_gauge_needle(
@@ -66,6 +68,7 @@ class GaugesService(BaseService):
             OperationInfo(service="gauges", operation="list_gauges", is_mutation=False),
             "/reports/gauges.json",
             params=self._compact(bucket_ids=bucket_ids),
+            operation="ListGauges",
         )
 
 
@@ -75,6 +78,7 @@ class AsyncGaugesService(AsyncBaseService):
             OperationInfo(service="gauges", operation="get_gauge_needle", is_mutation=False, resource_id=needle_id),
             "GET",
             f"/gauge_needles/{needle_id}",
+            operation="GetGaugeNeedle",
         )
 
     async def update_gauge_needle(self, *, needle_id: int, gauge_needle: dict | None = None) -> dict[str, Any]:
@@ -107,6 +111,7 @@ class AsyncGaugesService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
+            operation="ListGaugeNeedles",
         )
 
     async def create_gauge_needle(
@@ -125,4 +130,5 @@ class AsyncGaugesService(AsyncBaseService):
             OperationInfo(service="gauges", operation="list_gauges", is_mutation=False),
             "/reports/gauges.json",
             params=self._compact(bucket_ids=bucket_ids),
+            operation="ListGauges",
         )

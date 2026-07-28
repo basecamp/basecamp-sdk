@@ -16,6 +16,7 @@ class SchedulesService(BaseService):
             OperationInfo(service="schedules", operation="get_entry", is_mutation=False, resource_id=entry_id),
             "GET",
             f"/schedule_entries/{entry_id}",
+            operation="GetScheduleEntry",
         )
 
     def update_entry(
@@ -53,6 +54,7 @@ class SchedulesService(BaseService):
             ),
             "GET",
             f"/schedule_entries/{entry_id}/occurrences/{date}",
+            operation="GetScheduleEntryOccurrence",
         )
 
     def get(self, *, schedule_id: int) -> dict[str, Any]:
@@ -60,6 +62,7 @@ class SchedulesService(BaseService):
             OperationInfo(service="schedules", operation="get", is_mutation=False, resource_id=schedule_id),
             "GET",
             f"/schedules/{schedule_id}",
+            operation="GetSchedule",
         )
 
     def update_settings(self, *, schedule_id: int, include_due_assignments: bool) -> dict[str, Any]:
@@ -76,6 +79,7 @@ class SchedulesService(BaseService):
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
             f"/schedules/{schedule_id}/entries.json",
             params=self._compact(status=status),
+            operation="ListScheduleEntries",
         )
 
     def create_entry(
@@ -117,6 +121,7 @@ class AsyncSchedulesService(AsyncBaseService):
             OperationInfo(service="schedules", operation="get_entry", is_mutation=False, resource_id=entry_id),
             "GET",
             f"/schedule_entries/{entry_id}",
+            operation="GetScheduleEntry",
         )
 
     async def update_entry(
@@ -154,6 +159,7 @@ class AsyncSchedulesService(AsyncBaseService):
             ),
             "GET",
             f"/schedule_entries/{entry_id}/occurrences/{date}",
+            operation="GetScheduleEntryOccurrence",
         )
 
     async def get(self, *, schedule_id: int) -> dict[str, Any]:
@@ -161,6 +167,7 @@ class AsyncSchedulesService(AsyncBaseService):
             OperationInfo(service="schedules", operation="get", is_mutation=False, resource_id=schedule_id),
             "GET",
             f"/schedules/{schedule_id}",
+            operation="GetSchedule",
         )
 
     async def update_settings(self, *, schedule_id: int, include_due_assignments: bool) -> dict[str, Any]:
@@ -177,6 +184,7 @@ class AsyncSchedulesService(AsyncBaseService):
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
             f"/schedules/{schedule_id}/entries.json",
             params=self._compact(status=status),
+            operation="ListScheduleEntries",
         )
 
     async def create_entry(

@@ -16,6 +16,7 @@ class ClientCorrespondencesService(BaseService):
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False),
             "/client/correspondences.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListClientCorrespondences",
         )
 
     def get(self, *, correspondence_id: int) -> dict[str, Any]:
@@ -25,6 +26,7 @@ class ClientCorrespondencesService(BaseService):
             ),
             "GET",
             f"/client/correspondences/{correspondence_id}",
+            operation="GetClientCorrespondence",
         )
 
 
@@ -34,6 +36,7 @@ class AsyncClientCorrespondencesService(AsyncBaseService):
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False),
             "/client/correspondences.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListClientCorrespondences",
         )
 
     async def get(self, *, correspondence_id: int) -> dict[str, Any]:
@@ -43,4 +46,5 @@ class AsyncClientCorrespondencesService(AsyncBaseService):
             ),
             "GET",
             f"/client/correspondences/{correspondence_id}",
+            operation="GetClientCorrespondence",
         )

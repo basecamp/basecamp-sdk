@@ -16,6 +16,7 @@ class CardsService(BaseService):
             OperationInfo(service="cards", operation="get", is_mutation=False, resource_id=card_id),
             "GET",
             f"/card_tables/cards/{card_id}",
+            operation="GetCard",
         )
 
     def update(
@@ -48,6 +49,7 @@ class CardsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="cards", operation="list", is_mutation=False, resource_id=column_id),
             f"/card_tables/lists/{column_id}/cards.json",
+            operation="ListCards",
         )
 
     def create(
@@ -74,6 +76,7 @@ class AsyncCardsService(AsyncBaseService):
             OperationInfo(service="cards", operation="get", is_mutation=False, resource_id=card_id),
             "GET",
             f"/card_tables/cards/{card_id}",
+            operation="GetCard",
         )
 
     async def update(
@@ -106,6 +109,7 @@ class AsyncCardsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="cards", operation="list", is_mutation=False, resource_id=column_id),
             f"/card_tables/lists/{column_id}/cards.json",
+            operation="ListCards",
         )
 
     async def create(

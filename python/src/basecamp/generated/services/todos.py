@@ -16,6 +16,7 @@ class TodosService(BaseService):
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
             params=self._compact(status=status, completed=completed),
+            operation="ListTodos",
         )
 
     def create(
@@ -51,6 +52,7 @@ class TodosService(BaseService):
             OperationInfo(service="todos", operation="get", is_mutation=False, resource_id=todo_id),
             "GET",
             f"/todos/{todo_id}",
+            operation="GetTodo",
         )
 
     def replace(
@@ -121,6 +123,7 @@ class AsyncTodosService(AsyncBaseService):
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
             params=self._compact(status=status, completed=completed),
+            operation="ListTodos",
         )
 
     async def create(
@@ -156,6 +159,7 @@ class AsyncTodosService(AsyncBaseService):
             OperationInfo(service="todos", operation="get", is_mutation=False, resource_id=todo_id),
             "GET",
             f"/todos/{todo_id}",
+            operation="GetTodo",
         )
 
     async def replace(

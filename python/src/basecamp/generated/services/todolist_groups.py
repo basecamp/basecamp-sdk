@@ -24,6 +24,7 @@ class TodolistGroupsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="todolistgroups", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/groups.json",
+            operation="ListTodolistGroups",
         )
 
     def create(self, *, todolist_id: int, name: str) -> dict[str, Any]:
@@ -50,6 +51,7 @@ class AsyncTodolistGroupsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="todolistgroups", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/groups.json",
+            operation="ListTodolistGroups",
         )
 
     async def create(self, *, todolist_id: int, name: str) -> dict[str, Any]:

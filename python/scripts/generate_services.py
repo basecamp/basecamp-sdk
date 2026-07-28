@@ -651,10 +651,13 @@ def build_query_params_expr(op: dict) -> str:
 
 
 def operation_kwarg(op: dict) -> str:
-    """Return the operation= kwarg string for mutations, empty string for GETs."""
-    if op["is_mutation"]:
-        return f', operation="{op["operation_id"]}"'
-    return ""
+    """Return the ``operation=`` kwarg string carrying the canonical (PascalCase)
+    operationId. The transport uses it to look up per-operation metadata — the
+    idempotency gate for mutations and the retry.max ceiling for every retryable
+    request (GET/list/pagination included). OperationInfo.operation is the
+    snake_case display name and is NOT a metadata key, so it must not be used for
+    lookups."""
+    return f', operation="{op["operation_id"]}"'
 
 
 def is_paginated_list(op: dict) -> bool:
@@ -696,26 +699,26 @@ def generate_method_body(op: dict, service_name: str, *, is_async: bool) -> list
         if op["query_params"]:
             lines.append(f"        return {_await(is_async)}self._request_paginated_wrapped(")
             lines.append(f'            OperationInfo({info_kwargs}), {path_expr}, "{key}",')
-            lines.append(f"            params={build_query_params_expr(op)},")
+            lines.append(f"            params={build_query_params_expr(op)}{operation_kwarg(op)},")
             lines.append("        )")
         else:
-            lines.append(f'        return {_await(is_async)}self._request_paginated_wrapped(OperationInfo({info_kwargs}), {path_expr}, "{key}")')
+            lines.append(f'        return {_await(is_async)}self._request_paginated_wrapped(OperationInfo({info_kwargs}), {path_expr}, "{key}"{operation_kwarg(op)})')
     elif is_paginated_list(op):
         if op["query_params"]:
             lines.append(f"        return {_await(is_async)}self._request_paginated(")
             lines.append(f"            OperationInfo({info_kwargs}), {path_expr},")
-            lines.append(f"            params={build_query_params_expr(op)},")
+            lines.append(f"            params={build_query_params_expr(op)}{operation_kwarg(op)},")
             lines.append("        )")
         else:
-            lines.append(f"        return {_await(is_async)}self._request_paginated(OperationInfo({info_kwargs}), {path_expr})")
+            lines.append(f"        return {_await(is_async)}self._request_paginated(OperationInfo({info_kwargs}), {path_expr}{operation_kwarg(op)})")
     elif is_unpaginated_array(op):
         if op["query_params"]:
             lines.append(f"        return {_await(is_async)}self._request_list(")
             lines.append(f"            OperationInfo({info_kwargs}), {path_expr},")
-            lines.append(f"            params={build_query_params_expr(op)},")
+            lines.append(f"            params={build_query_params_expr(op)}{operation_kwarg(op)},")
             lines.append("        )")
         else:
-            lines.append(f"        return {_await(is_async)}self._request_list(OperationInfo({info_kwargs}), {path_expr})")
+            lines.append(f"        return {_await(is_async)}self._request_list(OperationInfo({info_kwargs}), {path_expr}{operation_kwarg(op)})")
     elif op["has_binary_body"]:
         # Binary upload
         if op["query_params"]:

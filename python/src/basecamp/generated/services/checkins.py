@@ -13,7 +13,9 @@ from basecamp.hooks import OperationInfo
 class CheckinsService(BaseService):
     def reminders(self) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="checkins", operation="reminders", is_mutation=False), "/my/question_reminders.json"
+            OperationInfo(service="checkins", operation="reminders", is_mutation=False),
+            "/my/question_reminders.json",
+            operation="GetQuestionReminders",
         )
 
     def get_answer(self, *, answer_id: int) -> dict[str, Any]:
@@ -21,6 +23,7 @@ class CheckinsService(BaseService):
             OperationInfo(service="checkins", operation="get_answer", is_mutation=False, resource_id=answer_id),
             "GET",
             f"/question_answers/{answer_id}",
+            operation="GetAnswer",
         )
 
     def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
@@ -39,6 +42,7 @@ class CheckinsService(BaseService):
             ),
             "GET",
             f"/questionnaires/{questionnaire_id}",
+            operation="GetQuestionnaire",
         )
 
     def list_questions(self, *, questionnaire_id: int) -> ListResult:
@@ -47,6 +51,7 @@ class CheckinsService(BaseService):
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
             ),
             f"/questionnaires/{questionnaire_id}/questions.json",
+            operation="ListQuestions",
         )
 
     def create_question(
@@ -67,6 +72,7 @@ class CheckinsService(BaseService):
             OperationInfo(service="checkins", operation="get_question", is_mutation=False, resource_id=question_id),
             "GET",
             f"/questions/{question_id}",
+            operation="GetQuestion",
         )
 
     def update_question(
@@ -84,6 +90,7 @@ class CheckinsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
+            operation="ListAnswers",
         )
 
     def create_answer(self, *, question_id: int, content: str, group_on: str | None = None) -> dict[str, Any]:
@@ -99,12 +106,14 @@ class CheckinsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
+            operation="ListQuestionAnswerers",
         )
 
     def by_person(self, *, question_id: int, person_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
+            operation="GetAnswersByPerson",
         )
 
     def update_notification_settings(
@@ -142,7 +151,9 @@ class CheckinsService(BaseService):
 class AsyncCheckinsService(AsyncBaseService):
     async def reminders(self) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="checkins", operation="reminders", is_mutation=False), "/my/question_reminders.json"
+            OperationInfo(service="checkins", operation="reminders", is_mutation=False),
+            "/my/question_reminders.json",
+            operation="GetQuestionReminders",
         )
 
     async def get_answer(self, *, answer_id: int) -> dict[str, Any]:
@@ -150,6 +161,7 @@ class AsyncCheckinsService(AsyncBaseService):
             OperationInfo(service="checkins", operation="get_answer", is_mutation=False, resource_id=answer_id),
             "GET",
             f"/question_answers/{answer_id}",
+            operation="GetAnswer",
         )
 
     async def update_answer(self, *, answer_id: int, content: str, group_on: str | None = None) -> None:
@@ -168,6 +180,7 @@ class AsyncCheckinsService(AsyncBaseService):
             ),
             "GET",
             f"/questionnaires/{questionnaire_id}",
+            operation="GetQuestionnaire",
         )
 
     async def list_questions(self, *, questionnaire_id: int) -> ListResult:
@@ -176,6 +189,7 @@ class AsyncCheckinsService(AsyncBaseService):
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
             ),
             f"/questionnaires/{questionnaire_id}/questions.json",
+            operation="ListQuestions",
         )
 
     async def create_question(
@@ -196,6 +210,7 @@ class AsyncCheckinsService(AsyncBaseService):
             OperationInfo(service="checkins", operation="get_question", is_mutation=False, resource_id=question_id),
             "GET",
             f"/questions/{question_id}",
+            operation="GetQuestion",
         )
 
     async def update_question(
@@ -213,6 +228,7 @@ class AsyncCheckinsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
+            operation="ListAnswers",
         )
 
     async def create_answer(self, *, question_id: int, content: str, group_on: str | None = None) -> dict[str, Any]:
@@ -228,12 +244,14 @@ class AsyncCheckinsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
+            operation="ListQuestionAnswerers",
         )
 
     async def by_person(self, *, question_id: int, person_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
+            operation="GetAnswersByPerson",
         )
 
     async def update_notification_settings(
