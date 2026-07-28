@@ -155,7 +155,10 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 
 	var token Token
 	if err := json.Unmarshal(body, &token); err != nil {
-		return nil, fmt.Errorf("parsing token response: %w", err)
+		// A malformed 200 body — including a non-string resource failing the
+		// string decode — is a typed api fault (SPEC §16) so callers can
+		// classify it via errors.As(*basecamp.Error) with the HTTP status.
+		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token response: %v", err))
 	}
 
 	// resource re-decodes through a *string because Token's plain string field
@@ -167,7 +170,7 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 		Resource *string `json:"resource"`
 	}
 	if err := json.Unmarshal(body, &rawResource); err != nil {
-		return nil, fmt.Errorf("parsing token response: %w", err)
+		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token response: %v", err))
 	}
 	if rawResource.Resource != nil && *rawResource.Resource == "" {
 		// A typed api fault (SPEC §16), not a bare error: callers classify

@@ -222,12 +222,13 @@ type RefreshRequest struct {
 	ClientID      string
 	ClientSecret  string
 
-	// Resource is the RFC 8707 resource indicator to bind the refreshed
-	// token to, sent only when non-empty. Echo the stored token's Resource:
-	// BC5 multi-account refresh tokens hard-require it (SPEC §16).
-	Resource string
-
 	// UseLegacyFormat uses Launchpad's non-standard token format:
 	// type=refresh instead of grant_type=refresh_token
 	UseLegacyFormat bool
+
+	// Resource is the RFC 8707 resource indicator to bind the refreshed
+	// token to, sent only when non-empty. Echo the stored token's Resource:
+	// BC5 multi-account refresh tokens hard-require it (SPEC §16).
+	// APPENDED LAST: existing positional literals keep their field positions.
+	Resource string
 }

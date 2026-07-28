@@ -614,13 +614,13 @@ func TestExchanger_TokenResponseResource(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Refresh() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if tt.name == "empty resource rejected" {
+			if tt.name == "empty resource rejected" || tt.name == "non-string resource rejected" {
 				// A typed api fault (SPEC §16), not a bare error: callers
 				// classify malformed responses via errors.As and need the
 				// HTTP status, matching the device-token/AuthManager paths.
 				var apiErr *basecamp.Error
 				if !errors.As(err, &apiErr) || apiErr.Code != basecamp.CodeAPI {
-					t.Fatalf("empty resource error = %T %v, want *basecamp.Error with CodeAPI", err, err)
+					t.Fatalf("%s error = %T %v, want *basecamp.Error with CodeAPI", tt.name, err, err)
 				}
 				if apiErr.HTTPStatus != http.StatusOK {
 					t.Errorf("HTTPStatus = %d, want 200", apiErr.HTTPStatus)
