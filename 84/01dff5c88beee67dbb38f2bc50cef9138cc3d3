@@ -1,0 +1,46 @@
+python/src/basecamp/_http.py
+  s_69156f95c4fbc4::t_5ee8319898d7c5 177,314-318,322,324-328,336-340
+  s_69156f95c4fbc4::t_b98c9e27a70ba3 319-321,323,329-335,341-347
+  s_69156f95c4fbc4::t_5eae6a4c1cd985 348
+go/templates/client.tmpl
+  s_69156f95c4fbc4::t_128fd03eada7da 147-158,163,165,167-172,236,640-670
+  s_69156f95c4fbc4::t_1429671c9a0cec 159-162,164
+SPEC.md
+  s_69156f95c4fbc4::t_42fab8e3ba67aa 414,416-425,1636-1638
+  s_69156f95c4fbc4::t_68567aef0e71e1 406,411-413,415,426-438,1630-1631,1635
+go/pkg/generated/client.gen.go
+  s_69156f95c4fbc4::t_e960e4986015e7 3963-3974,3979,3981-3986,3988,4052,20057-20295
+  s_69156f95c4fbc4::t_d9b0d91d6ca352 20296
+  s_69156f95c4fbc4::t_1429671c9a0cec 3975-3978,3980
+scripts/check-retry-metadata-parity.py
+  s_69156f95c4fbc4::t_51d0163d85d02d 25
+  s_69156f95c4fbc4::t_ef92e935572504 24,36-38,167-181,243-250,257-273
+  s_69156f95c4fbc4::t_c004baac47f2ae 274-275
+  s_69156f95c4fbc4::t_8c4eebe880295f 305
+go/pkg/basecamp/generated_retry_statusset_test.go
+  s_69156f95c4fbc4::t_afe5af980672ea 1-121
+  s_69156f95c4fbc4::t_44eb886cb7145b 122-146
+python/tests/test_http.py
+  s_69156f95c4fbc4::t_4fb088e7917470 121-125,532-644
+  s_69156f95c4fbc4::t_11ca682b1bd610 16,645-699
+python/src/basecamp/_async_http.py
+  s_69156f95c4fbc4::t_b98c9e27a70ba3 319-321,323,329-335,341-347
+  s_69156f95c4fbc4::t_5b2d0480a78a1a 348
+  s_69156f95c4fbc4::t_5ee8319898d7c5 177,314-318,322,324-328,336-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8401dff5c88beee67dbb38f2bc50cef9138cc3d3",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
