@@ -16,7 +16,10 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.testTimeSource
 import kotlinx.coroutines.withTimeout
@@ -499,6 +502,42 @@ class OAuthDeviceTest {
             }
         }
         client.close()
+    }
+
+    @Test
+    fun performCancelDuringAuthorizationNeverReachesDisplay() = runTest {
+        // The mock engine cancels the flow's job as it serves the code pair,
+        // modeling an engine that completes while ignoring cancellation — the
+        // display hook must never fire for a cancelled flow.
+        var displayed = 0
+        val job = Job()
+        val engine = MockEngine {
+            job.cancel()
+            respond(deviceAuthJson, HttpStatusCode.OK, jsonHeaders)
+        }
+        val client = HttpClient(engine)
+        try {
+            assertFailsWith<CancellationException> {
+                withContext(job) {
+                    performDeviceLogin(
+                        OAuthConfig(
+                            issuer = origin,
+                            authorizationEndpoint = null,
+                            tokenEndpoint = tokenEndpoint,
+                            deviceAuthorizationEndpoint = deviceEndpoint,
+                            grantTypesSupported = listOf(DEVICE_CODE_GRANT_TYPE, "refresh_token"),
+                        ),
+                        "basecamp-cli",
+                        display = { displayed += 1 },
+                        timeSource = testTimeSource,
+                        client = client,
+                    )
+                }
+            }
+        } finally {
+            client.close()
+        }
+        assertEquals(0, displayed, "display must never fire for a cancelled flow")
     }
 
     @Test

@@ -14,7 +14,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.Parameters
 import io.ktor.http.parametersOf
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
@@ -598,6 +600,12 @@ suspend fun performDeviceLogin(
     }
 
     val auth = requestDeviceAuthorization(endpoint, clientId, scope, client)
+    // Re-check cancellation before surfacing the code: coroutine cancellation
+    // normally throws at the request's own suspension points, but an injected
+    // engine that ignores it can complete the round-trip after the job was
+    // cancelled — the display hook must never fire then. Mirrors the
+    // Go/TS/Python/Ruby orchestrators' post-request re-check.
+    currentCoroutineContext().ensureActive()
     // Anchor the code's expiry deadline at issuance — BEFORE the display hook — so
     // a slow display counts against the lifetime instead of resetting it.
     val deadline = timeSource.markNow() + auth.expiresIn.seconds
