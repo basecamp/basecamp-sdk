@@ -341,6 +341,15 @@ class OAuthTransportTest < Minitest::Test
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
     end
 
+    # Warm-up request BEFORE the baseline: the process's first Net::HTTP
+    # connect can lazily spawn Ruby's persistent Timeout worker thread (one
+    # per process, never reaped). Whether that already happened depends on
+    # randomized suite order, so counting it after the baseline made this
+    # assertion flake by exactly +1 on the orderings where this test ran
+    # first. The warm-up folds any lazily-created runtime threads into the
+    # baseline; the assertion then counts only threads OUR primitive leaks.
+    Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/doc", timeout: TIMEOUT)
+
     baseline = Thread.list.length
     5.times do
       Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/doc", timeout: TIMEOUT)
