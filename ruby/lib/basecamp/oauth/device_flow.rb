@@ -221,6 +221,12 @@ module Basecamp
               raise DeviceFlowError.new(:transport, "Device token poll failed: #{e.message}")
             end
 
+            # Re-check cancellation the moment the round-trip completes: the
+            # sync POST cannot observe the probe while in flight (bounded only
+            # by its timeout), so a cancel raised mid-request must surface
+            # here — never a token returned after the caller asked to stop.
+            raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
+
             # ANY completed HTTP round-trip resets the timeout backoff to the
             # current server-driven interval.
             backoff_seconds = interval_seconds

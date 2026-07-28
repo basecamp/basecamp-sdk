@@ -931,6 +931,35 @@ class TestPollDeviceTokenTimeoutNormalization:
         assert token.access_token == "device_access_token"  # gitleaks:allow
 
 
+class TestPollDeviceTokenCancelAfterRoundTrip:
+    @respx.mock
+    def test_cancel_set_during_the_request_beats_a_200(self):
+        # The sync POST cannot observe should_cancel in flight; a cancel set
+        # while the request runs must surface after the round-trip — never a
+        # token returned post-cancellation. The mock endpoint itself flips the
+        # probe as it serves the 200, so every check BEFORE the POST sees
+        # not-cancelled and only the post-request re-check can catch it.
+        state = {"cancelled": False}
+
+        def serve(_request):
+            state["cancelled"] = True  # cancel arrives while the POST is in flight
+            return httpx.Response(200, json=TOKEN_RESPONSE)
+
+        respx.post(TOKEN_ENDPOINT).mock(side_effect=serve)
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                sleep=RecordingSleep(),
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+
+
 class TestPollDeviceTokenExact200:
     @respx.mock
     @pytest.mark.parametrize("status", [201, 202])

@@ -456,6 +456,14 @@ def poll_device_token(
         except httpx.HTTPError as exc:
             raise DeviceFlowError("transport", f"Device token poll failed: {exc}") from exc
 
+        # Re-check cancellation the moment the round-trip completes: the sync
+        # POST cannot observe the probe while in flight (bounded only by its
+        # timeout), so a cancel raised mid-request must surface here — never a
+        # token returned after the caller asked to stop. Go/TS/Kotlin get this
+        # in-flight via ctx/AbortSignal/coroutine cancellation.
+        if should_cancel is not None and should_cancel():
+            raise DeviceFlowError("cancelled", "Device flow cancelled")
+
         # ANY completed HTTP round-trip — a token, authorization_pending,
         # slow_down, or another OAuth error — resets the transient timeout
         # backoff to the current server interval.

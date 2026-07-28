@@ -430,6 +430,29 @@ class OAuthDeviceTest < Minitest::Test
     end
   end
 
+  def test_poll_cancel_set_during_the_request_beats_a_200
+    # The sync POST cannot observe the cancelled probe in flight; a cancel set
+    # while the request runs must surface after the round-trip — never a token
+    # returned post-cancellation. The stub itself flips the probe as it serves
+    # the 200, so every check BEFORE the POST sees not-cancelled and only the
+    # post-request re-check can catch it.
+    cancelled = { flag: false }
+    stub_request(:post, TOKEN_ENDPOINT).to_return do |_request|
+      cancelled[:flag] = true # cancel arrives while the POST is in flight
+      { status: 200, body: token_response.to_json, headers: { "Content-Type" => "application/json" } }
+    end
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        sleeper: sleeper, cancelled: -> { cancelled[:flag] }
+      )
+    end
+    assert_equal :cancelled, error.reason
+  end
+
   def test_poll_accepts_token_response_without_expires_in
     # expires_in is optional (RFC 6749 §5.1): absent means no known expiry, so
     # the Token carries nil expires_in/expires_at rather than raising.
