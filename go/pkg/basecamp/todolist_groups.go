@@ -33,17 +33,22 @@ type TodolistGroup struct {
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
 	SubscriptionURL  string    `json:"subscription_url"`
-	CommentsCount    int       `json:"comments_count"`
-	CommentsURL      string    `json:"comments_url"`
-	Position         int       `json:"position"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	Name             string    `json:"name"`
-	Completed        bool      `json:"completed"`
-	CompletedRatio   string    `json:"completed_ratio"`
-	TodosURL         string    `json:"todos_url"`
-	AppTodosURL      string    `json:"app_todos_url"`
+	// BubbleUpURL is the URL of the Bubble Up record for this recording. Always
+	// present: todolists/_todolist.json.jbuilder renders the shared recording
+	// partial with bubbleupable: true unconditionally, and every list, show, and
+	// group path renders that partial.
+	BubbleUpURL    string  `json:"bubble_up_url"`
+	CommentsCount  int     `json:"comments_count"`
+	CommentsURL    string  `json:"comments_url"`
+	Position       int     `json:"position"`
+	Parent         *Parent `json:"parent,omitempty"`
+	Bucket         *Bucket `json:"bucket,omitempty"`
+	Creator        *Person `json:"creator,omitempty"`
+	Name           string  `json:"name"`
+	Completed      bool    `json:"completed"`
+	CompletedRatio string  `json:"completed_ratio"`
+	TodosURL       string  `json:"todos_url"`
+	AppTodosURL    string  `json:"app_todos_url"`
 }
 
 // CreateTodolistGroupRequest specifies the parameters for creating a todolist group.
@@ -353,6 +358,7 @@ func todolistGroupFromGenerated(gg generated.TodolistGroup) TodolistGroup {
 		AppURL:           gg.AppUrl,
 		BookmarkURL:      gg.BookmarkUrl,
 		SubscriptionURL:  gg.SubscriptionUrl,
+		BubbleUpURL:      gg.BubbleUpUrl,
 		CommentsCount:    int(gg.CommentsCount),
 		CommentsURL:      gg.CommentsUrl,
 		Position:         int(gg.Position),

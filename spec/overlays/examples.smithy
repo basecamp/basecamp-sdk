@@ -15,6 +15,7 @@ apply GetTodolistOrGroup @examples([
       title: "Launch Tasks", inherits_status: true, type: "Todolist", description_attachments: [],
       url: "https://3.basecampapi.com/999/buckets/12345678/todolists/987654.json",
       app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/987654",
+      bubble_up_url: "https://3.basecampapi.com/999/buckets/12345678/recordings/987654/bubble_up.json",
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
       bucket: { id: 12345678, name: "My Project", type: "Project" },
       parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todosets/99999" }
@@ -30,6 +31,7 @@ apply GetTodolistOrGroup @examples([
       title: "Q1 Milestones", inherits_status: true, type: "TodolistGroup",
       url: "https://3.basecampapi.com/999/buckets/12345678/todolists/111222.json",
       app_url: "https://3.basecamp.com/999/buckets/12345678/todolists/111222",
+      bubble_up_url: "https://3.basecampapi.com/999/buckets/12345678/recordings/111222/bubble_up.json",
       creator: { id: 1, name: "Someone", created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
       bucket: { id: 12345678, name: "My Project", type: "Project" },
       parent: { id: 99999, title: "To-dos", type: "Todoset", url: "https://3.basecampapi.com/999/buckets/12345678/todosets/99999.json", app_url: "https://3.basecamp.com/999/buckets/12345678/todosets/99999" }

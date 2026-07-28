@@ -10,6 +10,7 @@ public struct SearchResult: Codable, Sendable {
     public let type: String
     public let url: String
     public var bookmarkUrl: String?
+    public var bubbleUpUrl: String?
     public var bucket: RecordingBucket?
     public var contentAttachments: [RichTextAttachment]?
     public var createdAt: String?
@@ -33,6 +34,7 @@ public struct SearchResult: Codable, Sendable {
         type: String,
         url: String,
         bookmarkUrl: String? = nil,
+        bubbleUpUrl: String? = nil,
         bucket: RecordingBucket? = nil,
         contentAttachments: [RichTextAttachment]? = nil,
         createdAt: String? = nil,
@@ -55,6 +57,7 @@ public struct SearchResult: Codable, Sendable {
         self.type = type
         self.url = url
         self.bookmarkUrl = bookmarkUrl
+        self.bubbleUpUrl = bubbleUpUrl
         self.bucket = bucket
         self.contentAttachments = contentAttachments
         self.createdAt = createdAt
@@ -79,6 +82,7 @@ public struct SearchResult: Codable, Sendable {
         case type
         case url
         case bookmarkUrl
+        case bubbleUpUrl
         case bucket
         case contentAttachments
         case createdAt
@@ -104,6 +108,7 @@ public struct SearchResult: Codable, Sendable {
         self.type = try container.decode(String.self, forKey: .type)
         self.url = try container.decode(String.self, forKey: .url)
         self.bookmarkUrl = try container.decodeIfPresent(String.self, forKey: .bookmarkUrl)
+        self.bubbleUpUrl = try container.decodeIfPresent(String.self, forKey: .bubbleUpUrl)
         self.bucket = try container.decodeIfPresent(RecordingBucket.self, forKey: .bucket)
         self.contentAttachments = try container.decodeIfPresent([RichTextAttachment].self, forKey: .contentAttachments)
         self.createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
@@ -129,6 +134,7 @@ public struct SearchResult: Codable, Sendable {
         try container.encode(self.type, forKey: .type)
         try container.encode(self.url, forKey: .url)
         try container.encodeIfPresent(self.bookmarkUrl, forKey: .bookmarkUrl)
+        try container.encodeIfPresent(self.bubbleUpUrl, forKey: .bubbleUpUrl)
         try container.encodeIfPresent(self.bucket, forKey: .bucket)
         try container.encodeIfPresent(self.contentAttachments, forKey: .contentAttachments)
         try container.encodeIfPresent(self.createdAt, forKey: .createdAt)

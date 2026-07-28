@@ -25,6 +25,7 @@ data class Recording(
     val bucket: RecordingBucket,
     val creator: Person,
     @SerialName("bookmark_url") val bookmarkUrl: String? = null,
+    @SerialName("bubble_up_url") val bubbleUpUrl: String? = null,
     val content: String? = null,
     @SerialName("content_attachments") val contentAttachments: List<RichTextAttachment>? = null,
     @SerialName("description_attachments") val descriptionAttachments: List<RichTextAttachment>? = null,

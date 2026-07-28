@@ -139,6 +139,14 @@ targets:
     fixture: recordings/get.json
     pointer: ""
     schema: Recording
+  # bubble_up_url is optional on Recording — recordings/_recording.json.jbuilder
+  # emits it only when the caller passes bubbleupable, and todolists/_todolist is
+  # the only partial that does. recordings/get.json is a Message and correctly
+  # omits it, so this Todolist-shaped element is the field-bearing representative.
+  - id: recording-list-todolist
+    fixture: recordings/list.json
+    pointer: "/2"
+    schema: Recording
   - id: todo-get
     fixture: todos/get.json
     pointer: ""
@@ -149,6 +157,15 @@ targets:
   - id: search-result-0
     fixture: search/results.json
     pointer: "/0"
+    schema: SearchResult
+  # Todolists are searchable (Search::Type::TYPE_FILTER_MAPPING maps
+  # "Todo" => %w[Todo Todolist]) and api_search_result_template_path falls through
+  # to to_recordable_partial_path → todolists/todolist, which passes
+  # bubbleupable: true. So a Todolist search result carries bubble_up_url while
+  # the other result types do not — this is that representative.
+  - id: search-result-todolist
+    fixture: search/results.json
+    pointer: "/3"
     schema: SearchResult
 
   # Two concrete RichTextAttachment instances (populated elements, not empty
@@ -193,9 +210,9 @@ covered_schemas:
   ClientCorrespondence: [client-correspondence-get]
   ClientReply: [client-reply-get]
   QuestionAnswer: [question-answer-get]
-  Recording: [recording-get]
+  Recording: [recording-get, recording-list-todolist]
   Todo: [todo-get]
-  SearchResult: [search-result-0]
+  SearchResult: [search-result-0, search-result-todolist]
   RichTextAttachment: [richtext-comment-0, richtext-upload-0]
   Gauge: [gauge-get]
   GaugeNeedle: [gauge-needle-get]

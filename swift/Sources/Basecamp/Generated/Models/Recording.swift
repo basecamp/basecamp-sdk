@@ -17,6 +17,7 @@ public struct Recording: Codable, Sendable {
     public var bookmarkUrl: String?
     public var boostsCount: Int32?
     public var boostsUrl: String?
+    public var bubbleUpUrl: String?
     public var category: RecordingCategory?
     public var commentsCount: Int32?
     public var commentsUrl: String?
@@ -50,6 +51,7 @@ public struct Recording: Codable, Sendable {
         bookmarkUrl: String? = nil,
         boostsCount: Int32? = nil,
         boostsUrl: String? = nil,
+        bubbleUpUrl: String? = nil,
         category: RecordingCategory? = nil,
         commentsCount: Int32? = nil,
         commentsUrl: String? = nil,
@@ -82,6 +84,7 @@ public struct Recording: Codable, Sendable {
         self.bookmarkUrl = bookmarkUrl
         self.boostsCount = boostsCount
         self.boostsUrl = boostsUrl
+        self.bubbleUpUrl = bubbleUpUrl
         self.category = category
         self.commentsCount = commentsCount
         self.commentsUrl = commentsUrl

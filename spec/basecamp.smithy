@@ -1536,6 +1536,14 @@ structure Todolist {
   app_url: String
   bookmark_url: String
   subscription_url: String
+
+  /// URL of the Bubble Up record for this recording (BC5 addition). Required:
+  /// `todolists/_todolist.json.jbuilder` renders the shared recording partial
+  /// with `bubbleupable: true` unconditionally, and every list, show, and group
+  /// path renders that partial — so the key is present on every projection of
+  /// this shape.
+  @required
+  bubble_up_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
@@ -1591,6 +1599,14 @@ structure TodolistGroup {
   app_url: String
   bookmark_url: String
   subscription_url: String
+
+  /// URL of the Bubble Up record for this recording (BC5 addition). Required:
+  /// `todolists/_todolist.json.jbuilder` renders the shared recording partial
+  /// with `bubbleupable: true` unconditionally, and every list, show, and group
+  /// path renders that partial — so the key is present on every projection of
+  /// this shape.
+  @required
+  bubble_up_url: String
   comments_count: Integer
   comments_url: String
   position: Integer
@@ -6306,6 +6322,14 @@ structure Recording {
   @required
   app_url: String
   bookmark_url: String
+
+  /// URL of the Bubble Up record for this recording (BC5 addition). Optional
+  /// here because this is a polymorphic projection:
+  /// `recordings/_recording.json.jbuilder` emits the key only when the caller
+  /// passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
+  /// only partial that does. So a Todolist-shaped instance carries it and the
+  /// other recording types do not.
+  bubble_up_url: String
   content: String
   /// Rich-text companion arrays carried through the generic recording
   /// projection (`to_recordable_partial_path` renders the full type-specific
@@ -7973,6 +7997,14 @@ structure SearchResult {
   @required
   app_url: String
   bookmark_url: String
+
+  /// URL of the Bubble Up record for this recording (BC5 addition). Optional
+  /// here because this is a polymorphic projection:
+  /// `recordings/_recording.json.jbuilder` emits the key only when the caller
+  /// passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
+  /// only partial that does. So a Todolist-shaped instance carries it and the
+  /// other recording types do not.
+  bubble_up_url: String
   parent: RecordingParent
   bucket: RecordingBucket
   creator: Person
