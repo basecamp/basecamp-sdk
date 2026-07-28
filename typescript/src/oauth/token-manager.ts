@@ -146,13 +146,20 @@ export class TokenManager {
       refreshToken: refreshTokenValue,
       clientId: this.clientId,
       clientSecret: this.clientSecret,
+      // Echo the stored RFC 8707 resource: BC5 multi-account refresh tokens
+      // reject a refresh without it (SPEC §16).
+      resource: this.token?.resource,
       useLegacyFormat: this.useLegacyFormat,
     });
 
-    // Preserve the previous refresh token when the server omits one
-    const merged: OAuthToken = newToken.refreshToken
-      ? newToken
-      : { ...newToken, refreshToken: refreshTokenValue };
+    // Preserve the previous refresh token when the server omits one, and the
+    // previous resource binding when the response omits it (SPEC §16
+    // carry-forward rule).
+    const merged: OAuthToken = {
+      ...newToken,
+      refreshToken: newToken.refreshToken || refreshTokenValue,
+      resource: newToken.resource ?? this.token?.resource,
+    };
 
     this.token = merged;
     await this.store.save(merged);

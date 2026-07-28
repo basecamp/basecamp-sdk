@@ -1741,3 +1741,53 @@ describe("performDeviceLogin cancellation around the authorization request", () 
     expect(displayed).toEqual([]);
   });
 });
+
+describe("pollDeviceToken resource capture", () => {
+  it("captures resource from the device token response and treats null as absent", async () => {
+    queueTokenResponses([
+      { status: 200, body: { ...tokenResponse, resource: "urn:bc:account:42" } },
+    ]);
+    const { fn } = recordingSleep();
+
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    });
+    expect(token.resource).toBe("urn:bc:account:42");
+
+    queueTokenResponses([
+      { status: 200, body: { ...tokenResponse, resource: null } },
+    ]);
+    const nullToken = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: recordingSleep().fn,
+    });
+    expect(nullToken.resource).toBeUndefined();
+  });
+
+  it("rejects a present-but-empty or non-string resource as api_error", async () => {
+    for (const resource of ["", 7]) {
+      queueTokenResponses([
+        { status: 200, body: { ...tokenResponse, resource } },
+      ]);
+      await expect(
+        pollDeviceToken({
+          tokenEndpoint: TOKEN_ENDPOINT,
+          clientId: "basecamp-cli",
+          deviceCode: "dev-code-123",
+          interval: 5,
+          expiresIn: 900,
+          sleepFn: recordingSleep().fn,
+        })
+      ).rejects.toMatchObject({ code: "api_error" });
+    }
+  });
+});

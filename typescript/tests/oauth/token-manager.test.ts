@@ -248,6 +248,48 @@ describe("TokenManager", () => {
 
       await expect(manager.forceRefresh()).rejects.toThrow("No refresh token available");
     });
+
+    it("echoes the stored resource on refresh and preserves it when the response omits it", async () => {
+      const store = createMockStore(expiredToken({ resource: "urn:bc:account:42" }));
+      mockRefreshFn.mockResolvedValue(freshToken({
+        accessToken: "new_access",
+        resource: undefined,
+      }));
+
+      const manager = new TokenManager({
+        store,
+        refreshToken: mockRefreshFn,
+        tokenEndpoint: "https://example.com/token",
+      });
+
+      await manager.getToken();
+
+      expect(mockRefreshFn).toHaveBeenCalledWith(
+        expect.objectContaining({ resource: "urn:bc:account:42" }),
+      );
+      expect(manager.currentToken!.resource).toBe("urn:bc:account:42");
+      expect(store.save).toHaveBeenCalledWith(
+        expect.objectContaining({ resource: "urn:bc:account:42" }),
+      );
+    });
+
+    it("replaces the stored resource when the response carries one", async () => {
+      const store = createMockStore(expiredToken({ resource: "urn:bc:account:42" }));
+      mockRefreshFn.mockResolvedValue(freshToken({
+        accessToken: "new_access",
+        resource: "urn:bc:account:7",
+      }));
+
+      const manager = new TokenManager({
+        store,
+        refreshToken: mockRefreshFn,
+        tokenEndpoint: "https://example.com/token",
+      });
+
+      await manager.getToken();
+
+      expect(manager.currentToken!.resource).toBe("urn:bc:account:7");
+    });
   });
 
   describe("concurrent refresh deduplication", () => {

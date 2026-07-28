@@ -704,6 +704,13 @@ async function postDeviceToken(
             httpStatus: response.status,
           });
         }
+        // resource: absent and JSON null are unset; when present it must be a
+        // non-empty string (SPEC §16) — an empty binding is not a binding.
+        if (token.resource != null && !isNonEmptyString(token.resource)) {
+          throw new BasecampError("api_error", "Device token response resource must be a non-empty string when present", {
+            httpStatus: response.status,
+          });
+        }
         return {
           kind: "token",
           token: {
@@ -715,6 +722,7 @@ async function postDeviceToken(
             expiresIn: token.expires_in ?? undefined,
             expiresAt: token.expires_in != null ? new Date(Date.now() + token.expires_in * 1000) : undefined,
             scope: token.scope ?? undefined,
+            resource: token.resource ?? undefined,
           },
         };
       }

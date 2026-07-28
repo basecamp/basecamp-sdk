@@ -560,6 +560,63 @@ describe("Token Exchange", () => {
         })
       ).rejects.toThrow("Refresh token is required");
     });
+
+    it("sends resource when set and omits it when unset", async () => {
+      let sawResource: string | null = null;
+      let hasResource = true;
+      server.use(
+        http.post(tokenEndpoint, async ({ request }) => {
+          const params = new URLSearchParams(await request.text());
+          sawResource = params.get("resource");
+          hasResource = params.has("resource");
+          return HttpResponse.json(mockTokenResponse);
+        })
+      );
+
+      await refreshToken({
+        tokenEndpoint,
+        refreshToken: "my_refresh_token",
+        resource: "urn:bc:account:42",
+      });
+      expect(sawResource).toBe("urn:bc:account:42");
+
+      await refreshToken({
+        tokenEndpoint,
+        refreshToken: "my_refresh_token",
+      });
+      expect(hasResource).toBe(false);
+    });
+
+    it("captures resource from the token response and treats null as absent", async () => {
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ ...mockTokenResponse, resource: "urn:bc:account:42" })
+        )
+      );
+      const token = await refreshToken({ tokenEndpoint, refreshToken: "my_refresh_token" });
+      expect(token.resource).toBe("urn:bc:account:42");
+
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ ...mockTokenResponse, resource: null })
+        )
+      );
+      const nullToken = await refreshToken({ tokenEndpoint, refreshToken: "my_refresh_token" });
+      expect(nullToken.resource).toBeUndefined();
+    });
+
+    it("rejects a present-but-empty or non-string resource as api_error", async () => {
+      for (const resource of ["", 7]) {
+        server.use(
+          http.post(tokenEndpoint, () =>
+            HttpResponse.json({ ...mockTokenResponse, resource })
+          )
+        );
+        await expect(
+          refreshToken({ tokenEndpoint, refreshToken: "my_refresh_token" })
+        ).rejects.toThrow("resource must be a non-empty string");
+      }
+    });
   });
 });
 

@@ -199,10 +199,15 @@ await performInteractiveLogin({
 });
 ```
 
-**Selection.** With `expectedIssuer`, the advertised member equal by code-point is
+**Selection.** With `expectedIssuer` (production canonical:
+`https://app.basecamp.com`), the advertised member equal by code-point is
 selected (else a hard `expected_issuer_unavailable`). Without it, the SDK uses a
 documented Basecamp-profile heuristic: exactly one non-Launchpad issuer → selected;
 ≥2 → hard `ambiguous_issuers` (never guesses); zero → Launchpad.
+
+Pass bare origins — no trailing slash. Issuer binding is code-point exact, so
+`https://app.basecamp.com/` would mismatch the advertised issuer and silently
+soft-fall back to Launchpad.
 
 **Fallback is allowed only before a first-party issuer is committed.** Once valid
 resource metadata advertises it and it is selected, every later failure is fatal —
@@ -266,7 +271,8 @@ try {
   const token = await performDeviceLogin({
     config: result.config,
     clientId: "basecamp-cli",
-    // scope omitted → server default (read)
+    // scope omitted → server default (read). Prefer pinning it explicitly:
+    scope: "read",
     display: ({ userCode, verificationUri }) => {
       console.log(`Visit ${verificationUri} and enter code: ${userCode}`);
     },
@@ -291,12 +297,19 @@ try {
         tokenEndpoint: result.config.tokenEndpoint,
         clientId: "basecamp-cli", // public client — no secret
         refreshToken: token.refreshToken,
+        // ECHO the token's RFC 8707 resource indicator: BC5 device logins as
+        // basecamp-cli mint MULTI-ACCOUNT refresh tokens, and refreshing one
+        // without `resource` is rejected (400 invalid_request).
+        resource: token.resource,
       });
       // A refresh response MAY omit refresh_token (the server keeps the current
-      // one). Persist the fresh access token but FALL BACK to the prior refresh
-      // token when none was returned, so the next refresh still works:
+      // one) and MAY omit resource (the binding is unchanged). Persist the fresh
+      // access token but FALL BACK to the prior values so the next refresh still
+      // works:
       const nextRefresh = fresh.refreshToken ?? token.refreshToken;
-      // ...persist { ...fresh, refreshToken: nextRefresh } and rebuild the client.
+      const nextResource = fresh.resource ?? token.resource;
+      // ...persist { ...fresh, refreshToken: nextRefresh, resource: nextResource }
+      // and rebuild the client. (TokenManager does all of this automatically.)
     } else {
       // No refresh token was issued: refreshing is impossible, so the user must
       // authorize again. Re-run the device login to get a new token — pass the
