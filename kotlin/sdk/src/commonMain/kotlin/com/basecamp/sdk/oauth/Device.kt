@@ -294,12 +294,15 @@ private fun validateDeviceAuthorization(raw: RawDeviceAuthorization, status: Int
  * @param timeSource Monotonic clock for the deadline; tests inject virtual time.
  * @param deadline Absolute expiry deadline. Defaults to `expiresIn` from now, but
  *   [performDeviceLogin] passes a deadline anchored at code issuance so display
- *   time counts against the lifetime rather than resetting it.
+ *   time counts against the lifetime rather than resetting it. Must be no later
+ *   than `expiresIn` from now — a deadline can only shorten the validated
+ *   lifetime, never extend it.
  * @throws BasecampException.DeviceFlow reason `access_denied` on denial,
  *   `expired` on expiry, `transport` on a non-timeout network failure.
  * @throws BasecampException.Api on an unrecognized error code or a parse failure.
  * @throws BasecampException.Usage when [interval] or [expiresIn] is not a
- *   positive number of seconds within the shared device ceiling.
+ *   positive number of seconds within the shared device ceiling, or when
+ *   [deadline] is later than `expiresIn` from now.
  */
 suspend fun pollDeviceToken(
     tokenEndpoint: String,
@@ -324,6 +327,18 @@ suspend fun pollDeviceToken(
                 "pollDeviceToken: $name must be a positive number of seconds no greater than $MAX_DEVICE_SECONDS",
             )
         }
+    }
+
+    // A caller-supplied deadline can only SHORTEN the validated lifetime, never
+    // extend it: a mark later than expiresIn from now would keep token requests
+    // running after the server-issued code expired. The issuance-anchored mark
+    // performDeviceLogin passes is always at or before this bound (the clock
+    // only advances after issuance). An already-passed mark stays legal — it
+    // surfaces as the expired flow.
+    if (-deadline.elapsedNow() > expiresIn.seconds) {
+        throw BasecampException.Usage(
+            "pollDeviceToken: deadline must be no later than expiresIn seconds from now",
+        )
     }
 
     // Server-driven cadence: the initial interval plus sustained slow_down bumps.

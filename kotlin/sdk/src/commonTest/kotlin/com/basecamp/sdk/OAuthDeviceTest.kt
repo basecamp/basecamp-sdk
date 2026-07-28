@@ -643,6 +643,33 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollRejectsADeadlineBeyondTheCodeLifetime() = runTest {
+        // A caller-supplied deadline can only SHORTEN the validated lifetime:
+        // one later than expiresIn from now would keep token requests running
+        // after the server-issued code expired. Rejected as usage BEFORE any
+        // request. The equality edge — exactly expiresIn from now, the default
+        // and the issuance-anchored mark at zero elapsed — stays accepted.
+        val engine = MockEngine { respond(tokenJson, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val clock = TestTimeSource()
+        assertFailsWith<BasecampException.Usage> {
+            pollDeviceToken(
+                tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, clock, client,
+                deadline = clock.markNow() + 901.seconds,
+            )
+        }
+        assertEquals(0, engine.requestHistory.size, "guard must reject before any request")
+
+        val token = pollDeviceToken(
+            tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, clock, client,
+            deadline = clock.markNow() + 900.seconds,
+        )
+        assertEquals("device_access_token", token.accessToken)
+        client.close()
+    }
+
+    @Test
     fun pollNormalizesEmptyTokenErrorToHttpStatus() = runTest {
         // A 4xx token body of {"error":""} decodes cleanly (error is a required
         // non-null String, so no SerializationException fires), so it must be
