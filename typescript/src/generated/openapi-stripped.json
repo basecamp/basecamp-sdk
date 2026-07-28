@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Basecamp",
-    "version": "2026-07-26",
+    "version": "2026-07-28",
     "description": "Basecamp API",
     "contact": {
       "name": "Basecamp",
@@ -28493,7 +28493,8 @@
             "items": {
               "type": "integer",
               "format": "int64"
-            }
+            },
+            "description": "Replaces the entry's participants.\n\nOmitting this member preserves the current participants; sending an empty\narray clears them. That guarantee is BC3-side and recent: until\nbasecamp/bc3#12425, `Schedules::EntriesController#update` called\n`replace_participants` unconditionally, so any update omitting the key —\nincluding the shape in BC3's own \"Update a schedule entry\" doc example —\nsilently removed every participant and notified each one. The controller\nnow guards on the request actually addressing participants."
           },
           "all_day": {
             "type": "boolean",

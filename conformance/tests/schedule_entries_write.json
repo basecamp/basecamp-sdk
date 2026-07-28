@@ -1,0 +1,192 @@
+[
+  {
+    "name": "update-omits-participant-ids: an unaddressed participant list stays off the wire",
+    "description": "BC3 preserves the entry's participants only because the key is absent \u2014 until basecamp/bc3#12425 the controller called replace_participants unconditionally, so an omitted key wiped every participant and notified them. The SDK's job is narrow but load-bearing: when the caller says nothing about participants, participant_ids must not appear in the body at all. A compactor that emitted null, or a default that emitted [], would clear the list on the server.",
+    "operation": "UpdateScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "summary": "Team Meeting"
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "summary": "Team Meeting",
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "description_attachments": [],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "summary",
+        "expected": "Team Meeting",
+        "index": 0
+      },
+      {
+        "type": "requestBodyAbsent",
+        "path": "participant_ids",
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "participants",
+      "omission"
+    ]
+  },
+  {
+    "name": "update-empty-participant-ids: an explicit empty list reaches the wire",
+    "description": "The counterpart to omission: passing an explicitly empty list means \"remove everyone\" and must be sent as participant_ids: []. Ruby's compact_params and Python's _compact strip nil/None but not empty collections, so this distinguishes \"not addressed\" from \"addressed and cleared\" \u2014 the whole point of the BC3 guard.",
+    "operation": "UpdateScheduleEntry",
+    "method": "PUT",
+    "path": "/schedule_entries/{entryId}",
+    "pathParams": {
+      "entryId": 1069479523
+    },
+    "requestBody": {
+      "summary": "Team Meeting",
+      "participant_ids": []
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "id": 1069479523,
+          "status": "active",
+          "visible_to_clients": false,
+          "created_at": "2026-01-01T00:00:00Z",
+          "updated_at": "2026-01-01T00:00:00Z",
+          "title": "Team Meeting",
+          "inherits_status": true,
+          "type": "Schedule::Entry",
+          "url": "https://3.basecampapi.com/999/buckets/1/schedule_entries/1069479523.json",
+          "app_url": "https://3.basecamp.com/999/buckets/1/schedule_entries/1069479523",
+          "summary": "Team Meeting",
+          "all_day": false,
+          "starts_at": "2026-06-05T06:00:00Z",
+          "ends_at": "2026-06-05T08:30:00Z",
+          "participants": [
+            {
+              "id": 1049715914,
+              "name": "Victor Cooper"
+            },
+            {
+              "id": 1049715915,
+              "name": "Annie Bryan"
+            }
+          ],
+          "description_attachments": [],
+          "parent": {
+            "id": 1069479521,
+            "title": "Schedule",
+            "type": "Schedule",
+            "url": "https://3.basecampapi.com/999/buckets/1/schedules/1069479521.json",
+            "app_url": "https://3.basecamp.com/999/buckets/1/schedules/1069479521"
+          },
+          "bucket": {
+            "id": 1,
+            "name": "The Leto Laptop",
+            "type": "Project"
+          },
+          "creator": {
+            "id": 1049715914,
+            "name": "Victor Cooper",
+            "email_address": "victor@honchodesign.com",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+          }
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "requestMethod",
+        "expected": "PUT",
+        "index": 0
+      },
+      {
+        "type": "requestBody",
+        "path": "participant_ids",
+        "expected": [],
+        "index": 0
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "schedule-entries",
+      "participants",
+      "clear"
+    ]
+  }
+]

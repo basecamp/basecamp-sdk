@@ -690,6 +690,20 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        // Participants are presence-bearing: an absent key must not become an
+        // empty list on the wire, or BC3 clears the participants.
+        "UpdateScheduleEntry" -> {
+            val entryId = tc.pathParams.longParam("entryId")
+            val rb = tc.requestBody
+            account.schedules.updateEntry(entryId, UpdateScheduleEntryBody(
+                summary = rb?.get("summary")?.jsonPrimitive?.contentOrNull,
+                startsAt = rb?.get("starts_at")?.jsonPrimitive?.contentOrNull,
+                endsAt = rb?.get("ends_at")?.jsonPrimitive?.contentOrNull,
+                participantIds = rb?.get("participant_ids")?.jsonArray?.map { it.jsonPrimitive.long },
+            ))
+            DispatchResult()
+        }
+
         // Merge-safe composite: GET then PUT, resending the fetched due_on.
         "UpdateCard" -> {
             val cardId = tc.pathParams.longParam("cardId")

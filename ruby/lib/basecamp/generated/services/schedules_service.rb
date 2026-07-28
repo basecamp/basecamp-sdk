@@ -22,7 +22,15 @@ module Basecamp
       # @param starts_at [String, nil] starts at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
       # @param ends_at [String, nil] ends at (RFC3339 (e.g., 2024-12-15T09:00:00Z))
       # @param description [String, nil] description
-      # @param participant_ids [Array, nil] participant ids
+      # @param participant_ids [Array, nil] Replaces the entry's participants.
+      #   
+      #   Omitting this member preserves the current participants; sending an empty
+      #   array clears them. That guarantee is BC3-side and recent: until
+      #   basecamp/bc3#12425, `Schedules::EntriesController#update` called
+      #   `replace_participants` unconditionally, so any update omitting the key —
+      #   including the shape in BC3's own "Update a schedule entry" doc example —
+      #   silently removed every participant and notified each one. The controller
+      #   now guards on the request actually addressing participants.
       # @param all_day [Boolean, nil] all day
       # @param notify [Boolean, nil] notify
       # @return [Hash] response data

@@ -234,6 +234,17 @@ async function executeOperation(
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));
         break;
 
+      case "UpdateScheduleEntry":
+        // Only spread participantIds when the fixture carries the key: an
+        // absent key must not become [] or null on the wire.
+        await client.schedules.updateEntry(Number(params.entryId), {
+          ...(body.summary !== undefined ? { summary: String(body.summary) } : {}),
+          ...(body.participant_ids !== undefined
+            ? { participantIds: body.participant_ids as number[] }
+            : {}),
+        });
+        break;
+
       case "UpdateCard":
         // Merge-safe composite: GET then PUT, resending the fetched due_on.
         await client.cards.update(Number(params.cardId), {
