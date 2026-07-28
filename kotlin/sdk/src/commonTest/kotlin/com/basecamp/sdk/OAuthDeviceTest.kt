@@ -586,6 +586,28 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun requestCancelledDuringRoundTripBeatsAPIError() = runTest {
+        // Cancellation must also win over a completed NON-2XX on the
+        // authorization request: an engine that cancels and then serves a 500
+        // must propagate the native CancellationException, not Api.
+        val job = Job()
+        val engine = MockEngine {
+            job.cancel()
+            respond("{}", HttpStatusCode.InternalServerError, jsonHeaders)
+        }
+        val client = HttpClient(engine)
+        try {
+            assertFailsWith<CancellationException> {
+                withContext(job) {
+                    requestDeviceAuthorization(deviceEndpoint, "basecamp-cli", client = client)
+                }
+            }
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
     fun requestCancelledDuringRoundTripNeverReturnsACode() = runTest {
         // Same seam on the authorization request: a code pair served by an
         // engine that ignores cancellation must not reach a direct caller.

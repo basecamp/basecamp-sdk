@@ -209,6 +209,12 @@ suspend fun requestDeviceAuthorization(
             accept(ContentType.Application.Json)
             setBody(FormDataContent(params))
         }.execute { response ->
+            // Re-check cancellation BEFORE classifying the completed response:
+            // an engine that ignores coroutine cancellation can cancel the
+            // caller and still complete a non-2xx or malformed response, and
+            // the native CancellationException must win over every completed
+            // outcome — matching the token poll's pre-classification re-check.
+            currentCoroutineContext().ensureActive()
             val status = response.status.value
             if (status < 200 || status >= 300) {
                 // Non-2xx (including a suppressed 3xx) is api_error, not transport.
