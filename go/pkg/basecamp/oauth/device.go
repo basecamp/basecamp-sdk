@@ -255,6 +255,15 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	// Re-check cancellation BEFORE classifying the completed response: a
+	// context-ignoring RoundTripper can cancel the parent and still complete a
+	// non-2xx or malformed response, and cancellation must win over every
+	// completed outcome — matching the token poll's pre-classification
+	// re-check.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+	}
+
 	// A non-2xx is a hard failure whose body is unused — surface it by status
 	// BEFORE reading the body. Otherwise a slow/never-ending error body could hit
 	// the request timeout mid-read and be misclassified as a retryable transport

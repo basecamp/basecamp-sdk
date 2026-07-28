@@ -109,6 +109,25 @@ func TestRequestDeviceAuthorization_CompletionAfterCancelIsCancelled(t *testing.
 	}
 }
 
+func TestRequestDeviceAuthorization_CompletionAfterCancelBeatsAPIError(t *testing.T) {
+	// Cancellation must also win over a completed NON-2XX: a context-ignoring
+	// RoundTripper that cancels the caller and then returns a 500 must surface
+	// cancelled, not the api_error classification.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := &http.Client{Transport: completeAfterCancelStatusTransport{cancel: cancel, status: http.StatusInternalServerError}}
+	_, err := RequestDeviceAuthorization(ctx, "https://device.example.com/oauth/device", "basecamp-cli",
+		WithDeviceHTTPClient(client))
+	var dfErr *DeviceFlowError
+	if !errors.As(err, &dfErr) {
+		t.Fatalf("expected *DeviceFlowError, got %T: %v", err, err)
+	}
+	if dfErr.Reason != DeviceFlowCancelled {
+		t.Errorf("Reason = %v, want DeviceFlowCancelled", dfErr.Reason)
+	}
+}
+
 func TestRequestDeviceAuthorization_OmitsScopeAndValidates(t *testing.T) {
 	var sentScope string
 	var scopePresent bool
@@ -1503,6 +1522,24 @@ func (t completeAfterCancelTransport) RoundTrip(req *http.Request) (*http.Respon
 		StatusCode: http.StatusOK,
 		Header:     http.Header{"Content-Type": {"application/json"}},
 		Body:       io.NopCloser(strings.NewReader(t.body)),
+		Request:    req,
+	}, nil
+}
+
+// completeAfterCancelStatusTransport cancels the caller's context and then
+// completes a response with the given status anyway, modeling a custom
+// RoundTripper that does not honor cancellation.
+type completeAfterCancelStatusTransport struct {
+	cancel context.CancelFunc
+	status int
+}
+
+func (t completeAfterCancelStatusTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.cancel()
+	return &http.Response{
+		StatusCode: t.status,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader("{}")),
 		Request:    req,
 	}, nil
 }
