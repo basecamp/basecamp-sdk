@@ -4,6 +4,7 @@ require "faraday"
 require "json"
 require "net/http"
 require "openssl"
+require "timeout"
 require "uri"
 require "zlib"
 
@@ -237,10 +238,12 @@ module Basecamp
       #    Scope: the watchdog governs from session-start on. The CONNECTION
       #    phases (TCP connect, proxy CONNECT, TLS handshake) are not
       #    watchdog-interruptible — Net::HTTP marks the session started only
-      #    after they complete — but each is natively bounded by open_timeout,
-      #    and a post-connect deadline re-check refuses the request when setup
-      #    consumed the budget. Total wall clock is a small multiple of the
-      #    timeout, never unbounded.
+      #    after they complete — so connection setup runs under its own
+      #    whole-phase Timeout.timeout bound (a proxy's CONNECT response is
+      #    parsed under the per-read timeout, which a byte-dripping proxy
+      #    resets forever), and a post-connect deadline re-check refuses the
+      #    request when setup consumed the budget. Total wall clock is
+      #    ~timeout, never unbounded.
       #
       # The body streams under the same cap + deadline as the Faraday path, and
       # redirects are structurally never followed (+Net::HTTP#request+ has no
@@ -329,19 +332,27 @@ module Basecamp
         status = nil
         chunks = []
         total = 0
-        http.start do |session|
-          # The connection phases (TCP connect, proxy CONNECT, TLS handshake)
-          # are each natively bounded by open_timeout — the watchdog cannot
-          # interrupt them because Net::HTTP only marks the session started
-          # once they complete (finish raises IOError until then). Re-check the
-          # deadline the moment the session is up: if setup consumed the whole
-          # budget, fail now rather than granting the request a fresh header
-          # wait. Worst-case wall clock is a small multiple of the timeout
-          # (per-phase native bounds + watchdog from headers on), never
-          # unbounded.
+        # The connection phases (TCP connect, proxy CONNECT, TLS handshake) run
+        # before Net::HTTP marks the session started, so the watchdog cannot
+        # interrupt them (finish raises IOError until then) — and only TCP
+        # connect and the TLS handshake carry native open_timeout bounds. A
+        # proxy's CONNECT response is parsed under the PER-READ timeout, which
+        # resets on every dripped byte: without a whole-phase bound, an
+        # ENV-proxied HTTPS request could sit in connection setup indefinitely.
+        # Timeout.timeout's async raise is safe here precisely because the
+        # guarded region is ONLY connection setup: no response state exists
+        # yet, and Net::HTTP's connect rescue closes both sockets on any raise.
+        connect_remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        raise ReadDeadlineExceeded unless connect_remaining.positive?
+
+        Timeout.timeout(connect_remaining, Net::OpenTimeout) { http.start }
+        begin
+          # Re-check the deadline the moment the session is up: if setup
+          # consumed the whole budget, fail now rather than granting the
+          # request a fresh header wait.
           raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
-          session.request(request) do |response|
+          http.request(request) do |response|
             # Net::HTTP#request implicitly re-starts a finished session: if the
             # watchdog's close landed between the deadline re-check above and
             # the request write, this round trip rode a fresh post-deadline
@@ -351,7 +362,7 @@ module Basecamp
 
             status = response.code.to_i
             # Status-first: a skipped status's body is NEVER read — the raise
-            # unwinds through start, whose ensure closes the socket undrained.
+            # unwinds to the ensure below, which closes the socket undrained.
             raise SkipBody.new(status) if skip_status&.call(status)
 
             response.read_body do |chunk|
@@ -362,6 +373,15 @@ module Basecamp
 
               chunks << chunk
             end
+          end
+        ensure
+          # Block-form start would close the session itself; with the explicit
+          # start (needed so ONLY connection setup sits under Timeout.timeout)
+          # close it here.
+          begin
+            http.finish if http.started?
+          rescue IOError
+            # Already closed by the watchdog.
           end
         end
         [ status, chunks.join.force_encoding(Encoding::UTF_8) ]

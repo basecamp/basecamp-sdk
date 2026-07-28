@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "faraday"
 require "openssl"
 require "socket"
 
@@ -374,6 +375,51 @@ class OAuthTransportTest < Minitest::Test
 
       before = Basecamp::Oauth::Fetcher.classify_stream_error(shape, false)
       assert_kind_of Faraday::ConnectionFailed, before, "pre-deadline #{shape.class} must be a connection failure"
+    end
+  end
+
+  def test_proxy_connect_drip_is_bounded_by_the_deadline
+    # With an ENV-configured proxy and an HTTPS endpoint, Net::HTTP parses the
+    # proxy's CONNECT response BEFORE it marks the session started: the
+    # watchdog cannot close the connecting socket (finish raises IOError), and
+    # the per-read timeout resets on every dripped byte. A proxy dripping the
+    # CONNECT response below read_timeout must be cut by the whole-phase
+    # deadline bound, not left to per-read timeouts that never fire.
+    proxy = TCPServer.new("127.0.0.1", 0)
+    @servers << proxy
+    @server_threads << Thread.new do
+      loop do
+        conn = proxy.accept
+        @conns << conn
+        while (line = conn.gets) && line != "\r\n"; end
+        # Drip the CONNECT response one byte at a time, each gap well below
+        # the 0.5s per-read timeout, for ~7.6s — far past the 0.5s deadline.
+        "HTTP/1.1 200 Connection Established\r\n\r\n".each_char do |ch|
+          conn.write(ch)
+          sleep(0.2)
+        end
+      rescue IOError, SystemCallError
+        break
+      end
+    end
+
+    # Net::HTTP's :ENV proxy detection builds an http:// URI for the target
+    # and calls find_proxy on it, so it reads http_proxy even for TLS requests.
+    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
+    saved = ENV.to_h.slice(*proxy_env)
+    proxy_env.each { |k| ENV.delete(k) }
+    ENV["http_proxy"] = "http://127.0.0.1:#{proxy.addr[1]}"
+    begin
+      took = elapsed do
+        assert_raises(Faraday::TimeoutError) do
+          Basecamp::Oauth::Fetcher.stream_http(:get, "https://proxy-drip.test/token", timeout: 0.5)
+        end
+      end
+      assert_operator took, :<, 2.0, \
+        "CONNECT parsing must be cut at the ~0.5s deadline; per-read timeouts alone let the drip run ~8s"
+    ensure
+      proxy_env.each { |k| ENV.delete(k) }
+      saved.each { |k, v| ENV[k] = v }
     end
   end
 
