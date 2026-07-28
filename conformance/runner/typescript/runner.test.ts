@@ -468,7 +468,13 @@ function installMockHandlers(tc: TestCase): {
   );
   const handler = http.all(originPattern, async ({ request }) => {
     count++;
-    times.push(Date.now());
+    // performance.now(), not Date.now(): Date.now() is floored to whole
+    // milliseconds, so bracketing a 2000ms sleep can legitimately read 1999
+    // when the two reads land either side of a millisecond boundary. That made
+    // retry.json's `delayBetweenRequests: min 2000` assertion flaky here while
+    // the Go runner — which uses nanosecond time.Time — never saw it. This is a
+    // measurement fix; the SDK really does sleep for the full interval.
+    times.push(performance.now());
     const url = new URL(request.url);
     paths.push(url.pathname);
     methods.push(request.method);
