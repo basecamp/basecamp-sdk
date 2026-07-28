@@ -476,6 +476,36 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("usage");
   });
 
+  it("rejects a deadlineAtMs beyond the code lifetime (cannot extend polling past expiresIn)", async () => {
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      deadlineAtMs: 900_001,
+      clock: () => 0,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+  });
+
+  it("accepts a deadlineAtMs exactly at the code lifetime (issuance-anchored equality edge)", async () => {
+    queueTokenResponses([{ status: 200, body: tokenResponse }]);
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      deadlineAtMs: 900_000,
+      clock: () => 0,
+      sleepFn: () => Promise.resolve(),
+    });
+    expect(token.accessToken).toBe("device_access_token");
+  });
+
   it("treats a finite deadlineAtMs already in the past as expiry, not usage", async () => {
     // An issuance-anchored deadline fully consumed by a slow display hook is a
     // legitimate runtime outcome — it must surface as the expired flow, not a

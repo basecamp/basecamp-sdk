@@ -331,7 +331,8 @@ export interface PollDeviceTokenParams {
    * Absolute monotonic deadline (ms, same clock as `clock`) anchoring the
    * code's expiry at ISSUANCE. When set it overrides the `clock() + expiresIn`
    * anchoring so time elapsed before this call is never handed back to the
-   * lifetime; `expiresIn` still gates the caller-input validation.
+   * lifetime. Must be finite and no later than `expiresIn` seconds from now —
+   * a deadline can only shorten the validated lifetime, never extend it.
    */
   deadlineAtMs?: number;
   /** Cancellation signal — aborting rejects with DeviceFlowError("cancelled"). */
@@ -387,17 +388,19 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
 
   // Same caller-input sanity for the optional absolute deadline: Infinity polls
   // forever, NaN defeats every deadline comparison and wait clamp, and a
-  // finite-but-absurd future timestamp reintroduces the unbounded lifetime
-  // MAX_DEVICE_SECONDS exists to prevent. A deadline at/below "now" is legal —
-  // it surfaces as device_flow_expired, matching an issuance-anchored deadline
-  // fully consumed by a slow display hook.
+  // deadline later than the VALIDATED expiresIn would extend polling past the
+  // server-issued code lifetime. The bound is expiresIn from now — the
+  // issuance-anchored deadline performDeviceLogin passes is always at or
+  // before it (the clock only advances after issuance). A deadline at/below
+  // "now" is legal — it surfaces as device_flow_expired, matching an
+  // issuance-anchored deadline fully consumed by a slow display hook.
   if (
     params.deadlineAtMs !== undefined &&
-    (!Number.isFinite(params.deadlineAtMs) || params.deadlineAtMs > clock() + MAX_DEVICE_SECONDS * 1000)
+    (!Number.isFinite(params.deadlineAtMs) || params.deadlineAtMs > clock() + expiresIn * 1000)
   ) {
     throw new BasecampError(
       "usage",
-      `pollDeviceToken: deadlineAtMs must be a finite epoch-milliseconds timestamp no more than ${MAX_DEVICE_SECONDS} seconds in the future`
+      "pollDeviceToken: deadlineAtMs must be a finite timestamp no later than expiresIn seconds from now"
     );
   }
 
