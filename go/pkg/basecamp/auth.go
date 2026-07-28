@@ -394,6 +394,14 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		return ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token refresh response: %v", err))
 	}
 
+	// A 200 with a missing or empty access_token is a malformed response
+	// (SPEC §16), not a rotation: persisting it would overwrite working
+	// credentials with an unusable empty token — an effective logout. Fail
+	// before mutating anything, matching the device/exchange paths.
+	if tokenResp.AccessToken == "" {
+		return ErrAPI(resp.StatusCode, "token refresh response missing access_token")
+	}
+
 	creds.AccessToken = tokenResp.AccessToken
 	if tokenResp.RefreshToken != "" {
 		creds.RefreshToken = tokenResp.RefreshToken

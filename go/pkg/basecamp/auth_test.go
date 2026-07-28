@@ -455,6 +455,55 @@ func TestAuthManager_Refresh_RejectsEmptyResource(t *testing.T) {
 	}
 }
 
+func TestAuthManager_Refresh_MissingAccessTokenIsAPIError(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// A 200 with a missing (or empty) access_token is a malformed response,
+	// not a rotation: persisting it would overwrite working credentials with
+	// an unusable empty token — an effective logout. The device and exchange
+	// paths already classify this as an api fault; the refresh must too.
+	for _, body := range []map[string]any{
+		{"refresh_token": "rotated-refresh"},
+		{"access_token": "", "refresh_token": "rotated-refresh"},
+	} {
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(body)
+		}))
+
+		store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+		origin := NormalizeBaseURL(ts.URL)
+		_ = store.Save(origin, &Credentials{
+			AccessToken:   "old-access",
+			RefreshToken:  "old-refresh",
+			ExpiresAt:     1,
+			TokenEndpoint: ts.URL + "/token",
+		})
+
+		cfg := &Config{BaseURL: ts.URL}
+		m := NewAuthManagerWithStore(cfg, ts.Client(), store)
+
+		err := m.Refresh(context.Background())
+		if err == nil {
+			t.Fatalf("body %v: expected error for missing access_token", body)
+		}
+		if !strings.Contains(err.Error(), "access_token") {
+			t.Errorf("body %v: error = %q, expected mention of access_token", body, err.Error())
+		}
+
+		// The stored credentials must be untouched — no rotation persisted.
+		creds, _ := store.Load(origin)
+		if creds.AccessToken != "old-access" {
+			t.Errorf("body %v: AccessToken = %q, want old-access untouched", body, creds.AccessToken)
+		}
+		if creds.RefreshToken != "old-refresh" {
+			t.Errorf("body %v: RefreshToken = %q, want old-refresh untouched", body, creds.RefreshToken)
+		}
+		ts.Close()
+	}
+}
+
 func TestAuthManager_Refresh_NonStringResourceIsAPIError(t *testing.T) {
 	t.Setenv("BASECAMP_TOKEN", "")
 	t.Setenv("BASECAMP_NO_KEYRING", "1")
