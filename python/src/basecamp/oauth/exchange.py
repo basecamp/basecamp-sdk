@@ -57,8 +57,11 @@ def refresh_token(
     *,
     client_id: str | None = None,
     client_secret: str | None = None,
-    resource: str | None = None,
     use_legacy_format: bool = False,
+    # APPENDED LAST (SPEC append-only refresh contract): keyword-only keeps
+    # calls source-compatible, but reflected/published signature order must
+    # not shift existing parameters.
+    resource: str | None = None,
 ) -> OAuthToken:
     """Refresh an access token.
 
