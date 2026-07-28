@@ -1332,3 +1332,30 @@ describe("pollDeviceToken terminal statuses without body reads", () => {
     expect(token.accessToken).toBe("device_access_token");
   });
 });
+
+describe("resolveDeviceTimeoutMs ceiling", () => {
+  it("falls back to the default beyond the shared 3600s ceiling", async () => {
+    // A large finite timeoutMs (up to the old ~24.8-day bound) would hold a
+    // stalled request open for weeks — beyond 3600s it must resolve to the
+    // default like NaN/non-positive values, matching Go/Python/Ruby.
+    let requests = 0;
+    server.use(
+      mswHttp.post(TOKEN_ENDPOINT, () => {
+        requests += 1;
+        return HttpResponse.json(tokenResponse);
+      })
+    );
+
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      timeoutMs: 24 * 24 * 3600 * 1000,
+      sleepFn: recordingSleep().fn,
+    });
+    expect(token.accessToken).toBe("device_access_token");
+    expect(requests).toBe(1);
+  });
+});

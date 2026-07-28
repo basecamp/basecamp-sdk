@@ -32,16 +32,26 @@ const MAX_DEVICE_SECONDS = 2_147_483;
 const DEFAULT_DEVICE_TIMEOUT_MS = 30_000;
 
 /**
+ * Ceiling (ms) for a caller-supplied per-request timeout: the shared 3600 s
+ * bound (Go's maxDeviceRequestTimeout, Python's _MAX_DEVICE_REQUEST_TIMEOUT,
+ * Ruby's Fetcher::MAX_REQUEST_TIMEOUT). A large finite value — up to the
+ * ~24.8-day MAX_DEVICE_SECONDS timer bound this previously allowed — would
+ * hold a stalled request open for weeks, defeating the bounded-request
+ * guarantee.
+ */
+const MAX_DEVICE_REQUEST_TIMEOUT_MS = 3600 * 1000;
+
+/**
  * Coerce a caller-supplied request timeout (ms) to a finite, positive, timer-safe
- * value. `setTimeout` silently coerces a non-finite delay (NaN/Infinity) or one
- * beyond its 32-bit range to ~1 ms — an immediate abort that would masquerade as a
- * `DeviceFlowError("transport")` (and, in the poll loop, as repeated timeout
- * backoffs). Fall back to the default instead, mirroring how Python/Ruby normalize
- * an invalid device timeout. `MAX_DEVICE_SECONDS * 1000` stays safely under the
- * 2^31 ms `setTimeout` ceiling.
+ * value no greater than the shared ceiling. `setTimeout` silently coerces a
+ * non-finite delay (NaN/Infinity) or one beyond its 32-bit range to ~1 ms — an
+ * immediate abort that would masquerade as a `DeviceFlowError("transport")`
+ * (and, in the poll loop, as repeated timeout backoffs). Fall back to the
+ * default instead, mirroring how the other SDKs normalize an invalid device
+ * timeout.
  */
 function resolveDeviceTimeoutMs(timeoutMs: number): number {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_DEVICE_SECONDS * 1000) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_DEVICE_REQUEST_TIMEOUT_MS) {
     return DEFAULT_DEVICE_TIMEOUT_MS;
   }
   return timeoutMs;
