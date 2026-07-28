@@ -758,8 +758,12 @@ module Basecamp
           # overflowing — returns 0 so the caller falls back to the current
           # interval.
           def parse_retry_after_seconds(header)
-            if header.is_a?(String) && header.strip.match?(/\A\d+\z/)
-              value = header.strip.to_i
+            # ASCII SP/HTAB only (RFC 9110 OWS) — NOT String#strip, which also
+            # removes \v \f \r \n \0 and would trim a malformed value into
+            # validity (SPEC §16 pins SP/HTAB-only trimming).
+            trimmed = header.is_a?(String) ? header.gsub(/\A[ \t]+|[ \t]+\z/, "") : ""
+            if trimmed.match?(/\A\d+\z/)
+              value = trimmed.to_i
               (1..MAX_DEVICE_SECONDS).cover?(value) ? value : 0
             else
               0

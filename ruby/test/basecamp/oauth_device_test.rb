@@ -1443,6 +1443,24 @@ class OAuthDeviceTest < Minitest::Test
     end
   end
 
+  def test_parse_retry_after_trims_only_ascii_ows
+    # RFC 9110: delta-seconds is 1*DIGIT and OWS is only SP/HTAB. String#strip
+    # also removes \v \f \r \n \0 — which would trim a malformed value into
+    # validity — so the parser trims exactly SP/HTAB (SPEC \u00a716). Control
+    # characters cannot ride a WebMock header, so the parser is exercised
+    # directly, like the NBSP cases in the other SDKs.
+    parse = ->(header) { Basecamp::Oauth::DeviceFlow.send(:parse_retry_after_seconds, header) }
+
+    assert_equal 30, parse.call(" 30 ")
+    assert_equal 30, parse.call("\t30\t")
+    assert_equal 30, parse.call(" \t30\t ")
+    assert_equal 0, parse.call("\v30")
+    assert_equal 0, parse.call("\f30\f")
+    assert_equal 0, parse.call("\r30\n")
+    assert_equal 0, parse.call("\u00a030")
+    assert_equal 0, parse.call("\u200930")
+  end
+
   def test_poll_429_retry_after_override_decays_after_one_wait
     stub_request(:post, TOKEN_ENDPOINT).to_return(
       json429(retry_after: "30"),
