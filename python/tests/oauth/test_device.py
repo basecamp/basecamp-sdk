@@ -1036,6 +1036,7 @@ class TestParseRetryAfterSeconds:
         from basecamp.oauth.device import _parse_retry_after_seconds
 
         assert _parse_retry_after_seconds("\u00b2") == 0
+        assert _parse_retry_after_seconds("00000000030") == 30  # padded in-range delta
         assert _parse_retry_after_seconds("\u0663\u0660") == 0  # Arabic-Indic 30
         assert _parse_retry_after_seconds("9" * 5000) == 0
         assert _parse_retry_after_seconds("+30") == 0

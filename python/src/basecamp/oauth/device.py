@@ -278,13 +278,20 @@ def _parse_retry_after_seconds(header: str | None) -> int:
     NOT ``str.isdigit()``: it accepts non-ASCII digit-shaped characters
     (``"²"``, ``"٣"``) that ``int()`` rejects with ValueError, and an unbounded
     digit string would trip CPython's int-conversion length limit — both would
-    escape the loop as a crash instead of a fallback. A 10-digit ceiling
+    escape the loop as a crash instead of a fallback. Leading zeros are
+    stripped BEFORE the length guard so a padded in-range delta
+    (``"00000000030"`` = 30) is honored; the 10-significant-digit ceiling
     comfortably covers MAX_DEVICE_SECONDS (7 digits) while keeping ``int()``
     total.
     """
-    if header is None or not re.fullmatch(r"[0-9]{1,10}", header.strip()):
+    if header is None or not re.fullmatch(r"[0-9]+", header.strip()):
         return 0
-    value = int(header.strip())
+    significant = header.strip().lstrip("0")
+    if not significant or len(significant) > 10:
+        # All zeros (value 0, non-positive) or too many significant digits
+        # (overflows the ceiling regardless) → interval fallback.
+        return 0
+    value = int(significant)
     return value if 0 < value <= MAX_DEVICE_SECONDS else 0
 
 
