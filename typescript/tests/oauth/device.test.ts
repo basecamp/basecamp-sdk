@@ -1266,3 +1266,28 @@ describe("pollDeviceToken exact-200 contract", () => {
     ).rejects.toMatchObject({ code: "api_error" });
   });
 });
+
+describe("pollDeviceToken protocol errors only on 4xx", () => {
+  it.each([201, 202, 500])(
+    "terminates on a %d carrying authorization_pending instead of polling",
+    async (status) => {
+      // OAuth protocol states are recognized only on a 4xx: a nonstandard 2xx
+      // or a 5xx carrying a crafted pending body must not extend the flow.
+      const polled = queueTokenResponses([
+        { status, body: { error: "authorization_pending" } },
+      ]);
+
+      await expect(
+        pollDeviceToken({
+          tokenEndpoint: TOKEN_ENDPOINT,
+          clientId: "basecamp-cli",
+          deviceCode: "dev-code-123",
+          interval: 5,
+          expiresIn: 900,
+          sleepFn: recordingSleep().fn,
+        })
+      ).rejects.toMatchObject({ code: "api_error" });
+      expect(polled()).toBe(1);
+    }
+  );
+});

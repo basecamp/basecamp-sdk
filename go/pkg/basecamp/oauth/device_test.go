@@ -1525,3 +1525,58 @@ func TestPollDeviceToken_Non200SuccessIsTerminal(t *testing.T) {
 		assertBasecampCode(t, err, basecamp.CodeAPI)
 	}
 }
+
+func TestPollDeviceToken_ProtocolErrorsOnlyOn4xx(t *testing.T) {
+	// OAuth protocol states are recognized only on a 4xx: a nonstandard 2xx or
+	// a 5xx carrying a crafted authorization_pending body must terminate as
+	// api_error, never extend polling.
+	for _, status := range []int{201, 202, 500} {
+		srv, calls := queueTokenResponses(t, []struct {
+			status int
+			body   map[string]any
+		}{{status, map[string]any{"error": "authorization_pending"}}})
+		sleep := &recordingSleep{}
+
+		_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+			WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+		assertBasecampCode(t, err, basecamp.CodeAPI)
+		if *calls != 1 {
+			t.Errorf("status %d: polled %d times, want exactly 1 (no retry)", status, *calls)
+		}
+	}
+}
+
+func TestPollDeviceToken_RequestTimeoutClampedToRemainingLifetime(t *testing.T) {
+	// Near expiry the per-request budget must shrink to the remaining code
+	// lifetime: with 15s left, a 30s default request timeout would let a
+	// stalled POST blow through the monotonic deadline.
+	var captured time.Duration
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if d, ok := req.Context().Deadline(); ok {
+			captured = time.Until(d)
+		}
+		return nil, errors.New("stop after capturing the deadline")
+	})
+
+	// Scripted clock: anchor t=0, lifetime 20s; first wait 5s → 15s remaining
+	// at POST time.
+	times := []time.Time{time.Unix(0, 0), time.Unix(0, 0), time.Unix(5, 0)}
+	idx := 0
+	clock := func() time.Time {
+		v := times[min(idx, len(times)-1)]
+		idx++
+		return v
+	}
+	sleep := &recordingSleep{}
+
+	_, _ = PollDeviceToken(context.Background(), "https://issuer.example/token", "basecamp-cli", testDeviceCode, 5, 20,
+		WithDeviceHTTPClient(&http.Client{Transport: transport}), WithDeviceSleep(sleep.fn), WithDeviceClock(clock))
+
+	if captured <= 0 || captured > 15*time.Second+500*time.Millisecond {
+		t.Errorf("request deadline = %v from now, want ≤ ~15s (clamped to remaining lifetime, not the 30s default)", captured)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }

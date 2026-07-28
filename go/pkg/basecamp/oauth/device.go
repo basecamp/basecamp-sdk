@@ -396,11 +396,15 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 		if err := ctx.Err(); err != nil {
 			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
 		}
-		if !cfg.clock().Before(deadline) {
+		postRemaining := deadline.Sub(cfg.clock())
+		if postRemaining <= 0 {
 			return nil, &DeviceFlowError{Reason: DeviceFlowExpired}
 		}
 
-		result := postDeviceToken(ctx, cfg, tokenEndpoint, form)
+		// Bound the request by the REMAINING code lifetime as well as the
+		// per-request timeout: near expiry, a stalled token POST must not hold
+		// the flow past the monotonic deadline for the full request budget.
+		result := postDeviceToken(ctx, cfg, tokenEndpoint, form, min(cfg.timeout, postRemaining))
 		switch result.kind {
 		case pollToken:
 			return result.token, nil
@@ -475,8 +479,8 @@ type pollResult struct {
 // net timeout) is pollTimeout (→ backoff); any other transport failure is
 // pollTransport. A 2xx yields a Token; a 3xx is pollInvalidResponse; any other
 // non-2xx with an OAuth error body yields pollOAuthError.
-func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string, form url.Values) pollResult {
-	reqCtx, cancel := context.WithTimeout(ctx, cfg.timeout)
+func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string, form url.Values, timeout time.Duration) pollResult {
+	reqCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, tokenEndpoint, strings.NewReader(form.Encode()))
@@ -584,16 +588,21 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		return pollResult{kind: pollToken, token: &token}
 	}
 
-	// Redirects are suppressed (http.ErrUseLastResponse), so a 3xx lands here
-	// as-is. A redirect is never a valid token response — classify it as an api
-	// fault BEFORE the OAuth-error body parse so a crafted
-	// authorization_pending body on a 3xx cannot keep the loop polling.
-	var errResp struct {
-		Error string `json:"error"`
-	}
+	// Recognize OAuth protocol error codes ONLY on a 4xx (RFC 8628 §3.5 error
+	// responses are 400-class): a nonstandard 2xx (201/202) or a 5xx carrying a
+	// crafted {"error":"authorization_pending"} body must not keep the loop
+	// polling — only a 200 can produce a token and only a 4xx can produce a
+	// protocol state. Everything else is forced to http_<status>, which the
+	// loop terminates as api_error. (3xx never reaches here — classified above
+	// before the body read.)
 	oauthError := fmt.Sprintf("http_%d", resp.StatusCode)
-	if json.Unmarshal(body, &errResp) == nil && errResp.Error != "" {
-		oauthError = errResp.Error
+	if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(body, &errResp) == nil && errResp.Error != "" {
+			oauthError = errResp.Error
+		}
 	}
 	return pollResult{kind: pollOAuthError, oauthError: oauthError, status: resp.StatusCode}
 }

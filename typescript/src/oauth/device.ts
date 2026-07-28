@@ -380,13 +380,23 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
       throw err;
     }
 
-    if (clock() >= deadline) {
+    const postRemainingMs = deadline - clock();
+    if (postRemainingMs <= 0) {
       throw new DeviceFlowError("expired", "Device code expired before authorization completed");
     }
 
     let result: TokenPollResult;
     try {
-      result = await postDeviceToken(tokenEndpoint, body, customFetch, timeoutMs, signal);
+      // Bound the request by the REMAINING code lifetime as well as the
+      // per-request timeout: near expiry, a stalled token POST must not hold
+      // the flow past the monotonic deadline for the full request budget.
+      result = await postDeviceToken(
+        tokenEndpoint,
+        body,
+        customFetch,
+        Math.min(timeoutMs, postRemainingMs),
+        signal
+      );
     } catch (err) {
       if (isAbort(err) && signal?.aborted) {
         throw new DeviceFlowError("cancelled", "Device flow cancelled");
@@ -554,11 +564,18 @@ async function postDeviceToken(
         },
       };
     }
-    // Validate `error` as a non-empty string: a non-string (e.g. `{"error": 123}`)
-    // must not be treated as an OAuth error code — fall back to http_<status>,
-    // matching the other SDKs (Ruby String-checks, Kotlin falls back on decode).
+    // Recognize OAuth protocol error codes ONLY on a 4xx (RFC 8628 §3.5 error
+    // responses are 400-class): a nonstandard 2xx (201/202) or a 5xx carrying
+    // a crafted authorization_pending body must not keep the loop polling —
+    // only a 200 can produce a token and only a 4xx a protocol state. The
+    // `error` must also be a non-empty string: a non-string (`{"error": 123}`)
+    // is not an OAuth error code. Everything else falls back to http_<status>,
+    // which the loop terminates as api_error.
     const rawError = (data as { error?: unknown }).error;
-    const error = typeof rawError === "string" && rawError !== "" ? rawError : `http_${response.status}`;
+    const error =
+      response.status >= 400 && response.status < 500 && typeof rawError === "string" && rawError !== ""
+        ? rawError
+        : `http_${response.status}`;
     return { kind: "error", error, status: response.status };
   } finally {
     clearTimeout(timeoutId);

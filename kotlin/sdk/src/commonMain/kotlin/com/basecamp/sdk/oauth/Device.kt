@@ -5,6 +5,7 @@ import com.basecamp.sdk.http.currentTimeMillis
 import com.basecamp.sdk.requireSecureEndpoint
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.accept
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.preparePost
@@ -351,12 +352,22 @@ suspend fun pollDeviceToken(
             val wait = minOf(maxOf(intervalSeconds, backoffSeconds).seconds, remaining)
             delay(if (wait > Duration.ZERO) wait else Duration.ZERO)
 
-            if (deadline.hasPassedNow()) {
+            val postRemaining = -deadline.elapsedNow()
+            if (postRemaining <= Duration.ZERO) {
                 throw BasecampException.DeviceFlow(BasecampException.DEVICE_EXPIRED)
             }
 
             val result = try {
-                postDeviceTokenPoll(httpClient, tokenEndpoint, params)
+                // Bound the request by the REMAINING code lifetime as well as
+                // the per-request timeout: near expiry, a stalled token POST
+                // must not hold the flow past the monotonic deadline for the
+                // full request budget.
+                postDeviceTokenPoll(
+                    httpClient,
+                    tokenEndpoint,
+                    params,
+                    minOf(DEVICE_REQUEST_TIMEOUT_MS, postRemaining.inWholeMilliseconds.coerceAtLeast(1)),
+                )
             } catch (e: CancellationException) {
                 // Cooperative coroutine cancellation — propagate, never wrap.
                 throw e
@@ -424,9 +435,13 @@ private suspend fun postDeviceTokenPoll(
     client: HttpClient,
     tokenEndpoint: String,
     params: Parameters,
+    perRequestTimeoutMillis: Long = DEVICE_REQUEST_TIMEOUT_MS,
 ): PollResult = client.preparePost(tokenEndpoint) {
     accept(ContentType.Application.Json)
     setBody(FormDataContent(params))
+    // Per-request override of the installed HttpTimeout: the poll loop clamps
+    // this to the remaining code lifetime near expiry.
+    timeout { requestTimeoutMillis = perRequestTimeoutMillis }
 }.execute { response ->
     val status = response.status.value
     // A suppressed 3xx is an api fault whose body is unused (redirects are off, so a
@@ -506,14 +521,23 @@ private suspend fun postDeviceTokenPoll(
         // Non-200 (a 4xx OAuth error, or a nonstandard 2xx): the OAuth error is
         // carried in the body (3xx already returned above); a body without an
         // error code falls back to http_<status> and terminates as api_error.
-        val error = try {
-            // An explicit empty "error" decodes cleanly (the field is a required
-            // non-null String, so no SerializationException fires) — normalize it to
-            // http_<status> here so a blank error code is never surfaced as a dangling
-            // message. Matches Go/TS/Python/Ruby, which all coerce a blank error code.
-            deviceJson.decodeFromString<OAuthErrorResponse>(body).error.ifEmpty { "http_$status" }
-        } catch (e: SerializationException) {
+        // OAuth protocol error codes are recognized ONLY on a 4xx (RFC 8628
+        // §3.5 error responses are 400-class): a nonstandard 2xx (201/202) or
+        // a 5xx carrying a crafted authorization_pending body must not keep
+        // the loop polling — only a 200 can produce a token and only a 4xx a
+        // protocol state.
+        val error = if (status !in 400..499) {
             "http_$status"
+        } else {
+            try {
+                // An explicit empty "error" decodes cleanly (the field is a required
+                // non-null String, so no SerializationException fires) — normalize it to
+                // http_<status> here so a blank error code is never surfaced as a dangling
+                // message. Matches Go/TS/Python/Ruby, which all coerce a blank error code.
+                deviceJson.decodeFromString<OAuthErrorResponse>(body).error.ifEmpty { "http_$status" }
+            } catch (e: SerializationException) {
+                "http_$status"
+            }
         }
         when (error) {
             "authorization_pending" -> PollResult.Pending

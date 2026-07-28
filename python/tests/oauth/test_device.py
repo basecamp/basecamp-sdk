@@ -878,6 +878,23 @@ class TestPollDeviceToken:
         assert now["t"] <= 20
 
 
+class TestPollDeviceTokenProtocolErrorsOnlyOn4xx:
+    @respx.mock
+    @pytest.mark.parametrize("status", [201, 202, 500])
+    def test_pending_outside_4xx_is_terminal(self, status):
+        # OAuth protocol states are recognized only on a 4xx: a nonstandard
+        # 2xx or a 5xx carrying a crafted pending body must not extend polling.
+        route = _queue_token_responses([httpx.Response(status, json={"error": "authorization_pending"})])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == status
+        assert len(route.calls) == 1
+
+
 class TestPollDeviceTokenExact200:
     @respx.mock
     @pytest.mark.parametrize("status", [201, 202])

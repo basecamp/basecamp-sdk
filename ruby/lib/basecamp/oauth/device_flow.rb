@@ -199,10 +199,16 @@ module Basecamp
             wait_cancellable([ [ interval_seconds, backoff_seconds ].max, deadline - now ].min, cancelled, sleeper)
 
             raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
-            raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if clock.call >= deadline
+
+            post_remaining = deadline - clock.call
+            raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if post_remaining <= 0
 
             outcome = begin
-              post_device_token(client, token_endpoint, params, timeout: timeout, max_body_bytes: max_body_bytes)
+              # Bound the request by the REMAINING code lifetime as well as the
+              # per-request timeout: near expiry, a stalled token POST must not
+              # hold the flow past the monotonic deadline for the full budget.
+              post_device_token(client, token_endpoint, params,
+                timeout: [ timeout, post_remaining ].min, max_body_bytes: max_body_bytes)
             rescue Faraday::TimeoutError
               # A connection timeout is transient: back off exponentially and
               # keep polling rather than ending the flow. Only the backoff grows —
@@ -560,8 +566,15 @@ module Basecamp
 
               [ :token, build_token(data, status), status ]
             else
+              # Recognize OAuth protocol error codes ONLY on a 4xx (RFC 8628
+              # §3.5 error responses are 400-class): a nonstandard 2xx
+              # (201/202) or a 5xx carrying a crafted authorization_pending
+              # body must not keep the loop polling — only a 200 can produce a
+              # token and only a 4xx a protocol state. Everything else falls
+              # back to http_<status>, which the loop terminates as api_error.
               error = data["error"]
-              [ :error, error.is_a?(String) && !error.empty? ? error : "http_#{status}", status ]
+              recognized = (400..499).cover?(status) && error.is_a?(String) && !error.empty?
+              [ :error, recognized ? error : "http_#{status}", status ]
             end
           end
 

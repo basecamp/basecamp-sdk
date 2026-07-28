@@ -722,6 +722,29 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollProtocolErrorsOnlyOn4xx() = runTest {
+        // OAuth protocol states are recognized only on a 4xx: a nonstandard
+        // 2xx or a 5xx carrying a crafted authorization_pending body must
+        // terminate as api_error, never extend polling.
+        for (status in listOf(HttpStatusCode.Created, HttpStatusCode.Accepted, HttpStatusCode.InternalServerError)) {
+            var polls = 0
+            val engine = MockEngine {
+                polls += 1
+                respond(errorJson("authorization_pending"), status, jsonHeaders)
+            }
+            val client = HttpClient(engine)
+
+            val e = assertFailsWith<BasecampException.Api> {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+            assertEquals("api_error", e.code)
+            assertEquals(status.value, e.httpStatus)
+            assertEquals(1, polls)
+            client.close()
+        }
+    }
+
+    @Test
     fun pollNon200SuccessIsTerminal() = runTest {
         // RFC 8628/6749 token responses are exactly 200 (SPEC §16): a
         // nonstandard 201/202 carrying an access_token must not complete polling.

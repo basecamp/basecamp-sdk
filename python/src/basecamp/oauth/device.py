@@ -430,11 +430,15 @@ def poll_device_token(
         if should_cancel is not None and should_cancel():
             raise DeviceFlowError("cancelled", "Device flow cancelled")
 
-        if clock() >= deadline:
+        post_remaining = deadline - clock()
+        if post_remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
 
         try:
-            result = _post_device_token(token_endpoint, params, timeout, max_body_bytes)
+            # Bound the request by the REMAINING code lifetime as well as the
+            # per-request timeout: near expiry, a stalled token POST must not
+            # hold the flow past the monotonic deadline for the full budget.
+            result = _post_device_token(token_endpoint, params, min(timeout, post_remaining), max_body_bytes)
         except httpx.TimeoutException:
             # A connection timeout → back off exponentially and keep polling.
             backoff_seconds = min(backoff_seconds * 2, MAX_BACKOFF_SECONDS)
@@ -597,8 +601,13 @@ def _post_device_token(
     # Validate ``error`` as a non-empty string: a non-string (e.g. ``{"error": 123}``)
     # must not be treated as an OAuth error code — fall back to ``http_<status>``,
     # matching the other SDKs.
+    # Recognize OAuth protocol error codes ONLY on a 4xx (RFC 8628 §3.5 error
+    # responses are 400-class): a nonstandard 2xx (201/202) or a 5xx carrying a
+    # crafted authorization_pending body must not keep the loop polling — only
+    # a 200 can produce a token and only a 4xx a protocol state. Everything
+    # else falls back to http_<status>, which the loop terminates as api_error.
     raw_error = data.get("error")
-    error = raw_error if isinstance(raw_error, str) and raw_error else f"http_{status}"
+    error = raw_error if 400 <= status < 500 and isinstance(raw_error, str) and raw_error else f"http_{status}"
     return _PollResult(error=error, status=status)
 
 

@@ -1291,7 +1291,16 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               # would issue one POST for a code already known to be expired
        POST tokenEndpoint: grant_type=urn:ietf:params:oauth:grant-type:device_code,
                            device_code, client_id
+            # the per-request timeout is min(request timeout, remaining
+            # lifetime): near expiry a stalled POST must not hold the flow past
+            # the monotonic deadline for the full request budget
        CASE response:
+         # ONLY a 200 can produce a token, and OAuth protocol error codes
+         # (authorization_pending / slow_down / access_denied / expired_token)
+         # are recognized ONLY on a 4xx (RFC 8628 §3.5 error responses are
+         # 400-class). Any other status — a nonstandard 2xx like 201/202, or a
+         # 5xx — is terminal api_error (http_<status>) even if its body
+         # carries a protocol error code.
          200 with a non-empty access_token → validate optional fields, return Token
          200 that is not a JSON object, or lacks a non-empty access_token
               → raise api_error (a malformed success body is NOT a usable Token,

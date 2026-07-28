@@ -388,6 +388,28 @@ class OAuthDeviceTest < Minitest::Test
     end
   end
 
+  def test_poll_protocol_errors_only_on_4xx
+    # OAuth protocol states are recognized only on a 4xx: a nonstandard 2xx or
+    # a 5xx carrying a crafted authorization_pending body must terminate as
+    # api_error, never extend polling.
+    [ 201, 202, 500 ].each do |status|
+      stub_request(:post, TOKEN_ENDPOINT)
+        .to_return(json({ "error" => "authorization_pending" }, status: status))
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+      assert_equal status, error.http_status
+      assert_requested :post, TOKEN_ENDPOINT, times: 1
+      WebMock.reset!
+    end
+  end
+
   def test_poll_accepts_token_response_without_expires_in
     # expires_in is optional (RFC 6749 §5.1): absent means no known expiry, so
     # the Token carries nil expires_in/expires_at rather than raising.
