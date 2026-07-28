@@ -13,6 +13,7 @@ terminated, no leaked connection.
 from __future__ import annotations
 
 import asyncio
+import math
 import threading
 from collections.abc import Callable
 
@@ -73,6 +74,27 @@ def request_bounded(
         # rejected server-side and hard to debug; fail fast on the misuse.
         raise ValueError("request_bounded: params (a form body) is only valid with POST")
 
+    # Defensive enforcement of the caller-normalization contract: an inf/nan/
+    # non-positive/oversized timeout would disable or overflow the wait_for
+    # deadline and the thread join — the very bound this module exists to
+    # provide. Callers run through _normalize_timeout; a violation here is a
+    # programming error, so fail fast. Range checks run BEFORE math.isfinite:
+    # isfinite converts an int to float, so an astronomically large int
+    # (10**400) would raise OverflowError out of the guard instead of this
+    # ValueError; int/float comparisons never convert, and NaN compares False
+    # on both, falling through to the isfinite reject.
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or timeout <= 0
+        or timeout > _MAX_REQUEST_TIMEOUT
+        or not math.isfinite(timeout)
+    ):
+        raise ValueError(
+            "request_bounded: timeout must be a finite positive number of seconds "
+            f"no greater than {_MAX_REQUEST_TIMEOUT}"
+        )
+
     async def _do() -> tuple[int, bytes]:
         async with (
             httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
@@ -96,8 +118,14 @@ def request_bounded(
     # under that interval could otherwise hold the request open indefinitely
     # (verified); closing a sync client from a watchdog does not interrupt a blocked
     # read either. asyncio.wait_for CANCELS the request (and closes the socket) at
-    # the deadline — the caller is bounded AND the work is actually terminated, no
-    # leaked worker.
+    # the deadline — the caller is bounded AND the socket work is actually
+    # terminated. Known residual: a getaddrinfo blocked in the OS resolver runs on
+    # an executor thread that cancellation cannot interrupt, so a slow-DNS attempt
+    # leaves a daemon worker alive until the RESOLVER's own timeout (seconds to
+    # ~30s, OS-bounded) — the caller still returns at the deadline, the stragglers
+    # are bounded in lifetime by the resolver and in count by the attempt rate,
+    # and they never block interpreter exit. Sync Python offers no stronger
+    # DNS bound short of process isolation.
     #
     # Run it in a DEDICATED thread with its own event loop rather than calling
     # asyncio.run() here: this sync helper may be invoked from code that already has

@@ -169,3 +169,24 @@ def test_discovery_slow_drip_is_bounded_by_the_total_timeout() -> None:
         srv.close()
         server.join(5)
     assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
+
+
+@pytest.mark.parametrize(
+    "timeout",
+    [None, "5", True, 0, -1, float("inf"), float("nan"), 3601.0, 10**400],
+)
+def test_invalid_timeout_fails_fast(timeout) -> None:
+    # request_bounded's whole purpose is a TOTAL request bound; an unnormalized
+    # timeout (inf/nan/non-positive/oversized/huge-int) would disable or
+    # overflow asyncio.wait_for and the thread join. Callers normalize, but the
+    # contract is enforced here too — a violation is a programming error.
+    from basecamp.oauth._transport import request_bounded
+
+    with pytest.raises(ValueError, match="timeout must be a finite positive"):
+        request_bounded(
+            "GET",
+            "https://issuer.example/x",
+            headers={},
+            timeout=timeout,
+            max_body_bytes=1024,
+        )
