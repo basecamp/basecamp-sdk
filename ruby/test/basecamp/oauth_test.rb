@@ -314,18 +314,24 @@ class OAuthTest < Minitest::Test
     assert_requested stub
   end
 
-  def test_refresh_token_omits_resource_when_unset
-    stub = stub_request(:post, "https://launchpad.37signals.com/authorization/token")
-      .with { |req| !URI.decode_www_form(req.body).to_h.key?("resource") }
-      .to_return(status: 200, body: { "access_token" => "new_access_token" }.to_json,
-                 headers: { "Content-Type" => "application/json" })
+  def test_refresh_token_omits_resource_when_unset_or_empty
+    # nil is unset; "" is truthy in Ruby but an empty resource is not a
+    # binding — both must omit the form key entirely (send-only-when-set).
+    [ nil, "" ].each do |resource|
+      stub = stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+        .with { |req| !URI.decode_www_form(req.body).to_h.key?("resource") }
+        .to_return(status: 200, body: { "access_token" => "new_access_token" }.to_json,
+                   headers: { "Content-Type" => "application/json" })
 
-    Basecamp::Oauth.refresh_token(
-      token_endpoint: "https://launchpad.37signals.com/authorization/token",
-      refresh_token: "old_refresh_token"
-    )
+      Basecamp::Oauth.refresh_token(
+        token_endpoint: "https://launchpad.37signals.com/authorization/token",
+        refresh_token: "old_refresh_token",
+        resource: resource
+      )
 
-    assert_requested stub
+      assert_requested stub
+      WebMock.reset!
+    end
   end
 
   def test_token_response_resource_round_trips_and_null_is_absent

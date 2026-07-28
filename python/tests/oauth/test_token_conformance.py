@@ -32,9 +32,7 @@ def test_oauth_token_fixture(path: Path) -> None:
     assert fixture["operation"] == "refreshToken"
 
     route = respx.post(TOKEN_ENDPOINT).mock(
-        return_value=httpx.Response(
-            fixture["response"].get("status", 200), json=fixture["response"]["body"]
-        )
+        return_value=httpx.Response(fixture["response"].get("status", 200), json=fixture["response"]["body"])
     )
 
     kwargs = {}
@@ -44,18 +42,14 @@ def test_oauth_token_fixture(path: Path) -> None:
 
     expect = fixture["expect"]
     if expect["outcome"] == "token":
-        token = refresh_token(
-            TOKEN_ENDPOINT, refresh_tok="refresh-token", client_id="basecamp-cli", **kwargs
-        )
+        token = refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-token", client_id="basecamp-cli", **kwargs)
         if "resource" in expect:
             assert token.resource == expect["resource"]
         if expect.get("resourceAbsent"):
             assert token.resource is None
     else:
         with pytest.raises(OAuthError) as exc_info:
-            refresh_token(
-                TOKEN_ENDPOINT, refresh_tok="refresh-token", client_id="basecamp-cli", **kwargs
-            )
+            refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-token", client_id="basecamp-cli", **kwargs)
         assert exc_info.value.code == "api_error"
 
     form = parse_qs(route.calls[0].request.content.decode())

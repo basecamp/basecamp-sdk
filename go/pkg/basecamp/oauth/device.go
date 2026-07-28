@@ -551,12 +551,23 @@ type pollResult struct {
 }
 
 // parseRetryAfterSeconds validates a Retry-After delta for the 429 poll
-// contract (SPEC §16): a positive integral number of seconds no greater than
-// maxDeviceSeconds (the shared 32-bit-ms timer bound). Anything else —
-// missing, an HTTP-date, fractional, non-positive, or overflowing — returns 0
-// so the caller falls back to the current interval.
+// contract (SPEC §16): ASCII digits only (HTTP delta-seconds permits no sign),
+// positive, no greater than maxDeviceSeconds (the shared 32-bit-ms timer
+// bound). Anything else — missing, an HTTP-date, signed ("+30"), fractional,
+// non-positive, or overflowing — returns 0 so the caller falls back to the
+// current interval.
 func parseRetryAfterSeconds(header string) int {
-	v, err := strconv.Atoi(strings.TrimSpace(header))
+	trimmed := strings.TrimSpace(header)
+	if trimmed == "" {
+		return 0
+	}
+	for _, r := range trimmed {
+		if r < '0' || r > '9' {
+			return 0
+		}
+	}
+	// A digit string too long for int returns ErrRange → malformed → 0.
+	v, err := strconv.Atoi(trimmed)
 	if err != nil || v <= 0 || v > maxDeviceSeconds {
 		return 0
 	}

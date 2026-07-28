@@ -66,9 +66,13 @@
       },
       "allOf": [
         {
-          "description": "A token fixture must pin the resource expectation one way or the other.",
+          "description": "A token fixture must pin the resource expectation exactly one way — a fixture stating both a value and absence is contradictory.",
           "if": { "required": ["outcome"], "properties": { "outcome": { "const": "token" } } },
-          "then": { "anyOf": [{ "required": ["resource"] }, { "required": ["resourceAbsent"] }] }
+          "then": { "oneOf": [{ "required": ["resource"] }, { "required": ["resourceAbsent"] }] }
+        },
+        {
+          "description": "formResource and formResourceAbsent are mutually exclusive — a fixture cannot both pin a sent value and assert the key was absent.",
+          "not": { "required": ["formResource", "formResourceAbsent"] }
         }
       ]
     }

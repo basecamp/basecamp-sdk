@@ -1024,6 +1024,21 @@ class TestPollDeviceTokenTimeoutNormalization:
             timeout=None,
         )
         assert token.access_token == "device_access_token"  # gitleaks:allow
+class TestParseRetryAfterSeconds:
+    def test_rejects_non_ascii_digits_and_oversized_strings(self):
+        # str.isdigit() accepts digit-shaped non-ASCII ("\u00b2") that int()
+        # rejects with ValueError, and CPython's int-conversion length limit
+        # raises on unbounded digit strings — both must be a 0 fallback, never
+        # an exception out of the poll loop. (Non-ASCII can't ride an httpx
+        # mock header, so the parser is exercised directly.)
+        from basecamp.oauth.device import _parse_retry_after_seconds
+
+        assert _parse_retry_after_seconds("\u00b2") == 0
+        assert _parse_retry_after_seconds("\u0663\u0660") == 0  # Arabic-Indic 30
+        assert _parse_retry_after_seconds("9" * 5000) == 0
+        assert _parse_retry_after_seconds("+30") == 0
+        assert _parse_retry_after_seconds(" 30 ") == 30
+        assert _parse_retry_after_seconds("30") == 30
 
 
 class TestPollDeviceTokenCancelAfterRoundTrip:
@@ -1252,6 +1267,8 @@ class TestPollDeviceTokenExact200:
             )
         assert exc_info.value.code == "api_error"
         assert exc_info.value.http_status == status
+
+
 class TestPollDeviceToken429:
     TOO_MANY = {"error": "too_many_requests"}
 
@@ -1283,6 +1300,7 @@ class TestPollDeviceToken429:
             {"Retry-After": "-1"},
             {"Retry-After": "0"},
             {"Retry-After": "99999999999999999999"},
+            {"Retry-After": "+30"},
         ],
     )
     def test_missing_or_malformed_retry_after_falls_back_to_interval(self, headers):

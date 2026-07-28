@@ -85,7 +85,10 @@ def refresh_token(
         params["client_id"] = client_id
     if client_secret is not None:
         params["client_secret"] = client_secret
-    if resource is not None:
+    # Truthiness, not `is not None`: an empty string is not a binding — treat
+    # it as unset (omit) per the send-only-when-set contract, matching the
+    # other SDKs. Sending `resource=` would provoke a 400 on BC5.
+    if resource:
         params["resource"] = resource
 
     return _token_request(token_endpoint, params)

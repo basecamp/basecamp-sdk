@@ -2093,7 +2093,7 @@ func TestPollDeviceToken_RetriesAfter429WithRetryAfterOverride(t *testing.T) {
 }
 
 func TestPollDeviceToken_429MalformedRetryAfterFallsBackToInterval(t *testing.T) {
-	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999"} {
+	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999", "+30"} {
 		t.Run("header="+header, func(t *testing.T) {
 			srv := queueTokenResponses429(t, []struct {
 				status     int

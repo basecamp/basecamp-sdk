@@ -161,10 +161,13 @@ class TestResourceIndicator:
         assert "resource=urn%3Abc%3Aaccount%3A42" in body
 
     @respx.mock
-    def test_refresh_omits_resource_when_unset(self):
+    @pytest.mark.parametrize("resource", [None, ""])
+    def test_refresh_omits_resource_when_unset_or_empty(self, resource):
+        # None is unset; an empty string is not a binding — both must omit the
+        # form key entirely (send-only-when-set; `resource=` provokes a 400).
         route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
 
-        refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123")
+        refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-tok-123", resource=resource)
 
         body = route.calls[0].request.content.decode()
         assert "resource=" not in body

@@ -134,7 +134,10 @@ module Basecamp
         params["refresh_token"] = request.refresh_token
         params["client_id"] = request.client_id if request.client_id
         params["client_secret"] = request.client_secret if request.client_secret
-        params["resource"] = request.resource if request.resource
+        # An empty string is truthy in Ruby but an empty resource is not a
+        # binding — treat it as unset (omit) per the send-only-when-set
+        # contract, matching Go/TS/Kotlin.
+        params["resource"] = request.resource unless request.resource.to_s.empty?
 
         params
       end

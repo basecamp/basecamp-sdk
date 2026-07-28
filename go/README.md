@@ -274,8 +274,11 @@ bridges the two — saving the client id it used and the token's resource so
 later refreshes can echo them:
 
 ```go
-authMgr := basecamp.NewAuthManager(cfg, httpClient)
-err = authMgr.Store().Save(basecamp.NormalizeBaseURL(cfg.BaseURL), &basecamp.Credentials{
+// sdkCfg is the SDK *basecamp.Config (the device-login example above binds
+// its discovery result to result.Config, an *oauth.Config — a different type).
+sdkCfg := &basecamp.Config{BaseURL: "https://3.basecampapi.com"}
+authMgr := basecamp.NewAuthManager(sdkCfg, httpClient)
+err = authMgr.Store().Save(basecamp.NormalizeBaseURL(sdkCfg.BaseURL), &basecamp.Credentials{
     AccessToken:   token.AccessToken,
     RefreshToken:  token.RefreshToken,
     ExpiresAt:     token.ExpiresAt.Unix(),

@@ -271,7 +271,8 @@ try {
   const token = await performDeviceLogin({
     config: result.config,
     clientId: "basecamp-cli",
-    // scope omitted → server default (read). Prefer pinning it explicitly:
+    // scope pinned explicitly — "read" is also the server default, but an
+    // explicit scope never depends on registry defaults staying put.
     scope: "read",
     display: ({ userCode, verificationUri }) => {
       console.log(`Visit ${verificationUri} and enter code: ${userCode}`);

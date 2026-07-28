@@ -44,7 +44,11 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("conformance/oauth-token fixtures", () => {
-  expect(fixtureNames.length).toBeGreaterThan(0);
+  it("discovers at least one fixture", () => {
+    // A proper test failure (not a describe-phase crash) if the fixture dir
+    // moves or empties — it.each below silently runs zero cases otherwise.
+    expect(fixtureNames.length).toBeGreaterThan(0);
+  });
 
   it.each(fixtureNames)("%s", async (name) => {
     const fixture = JSON.parse(

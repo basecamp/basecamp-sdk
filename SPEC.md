@@ -1338,12 +1338,15 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
   2. deadline = clock.now() + expiresIn    # MONOTONIC clock, injectable
      backoff = interval                    # transient timeout backoff, SEPARATE
                                            # from the server-driven interval
+     nextWaitOverride = 0                  # one-shot 429 Retry-After override
   3. LOOP (cancellation-aware):
        IF cancelled → raise DeviceFlowError(cancelled)
        IF clock.now() ≥ deadline → raise DeviceFlowError(expired)   # check BEFORE waiting,
               # so a long display hook, a stalled prior request, or a long backoff
               # cannot carry the loop past expiry undetected
-       wait = max(interval, backoff), clamped to the remaining lifetime (> 0 here)
+       wait = max(interval, backoff, nextWaitOverride), clamped to the
+              remaining lifetime (> 0 here)
+       nextWaitOverride = 0   # one-shot: consumed by this wait, then gone
        SLEEP wait   # abortable; a cancel mid-wait → DeviceFlowError(cancelled)
        IF clock.now() ≥ deadline → raise DeviceFlowError(expired)
               # re-check AFTER the wait, before POSTing: the clamp above makes the

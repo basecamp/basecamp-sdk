@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -268,13 +269,20 @@ class _PollResult:
 
 
 def _parse_retry_after_seconds(header: str | None) -> int:
-    """Validate a Retry-After delta for the 429 poll contract (SPEC §16): a
-    positive integral number of seconds no greater than
-    :data:`MAX_DEVICE_SECONDS` (the shared 32-bit-ms timer bound). Anything
-    else — missing, an HTTP-date, fractional, non-positive, or overflowing —
-    returns 0 so the caller falls back to the current interval.
+    """Validate a Retry-After delta for the 429 poll contract (SPEC §16): ASCII
+    digits only, positive, no greater than :data:`MAX_DEVICE_SECONDS` (the
+    shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
+    signed, fractional, non-positive, or overflowing — returns 0 so the caller
+    falls back to the current interval.
+
+    NOT ``str.isdigit()``: it accepts non-ASCII digit-shaped characters
+    (``"²"``, ``"٣"``) that ``int()`` rejects with ValueError, and an unbounded
+    digit string would trip CPython's int-conversion length limit — both would
+    escape the loop as a crash instead of a fallback. A 10-digit ceiling
+    comfortably covers MAX_DEVICE_SECONDS (7 digits) while keeping ``int()``
+    total.
     """
-    if header is None or not header.strip().isdigit():
+    if header is None or not re.fullmatch(r"[0-9]{1,10}", header.strip()):
         return 0
     value = int(header.strip())
     return value if 0 < value <= MAX_DEVICE_SECONDS else 0

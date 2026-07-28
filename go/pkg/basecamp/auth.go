@@ -372,7 +372,10 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		return fmt.Errorf("reading token response: %w", err)
 	}
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return err
+		// A malformed 200 body — including a non-string resource failing the
+		// *string decode — is an api fault (SPEC §16), not a raw
+		// json.UnmarshalTypeError callers cannot classify.
+		return ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token refresh response: %v", err))
 	}
 
 	creds.AccessToken = tokenResp.AccessToken

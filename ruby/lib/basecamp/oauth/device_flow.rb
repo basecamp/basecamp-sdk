@@ -673,9 +673,11 @@ module Basecamp
             value.is_a?(Numeric) && value.positive? && value <= MAX_DEVICE_SECONDS && (value % 1).zero?
           end
 
-          # Returns +[:token, Token, status]+ on success or +[:error, code, status]+
-          # when the server reports an OAuth error. Raises +api_error+ on a
-          # malformed, redirecting, or 2xx-but-tokenless response.
+          # Returns +[:token, Token, status]+ on success or
+          # +[:error, code, status, retry_after]+ when the server reports an
+          # OAuth error — +retry_after+ is the raw Retry-After header (or nil),
+          # consumed only by the poll loop's 429 handling. Raises +api_error+
+          # on a malformed, redirecting, or 200-but-tokenless response.
           def post_device_token(client, token_endpoint, params, timeout:, max_body_bytes:)
             retry_after = nil
             status, body = post_form(

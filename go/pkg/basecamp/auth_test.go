@@ -3,6 +3,7 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -451,5 +452,42 @@ func TestAuthManager_Refresh_RejectsEmptyResource(t *testing.T) {
 	}
 	if creds.Resource != "urn:bc:account:42" {
 		t.Errorf("Resource = %q, want untouched binding", creds.Resource)
+	}
+}
+
+func TestAuthManager_Refresh_NonStringResourceIsAPIError(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// A non-string resource fails the *string decode; that malformed 200 body
+	// must surface as a classifiable api_error, not a raw UnmarshalTypeError.
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "new-access",
+			"resource":     7,
+		})
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	origin := NormalizeBaseURL(ts.URL)
+	_ = store.Save(origin, &Credentials{
+		AccessToken:   "old-access",
+		RefreshToken:  "old-refresh",
+		ExpiresAt:     1,
+		TokenEndpoint: ts.URL + "/token",
+	})
+
+	cfg := &Config{BaseURL: ts.URL}
+	m := NewAuthManagerWithStore(cfg, ts.Client(), store)
+
+	err := m.Refresh(context.Background())
+	if err == nil {
+		t.Fatal("expected error for non-string resource")
+	}
+	var be *Error
+	if !errors.As(err, &be) || be.Code != CodeAPI {
+		t.Errorf("want *basecamp.Error with code %q, got %v", CodeAPI, err)
 	}
 }
