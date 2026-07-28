@@ -1,28 +1,31 @@
 ---
 gap: everything-tasks-aggregate
-status: partial-coverage
+status: confirmed-not-api-resource
 detected: 2026-07-28
-sdk_demand: medium
+sdk_demand: none
 bc3_refs:
   introduced_in: five
+  bc3_plan_section: "Not in API scope — web-only 'All tasks' page (bc3 e4bf93c3c2 + f697d8604d @ dffa7e11b3); HTML/Turbo Frame controllers, no respond_to :json, no jbuilder, no doc/api section"
   routes:
-    - "GET /:account_id/tasks.json → everything/assignments#index"
-    - "GET /:account_id/tasks/results.json → everything/assignments/results#index"
+    - "GET /:account_id/tasks → everything/assignments#index (HTML only)"
+    - "GET /:account_id/tasks/results → everything/assignments/results#index (Turbo Frame, HTML only)"
   controllers:
     - "Everything::AssignmentsController"
     - "Everything::Assignments::ResultsController"
   related_existing_api:
-    - "GetEverythingOpenTodos / GetEverythingOverdueTodos / … (the modeled Everything aggregates)"
+    - "GetEverythingOpenTodos / GetEverythingOverdueTodos / … (the modeled Everything JSON aggregates)"
     - "GetMyAssignments / GetMyDueAssignments / GetMyCompletedAssignments (my/assignments.json — unchanged)"
 ---
 
-# Everything "tasks" aggregate
+# Everything "tasks" — a web view, not an API resource
 
 ## What's missing
 
-BC3 gained a new account-wide aggregate under the `scope module: :everything`
-block — the same block that produces the already-modeled `/todos/open.json`,
-`/cards/completed.json`, and friends:
+Nothing. This entry exists to record a **negative** result, so the same routes
+don't get re-flagged at the next provenance sync.
+
+BC3 gained routes under the `scope module: :everything` block — the same block
+that produces the modeled `/todos/open.json` and `/cards/completed.json`:
 
 ```ruby
 get "tasks" => "assignments#index", as: :assignments
@@ -31,91 +34,67 @@ namespace :assignments, path: "tasks" do
 end
 ```
 
-Neither `GET /:account_id/tasks.json` nor `GET /:account_id/tasks/results.json`
-is modeled in `spec/basecamp.smithy`.
+Sitting in that block makes them *look* like siblings of the JSON aggregates.
+They are not. At the pinned `dffa7e11b3` both controllers are HTML-only:
 
-## Provenance
+```ruby
+class Everything::AssignmentsController < ApplicationController
+  include Everything::Assignments::Filters
+  def index
+  end
+end
 
-Surfaced while triaging drift from `c308693171` to `dffa7e11b3` for the #477
-repin. Two commits are involved and the net effect is one new aggregate, not a
-rename of anything the SDK already ships:
+class Everything::Assignments::ResultsController < ApplicationController
+  include Assignments::SlicedBuckets, Everything::Assignments::Filters
+  layout "turbo_rails/frame"
+  def index
+    @assignments = Everything::Assignments.new(Current.person, **assignment_filter_params)
+    @page = sliced_buckets @assignments.recordings, buckets: @assignments.sorted_buckets, viewer: Current.person
+  end
+end
+```
 
-- `e4bf93c3c2` "All tasks & Everything::Assignments" **added**
-  `get "assignments" => "assignments#index"` plus an `assignments/results`
-  namespace.
-- `f697d8604d` "Move /assignments to /tasks" then **renamed the new routes**
-  to `/tasks` before they ever appeared under a provenance pin.
+- no `respond_to`, no JSON branch;
+- every view under `app/views/everything/assignments/` is `.html.erb`;
+- no `.json.jbuilder` template anywhere;
+- `results` declares `layout "turbo_rails/frame"` — it exists to serve a Turbo
+  Frame for the filter UI;
+- nothing in `doc/api/`.
 
-## This is NOT a break of `my/assignments`
-
-Worth stating explicitly, because the commit subject "Move /assignments to
-/tasks" reads alarming against an SDK that ships `GetMyAssignments`. The moved
-routes are the **Everything** ones inside `scope module: :everything`. The
-SDK's assignment operations use `/:account_id/my/assignments.json` and its
-`completed`/`due` variants, which live under a different scope and are
-untouched across the whole drift range (`git diff c308693171..dffa7e11b3 --
-config/routes.rb` shows only the two `tasks` additions).
+**A Rails route that tolerates a `.json` suffix does not create a JSON
+representation.** Requesting these with `.json` gets the HTML template or a
+missing-template error, not a payload.
 
 ## Why it matters
 
-The Everything aggregates are how a cross-project consumer avoids enumerating
-projects. `tasks` is the assignment-shaped member of that family, and its
-absence means the only account-wide assignment view the SDK exposes is the
-*current user's* (`my/assignments`), not the account's.
+Only as a guard against a false positive. The provenance-drift triage from
+`c308693171` to `dffa7e11b3` surfaced two commits — `e4bf93c3c2` added
+`everything/assignments`, `f697d8604d` renamed it to `everything/tasks` — and
+the naming makes them read as an unmodeled API aggregate. They are the
+web-only "All tasks" page.
+
+**This is also not a break of `my/assignments`.** The commit subject "Move
+/assignments to /tasks" reads alarming against an SDK that ships
+`GetMyAssignments`, but the moved routes are the Everything ones. The SDK's
+assignment operations use `/:account_id/my/assignments.json` and its
+`completed`/`due` variants, which live under a different scope and are
+untouched across the whole drift range — `git diff c308693171..dffa7e11b3 --
+config/routes.rb` contains only the two `tasks` additions.
 
 ## Suggested API shape
 
-Follows the sibling aggregates exactly — same flat account-scoped path, same
-pagination:
-
-```
-GET /:account_id/tasks.json
-GET /:account_id/tasks/results.json
-```
-
-```json
-[
-  {
-    "id": 1069479520,
-    "type": "Todo",
-    "title": "Ship the thing",
-    "due_on": "2026-08-01",
-    "assignees": [ { "id": 1049715914, "name": "Victor Cooper" } ],
-    "bucket": { "id": 2085958499, "name": "The Leto Laptop", "type": "Project" },
-    "url": "https://3.basecampapi.com/195539477/buckets/2085958499/todos/1069479520.json",
-    "app_url": "https://3.basecamp.com/195539477/buckets/2085958499/todos/1069479520"
-  }
-]
-```
-
-The element shape above is **provisional** — it is the union the controller
-appears to span (Todos and Kanban::Cards, plus their Steps), not a shape read
-off a captured response. Pin it before modeling.
+None. Deliberately not proposed: there is no captured response to model, and
+sketching one would invite modeling a payload that does not exist. If an
+account-wide assignments JSON aggregate is ever wanted, it needs a BC3-side
+JSON representation first — at which point this entry should be reopened as a
+real gap with a shape read off an actual response.
 
 ## Implementation notes for BC3
 
-Nothing is required of BC3 — the routes exist and are serving. This entry
-records that the SDK has not caught up, not that the API is incomplete.
-
-If anything, a doc entry would help: the sibling Everything aggregates are
-documented under `doc/api/`, and `tasks` currently is not, which is part of why
-it went unnoticed through a pin bump.
+None required. The routes serve the web UI as intended.
 
 ## SDK absorption plan when this lands
 
-1. Pin the response shape. `Everything::AssignmentsController#index` renders an
-   assignment projection; its element type has to be checked against the
-   existing `Todo` and `Kanban::Card` structures before a Smithy shape is
-   written, since an aggregate spanning both may need a polymorphic projection
-   in the style of `Recording`/`SearchResult` rather than a new concrete type.
-2. Decide whether `tasks/results` is a distinct paginated resource or a filtered
-   view of the same collection — that is the difference between one operation
-   and two.
-3. Model the pagination and filter parameters against the sibling aggregates,
-   which take `page` plus type-specific filters.
-4. Follow the Everything naming convention already in the spec:
-   `GetEverythingTasks` (and `GetEverythingTaskResults` if it is a second
-   operation), landing on the `everything` service alongside
-   `GetEverythingOpenTodos` and friends.
-5. Regenerate all six SDKs and add a fixture plus a manifest target, since the
-   aggregate returns a list shape the fixture-coverage guard will want covered.
+Not applicable — there is nothing to absorb. Reopen this entry only if BC3 adds
+a JSON representation for these controllers; until then the correct SDK action
+is to do nothing.
