@@ -129,6 +129,7 @@ scripts/check-retry-metadata-parity.py
   s_69156f95c4fbc4::t_8c4eebe880295f 304-305
   s_69156f95c4fbc4::t_ef92e935572504 24,36-38,167-181,243-250,257-273
   s_69156f95c4fbc4::t_c004baac47f2ae 274-275
+  s_69156f95c4fbc4::t_7765a2e39fbd2f 25
 python/src/basecamp/generated/services/my_notifications.py
   s_effaf9ebecb0f4::t_8a8c1bb5028cf2 20,28,50,58
 python/src/basecamp/generated/services/campfires.py
