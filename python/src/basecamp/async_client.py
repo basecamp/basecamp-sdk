@@ -291,7 +291,7 @@ class AsyncAccountClient:
 
     @property
     def cards(self):
-        from basecamp.generated.services.cards import AsyncCardsService
+        from basecamp.services.cards import AsyncCardsService
 
         return self._service("cards", lambda: AsyncCardsService(self))
 

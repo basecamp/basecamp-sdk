@@ -292,7 +292,7 @@ class AccountClient:
 
     @property
     def cards(self):
-        from basecamp.generated.services.cards import CardsService
+        from basecamp.services.cards import CardsService
 
         return self._service("cards", lambda: CardsService(self))
 
