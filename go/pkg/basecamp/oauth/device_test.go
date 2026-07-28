@@ -2144,6 +2144,8 @@ func TestPollDeviceToken_429WrongPairStaysTerminal(t *testing.T) {
 		body   map[string]any
 	}{
 		{"429 without too_many_requests", http.StatusTooManyRequests, map[string]any{"error": "rate_limited"}},
+		{"429 parroting authorization_pending", http.StatusTooManyRequests, map[string]any{"error": "authorization_pending"}},
+		{"429 parroting slow_down", http.StatusTooManyRequests, map[string]any{"error": "slow_down"}},
 		{"too_many_requests on 400", http.StatusBadRequest, tooManyRequestsBody},
 	}
 	for _, tc := range cases {

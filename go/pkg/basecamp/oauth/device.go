@@ -738,6 +738,15 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 				oauthError = oauthError[:maxErrorMessageLen-3] + "..."
 			}
 		}
+		// A 429 recognizes ONLY too_many_requests (the exact retryable pair):
+		// a throttling endpoint whose body parrots authorization_pending or
+		// slow_down must not keep the loop polling until code expiry — any
+		// other code on a 429 is forced to http_429 and terminates as
+		// api_error. Conversely too_many_requests off a 429 is already
+		// terminal in the loop.
+		if resp.StatusCode == http.StatusTooManyRequests && oauthError != "too_many_requests" {
+			oauthError = fmt.Sprintf("http_%d", resp.StatusCode)
+		}
 	}
 	return pollResult{kind: pollOAuthError, oauthError: oauthError, status: resp.StatusCode,
 		retryAfter: resp.Header.Get("Retry-After")}

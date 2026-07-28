@@ -1463,6 +1463,8 @@ class OAuthDeviceTest < Minitest::Test
   def test_poll_429_wrong_pair_stays_terminal
     [
       json({ "error" => "rate_limited" }, status: 429),
+      json({ "error" => "authorization_pending" }, status: 429),
+      json({ "error" => "slow_down" }, status: 429),
       json({ "error" => "too_many_requests" }, status: 400)
     ].each do |response|
       stub_request(:post, TOKEN_ENDPOINT).to_return(response)

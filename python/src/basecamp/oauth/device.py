@@ -705,6 +705,11 @@ def _post_device_token(
     error = (
         truncate(raw_error) if 400 <= status < 500 and isinstance(raw_error, str) and raw_error else f"http_{status}"
     )
+    # A 429 recognizes ONLY too_many_requests (the exact retryable pair): a
+    # throttling endpoint whose body parrots authorization_pending/slow_down
+    # must not keep the loop polling until code expiry.
+    if status == 429 and error != "too_many_requests":
+        error = f"http_{status}"
     return _PollResult(error=error, status=status, retry_after=retry_after)
 
 

@@ -1337,7 +1337,12 @@ class TestPollDeviceToken429:
     @respx.mock
     @pytest.mark.parametrize(
         ("status", "body"),
-        [(429, {"error": "rate_limited"}), (400, {"error": "too_many_requests"})],
+        [
+            (429, {"error": "rate_limited"}),
+            (429, {"error": "authorization_pending"}),
+            (429, {"error": "slow_down"}),
+            (400, {"error": "too_many_requests"}),
+        ],
     )
     def test_wrong_pair_stays_terminal(self, status, body):
         _queue_token_responses([httpx.Response(status, json=body, headers={"Retry-After": "30"})])

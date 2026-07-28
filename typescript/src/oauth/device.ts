@@ -773,10 +773,16 @@ async function postDeviceToken(
       // controls this string and an unrecognized value is interpolated into the
       // api_error message. Real protocol codes are short, so classification is
       // unaffected.
-      const error =
+      let error =
         response.status >= 400 && response.status < 500 && typeof rawError === "string" && rawError !== ""
           ? truncateErrorMessage(rawError)
           : `http_${response.status}`;
+      // A 429 recognizes ONLY too_many_requests (the exact retryable pair): a
+      // throttling endpoint whose body parrots authorization_pending/slow_down
+      // must not keep the loop polling until code expiry.
+      if (response.status === 429 && error !== "too_many_requests") {
+        error = `http_${response.status}`;
+      }
       return { kind: "error", error, status: response.status, retryAfter: response.headers.get("Retry-After") };
     });
   } finally {

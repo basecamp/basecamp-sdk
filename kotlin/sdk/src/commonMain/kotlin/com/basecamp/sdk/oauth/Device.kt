@@ -653,15 +653,18 @@ private suspend fun postDeviceTokenPoll(
             }
         }
         when {
+            // A 429 recognizes ONLY too_many_requests (the exact retryable
+            // pair, SPEC §16): a throttling endpoint whose body parrots
+            // authorization_pending/slow_down must not keep the loop polling
+            // until code expiry — any other code on a 429 is terminal via
+            // Other. Conversely too_many_requests off a 429 is terminal too.
+            status == 429 && error == "too_many_requests" ->
+                PollResult.TooManyRequests(parseRetryAfterSeconds(response.headers["Retry-After"]))
+            status == 429 -> PollResult.Other("http_$status", status)
             error == "authorization_pending" -> PollResult.Pending
             error == "slow_down" -> PollResult.SlowDown
             error == "access_denied" -> PollResult.AccessDenied
             error == "expired_token" -> PollResult.Expired
-            // Retryable ONLY as the exact 429 + too_many_requests pair
-            // (SPEC §16); too_many_requests on any other status stays terminal
-            // via Other below.
-            error == "too_many_requests" && status == 429 ->
-                PollResult.TooManyRequests(parseRetryAfterSeconds(response.headers["Retry-After"]))
             else -> PollResult.Other(error, status)
         }
     }

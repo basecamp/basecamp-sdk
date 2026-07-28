@@ -738,6 +738,11 @@ module Basecamp
               # back to http_<status>, which the loop terminates as api_error.
               error = data["error"]
               recognized = (400..499).cover?(status) && error.is_a?(String) && !error.empty?
+              # A 429 recognizes ONLY too_many_requests (the exact retryable
+              # pair): a throttling endpoint whose body parrots
+              # authorization_pending/slow_down must not keep the loop polling
+              # until code expiry.
+              recognized &&= error == "too_many_requests" if status == 429
               # Truncate at extraction (SPEC §9's 500-unit cap): the server
               # controls this string and an unrecognized value is interpolated
               # into the api_error message. Real protocol codes are short, so

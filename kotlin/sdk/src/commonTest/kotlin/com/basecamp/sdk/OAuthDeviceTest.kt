@@ -633,6 +633,8 @@ class OAuthDeviceTest {
     fun poll429WrongPairStaysTerminal() = runTest {
         val cases = listOf(
             HttpStatusCode.TooManyRequests to errorJson("rate_limited"),
+            HttpStatusCode.TooManyRequests to errorJson("authorization_pending"),
+            HttpStatusCode.TooManyRequests to errorJson("slow_down"),
             HttpStatusCode.BadRequest to tooManyJson,
         )
         for ((status, body) in cases) {

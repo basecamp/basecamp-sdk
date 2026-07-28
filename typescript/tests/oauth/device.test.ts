@@ -1861,6 +1861,8 @@ describe("pollDeviceToken 429 handling", () => {
 
   it.each([
     { name: "429 without too_many_requests", status: 429, body: { error: "rate_limited" } },
+    { name: "429 parroting authorization_pending", status: 429, body: { error: "authorization_pending" } },
+    { name: "429 parroting slow_down", status: 429, body: { error: "slow_down" } },
     { name: "too_many_requests on 400", status: 400, body: tooManyRequestsBody },
   ])("stays terminal on $name", async ({ status, body }) => {
     queueTokenResponses429([{ status, body, retryAfter: "30" }]);
