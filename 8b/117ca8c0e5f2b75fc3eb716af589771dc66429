@@ -1,0 +1,50 @@
+SPEC.md
+  s_69156f95c4fbc4::t_1aaded5933e56e 1634
+  s_69156f95c4fbc4::t_695b80a210a59d 1638-1639
+  s_69156f95c4fbc4::t_a4e8eaf6c46836 1640-1643
+  s_69156f95c4fbc4::t_c48ade7fc5b119 400
+  s_69156f95c4fbc4::t_4bb2707659bb82 405-419,437-443
+  s_69156f95c4fbc4::t_3cb05babd93af7 1633,1635
+  s_69156f95c4fbc4::t_1da5328d54783c 420-436
+python/tests/test_http.py
+  s_69156f95c4fbc4::t_7984a3e6ac55a1 397-437,439-445,447-454,456-463,465-513,515-523,525-565,567-574,576-592
+  s_69156f95c4fbc4::t_2a80a438c32678 438,446,455,464,514,524,566,575
+  s_69156f95c4fbc4::t_8643b9ccffd339 120-124,131-133
+go/templates/client.tmpl
+  s_69156f95c4fbc4::t_6da474d9123fb6 147-158,160-172,184-190,236,588-593,620-638
+Makefile
+  s_69156f95c4fbc4::t_7c1f448524486f 811,857-863,886
+scripts/check-retry-parity.rb
+  s_69156f95c4fbc4::t_e96af77e0cb134 1-123,125-128,131-242
+  s_69156f95c4fbc4::t_2472e85d7081df 129-130
+  s_69156f95c4fbc4::t_6ed26cd20503fa 124
+go/pkg/basecamp/generated_retry_test.go
+  s_69156f95c4fbc4::t_e45cf97d3d98fe 164-290
+python/src/basecamp/_retry_policy.py
+  s_69156f95c4fbc4::t_3e00fe5ffbe1e0 1-99
+go/pkg/generated/client.gen.go
+  s_69156f95c4fbc4::t_6da474d9123fb6 3963-3974,3976-3988,4000-4006,4052,19588-19593,19600-19825
+python/src/basecamp/_async_http.py
+  s_69156f95c4fbc4::t_c5266922337017 10-17,61-65,74-79,110,136-138,154-156,170,174-175,197
+python/src/basecamp/_http.py
+  s_69156f95c4fbc4::t_2a80a438c32678 136
+  s_69156f95c4fbc4::t_c5266922337017 9-16,60-64,73-78,109,152-154,168,172-173,195
+scripts/check-retry-parity.sh
+  s_69156f95c4fbc4::t_64a52a8202f781 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8b117ca8c0e5f2b75fc3eb716af589771dc66429",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
