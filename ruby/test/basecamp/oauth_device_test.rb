@@ -477,6 +477,36 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal :cancelled, error.reason
   end
 
+  def test_poll_captures_resource_and_treats_null_as_absent
+    [ [ "urn:bc:account:42", "urn:bc:account:42" ], [ nil, nil ] ].each do |sent, expected|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("resource" => sent)))
+      _waits, sleeper = recording_sleeper
+
+      token = Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+
+      expected.nil? ? assert_nil(token.resource) : assert_equal(expected, token.resource)
+    end
+  end
+
+  def test_poll_rejects_malformed_resource_on_token_response
+    [ "", 7 ].each do |resource|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("resource" => resource)))
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+      assert_match(/resource/, error.message)
+    end
+  end
+
   def test_poll_accepts_token_response_without_expires_in
     # expires_in is optional (RFC 6749 §5.1): absent means no known expiry, so
     # the Token carries nil expires_in/expires_at rather than raising.

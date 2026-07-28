@@ -134,6 +134,7 @@ module Basecamp
         params["refresh_token"] = request.refresh_token
         params["client_id"] = request.client_id if request.client_id
         params["client_secret"] = request.client_secret if request.client_secret
+        params["resource"] = request.resource if request.resource
 
         params
       end
@@ -163,12 +164,24 @@ module Basecamp
 
         raise OauthError.new("api_error", "Token response missing access_token") unless data["access_token"]
 
+        # resource: absent and JSON null are unset; when present it must be a
+        # non-empty string (SPEC §16) — an empty binding is not a binding.
+        resource = data["resource"]
+        unless resource.nil? || (resource.is_a?(String) && !resource.empty?)
+          raise OauthError.new(
+            "api_error",
+            "Token response resource must be a non-empty string when present",
+            http_status: response.status
+          )
+        end
+
         Token.new(
           access_token: data["access_token"],
           refresh_token: data["refresh_token"],
           token_type: data["token_type"] || "Bearer",
           expires_in: data["expires_in"],
-          scope: data["scope"]
+          scope: data["scope"],
+          resource: resource
         )
       rescue JSON::ParserError
         # A token response that fails to parse may still contain credential

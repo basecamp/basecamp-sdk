@@ -138,7 +138,10 @@ end
 For input-constrained clients (CLIs, TVs) that can't host a redirect URI, the
 device flow trades a redirect for a user-entered code. Basecamp pre-registers the
 public `basecamp-cli` client (`token_endpoint_auth_method: none`, no secret); an
-omitted scope defaults to `read`.
+omitted scope defaults to `read` — prefer pinning it explicitly with
+`scope: "read"`. Pass bare origins everywhere (no trailing slash): issuer
+binding is code-point exact, so `https://app.basecamp.com/` would silently
+soft-fall back to Launchpad.
 
 ```ruby
 # The device grant runs against an ALREADY-SELECTED config whose issuer advertises
@@ -162,6 +165,22 @@ token = Basecamp::Oauth.perform_device_login(
 )
 
 client = Basecamp.client(access_token: token.access_token)
+
+# BC5 device logins as basecamp-cli mint MULTI-ACCOUNT refresh tokens: the
+# token carries an RFC 8707 resource indicator (token.resource,
+# "urn:bc:account:<id>"), and refreshing without echoing it is rejected
+# (400 invalid_request). Persist token.resource alongside the tokens and
+# echo it on refresh:
+if token.expired?
+  fresh = Basecamp::Oauth.refresh_token(
+    token_endpoint: config.token_endpoint,
+    refresh_token: token.refresh_token,
+    client_id: "basecamp-cli",   # public client — no secret
+    resource: token.resource
+  )
+  # A refresh response MAY omit resource (the binding is unchanged) — persist
+  # `fresh.resource || token.resource` so the next refresh still echoes it.
+end
 ```
 
 The capability guard requires BOTH `config.device_authorization_endpoint` AND the

@@ -767,12 +767,24 @@ module Basecamp
               )
             end
 
+            # resource: absent and JSON null are unset; when present it must be
+            # a non-empty string (SPEC §16) — an empty binding is not a binding.
+            resource = data["resource"]
+            unless resource.nil? || (resource.is_a?(String) && !resource.empty?)
+              raise OauthError.new(
+                "api_error",
+                "Invalid device token response: resource must be a non-empty string when present",
+                http_status: status
+              )
+            end
+
             Token.new(
               access_token: data["access_token"],
               refresh_token: refresh_token,
               token_type: token_type || "Bearer",
               expires_in: expires_in,
-              scope: scope
+              scope: scope,
+              resource: resource
             )
           end
 
