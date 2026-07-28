@@ -3,6 +3,7 @@ import Foundation
 
 public struct Todolist: Codable, Sendable {
     public let appUrl: String
+    public let bubbleUpUrl: String
     public let bucket: TodoBucket
     public let createdAt: String
     public let creator: Person
@@ -33,6 +34,7 @@ public struct Todolist: Codable, Sendable {
 
     public init(
         appUrl: String,
+        bubbleUpUrl: String,
         bucket: TodoBucket,
         createdAt: String,
         creator: Person,
@@ -62,6 +64,7 @@ public struct Todolist: Codable, Sendable {
         todosUrl: String? = nil
     ) {
         self.appUrl = appUrl
+        self.bubbleUpUrl = bubbleUpUrl
         self.bucket = bucket
         self.createdAt = createdAt
         self.creator = creator

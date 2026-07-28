@@ -32,8 +32,21 @@ func TestRecording_UnmarshalList(t *testing.T) {
 		t.Fatalf("failed to unmarshal list.json: %v", err)
 	}
 
-	if len(recordings) != 2 {
-		t.Errorf("expected 2 recordings, got %d", len(recordings))
+	if len(recordings) != 3 {
+		t.Errorf("expected 3 recordings, got %d", len(recordings))
+	}
+
+	// bubble_up_url is optional on the generic Recording projection: only the
+	// todolist partial passes bubbleupable, so the two Message recordings omit
+	// it and the Todolist one carries it.
+	for _, r := range recordings {
+		if r.Type == "Todolist" {
+			if r.BubbleUpURL == "" {
+				t.Errorf("Todolist recording %d: expected BubbleUpURL to be set", r.ID)
+			}
+		} else if r.BubbleUpURL != "" {
+			t.Errorf("%s recording %d: expected no BubbleUpURL, got %q", r.Type, r.ID, r.BubbleUpURL)
+		}
 	}
 
 	// Verify first recording

@@ -1236,6 +1236,7 @@ Recording = TypedDict(
         "bookmark_url": NotRequired[str],
         "boosts_count": NotRequired[int],
         "boosts_url": NotRequired[str],
+        "bubble_up_url": NotRequired[str],
         "bucket": "RecordingBucket",
         "category": NotRequired["RecordingCategory"],
         "comments_count": NotRequired[int],
@@ -1405,6 +1406,7 @@ class SearchMetadata(TypedDict):
 class SearchResult(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
+    bubble_up_url: NotRequired[str]
     bucket: NotRequired[RecordingBucket]
     content: str | None
     content_attachments: NotRequired[list[RichTextAttachment]]
@@ -1600,6 +1602,7 @@ class Todolist(TypedDict):
     bookmark_url: NotRequired[str]
     boosts_count: NotRequired[int]
     boosts_url: NotRequired[str]
+    bubble_up_url: str
     bucket: TodoBucket
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]
@@ -1629,6 +1632,7 @@ class TodolistGroup(TypedDict):
     app_todos_url: NotRequired[str]
     app_url: str
     bookmark_url: NotRequired[str]
+    bubble_up_url: str
     bucket: TodoBucket
     comments_count: NotRequired[int]
     comments_url: NotRequired[str]

@@ -22,9 +22,15 @@ type SearchResult struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
+	// BubbleUpURL is the URL of the Bubble Up record for this recording. Optional
+	// on this polymorphic projection: recordings/_recording.json.jbuilder emits
+	// the key only when the caller passes bubbleupable, and todolists/_todolist
+	// is the only partial that does — so a Todolist-shaped instance carries it
+	// and the other recording types do not.
+	BubbleUpURL string  `json:"bubble_up_url,omitempty"`
+	Parent      *Parent `json:"parent,omitempty"`
+	Bucket      *Bucket `json:"bucket,omitempty"`
+	Creator     *Person `json:"creator,omitempty"`
 	// Content and Description are always present on the wire and always null:
 	// api/searches/show.json.jbuilder renders the recording's own partial and
 	// then unconditionally overwrites both with nil to keep the large HTML body
@@ -341,6 +347,7 @@ func searchResultFromGenerated(gsr generated.SearchResult) SearchResult {
 		URL:                  gsr.Url,
 		AppURL:               gsr.AppUrl,
 		BookmarkURL:          gsr.BookmarkUrl,
+		BubbleUpURL:          gsr.BubbleUpUrl,
 		Content:              gsr.Content,
 		Description:          gsr.Description,
 		PlainTextContent:     gsr.PlainTextContent,

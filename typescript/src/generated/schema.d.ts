@@ -4494,6 +4494,15 @@ export interface components {
             url: string;
             app_url: string;
             bookmark_url?: string;
+            /**
+             * @description URL of the Bubble Up record for this recording (BC5 addition). Optional
+             *     here because this is a polymorphic projection:
+             *     `recordings/_recording.json.jbuilder` emits the key only when the caller
+             *     passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
+             *     only partial that does. So a Todolist-shaped instance carries it and the
+             *     other recording types do not.
+             */
+            bubble_up_url?: string;
             content?: string;
             /**
              * @description Rich-text companion arrays carried through the generic recording
@@ -4750,6 +4759,15 @@ export interface components {
             url: string;
             app_url: string;
             bookmark_url?: string;
+            /**
+             * @description URL of the Bubble Up record for this recording (BC5 addition). Optional
+             *     here because this is a polymorphic projection:
+             *     `recordings/_recording.json.jbuilder` emits the key only when the caller
+             *     passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
+             *     only partial that does. So a Todolist-shaped instance carries it and the
+             *     other recording types do not.
+             */
+            bubble_up_url?: string;
             parent?: components["schemas"]["RecordingParent"];
             bucket?: components["schemas"]["RecordingBucket"];
             creator?: components["schemas"]["Person"];
@@ -5111,6 +5129,14 @@ export interface components {
             app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /**
+             * @description URL of the Bubble Up record for this recording (BC5 addition). Required:
+             *     `todolists/_todolist.json.jbuilder` renders the shared recording partial
+             *     with `bubbleupable: true` unconditionally, and every list, show, and group
+             *     path renders that partial — so the key is present on every projection of
+             *     this shape.
+             */
+            bubble_up_url: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;
@@ -5145,6 +5171,14 @@ export interface components {
             app_url: string;
             bookmark_url?: string;
             subscription_url?: string;
+            /**
+             * @description URL of the Bubble Up record for this recording (BC5 addition). Required:
+             *     `todolists/_todolist.json.jbuilder` renders the shared recording partial
+             *     with `bubbleupable: true` unconditionally, and every list, show, and group
+             *     path renders that partial — so the key is present on every projection of
+             *     this shape.
+             */
+            bubble_up_url: string;
             /** Format: int32 */
             comments_count?: number;
             comments_url?: string;

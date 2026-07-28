@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-28T06:50:08Z
+# Generated: 2026-07-28T07:10:09Z
 
 require "json"
 require "time"
@@ -3097,7 +3097,7 @@ module Basecamp
     # Recording
     class Recording
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :category, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
+      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :status, :title, :type, :updated_at, :url, :visible_to_clients, :bookmark_url, :boosts_count, :boosts_url, :bubble_up_url, :category, :comments_count, :comments_url, :content, :content_attachments, :description, :description_attachments, :from, :group_on, :parent, :position, :replies_count, :replies_url, :service, :subject, :subscription_url
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3120,6 +3120,7 @@ module Basecamp
         @bookmark_url = data["bookmark_url"]
         @boosts_count = parse_integer(data["boosts_count"])
         @boosts_url = data["boosts_url"]
+        @bubble_up_url = data["bubble_up_url"]
         @category = parse_type(data["category"], "RecordingCategory")
         @comments_count = parse_integer(data["comments_count"])
         @comments_url = data["comments_url"]
@@ -3155,6 +3156,7 @@ module Basecamp
           "bookmark_url" => @bookmark_url,
           "boosts_count" => @boosts_count,
           "boosts_url" => @boosts_url,
+          "bubble_up_url" => @bubble_up_url,
           "category" => @category,
           "comments_count" => @comments_count,
           "comments_url" => @comments_url,
@@ -3511,7 +3513,7 @@ module Basecamp
     # SearchResult
     class SearchResult
       include TypeHelpers
-      attr_accessor :app_url, :content, :description, :id, :title, :type, :url, :bookmark_url, :bucket, :content_attachments, :created_at, :creator, :description_attachments, :inherits_status, :parent, :plain_text_content, :plain_text_description, :status, :subject, :updated_at, :visible_to_clients
+      attr_accessor :app_url, :content, :description, :id, :title, :type, :url, :bookmark_url, :bubble_up_url, :bucket, :content_attachments, :created_at, :creator, :description_attachments, :inherits_status, :parent, :plain_text_content, :plain_text_description, :status, :subject, :updated_at, :visible_to_clients
 
       # @return [Array<Symbol>]
       def self.required_fields
@@ -3527,6 +3529,7 @@ module Basecamp
         @type = data["type"]
         @url = data["url"]
         @bookmark_url = data["bookmark_url"]
+        @bubble_up_url = data["bubble_up_url"]
         @bucket = parse_type(data["bucket"], "RecordingBucket")
         @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
         @created_at = parse_datetime(data["created_at"])
@@ -3552,6 +3555,7 @@ module Basecamp
           "type" => @type,
           "url" => @url,
           "bookmark_url" => @bookmark_url,
+          "bubble_up_url" => @bubble_up_url,
           "bucket" => @bucket,
           "content_attachments" => @content_attachments,
           "created_at" => @created_at,
@@ -4048,15 +4052,16 @@ module Basecamp
     # Todolist
     class Todolist
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :description, :groups_url, :position, :subscription_url, :todos_url
+      attr_accessor :app_url, :bubble_up_url, :bucket, :created_at, :creator, :description_attachments, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :boosts_count, :boosts_url, :comments_count, :comments_url, :completed, :completed_ratio, :description, :groups_url, :position, :subscription_url, :todos_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bubble_up_url bucket created_at creator description_attachments id inherits_status name parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
+        @bubble_up_url = data["bubble_up_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
@@ -4089,6 +4094,7 @@ module Basecamp
       def to_h
         {
           "app_url" => @app_url,
+          "bubble_up_url" => @bubble_up_url,
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,
@@ -4127,15 +4133,16 @@ module Basecamp
     # TodolistGroup
     class TodolistGroup
       include TypeHelpers
-      attr_accessor :app_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :comments_count, :comments_url, :completed, :completed_ratio, :position, :subscription_url, :todos_url
+      attr_accessor :app_url, :bubble_up_url, :bucket, :created_at, :creator, :id, :inherits_status, :name, :parent, :status, :title, :type, :updated_at, :url, :visible_to_clients, :app_todos_url, :bookmark_url, :comments_count, :comments_url, :completed, :completed_ratio, :position, :subscription_url, :todos_url
 
       # @return [Array<Symbol>]
       def self.required_fields
-        %i[app_url bucket created_at creator id inherits_status name parent status title type updated_at url visible_to_clients].freeze
+        %i[app_url bubble_up_url bucket created_at creator id inherits_status name parent status title type updated_at url visible_to_clients].freeze
       end
 
       def initialize(data = {})
         @app_url = data["app_url"]
+        @bubble_up_url = data["bubble_up_url"]
         @bucket = parse_type(data["bucket"], "TodoBucket")
         @created_at = parse_datetime(data["created_at"])
         @creator = parse_type(data["creator"], "Person")
@@ -4163,6 +4170,7 @@ module Basecamp
       def to_h
         {
           "app_url" => @app_url,
+          "bubble_up_url" => @bubble_up_url,
           "bucket" => @bucket,
           "created_at" => @created_at,
           "creator" => @creator,

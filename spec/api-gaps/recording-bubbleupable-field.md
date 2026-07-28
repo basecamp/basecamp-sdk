@@ -27,6 +27,17 @@ did not close this. `bubbleupable` appears **nowhere in `doc/api/`** on
 `master` — no documented wire contract exists. Status stays
 `no-json-contract`.
 
+**Not closed by the `bubble_up_url` absorption (2026-07-28):** the SDK now
+models `bubble_up_url` on Todolist, TodolistGroup, Recording, and
+SearchResult, sourced from `recordings/_recording.json.jbuilder`'s
+`local_assigns[:bubbleupable]` branch. That is a **URL**, and its presence is
+decided by the *rendering call site* — `todolists/_todolist` passes
+`bubbleupable: true` unconditionally — not by the current user's eligibility.
+This gap tracks a distinct **boolean** `bubbleupable` field expressing
+per-user eligibility, which still has no wire contract. Presence of
+`bubble_up_url` is not a substitute: it is constant per shape, so it cannot
+answer "can *this* user bubble this up".
+
 ## Why it matters
 
 Without the field, SDK consumers can't pre-compute the eligibility of UI

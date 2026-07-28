@@ -29,13 +29,18 @@ type Todolist struct {
 	BoostsCount      int       `json:"boosts_count,omitempty"`
 	BoostsURL        string    `json:"boosts_url,omitempty"`
 	SubscriptionURL  string    `json:"subscription_url"`
-	CommentsCount    int       `json:"comments_count"`
-	CommentsURL      string    `json:"comments_url"`
-	Position         int       `json:"position"`
-	Parent           *Parent   `json:"parent,omitempty"`
-	Bucket           *Bucket   `json:"bucket,omitempty"`
-	Creator          *Person   `json:"creator,omitempty"`
-	Description      string    `json:"description"`
+	// BubbleUpURL is the URL of the Bubble Up record for this recording. Always
+	// present: todolists/_todolist.json.jbuilder renders the shared recording
+	// partial with bubbleupable: true unconditionally, and every list, show, and
+	// group path renders that partial.
+	BubbleUpURL   string  `json:"bubble_up_url"`
+	CommentsCount int     `json:"comments_count"`
+	CommentsURL   string  `json:"comments_url"`
+	Position      int     `json:"position"`
+	Parent        *Parent `json:"parent,omitempty"`
+	Bucket        *Bucket `json:"bucket,omitempty"`
+	Creator       *Person `json:"creator,omitempty"`
+	Description   string  `json:"description"`
 	// DescriptionAttachments holds structured metadata for the downloadable files
 	// embedded in the rich text Description. @required — the API always sends this
 	// array (empty when the description has no inline files). No omitempty, so on
@@ -400,6 +405,7 @@ func todolistFromGenerated(gtl generated.Todolist) Todolist {
 		BoostsCount:      int(gtl.BoostsCount),
 		BoostsURL:        gtl.BoostsUrl,
 		SubscriptionURL:  gtl.SubscriptionUrl,
+		BubbleUpURL:      gtl.BubbleUpUrl,
 		CommentsCount:    int(gtl.CommentsCount),
 		CommentsURL:      gtl.CommentsUrl,
 		Position:         int(gtl.Position),

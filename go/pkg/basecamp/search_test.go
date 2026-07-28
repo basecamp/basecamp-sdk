@@ -36,8 +36,22 @@ func TestSearchResult_UnmarshalResults(t *testing.T) {
 		t.Fatalf("failed to unmarshal results.json: %v", err)
 	}
 
-	if len(results) != 3 {
-		t.Errorf("expected 3 results, got %d", len(results))
+	if len(results) != 4 {
+		t.Errorf("expected 4 results, got %d", len(results))
+	}
+
+	// bubble_up_url rides the polymorphic search projection: Todolists are
+	// searchable and api_search_result_template_path falls through to
+	// todolists/todolist, which passes bubbleupable: true. Every other result
+	// type omits the key.
+	for _, r := range results {
+		if r.Type == "Todolist" {
+			if r.BubbleUpURL == "" {
+				t.Errorf("Todolist result %d: expected BubbleUpURL to be set", r.ID)
+			}
+		} else if r.BubbleUpURL != "" {
+			t.Errorf("%s result %d: expected no BubbleUpURL, got %q", r.Type, r.ID, r.BubbleUpURL)
+		}
 	}
 
 	// Verify first result (Message)
@@ -515,8 +529,8 @@ func TestSearchService_Search_BestMatchSort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Results) != 3 {
-		t.Errorf("expected 3 results, got %d", len(result.Results))
+	if len(result.Results) != 4 {
+		t.Errorf("expected 4 results, got %d", len(result.Results))
 	}
 
 	// End-to-end projection proof: the polymorphic search projection carries a

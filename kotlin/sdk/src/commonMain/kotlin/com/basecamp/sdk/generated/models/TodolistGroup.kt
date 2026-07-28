@@ -22,6 +22,7 @@ data class TodolistGroup(
     val type: String,
     val url: String,
     @SerialName("app_url") val appUrl: String,
+    @SerialName("bubble_up_url") val bubbleUpUrl: String,
     val parent: TodoParent,
     val bucket: TodoBucket,
     val creator: Person,

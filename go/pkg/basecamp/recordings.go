@@ -44,7 +44,13 @@ type Recording struct {
 	URL              string    `json:"url"`
 	AppURL           string    `json:"app_url"`
 	BookmarkURL      string    `json:"bookmark_url"`
-	Content          string    `json:"content,omitempty"`
+	// BubbleUpURL is the URL of the Bubble Up record for this recording. Optional
+	// on this polymorphic projection: recordings/_recording.json.jbuilder emits
+	// the key only when the caller passes bubbleupable, and todolists/_todolist
+	// is the only partial that does — so a Todolist-shaped instance carries it
+	// and the other recording types do not.
+	BubbleUpURL string `json:"bubble_up_url,omitempty"`
+	Content     string `json:"content,omitempty"`
 	// ContentAttachments and DescriptionAttachments are the rich text companion
 	// arrays carried through the generic recording projection. A given recording
 	// is one type, so it carries only the array matching its rich text attribute
@@ -436,6 +442,7 @@ func recordingFromGenerated(gr generated.Recording) Recording {
 		URL:              gr.Url,
 		AppURL:           gr.AppUrl,
 		BookmarkURL:      gr.BookmarkUrl,
+		BubbleUpURL:      gr.BubbleUpUrl,
 		Content:          gr.Content,
 		CommentsCount:    int(gr.CommentsCount),
 		CommentsURL:      gr.CommentsUrl,

@@ -1966,8 +1966,16 @@ type Recording struct {
 	// aggregate feeds (`/messages.json`, `/comments.json`), whose type-specific
 	// partials render with `boostable: true`. Optional (absent on non-boostable
 	// recordings and on the base/webhook partial).
-	BoostsCount *int32          `json:"boosts_count,omitempty"`
-	BoostsUrl   *string         `json:"boosts_url,omitempty"`
+	BoostsCount *int32  `json:"boosts_count,omitempty"`
+	BoostsUrl   *string `json:"boosts_url,omitempty"`
+
+	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Optional
+	// here because this is a polymorphic projection:
+	// `recordings/_recording.json.jbuilder` emits the key only when the caller
+	// passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
+	// only partial that does. So a Todolist-shaped instance carries it and the
+	// other recording types do not.
+	BubbleUpUrl string          `json:"bubble_up_url,omitempty"`
 	Bucket      RecordingBucket `json:"bucket"`
 
 	// Category A message category (type) as rendered by the shared recordings/_category
@@ -2221,8 +2229,16 @@ type SearchResponseContent = []SearchResult
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	AppUrl      string          `json:"app_url"`
-	BookmarkUrl string          `json:"bookmark_url,omitempty"`
+	AppUrl      string `json:"app_url"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+
+	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Optional
+	// here because this is a polymorphic projection:
+	// `recordings/_recording.json.jbuilder` emits the key only when the caller
+	// passes `local_assigns[:bubbleupable]`, and `todolists/_todolist` is the
+	// only partial that does. So a Todolist-shaped instance carries it and the
+	// other recording types do not.
+	BubbleUpUrl string          `json:"bubble_up_url,omitempty"`
 	Bucket      RecordingBucket `json:"bucket,omitempty"`
 
 	// Content Always present, always null. `api/searches/show.json.jbuilder` renders the
@@ -2603,11 +2619,18 @@ type TodoParent struct {
 
 // Todolist defines model for Todolist.
 type Todolist struct {
-	AppTodosUrl            string               `json:"app_todos_url,omitempty"`
-	AppUrl                 string               `json:"app_url"`
-	BookmarkUrl            string               `json:"bookmark_url,omitempty"`
-	BoostsCount            int32                `json:"boosts_count,omitempty"`
-	BoostsUrl              string               `json:"boosts_url,omitempty"`
+	AppTodosUrl string `json:"app_todos_url,omitempty"`
+	AppUrl      string `json:"app_url"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+	BoostsCount int32  `json:"boosts_count,omitempty"`
+	BoostsUrl   string `json:"boosts_url,omitempty"`
+
+	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Required:
+	// `todolists/_todolist.json.jbuilder` renders the shared recording partial
+	// with `bubbleupable: true` unconditionally, and every list, show, and group
+	// path renders that partial — so the key is present on every projection of
+	// this shape.
+	BubbleUpUrl            string               `json:"bubble_up_url"`
 	Bucket                 TodoBucket           `json:"bucket"`
 	CommentsCount          int32                `json:"comments_count,omitempty"`
 	CommentsUrl            string               `json:"comments_url,omitempty"`
@@ -2637,9 +2660,16 @@ type Todolist struct {
 
 // TodolistGroup defines model for TodolistGroup.
 type TodolistGroup struct {
-	AppTodosUrl      string     `json:"app_todos_url,omitempty"`
-	AppUrl           string     `json:"app_url"`
-	BookmarkUrl      string     `json:"bookmark_url,omitempty"`
+	AppTodosUrl string `json:"app_todos_url,omitempty"`
+	AppUrl      string `json:"app_url"`
+	BookmarkUrl string `json:"bookmark_url,omitempty"`
+
+	// BubbleUpUrl URL of the Bubble Up record for this recording (BC5 addition). Required:
+	// `todolists/_todolist.json.jbuilder` renders the shared recording partial
+	// with `bubbleupable: true` unconditionally, and every list, show, and group
+	// path renders that partial — so the key is present on every projection of
+	// this shape.
+	BubbleUpUrl      string     `json:"bubble_up_url"`
 	Bucket           TodoBucket `json:"bucket"`
 	CommentsCount    int32      `json:"comments_count,omitempty"`
 	CommentsUrl      string     `json:"comments_url,omitempty"`
