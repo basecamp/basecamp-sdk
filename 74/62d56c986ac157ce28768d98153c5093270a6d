@@ -1,0 +1,59 @@
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_a3b9dc7a841ec0 887
+  s_86d0793371d0f3::t_57f2c239441ed9 881-886,888-897
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_57f2c239441ed9 1269-1293
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_57f2c239441ed9 725-746
+  s_86d0793371d0f3::t_fac1970ebfe423 724
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_57f2c239441ed9 391-412
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_73512cb3e362f0 399-400,404-407
+  s_86d0793371d0f3::t_f51c5e52be8880 482-483
+  s_86d0793371d0f3::t_d4649d629d7aa7 591-597,599-605
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_e25df7a6f4c316 604-608,610
+  s_86d0793371d0f3::t_7e68329156347a 433-434,438-441
+SPEC.md
+  s_86d0793371d0f3::t_2f053738f784a7 1231-1233,1235
+  s_86d0793371d0f3::t_cae64ccad70617 1236-1240
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_bc9e2c34b32470 567-573,575-578
+  s_86d0793371d0f3::t_0740b509615035 383-384,390-399
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_fed6d59c711f10 569-574,576-577
+  s_86d0793371d0f3::t_e6016c0b78407d 203-204,207-211
+  s_922a1c40800439::t_eccd87e0810a72 202
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_2f2bb04e8528e9 355-356,361-370
+  s_86d0793371d0f3::t_2c267c4dbaea17 8
+  s_86d0793371d0f3::t_e6ea763aacee7b 524-529,531-540
+  s_86d0793371d0f3::t_4cde5d21aefa6a 438,442-444
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_530e9182738501 1528-1582
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7462d56c986ac157ce28768d98153c5093270a6d",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_922a1c40800439": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ff2-1e8a-7772-a001-d6c92e147192",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
