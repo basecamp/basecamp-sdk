@@ -174,7 +174,7 @@ class HttpClient:
                     allow_cross_origin=allow_cross_origin,
                 )
             except (RateLimitError, NetworkError, ApiError) as e:
-                if not e.retryable:
+                if not self._is_retryable_error(e, operation):
                     raise
                 last_error = e
                 if attempt >= max_attempts:
@@ -310,6 +310,41 @@ class HttpClient:
     def _is_retryable_operation(self, operation: str) -> bool:
         op_meta = self._metadata.get(operation, {})
         return op_meta.get("idempotent", False)
+
+    # behavior-model.json's declared default, used when an operation carries no
+    # retry_on of its own.
+    DEFAULT_RETRY_ON = frozenset({429, 503})
+
+    def _is_retryable_error(self, error: BasecampError, operation: str | None) -> bool:
+        # A network error carries no HTTP status, so the declared status set does
+        # not apply; SPEC section 7's network-error rule governs, and errors.py's
+        # classification is the right signal there.
+        if error.http_status is None:
+            return error.retryable
+        # No operation id means no behavior-model metadata — today only the
+        # Launchpad authorization GET issued by get_absolute(). Non-Smithy
+        # traffic keeps its pre-Smithy retry contract; applying the generated
+        # gate here would impose API policy on OAuth authorization traffic.
+        if operation is None:
+            return error.retryable
+        # For a governed operation the DECLARED set is authoritative in BOTH
+        # directions. It must not be widened by errors.py (which marks
+        # 500/502/503/504 retryable for the caller's benefit), and it must not be
+        # vetoed by it either: if an operation declares a status retryable, a
+        # future errors.py classifying that status non-retryable must not
+        # silently disable the declared retry.
+        return error.http_status in self._operation_retry_on(operation)
+
+    def _operation_retry_on(self, operation: str) -> frozenset[int]:
+        retry = (self._metadata.get(operation) or {}).get("retry") or {}
+        statuses = retry.get("retry_on")
+        # `is None`, not truthiness: an operation that declares `retry_on: []`
+        # means "never retry on any status", which is not the same as declaring
+        # nothing. Collapsing the two would silently re-enable 429/503 retries on
+        # an operation that opted out.
+        if statuses is None:
+            return self.DEFAULT_RETRY_ON
+        return frozenset(statuses)
 
     def _apply_operation_retry_max(self, operation: str | None, max_attempts: int) -> int:
         # Apply the per-operation retry ceiling from metadata as an upper bound on

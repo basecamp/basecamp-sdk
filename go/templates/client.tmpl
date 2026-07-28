@@ -144,18 +144,32 @@ func WithLogger(logger *slog.Logger) ClientOption {
 	}
 }
 
-// isRetryableStatus returns true if the HTTP status code indicates a retryable error.
-func isRetryableStatus(statusCode int) bool {
-	switch statusCode {
-	case http.StatusTooManyRequests,       // 429
-		http.StatusInternalServerError,     // 500
-		http.StatusBadGateway,              // 502
-		http.StatusServiceUnavailable,      // 503
-		http.StatusGatewayTimeout:          // 504
-		return true
-	default:
-		return false
+// defaultRetryOn is behavior-model.json's declared default, applied only when an
+// operation carries no x-basecamp-retry.retryOn — which cannot happen for a
+// generated call site.
+var defaultRetryOn = []int{http.StatusTooManyRequests, http.StatusServiceUnavailable}
+
+// isRetryableStatus reports whether the status is in the operation's DECLARED
+// retry_on set. The set is per-operation and exhaustive: a status the spec never
+// declared retryable — including 500, 502, and 504 — is not retried, and is
+// surfaced to the caller on the first attempt. ParseHTTPError still classifies
+// those statuses as retryable errors for the caller's benefit; that is a
+// caller-facing hint and deliberately does not widen this gate.
+func isRetryableStatus(statusCode int, operationId string) bool {
+	// Only an ABSENT entry falls back. A present-but-empty set is an operation
+	// declaring "never retry on any status", which is not the same as declaring
+	// nothing — collapsing the two would silently re-enable 429/503 retries on an
+	// operation that opted out.
+	retryOn, ok := operationRetryOn[operationId]
+	if !ok {
+		retryOn = defaultRetryOn
 	}
+	for _, status := range retryOn {
+		if status == statusCode {
+			return true
+		}
+	}
+	return false
 }
 
 // captureReplayBody inspects the finalized first-attempt request and returns a
@@ -414,7 +428,7 @@ func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest fu
 		}
 
 		// Success or non-retryable status
-		if !isRetryableStatus(resp.StatusCode) {
+		if !isRetryableStatus(resp.StatusCode, operationId) {
 			return resp, nil
 		}
 
@@ -816,6 +830,37 @@ var operationRetryMax = map[string]int{
 {{end -}}
 	"{{$opid}}": {{$retryMax}},
 {{end}}
+}
+
+// operationRetryOn maps operation IDs to their declared retryable status set
+// from the x-basecamp-retry extension. Like operationRetryMax it is a separate
+// map rather than a field on OperationMetadata, so wiring it up does not change
+// that exported struct's shape.
+var operationRetryOn = map[string][]int{
+{{range . -}}
+{{$opid := .OperationId -}}
+{{$retryOn := "" -}}
+{{if .Spec -}}
+{{if .Spec.Extensions -}}
+{{$retry := index .Spec.Extensions "x-basecamp-retry" -}}
+{{if $retry -}}
+{{if index $retry "retryOn" -}}
+{{range $i, $status := index $retry "retryOn" -}}
+{{if $i}}{{$retryOn = printf "%s, %v" $retryOn $status}}{{else}}{{$retryOn = printf "%v" $status}}{{end -}}
+{{end -}}
+{{end -}}
+{{end -}}
+{{end -}}
+{{end -}}
+	"{{$opid}}": { {{$retryOn}} },
+{{end}}
+}
+
+// GetOperationRetryOn returns the declared retryable status set for the given
+// operation ID. ok is false when the operation carries no per-op set.
+func GetOperationRetryOn(operationId string) ([]int, bool) {
+	r, ok := operationRetryOn[operationId]
+	return r, ok
 }
 
 // GetOperationRetryMax returns the per-operation retry ceiling (maximum total

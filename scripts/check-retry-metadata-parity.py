@@ -21,8 +21,8 @@ Two acceptance criteria:
             - typescript/src/generated/metadata.ts          (camelCase)
             - kotlin/.../generated/Metadata.kt              (positional)
             - swift/Sources/Basecamp/Generated/Metadata.swift (labelled)
-        * max only:
-            - go/pkg/generated/client.gen.go operationRetryMax map
+        * max + retry_on:
+            - go/pkg/generated/client.gen.go operationRetryMax + operationRetryOn maps
 
   (2) Runtime consumption (TOKEN-SMOKE classification, NOT behavioral proof).
       Which emitted fields are read at runtime, per SDK, checked by the presence
@@ -33,8 +33,9 @@ Two acceptance criteria:
       Fields emitted but never read are guarded for PARITY only (criterion 1) and
       classified emitted-but-runtime-inert — NOT claimed as runtime parity:
         * TypeScript / Swift / Kotlin: consume the full tuple.
-        * Go / Python:                 consume only `max` (per-op ceiling); the
-                                       other fields are emitted-but-inert.
+        * Go / Python:                 consume `max` (per-op ceiling) AND
+                                       `retry_on` (the status gate); base_delay
+                                       and backoff are emitted-but-inert.
         * Ruby:                        consumes NONE (GET-only retry); every
                                        emitted retry field is inert.
 
@@ -163,6 +164,21 @@ def from_go_max() -> dict[str, int]:
     return {m.group("op"): int(m.group("max")) for m in pat.finditer(block.group(1))}
 
 
+def from_go_retry_on() -> dict[str, tuple]:
+    # Go emits the declared retryable status set as `operationRetryOn`, a
+    # sibling of operationRetryMax and likewise kept off the exported
+    # OperationMetadata struct.
+    text = (ROOT / "go/pkg/generated/client.gen.go").read_text()
+    block = re.search(r"var operationRetryOn = map\[string\]\[\]int\{(.*?)\n\}", text, re.DOTALL)
+    if not block:
+        raise ValueError("operationRetryOn map not found in client.gen.go")
+    pat = re.compile(r'"(?P<op>\w+)":\s*\{(?P<ro>[0-9,\s]*)\},')
+    return {
+        m.group("op"): tuple(int(x) for x in re.findall(r"\d+", m.group("ro")))
+        for m in pat.finditer(block.group(1))
+    }
+
+
 # --- checks ------------------------------------------------------------------
 
 
@@ -224,16 +240,37 @@ RUNTIME_CONSUMPTION = [
     ("Kotlin", "full tuple", "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt",
      ["opRetry.retryOn", "opRetry?.maxRetries", "opRetry?.baseDelayMs"], [],
      "BasecampHttpClient.kt: status in opRetry.retryOn, opRetry.maxRetries/baseDelayMs"),
-    ("Go", "max only", "go/templates/client.tmpl",
-     ["opMax < maxAttempts", "operationRetryMax[operationId]"], ["RetryBaseDelayMs", "RetryOn"],
-     "doWithRetry applies min(client cap, operationRetryMax); base_delay/retry_on/backoff emitted-but-inert"),
-    ("Python", "max only", "python/src/basecamp/_http.py",
-     ['.get("retry", {}).get("max")'], [],
-     "_request_with_retry applies min(client cap, retry.max); other fields emitted-but-inert"),
+    ("Go", "max + retry_on", "go/templates/client.tmpl",
+     ["opMax < maxAttempts", "operationRetryMax[operationId]",
+      "operationRetryOn[operationId]", "isRetryableStatus(resp.StatusCode, operationId)"],
+     ["RetryBaseDelayMs"],
+     "doWithRetry applies min(client cap, operationRetryMax) and gates status retry on operationRetryOn; base_delay/backoff emitted-but-inert"),
+    ("Python", "max + retry_on", "python/src/basecamp/_http.py",
+     ['.get("retry", {}).get("max")', 'retry.get("retry_on")', "_is_retryable_error"], [],
+     "_request_with_retry applies min(client cap, retry.max) and gates status retry on the declared retry_on; other fields emitted-but-inert"),
     ("Ruby", "none", "ruby/lib/basecamp/http.rb",
      [], ["maxAttempts", "maxRetries"],
      "http.rb retries GET only; every emitted per-op retry field is inert"),
 ]
+
+
+def check_retry_on_only(name: str, emitted: dict[str, tuple], model: dict[str, tuple]) -> int:
+    errors = 0
+    missing = sorted(set(model) - set(emitted))
+    extra = sorted(set(emitted) - set(model))
+    if missing:
+        fail(f"{name}: {len(missing)} operation(s) missing a retryOn set, e.g. {missing[:3]}")
+        errors += len(missing)
+    if extra:
+        fail(f"{name}: {len(extra)} operation(s) not in behavior-model.json, e.g. {extra[:3]}")
+        errors += len(extra)
+    for op in sorted(set(model) & set(emitted)):
+        if emitted[op] != model[op][3]:
+            fail(f"{name}: {op} retryOn {emitted[op]} != model {model[op][3]}")
+            errors += 1
+    if errors == 0:
+        print(f"  ✓ {name}: {len(emitted)} operations match behavior-model.json (retry_on)")
+    return errors
 
 
 def check_runtime_consumption() -> int:
@@ -265,6 +302,7 @@ def main() -> int:
     errors += check_full_tuple("Kotlin  Metadata.kt", from_kotlin(), model)
     errors += check_full_tuple("Swift   Metadata.swift", from_swift(), model)
     errors += check_max_only("Go      operationRetryMax", from_go_max(), model)
+    errors += check_retry_on_only("Go      operationRetryOn", from_go_retry_on(), model)
 
     print("\nCriterion 2 — runtime consumption (token-smoke classification, not behavioral proof):")
     errors += check_runtime_consumption()
