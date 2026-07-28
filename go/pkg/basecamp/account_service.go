@@ -218,15 +218,15 @@ func (s *AccountService) UpdateLogo(ctx context.Context, logo io.Reader, filenam
 	}
 
 	// Delegate to the generated client — retry and auth are handled by the transport.
-	// Pass a rewindable reader so doWithRetry can replay the body on transient failures.
+	// Pass a *bytes.Reader so net/http snapshots it into GetBody and doWithRetry
+	// can replay the body on transient failures.
 	bodyBytes := buf.Bytes()
 	multipartContentType := writer.FormDataContentType()
-	rewindable := &rewindableReader{data: bodyBytes}
 	resp, err := s.client.parent.gen.UpdateAccountLogoWithBodyWithResponse(
 		ctx,
 		s.client.accountID,
 		multipartContentType,
-		rewindable,
+		bytes.NewReader(bodyBytes),
 	)
 	if err != nil {
 		return err

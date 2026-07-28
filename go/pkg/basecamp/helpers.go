@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,11 @@ import (
 )
 
 // marshalBody encodes a map as JSON and returns an io.Reader suitable for the
-// generated client's *WithBodyWithResponse methods.
+// generated client's *WithBodyWithResponse methods. It returns a *bytes.Reader
+// so net/http snapshots it into req.GetBody, which the generated client's
+// doWithRetry uses to replay the body across retry attempts (these SDK-owned
+// serialized bodies must stay retryable — see the naturally-idempotent PUT/
+// DELETE conformance case).
 //
 // This is an intentional architectural exception to the normal pattern of using
 // generated typed request bodies. It exists because the generated structs for
@@ -38,31 +43,7 @@ func marshalBody(m map[string]any) (io.Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
-	return &rewindableReader{data: b}, nil
-}
-
-// rewindableReader wraps a byte slice as an io.Reader that auto-rewinds
-// after returning EOF, so the generated client's doWithRetry can replay
-// the body on each retry attempt. Safe against partial reads: once EOF
-// is returned, the next Read starts from position 0.
-type rewindableReader struct {
-	data  []byte
-	pos   int
-	atEOF bool
-}
-
-func (r *rewindableReader) Read(p []byte) (int, error) {
-	if r.atEOF {
-		r.pos = 0
-		r.atEOF = false
-	}
-	if r.pos >= len(r.data) {
-		r.atEOF = true
-		return 0, io.EOF
-	}
-	n := copy(p, r.data[r.pos:])
-	r.pos += n
-	return n, nil
+	return bytes.NewReader(b), nil
 }
 
 // checkResponse converts HTTP response errors to SDK errors for non-2xx responses.
