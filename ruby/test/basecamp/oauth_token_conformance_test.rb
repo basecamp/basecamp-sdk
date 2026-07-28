@@ -49,7 +49,7 @@ class OAuthTokenConformanceTest < Minitest::Test
         assert_equal "api_error", error.type
       end
 
-      refute_nil sent_form, "the refresh request never reached the stub"
+      assert_not_nil sent_form, "the refresh request never reached the stub"
       assert_equal expect["formResource"], sent_form["resource"] if expect.key?("formResource")
       assert_not sent_form.key?("resource") if expect["formResourceAbsent"]
     end

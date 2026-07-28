@@ -1274,7 +1274,17 @@ class TestPollDeviceToken429:
         assert sleep.waits == [5, 30]
 
     @respx.mock
-    @pytest.mark.parametrize("headers", [{}, {"Retry-After": "abc"}, {"Retry-After": "1.5"}, {"Retry-After": "-1"}, {"Retry-After": "0"}, {"Retry-After": "99999999999999999999"}])
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            {},
+            {"Retry-After": "abc"},
+            {"Retry-After": "1.5"},
+            {"Retry-After": "-1"},
+            {"Retry-After": "0"},
+            {"Retry-After": "99999999999999999999"},
+        ],
+    )
     def test_missing_or_malformed_retry_after_falls_back_to_interval(self, headers):
         _queue_token_responses(
             [
@@ -1284,9 +1294,7 @@ class TestPollDeviceToken429:
         )
         sleep = RecordingSleep()
 
-        poll_device_token(
-            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
-        )
+        poll_device_token(TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep)
 
         assert sleep.waits == [5, 5]
 
@@ -1301,9 +1309,7 @@ class TestPollDeviceToken429:
         )
         sleep = RecordingSleep()
 
-        poll_device_token(
-            TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep
-        )
+        poll_device_token(TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=sleep)
 
         # 5s initial, 30s one-shot override, then back to the 5s interval.
         assert sleep.waits == [5, 30, 5]
@@ -1324,9 +1330,7 @@ class TestPollDeviceToken429:
 
     @respx.mock
     def test_429_wait_clamped_to_expiry(self):
-        _queue_token_responses(
-            [httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "3600"})]
-        )
+        _queue_token_responses([httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "3600"})])
         sleep = RecordingSleep()
         # Scripted monotonic clock: deadline anchors at t=0 with a 20s
         # lifetime. The second iteration's huge Retry-After override must clamp
@@ -1341,17 +1345,20 @@ class TestPollDeviceToken429:
 
         with pytest.raises(DeviceFlowError) as exc_info:
             poll_device_token(
-                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123",
-                interval=5, expires_in=20, sleep=sleep, clock=clock,
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=20,
+                sleep=sleep,
+                clock=clock,
             )
         assert exc_info.value.reason == "expired"
         assert sleep.waits == [5, 14]
 
     @respx.mock
     def test_cancellation_during_429_wait(self):
-        _queue_token_responses(
-            [httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "30"})]
-        )
+        _queue_token_responses([httpx.Response(429, json=self.TOO_MANY, headers={"Retry-After": "30"})])
         slept = {"total": 0.0}
         cancelled = {"flag": False}
 
@@ -1365,8 +1372,12 @@ class TestPollDeviceToken429:
 
         with pytest.raises(DeviceFlowError) as exc_info:
             poll_device_token(
-                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123",
-                interval=5, expires_in=900, sleep=sleep,
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                sleep=sleep,
                 should_cancel=lambda: cancelled["flag"],
             )
         assert exc_info.value.reason == "cancelled"
