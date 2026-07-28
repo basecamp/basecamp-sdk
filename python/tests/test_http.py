@@ -389,3 +389,138 @@ class TestParserDifferentialEgress:
             host = call.request.url.host.lower()
             auth = call.request.headers.get("authorization")
             assert self._token_may_reach(host) or auth is None, f"Bearer token egressed to foreign host {host!r}"
+
+
+# Per-operation retry ceiling: metadata carries a retry.max per operation, and
+# the effective attempts are min(client cap, op max). The ceiling can only
+# reduce attempts below the client cap, never raise them, matching how TS/Swift/
+# Kotlin drive their loops from the per-op max while still honoring a Go/Python
+# client that lowered its cap. Sync and async transports must agree.
+_PEROP_META = {
+    "CapTwoOp": {"idempotent": True, "retry": {"max": 2}},
+    "CapThreeOp": {"idempotent": True, "retry": {"max": 3}},
+}
+
+
+def make_client_meta(metadata, max_retries=3):
+    config = Config(
+        base_url="https://3.basecampapi.com",
+        max_retries=max_retries,
+        base_delay=0.001,
+        max_jitter=0.0,
+        timeout=30.0,
+    )
+    auth = BearerAuth(StaticTokenProvider("test-token"))
+    return HttpClient(config, auth, BasecampHooks(), metadata=metadata)
+
+
+def make_async_client_meta(metadata, max_retries=3):
+    config = Config(
+        base_url="https://3.basecampapi.com",
+        max_retries=max_retries,
+        base_delay=0.001,
+        max_jitter=0.0,
+        timeout=30.0,
+    )
+    auth = AsyncBearerAuth(AsyncStaticTokenProvider("test-token"))
+    return AsyncHttpClient(config, auth, BasecampHooks(), metadata=metadata)
+
+
+class TestPerOperationRetryMax:
+    # (operation, client_cap, want_attempts)
+    CASES = [
+        ("CapTwoOp", 3, 2),  # op ceiling binds below default cap: min(3, 2)
+        ("CapTwoOp", 5, 2),  # op ceiling binds below a raised cap: min(5, 2)
+        ("CapTwoOp", 1, 1),  # client cap below op ceiling honored: min(1, 2)
+        ("CapThreeOp", 3, 3),  # op ceiling equals cap (control): min(3, 3)
+    ]
+
+    @pytest.mark.parametrize("operation,cap,want", CASES)
+    @respx.mock
+    def test_sync_ceiling(self, operation, cap, want):
+        route = respx.get("https://3.basecampapi.com/test").mock(return_value=httpx.Response(503))
+        client = make_client_meta(_PEROP_META, max_retries=cap)
+        with pytest.raises(ApiError):
+            client.get("/test", operation=operation)
+        assert route.call_count == want
+
+    @pytest.mark.parametrize("operation,cap,want", CASES)
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_ceiling(self, operation, cap, want):
+        route = respx.get("https://3.basecampapi.com/test").mock(return_value=httpx.Response(503))
+        client = make_async_client_meta(_PEROP_META, max_retries=cap)
+        with pytest.raises(ApiError):
+            await client.get("/test", operation=operation)
+        assert route.call_count == want
+
+    @respx.mock
+    def test_no_operation_uses_client_cap(self):
+        # A GET with no operation name (or an unknown one) keeps the client cap.
+        route = respx.get("https://3.basecampapi.com/test").mock(return_value=httpx.Response(503))
+        client = make_client_meta(_PEROP_META, max_retries=3)
+        with pytest.raises(ApiError):
+            client.get("/test")
+        assert route.call_count == 3
+
+
+# Integration: exercise the per-op ceiling through REAL generated services with
+# the REAL bundled metadata.json, so the canonical (PascalCase) operationId
+# plumbing is covered end-to-end. OperationInfo.operation is snake_case and is
+# NOT a metadata key; the transport must receive the canonical operationId
+# (threaded via the generated `operation=` kwarg) for GET/list/pagination too —
+# otherwise a client cap above an op's max would over-retry those reads.
+from basecamp.async_client import AsyncClient  # noqa: E402
+from basecamp.client import Client  # noqa: E402
+
+
+def _integration_config(max_retries):
+    return Config(
+        base_url="https://3.basecampapi.com",
+        max_retries=max_retries,
+        base_delay=0.001,
+        max_jitter=0.0,
+        timeout=30.0,
+    )
+
+
+class TestPerOperationRetryMaxIntegration:
+    @respx.mock
+    def test_sync_get_list_respects_op_ceiling(self):
+        # ListProjects has max:3; a client cap of 5 must still stop at 3.
+        route = respx.route(method="GET").mock(return_value=httpx.Response(503))
+        client = Client(config=_integration_config(5), access_token="tok")
+        with pytest.raises(ApiError):
+            client.for_account("999").projects.list()
+        assert route.call_count == 3
+        client.close()
+
+    @respx.mock
+    def test_sync_mutation_respects_op_ceiling(self):
+        # UpdateAccountName has max:2; a client cap of 5 must still stop at 2.
+        route = respx.route(method="PUT").mock(return_value=httpx.Response(503))
+        client = Client(config=_integration_config(5), access_token="tok")
+        with pytest.raises(ApiError):
+            client.for_account("999").account.update_account_name(name="x")
+        assert route.call_count == 2
+        client.close()
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_get_list_respects_op_ceiling(self):
+        route = respx.route(method="GET").mock(return_value=httpx.Response(503))
+        client = AsyncClient(config=_integration_config(5), access_token="tok")
+        with pytest.raises(ApiError):
+            await client.for_account("999").projects.list()
+        assert route.call_count == 3
+        await client.close()
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_mutation_respects_op_ceiling(self):
+        route = respx.route(method="PUT").mock(return_value=httpx.Response(503))
+        client = AsyncClient(config=_integration_config(5), access_token="tok")
+        with pytest.raises(ApiError):
+            await client.for_account("999").account.update_account_name(name="x")
+        assert route.call_count == 2
+        await client.close()

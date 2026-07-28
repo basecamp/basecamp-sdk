@@ -27,6 +27,7 @@ class ToolsService(BaseService):
             OperationInfo(service="tools", operation="get", is_mutation=False, resource_id=tool_id),
             "GET",
             f"/dock/tools/{tool_id}",
+            operation="GetTool",
         )
 
     def update(self, *, tool_id: int, title: str) -> dict[str, Any]:
@@ -89,6 +90,7 @@ class AsyncToolsService(AsyncBaseService):
             OperationInfo(service="tools", operation="get", is_mutation=False, resource_id=tool_id),
             "GET",
             f"/dock/tools/{tool_id}",
+            operation="GetTool",
         )
 
     async def update(self, *, tool_id: int, title: str) -> dict[str, Any]:

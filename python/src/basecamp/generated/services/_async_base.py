@@ -52,7 +52,9 @@ class AsyncBaseService:
         safe_hook(self._hooks.on_operation_start, info)
         try:
             if method == "GET":
-                response = await self._client.http.get(self._client.account_path(path), params=params)
+                response = await self._client.http.get(
+                    self._client.account_path(path), params=params, operation=operation
+                )
             elif method == "POST":
                 response = await self._client.http.post(
                     self._client.account_path(path), json_body=json_body, operation=operation
@@ -81,6 +83,7 @@ class AsyncBaseService:
         path: str,
         *,
         params: dict | None = None,
+        operation: str | None = None,
     ) -> ListResult:
         """Fetch a complete, unpaginated array in a single request.
 
@@ -92,7 +95,7 @@ class AsyncBaseService:
         start = time.monotonic()
         safe_hook(self._hooks.on_operation_start, info)
         try:
-            response = await self._client.http.get(self._client.account_path(path), params=params)
+            response = await self._client.http.get(self._client.account_path(path), params=params, operation=operation)
             _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
             items = response.json()
             _normalize_person_ids(items)
@@ -204,11 +207,12 @@ class AsyncBaseService:
         *,
         params: dict | None = None,
         max_items: int | None = None,
+        operation: str | None = None,
     ) -> ListResult:
         start = time.monotonic()
         safe_hook(self._hooks.on_operation_start, info)
         try:
-            result = await self._paginate(path, params=params, max_items=max_items)
+            result = await self._paginate(path, params=params, max_items=max_items, operation=operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -224,11 +228,12 @@ class AsyncBaseService:
         key: str,
         *,
         params: dict | None = None,
+        operation: str | None = None,
     ) -> ListResult:
         start = time.monotonic()
         safe_hook(self._hooks.on_operation_start, info)
         try:
-            result = await self._paginate_key(path, key, params=params)
+            result = await self._paginate_key(path, key, params=params, operation=operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -244,11 +249,12 @@ class AsyncBaseService:
         key: str,
         *,
         params: dict | None = None,
+        operation: str | None = None,
     ) -> dict:
         start = time.monotonic()
         safe_hook(self._hooks.on_operation_start, info)
         try:
-            result = await self._paginate_wrapped(path, key, params=params)
+            result = await self._paginate_wrapped(path, key, params=params, operation=operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -257,7 +263,14 @@ class AsyncBaseService:
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms, error=e))
             raise
 
-    async def _paginate(self, path: str, *, params: dict | None = None, max_items: int | None = None) -> ListResult:
+    async def _paginate(
+        self,
+        path: str,
+        *,
+        params: dict | None = None,
+        max_items: int | None = None,
+        operation: str | None = None,
+    ) -> ListResult:
         base_url = self._client.http._build_url(self._client.account_path(path))
         url = base_url
         all_items: list = []
@@ -266,7 +279,7 @@ class AsyncBaseService:
 
         for page in range(1, self._client.config.max_pages + 1):
             safe_hook(self._hooks.on_paginate, url, page)
-            response = await self._client.http.get(url, params=params if page == 1 else None)
+            response = await self._client.http.get(url, params=params if page == 1 else None, operation=operation)
             _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
 
             if page == 1:
@@ -299,7 +312,9 @@ class AsyncBaseService:
 
         return ListResult(all_items, ListMeta(total_count=total_count, truncated=truncated))
 
-    async def _paginate_key(self, path: str, key: str, *, params: dict | None = None) -> ListResult:
+    async def _paginate_key(
+        self, path: str, key: str, *, params: dict | None = None, operation: str | None = None
+    ) -> ListResult:
         base_url = self._client.http._build_url(self._client.account_path(path))
         url = base_url
         all_items: list = []
@@ -307,7 +322,7 @@ class AsyncBaseService:
 
         for page in range(1, self._client.config.max_pages + 1):
             safe_hook(self._hooks.on_paginate, url, page)
-            response = await self._client.http.get(url, params=params if page == 1 else None)
+            response = await self._client.http.get(url, params=params if page == 1 else None, operation=operation)
             _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
 
             if page == 1:
@@ -334,11 +349,13 @@ class AsyncBaseService:
 
         return ListResult(all_items, ListMeta(total_count=total_count))
 
-    async def _paginate_wrapped(self, path: str, key: str, *, params: dict | None = None) -> dict:
+    async def _paginate_wrapped(
+        self, path: str, key: str, *, params: dict | None = None, operation: str | None = None
+    ) -> dict:
         base_url = self._client.http._build_url(self._client.account_path(path))
 
         safe_hook(self._hooks.on_paginate, base_url, 1)
-        first_response = await self._client.http.get(base_url, params=params)
+        first_response = await self._client.http.get(base_url, params=params, operation=operation)
         _security.check_body_size(first_response.content, _security.MAX_RESPONSE_BODY_BYTES)
 
         total_count = parse_total_count(dict(first_response.headers))
@@ -363,7 +380,7 @@ class AsyncBaseService:
                 raise ApiError(f"Pagination Link header points to different origin: {_security.truncate(next_url)}")
 
             safe_hook(self._hooks.on_paginate, next_url, page)
-            response = await self._client.http.get(next_url)
+            response = await self._client.http.get(next_url, operation=operation)
             _security.check_body_size(response.content, _security.MAX_RESPONSE_BODY_BYTES)
 
             try:

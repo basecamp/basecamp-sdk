@@ -13,7 +13,9 @@ from basecamp.hooks import OperationInfo
 class CampfiresService(BaseService):
     def list(self) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="campfires", operation="list", is_mutation=False), "/chats.json"
+            OperationInfo(service="campfires", operation="list", is_mutation=False),
+            "/chats.json",
+            operation="ListCampfires",
         )
 
     def get(self, *, campfire_id: int) -> dict[str, Any]:
@@ -21,12 +23,14 @@ class CampfiresService(BaseService):
             OperationInfo(service="campfires", operation="get", is_mutation=False, resource_id=campfire_id),
             "GET",
             f"/chats/{campfire_id}",
+            operation="GetCampfire",
         )
 
     def list_chatbots(self, *, campfire_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list_chatbots", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/integrations.json",
+            operation="ListChatbots",
         )
 
     def create_chatbot(self, *, campfire_id: int, service_name: str, command_url: str | None = None) -> dict[str, Any]:
@@ -43,6 +47,7 @@ class CampfiresService(BaseService):
             OperationInfo(service="campfires", operation="get_chatbot", is_mutation=False, resource_id=chatbot_id),
             "GET",
             f"/chats/{campfire_id}/integrations/{chatbot_id}",
+            operation="GetChatbot",
         )
 
     def update_chatbot(
@@ -69,6 +74,7 @@ class CampfiresService(BaseService):
             OperationInfo(service="campfires", operation="list_lines", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/lines.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListCampfireLines",
         )
 
     def create_line(self, *, campfire_id: int, content: str, content_type: str | None = None) -> dict[str, Any]:
@@ -85,6 +91,7 @@ class CampfiresService(BaseService):
             OperationInfo(service="campfires", operation="get_line", is_mutation=False, resource_id=line_id),
             "GET",
             f"/chats/{campfire_id}/lines/{line_id}",
+            operation="GetCampfireLine",
         )
 
     def update_line(self, *, campfire_id: int, line_id: int, content: str) -> None:
@@ -109,6 +116,7 @@ class CampfiresService(BaseService):
             OperationInfo(service="campfires", operation="list_uploads", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/uploads.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListCampfireUploads",
         )
 
     def create_upload(self, *, campfire_id: int, content: bytes, content_type: str, name: str) -> dict[str, Any]:
@@ -125,7 +133,9 @@ class CampfiresService(BaseService):
 class AsyncCampfiresService(AsyncBaseService):
     async def list(self) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="campfires", operation="list", is_mutation=False), "/chats.json"
+            OperationInfo(service="campfires", operation="list", is_mutation=False),
+            "/chats.json",
+            operation="ListCampfires",
         )
 
     async def get(self, *, campfire_id: int) -> dict[str, Any]:
@@ -133,12 +143,14 @@ class AsyncCampfiresService(AsyncBaseService):
             OperationInfo(service="campfires", operation="get", is_mutation=False, resource_id=campfire_id),
             "GET",
             f"/chats/{campfire_id}",
+            operation="GetCampfire",
         )
 
     async def list_chatbots(self, *, campfire_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list_chatbots", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/integrations.json",
+            operation="ListChatbots",
         )
 
     async def create_chatbot(
@@ -157,6 +169,7 @@ class AsyncCampfiresService(AsyncBaseService):
             OperationInfo(service="campfires", operation="get_chatbot", is_mutation=False, resource_id=chatbot_id),
             "GET",
             f"/chats/{campfire_id}/integrations/{chatbot_id}",
+            operation="GetChatbot",
         )
 
     async def update_chatbot(
@@ -185,6 +198,7 @@ class AsyncCampfiresService(AsyncBaseService):
             OperationInfo(service="campfires", operation="list_lines", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/lines.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListCampfireLines",
         )
 
     async def create_line(self, *, campfire_id: int, content: str, content_type: str | None = None) -> dict[str, Any]:
@@ -201,6 +215,7 @@ class AsyncCampfiresService(AsyncBaseService):
             OperationInfo(service="campfires", operation="get_line", is_mutation=False, resource_id=line_id),
             "GET",
             f"/chats/{campfire_id}/lines/{line_id}",
+            operation="GetCampfireLine",
         )
 
     async def update_line(self, *, campfire_id: int, line_id: int, content: str) -> None:
@@ -227,6 +242,7 @@ class AsyncCampfiresService(AsyncBaseService):
             OperationInfo(service="campfires", operation="list_uploads", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/uploads.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListCampfireUploads",
         )
 
     async def create_upload(self, *, campfire_id: int, content: bytes, content_type: str, name: str) -> dict[str, Any]:

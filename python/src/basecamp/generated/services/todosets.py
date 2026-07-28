@@ -16,6 +16,7 @@ class TodosetsService(BaseService):
             OperationInfo(service="todosets", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
             f"/todosets/{todoset_id}",
+            operation="GetTodoset",
         )
 
 
@@ -25,4 +26,5 @@ class AsyncTodosetsService(AsyncBaseService):
             OperationInfo(service="todosets", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
             f"/todosets/{todoset_id}",
+            operation="GetTodoset",
         )

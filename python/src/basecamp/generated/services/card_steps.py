@@ -36,6 +36,7 @@ class CardStepsService(BaseService):
             OperationInfo(service="cardsteps", operation="get", is_mutation=False, resource_id=step_id),
             "GET",
             f"/card_tables/steps/{step_id}",
+            operation="GetCardStep",
         )
 
     def update(
@@ -90,6 +91,7 @@ class AsyncCardStepsService(AsyncBaseService):
             OperationInfo(service="cardsteps", operation="get", is_mutation=False, resource_id=step_id),
             "GET",
             f"/card_tables/steps/{step_id}",
+            operation="GetCardStep",
         )
 
     async def update(

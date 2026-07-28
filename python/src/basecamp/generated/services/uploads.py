@@ -16,6 +16,7 @@ class UploadsService(BaseService):
             OperationInfo(service="uploads", operation="get", is_mutation=False, resource_id=upload_id),
             "GET",
             f"/uploads/{upload_id}",
+            operation="GetUpload",
         )
 
     def update(self, *, upload_id: int, description: str | None = None, base_name: str | None = None) -> dict[str, Any]:
@@ -31,12 +32,14 @@ class UploadsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
+            operation="ListUploadVersions",
         )
 
     def list(self, *, vault_id: int) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
+            operation="ListUploads",
         )
 
     def create(
@@ -70,6 +73,7 @@ class AsyncUploadsService(AsyncBaseService):
             OperationInfo(service="uploads", operation="get", is_mutation=False, resource_id=upload_id),
             "GET",
             f"/uploads/{upload_id}",
+            operation="GetUpload",
         )
 
     async def update(
@@ -87,12 +91,14 @@ class AsyncUploadsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
+            operation="ListUploadVersions",
         )
 
     async def list(self, *, vault_id: int) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
+            operation="ListUploads",
         )
 
     async def create(

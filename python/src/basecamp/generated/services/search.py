@@ -52,11 +52,15 @@ class SearchService(BaseService):
                 }.items()
                 if v is not None
             },
+            operation="Search",
         )
 
     def metadata(self) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="search", operation="metadata", is_mutation=False), "GET", "/searches/metadata.json"
+            OperationInfo(service="search", operation="metadata", is_mutation=False),
+            "GET",
+            "/searches/metadata.json",
+            operation="GetSearchMetadata",
         )
 
 
@@ -102,9 +106,13 @@ class AsyncSearchService(AsyncBaseService):
                 }.items()
                 if v is not None
             },
+            operation="Search",
         )
 
     async def metadata(self) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="search", operation="metadata", is_mutation=False), "GET", "/searches/metadata.json"
+            OperationInfo(service="search", operation="metadata", is_mutation=False),
+            "GET",
+            "/searches/metadata.json",
+            operation="GetSearchMetadata",
         )

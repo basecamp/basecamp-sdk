@@ -16,6 +16,7 @@ class HillChartsService(BaseService):
             OperationInfo(service="hillcharts", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
             f"/todosets/{todoset_id}/hill.json",
+            operation="GetHillChart",
         )
 
     def update_settings(
@@ -36,6 +37,7 @@ class AsyncHillChartsService(AsyncBaseService):
             OperationInfo(service="hillcharts", operation="get", is_mutation=False, resource_id=todoset_id),
             "GET",
             f"/todosets/{todoset_id}/hill.json",
+            operation="GetHillChart",
         )
 
     async def update_settings(

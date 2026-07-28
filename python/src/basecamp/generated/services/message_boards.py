@@ -16,6 +16,7 @@ class MessageBoardsService(BaseService):
             OperationInfo(service="messageboards", operation="get", is_mutation=False, resource_id=board_id),
             "GET",
             f"/message_boards/{board_id}",
+            operation="GetMessageBoard",
         )
 
 
@@ -25,4 +26,5 @@ class AsyncMessageBoardsService(AsyncBaseService):
             OperationInfo(service="messageboards", operation="get", is_mutation=False, resource_id=board_id),
             "GET",
             f"/message_boards/{board_id}",
+            operation="GetMessageBoard",
         )

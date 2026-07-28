@@ -16,6 +16,7 @@ class SubscriptionsService(BaseService):
             OperationInfo(service="subscriptions", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
             f"/recordings/{recording_id}/subscription.json",
+            operation="GetSubscription",
         )
 
     def subscribe(self, *, recording_id: int) -> dict[str, Any]:
@@ -52,6 +53,7 @@ class AsyncSubscriptionsService(AsyncBaseService):
             OperationInfo(service="subscriptions", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
             f"/recordings/{recording_id}/subscription.json",
+            operation="GetSubscription",
         )
 
     async def subscribe(self, *, recording_id: int) -> dict[str, Any]:

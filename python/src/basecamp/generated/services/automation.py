@@ -15,6 +15,7 @@ class AutomationService(BaseService):
         return self._request_list(
             OperationInfo(service="automation", operation="list_lineup_markers", is_mutation=False),
             "/lineup/markers.json",
+            operation="ListLineupMarkers",
         )
 
 
@@ -23,4 +24,5 @@ class AsyncAutomationService(AsyncBaseService):
         return await self._request_list(
             OperationInfo(service="automation", operation="list_lineup_markers", is_mutation=False),
             "/lineup/markers.json",
+            operation="ListLineupMarkers",
         )

@@ -13,7 +13,9 @@ from basecamp.hooks import OperationInfo
 class PeopleService(BaseService):
     def list_pingable(self) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="people", operation="list_pingable", is_mutation=False), "/circles/people.json"
+            OperationInfo(service="people", operation="list_pingable", is_mutation=False),
+            "/circles/people.json",
+            operation="ListPingablePeople",
         )
 
     def get_my_preferences(self) -> dict[str, Any]:
@@ -21,6 +23,7 @@ class PeopleService(BaseService):
             OperationInfo(service="people", operation="get_my_preferences", is_mutation=False),
             "GET",
             "/my/preferences.json",
+            operation="GetMyPreferences",
         )
 
     def update_my_preferences(self, *, person: dict) -> dict[str, Any]:
@@ -34,7 +37,10 @@ class PeopleService(BaseService):
 
     def my_profile(self) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="people", operation="my_profile", is_mutation=False), "GET", "/my/profile.json"
+            OperationInfo(service="people", operation="my_profile", is_mutation=False),
+            "GET",
+            "/my/profile.json",
+            operation="GetMyProfile",
         )
 
     def update_my_profile(
@@ -68,7 +74,7 @@ class PeopleService(BaseService):
 
     def list(self) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="people", operation="list", is_mutation=False), "/people.json"
+            OperationInfo(service="people", operation="list", is_mutation=False), "/people.json", operation="ListPeople"
         )
 
     def get(self, *, person_id: int) -> dict[str, Any]:
@@ -76,6 +82,7 @@ class PeopleService(BaseService):
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}",
+            operation="GetPerson",
         )
 
     def get_out_of_office(self, *, person_id: int) -> dict[str, Any]:
@@ -83,6 +90,7 @@ class PeopleService(BaseService):
             OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}/out_of_office.json",
+            operation="GetOutOfOffice",
         )
 
     def enable_out_of_office(self, *, person_id: int, out_of_office: dict) -> dict[str, Any]:
@@ -106,6 +114,7 @@ class PeopleService(BaseService):
         return self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
+            operation="ListProjectPeople",
         )
 
     def update_project_access(
@@ -128,13 +137,16 @@ class PeopleService(BaseService):
         return self._request_list(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
             "/reports/todos/assigned.json",
+            operation="ListAssignablePeople",
         )
 
 
 class AsyncPeopleService(AsyncBaseService):
     async def list_pingable(self) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="people", operation="list_pingable", is_mutation=False), "/circles/people.json"
+            OperationInfo(service="people", operation="list_pingable", is_mutation=False),
+            "/circles/people.json",
+            operation="ListPingablePeople",
         )
 
     async def get_my_preferences(self) -> dict[str, Any]:
@@ -142,6 +154,7 @@ class AsyncPeopleService(AsyncBaseService):
             OperationInfo(service="people", operation="get_my_preferences", is_mutation=False),
             "GET",
             "/my/preferences.json",
+            operation="GetMyPreferences",
         )
 
     async def update_my_preferences(self, *, person: dict) -> dict[str, Any]:
@@ -155,7 +168,10 @@ class AsyncPeopleService(AsyncBaseService):
 
     async def my_profile(self) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="people", operation="my_profile", is_mutation=False), "GET", "/my/profile.json"
+            OperationInfo(service="people", operation="my_profile", is_mutation=False),
+            "GET",
+            "/my/profile.json",
+            operation="GetMyProfile",
         )
 
     async def update_my_profile(
@@ -189,7 +205,7 @@ class AsyncPeopleService(AsyncBaseService):
 
     async def list(self) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="people", operation="list", is_mutation=False), "/people.json"
+            OperationInfo(service="people", operation="list", is_mutation=False), "/people.json", operation="ListPeople"
         )
 
     async def get(self, *, person_id: int) -> dict[str, Any]:
@@ -197,6 +213,7 @@ class AsyncPeopleService(AsyncBaseService):
             OperationInfo(service="people", operation="get", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}",
+            operation="GetPerson",
         )
 
     async def get_out_of_office(self, *, person_id: int) -> dict[str, Any]:
@@ -204,6 +221,7 @@ class AsyncPeopleService(AsyncBaseService):
             OperationInfo(service="people", operation="get_out_of_office", is_mutation=False, resource_id=person_id),
             "GET",
             f"/people/{person_id}/out_of_office.json",
+            operation="GetOutOfOffice",
         )
 
     async def enable_out_of_office(self, *, person_id: int, out_of_office: dict) -> dict[str, Any]:
@@ -227,6 +245,7 @@ class AsyncPeopleService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
+            operation="ListProjectPeople",
         )
 
     async def update_project_access(
@@ -249,4 +268,5 @@ class AsyncPeopleService(AsyncBaseService):
         return await self._request_list(
             OperationInfo(service="people", operation="list_assignable", is_mutation=False),
             "/reports/todos/assigned.json",
+            operation="ListAssignablePeople",
         )

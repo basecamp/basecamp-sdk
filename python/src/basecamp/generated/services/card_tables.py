@@ -16,6 +16,7 @@ class CardTablesService(BaseService):
             OperationInfo(service="cardtables", operation="get", is_mutation=False, resource_id=card_table_id),
             "GET",
             f"/card_tables/{card_table_id}",
+            operation="GetCardTable",
         )
 
 
@@ -25,4 +26,5 @@ class AsyncCardTablesService(AsyncBaseService):
             OperationInfo(service="cardtables", operation="get", is_mutation=False, resource_id=card_table_id),
             "GET",
             f"/card_tables/{card_table_id}",
+            operation="GetCardTable",
         )

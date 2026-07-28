@@ -16,6 +16,7 @@ class TemplatesService(BaseService):
             OperationInfo(service="templates", operation="list", is_mutation=False),
             "/templates.json",
             params=self._compact(status=status),
+            operation="ListTemplates",
         )
 
     def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
@@ -32,6 +33,7 @@ class TemplatesService(BaseService):
             OperationInfo(service="templates", operation="get", is_mutation=False, resource_id=template_id),
             "GET",
             f"/templates/{template_id}",
+            operation="GetTemplate",
         )
 
     def update(self, *, template_id: int, name: str | None = None, description: str | None = None) -> dict[str, Any]:
@@ -67,6 +69,7 @@ class TemplatesService(BaseService):
             ),
             "GET",
             f"/templates/{template_id}/project_constructions/{construction_id}",
+            operation="GetProjectConstruction",
         )
 
 
@@ -76,6 +79,7 @@ class AsyncTemplatesService(AsyncBaseService):
             OperationInfo(service="templates", operation="list", is_mutation=False),
             "/templates.json",
             params=self._compact(status=status),
+            operation="ListTemplates",
         )
 
     async def create(self, *, name: str, description: str | None = None) -> dict[str, Any]:
@@ -92,6 +96,7 @@ class AsyncTemplatesService(AsyncBaseService):
             OperationInfo(service="templates", operation="get", is_mutation=False, resource_id=template_id),
             "GET",
             f"/templates/{template_id}",
+            operation="GetTemplate",
         )
 
     async def update(
@@ -129,4 +134,5 @@ class AsyncTemplatesService(AsyncBaseService):
             ),
             "GET",
             f"/templates/{template_id}/project_constructions/{construction_id}",
+            operation="GetProjectConstruction",
         )

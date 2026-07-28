@@ -16,6 +16,7 @@ class DocumentsService(BaseService):
             OperationInfo(service="documents", operation="get", is_mutation=False, resource_id=document_id),
             "GET",
             f"/documents/{document_id}",
+            operation="GetDocument",
         )
 
     def update(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
@@ -31,6 +32,7 @@ class DocumentsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/documents.json",
+            operation="ListDocuments",
         )
 
     def create(
@@ -64,6 +66,7 @@ class AsyncDocumentsService(AsyncBaseService):
             OperationInfo(service="documents", operation="get", is_mutation=False, resource_id=document_id),
             "GET",
             f"/documents/{document_id}",
+            operation="GetDocument",
         )
 
     async def update(self, *, document_id: int, title: str | None = None, content: str | None = None) -> dict[str, Any]:
@@ -79,6 +82,7 @@ class AsyncDocumentsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/documents.json",
+            operation="ListDocuments",
         )
 
     async def create(

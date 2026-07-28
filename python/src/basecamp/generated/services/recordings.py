@@ -24,6 +24,7 @@ class RecordingsService(BaseService):
             OperationInfo(service="recordings", operation="list", is_mutation=False),
             "/projects/recordings.json",
             params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction),
+            operation="ListRecordings",
         )
 
     def get(self, *, recording_id: int) -> dict[str, Any]:
@@ -31,6 +32,7 @@ class RecordingsService(BaseService):
             OperationInfo(service="recordings", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
             f"/recordings/{recording_id}",
+            operation="GetRecording",
         )
 
     def unarchive(self, *, recording_id: int) -> None:
@@ -72,6 +74,7 @@ class AsyncRecordingsService(AsyncBaseService):
             OperationInfo(service="recordings", operation="list", is_mutation=False),
             "/projects/recordings.json",
             params=self._compact(type=type, bucket=bucket, status=status, sort=sort, direction=direction),
+            operation="ListRecordings",
         )
 
     async def get(self, *, recording_id: int) -> dict[str, Any]:
@@ -79,6 +82,7 @@ class AsyncRecordingsService(AsyncBaseService):
             OperationInfo(service="recordings", operation="get", is_mutation=False, resource_id=recording_id),
             "GET",
             f"/recordings/{recording_id}",
+            operation="GetRecording",
         )
 
     async def unarchive(self, *, recording_id: int) -> None:

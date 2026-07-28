@@ -16,6 +16,7 @@ class ClientApprovalsService(BaseService):
             OperationInfo(service="clientapprovals", operation="list", is_mutation=False),
             "/client/approvals.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListClientApprovals",
         )
 
     def get(self, *, approval_id: int) -> dict[str, Any]:
@@ -23,6 +24,7 @@ class ClientApprovalsService(BaseService):
             OperationInfo(service="clientapprovals", operation="get", is_mutation=False, resource_id=approval_id),
             "GET",
             f"/client/approvals/{approval_id}",
+            operation="GetClientApproval",
         )
 
 
@@ -32,6 +34,7 @@ class AsyncClientApprovalsService(AsyncBaseService):
             OperationInfo(service="clientapprovals", operation="list", is_mutation=False),
             "/client/approvals.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListClientApprovals",
         )
 
     async def get(self, *, approval_id: int) -> dict[str, Any]:
@@ -39,4 +42,5 @@ class AsyncClientApprovalsService(AsyncBaseService):
             OperationInfo(service="clientapprovals", operation="get", is_mutation=False, resource_id=approval_id),
             "GET",
             f"/client/approvals/{approval_id}",
+            operation="GetClientApproval",
         )

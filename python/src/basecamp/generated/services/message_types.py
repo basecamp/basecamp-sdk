@@ -15,6 +15,7 @@ class MessageTypesService(BaseService):
         return self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/categories.json",
+            operation="ListMessageTypes",
         )
 
     def create(self, *, bucket_id: int, name: str, icon: str) -> dict[str, Any]:
@@ -33,6 +34,7 @@ class MessageTypesService(BaseService):
             ),
             "GET",
             f"/buckets/{bucket_id}/categories/{type_id}",
+            operation="GetMessageType",
         )
 
     def update(
@@ -64,6 +66,7 @@ class AsyncMessageTypesService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/categories.json",
+            operation="ListMessageTypes",
         )
 
     async def create(self, *, bucket_id: int, name: str, icon: str) -> dict[str, Any]:
@@ -82,6 +85,7 @@ class AsyncMessageTypesService(AsyncBaseService):
             ),
             "GET",
             f"/buckets/{bucket_id}/categories/{type_id}",
+            operation="GetMessageType",
         )
 
     async def update(

@@ -16,6 +16,7 @@ class MessagesService(BaseService):
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListMessages",
         )
 
     def create(
@@ -49,6 +50,7 @@ class MessagesService(BaseService):
             OperationInfo(service="messages", operation="get", is_mutation=False, resource_id=message_id),
             "GET",
             f"/messages/{message_id}",
+            operation="GetMessage",
         )
 
     def update(
@@ -91,6 +93,7 @@ class AsyncMessagesService(AsyncBaseService):
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
             params=self._compact(sort=sort, direction=direction),
+            operation="ListMessages",
         )
 
     async def create(
@@ -124,6 +127,7 @@ class AsyncMessagesService(AsyncBaseService):
             OperationInfo(service="messages", operation="get", is_mutation=False, resource_id=message_id),
             "GET",
             f"/messages/{message_id}",
+            operation="GetMessage",
         )
 
     async def update(

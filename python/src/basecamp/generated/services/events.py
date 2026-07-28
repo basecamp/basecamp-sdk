@@ -15,6 +15,7 @@ class EventsService(BaseService):
         return self._request_paginated(
             OperationInfo(service="events", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/events.json",
+            operation="ListEvents",
         )
 
 
@@ -23,4 +24,5 @@ class AsyncEventsService(AsyncBaseService):
         return await self._request_paginated(
             OperationInfo(service="events", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/events.json",
+            operation="ListEvents",
         )

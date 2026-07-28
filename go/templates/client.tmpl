@@ -170,6 +170,13 @@ func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest fu
 	if !isIdempotent {
 		maxAttempts = 1
 	}
+	// Apply the per-operation retry ceiling from x-basecamp-retry as an upper
+	// bound on attempts: effective attempts = min(client cap, op ceiling). The
+	// ceiling can only reduce attempts below the client cap, never raise them, so
+	// a client that lowered its cap (e.g. to disable retries) is still honored.
+	if opMax, ok := operationRetryMax[operationId]; ok && opMax > 0 && opMax < maxAttempts {
+		maxAttempts = opMax
+	}
 
 	var lastResp *http.Response
 	var lastErr error
@@ -592,6 +599,36 @@ var operationMetadata = map[string]OperationMetadata{
 {{end -}}
 	"{{$opid}}": {Idempotent: {{$isIdempotent}}, HasSensitiveParams: {{$hasSensitive}}},
 {{end}}
+}
+
+// operationRetryMax maps operation IDs to their per-operation maximum TOTAL
+// attempt count from the x-basecamp-retry extension. doWithRetry applies it as a
+// per-operation ceiling: effective attempts = min(client cap, retry max). It is
+// kept as a separate map (rather than a field on OperationMetadata) so wiring it
+// up does not change that exported struct's shape, which would break external
+// unkeyed composite literals.
+var operationRetryMax = map[string]int{
+{{range . -}}
+{{$opid := .OperationId -}}
+{{$retryMax := 0 -}}
+{{if .Spec -}}
+{{if .Spec.Extensions -}}
+{{$retry := index .Spec.Extensions "x-basecamp-retry" -}}
+{{if $retry -}}
+{{$retryMax = index $retry "maxAttempts" -}}
+{{end -}}
+{{end -}}
+{{end -}}
+	"{{$opid}}": {{$retryMax}},
+{{end}}
+}
+
+// GetOperationRetryMax returns the per-operation retry ceiling (maximum total
+// attempts) for the given operation ID. ok is false when the operation carries
+// no per-op override, in which case the client-configured cap applies unchanged.
+func GetOperationRetryMax(operationId string) (int, bool) {
+	m, ok := operationRetryMax[operationId]
+	return m, ok
 }
 
 // GetOperationMetadata returns metadata for the given operation ID.
