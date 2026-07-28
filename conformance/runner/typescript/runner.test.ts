@@ -63,6 +63,13 @@ interface TestCase {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TESTS_DIR = path.resolve(__dirname, "../../tests");
+
+/**
+ * Allowance for Node timers firing early. libuv rounds a timer's deadline down
+ * internally, so `setTimeout(2000)` can elapse in ~1999.9ms of wall clock.
+ * Small enough that no real backoff regression fits inside it.
+ */
+const TIMER_SLACK_MS = 2;
 const TEST_ACCOUNT_ID = "999";
 
 /**
@@ -469,11 +476,9 @@ function installMockHandlers(tc: TestCase): {
   const handler = http.all(originPattern, async ({ request }) => {
     count++;
     // performance.now(), not Date.now(): Date.now() is floored to whole
-    // milliseconds, so bracketing a 2000ms sleep can legitimately read 1999
-    // when the two reads land either side of a millisecond boundary. That made
-    // retry.json's `delayBetweenRequests: min 2000` assertion flaky here while
-    // the Go runner — which uses nanosecond time.Time — never saw it. This is a
-    // measurement fix; the SDK really does sleep for the full interval.
+    // milliseconds, so bracketing a 2000ms sleep can read 1999 purely from
+    // rounding. See TIMER_SLACK_MS for the second, separate reason this
+    // assertion needs care.
     times.push(performance.now());
     const url = new URL(request.url);
     paths.push(url.pathname);
@@ -713,10 +718,20 @@ function checkAssertions(
         if (times.length >= 2) {
           const delay = times[1]! - times[0]!;
           const minDelay = assertion.min ?? 0;
+          // Node's timers may fire marginally BEFORE the requested delay —
+          // libuv rounds the deadline down internally, so a 2000ms sleep can
+          // legitimately elapse in 1999.87ms. That is a runtime property, not
+          // an SDK behaviour: the SDK asked for the full interval. The Go
+          // runner never sees it because Go's timers do not fire early.
+          //
+          // A sub-millisecond allowance cannot mask a real regression, which
+          // would miss by hundreds of milliseconds (a dropped Retry-After
+          // means ~1000ms of backoff instead of 2000ms) or by the whole
+          // interval (no delay at all).
           expect(
             delay,
-            `[${tc.name}] expected delay >= ${minDelay}ms, got ${delay}ms`,
-          ).toBeGreaterThanOrEqual(minDelay);
+            `[${tc.name}] expected delay >= ${minDelay}ms (allowing ${TIMER_SLACK_MS}ms timer slack), got ${delay}ms`,
+          ).toBeGreaterThanOrEqual(minDelay - TIMER_SLACK_MS);
         }
         break;
       }
