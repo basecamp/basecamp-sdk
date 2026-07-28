@@ -318,6 +318,12 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   RepositionCardStep: "reposition",
   CreateCardStep: "create",
   UpdateCardStep: "update",
+  // The plain `update` name belongs to the merge-safe composite in
+  // services/cards-extensions.ts. BC3's kanban/cards_controller.rb builds
+  // card_update_params as `{ due_on: nil }.merge(card_params)`, so a sparse
+  // verbatim PUT silently erases the due date (#467). The raw single-PUT path
+  // stays reachable under a name that says what it does.
+  UpdateCard: "updateVerbatim",
   SetCardStepCompletion: "setCompletion",
   GetQuestionnaire: "getQuestionnaire",
   GetQuestion: "getQuestion",

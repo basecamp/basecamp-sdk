@@ -30,7 +30,7 @@ import { MessagesService } from "./generated/services/messages.js";
 import { CommentsService } from "./generated/services/comments.js";
 import { CampfiresService } from "./generated/services/campfires.js";
 import { CardTablesService } from "./generated/services/card-tables.js";
-import { CardsService } from "./generated/services/cards.js";
+import { CardsService } from "./services/cards-extensions.js";
 import { CardColumnsService } from "./generated/services/card-columns.js";
 import { CardStepsService } from "./generated/services/card-steps.js";
 import { WormholesService } from "./generated/services/wormholes.js";

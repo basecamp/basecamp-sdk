@@ -146,6 +146,9 @@ class ServiceGenerator
     'RepositionCardStep' => 'reposition',
     'CreateCardStep' => 'create',
     'UpdateCardStep' => 'update',
+    # The plain `update` name belongs to the merge-safe composite; the raw
+    # single-PUT path keeps a name that says what it does. See #467.
+    'UpdateCard' => 'update_verbatim',
     'SetCardStepCompletion' => 'set_completion',
     'GetQuestionnaire' => 'get_questionnaire',
     'GetQuestion' => 'get_question',

@@ -10,6 +10,11 @@ loader.collapse("#{__dir__}/basecamp/generated")
 loader.on_load("Basecamp::Services::TodosService") do |klass, _abspath|
   klass.prepend(Basecamp::Services::TodosExtensions)
 end
+# Same shape for cards: the generated class owns the constant and the
+# merge-safe update is prepended over the generated update_verbatim.
+loader.on_load("Basecamp::Services::CardsService") do |klass, _abspath|
+  klass.prepend(Basecamp::Services::CardsExtensions)
+end
 loader.setup
 
 # Load generated types if available

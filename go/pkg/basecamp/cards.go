@@ -151,14 +151,28 @@ type CreateCardRequest struct {
 }
 
 // UpdateCardRequest specifies the parameters for updating a card.
+//
+// Every field is presence-bearing: a nil pointer means "leave this alone", so
+// Update can tell "the caller did not mention the due date" from "the caller
+// wants the due date cleared". That distinction is what makes Update
+// merge-safe — see its doc comment for why BC3 forces the issue.
 type UpdateCardRequest struct {
-	// Title is the card title (optional).
-	Title string `json:"title,omitempty"`
-	// Content is the card body in HTML (optional).
-	Content string `json:"content,omitempty"`
-	// DueOn is the due date in ISO 8601 format (optional).
-	DueOn string `json:"due_on,omitempty"`
-	// AssigneeIDs is a list of person IDs to assign this card to (optional).
+	// Title is the card title. Nil leaves it unchanged.
+	Title *string `json:"title,omitempty"`
+	// Content is the card body in HTML. Nil leaves it unchanged; a pointer to
+	// the empty string clears it.
+	Content *string `json:"content,omitempty"`
+	// DueOn is the due date in YYYY-MM-DD form. Nil leaves the existing due
+	// date in place; a pointer to the empty string clears it; a pointer to a
+	// date sets it.
+	DueOn *string `json:"due_on,omitempty"`
+	// AssigneeIDs is a list of person IDs to assign this card to. Nil leaves
+	// the assignees unchanged; an empty non-nil slice clears them.
+	//
+	// Note that BC3 filters incoming assignee IDs through reachable_people, so
+	// echoing back an id belonging to someone who has since lost board access
+	// silently unassigns them. Update therefore never resends assignees the
+	// caller did not ask for.
 	AssigneeIDs []int64 `json:"assignee_ids,omitempty"`
 }
 
@@ -461,11 +475,54 @@ func (s *CardsService) Create(ctx context.Context, columnID int64, req *CreateCa
 	return &card, nil
 }
 
-// Update updates an existing card.
-// Returns the updated card.
+// Update updates a card without disturbing fields the caller did not mention.
+//
+// BC3 builds the card's update params as `{ due_on: nil }.merge(card_params)`
+// (kanban/cards_controller.rb), so ANY update whose body omits due_on erases
+// the card's due date. A sparse PUT — the natural thing to write, and what
+// every generated SDK produces — therefore silently destroys data.
+//
+// Update works around that by fetching the card first and resending the
+// existing due date when the caller did not address it. It deliberately does
+// NOT resend everything: BC3 filters assignee IDs through reachable_people, so
+// echoing back assignees would unassign anyone who has since lost board access.
+// Only the caller's own title/content/assignee_ids go out, plus due_on.
+//
+// Costs one extra GET. There is a race: a concurrent due-date change landing
+// between the GET and the PUT is overwritten with the value this call read. Use
+// UpdateVerbatim if you want the single-request behaviour and will manage
+// due_on yourself.
 func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
+	if req == nil {
+		return nil, ErrUsage("update request is required")
+	}
+	// Only pay for the GET when the caller left due_on unaddressed — that is
+	// the only case where BC3's default would destroy something.
+	if req.DueOn == nil {
+		current, getErr := s.Get(ctx, cardID)
+		if getErr != nil {
+			return nil, getErr
+		}
+		if current.DueOn != "" {
+			preserved := current.DueOn
+			merged := *req
+			merged.DueOn = &preserved
+			return s.UpdateVerbatim(ctx, cardID, &merged)
+		}
+	}
+	return s.UpdateVerbatim(ctx, cardID, req)
+}
+
+// UpdateVerbatim sends exactly the fields the caller set, in a single PUT, with
+// no preceding GET.
+//
+// This is the raw API behaviour, and it is sharp: because BC3 merges the body
+// over `{ due_on: nil }`, omitting DueOn CLEARS the card's due date rather than
+// leaving it alone. Reach for Update unless you specifically want one request
+// and are managing due_on yourself.
+func (s *CardsService) UpdateVerbatim(ctx context.Context, cardID int64, req *UpdateCardRequest) (result *Card, err error) {
 	op := OperationInfo{
-		Service: "Cards", Operation: "Update",
+		Service: "Cards", Operation: "UpdateVerbatim",
 		ResourceType: "card", IsMutation: true,
 		ResourceID: cardID,
 	}
@@ -484,18 +541,27 @@ func (s *CardsService) Update(ctx context.Context, cardID int64, req *UpdateCard
 	}
 
 	body := map[string]any{}
-	if req.Title != "" {
-		body["title"] = req.Title
+	if req.Title != nil {
+		body["title"] = *req.Title
 	}
-	if req.Content != "" {
-		body["content"] = req.Content
+	if req.Content != nil {
+		body["content"] = *req.Content
 	}
-	if req.DueOn != "" {
-		if _, parseErr := types.ParseDate(req.DueOn); parseErr != nil {
-			err = ErrUsage("card due_on must be in YYYY-MM-DD format")
-			return nil, err
+	if req.DueOn != nil {
+		// A pointer to the empty string is an explicit clear. It is encoded by
+		// OMITTING due_on, because BC3 nils an omitted due date — the same
+		// behaviour Update exists to defend against is exactly what a caller
+		// asking to clear wants. Sending {"due_on": null} would violate the
+		// body-compaction rule in SPEC section 18, and five of the six SDKs
+		// strip nulls before the wire anyway, so omission is also the only
+		// encoding every SDK can express identically.
+		if *req.DueOn != "" {
+			if _, parseErr := types.ParseDate(*req.DueOn); parseErr != nil {
+				err = ErrUsage("card due_on must be in YYYY-MM-DD format")
+				return nil, err
+			}
+			body["due_on"] = *req.DueOn
 		}
-		body["due_on"] = req.DueOn
 	}
 	if req.AssigneeIDs != nil {
 		body["assignee_ids"] = req.AssigneeIDs

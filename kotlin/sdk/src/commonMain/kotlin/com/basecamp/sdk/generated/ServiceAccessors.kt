@@ -44,8 +44,8 @@ val AccountClient.cardTables: CardTablesService
     get() = service("CardTables") { CardTablesService(this) }
 
 /** Cards operations. */
-val AccountClient.cards: CardsService
-    get() = service("Cards") { CardsService(this) }
+val AccountClient.cards: com.basecamp.sdk.services.CardsService
+    get() = service("Cards") { com.basecamp.sdk.services.CardsService(this) }
 
 /** Checkins operations. */
 val AccountClient.checkins: CheckinsService

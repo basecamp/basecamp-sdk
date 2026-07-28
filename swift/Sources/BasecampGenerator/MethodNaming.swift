@@ -43,6 +43,9 @@ let methodNameOverrides: [String: String] = [
     "RepositionCardStep": "reposition",
     "CreateCardStep": "create",
     "UpdateCardStep": "update",
+    // The plain `update` name belongs to the merge-safe composite; the raw
+    // single-PUT path keeps a name that says what it does. See #467.
+    "UpdateCard": "updateVerbatim",
     "SetCardStepCompletion": "setCompletion",
     "GetQuestionnaire": "getQuestionnaire",
     "GetQuestion": "getQuestion",

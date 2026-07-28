@@ -510,9 +510,9 @@ func TestCreateCardRequest_MarshalMinimal(t *testing.T) {
 
 func TestUpdateCardRequest_Marshal(t *testing.T) {
 	req := UpdateCardRequest{
-		Title:       "Updated title",
-		Content:     "<div>Updated content</div>",
-		DueOn:       "2024-04-01",
+		Title:       cardStrPtr("Updated title"),
+		Content:     cardStrPtr("<div>Updated content</div>"),
+		DueOn:       cardStrPtr("2024-04-01"),
 		AssigneeIDs: []int64{1049715914, 1049715915},
 	}
 
@@ -778,7 +778,11 @@ func testCardsServer(t *testing.T, handler http.HandlerFunc) *CardsService {
 	return account.Cards()
 }
 
-func TestCardsService_UpdatePartial(t *testing.T) {
+// cardStrPtr is the presence-bearing test helper: UpdateCardRequest's scalars
+// are pointers so a caller can distinguish "leave alone" from "set empty".
+func cardStrPtr(v string) *string { return &v }
+
+func TestCardsService_UpdateVerbatimPartial(t *testing.T) {
 	fixture := loadCardsFixture(t, "get.json")
 	var receivedBody map[string]any
 	svc := testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -789,8 +793,8 @@ func TestCardsService_UpdatePartial(t *testing.T) {
 		w.Write(fixture)
 	})
 
-	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
-		Title: "new title",
+	_, err := svc.UpdateVerbatim(context.Background(), 12345, &UpdateCardRequest{
+		Title: cardStrPtr("new title"),
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -807,7 +811,7 @@ func TestCardsService_UpdatePartial(t *testing.T) {
 	}
 }
 
-func TestCardsService_UpdateClearsAssignees(t *testing.T) {
+func TestCardsService_UpdateVerbatimClearsAssignees(t *testing.T) {
 	fixture := loadCardsFixture(t, "get.json")
 	var receivedBody map[string]any
 	svc := testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -820,7 +824,7 @@ func TestCardsService_UpdateClearsAssignees(t *testing.T) {
 
 	// An empty non-nil slice means "clear all assignees" — this must be sent
 	// to the API as assignee_ids:[], not omitted.
-	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+	_, err := svc.UpdateVerbatim(context.Background(), 12345, &UpdateCardRequest{
 		AssigneeIDs: []int64{},
 	})
 	if err != nil {
@@ -1000,5 +1004,162 @@ func TestCardColumnsService_DisableOnHold(t *testing.T) {
 	}
 	if column == nil || column.ID != cardColumnsTestColumnID {
 		t.Fatalf("expected column ID %d, got %+v", cardColumnsTestColumnID, column)
+	}
+}
+
+// --- merge-safe Update (#467) ------------------------------------------------
+//
+// BC3 builds card_update_params as `{ due_on: nil }.merge(card_params)`, so a
+// sparse verbatim PUT erases the due date. Update fetches first and resends the
+// existing value when the caller did not address due_on.
+
+// recordingCardsServer records every request (method + decoded body) so a test
+// can assert on the whole exchange, not just the last request.
+type recordedRequest struct {
+	method string
+	body   map[string]any
+}
+
+func recordingCardsServer(t *testing.T, recorded *[]recordedRequest, cardJSON []byte) *CardsService {
+	t.Helper()
+	return testCardsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		rec := recordedRequest{method: r.Method}
+		if r.Method != http.MethodGet {
+			rec.body = decodeRequestBody(t, r)
+		}
+		*recorded = append(*recorded, rec)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(cardJSON)
+	})
+}
+
+func TestCardsService_UpdatePreservesDueOnWhenUnaddressed(t *testing.T) {
+	// cards/get.json carries due_on 2024-02-01.
+	fixture := loadCardsFixture(t, "get.json")
+	var recorded []recordedRequest
+	svc := recordingCardsServer(t, &recorded, fixture)
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		Title: cardStrPtr("new title"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(recorded) != 2 {
+		t.Fatalf("expected 2 requests (GET then PUT), got %d: %+v", len(recorded), recorded)
+	}
+	if recorded[0].method != http.MethodGet {
+		t.Errorf("expected request 0 to be a GET, got %s", recorded[0].method)
+	}
+	if recorded[1].method != http.MethodPut {
+		t.Errorf("expected request 1 to be a PUT, got %s", recorded[1].method)
+	}
+	if got := recorded[1].body["due_on"]; got != "2024-02-01" {
+		t.Errorf("due_on = %v, want the fetched 2024-02-01 resent — otherwise BC3 clears it", got)
+	}
+	if got := recorded[1].body["title"]; got != "new title" {
+		t.Errorf("title = %v, want 'new title'", got)
+	}
+	// The caller said nothing about assignees. Resending them would run BC3's
+	// reachable_people filter and could unassign someone who lost board access.
+	if _, ok := recorded[1].body["assignee_ids"]; ok {
+		t.Errorf("assignee_ids must be absent when unaddressed, got %v", recorded[1].body["assignee_ids"])
+	}
+	if _, ok := recorded[1].body["content"]; ok {
+		t.Errorf("content must be absent when unaddressed, got %v", recorded[1].body["content"])
+	}
+}
+
+func TestCardsService_UpdateExplicitClearOmitsDueOn(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	var recorded []recordedRequest
+	svc := recordingCardsServer(t, &recorded, fixture)
+
+	// A pointer to the empty string is an explicit clear. It needs no GET, and
+	// it is encoded by OMITTING due_on — BC3 nils an omitted due date.
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		DueOn: cardStrPtr(""),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(recorded) != 1 {
+		t.Fatalf("expected exactly 1 request (no GET needed for an explicit clear), got %d", len(recorded))
+	}
+	if recorded[0].method != http.MethodPut {
+		t.Errorf("expected a PUT, got %s", recorded[0].method)
+	}
+	if v, ok := recorded[0].body["due_on"]; ok {
+		t.Errorf("due_on must be omitted to clear (never null — SPEC section 18), got %v", v)
+	}
+}
+
+func TestCardsService_UpdateExplicitDateSkipsTheFetch(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	var recorded []recordedRequest
+	svc := recordingCardsServer(t, &recorded, fixture)
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		DueOn: cardStrPtr("2026-09-01"),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(recorded) != 1 {
+		t.Fatalf("expected exactly 1 request when due_on is explicit, got %d", len(recorded))
+	}
+	if got := recorded[0].body["due_on"]; got != "2026-09-01" {
+		t.Errorf("due_on = %v, want 2026-09-01", got)
+	}
+}
+
+func TestCardsService_UpdateSendsExplicitEmptyContent(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	var recorded []recordedRequest
+	svc := recordingCardsServer(t, &recorded, fixture)
+
+	// Pointer-to-empty is a real value for content: it clears the body. It must
+	// survive to the wire rather than being treated as "unset".
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		Content: cardStrPtr(""),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	put := recorded[len(recorded)-1]
+	v, ok := put.body["content"]
+	if !ok {
+		t.Fatal("content must be present when explicitly set to empty")
+	}
+	if v != "" {
+		t.Errorf("content = %v, want the empty string", v)
+	}
+}
+
+func TestCardsService_UpdateSendsExplicitEmptyAssignees(t *testing.T) {
+	fixture := loadCardsFixture(t, "get.json")
+	var recorded []recordedRequest
+	svc := recordingCardsServer(t, &recorded, fixture)
+
+	_, err := svc.Update(context.Background(), 12345, &UpdateCardRequest{
+		AssigneeIDs: []int64{},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	put := recorded[len(recorded)-1]
+	ids, ok := put.body["assignee_ids"]
+	if !ok {
+		t.Fatal("an empty non-nil AssigneeIDs must be sent as assignee_ids:[] to clear")
+	}
+	if arr, isArr := ids.([]any); !isArr || len(arr) != 0 {
+		t.Errorf("assignee_ids = %v, want []", ids)
 	}
 }

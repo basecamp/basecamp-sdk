@@ -49,7 +49,7 @@ public final class CardsService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func update(cardId: Int, req: UpdateCardRequest) async throws -> Card {
+    public func updateVerbatim(cardId: Int, req: UpdateCardRequest) async throws -> Card {
         return try await request(
             OperationInfo(service: "Cards", operation: "UpdateCard", resourceType: "card", isMutation: true, resourceId: cardId),
             method: "PUT",

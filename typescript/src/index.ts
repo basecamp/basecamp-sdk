@@ -174,12 +174,19 @@ export {
 } from "./generated/services/card-tables.js";
 
 export {
-  CardsService,
   type Card,
   type CreateCardRequest,
-  type UpdateCardRequest,
+  type UpdateVerbatimCardRequest,
   type MoveCardRequest,
 } from "./generated/services/cards.js";
+
+// The plain names belong to the merge-safe composite. UpdateCardRequest keeps
+// working and is strictly wider than before (dueOn accepts null, to ask for an
+// explicit clear); UpdateVerbatimCardRequest above is the raw generated shape.
+export {
+  CardsService,
+  type UpdateCardRequest,
+} from "./services/cards-extensions.js";
 
 export {
   CardColumnsService,

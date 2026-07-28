@@ -21128,11 +21128,11 @@ func (s *CardsService) Get(ctx context.Context, accountId string, cardId int64, 
 	return s.client.GetCard(ctx, accountId, cardId, reqEditors...)
 }
 
-func (s *CardsService) UpdateWithBody(ctx context.Context, accountId string, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (s *CardsService) UpdateVerbatimWithBody(ctx context.Context, accountId string, cardId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.UpdateCardWithBody(ctx, accountId, cardId, contentType, body, reqEditors...)
 }
 
-func (s *CardsService) Update(ctx context.Context, accountId string, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (s *CardsService) UpdateVerbatim(ctx context.Context, accountId string, cardId int64, body UpdateCardJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	return s.client.UpdateCard(ctx, accountId, cardId, body, reqEditors...)
 }
 

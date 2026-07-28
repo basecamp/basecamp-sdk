@@ -9,10 +9,10 @@
 | **TypeScript SDK** | Production-ready | 46 generated services, openapi-fetch based |
 | **Ruby SDK** | Production-ready | 46 generated services |
 | **Swift SDK** | Production-ready | 46 generated services, URLSession-based |
-| **Kotlin SDK** | Production-ready | 46 accessors over 46 generated service classes (`todos` exposes a composite subclass of the generated `TodosService`), Ktor/KMP-based |
+| **Kotlin SDK** | Production-ready | 46 accessors over 46 generated service classes (`todos` and `cards` expose composite subclasses of their generated services), Ktor/KMP-based |
 | **Python SDK** | Production-ready | 46 generated services, httpx-based |
 
-All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
+All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit` and Cards `update`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
 
 ---
 
@@ -38,6 +38,7 @@ All 226 operations across the ~46-service per-SDK layer are generated. Hand-writ
 | HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` | `sdk/.../services/BaseService.kt` | `src/basecamp/generated/services/_base.py` |
 | OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — | `sdk/.../oauth/*.kt` | `src/basecamp/services/authorization.py` |
 | Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `src/services/todos-extensions.ts` | `lib/basecamp/services/todos_extensions.rb` | `Sources/Basecamp/TodosServiceExtensions.swift` | `sdk/.../services/TodosService.kt` | `src/basecamp/services/todos.py` |
+| Merge-safe Cards composite (update over generated get+updateVerbatim; SPEC.md §18) | `src/services/cards-extensions.ts` | `lib/basecamp/services/cards_extensions.rb` | `Sources/Basecamp/CardsServiceExtensions.swift` | `sdk/.../services/CardsService.kt` | `src/basecamp/services/cards.py` |
 
 Hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) beyond the tables above are NOT loaded at runtime. They exist only as reference implementations.
 

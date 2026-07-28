@@ -19,7 +19,7 @@ class CardsService(BaseService):
             operation="GetCard",
         )
 
-    def update(
+    def update_verbatim(
         self,
         *,
         card_id: int,
@@ -29,7 +29,7 @@ class CardsService(BaseService):
         assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         return self._request(
-            OperationInfo(service="cards", operation="update", is_mutation=True, resource_id=card_id),
+            OperationInfo(service="cards", operation="update_verbatim", is_mutation=True, resource_id=card_id),
             "PUT",
             f"/card_tables/cards/{card_id}",
             json_body=self._compact(title=title, content=content, due_on=due_on, assignee_ids=assignee_ids),
@@ -79,7 +79,7 @@ class AsyncCardsService(AsyncBaseService):
             operation="GetCard",
         )
 
-    async def update(
+    async def update_verbatim(
         self,
         *,
         card_id: int,
@@ -89,7 +89,7 @@ class AsyncCardsService(AsyncBaseService):
         assignee_ids: list[int] | None = None,
     ) -> dict[str, Any]:
         return await self._request(
-            OperationInfo(service="cards", operation="update", is_mutation=True, resource_id=card_id),
+            OperationInfo(service="cards", operation="update_verbatim", is_mutation=True, resource_id=card_id),
             "PUT",
             f"/card_tables/cards/{card_id}",
             json_body=self._compact(title=title, content=content, due_on=due_on, assignee_ids=assignee_ids),

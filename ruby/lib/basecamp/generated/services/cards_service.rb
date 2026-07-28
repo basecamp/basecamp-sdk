@@ -23,8 +23,8 @@ module Basecamp
       # @param due_on [String, nil] due on (YYYY-MM-DD)
       # @param assignee_ids [Array, nil] assignee ids
       # @return [Hash] response data
-      def update(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
-        with_operation(service: "cards", operation: "update", is_mutation: true, resource_id: card_id) do
+      def update_verbatim(card_id:, title: nil, content: nil, due_on: nil, assignee_ids: nil)
+        with_operation(service: "cards", operation: "update_verbatim", is_mutation: true, resource_id: card_id) do
           http_put("/card_tables/cards/#{card_id}", body: compact_params(title: title, content: content, due_on: due_on, assignee_ids: assignee_ids)).json
         end
       end
