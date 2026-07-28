@@ -290,9 +290,10 @@ err = authMgr.Store().Save(basecamp.NormalizeBaseURL(sdkCfg.BaseURL), &basecamp.
 ```
 
 Pass the discovered base origin without a trailing slash everywhere a base URL
-or issuer is expected: discovery binds the issuer code-point exact, so
-`https://app.basecamp.com/` (trailing slash) would silently soft-fall back to
-Launchpad.
+or issuer is expected: binding is code-point exact — a trailing-slash
+`WithExpectedIssuer` value fails the advertised-member lookup as a **hard**
+`ErrExpectedIssuerUnavailable`, while a trailing-slash resource origin breaks
+the hop-1 binding and silently soft-falls back to Launchpad.
 
 ## Configuration
 

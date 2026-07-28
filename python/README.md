@@ -189,9 +189,11 @@ fallback). Without it, the SDK identifies BC5 by exclusion: exactly one
 non-Launchpad issuer is selected; two or more raise `ambiguous_issuers`; zero
 falls back to Launchpad.
 
-Pass bare origins — no trailing slash. Issuer binding is code-point exact, so
-`https://app.basecamp.com/` would mismatch the advertised issuer and silently
-soft-fall back to Launchpad.
+Pass bare origins — no trailing slash. Binding is code-point exact, and the
+failure mode depends on which parameter carries the slash: a trailing-slash
+`expected_issuer` fails the advertised-member lookup and raises a **hard**
+`expected_issuer_unavailable`, while a trailing-slash *resource* origin breaks
+the hop-1 resource binding and silently soft-falls back to Launchpad.
 
 **Stage-sensitive fallback.** `discover_from_resource` returns a
 `DiscoveryResult` that is either `selected` or a soft `fallback` whose `reason`

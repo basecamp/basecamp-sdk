@@ -284,9 +284,10 @@ For input-constrained clients (CLIs, TVs) the SDK implements the OAuth 2.0 devic
 authorization grant. The public `basecamp-cli` client is pre-registered with
 `token_endpoint_auth_method: none` — it sends no client secret, and an omitted
 scope defaults to `read` (prefer pinning it explicitly with `scope = "read"`).
-Pass bare origins everywhere (no trailing slash): issuer binding is code-point
-exact, so `https://app.basecamp.com/` would silently soft-fall back to
-Launchpad.
+Pass bare origins everywhere (no trailing slash): binding is code-point exact
+— a trailing-slash `expectedIssuer` fails the advertised-member lookup as a
+**hard** `expected_issuer_unavailable`, while a trailing-slash resource origin
+breaks the hop-1 binding and silently soft-falls back to Launchpad.
 
 ```kotlin
 import com.basecamp.sdk.BasecampClient

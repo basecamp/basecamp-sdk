@@ -139,9 +139,10 @@ For input-constrained clients (CLIs, TVs) that can't host a redirect URI, the
 device flow trades a redirect for a user-entered code. Basecamp pre-registers the
 public `basecamp-cli` client (`token_endpoint_auth_method: none`, no secret); an
 omitted scope defaults to `read` — prefer pinning it explicitly with
-`scope: "read"`. Pass bare origins everywhere (no trailing slash): issuer
-binding is code-point exact, so `https://app.basecamp.com/` would silently
-soft-fall back to Launchpad.
+`scope: "read"`. Pass bare origins everywhere (no trailing slash): binding is
+code-point exact — a trailing-slash `expected_issuer` raises a **hard**
+`expected_issuer_unavailable`, while a trailing-slash resource origin breaks
+the hop-1 binding and silently soft-falls back to Launchpad.
 
 ```ruby
 # The device grant runs against an ALREADY-SELECTED config whose issuer advertises
