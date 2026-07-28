@@ -52,7 +52,10 @@ def test_oauth_token_fixture(path: Path) -> None:
             refresh_token(TOKEN_ENDPOINT, refresh_tok="refresh-token", client_id="basecamp-cli", **kwargs)
         assert exc_info.value.code == "api_error"
 
-    form = parse_qs(route.calls[0].request.content.decode())
+    # keep_blank_values: a regression that sends `resource=` (blank value)
+    # instead of omitting the key must FAIL formResourceAbsent — parse_qs drops
+    # blank-valued parameters by default, which would mask exactly that bug.
+    form = parse_qs(route.calls[0].request.content.decode(), keep_blank_values=True)
     if "formResource" in expect:
         assert form.get("resource") == [expect["formResource"]]
     if expect.get("formResourceAbsent"):

@@ -52,16 +52,16 @@
           "description": "On `token`: the exact resource value the returned token must carry."
         },
         "resourceAbsent": {
-          "type": "boolean",
-          "description": "On `token`: the returned token must carry NO resource (unset/nil/undefined)."
+          "const": true,
+          "description": "On `token`: the returned token must carry NO resource (unset/nil/undefined). Only `true` is valid — every harness conditions the absence assertion on truthiness, so a `false` would satisfy the oneOf while asserting nothing."
         },
         "formResource": {
           "type": "string",
           "description": "The exact `resource` form value the refresh request must have sent."
         },
         "formResourceAbsent": {
-          "type": "boolean",
-          "description": "The refresh request must NOT have sent a `resource` form key at all."
+          "const": true,
+          "description": "The refresh request must NOT have sent a `resource` form key at all. Only `true` is valid — a `false` would assert nothing."
         }
       },
       "allOf": [

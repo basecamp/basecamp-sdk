@@ -205,9 +205,11 @@ selected (else a hard `expected_issuer_unavailable`). Without it, the SDK uses a
 documented Basecamp-profile heuristic: exactly one non-Launchpad issuer → selected;
 ≥2 → hard `ambiguous_issuers` (never guesses); zero → Launchpad.
 
-Pass bare origins — no trailing slash. Issuer binding is code-point exact, so
-`https://app.basecamp.com/` would mismatch the advertised issuer and silently
-soft-fall back to Launchpad.
+Pass bare origins — no trailing slash. Binding is code-point exact, and the
+failure mode depends on which parameter carries the slash: a trailing-slash
+`expectedIssuer` fails the advertised-member lookup and throws a **hard**
+`expected_issuer_unavailable`, while a trailing-slash *resource* origin breaks
+the hop-1 resource binding and silently soft-falls back to Launchpad.
 
 **Fallback is allowed only before a first-party issuer is committed.** Once valid
 resource metadata advertises it and it is selected, every later failure is fatal —
