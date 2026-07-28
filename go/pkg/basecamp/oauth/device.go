@@ -620,7 +620,14 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			Error string `json:"error"`
 		}
 		if json.Unmarshal(body, &errResp) == nil && errResp.Error != "" {
+			// Truncate at extraction (SPEC §9's 500-unit message cap): the
+			// server controls this string and an unrecognized value is
+			// interpolated into the api_error message. Real protocol codes are
+			// short, so classification is unaffected.
 			oauthError = errResp.Error
+			if len(oauthError) > maxErrorMessageLen {
+				oauthError = oauthError[:maxErrorMessageLen-3] + "..."
+			}
 		}
 	}
 	return pollResult{kind: pollOAuthError, oauthError: oauthError, status: resp.StatusCode}

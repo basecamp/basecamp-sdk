@@ -6,7 +6,7 @@
  * are TLS-guarded. The polling clock is monotonic and injectable for tests.
  */
 
-import { BasecampError } from "../errors.js";
+import { BasecampError, truncateErrorMessage } from "../errors.js";
 import { requireSecureEndpoint } from "../security.js";
 import { readBodyBounded } from "./discovery.js";
 import { DeviceFlowError } from "./device-errors.js";
@@ -600,9 +600,13 @@ async function postDeviceToken(
     // is not an OAuth error code. Everything else falls back to http_<status>,
     // which the loop terminates as api_error.
     const rawError = (data as { error?: unknown }).error;
+    // truncateErrorMessage at extraction (SPEC §9's 500-unit cap): the server
+    // controls this string and an unrecognized value is interpolated into the
+    // api_error message. Real protocol codes are short, so classification is
+    // unaffected.
     const error =
       response.status >= 400 && response.status < 500 && typeof rawError === "string" && rawError !== ""
-        ? rawError
+        ? truncateErrorMessage(rawError)
         : `http_${response.status}`;
     return { kind: "error", error, status: response.status };
   } finally {

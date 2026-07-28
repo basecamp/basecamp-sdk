@@ -604,7 +604,11 @@ module Basecamp
               # back to http_<status>, which the loop terminates as api_error.
               error = data["error"]
               recognized = (400..499).cover?(status) && error.is_a?(String) && !error.empty?
-              [ :error, recognized ? error : "http_#{status}", status ]
+              # Truncate at extraction (SPEC §9's 500-unit cap): the server
+              # controls this string and an unrecognized value is interpolated
+              # into the api_error message. Real protocol codes are short, so
+              # classification is unaffected.
+              [ :error, recognized ? Basecamp::Security.truncate(error) : "http_#{status}", status ]
             end
           end
 

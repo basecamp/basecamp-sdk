@@ -24,7 +24,7 @@ from typing import Any
 
 import httpx
 
-from basecamp._security import is_localhost, require_https
+from basecamp._security import is_localhost, require_https, truncate
 from basecamp.oauth.config import OAuthConfig
 from basecamp.oauth.device_authorization import DeviceAuthorization
 from basecamp.oauth.discovery import _normalize_body_cap, _normalize_timeout
@@ -637,7 +637,12 @@ def _post_device_token(
     # a 200 can produce a token and only a 4xx a protocol state. Everything
     # else falls back to http_<status>, which the loop terminates as api_error.
     raw_error = data.get("error")
-    error = raw_error if 400 <= status < 500 and isinstance(raw_error, str) and raw_error else f"http_{status}"
+    # ``truncate`` at extraction (SPEC §9's 500-unit cap): the server controls
+    # this string and an unrecognized value is interpolated into the api_error
+    # message. Real protocol codes are short, so classification is unaffected.
+    error = (
+        truncate(raw_error) if 400 <= status < 500 and isinstance(raw_error, str) and raw_error else f"http_{status}"
+    )
     return _PollResult(error=error, status=status)
 
 

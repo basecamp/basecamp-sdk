@@ -543,7 +543,12 @@ private suspend fun postDeviceTokenPoll(
                 // non-null String, so no SerializationException fires) — normalize it to
                 // http_<status> here so a blank error code is never surfaced as a dangling
                 // message. Matches Go/TS/Python/Ruby, which all coerce a blank error code.
-                deviceJson.decodeFromString<OAuthErrorResponse>(body).error.ifEmpty { "http_$status" }
+                // truncateMessage at extraction (SPEC §9's 500-unit cap): the server
+                // controls this string and an unrecognized value is interpolated into
+                // the api_error message; real protocol codes are short.
+                BasecampException.truncateMessage(
+                    deviceJson.decodeFromString<OAuthErrorResponse>(body).error.ifEmpty { "http_$status" },
+                )
             } catch (e: SerializationException) {
                 "http_$status"
             }
