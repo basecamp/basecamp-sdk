@@ -1,0 +1,23 @@
+conformance/runner/typescript/runner.test.ts
+  s_69156f95c4fbc4::t_cf769516d429a9 471-477
+spec/fixtures/recordings/list.json
+  s_69156f95c4fbc4::t_ed27aadff56b68 132,137,141-144,147-148
+spec/fixtures/search/results.json
+  s_69156f95c4fbc4::t_7aacefe1085b4c 198,203,209-213,216-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a349397cfaf11a4a082adbefda8c275cdcf002b8",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
