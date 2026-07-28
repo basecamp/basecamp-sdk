@@ -1024,6 +1024,8 @@ class TestPollDeviceTokenTimeoutNormalization:
             timeout=None,
         )
         assert token.access_token == "device_access_token"  # gitleaks:allow
+
+
 class TestParseRetryAfterSeconds:
     def test_rejects_non_ascii_digits_and_oversized_strings(self):
         # str.isdigit() accepts digit-shaped non-ASCII ("\u00b2") that int()
