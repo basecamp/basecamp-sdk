@@ -16,6 +16,14 @@ import (
 
 const serviceName = "basecamp-sdk"
 
+// maxRefreshTokenLifetimeSeconds caps a refresh response's expires_in at the
+// shared cross-SDK token-lifetime ceiling (2147483647 s ≈ 68 years, SPEC §16
+// — the same bound the oauth package's device/exchange parsers enforce). It
+// bounds the Unix-time addition in refreshLocked: an unbounded value like
+// math.MaxInt64 would overflow into a negative ExpiresAt that the
+// no-known-expiry rule reads as never-expiring.
+const maxRefreshTokenLifetimeSeconds = 2_147_483_647
+
 // Credentials holds OAuth tokens and metadata.
 type Credentials struct {
 	AccessToken   string `json:"access_token"`
@@ -403,6 +411,13 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		// no-expiry would persist an already-expired token that never
 		// refreshes again. Fail without persisting anything.
 		return ErrAPI(resp.StatusCode, "token refresh response expires_in must be positive when present")
+	case *tokenResp.ExpiresIn > maxRefreshTokenLifetimeSeconds:
+		// An absurd lifetime (math.MaxInt64 above all) would overflow the
+		// Unix-time addition below into a NEGATIVE ExpiresAt — which the
+		// no-known-expiry rule then treats as never-expiring, so an
+		// effectively-expired token would never refresh again. The shared
+		// token-lifetime ceiling (SPEC §16) makes it a malformed response.
+		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh response expires_in must be no greater than %d seconds", maxRefreshTokenLifetimeSeconds))
 	default:
 		creds.ExpiresAt = time.Now().Unix() + *tokenResp.ExpiresIn
 	}

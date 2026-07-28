@@ -586,7 +586,7 @@ func TestAuthManager_Refresh_ExplicitNonPositiveExpiresInIsAPIError(t *testing.T
 	// An explicit zero/negative expires_in is malformed — distinct from
 	// omission (which clears to no-known-expiry): persisting it as
 	// non-expiring would store an already-expired token that never refreshes.
-	for _, expiresIn := range []int64{0, -30} {
+	for _, expiresIn := range []int64{0, -30, 9223372036854775807} {
 		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]any{
