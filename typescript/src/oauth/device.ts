@@ -603,10 +603,12 @@ type TokenPollResult =
 
 /**
  * Validates a Retry-After delta for the 429 poll contract (SPEC §16): a
- * positive integral number of seconds no greater than MAX_DEVICE_SECONDS (the
- * shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
- * fractional, non-positive, or overflowing — returns 0 so the caller falls
- * back to the current interval. Trimming is ASCII SP/HTAB only (RFC 9110
+ * positive integral number of seconds. A representable delta beyond
+ * MAX_DEVICE_SECONDS (the shared 32-bit-ms timer bound) CLAMPS to the
+ * ceiling — the wait rule clips to the remaining code lifetime, honoring the
+ * throttle. Anything else — missing, an HTTP-date, fractional, non-positive,
+ * or unrepresentable (beyond 2^53) — returns 0 so the caller falls back to
+ * the current interval. Trimming is ASCII SP/HTAB only (RFC 9110
  * OWS) — NOT String.prototype.trim(), whose Unicode whitespace (NBSP above
  * all) would trim a malformed value into validity.
  */

@@ -752,10 +752,12 @@ module Basecamp
           end
 
           # Validates a Retry-After delta for the 429 poll contract (SPEC.md
-          # §16): a positive integral number of seconds no greater than
-          # {MAX_DEVICE_SECONDS} (the shared 32-bit-ms timer bound). Anything
-          # else — missing, an HTTP-date, fractional, non-positive, or
-          # overflowing — returns 0 so the caller falls back to the current
+          # §16): a positive integral number of seconds. A representable delta
+          # beyond {MAX_DEVICE_SECONDS} (the shared 32-bit-ms timer bound)
+          # CLAMPS to the ceiling — the wait rule clips to the remaining code
+          # lifetime, honoring the throttle. Anything else — missing, an
+          # HTTP-date, fractional, non-positive, or unrepresentable (the digit
+          # bound below) — returns 0 so the caller falls back to the current
           # interval.
           def parse_retry_after_seconds(header)
             # ASCII SP/HTAB only (RFC 9110 OWS) — NOT String#strip, which also

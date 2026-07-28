@@ -551,11 +551,12 @@ type pollResult struct {
 }
 
 // parseRetryAfterSeconds validates a Retry-After delta for the 429 poll
-// contract (SPEC §16): ASCII digits only (HTTP delta-seconds permits no sign),
-// positive, no greater than maxDeviceSeconds (the shared 32-bit-ms timer
-// bound). Anything else — missing, an HTTP-date, signed ("+30"), fractional,
-// non-positive, or overflowing — returns 0 so the caller falls back to the
-// current interval. Trimming is ASCII SP/HTAB only (RFC 9110 OWS) — NOT
+// contract (SPEC §16): ASCII digits only (HTTP delta-seconds permits no
+// sign), positive. A representable delta beyond maxDeviceSeconds (the shared
+// 32-bit-ms timer bound) CLAMPS to the ceiling — the wait rule clips to the
+// remaining code lifetime, honoring the throttle. Anything else — missing,
+// an HTTP-date, signed ("+30"), fractional, non-positive, or unrepresentable
+// (ErrRange) — returns 0 so the caller falls back to the current interval. Trimming is ASCII SP/HTAB only (RFC 9110 OWS) — NOT
 // strings.TrimSpace, whose Unicode whitespace (NBSP above all) would trim a
 // malformed value into validity.
 func parseRetryAfterSeconds(header string) int {

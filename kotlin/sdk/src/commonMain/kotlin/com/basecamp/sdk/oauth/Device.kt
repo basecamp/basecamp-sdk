@@ -495,10 +495,12 @@ private sealed interface PollResult {
 
 /**
  * Validates a Retry-After delta for the 429 poll contract (SPEC §16): a
- * positive integral number of seconds no greater than [MAX_DEVICE_SECONDS]
- * (the shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
- * fractional, non-positive, or overflowing — returns 0 so the caller falls
- * back to the current interval.
+ * positive integral number of seconds. A representable delta beyond
+ * [MAX_DEVICE_SECONDS] (the shared 32-bit-ms timer bound) CLAMPS to the
+ * ceiling — the wait rule clips to the remaining code lifetime, honoring the
+ * throttle. Anything else — missing, an HTTP-date, fractional, non-positive,
+ * or unrepresentable (toLongOrNull() overflow) — returns 0 so the caller
+ * falls back to the current interval.
  */
 private fun parseRetryAfterSeconds(header: String?): Long {
     // ASCII SP/HTAB only (RFC 9110 OWS) — NOT String.trim(), whose Unicode

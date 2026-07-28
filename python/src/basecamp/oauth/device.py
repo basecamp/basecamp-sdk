@@ -270,10 +270,12 @@ class _PollResult:
 
 def _parse_retry_after_seconds(header: str | None) -> int:
     """Validate a Retry-After delta for the 429 poll contract (SPEC §16): ASCII
-    digits only, positive, no greater than :data:`MAX_DEVICE_SECONDS` (the
-    shared 32-bit-ms timer bound). Anything else — missing, an HTTP-date,
-    signed, fractional, non-positive, or overflowing — returns 0 so the caller
-    falls back to the current interval.
+    digits only, positive. A representable delta beyond
+    :data:`MAX_DEVICE_SECONDS` (the shared 32-bit-ms timer bound) CLAMPS to
+    the ceiling — the wait rule clips to the remaining code lifetime, honoring
+    the throttle. Anything else — missing, an HTTP-date, signed, fractional,
+    non-positive, or unrepresentable (the digit bound below) — returns 0 so
+    the caller falls back to the current interval.
 
     NOT ``str.isdigit()``: it accepts non-ASCII digit-shaped characters
     (``"²"``, ``"٣"``) that ``int()`` rejects with ValueError, and an unbounded
