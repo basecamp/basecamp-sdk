@@ -884,6 +884,58 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "device_access_token", token.access_token
   end
 
+  def test_perform_already_cancelled_flow_makes_no_request
+    requested = stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
+    _waits, sleeper = recording_sleeper
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
+    )
+
+    displayed = []
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.perform_device_login(
+        config: config, client_id: "basecamp-cli",
+        display: ->(auth) { displayed << auth }, sleeper: sleeper,
+        cancelled: -> { true }
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+    assert_not_requested(requested)
+    assert_empty displayed
+  end
+
+  def test_perform_cancel_during_authorization_request_never_reaches_display
+    # The stub flips the probe as it serves the code pair, so the entry check
+    # passes and only the post-request re-check can catch it — the display
+    # hook must never fire for a cancelled flow.
+    cancelled = { flag: false }
+    stub_request(:post, DEVICE_ENDPOINT).to_return do |_request|
+      cancelled[:flag] = true
+      { status: 200, body: device_auth_response.to_json, headers: { "Content-Type" => "application/json" } }
+    end
+    _waits, sleeper = recording_sleeper
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
+    )
+
+    displayed = []
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.perform_device_login(
+        config: config, client_id: "basecamp-cli",
+        display: ->(auth) { displayed << auth }, sleeper: sleeper,
+        cancelled: -> { cancelled[:flag] }
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+    assert_empty displayed
+  end
+
   def test_perform_raises_expired_when_display_hook_consumes_whole_lifetime
     stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response)) # expires_in 900
     polled = stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response))
