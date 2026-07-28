@@ -622,6 +622,34 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("usage");
   });
 
+  it("does not return a token when a signal-ignoring fetch completes after abort", async () => {
+    // A custom fetch that ignores its AbortSignal can complete a 200 AFTER the
+    // caller aborted. The success branch must re-check the signal before
+    // handing back the credential — never a token returned after the caller
+    // asked to stop.
+    const controller = new AbortController();
+    const ignoringFetch = (async () => {
+      controller.abort();
+      return new Response(JSON.stringify(tokenResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }) as unknown as typeof fetch;
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      signal: controller.signal,
+      fetch: ignoringFetch,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("cancelled");
+    expect(err.code).toBe("usage");
+  });
+
   it("does not return a token when the signal was aborted before the token POST", async () => {
     // Regression: a signal aborted during a sleep that RESOLVES (rather than
     // rejecting) hands postDeviceToken an already-aborted signal. Without an

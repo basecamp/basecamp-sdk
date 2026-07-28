@@ -492,7 +492,14 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     // other OAuth error) resets the timeout backoff to the server interval.
     backoffSeconds = intervalSeconds;
 
-    if (result.kind === "token") return result.token;
+    // A custom fetch that ignores its AbortSignal can complete a 200 after the
+    // caller aborted: re-check before handing back the credential — never a
+    // token returned after the caller asked to stop (Go's success branch does
+    // the same via ctx.Err()).
+    if (result.kind === "token") {
+      throwIfAborted(signal);
+      return result.token;
+    }
 
     switch (result.error) {
       case "authorization_pending":
