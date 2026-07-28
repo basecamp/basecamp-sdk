@@ -432,6 +432,13 @@ module Basecamp
       # enforced even under the injected adapter's defaults, and the wall-clock
       # deadline bounds the whole body read.
       #
+      # Known residual (injected connections only): unlike the default
+      # {stream_http} path — which skips unusable bodies by status at header
+      # time — Faraday exposes no headers-time seam, so a non-2xx body is
+      # drained here under the same cap + deadline before the status error
+      # surfaces. Bounded, never followed; callers who inject a connection
+      # keep their transport's semantics by design.
+      #
       # @return [Array(Integer, String)] status and body
       def self.faraday_fetch(http_client, url, timeout:, max_body_bytes:)
         # Wall-clock deadline over the WHOLE read: req.options.timeout below bounds
