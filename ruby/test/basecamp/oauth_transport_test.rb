@@ -603,6 +603,32 @@ class OAuthTransportTest < Minitest::Test
     assert sockets.all?(&:closed?), "the deadline-racing close must complete: no socket may leak"
   end
 
+  def test_unnormalized_timeout_fails_closed_before_any_request
+    # The operation entry points normalize; the primitive still fails closed
+    # for direct callers — a non-finite, non-positive, or beyond-ceiling
+    # timeout would leave the socket timeouts and watchdog sleep unbounded.
+    server = TCPServer.new("127.0.0.1", 0)
+    @servers << server
+    accepted = []
+    @server_threads << Thread.new do
+      loop do
+        accepted << server.accept
+        @conns << accepted.last
+      rescue IOError, SystemCallError
+        break
+      end
+    end
+    endpoint = "http://127.0.0.1:#{server.addr[1]}"
+
+    [ Float::INFINITY, Float::NAN, 0, -1, 3601, nil, "30" ].each do |timeout|
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/token", timeout: timeout)
+      end
+      assert_equal "validation", error.type, "timeout=#{timeout.inspect}"
+    end
+    assert_empty accepted, "the guard must reject before any connection"
+  end
+
   def test_watchdog_threads_do_not_leak
     endpoint, = start_server do |conn|
       conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")

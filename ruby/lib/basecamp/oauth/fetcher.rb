@@ -281,6 +281,17 @@ module Basecamp
           raise OauthError.new("validation", "OAuth endpoint URL has no host: #{url.inspect}")
         end
 
+        # Fail closed on an un-normalized timeout (the operation entry points
+        # normalize; this guards direct callers): a non-finite, non-positive,
+        # or beyond-ceiling value would leave the socket timeouts and the
+        # watchdog's sleep unbounded, defeating the total-request bound this
+        # primitive exists to guarantee — mirroring the Python transport's
+        # fail-fast guard.
+        unless valid_timeout?(timeout)
+          raise OauthError.new("validation", \
+            "stream_http timeout must be a positive number of seconds no greater than #{MAX_REQUEST_TIMEOUT}")
+        end
+
         # URI#hostname strips IPv6 brackets ("[::1]" -> "::1"), which is the form
         # Net::HTTP.new expects. ENV proxy handling matches faraday-net_http.
         http = Net::HTTP.new(uri.hostname, uri.port)
