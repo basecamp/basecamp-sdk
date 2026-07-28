@@ -457,6 +457,46 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("usage");
   });
 
+  it.each([
+    ["NaN", NaN],
+    ["Infinity", Infinity],
+    ["-Infinity", -Infinity],
+    ["absurdly far future", Number.MAX_SAFE_INTEGER],
+  ])("rejects a nonsense caller deadlineAtMs (%s) as usage before any request", async (_label, deadlineAtMs) => {
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      deadlineAtMs,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+  });
+
+  it("treats a finite deadlineAtMs already in the past as expiry, not usage", async () => {
+    // An issuance-anchored deadline fully consumed by a slow display hook is a
+    // legitimate runtime outcome — it must surface as the expired flow, not a
+    // caller-input rejection.
+    queueTokenResponses([{ status: 400, body: { error: "authorization_pending" } }]);
+    const { fn } = recordingSleep();
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      deadlineAtMs: 500,
+      clock: () => 1_000,
+      sleepFn: fn,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("expired");
+    expect(err.code).toBe("auth_required");
+  });
+
   it("accepts fractional caller durations (remaining-lifetime deduction produces them)", async () => {
     // performDeviceLogin passes a fractional remaining lifetime after deducting
     // display-hook time — caller sanity here must not impose whole seconds.

@@ -385,6 +385,22 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     }
   }
 
+  // Same caller-input sanity for the optional absolute deadline: Infinity polls
+  // forever, NaN defeats every deadline comparison and wait clamp, and a
+  // finite-but-absurd future timestamp reintroduces the unbounded lifetime
+  // MAX_DEVICE_SECONDS exists to prevent. A deadline at/below "now" is legal —
+  // it surfaces as device_flow_expired, matching an issuance-anchored deadline
+  // fully consumed by a slow display hook.
+  if (
+    params.deadlineAtMs !== undefined &&
+    (!Number.isFinite(params.deadlineAtMs) || params.deadlineAtMs > clock() + MAX_DEVICE_SECONDS * 1000)
+  ) {
+    throw new BasecampError(
+      "usage",
+      `pollDeviceToken: deadlineAtMs must be a finite epoch-milliseconds timestamp no more than ${MAX_DEVICE_SECONDS} seconds in the future`
+    );
+  }
+
   // Normalize the per-request timeout ONCE at entry: the remaining-lifetime
   // clamp below takes min() against it, and an invalid runtime value (NaN,
   // Infinity, non-positive) would otherwise poison the min into the 30s
