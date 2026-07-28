@@ -1382,6 +1382,34 @@ describe("requestDeviceAuthorization direct-caller cancellation", () => {
   });
 });
 
+describe("performDeviceLogin abort during an async display hook", () => {
+  it("rejects promptly instead of waiting for the hook to settle", async () => {
+    queueTokenResponses([{ status: 200, body: tokenResponse }]);
+    server.use(mswHttp.post(DEVICE_ENDPOINT, () => HttpResponse.json(deviceAuthResponse)));
+    const controller = new AbortController();
+    let hookSettled = false;
+
+    const login = performDeviceLogin({
+      config,
+      clientId: "basecamp-cli",
+      // A hook that never settles on its own — models a UI prompt awaiting
+      // user interaction. The abort must win the race.
+      display: () =>
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            hookSettled = true;
+            resolve();
+          }, 60_000);
+        }),
+      signal: controller.signal,
+    });
+
+    controller.abort();
+    await expect(login).rejects.toMatchObject({ reason: "cancelled" });
+    expect(hookSettled).toBe(false);
+  });
+});
+
 describe("performDeviceLogin cancellation around the authorization request", () => {
   it("makes no request and never fires display when already aborted", async () => {
     let requests = 0;

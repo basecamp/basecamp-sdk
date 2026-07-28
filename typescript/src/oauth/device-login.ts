@@ -98,7 +98,30 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
   // deadline against the REMAINING lifetime. `expiresIn` is seconds; `clock()` is
   // ms, so convert the elapsed span before subtracting.
   const issuedAt = clock();
-  await display(auth);
+  // Race an async display hook against the abort signal: a hook awaiting user
+  // interaction must not hold a cancelled flow open until it settles. On
+  // abort the hook's promise is left to settle on its own (JS cannot cancel
+  // it) — the flow rejects promptly and never proceeds to polling.
+  await new Promise<void>((resolve, reject) => {
+    const onAbort = () => reject(new DeviceFlowError("cancelled", "Device flow cancelled"));
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    Promise.resolve()
+      .then(() => display(auth))
+      .then(
+        () => {
+          signal?.removeEventListener("abort", onAbort);
+          resolve();
+        },
+        (err) => {
+          signal?.removeEventListener("abort", onAbort);
+          reject(err);
+        }
+      );
+  });
   const remainingSeconds = auth.expiresIn - (clock() - issuedAt) / 1000;
   if (remainingSeconds <= 0) {
     throw new DeviceFlowError("expired", "Device code expired before authorization completed");
