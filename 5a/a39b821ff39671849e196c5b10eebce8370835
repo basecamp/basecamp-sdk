@@ -1,0 +1,40 @@
+go/pkg/generated/client.gen.go
+  s_69156f95c4fbc4::t_d9b0d91d6ca352 20292
+  s_69156f95c4fbc4::t_e960e4986015e7 3963-3982,3984,4048,20053-20291
+python/tests/test_http.py
+  s_69156f95c4fbc4::t_4fb088e7917470 120-124,531-643
+python/src/basecamp/_http.py
+  s_69156f95c4fbc4::t_5ee8319898d7c5 177,314-340
+  s_69156f95c4fbc4::t_5eae6a4c1cd985 341
+go/templates/client.tmpl
+  s_69156f95c4fbc4::t_128fd03eada7da 147-161,163-168,232,636-666
+python/src/basecamp/_async_http.py
+  s_69156f95c4fbc4::t_5ee8319898d7c5 177,314-340
+  s_69156f95c4fbc4::t_5b2d0480a78a1a 341
+SPEC.md
+  s_69156f95c4fbc4::t_68567aef0e71e1 406,411-413,415,426-438,1629-1630,1634
+  s_69156f95c4fbc4::t_42fab8e3ba67aa 414,416-425,1635-1637
+scripts/check-retry-metadata-parity.py
+  s_69156f95c4fbc4::t_8c4eebe880295f 305
+  s_69156f95c4fbc4::t_c004baac47f2ae 274-275
+  s_69156f95c4fbc4::t_51d0163d85d02d 25
+  s_69156f95c4fbc4::t_ef92e935572504 24,36-38,167-181,243-250,257-273
+go/pkg/basecamp/generated_retry_statusset_test.go
+  s_69156f95c4fbc4::t_afe5af980672ea 1-121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5aa39b821ff39671849e196c5b10eebce8370835",
+  "prompts": {},
+  "sessions": {
+    "s_69156f95c4fbc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "392f44f3-5c5a-42f5-b6c7-e39c319103d6",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
