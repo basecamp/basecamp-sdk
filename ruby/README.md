@@ -172,7 +172,9 @@ client = Basecamp.client(access_token: token.access_token)
 # "urn:bc:account:<id>"), and refreshing without echoing it is rejected
 # (400 invalid_request). Persist token.resource alongside the tokens and
 # echo it on refresh:
-if token.expired?
+# A device-token response MAY omit refresh_token — guard it: without one,
+# refreshing is impossible and the user must re-run the device login.
+if token.expired? && token.refresh_token
   fresh = Basecamp::Oauth.refresh_token(
     token_endpoint: config.token_endpoint,
     refresh_token: token.refresh_token,

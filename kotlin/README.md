@@ -326,14 +326,21 @@ val client = BasecampClient {
 // "urn:bc:account:<id>"), and refreshing without echoing it is rejected
 // (400 invalid_request). Persist token.resource alongside the tokens and
 // echo it on refresh:
-val fresh = refreshToken(
-    tokenEndpoint = config.tokenEndpoint,
-    refreshToken = token.refreshToken!!,
-    clientId = "basecamp-cli",  // public client — no secret
-    resource = token.resource,
-)
-// A refresh response MAY omit resource (the binding is unchanged) — persist
-// `fresh.resource ?: token.resource` so the next refresh still echoes it.
+// A device-token response MAY omit refresh_token — GUARD it rather than
+// force-unwrapping: without one, refreshing is impossible and the user must
+// re-run the device login when the access token expires.
+val storedRefresh = token.refreshToken
+if (storedRefresh != null) {
+    val fresh = refreshToken(
+        tokenEndpoint = config.tokenEndpoint,
+        refreshToken = storedRefresh,
+        clientId = "basecamp-cli",  // public client — no secret
+        resource = token.resource,
+    )
+    // A refresh response MAY omit refresh_token and resource — persist
+    // `fresh.refreshToken ?: storedRefresh` and `fresh.resource ?: token.resource`
+    // so the next refresh still works and still echoes the binding.
+}
 ```
 
 The two building blocks are also public if you need finer control:
