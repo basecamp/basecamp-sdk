@@ -1,0 +1,32 @@
+conformance/tests/error-mapping.json
+  s_effaf9ebecb0f4::t_fc73ce5d6362df 52
+  s_effaf9ebecb0f4::t_0d236c8523c64e 53-68
+go/pkg/basecamp/helpers_test.go
+  s_effaf9ebecb0f4::t_23b95202529d78 30
+SPEC.md
+  s_effaf9ebecb0f4::t_f87f3e65a4e247 344
+  s_effaf9ebecb0f4::t_2a2a3484726e3e 332
+  s_effaf9ebecb0f4::t_a33305ce936a91 350-351
+  s_effaf9ebecb0f4::t_6a249212c58882 775
+  s_effaf9ebecb0f4::t_5bb98721e61e1c 336
+  s_effaf9ebecb0f4::t_4886bd8ab6068d 1497
+  s_effaf9ebecb0f4::t_ed4ef6bb34dcd4 319
+go/pkg/basecamp/helpers.go
+  s_effaf9ebecb0f4::t_229d6a42734181 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "28a3be88d20167e9ece63fb467d3cc686f451021",
+  "prompts": {},
+  "sessions": {
+    "s_effaf9ebecb0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9d6aa32-1196-4ab5-8699-c047b7e5bbb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
