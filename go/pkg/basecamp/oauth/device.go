@@ -635,7 +635,13 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 // A config that cannot do device flow yields a DeviceFlowError(unavailable) and
 // no request is made.
 func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, display func(DeviceAuthorization), opts ...DeviceOption) (*Token, error) {
-	if config == nil || config.DeviceAuthorizationEndpoint == nil || !supportsDeviceGrant(config.GrantTypesSupported) {
+	// Present-but-empty is as unavailable as absent (the other SDK guards
+	// treat "" as no endpoint): without the dereference check an empty
+	// endpoint would fall through to RequestDeviceAuthorization and surface a
+	// usage/security error instead of the documented unavailable — after
+	// bypassing the make-no-request contract.
+	if config == nil || config.DeviceAuthorizationEndpoint == nil ||
+		*config.DeviceAuthorizationEndpoint == "" || !supportsDeviceGrant(config.GrantTypesSupported) {
 		return nil, &DeviceFlowError{Reason: DeviceFlowUnavailable}
 	}
 

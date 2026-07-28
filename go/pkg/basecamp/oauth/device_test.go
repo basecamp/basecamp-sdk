@@ -1621,3 +1621,39 @@ func TestNewDeviceConfig_OversizedTimeoutFallsBackToDefault(t *testing.T) {
 		t.Errorf("ceiling: got %v, want %v", cfg.timeout, maxDeviceRequestTimeout)
 	}
 }
+
+func TestPerformDeviceLogin_EmptyEndpointIsUnavailable(t *testing.T) {
+	// Present-but-empty must behave exactly like absent: unavailable, and no
+	// request is ever made (the counting server would record one).
+	srv, calls := countingHTTPServer(t)
+	empty := ""
+	cfg := &Config{
+		Issuer:                      srv.URL,
+		TokenEndpoint:               srv.URL + "/token",
+		DeviceAuthorizationEndpoint: &empty,
+		GrantTypesSupported:         []string{DeviceCodeGrantType, "refresh_token"},
+	}
+
+	_, err := PerformDeviceLogin(context.Background(), cfg, "basecamp-cli", func(DeviceAuthorization) {},
+		WithDeviceHTTPClient(tlsClient(srv)))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowUnavailable {
+		t.Fatalf("want DeviceFlowError(unavailable), got %v", err)
+	}
+	if *calls != 0 {
+		t.Errorf("no request may be made for an unavailable capability, got %d", *calls)
+	}
+}
+
+// countingHTTPServer records how many requests it receives and 404s them.
+func countingHTTPServer(t *testing.T) (*httptest.Server, *int) {
+	t.Helper()
+	calls := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(srv.Close)
+	return srv, &calls
+}
