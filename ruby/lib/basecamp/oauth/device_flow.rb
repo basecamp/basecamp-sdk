@@ -763,8 +763,19 @@ module Basecamp
             # validity (SPEC §16 pins SP/HTAB-only trimming).
             trimmed = header.is_a?(String) ? header.gsub(/\A[ \t]+|[ \t]+\z/, "") : ""
             if trimmed.match?(/\A\d+\z/)
-              value = trimmed.to_i
-              (1..MAX_DEVICE_SECONDS).cover?(value) ? value : 0
+              # Leading zeros stripped BEFORE the length bound so a padded
+              # in-range delta is honored; >10 significant digits is
+              # unrepresentable (matches the Python parser) -> fallback. A
+              # representable delta beyond the shared device ceiling CLAMPS:
+              # the wait rule clamps to the remaining code lifetime anyway, so
+              # an over-ceiling throttle waits out the rest of the lifetime
+              # instead of resending before the server's throttle.
+              significant = trimmed.sub(/\A0+/, "")
+              if significant.empty? || significant.length > 10
+                0
+              else
+                [ significant.to_i, MAX_DEVICE_SECONDS ].min
+              end
             else
               0
             end

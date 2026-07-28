@@ -615,8 +615,14 @@ export function parseRetryAfterSeconds(header: string | null): number {
   const trimmed = header.replace(/^[ \t]+|[ \t]+$/g, "");
   if (!/^\d+$/.test(trimmed)) return 0;
   const parsed = parseInt(trimmed, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > MAX_DEVICE_SECONDS) return 0;
-  return parsed;
+  // Safe-integer, not merely integer: parseInt("9".repeat(20)) yields an
+  // integer-valued double past 2^53 — unrepresentable → interval fallback. A
+  // representable delta beyond the shared device ceiling CLAMPS instead: the
+  // wait rule clamps to the remaining code lifetime anyway, so an over-ceiling
+  // throttle waits out the rest of the lifetime rather than resending before
+  // the server's throttle.
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return 0;
+  return Math.min(parsed, MAX_DEVICE_SECONDS);
 }
 
 async function postDeviceToken(

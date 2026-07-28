@@ -1407,11 +1407,17 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               NEXT wait only (still clamped to the remaining lifetime by the
               wait rule above) and then decays — it never permanently inflates
               the slow_down-driven interval. A missing, malformed, fractional,
-              non-positive, or overflowing Retry-After falls back to the current
-              interval. Parsing trims ONLY ASCII SP and HTAB around the value
-              (RFC 9110 optional whitespace): delta-seconds is 1*DIGIT, so a
-              value wrapped in any other whitespace (NBSP, Unicode spaces) is
-              malformed and falls back — never trimmed into validity. Cancellation stays live through the (possibly longer)
+              non-positive, or UNREPRESENTABLE (overflowing the parser's native
+              integer range or digit bound) Retry-After falls back to the
+              current interval. A representable delta beyond the shared device
+              ceiling CLAMPS to the ceiling instead of falling back: the wait
+              rule clamps to the remaining code lifetime anyway, so an
+              over-ceiling throttle waits out the rest of the lifetime rather
+              than resending before the server's throttle. Parsing trims ONLY
+              ASCII SP and HTAB around the value (RFC 9110 optional
+              whitespace): delta-seconds is 1*DIGIT, so a value wrapped in any
+              other whitespace (NBSP, Unicode spaces) is malformed and falls
+              back — never trimmed into validity. Cancellation stays live through the (possibly longer)
               wait. ONLY this exact combination is retryable: a 429 without
               error=too_many_requests, or too_many_requests on any other
               status, stays terminal (api_error) like any unrecognized error.

@@ -1459,6 +1459,11 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal 0, parse.call("\r30\n")
     assert_equal 0, parse.call("\u00a030")
     assert_equal 0, parse.call("\u200930")
+    # Representable over-ceiling clamps (the wait rule clips to the remaining
+    # lifetime); >10 significant digits is unrepresentable -> fallback.
+    assert_equal 2_147_483, parse.call("2147484")
+    assert_equal 30, parse.call("00000000030")
+    assert_equal 0, parse.call("99999999999")
   end
 
   def test_poll_429_retry_after_override_decays_after_one_wait

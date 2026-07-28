@@ -650,6 +650,27 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun poll429OverCeilingRetryAfterClampsToDeadline() = runTest {
+        // A representable delta beyond the shared device ceiling clamps (SPEC
+        // §16): with a 20s code lifetime the wait clips to the deadline and
+        // expiry fires there — never an interval-cadence resend against the
+        // server's throttle.
+        val pollTimes = mutableListOf<Long>()
+        val engine = MockEngine {
+            pollTimes.add(testScheduler.currentTime)
+            respond(tooManyJson, HttpStatusCode.TooManyRequests, headers429("2147484"))
+        }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.DeviceFlow> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 20, testTimeSource, client)
+        }
+        assertEquals(BasecampException.DEVICE_EXPIRED, e.reason)
+        assertEquals(listOf(5_000L), pollTimes, "no second poll may fire before the clamped wait expires the code")
+        client.close()
+    }
+
+    @Test
     fun poll429WaitClampedToDeadline() = runTest {
         // interval 5s, code lifetime 20s. The 429's huge Retry-After would wait
         // 3600s, but the deadline at t=20s clamps the wait so expiry fires then.

@@ -1860,6 +1860,14 @@ describe("pollDeviceToken 429 handling", () => {
     expect(parseRetryAfterSeconds("\n30\n")).toBe(0);
   });
 
+  it("clamps a representable over-ceiling Retry-After; unrepresentable falls back", () => {
+    // The wait rule clips to the remaining code lifetime, so clamping honors
+    // the throttle (wait out the lifetime) instead of resending on the
+    // interval; a beyond-2^53 digit string is unrepresentable → fallback.
+    expect(parseRetryAfterSeconds("2147484")).toBe(2_147_483);
+    expect(parseRetryAfterSeconds("99999999999999999999")).toBe(0);
+  });
+
   it("decays the Retry-After override after one wait", async () => {
     queueTokenResponses429([
       { status: 429, body: tooManyRequestsBody, retryAfter: "30" },

@@ -1046,6 +1046,10 @@ class TestParseRetryAfterSeconds:
         assert _parse_retry_after_seconds("30\u00a0") == 0
         assert _parse_retry_after_seconds("\u200930") == 0  # thin space is not OWS
         assert _parse_retry_after_seconds("30") == 30
+        # Representable over-ceiling clamps (the wait rule clips to the
+        # remaining lifetime); >10 significant digits is unrepresentable.
+        assert _parse_retry_after_seconds("2147484") == 2_147_483
+        assert _parse_retry_after_seconds("99999999999") == 0
 
 
 class TestPollDeviceTokenCancelAfterRoundTrip:

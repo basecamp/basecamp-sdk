@@ -296,7 +296,12 @@ def _parse_retry_after_seconds(header: str | None) -> int:
         # (overflows the ceiling regardless) → interval fallback.
         return 0
     value = int(significant)
-    return value if 0 < value <= MAX_DEVICE_SECONDS else 0
+    # A representable delta beyond the shared device ceiling clamps rather
+    # than falling back: the wait rule clamps to the remaining code lifetime
+    # anyway, so an over-ceiling throttle waits out the rest of the lifetime
+    # instead of resending before the server's throttle. Only unrepresentable
+    # strings (the digit bound above) are malformed -> interval fallback.
+    return min(value, MAX_DEVICE_SECONDS)
 
 
 def _validated_clock_sample(value: object, entry: str) -> float:

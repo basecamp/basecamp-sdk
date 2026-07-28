@@ -510,7 +510,13 @@ private fun parseRetryAfterSeconds(header: String?): Long {
     // delta-seconds value as valid instead of falling back to the interval.
     if (trimmed.isEmpty() || !trimmed.all { it in '0'..'9' }) return 0
     val value = trimmed.toLongOrNull() ?: return 0
-    return if (value in 1..MAX_DEVICE_SECONDS) value else 0
+    if (value <= 0) return 0
+    // A representable delta beyond the shared device ceiling clamps rather
+    // than falling back: the wait rule clamps to the remaining code lifetime
+    // anyway, so an over-ceiling throttle waits out the rest of the lifetime
+    // instead of resending before the server's throttle. Only unrepresentable
+    // strings (toLongOrNull() overflow above) are malformed → interval fallback.
+    return minOf(value, MAX_DEVICE_SECONDS)
 }
 
 private suspend fun postDeviceTokenPoll(

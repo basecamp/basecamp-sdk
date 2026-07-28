@@ -2107,6 +2107,10 @@ func TestParseRetryAfterSeconds_ASCIIOWSOnly(t *testing.T) {
 		{"30\u00a0", 0},
 		{"\u200930", 0},
 		{"\n30\n", 0},
+		// A representable over-ceiling delta clamps (the wait rule clips to
+		// the remaining lifetime); an unrepresentable one stays malformed.
+		{"2147484", maxDeviceSeconds},
+		{"99999999999999999999", 0},
 	} {
 		if got := parseRetryAfterSeconds(tc.header); got != tc.want {
 			t.Errorf("parseRetryAfterSeconds(%q) = %d, want %d", tc.header, got, tc.want)

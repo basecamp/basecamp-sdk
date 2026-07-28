@@ -570,10 +570,15 @@ func parseRetryAfterSeconds(header string) int {
 	}
 	// A digit string too long for int returns ErrRange → malformed → 0.
 	v, err := strconv.Atoi(trimmed)
-	if err != nil || v <= 0 || v > maxDeviceSeconds {
+	if err != nil || v <= 0 {
 		return 0
 	}
-	return v
+	// A REPRESENTABLE delta beyond the shared device ceiling clamps rather
+	// than falling back: the wait rule clamps to the remaining code lifetime
+	// anyway, so an over-ceiling throttle waits out the rest of the lifetime
+	// instead of resending before the server's throttle. Only unrepresentable
+	// strings (ErrRange above) are malformed → interval fallback.
+	return min(v, maxDeviceSeconds)
 }
 
 // postDeviceToken performs one token-endpoint poll and classifies the outcome.
