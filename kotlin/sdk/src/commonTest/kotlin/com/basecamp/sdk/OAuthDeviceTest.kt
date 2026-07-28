@@ -745,6 +745,24 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollTerminalStatusClassifiedWithoutDrainingBody() = runTest {
+        // An oversized body on a terminal non-4xx would trip the size cap if
+        // drained — the early status check surfaces the status api_error.
+        for (status in listOf(HttpStatusCode.Created, HttpStatusCode.InternalServerError)) {
+            val engine = MockEngine { respond("x".repeat(2 * 1024 * 1024), status, jsonHeaders) }
+            val client = HttpClient(engine)
+
+            val e = assertFailsWith<BasecampException.Api> {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+            assertEquals("api_error", e.code)
+            assertEquals(status.value, e.httpStatus)
+            assertTrue(e.message!!.contains("http_${status.value}"), "want a status error, got ${e.message}")
+            client.close()
+        }
+    }
+
+    @Test
     fun pollNon200SuccessIsTerminal() = runTest {
         // RFC 8628/6749 token responses are exactly 200 (SPEC §16): a
         // nonstandard 201/202 carrying an access_token must not complete polling.

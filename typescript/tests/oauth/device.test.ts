@@ -1291,3 +1291,44 @@ describe("pollDeviceToken protocol errors only on 4xx", () => {
     }
   );
 });
+
+describe("pollDeviceToken terminal statuses without body reads", () => {
+  it.each([201, 500])("classifies a %d by status without draining an oversized body", async (status) => {
+    // An oversized body on a terminal non-4xx would trip the size cap if
+    // drained — the early status check surfaces the status api_error instead.
+    server.use(
+      mswHttp.post(TOKEN_ENDPOINT, () =>
+        new HttpResponse("x".repeat(2 * 1024 * 1024), { status })
+      )
+    );
+
+    await expect(
+      pollDeviceToken({
+        tokenEndpoint: TOKEN_ENDPOINT,
+        clientId: "basecamp-cli",
+        deviceCode: "dev-code-123",
+        interval: 5,
+        expiresIn: 900,
+        sleepFn: recordingSleep().fn,
+      })
+    ).rejects.toMatchObject({ code: "api_error", message: expect.stringContaining(`status ${status}`) });
+  });
+
+  it("normalizes an invalid timeoutMs before the remaining-lifetime clamp", async () => {
+    // A NaN timeoutMs poisoned Math.min into NaN, which postDeviceToken then
+    // resolved to the full 30s default — bypassing the near-expiry clamp. The
+    // entry normalization keeps the flow working (and clamped) regardless.
+    queueTokenResponses([{ status: 200, body: tokenResponse }]);
+
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      timeoutMs: Number.NaN,
+      sleepFn: recordingSleep().fn,
+    });
+    expect(token.accessToken).toBe("device_access_token");
+  });
+});

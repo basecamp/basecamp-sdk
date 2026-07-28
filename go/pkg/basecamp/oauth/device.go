@@ -512,6 +512,16 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			err: fmt.Errorf("device token endpoint returned redirect status %d", resp.StatusCode)}
 	}
 
+	// Every remaining status outside 200 and 4xx is terminal WITHOUT its body
+	// (only a 200 carries the token and only a 4xx the OAuth error code) —
+	// classify it before the read, like the 3xx above, so a 201/500 that
+	// stalls while streaming its body cannot time out mid-read and be retried
+	// as a transient failure until the code expires.
+	if resp.StatusCode != http.StatusOK && (resp.StatusCode < 400 || resp.StatusCode >= 500) {
+		return pollResult{kind: pollInvalidResponse, status: resp.StatusCode,
+			err: fmt.Errorf("device token request failed with status %d", resp.StatusCode)}
+	}
+
 	body, err := readBoundedBody(resp.Body, maxTokenResponseBytes)
 	if err != nil {
 		switch {

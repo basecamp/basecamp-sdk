@@ -400,6 +400,11 @@ def poll_device_token(
     # float("inf"), a negative) would disable the streaming memory bound
     # (``total > inf`` never trips) — same discipline as discovery.
     max_body_bytes = _normalize_body_cap(max_body_bytes, MAX_DEVICE_BODY_BYTES)
+    # Normalize the timeout ONCE at the public boundary too: the per-poll
+    # remaining-lifetime clamp takes min() against it, and an invalid runtime
+    # value (None → TypeError from min, a negative, an oversized 1e100) must
+    # resolve to the device budget BEFORE any arithmetic touches it.
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_DEVICE_REQUEST_TIMEOUT)
 
     # The server-driven interval (initial value + sustained slow_down bumps) is
     # tracked SEPARATELY from the transient timeout backoff: each wait is
@@ -567,7 +572,7 @@ def _post_device_token(
         params,
         timeout,
         max_body_bytes,
-        read_body=lambda s: not (300 <= s < 400),
+        read_body=lambda s: s == 200 or 400 <= s < 500,
     )
 
     # A redirect is never a token-endpoint outcome. Classify it before parsing
@@ -577,6 +582,18 @@ def _post_device_token(
         raise OAuthError(
             "api_error",
             f"Device token request failed with redirect status {status}",
+            http_status=status,
+        )
+
+    # Every remaining status outside 200 and 4xx is terminal WITHOUT its body
+    # (only a 200 carries the token and only a 4xx the OAuth error code) — the
+    # read_body predicate above already skipped the body, so a 201/500 that
+    # stalls while streaming can never time out mid-read and be retried as a
+    # transient failure until the code expires.
+    if not (status == 200 or 400 <= status < 500):
+        raise OAuthError(
+            "api_error",
+            f"Device token request failed with status {status}",
             http_status=status,
         )
 

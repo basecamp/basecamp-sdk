@@ -410,6 +410,26 @@ class OAuthDeviceTest < Minitest::Test
     end
   end
 
+  def test_poll_terminal_status_classified_without_draining_body
+    # An oversized body on a terminal non-4xx would trip the size cap if
+    # drained — skip_status refuses the body and the status api_error surfaces.
+    [ 201, 500 ].each do |status|
+      stub_request(:post, TOKEN_ENDPOINT)
+        .to_return(status: status, body: "x" * (2 * 1024 * 1024))
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+      assert_match(/status #{status}/, error.message)
+      WebMock.reset!
+    end
+  end
+
   def test_poll_accepts_token_response_without_expires_in
     # expires_in is optional (RFC 6749 §5.1): absent means no known expiry, so
     # the Token carries nil expires_in/expires_at rather than raising.

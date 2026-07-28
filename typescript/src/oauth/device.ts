@@ -340,6 +340,13 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     }
   }
 
+  // Normalize the per-request timeout ONCE at entry: the remaining-lifetime
+  // clamp below takes min() against it, and an invalid runtime value (NaN,
+  // Infinity, non-positive) would otherwise poison the min into the 30s
+  // default INSIDE postDeviceToken — letting a near-expiry poll run the full
+  // default budget past the deadline.
+  const effectiveTimeoutMs = resolveDeviceTimeoutMs(timeoutMs);
+
   // Server-driven poll interval (initial + sustained slow_down bumps), tracked
   // SEPARATELY from the transient-timeout backoff: the wait is the larger of the
   // two, so intermittent timeouts never permanently inflate the poll cadence.
@@ -394,7 +401,7 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
         tokenEndpoint,
         body,
         customFetch,
-        Math.min(timeoutMs, postRemainingMs),
+        Math.min(effectiveTimeoutMs, postRemainingMs),
         signal
       );
     } catch (err) {
@@ -481,6 +488,17 @@ async function postDeviceToken(
       // long poll can't retain sockets / connection-pool resources.
       void response.body?.cancel().catch(() => {});
       throw new BasecampError("api_error", `Device token endpoint returned redirect status ${response.status}`, {
+        httpStatus: response.status,
+      });
+    }
+    // Every remaining status outside 200 and 4xx is terminal WITHOUT its body
+    // (only a 200 carries the token and only a 4xx the OAuth error code) —
+    // classify it before the read, like the 3xx above, so a 201/500 that
+    // stalls while streaming its body cannot abort mid-read and be retried as
+    // a transient timeout until the code expires.
+    if (response.status !== 200 && !(response.status >= 400 && response.status < 500)) {
+      void response.body?.cancel().catch(() => {});
+      throw new BasecampError("api_error", `Device token request failed with status ${response.status}`, {
         httpStatus: response.status,
       });
     }

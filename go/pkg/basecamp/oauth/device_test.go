@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -1580,3 +1581,25 @@ func TestPollDeviceToken_RequestTimeoutClampedToRemainingLifetime(t *testing.T) 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestPollDeviceToken_TerminalStatusClassifiedWithoutDrainingBody(t *testing.T) {
+	// Statuses outside 200 and 4xx are terminal WITHOUT their bodies. An
+	// oversized body on a 201/500 would trip the size cap if drained — the
+	// early status check surfaces the status api_error instead (and, for a
+	// slow body, avoids a timeout+retry-until-expiry misclassification).
+	for _, status := range []int{201, 500} {
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+			_, _ = w.Write(bytes.Repeat([]byte("x"), 2*1024*1024))
+		}))
+
+		sleep := &recordingSleep{}
+		_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+			WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+		assertBasecampCode(t, err, "api_error")
+		if !strings.Contains(err.Error(), fmt.Sprintf("status %d", status)) {
+			t.Errorf("want a status-%d error (not a size-cap error), got %v", status, err)
+		}
+		srv.Close()
+	}
+}

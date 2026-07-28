@@ -457,6 +457,15 @@ private suspend fun postDeviceTokenPoll(
         return@execute PollResult.Other("unexpected redirect (HTTP $status)", status)
     }
 
+    // Every remaining status outside 200 and 4xx is terminal WITHOUT its body
+    // (only a 200 carries the token and only a 4xx the OAuth error code) —
+    // classify it before the read, like the 3xx above, so a 201/500 that
+    // stalls while streaming its body cannot time out mid-read and be retried
+    // as a transient failure until the code expires. Same non-leak guarantee.
+    if (status != 200 && status !in 400..499) {
+        return@execute PollResult.Other("http_$status", status)
+    }
+
     // Bounded/streaming read: an oversized device-token body aborts here rather than
     // buffering (readBoundedText throws api_error past the cap). A 4xx body IS read —
     // it carries authorization_pending/slow_down and other OAuth errors.

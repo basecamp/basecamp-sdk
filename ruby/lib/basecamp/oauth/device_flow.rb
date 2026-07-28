@@ -535,7 +535,7 @@ module Basecamp
               timeout: timeout, max_body_bytes: max_body_bytes,
               # A 3xx token response is a redirect fault whose body is unused; a 4xx
               # body IS read (it carries authorization_pending/slow_down).
-              skip_status: ->(s) { (300..399).cover?(s) }
+              skip_status: ->(s) { !(s == 200 || (400..499).cover?(s)) }
             )
 
             # A redirect is never a valid token-endpoint outcome: it is not
@@ -546,6 +546,19 @@ module Basecamp
               raise OauthError.new(
                 "api_error",
                 "Device token request failed: unexpected redirect (status #{status})",
+                http_status: status
+              )
+            end
+
+            # Every remaining status outside 200 and 4xx is terminal WITHOUT
+            # its body (only a 200 carries the token and only a 4xx the OAuth
+            # error code) — the skip_status above already refused the body, so
+            # a 201/500 that stalls while streaming can never time out
+            # mid-read and be retried as a transient failure until expiry.
+            unless status == 200 || (400..499).cover?(status)
+              raise OauthError.new(
+                "api_error",
+                "Device token request failed with status #{status}",
                 http_status: status
               )
             end

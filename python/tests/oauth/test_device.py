@@ -895,6 +895,40 @@ class TestPollDeviceTokenProtocolErrorsOnlyOn4xx:
         assert len(route.calls) == 1
 
 
+class TestPollDeviceTokenTerminalStatusBodySkip:
+    @respx.mock
+    @pytest.mark.parametrize("status", [201, 500])
+    def test_terminal_status_classified_without_draining_body(self, status):
+        # An oversized body on a terminal non-4xx would trip the size cap if
+        # drained — the read_body predicate skips it and the status api_error
+        # surfaces instead.
+        _queue_token_responses([httpx.Response(status, content=b"x" * (2 * 1024 * 1024))])
+
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT, "basecamp-cli", "dev-code-123", interval=5, expires_in=900, sleep=RecordingSleep()
+            )
+        assert exc_info.value.code == "api_error"
+        assert f"status {status}" in str(exc_info.value)
+
+    @respx.mock
+    def test_invalid_timeout_normalizes_at_entry(self):
+        # timeout=None previously reached min(None, float) → raw TypeError
+        # mid-poll; entry normalization resolves it to the device budget.
+        _queue_token_responses([httpx.Response(200, json=TOKEN_RESPONSE)])
+
+        token = poll_device_token(
+            TOKEN_ENDPOINT,
+            "basecamp-cli",
+            "dev-code-123",
+            interval=5,
+            expires_in=900,
+            sleep=RecordingSleep(),
+            timeout=None,
+        )
+        assert token.access_token == "device_access_token"  # gitleaks:allow
+
+
 class TestPollDeviceTokenExact200:
     @respx.mock
     @pytest.mark.parametrize("status", [201, 202])
