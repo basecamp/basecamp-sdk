@@ -106,6 +106,11 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
     const onAbort = () => reject(new DeviceFlowError("cancelled", "Device flow cancelled"));
     signal?.addEventListener("abort", onAbort, { once: true });
     if (signal?.aborted) {
+      // The abort won between the entry throwIfAborted and the registration
+      // above: the event is already spent, so the once-listener would never
+      // fire — and never auto-remove. Drop it before rejecting manually
+      // (same race handling as the sleep helper).
+      signal.removeEventListener("abort", onAbort);
       onAbort();
       return;
     }
