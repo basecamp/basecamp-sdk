@@ -158,6 +158,102 @@ func isRetryableStatus(statusCode int) bool {
 	}
 }
 
+// captureReplayBody inspects the finalized first-attempt request and returns a
+// closure that reproduces its body on later attempts, plus the ContentLength to
+// restore each attempt. When retriable is false the body cannot be safely
+// replayed, so the caller makes a single attempt streaming the body as-is.
+//
+// Replay contract (documented; net/http-consistent): req.GetBody, when present,
+// DEFINES the request body for replay — exactly as the standard library's own
+// redirect handling uses it. There is no reliable way to detect whether an
+// editor mutated req.Body out of sync with req.GetBody (an editor can Reset the
+// underlying reader in place, which no identity check can see), so we make
+// GetBody authoritative: this attempt is ALSO normalized to send GetBody()'s
+// bytes, so every attempt — first and retries — ships identical bytes. A
+// retrying request's body is therefore changed by an editor only through
+// req.GetBody (set req.Body and req.GetBody together, as net/http requires).
+//
+// A body WITHOUT a GetBody snapshot is an arbitrary, single-use stream. It is
+// NOT buffered or retried: buffering would risk unbounded memory, and a blocking
+// reader cannot be interrupted (there is no general way to abort an io.Reader),
+// so such a request is sent exactly once. In-memory bodies that net/http can
+// snapshot (*bytes.Reader/*bytes.Buffer/*strings.Reader — the readers the typed
+// and generated builders use) already carry a GetBody and so replay normally;
+// only a caller passing a genuinely streaming reader to a raw *WithBody method
+// forgoes retries, which is the safe behavior for an unrewindable stream.
+// sameReader reports whether two request bodies are the same value. Comparing
+// io.ReadCloser interface values panics if their dynamic type is not comparable
+// (e.g. a struct with a slice field used directly as the body); such a body was
+// necessarily supplied by an editor, so recovering to false — "not the same",
+// which disables replay — is the safe answer.
+func sameReader(a, b io.ReadCloser) (same bool) {
+	defer func() { _ = recover() }()
+	return a == b
+}
+
+// captureReplayBody decides, once, how a retry reproduces the FIRST finalized
+// request body. It never rewrites req.Body: attempt 1 always sends the body
+// exactly as buildRequest + the request editors left it, so an editor that
+// compresses/encrypts/transforms the payload (and sets matching headers) is
+// honored — even when no retry occurs. builderBody is req.Body as buildRequest
+// produced it, BEFORE the editors ran.
+//
+// A retry replays via req.GetBody, exactly as net/http replays a body on a
+// 307/308 redirect. That is only sound when the builder's body survived the
+// editors unchanged (so its GetBody still describes req.Body). If an editor
+// REPLACED req.Body, the builder's GetBody is stale and the finalized bytes
+// cannot be reproduced, so the request is sent once rather than retried with the
+// wrong body. (An editor that mutates the body IN PLACE without updating GetBody
+// is undetectable and, like a net/http redirect, would replay GetBody's
+// snapshot; editors should replace the body, or keep req.GetBody in sync.)
+func captureReplayBody(req *http.Request, builderBody io.ReadCloser, retryEligible bool) (replay func() (io.ReadCloser, error), contentLength int64, retriable bool, err error) {
+	// A nil body (GET/HEAD): a retry reproduces the nil body faithfully.
+	if req.Body == nil {
+		return nil, req.ContentLength, true, nil
+	}
+	// An explicitly empty body (http.NoBody): always reproducible — replay the
+	// stateless sentinel so retries send a non-nil empty body with identical
+	// (empty) transfer framing.
+	if req.Body == http.NoBody {
+		return func() (io.ReadCloser, error) { return http.NoBody, nil }, req.ContentLength, true, nil
+	}
+	if !retryEligible {
+		return nil, req.ContentLength, false, nil
+	}
+	// Replayable only if the builder's body survived the editors unchanged and
+	// carries a usable GetBody. Probe GetBody (without disturbing the finalized
+	// req.Body sent on attempt 1); on failure or an editor replacement, send once.
+	if req.GetBody != nil && sameReader(req.Body, builderBody) {
+		rc, gErr := req.GetBody()
+		if gErr != nil {
+			return nil, req.ContentLength, false, nil
+		}
+		_ = rc.Close()
+		return req.GetBody, req.ContentLength, true, nil
+	}
+	return nil, req.ContentLength, false, nil
+}
+
+// closeOnceBody wraps a request body so Close is idempotent. doWithRetry installs
+// a replay body before the request editors run (so a body-aware editor observes
+// it), then owns that handle: it closes it after the editor phase regardless of
+// whether an editor replaced req.Body — closing it here plus the routine close of
+// the current req.Body would otherwise double-close the same handle when the
+// editor left it in place, or leak it when the editor swapped it out.
+type closeOnceBody struct {
+	rc     io.ReadCloser
+	closed bool
+}
+
+func (b *closeOnceBody) Read(p []byte) (int, error) { return b.rc.Read(p) }
+func (b *closeOnceBody) Close() error {
+	if b.closed {
+		return nil
+	}
+	b.closed = true
+	return b.rc.Close()
+}
+
 // doWithRetry executes a request with retry logic for idempotent operations.
 func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest func() (*http.Request, error), isIdempotent bool, operationId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	// MaxRetries is a TOTAL attempt count. Re-validate here (not just in
@@ -182,14 +278,113 @@ func (c *{{ $clientTypeName }}) doWithRetry(ctx context.Context, buildRequest fu
 	var lastErr error
 	delay := c.RetryConfig.BaseDelay
 
+	// Replay state captured from the first finalized request (see
+	// captureReplayBody). buildRequest recreates the request from the caller's
+	// now-drained io.Reader on every attempt, so the raw *WithBody methods would
+	// otherwise ship an empty (or mid-stream) body on retries.
+	var bodyReplay func() (io.ReadCloser, error)
+	var replayContentLength int64
+	retryEligible := isIdempotent && maxAttempts > 1
+
+	// installReplay closes the current req.Body and swaps in a fresh replay of the
+	// captured first-attempt body (or nil when there is no body), restoring
+	// GetBody and ContentLength. It returns the installed handle (wrapped so Close
+	// is idempotent) so a retry's pre-editor caller can own and close it after the
+	// editor phase. On a retry it runs BOTH before applyEditors — so body-aware
+	// editors (e.g. one computing a Digest/HMAC header) observe and sign the bytes
+	// that will actually be sent — AND after, so the first finalized body stays
+	// authoritative (an editor cannot change a retry's body).
+	installReplay := func(req *http.Request) (io.ReadCloser, error) {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
+		if bodyReplay == nil {
+			req.Body = nil
+			req.GetBody = nil
+			req.ContentLength = replayContentLength
+			return nil, nil
+		}
+		rc, bErr := bodyReplay()
+		if bErr != nil {
+			return nil, bErr
+		}
+		// Preserve the http.NoBody sentinel unwrapped: net/http keys request
+		// framing off body identity — a wrapped NoBody has ContentLength 0 but is
+		// not the sentinel, so Request.outgoingLength() reports -1 (unknown) and
+		// the retry would switch to Transfer-Encoding: chunked, differing from the
+		// first attempt's empty framing. http.NoBody's Close is already a no-op,
+		// so it needs no close-once wrapper.
+		var installed io.ReadCloser = rc
+		if rc != http.NoBody {
+			installed = &closeOnceBody{rc: rc}
+		}
+		req.Body = installed
+		req.GetBody = bodyReplay
+		req.ContentLength = replayContentLength
+		return installed, nil
+	}
+
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		req, err := buildRequest()
 		if err != nil {
 			return nil, err
 		}
 		req = req.WithContext(ctx)
-		if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-			return nil, err
+
+		// Capture the builder's body BEFORE the editors run so captureReplayBody
+		// can tell (on attempt 1) whether an editor replaced it — a replaced body
+		// is not safely reproducible for retries.
+		var builderBody io.ReadCloser
+		if attempt == 1 {
+			builderBody = req.Body
+		}
+
+		// On a retry, install the replay body BEFORE editors so body-aware editors
+		// sign the bytes that will actually be sent. We OWN this handle and close
+		// it after the editor phase — even if an editor replaces req.Body (which
+		// would otherwise orphan it). closeOnceBody makes the routine close below
+		// a no-op when the editor left it in place.
+		var preEditorBody io.ReadCloser
+		if attempt > 1 {
+			preEditorBody, err = installReplay(req)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		editErr := c.applyEditors(ctx, req, reqEditors)
+		if preEditorBody != nil {
+			_ = preEditorBody.Close()
+		}
+		if editErr != nil {
+			// Release whatever body the editors left (a replacement, or the
+			// already-closed pre-editor handle — closeOnceBody makes this safe).
+			if req.Body != nil {
+				_ = req.Body.Close()
+			}
+			return nil, editErr
+		}
+
+		if attempt == 1 {
+			// Snapshot the finalized first request's body exactly once; every
+			// later attempt replays THIS body.
+			replay, cl, retriable, capErr := captureReplayBody(req, builderBody, retryEligible)
+			if capErr != nil {
+				return nil, capErr
+			}
+			bodyReplay = replay
+			replayContentLength = cl
+			if !retriable {
+				// The body is not safely replayable (an unrewindable stream with
+				// no GetBody): send it once and do not retry.
+				maxAttempts = 1
+			}
+		} else {
+			// Re-install AFTER editors: the first finalized body wins, and any
+			// editor body change (now closed) is discarded and refreshed.
+			if _, err := installReplay(req); err != nil {
+				return nil, err
+			}
 		}
 
 		resp, err := c.Client.Do(req)

@@ -3,11 +3,13 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // fixturesDir returns the path to the fixtures directory.
@@ -320,5 +322,47 @@ func TestProjectsService_UpdateEmptyScheduleAttributes(t *testing.T) {
 
 	if _, ok := receivedBody["schedule_attributes"]; ok {
 		t.Errorf("expected schedule_attributes to be omitted for empty struct, but it was present: %v", receivedBody["schedule_attributes"])
+	}
+}
+
+// TestProjectsService_UpdateRetriesOn503WithFullBody is a PUBLIC-service retry
+// proof: the typed ProjectsService.Update serializes its body via marshalBody
+// (a *bytes.Reader, which net/http snapshots into GetBody), so the generated
+// client's doWithRetry replays the FULL body on a transient 503. Guards against
+// SDK-owned serialized bodies losing retries (the naturally-idempotent PUT
+// conformance case).
+func TestProjectsService_UpdateRetriesOn503WithFullBody(t *testing.T) {
+	var bodies []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(b))
+		if len(bodies) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable) // retryable
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"id":12345,"name":"x"}`))
+	}))
+	t.Cleanup(server.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = server.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token, WithMaxRetries(3), WithBaseDelay(time.Millisecond))
+	svc := client.ForAccount("99999").Projects()
+
+	if _, err := svc.Update(context.Background(), 12345, &UpdateProjectRequest{Name: "x"}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+
+	if len(bodies) != 2 {
+		t.Fatalf("public UpdateProject made %d requests, want 2 (idempotent PUT must retry on 503)", len(bodies))
+	}
+	const want = `{"name":"x"}`
+	for i, b := range bodies {
+		if b != want {
+			t.Errorf("request %d body = %q, want the full serialized body %q (the retry must replay it)", i+1, b, want)
+		}
 	}
 }

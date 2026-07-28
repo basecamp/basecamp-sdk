@@ -1,6 +1,7 @@
 package basecamp
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"testing"
@@ -169,14 +170,30 @@ func TestMarshalBody_ReturnsReplayableReader(t *testing.T) {
 		t.Fatalf("marshalBody returned error: %v", err)
 	}
 
+	// The body must be snapshotable by net/http so the generated client's
+	// doWithRetry can replay it via GetBody across retries — otherwise these
+	// SDK-owned serialized bodies would be sent once and never retried.
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, "https://example.com", reader)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	if req.GetBody == nil {
+		t.Fatal("marshalBody body is not snapshotable: req.GetBody is nil (retries would be disabled)")
+	}
+
 	const want = `{"content":"Updated content"}`
 	for attempt := 1; attempt <= 2; attempt++ {
-		got, err := io.ReadAll(reader)
+		rc, err := req.GetBody()
+		if err != nil {
+			t.Fatalf("attempt %d: GetBody: %v", attempt, err)
+		}
+		got, err := io.ReadAll(rc)
+		_ = rc.Close()
 		if err != nil {
 			t.Fatalf("attempt %d: failed reading body: %v", attempt, err)
 		}
 		if string(got) != want {
-			t.Fatalf("attempt %d: body = %q, want %q", attempt, got, want)
+			t.Fatalf("attempt %d: replayed body = %q, want %q", attempt, got, want)
 		}
 	}
 }
