@@ -1694,3 +1694,38 @@ func TestPerformDeviceLogin_CancelAfterAuthorizationNeverReachesDisplay(t *testi
 		t.Errorf("display fired %d times for a cancelled flow, want 0", displayed)
 	}
 }
+
+// contextIgnoringTransport completes requests via the base transport but with
+// the context stripped, modeling an injected RoundTripper that ignores request
+// cancellation.
+type contextIgnoringTransport struct {
+	base   http.RoundTripper
+	cancel context.CancelFunc
+}
+
+func (t *contextIgnoringTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Cancel the caller's ctx mid-request, then complete anyway.
+	t.cancel()
+	return t.base.RoundTrip(req.Clone(context.Background()))
+}
+
+func TestPollDeviceToken_CancelledDuringIgnoredTransportBeats200(t *testing.T) {
+	// A transport that ignores cancellation can return a 200 after the caller
+	// cancelled — the loop must surface cancelled, never the token.
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{{http.StatusOK, tokenBody}})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	client := &http.Client{Transport: &contextIgnoringTransport{base: tlsClient(srv).Transport, cancel: cancel}}
+	sleep := &recordingSleep{}
+
+	_, err := PollDeviceToken(ctx, srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(client), WithDeviceSleep(sleep.fn))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowCancelled {
+		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
+	}
+}

@@ -416,6 +416,15 @@ func pollDeviceTokenUntil(ctx context.Context, cfg deviceConfig, tokenEndpoint, 
 		result := postDeviceToken(ctx, cfg, tokenEndpoint, form, min(cfg.timeout, postRemaining))
 		switch result.kind {
 		case pollToken:
+			// Re-check cancellation before returning the credential: an
+			// injected RoundTripper that ignores the request context can
+			// complete a 200 after ctx is cancelled — the caller asked to
+			// stop, so cancelled wins over the token. Mirrors the
+			// post-authorization re-check and the Py/Rb post-round-trip
+			// probes.
+			if err := ctx.Err(); err != nil {
+				return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
+			}
 			return result.token, nil
 		case pollCancelled:
 			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: result.err}
