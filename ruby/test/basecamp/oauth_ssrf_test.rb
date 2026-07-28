@@ -316,6 +316,12 @@ class OAuthSsrfTest < Minitest::Test
       Basecamp::Oauth::Fetcher.normalize_timeout(nil, default: Float::INFINITY)
     assert_equal Basecamp::Oauth::Fetcher::DEFAULT_TIMEOUT,
       Basecamp::Oauth::Fetcher.normalize_timeout("bad", default: nil)
+    # A huge-but-FINITE timeout (1e100) would hold the socket timeout and the
+    # monotonic deadline open effectively forever — capped at MAX_REQUEST_TIMEOUT,
+    # falling back to the operation default (Python/TS cap the same way).
+    assert_equal 30, Basecamp::Oauth::Fetcher.normalize_timeout(1e100, default: 30)
+    assert_equal Basecamp::Oauth::Fetcher::MAX_REQUEST_TIMEOUT,
+      Basecamp::Oauth::Fetcher.normalize_timeout(Basecamp::Oauth::Fetcher::MAX_REQUEST_TIMEOUT)
   end
 
   def test_redirect_is_not_followed

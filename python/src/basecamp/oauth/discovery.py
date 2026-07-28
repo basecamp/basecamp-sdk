@@ -70,9 +70,16 @@ def _normalize_body_cap(max_body_bytes: object, default: int = MAX_DISCOVERY_BOD
     :func:`_normalize_timeout`) and validated too, so an invalid fallback cannot
     disable the bound either.
     """
-    if not (isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0):
-        return max_body_bytes
-    if not (isinstance(default, bool) or not isinstance(default, int) or default < 0):
+
+    def valid(value: object) -> bool:
+        # A valid cap is a genuine non-negative int; bool is an int subclass
+        # but a nonsensical cap. Stated positively — this is a security-relevant
+        # normalizer, so the predicate must read unambiguously.
+        return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+    if valid(max_body_bytes):
+        return max_body_bytes  # type: ignore[return-value]
+    if valid(default):
         return default
     return MAX_DISCOVERY_BODY_BYTES
 

@@ -53,11 +53,20 @@ module Basecamp
         DEFAULT_TIMEOUT
       end
 
+      # Upper bound (seconds) for any single OAuth request timeout. A huge but
+      # FINITE caller value (1e100) would pass a bare finite/positive check and
+      # hold both Faraday's socket timeout and the monotonic deadline open
+      # effectively forever — the same cap discipline as Python
+      # (_MAX_DEVICE_REQUEST_TIMEOUT = 3600) and TS (resolveDeviceTimeoutMs
+      # rejects oversized values back to the default).
+      MAX_REQUEST_TIMEOUT = 3600
+
       # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
       # not define — calling them would raise NoMethodError). Integer, Float, and
       # Rational are all real and answer both.
       def self.valid_timeout?(value)
-        value.is_a?(Numeric) && value.real? && value.finite? && value.positive?
+        value.is_a?(Numeric) && value.real? && value.finite? && value.positive? \
+          && value <= MAX_REQUEST_TIMEOUT
       end
 
       # Coerce the public body cap to a non-negative Integer. A nil, non-Integer

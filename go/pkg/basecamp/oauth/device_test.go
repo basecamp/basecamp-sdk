@@ -1486,3 +1486,25 @@ type errReadCloser struct{ err error }
 
 func (e errReadCloser) Read([]byte) (int, error) { return 0, e.err }
 func (e errReadCloser) Close() error             { return nil }
+
+func TestPollDeviceToken_ExpiresAtIsWallClock(t *testing.T) {
+	// The injected clock is a polling-deadline seam only. A token's public
+	// ExpiresAt must anchor to wall time (like exchange.go) — with an
+	// epoch-anchored injected clock the old cfg.clock() anchoring produced an
+	// ExpiresAt near 1970, an already-expired token.
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{{http.StatusOK, tokenBody}})
+	sleep := &recordingSleep{}
+	epochClock := func() time.Time { return time.Unix(0, 0) }
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn), WithDeviceClock(epochClock))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.ExpiresAt.Before(time.Now().Add(30 * time.Minute)) {
+		t.Errorf("ExpiresAt = %v, want ~1h from wall-clock now (not the injected clock)", token.ExpiresAt)
+	}
+}

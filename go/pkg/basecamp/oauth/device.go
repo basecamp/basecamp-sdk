@@ -571,7 +571,11 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 					err: fmt.Errorf("device token response expires_in must be a positive whole number of seconds no greater than %d", maxTokenLifetimeSeconds)}
 			}
 			token.ExpiresIn = int(v)
-			token.ExpiresAt = cfg.clock().Add(time.Duration(token.ExpiresIn) * time.Second)
+			// Wall time, NOT cfg.clock(): the injected clock is a monotonic
+			// polling-deadline seam (tests feed it artificial instants), while
+			// ExpiresAt is a public wall-clock field consumed outside the poll
+			// loop — matching exchange.go's time.Now() anchoring.
+			token.ExpiresAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
 		}
 		return pollResult{kind: pollToken, token: &token}
 	}
