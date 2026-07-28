@@ -406,3 +406,50 @@ func TestAuthManager_Refresh_ResponseResourceReplacesStored(t *testing.T) {
 		t.Errorf("stored Resource = %q, want replaced urn:bc:account:7", creds.Resource)
 	}
 }
+
+func TestAuthManager_Refresh_RejectsEmptyResource(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// A present-but-empty resource is malformed (SPEC §16): the refresh must
+	// FAIL — persisting the rotated tokens while silently keeping the old
+	// binding would store credentials under a stale resource.
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "new-access",
+			"resource":     "",
+		})
+	}))
+	defer ts.Close()
+
+	store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+	origin := NormalizeBaseURL(ts.URL)
+	_ = store.Save(origin, &Credentials{
+		AccessToken:   "old-access",
+		RefreshToken:  "old-refresh",
+		ExpiresAt:     1,
+		TokenEndpoint: ts.URL + "/token",
+		Resource:      "urn:bc:account:42",
+	})
+
+	cfg := &Config{BaseURL: ts.URL}
+	m := NewAuthManagerWithStore(cfg, ts.Client(), store)
+
+	err := m.Refresh(context.Background())
+	if err == nil {
+		t.Fatal("expected error for present-but-empty resource")
+	}
+	if !strings.Contains(err.Error(), "resource") {
+		t.Errorf("error = %q, expected mention of resource", err.Error())
+	}
+
+	// The stored credentials must be untouched — no rotation was persisted.
+	creds, _ := store.Load(origin)
+	if creds.AccessToken != "old-access" {
+		t.Errorf("AccessToken = %q, want old-access untouched", creds.AccessToken)
+	}
+	if creds.Resource != "urn:bc:account:42" {
+		t.Errorf("Resource = %q, want untouched binding", creds.Resource)
+	}
+}

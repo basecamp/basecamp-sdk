@@ -382,9 +382,15 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if tokenResp.ExpiresIn > 0 {
 		creds.ExpiresAt = time.Now().Unix() + tokenResp.ExpiresIn
 	}
-	// An omitted resource preserves the stored binding (carry-forward, like an
-	// omitted rotated refresh_token); a present one replaces it.
-	if tokenResp.Resource != nil && *tokenResp.Resource != "" {
+	// An omitted (or null) resource preserves the stored binding
+	// (carry-forward, like an omitted rotated refresh_token); a present one
+	// replaces it. A present-but-EMPTY resource is a malformed response
+	// (SPEC §16: present ⇒ non-empty) — fail the refresh rather than
+	// persisting rotated credentials under a stale binding.
+	if tokenResp.Resource != nil {
+		if *tokenResp.Resource == "" {
+			return ErrAPI(resp.StatusCode, "token refresh response resource must be a non-empty string when present")
+		}
 		creds.Resource = *tokenResp.Resource
 	}
 
