@@ -540,42 +540,12 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 
 	case "UpdateCard":
 		// Merge-safe composite: GET then PUT, resending the fetched due_on.
-		cardID := getInt64Param(tc.PathParams, "cardId")
-		req := &basecamp.UpdateCardRequest{}
-		if v := getStringParam(tc.RequestBody, "title"); v != "" {
-			req.Title = &v
-		}
-		if v := getStringParam(tc.RequestBody, "content"); v != "" {
-			req.Content = &v
-		}
-		if v, ok := tc.RequestBody["due_on"]; ok {
-			s, _ := v.(string)
-			req.DueOn = &s
-		}
-		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
-			req.AssigneeIDs = ids
-		}
-		_, err := account.Cards().Update(ctx, cardID, req)
+		_, err := account.Cards().Update(ctx, getInt64Param(tc.PathParams, "cardId"), cardUpdateRequest(tc.RequestBody))
 		return operationResult{err: err}
 
 	case "UpdateCardVerbatim":
 		// Raw single PUT, no read-before-write.
-		cardID := getInt64Param(tc.PathParams, "cardId")
-		req := &basecamp.UpdateCardRequest{}
-		if v := getStringParam(tc.RequestBody, "title"); v != "" {
-			req.Title = &v
-		}
-		if v := getStringParam(tc.RequestBody, "content"); v != "" {
-			req.Content = &v
-		}
-		if v, ok := tc.RequestBody["due_on"]; ok {
-			s, _ := v.(string)
-			req.DueOn = &s
-		}
-		if ids, ok := getInt64SliceParam(tc.RequestBody, "assignee_ids"); ok {
-			req.AssigneeIDs = ids
-		}
-		_, err := account.Cards().UpdateVerbatim(ctx, cardID, req)
+		_, err := account.Cards().UpdateVerbatim(ctx, getInt64Param(tc.PathParams, "cardId"), cardUpdateRequest(tc.RequestBody))
 		return operationResult{err: err}
 
 	case "EditTodo":
@@ -1333,6 +1303,30 @@ func getBoolParam(params map[string]interface{}, key string) bool {
 // getInt64SliceParam extracts an []int64 parameter, reporting whether the key
 // was present: a present-but-empty array returns (non-nil empty slice, true)
 // so explicit-empty (a clear) is distinguishable from absent (untouched).
+// cardUpdateRequest builds an UpdateCardRequest from a fixture body using
+// PRESENCE, not non-emptiness. UpdateCardRequest's scalars are pointers exactly
+// so "explicitly set to empty" differs from "not set"; testing v != "" would
+// collapse the two and let an explicit-clear fixture pass as an omission.
+func cardUpdateRequest(body map[string]interface{}) *basecamp.UpdateCardRequest {
+	req := &basecamp.UpdateCardRequest{}
+	if v, ok := body["title"]; ok {
+		s, _ := v.(string)
+		req.Title = &s
+	}
+	if v, ok := body["content"]; ok {
+		s, _ := v.(string)
+		req.Content = &s
+	}
+	if v, ok := body["due_on"]; ok {
+		s, _ := v.(string)
+		req.DueOn = &s
+	}
+	if ids, ok := getInt64SliceParam(body, "assignee_ids"); ok {
+		req.AssigneeIDs = ids
+	}
+	return req
+}
+
 func getInt64SliceParam(params map[string]interface{}, key string) ([]int64, bool) {
 	val, ok := params[key]
 	if !ok {
