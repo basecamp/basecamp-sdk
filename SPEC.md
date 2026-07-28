@@ -8,7 +8,7 @@ This document is a complete, implementation-grade specification for building a B
 
 ### Existing SDKs as Exemplars
 
-Five shipping SDKs live alongside this spec in the same repository: Go, Ruby, TypeScript, Kotlin, and Swift. Use them as reference implementations when the spec leaves room for interpretation. TypeScript (`typescript/src/client.ts`) is the most complete single-file reference for auth, retry, pagination, and caching. Ruby (`ruby/lib/basecamp/http.rb`) has the most explicit pagination variants. Go (`go/pkg/basecamp/`) demonstrates the hand-written service wrapper pattern. When in doubt, read the code — the spec prescribes the contract, the SDKs show how it's been realized.
+Six shipping SDKs live alongside this spec in the same repository: Go, Ruby, Python, TypeScript, Kotlin, and Swift. Use them as reference implementations when the spec leaves room for interpretation. TypeScript (`typescript/src/client.ts`) is the most complete single-file reference for auth, retry, pagination, and caching. Ruby (`ruby/lib/basecamp/http.rb`) has the most explicit pagination variants. Go (`go/pkg/basecamp/`) demonstrates the hand-written service wrapper pattern. When in doubt, read the code — the spec prescribes the contract, the SDKs show how it's been realized.
 
 ### Input Artifacts
 
@@ -35,9 +35,9 @@ Five shipping SDKs live alongside this spec in the same repository: Go, Ruby, Ty
 When artifacts conflict, this precedence governs:
 
 1. **Conformance tests** — behavioral truth. If a test asserts a behavior, the spec matches it.
-2. **Shipping SDK code** (consensus of Go, Ruby, TypeScript, Kotlin, Swift) — implementation truth. When 4+ SDKs agree, that's the contract.
+2. **Shipping SDK code** (consensus of Go, Ruby, Python, TypeScript, Kotlin, Swift) — implementation truth. When 4+ SDKs agree, that's the contract.
 3. **`behavior-model.json`** — machine-readable metadata. Descriptive of retry/idempotency semantics, but the retry block alone does not activate retry for POST (see §7).
-4. **`rubric-audit.json`** — audit snapshot. Known to drift (e.g., 3C.3 claims 1024 chars; all 5 SDKs use 500). Trust code over audit.
+4. **`rubric-audit.json`** — audit snapshot. Known to drift (e.g., 3C.3 claims 1024 chars; all six SDKs use 500). Trust code over audit.
 5. **RUBRIC.md** — evaluation framework (external governance reference in the `basecamp/sdk` repo, not this repo). Defines criteria, not implementations. Referenced by criteria IDs (e.g., 2A.3, 3C.1) but not as an input artifact — this spec is self-contained.
 
 `[CONFLICT]` annotations appear inline where sources disagree, with resolution rationale.
@@ -404,9 +404,19 @@ If `behavior-model.json` marks an operation with `idempotent: true`, the POST be
 The error must be retryable. Two categories qualify:
 
 - **HTTP status retry:** Response status is in the transport's retryable set. The `behavior-model.json` specifies `retry_on: [429, 503]` for all operations. Implementations may expand this set to include other 5xx statuses (500, 502, 504).
-- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** Go, Ruby, and Swift retry on network errors today (Swift gates the retry on operation idempotency, so a non-idempotent POST is attempted once). TypeScript retries only after receiving an HTTP response; Kotlin surfaces network errors immediately without retry. The spec prescribes network error retry as the target behavior.
+- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** **Go, Python, and Swift** retry network errors for retry-eligible operations — including idempotent mutations — with Swift and Go gating on operation idempotency, so a non-idempotent POST is attempted once. **Ruby** retries network errors too, but only on GET: its transport routes every non-GET to a single-attempt path, so no mutation ever sees a network retry. **TypeScript** retries only after receiving an HTTP response; **Kotlin** surfaces network errors immediately without retry. The spec prescribes network error retry as the target behavior.
 
 **Non-retryable statuses (never retry regardless of method):** 401, 403, 404, 400, 422.
+
+**Gate 3 status-set fidelity `[CONFLICT]`.** Gates 1 and 2 read `behavior-model.json`. Gate 3's
+parameters are honored unevenly. The per-operation attempt **ceiling** is consumed by every SDK
+except **Ruby**, which bounds its GET-only loop by `config.max_retries` alone and never reads the
+operation's `max` (see *Per-operation retry ceiling* in §2). The declared **status set** is honored
+by fewer still. **Go and Ruby retry statuses the spec never declared retryable**: Go's
+`isRetryableStatus` covers `{429, 500, 502, 503, 504}` regardless of the operation's declared
+`retry_on`, and Ruby's loop keys off `retryable?`, which `errors.rb` sets for 500/502/503/504.
+**Python** has no status gate at all — its loop keys off the `retryable` flag `errors.py` sets for
+the same statuses. TypeScript, Kotlin, and Swift do gate on the declared set.
 
 ### Cross-SDK Divergence `[CONFLICT]`
 
@@ -647,7 +657,7 @@ Go and Ruby enforce this limit. TypeScript, Kotlin, and Swift do not currently e
 MAX_ERROR_MESSAGE_LENGTH = 500
 ```
 
-`[CONFLICT: rubric-audit.json 3C.3 says 1024; all 5 SDKs use 500. Code wins.]`
+`[CONFLICT: rubric-audit.json 3C.3 says 1024; all six SDKs use 500. Code wins.]`
 
 Error messages extracted from response bodies are truncated to 500 units. If the string exceeds the limit, the last 3 units are replaced with `"..."`, so the result is at most 500 units long.
 
@@ -1139,10 +1149,12 @@ typed selection error for every hard case. **No consumer may convert a raise int
 a Launchpad request.** ("BC5 committed" = valid resource metadata advertised a
 BC5 issuer that was then selected.)
 
-#### SSRF hardening — both hops, all five SDKs `[conformance]`
+#### SSRF hardening — both hops, all five SDKs with OAuth discovery `[conformance]`
 
 RFC 9728 §7.7 flags SSRF via attacker-influenced metadata; advertised AS URLs are
-untrusted input. Every `fetchJSON` above MUST:
+untrusted input. Swift is out of scope here — it ships no OAuth discovery
+implementation, so it has no `fetchJSON` hop to harden. In the five that do,
+every `fetchJSON` above MUST:
 
 1. **Require HTTPS** (localhost exempt) — validated by `requireOriginRoot` before
    any socket is opened.
@@ -1420,14 +1432,14 @@ All magic numbers in one place, derived from shipping SDK code (not `rubric-audi
 |----------|-------|------|--------|
 | `MAX_RESPONSE_BODY_BYTES` | 52,428,800 (50 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb`; Go/Ruby enforce; TS/Kotlin/Swift do not |
 | `MAX_ERROR_BODY_BYTES` | 1,048,576 (1 MiB) | bytes | `go/pkg/basecamp/security.go`, `ruby/lib/basecamp/security.rb` |
-| `MAX_ERROR_MESSAGE_LENGTH` | 500 | bytes (Go/Ruby) or code units (TS/Swift/Kotlin) | All 5 SDKs |
-| `DEFAULT_BASE_URL` | `https://3.basecampapi.com` | — | All 5 SDKs |
-| `DEFAULT_TIMEOUT` | 30 | seconds | All 5 SDKs |
+| `MAX_ERROR_MESSAGE_LENGTH` | 500 | bytes (Go/Ruby/Python) or code units (TS/Swift/Kotlin) | All six SDKs |
+| `DEFAULT_BASE_URL` | `https://3.basecampapi.com` | — | All six SDKs |
+| `DEFAULT_TIMEOUT` | 30 | seconds | All six SDKs |
 | `DEFAULT_CONNECT_TIMEOUT` | 10 | seconds | `ruby/lib/basecamp/http.rb` (Faraday open_timeout); recommended default, not a required config field |
-| `DEFAULT_MAX_RETRIES` | 3 | — | All 5 SDKs |
-| `DEFAULT_BASE_DELAY` | 1000 | milliseconds | All 5 SDKs |
-| `DEFAULT_MAX_JITTER` | 100 | milliseconds | All 5 SDKs |
-| `DEFAULT_MAX_PAGES` | 10,000 | — | All 5 SDKs |
+| `DEFAULT_MAX_RETRIES` | 3 | — | All six SDKs |
+| `DEFAULT_BASE_DELAY` | 1000 | milliseconds | All six SDKs |
+| `DEFAULT_MAX_JITTER` | 100 | milliseconds | All six SDKs |
+| `DEFAULT_MAX_PAGES` | 10,000 | — | All six SDKs |
 | `MAX_CACHE_ENTRIES` | 1000 | entries | `typescript/src/client.ts` |
 | `MAX_TOKEN_HASH_ENTRIES` | 100 | entries | `typescript/src/client.ts` |
 | `API_VERSION` | `2026-03-23` | — | `openapi.json` `info.version` |
@@ -1599,7 +1611,17 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 | Kotlin | Three-gate for HTTP status retries: POST retries only when `idempotent: true`, full exponential backoff. Does not retry network errors (transport exceptions returned immediately). |
 | Go | Generated operation path retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh. |
 | Ruby | Simplified: only GET retries. All non-GET methods never retry. Ruby retries on any error with `retryable? == true`. |
+| Python | Three-gate, sync and async: `_mutation()` retries only when `behavior-model` metadata classifies the operation retryable, so non-idempotent POSTs are single-attempt; GETs always retry. Retries on any error with `retryable == True`. |
 | Swift | Three-gate: retries when the method is naturally idempotent (GET/HEAD/PUT/DELETE) or the operation is marked `idempotent: true`; non-idempotent POSTs make a single attempt. Gate covers both HTTP status and network-error retries, so Swift *does* retry network errors (unlike Kotlin/TS), gated by idempotency. |
+
+The table above describes **Gate 1 and Gate 2** — *whether* an operation retries. Gate 3's parameters
+are tracked separately, and neither is uniform. The per-operation attempt ceiling is honored by Go,
+Python, TypeScript, Swift and Kotlin — but **Ruby never consults it**: `request_with_retry` loops
+until `@config.max_retries` (`ruby/lib/basecamp/http.rb`) without reading operation metadata, so a
+Ruby caller who raises the cap above 3 exceeds the operation's declared `max`. (Kotlin honors the
+ceiling but lets it override a *lower* caller cap — see #485.) The declared `retry_on` set is not
+uniform either: Go, Python, and Ruby all retry a superset of it. See the Gate 3 status-set note at
+§7 above.
 
 ### Integer Precision (§10)
 
