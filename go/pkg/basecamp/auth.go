@@ -365,7 +365,10 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	var tokenResp struct {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int64  `json:"expires_in"`
+		// *int64 so an omitted (or null) expires_in is distinguishable from an
+		// explicit value: omission clears the stale expiry (no known expiry),
+		// while an explicit non-positive value is a malformed response.
+		ExpiresIn *int64 `json:"expires_in"`
 		// *string so an omitted (or null) resource is distinguishable from a
 		// present one: omission preserves the stored value, presence replaces
 		// it (SPEC §16 lifecycle rule).
@@ -387,14 +390,21 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	if tokenResp.RefreshToken != "" {
 		creds.RefreshToken = tokenResp.RefreshToken
 	}
-	if tokenResp.ExpiresIn > 0 {
-		creds.ExpiresAt = time.Now().Unix() + tokenResp.ExpiresIn
-	} else {
+	switch {
+	case tokenResp.ExpiresIn == nil:
 		// A refresh response may legally omit expires_in. Leaving the OLD
 		// (already-passed) ExpiresAt would mark the fresh token expired and
 		// force a refresh on EVERY subsequent call — clear to 0, the
 		// no-known-expiry state AccessToken never force-refreshes.
 		creds.ExpiresAt = 0
+	case *tokenResp.ExpiresIn <= 0:
+		// An EXPLICIT zero/negative lifetime is a malformed response, not an
+		// omission (SPEC §16's positive-lifetime rule): treating it as
+		// no-expiry would persist an already-expired token that never
+		// refreshes again. Fail without persisting anything.
+		return ErrAPI(resp.StatusCode, "token refresh response expires_in must be positive when present")
+	default:
+		creds.ExpiresAt = time.Now().Unix() + *tokenResp.ExpiresIn
 	}
 	// An omitted (or null) resource preserves the stored binding
 	// (carry-forward, like an omitted rotated refresh_token); a present one

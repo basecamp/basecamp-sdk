@@ -578,3 +578,47 @@ func TestAuthManager_Refresh_OmittedExpiresInClearsStaleExpiry(t *testing.T) {
 		t.Errorf("ExpiresAt = %d, want 0 (no known expiry)", creds.ExpiresAt)
 	}
 }
+
+func TestAuthManager_Refresh_ExplicitNonPositiveExpiresInIsAPIError(t *testing.T) {
+	t.Setenv("BASECAMP_TOKEN", "")
+	t.Setenv("BASECAMP_NO_KEYRING", "1")
+
+	// An explicit zero/negative expires_in is malformed — distinct from
+	// omission (which clears to no-known-expiry): persisting it as
+	// non-expiring would store an already-expired token that never refreshes.
+	for _, expiresIn := range []int64{0, -30} {
+		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"access_token": "new-access",
+				"expires_in":   expiresIn,
+			})
+		}))
+
+		store := &CredentialStore{useKeyring: false, fallbackDir: t.TempDir()}
+		origin := NormalizeBaseURL(ts.URL)
+		_ = store.Save(origin, &Credentials{
+			AccessToken:   "old-access",
+			RefreshToken:  "old-refresh",
+			ExpiresAt:     1,
+			TokenEndpoint: ts.URL + "/token",
+		})
+
+		m := NewAuthManagerWithStore(&Config{BaseURL: ts.URL}, ts.Client(), store)
+		err := m.Refresh(context.Background())
+		if err == nil {
+			t.Fatalf("expires_in=%d: expected api_error", expiresIn)
+		}
+		var be *Error
+		if !errors.As(err, &be) || be.Code != CodeAPI {
+			t.Errorf("expires_in=%d: want *basecamp.Error CodeAPI, got %v", expiresIn, err)
+		}
+
+		// Nothing was persisted — the old credentials stand.
+		creds, _ := store.Load(origin)
+		if creds.AccessToken != "old-access" {
+			t.Errorf("expires_in=%d: AccessToken = %q, want untouched", expiresIn, creds.AccessToken)
+		}
+		ts.Close()
+	}
+}
