@@ -17,9 +17,13 @@ class SearchServiceTest < Minitest::Test
       # every search result, so both keys are always present and always null. A
       # stub that omits them is a payload the API cannot produce.
       { "id" => 1, "title" => "Quarterly Report", "type" => "Message", "content_attachments" => [],
+        "url" => "https://3.basecampapi.com/12345/buckets/1/messages/1.json",
+        "app_url" => "https://3.basecamp.com/12345/buckets/1/messages/1",
         "content" => nil, "description" => nil,
         "plain_text_content" => "Q1 <mark class=\"circled-text\"><span></span>Report</mark> summary." },
       { "id" => 2, "title" => "Q1 Report Draft", "type" => "Document", "content_attachments" => [],
+        "url" => "https://3.basecampapi.com/12345/buckets/1/documents/2.json",
+        "app_url" => "https://3.basecamp.com/12345/buckets/1/documents/2",
         "content" => nil, "description" => nil }
     ]
     stub_request(:get, "https://3.basecampapi.com/12345/search.json")
