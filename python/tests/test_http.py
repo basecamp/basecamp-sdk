@@ -14,6 +14,7 @@ from basecamp.config import Config
 from basecamp.errors import (
     ApiError,
     AuthError,
+    BasecampError,
     NetworkError,
     NotFoundError,
     RateLimitError,
@@ -117,7 +118,11 @@ class TestRetryBehavior:
         assert route.call_count == 2
 
     @respx.mock
-    def test_get_retries_on_500(self):
+    def test_get_without_operation_still_retries_500(self):
+        # No operation id means no behavior-model metadata, so the declared
+        # retry_on gate does not apply and the historical contract stands.
+        # Generated reads always pass an operation; see
+        # TestDeclaredRetryStatuses for the governed path.
         route = respx.get("https://3.basecampapi.com/test")
         route.side_effect = [
             httpx.Response(500),
@@ -524,3 +529,171 @@ class TestPerOperationRetryMaxIntegration:
             await client.for_account("999").account.update_account_name(name="x")
         assert route.call_count == 2
         await client.close()
+
+
+# behavior-model.json declares retry_on: [429, 503] for all 226 operations.
+# These fixtures mirror that so the tests do not depend on any single real op.
+STATUS_GATE_METADATA = {
+    "GovernedOp": {"idempotent": True, "retry": {"max": 3, "retry_on": [429, 503]}},
+}
+
+
+class TestDeclaredRetryStatuses:
+    """Gate 3's status set. A status outside the operation's declared retry_on —
+    including 500, 502 and 504 — is surfaced on the first attempt. errors.py
+    still reports those as retryable to callers; that classification is
+    deliberately not the transport's gate."""
+
+    @pytest.mark.parametrize(
+        "status,want_attempts",
+        [(429, 3), (503, 3), (500, 1), (502, 1), (504, 1)],
+    )
+    @respx.mock
+    def test_sync_mutation_status_gate(self, status, want_attempts):
+        route = respx.put("https://3.basecampapi.com/thing").mock(
+            return_value=httpx.Response(status, headers={"Retry-After": "0"})
+        )
+        client = make_client_meta(STATUS_GATE_METADATA)
+        with pytest.raises((ApiError, RateLimitError)):
+            client.put("/thing", json_body={"x": 1}, operation="GovernedOp")
+        assert route.call_count == want_attempts
+
+    @pytest.mark.parametrize(
+        "status,want_attempts",
+        [(429, 3), (503, 3), (500, 1), (502, 1), (504, 1)],
+    )
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_mutation_status_gate(self, status, want_attempts):
+        route = respx.put("https://3.basecampapi.com/thing").mock(
+            return_value=httpx.Response(status, headers={"Retry-After": "0"})
+        )
+        client = make_async_client_meta(STATUS_GATE_METADATA)
+        with pytest.raises((ApiError, RateLimitError)):
+            await client.put("/thing", json_body={"x": 1}, operation="GovernedOp")
+        assert route.call_count == want_attempts
+
+    @respx.mock
+    def test_sync_read_status_gate(self):
+        # Generated reads pass an operation id (threaded by _base.py), so the
+        # read path is governed too.
+        route = respx.get("https://3.basecampapi.com/thing").mock(return_value=httpx.Response(500))
+        client = make_client_meta(STATUS_GATE_METADATA)
+        with pytest.raises(ApiError):
+            client.get("/thing", operation="GovernedOp")
+        assert route.call_count == 1
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_read_status_gate(self):
+        route = respx.get("https://3.basecampapi.com/thing").mock(return_value=httpx.Response(500))
+        client = make_async_client_meta(STATUS_GATE_METADATA)
+        with pytest.raises(ApiError):
+            await client.get("/thing", operation="GovernedOp")
+        assert route.call_count == 1
+
+
+class TestAuthorizationRetryContractUnchanged:
+    """Launchpad authorization goes through get_absolute(), which shares the
+    retry loop with generated traffic but is NOT a Smithy operation — it passes
+    no operation id and carries no behavior-model metadata. The declared status
+    gate and the per-operation ceiling must not reach it. These fail if
+    generated policy ever leaks onto OAuth traffic."""
+
+    @respx.mock
+    def test_sync_authorization_still_retries_500(self):
+        route = respx.get("https://launchpad.37signals.com/authorization.json")
+        route.side_effect = [
+            httpx.Response(500),
+            httpx.Response(200, json={"ok": True}),
+        ]
+        client = make_client_meta(STATUS_GATE_METADATA)
+        resp = client.get_absolute("https://launchpad.37signals.com/authorization.json")
+        assert resp.status_code == 200
+        assert route.call_count == 2
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_authorization_still_retries_500(self):
+        route = respx.get("https://launchpad.37signals.com/authorization.json")
+        route.side_effect = [
+            httpx.Response(500),
+            httpx.Response(200, json={"ok": True}),
+        ]
+        client = make_async_client_meta(STATUS_GATE_METADATA)
+        resp = await client.get_absolute("https://launchpad.37signals.com/authorization.json")
+        assert resp.status_code == 200
+        assert route.call_count == 2
+
+    @respx.mock
+    def test_sync_authorization_uses_full_configured_attempts(self):
+        # No operation ceiling applies either, so all 5 configured attempts run.
+        route = respx.get("https://launchpad.37signals.com/authorization.json").mock(return_value=httpx.Response(503))
+        client = make_client_meta(STATUS_GATE_METADATA, max_retries=5)
+        with pytest.raises(ApiError):
+            client.get_absolute("https://launchpad.37signals.com/authorization.json")
+        assert route.call_count == 5
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_authorization_uses_full_configured_attempts(self):
+        route = respx.get("https://launchpad.37signals.com/authorization.json").mock(return_value=httpx.Response(503))
+        client = make_async_client_meta(STATUS_GATE_METADATA, max_retries=5)
+        with pytest.raises(ApiError):
+            await client.get_absolute("https://launchpad.37signals.com/authorization.json")
+        assert route.call_count == 5
+
+
+class TestDeclaredSetIsAuthoritative:
+    """The declared retry_on set governs a Smithy operation in BOTH directions.
+
+    errors.py classifies statuses for the CALLER (it marks 500/502/503/504
+    retryable). That classification must neither widen the transport's gate nor
+    veto it: if an operation declares a status retryable, the transport retries
+    it even if errors.py would not have."""
+
+    @respx.mock
+    def test_declared_status_retries_even_when_classified_non_retryable(self):
+        # 409 is not retryable per errors.py, but this operation declares it.
+        metadata = {"OptInOp": {"idempotent": True, "retry": {"max": 3, "retry_on": [409]}}}
+        route = respx.put("https://3.basecampapi.com/thing").mock(return_value=httpx.Response(409))
+        client = make_client_meta(metadata)
+        with pytest.raises(BasecampError):
+            client.put("/thing", json_body={"x": 1}, operation="OptInOp")
+        assert route.call_count == 3, "a declared status must retry regardless of errors.py"
+
+    @respx.mock
+    def test_explicitly_empty_retry_on_never_retries(self):
+        # `retry_on: []` means "never retry on any status" — distinct from
+        # declaring nothing, which falls back to the [429, 503] default.
+        metadata = {"OptOutOp": {"idempotent": True, "retry": {"max": 3, "retry_on": []}}}
+        route = respx.put("https://3.basecampapi.com/thing").mock(
+            return_value=httpx.Response(503, headers={"Retry-After": "0"})
+        )
+        client = make_client_meta(metadata)
+        with pytest.raises(ApiError):
+            client.put("/thing", json_body={"x": 1}, operation="OptOutOp")
+        assert route.call_count == 1, "an explicitly empty retry_on must not fall back to the default"
+
+    @respx.mock
+    def test_absent_retry_on_falls_back_to_the_default(self):
+        metadata = {"NoBlockOp": {"idempotent": True, "retry": {"max": 3}}}
+        route = respx.put("https://3.basecampapi.com/thing").mock(
+            return_value=httpx.Response(503, headers={"Retry-After": "0"})
+        )
+        client = make_client_meta(metadata)
+        with pytest.raises(ApiError):
+            client.put("/thing", json_body={"x": 1}, operation="NoBlockOp")
+        assert route.call_count == 3, "no declared set means the [429, 503] default applies"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_explicitly_empty_retry_on_never_retries(self):
+        metadata = {"OptOutOp": {"idempotent": True, "retry": {"max": 3, "retry_on": []}}}
+        route = respx.put("https://3.basecampapi.com/thing").mock(
+            return_value=httpx.Response(503, headers={"Retry-After": "0"})
+        )
+        client = make_async_client_meta(metadata)
+        with pytest.raises(ApiError):
+            await client.put("/thing", json_body={"x": 1}, operation="OptOutOp")
+        assert route.call_count == 1

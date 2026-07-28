@@ -4015,18 +4015,32 @@ func WithLogger(logger *slog.Logger) ClientOption {
 	}
 }
 
-// isRetryableStatus returns true if the HTTP status code indicates a retryable error.
-func isRetryableStatus(statusCode int) bool {
-	switch statusCode {
-	case http.StatusTooManyRequests, // 429
-		http.StatusInternalServerError, // 500
-		http.StatusBadGateway,          // 502
-		http.StatusServiceUnavailable,  // 503
-		http.StatusGatewayTimeout:      // 504
-		return true
-	default:
-		return false
+// defaultRetryOn is behavior-model.json's declared default, applied only when an
+// operation carries no x-basecamp-retry.retryOn — which cannot happen for a
+// generated call site.
+var defaultRetryOn = []int{http.StatusTooManyRequests, http.StatusServiceUnavailable}
+
+// isRetryableStatus reports whether the status is in the operation's DECLARED
+// retry_on set. The set is per-operation and exhaustive: a status the spec never
+// declared retryable — including 500, 502, and 504 — is not retried, and is
+// surfaced to the caller on the first attempt. ParseHTTPError still classifies
+// those statuses as retryable errors for the caller's benefit; that is a
+// caller-facing hint and deliberately does not widen this gate.
+func isRetryableStatus(statusCode int, operationId string) bool {
+	// Only an ABSENT entry falls back. A present-but-empty set is an operation
+	// declaring "never retry on any status", which is not the same as declaring
+	// nothing — collapsing the two would silently re-enable 429/503 retries on an
+	// operation that opted out.
+	retryOn, ok := operationRetryOn[operationId]
+	if !ok {
+		retryOn = defaultRetryOn
 	}
+	for _, status := range retryOn {
+		if status == statusCode {
+			return true
+		}
+	}
+	return false
 }
 
 // captureReplayBody inspects the finalized first-attempt request and returns a
@@ -4285,7 +4299,7 @@ func (c *Client) doWithRetry(ctx context.Context, buildRequest func() (*http.Req
 		}
 
 		// Success or non-retryable status
-		if !isRetryableStatus(resp.StatusCode) {
+		if !isRetryableStatus(resp.StatusCode, operationId) {
 			return resp, nil
 		}
 
@@ -20288,6 +20302,246 @@ var operationRetryMax = map[string]int{
 	"DeleteWebhook":                      3,
 	"GetWebhook":                         3,
 	"UpdateWebhook":                      3,
+}
+
+// operationRetryOn maps operation IDs to their declared retryable status set
+// from the x-basecamp-retry extension. Like operationRetryMax it is a separate
+// map rather than a field on OperationMetadata, so wiring it up does not change
+// that exported struct's shape.
+var operationRetryOn = map[string][]int{
+	"GetAccount":                         {429, 503},
+	"RemoveAccountLogo":                  {429, 503},
+	"UpdateAccountLogo":                  {429, 503},
+	"UpdateAccountName":                  {429, 503},
+	"CreateAttachment":                   {429, 503},
+	"GetEverythingBoosts":                {429, 503},
+	"DeleteBoost":                        {429, 503},
+	"GetBoost":                           {429, 503},
+	"SetCardColumnColor":                 {429, 503},
+	"DisableCardColumnOnHold":            {429, 503},
+	"EnableCardColumnOnHold":             {429, 503},
+	"DeleteWormhole":                     {429, 503},
+	"UpdateWormhole":                     {429, 503},
+	"CreateWormhole":                     {429, 503},
+	"ListMessageTypes":                   {429, 503},
+	"CreateMessageType":                  {429, 503},
+	"DeleteMessageType":                  {429, 503},
+	"GetMessageType":                     {429, 503},
+	"UpdateMessageType":                  {429, 503},
+	"CreateTool":                         {429, 503},
+	"ListWebhooks":                       {429, 503},
+	"CreateWebhook":                      {429, 503},
+	"GetCard":                            {429, 503},
+	"UpdateCard":                         {429, 503},
+	"MoveCard":                           {429, 503},
+	"RepositionCardStep":                 {429, 503},
+	"CreateCardStep":                     {429, 503},
+	"GetCardColumn":                      {429, 503},
+	"UpdateCardColumn":                   {429, 503},
+	"ListCards":                          {429, 503},
+	"CreateCard":                         {429, 503},
+	"UnsubscribeFromCardColumn":          {429, 503},
+	"SubscribeToCardColumn":              {429, 503},
+	"GetCardStep":                        {429, 503},
+	"UpdateCardStep":                     {429, 503},
+	"SetCardStepCompletion":              {429, 503},
+	"GetCardTable":                       {429, 503},
+	"CreateCardColumn":                   {429, 503},
+	"MoveCardColumn":                     {429, 503},
+	"GetEverythingCompletedCards":        {429, 503},
+	"GetEverythingNoDueDateCards":        {429, 503},
+	"GetEverythingNotNowCards":           {429, 503},
+	"GetEverythingOpenCards":             {429, 503},
+	"GetEverythingOverdueCards":          {429, 503},
+	"GetEverythingUnassignedCards":       {429, 503},
+	"ListCampfires":                      {429, 503},
+	"GetCampfire":                        {429, 503},
+	"ListChatbots":                       {429, 503},
+	"CreateChatbot":                      {429, 503},
+	"DeleteChatbot":                      {429, 503},
+	"GetChatbot":                         {429, 503},
+	"UpdateChatbot":                      {429, 503},
+	"ListCampfireLines":                  {429, 503},
+	"CreateCampfireLine":                 {429, 503},
+	"DeleteCampfireLine":                 {429, 503},
+	"GetCampfireLine":                    {429, 503},
+	"UpdateCampfireLine":                 {429, 503},
+	"ListCampfireUploads":                {429, 503},
+	"CreateCampfireUpload":               {429, 503},
+	"GetEverythingCheckins":              {429, 503},
+	"ListPingablePeople":                 {429, 503},
+	"ListClientApprovals":                {429, 503},
+	"GetClientApproval":                  {429, 503},
+	"ListClientCorrespondences":          {429, 503},
+	"GetClientCorrespondence":            {429, 503},
+	"ListClientReplies":                  {429, 503},
+	"GetClientReply":                     {429, 503},
+	"GetEverythingComments":              {429, 503},
+	"GetComment":                         {429, 503},
+	"UpdateComment":                      {429, 503},
+	"DeleteTool":                         {429, 503},
+	"GetTool":                            {429, 503},
+	"UpdateTool":                         {429, 503},
+	"GetDocument":                        {429, 503},
+	"UpdateDocument":                     {429, 503},
+	"GetEverythingFiles":                 {429, 503},
+	"GetEverythingForwards":              {429, 503},
+	"DestroyGaugeNeedle":                 {429, 503},
+	"GetGaugeNeedle":                     {429, 503},
+	"UpdateGaugeNeedle":                  {429, 503},
+	"GetForward":                         {429, 503},
+	"ListForwardReplies":                 {429, 503},
+	"CreateForwardReply":                 {429, 503},
+	"GetForwardReply":                    {429, 503},
+	"GetInbox":                           {429, 503},
+	"ListForwards":                       {429, 503},
+	"ListLineupMarkers":                  {429, 503},
+	"CreateLineupMarker":                 {429, 503},
+	"DeleteLineupMarker":                 {429, 503},
+	"UpdateLineupMarker":                 {429, 503},
+	"GetMessageBoard":                    {429, 503},
+	"ListMessages":                       {429, 503},
+	"CreateMessage":                      {429, 503},
+	"GetEverythingMessages":              {429, 503},
+	"GetMessage":                         {429, 503},
+	"UpdateMessage":                      {429, 503},
+	"GetMyAssignments":                   {429, 503},
+	"GetMyCompletedAssignments":          {429, 503},
+	"GetMyDueAssignments":                {429, 503},
+	"GetMyPreferences":                   {429, 503},
+	"UpdateMyPreferences":                {429, 503},
+	"GetMyProfile":                       {429, 503},
+	"UpdateMyProfile":                    {429, 503},
+	"GetQuestionReminders":               {429, 503},
+	"GetMyNotifications":                 {429, 503},
+	"GetBubbleUps":                       {429, 503},
+	"MarkAsRead":                         {429, 503},
+	"ListPeople":                         {429, 503},
+	"GetPerson":                          {429, 503},
+	"DisableOutOfOffice":                 {429, 503},
+	"GetOutOfOffice":                     {429, 503},
+	"EnableOutOfOffice":                  {429, 503},
+	"ListProjects":                       {429, 503},
+	"CreateProject":                      {429, 503},
+	"ListRecordings":                     {429, 503},
+	"TrashProject":                       {429, 503},
+	"GetProject":                         {429, 503},
+	"UpdateProject":                      {429, 503},
+	"ToggleGauge":                        {429, 503},
+	"ListGaugeNeedles":                   {429, 503},
+	"CreateGaugeNeedle":                  {429, 503},
+	"ListProjectPeople":                  {429, 503},
+	"UpdateProjectAccess":                {429, 503},
+	"GetProjectTimeline":                 {429, 503},
+	"GetProjectTimesheet":                {429, 503},
+	"GetAnswer":                          {429, 503},
+	"UpdateAnswer":                       {429, 503},
+	"GetQuestionnaire":                   {429, 503},
+	"ListQuestions":                      {429, 503},
+	"CreateQuestion":                     {429, 503},
+	"GetQuestion":                        {429, 503},
+	"UpdateQuestion":                     {429, 503},
+	"ListAnswers":                        {429, 503},
+	"CreateAnswer":                       {429, 503},
+	"ListQuestionAnswerers":              {429, 503},
+	"GetAnswersByPerson":                 {429, 503},
+	"UpdateQuestionNotificationSettings": {429, 503},
+	"ResumeQuestion":                     {429, 503},
+	"PauseQuestion":                      {429, 503},
+	"UnpinMessage":                       {429, 503},
+	"PinMessage":                         {429, 503},
+	"GetRecording":                       {429, 503},
+	"ListRecordingBoosts":                {429, 503},
+	"CreateRecordingBoost":               {429, 503},
+	"SetClientVisibility":                {429, 503},
+	"ListComments":                       {429, 503},
+	"CreateComment":                      {429, 503},
+	"ListEvents":                         {429, 503},
+	"ListEventBoosts":                    {429, 503},
+	"CreateEventBoost":                   {429, 503},
+	"UnarchiveRecording":                 {429, 503},
+	"ArchiveRecording":                   {429, 503},
+	"TrashRecording":                     {429, 503},
+	"Unsubscribe":                        {429, 503},
+	"GetSubscription":                    {429, 503},
+	"Subscribe":                          {429, 503},
+	"UpdateSubscription":                 {429, 503},
+	"GetRecordingTimesheet":              {429, 503},
+	"CreateTimesheetEntry":               {429, 503},
+	"DisableTool":                        {429, 503},
+	"EnableTool":                         {429, 503},
+	"RepositionTool":                     {429, 503},
+	"ListGauges":                         {429, 503},
+	"GetProgressReport":                  {429, 503},
+	"GetUpcomingSchedule":                {429, 503},
+	"GetTimesheetReport":                 {429, 503},
+	"ListAssignablePeople":               {429, 503},
+	"GetAssignedTodos":                   {429, 503},
+	"GetOverdueTodos":                    {429, 503},
+	"GetPersonProgress":                  {429, 503},
+	"GetScheduleEntry":                   {429, 503},
+	"UpdateScheduleEntry":                {429, 503},
+	"GetScheduleEntryOccurrence":         {429, 503},
+	"GetSchedule":                        {429, 503},
+	"UpdateScheduleSettings":             {429, 503},
+	"ListScheduleEntries":                {429, 503},
+	"CreateScheduleEntry":                {429, 503},
+	"Search":                             {429, 503},
+	"GetSearchMetadata":                  {429, 503},
+	"ListTemplates":                      {429, 503},
+	"CreateTemplate":                     {429, 503},
+	"DeleteTemplate":                     {429, 503},
+	"GetTemplate":                        {429, 503},
+	"UpdateTemplate":                     {429, 503},
+	"CreateProjectFromTemplate":          {429, 503},
+	"GetProjectConstruction":             {429, 503},
+	"GetTimesheetEntry":                  {429, 503},
+	"UpdateTimesheetEntry":               {429, 503},
+	"RepositionTodolistGroup":            {429, 503},
+	"GetTodolistOrGroup":                 {429, 503},
+	"UpdateTodolistOrGroup":              {429, 503},
+	"ListTodolistGroups":                 {429, 503},
+	"CreateTodolistGroup":                {429, 503},
+	"ListTodos":                          {429, 503},
+	"CreateTodo":                         {429, 503},
+	"GetEverythingCompletedTodos":        {429, 503},
+	"GetEverythingNoDueDateTodos":        {429, 503},
+	"GetEverythingOpenTodos":             {429, 503},
+	"GetEverythingOverdueTodos":          {429, 503},
+	"GetEverythingUnassignedTodos":       {429, 503},
+	"TrashTodo":                          {429, 503},
+	"GetTodo":                            {429, 503},
+	"ReplaceTodo":                        {429, 503},
+	"UncompleteTodo":                     {429, 503},
+	"CompleteTodo":                       {429, 503},
+	"RepositionTodo":                     {429, 503},
+	"RepositionTodolist":                 {429, 503},
+	"GetTodoset":                         {429, 503},
+	"GetHillChart":                       {429, 503},
+	"UpdateHillChartSettings":            {429, 503},
+	"ListTodolists":                      {429, 503},
+	"CreateTodolist":                     {429, 503},
+	"GetUpload":                          {429, 503},
+	"UpdateUpload":                       {429, 503},
+	"ListUploadVersions":                 {429, 503},
+	"GetVault":                           {429, 503},
+	"UpdateVault":                        {429, 503},
+	"ListDocuments":                      {429, 503},
+	"CreateDocument":                     {429, 503},
+	"ListUploads":                        {429, 503},
+	"CreateUpload":                       {429, 503},
+	"ListVaults":                         {429, 503},
+	"CreateVault":                        {429, 503},
+	"DeleteWebhook":                      {429, 503},
+	"GetWebhook":                         {429, 503},
+	"UpdateWebhook":                      {429, 503},
+}
+
+// GetOperationRetryOn returns the declared retryable status set for the given
+// operation ID. ok is false when the operation carries no per-op set.
+func GetOperationRetryOn(operationId string) ([]int, bool) {
+	r, ok := operationRetryOn[operationId]
+	return r, ok
 }
 
 // GetOperationRetryMax returns the per-operation retry ceiling (maximum total
