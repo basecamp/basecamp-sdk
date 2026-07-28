@@ -502,7 +502,11 @@ private sealed interface PollResult {
  */
 private fun parseRetryAfterSeconds(header: String?): Long {
     val trimmed = header?.trim() ?: return 0
-    if (!trimmed.all { it.isDigit() } || trimmed.isEmpty()) return 0
+    // ASCII '0'..'9' only — NOT Char.isDigit(), which is Unicode-aware and
+    // accepts digit-shaped non-ASCII (fullwidth "１２", Arabic-Indic "٣٠")
+    // that toLongOrNull() then converts, treating a malformed HTTP
+    // delta-seconds value as valid instead of falling back to the interval.
+    if (trimmed.isEmpty() || !trimmed.all { it in '0'..'9' }) return 0
     val value = trimmed.toLongOrNull() ?: return 0
     return if (value in 1..MAX_DEVICE_SECONDS) value else 0
 }
