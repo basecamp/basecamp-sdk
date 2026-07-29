@@ -160,6 +160,11 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 		// classify it via errors.As(*basecamp.Error) with the HTTP status.
 		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token response: %v", err))
 	}
+	// A 2xx without a usable access_token is malformed, not a success — the
+	// device-flow and AuthManager paths already enforce this.
+	if token.AccessToken == "" {
+		return nil, basecamp.ErrAPI(resp.StatusCode, "token response missing access_token")
+	}
 
 	// resource re-decodes through a *string because Token's plain string field
 	// cannot distinguish an absent field from an explicit "": absent and JSON

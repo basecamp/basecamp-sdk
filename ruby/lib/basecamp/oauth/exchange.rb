@@ -165,7 +165,12 @@ module Basecamp
 
         handle_error_response(response.status, data) unless response.success?
 
-        raise OauthError.new("api_error", "Token response missing access_token") unless data["access_token"]
+        unless data["access_token"].is_a?(String) && !data["access_token"].empty?
+          raise OauthError.new(
+            "api_error", "Token response missing or non-string access_token",
+            http_status: response.status
+          )
+        end
 
         # resource: absent and JSON null are unset; when present it must be a
         # non-empty string (SPEC §16) — an empty binding is not a binding.

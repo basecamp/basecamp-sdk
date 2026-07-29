@@ -206,6 +206,15 @@ private suspend fun postTokenRequest(
                 httpStatus = response.status.value,
             )
         }
+        // A 2xx with an EMPTY access_token is malformed, not a success —
+        // matching the device flow and the other SDKs' non-empty contract.
+        if (raw.accessToken.isEmpty()) {
+            throw BasecampException.Api(
+                "Token response missing access_token",
+                httpStatus = response.status.value,
+            )
+        }
+
         val now = currentTimeMillis()
         val expiresAt = raw.expiresIn?.let { now + it * 1000 }
 
