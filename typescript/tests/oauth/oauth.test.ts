@@ -230,6 +230,23 @@ describe("Token Exchange", () => {
   };
 
   describe("exchangeCode", () => {
+    it("rejects a numeric access_token as api_error with the HTTP status", async () => {
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ access_token: 123 })
+        )
+      );
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.httpStatus).toBe(200);
+    });
+
     it("rejects a present-but-empty token_type as api_error (null/absent default to Bearer)", async () => {
       server.use(
         http.post(tokenEndpoint, () =>

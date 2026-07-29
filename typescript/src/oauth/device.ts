@@ -416,9 +416,18 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
   // before it (the clock only advances after issuance). A deadline at/below
   // "now" is legal — it surfaces as device_flow_expired, matching an
   // issuance-anchored deadline fully consumed by a slow display hook.
+  // A single entry sample validates the injected clock (a NaN/Infinity sample
+  // poisons the deadline math, and setTimeout(NaN) coerces to 0 — a tight
+  // poll loop instead of a fast usage failure) and anchors both the
+  // deadlineAtMs bound and the default deadline without consuming extra
+  // scripted-clock steps in tests.
+  const nowMs = clock();
+  if (!Number.isFinite(nowMs)) {
+    throw new BasecampError("usage", "pollDeviceToken: clock must return a finite number of milliseconds");
+  }
   if (
     params.deadlineAtMs !== undefined &&
-    (!Number.isFinite(params.deadlineAtMs) || params.deadlineAtMs > clock() + expiresIn * 1000)
+    (!Number.isFinite(params.deadlineAtMs) || params.deadlineAtMs > nowMs + expiresIn * 1000)
   ) {
     throw new BasecampError(
       "usage",
@@ -438,7 +447,7 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
   // two, so intermittent timeouts never permanently inflate the poll cadence.
   let intervalSeconds = params.interval;
   let backoffSeconds = intervalSeconds;
-  const deadline = params.deadlineAtMs ?? clock() + expiresIn * 1000;
+  const deadline = params.deadlineAtMs ?? nowMs + expiresIn * 1000;
 
   const body = new URLSearchParams();
   body.set("grant_type", DEVICE_CODE_GRANT_TYPE);

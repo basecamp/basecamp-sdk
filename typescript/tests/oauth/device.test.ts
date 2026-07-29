@@ -476,6 +476,20 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("usage");
   });
 
+  it.each([NaN, Infinity])("rejects an injected clock returning %s as usage", async (sample) => {
+    const err = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      clock: () => sample,
+      sleepFn: () => Promise.resolve(),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+  });
+
   it("rejects a deadlineAtMs beyond the code lifetime (cannot extend polling past expiresIn)", async () => {
     const err = await pollDeviceToken({
       tokenEndpoint: TOKEN_ENDPOINT,

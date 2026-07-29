@@ -340,8 +340,13 @@ async function doTokenRequest(
     // Parse successful response
     const tokenData = data as RawTokenResponse;
 
-    if (!tokenData.access_token) {
-      throw new BasecampError("api_error", "Token response missing access_token");
+    // Non-empty STRING, not merely truthy: a numeric access_token is not a
+    // usable credential. Carry the HTTP status like every other malformed-
+    // response raise so failures are diagnosable.
+    if (typeof tokenData.access_token !== "string" || tokenData.access_token === "") {
+      throw new BasecampError("api_error", "Token response missing or non-string access_token", {
+        httpStatus: response.status,
+      });
     }
 
     // Absent/null token_type defaults to Bearer, but a present-but-empty (or
