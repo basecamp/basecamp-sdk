@@ -217,6 +217,30 @@ def test_timeout_normalizes_non_finite_to_default() -> None:
     assert _normalize_timeout(30) == 30.0
 
 
+def test_timeout_normalizes_to_operation_specific_default() -> None:
+    from basecamp.oauth.discovery import _DISCOVERY_TIMEOUT, _normalize_timeout
+
+    # An invalid timeout falls back to the caller-supplied default, so device flow
+    # (30s) does not silently inherit discovery's 10s budget.
+    assert _normalize_timeout(None) == _DISCOVERY_TIMEOUT
+    assert _normalize_timeout(None, 30.0) == 30.0
+    assert _normalize_timeout(float("inf"), 30.0) == 30.0
+    # A valid value is preserved regardless of the default.
+    assert _normalize_timeout(5.0, 30.0) == 5.0
+    # An INVALID default must not disable the bounds either: fall back to the
+    # discovery constant rather than returning the bad default.
+    assert _normalize_timeout(None, float("inf")) == _DISCOVERY_TIMEOUT
+    assert _normalize_timeout("bad", None) == _DISCOVERY_TIMEOUT  # type: ignore[arg-type]
+    # A finite value ABOVE the maximum (which would overflow the wall-clock wait
+    # primitive) falls back to the default; within the maximum it is preserved.
+    assert _normalize_timeout(1e300, 30.0, maximum=3600.0) == 30.0
+    assert _normalize_timeout(60.0, 30.0, maximum=3600.0) == 60.0
+    # The maximum is inclusive (`value <= maximum`): a value exactly at it is kept.
+    assert _normalize_timeout(3600.0, 30.0, maximum=3600.0) == 3600.0
+    # And an impossible maximum (below the discovery constant) is itself honored.
+    assert _normalize_timeout(None, None, maximum=2.0) == 2.0  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize("raw", ["https:\\\\host", "https://host\n", "https://host ", "https://ho st"])
 def test_origin_root_rejects_normalized_spellings(raw: str) -> None:
     # Parsers strip C0 controls / whitespace or percent-encode a space into the

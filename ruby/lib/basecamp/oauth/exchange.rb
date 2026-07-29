@@ -171,11 +171,17 @@ module Basecamp
           scope: data["scope"]
         )
       rescue JSON::ParserError
+        # A token response that fails to parse may still contain credential
+        # material (a syntactically-broken body carrying an access_token) —
+        # never echo ANY of it into an error message, where it would reach
+        # logs and exception telemetry. The status is diagnosis enough.
+        # cause: nil — the parser error's message embeds the offending input,
+        # so the implicit cause chain would leak it via full_message.
         raise OauthError.new(
           "api_error",
-          "Failed to parse token response: #{Basecamp::Security.truncate(response.body)}",
+          "Failed to parse token response",
           http_status: response.status
-        )
+        ), cause: nil
       end
 
       def handle_error_response(status, data)

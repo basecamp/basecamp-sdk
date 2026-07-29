@@ -207,6 +207,30 @@ class OAuthTest < Minitest::Test
     assert_equal "resource_discovery_failed", result.reason
   end
 
+  def test_exchange_parse_failure_never_echoes_the_body
+    # A syntactically-broken token body can still carry credential material —
+    # the parse error must not echo any of it into the message, where it
+    # would reach logs and exception telemetry.
+    secret = "sk-live-SUPERSECRET"
+    stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+      .to_return(status: 200, body: "{\"access_token\": \"#{secret}' oops", headers: { "Content-Type" => "application/json" })
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.exchange_code(
+        token_endpoint: "https://launchpad.37signals.com/authorization/token",
+        code: "auth_code_123",
+        redirect_uri: "https://myapp.com/callback",
+        client_id: "my_client_id"
+      )
+    end
+
+    assert_equal "api_error", error.type
+    assert_not_includes error.message, secret
+    # cause: nil — JSON::ParserError's message embeds the offending input,
+    # so the implicit chain would leak it via full_message.
+    assert_nil error.cause
+  end
+
   def test_exchange_code
     token_response = {
       "access_token" => "access_token_123",

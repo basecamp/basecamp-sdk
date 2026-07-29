@@ -133,6 +133,77 @@ if token.expired?
 end
 ```
 
+### Device Authorization Grant (RFC 8628)
+
+For input-constrained clients (CLIs, TVs) that can't host a redirect URI, the
+device flow trades a redirect for a user-entered code. Basecamp pre-registers the
+public `basecamp-cli` client (`token_endpoint_auth_method: none`, no secret); an
+omitted scope defaults to `read`.
+
+```ruby
+# The device grant runs against an ALREADY-SELECTED config whose issuer advertises
+# a device_authorization_endpoint. Resolve one with resource-first discovery —
+# NOT discover_launchpad: Launchpad advertises no device endpoint, so the
+# capability guard would reject it.
+result = Basecamp::Oauth.discover_from_resource("https://3.basecampapi.com")
+raise "device login is not available for this resource" unless result.selected?
+config = result.config
+
+# One call runs the whole grant against the SELECTED config: it guards
+# capability, requests a device/user code, shows it via the display hook, then
+# polls the token endpoint until the user approves.
+token = Basecamp::Oauth.perform_device_login(
+  config: config,
+  client_id: "basecamp-cli",
+  display: ->(auth) do
+    puts "Visit #{auth.verification_uri} and enter code: #{auth.user_code}"
+    puts "Or open: #{auth.verification_uri_complete}" if auth.verification_uri_complete
+  end
+)
+
+client = Basecamp.client(access_token: token.access_token)
+```
+
+The capability guard requires BOTH `config.device_authorization_endpoint` AND the
+exact grant-type URN `urn:ietf:params:oauth:grant-type:device_code` in
+`config.grant_types_supported` — servers advertise the full URN, so checking for
+a bare `device_code` entry would wrongly conclude the flow is unavailable;
+otherwise it raises
+`Basecamp::Oauth::DeviceFlowError` with `reason: :unavailable` before any request
+is issued. The two lower-level steps are also exposed directly:
+
+```ruby
+auth = Basecamp::Oauth.request_device_authorization(
+  device_authorization_endpoint: config.device_authorization_endpoint,
+  client_id: "basecamp-cli"
+)
+
+token = Basecamp::Oauth.poll_device_token(
+  token_endpoint: config.token_endpoint,
+  client_id: "basecamp-cli",
+  device_code: auth.device_code,
+  interval: auth.interval,
+  expires_in: auth.expires_in
+)
+```
+
+The polling loop waits at least `interval` seconds between polls against a
+**monotonic** deadline, sustains a `slow_down` bump (+5s for every later poll),
+and backs off exponentially on connection timeouts. A terminal outcome raises
+`DeviceFlowError` carrying a `reason` whose parent `type` is derived from it:
+
+| `reason` | `type` | Meaning |
+|---|---|---|
+| `:access_denied` | `auth` | The user declined the request |
+| `:expired` | `auth` | The code expired before approval |
+| `:transport` | `network` (retryable) | A network failure ended the flow |
+| `:unavailable` | `validation` | The config can't do device flow |
+| `:cancelled` | `usage` | The caller cancelled the flow |
+
+`poll_device_token` and `perform_device_login` accept injectable `clock`,
+`sleeper`, and `cancelled` callables — pass a `cancelled` probe (e.g. one that
+checks a signal set by SIGINT) to abort a pending login cleanly.
+
 ### Resource-First Discovery (RFC 9728 + RFC 8414)
 
 BC5's Authorization Server (AS) metadata lives only at the canonical issuer (the

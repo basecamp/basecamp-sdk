@@ -494,3 +494,48 @@ func TestExchanger_Exchange_TruncatesLargeErrorDescription(t *testing.T) {
 		t.Error("Expected '...' suffix in truncated error description")
 	}
 }
+
+// TestNewDiscoverConfig_TimeoutClamp guards finding A: WithTimeout(0) (and any
+// non-positive duration) must NOT drop the fetch timeout — it clamps to the
+// default rather than leaving an unbounded fetch.
+func TestNewDiscoverConfig_TimeoutClamp(t *testing.T) {
+	cases := []struct {
+		name string
+		opts []DiscoverOption
+		want time.Duration
+	}{
+		{"default when unset", nil, defaultDiscoveryTimeout},
+		{"zero clamps to default", []DiscoverOption{WithTimeout(0)}, defaultDiscoveryTimeout},
+		{"negative clamps to default", []DiscoverOption{WithTimeout(-5 * time.Second)}, defaultDiscoveryTimeout},
+		{"positive preserved", []DiscoverOption{WithTimeout(3 * time.Second)}, 3 * time.Second},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := newDiscoverConfig(tc.opts).timeout; got != tc.want {
+				t.Errorf("timeout = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestNewDeviceConfig_TimeoutClamp is the device-flow analogue of finding A: the
+// per-round-trip timeout clamps to the default on a non-positive value.
+func TestNewDeviceConfig_TimeoutClamp(t *testing.T) {
+	cases := []struct {
+		name string
+		opts []DeviceOption
+		want time.Duration
+	}{
+		{"default when unset", nil, defaultDeviceRequestTimeout},
+		{"zero clamps to default", []DeviceOption{WithDeviceTimeout(0)}, defaultDeviceRequestTimeout},
+		{"negative clamps to default", []DeviceOption{WithDeviceTimeout(-time.Second)}, defaultDeviceRequestTimeout},
+		{"positive preserved", []DeviceOption{WithDeviceTimeout(7 * time.Second)}, 7 * time.Second},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := newDeviceConfig(tc.opts).timeout; got != tc.want {
+				t.Errorf("timeout = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

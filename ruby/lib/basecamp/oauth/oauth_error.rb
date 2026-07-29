@@ -4,7 +4,9 @@ module Basecamp
   module Oauth
     # OAuth-specific error class.
     #
-    # @attr type [String] Error type ("validation", "auth", "network", "api_error")
+    # @attr type [String] Error type ("validation", "auth", "network",
+    #   "api_error", or "usage" — the parent type {DeviceFlowError} derives for
+    #   a cancelled device flow)
     # @attr http_status [Integer, nil] HTTP status code if applicable
     # @attr hint [String, nil] Helpful hint for resolving the error
     # @attr retryable [Boolean] Whether the request can be retried

@@ -81,6 +81,24 @@ export type DiscoverFromResourceResult =
   | { kind: "fallback"; reason: FallbackReason };
 
 /**
+ * RFC 8628 device authorization response.
+ */
+export interface DeviceAuthorization {
+  /** The device verification code. */
+  deviceCode: string;
+  /** The end-user code shown to the user. */
+  userCode: string;
+  /** The end-user verification URI. */
+  verificationUri: string;
+  /** The verification URI with the user code embedded (optional). */
+  verificationUriComplete?: string;
+  /** Lifetime of the device/user codes in seconds. */
+  expiresIn: number;
+  /** Minimum polling interval in seconds (defaults to 5 when the server omits it). */
+  interval: number;
+}
+
+/**
  * OAuth 2.0 access token response.
  */
 export interface OAuthToken {
@@ -146,10 +164,14 @@ export interface RefreshRequest {
  */
 export interface RawTokenResponse {
   access_token: string;
-  refresh_token?: string;
-  token_type: string;
+  // JSON null is legal on the wire for the optional fields (SPEC treats it
+  // as absent); consumers normalize null to undefined before it reaches the
+  // public OAuthToken type.
+  refresh_token?: string | null;
+  // Absent/null token_type is valid on the wire (defaults to Bearer).
+  token_type?: string | null;
   expires_in?: number;
-  scope?: string;
+  scope?: string | null;
 }
 
 /**

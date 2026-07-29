@@ -230,6 +230,104 @@ describe("Token Exchange", () => {
   };
 
   describe("exchangeCode", () => {
+    it("never echoes the body when a token response fails to parse", async () => {
+      // A syntactically-broken token body can still carry credential
+      // material — the parse error must not echo any of it into the
+      // message, where it would reach logs and exception telemetry.
+      const secret = "sk-live-SUPERSECRET";
+      server.use(
+        http.post(tokenEndpoint, () => new HttpResponse(`{"access_token": "${secret}' oops`, { status: 200 }))
+      );
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.message).not.toContain(secret);
+    });
+
+    it("rejects a non-2xx null body as api_error with the status (never raw TypeError → network)", async () => {
+      server.use(http.post(tokenEndpoint, () => HttpResponse.json(null, { status: 400 })));
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.httpStatus).toBe(400);
+    });
+
+    it.each([
+      ["null body", null],
+      ["array body", []],
+      ["numeric refresh_token", { access_token: "a", refresh_token: 123 }],
+      ["numeric scope", { access_token: "a", scope: 7 }],
+      ["fractional expires_in", { access_token: "a", expires_in: 3600.5 }],
+      ["oversized expires_in", { access_token: "a", expires_in: 9_000_000_000_000_000_000 }],
+    ])("rejects a malformed 200 token body (%s) as api_error with the HTTP status", async (_label, body) => {
+      server.use(http.post(tokenEndpoint, () => HttpResponse.json(body as never)));
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.httpStatus).toBe(200);
+    });
+
+    it("rejects a numeric access_token as api_error with the HTTP status", async () => {
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ access_token: 123 })
+        )
+      );
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.httpStatus).toBe(200);
+    });
+
+    it("rejects a present-but-empty token_type as api_error (null/absent default to Bearer)", async () => {
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ access_token: "a", token_type: "" })
+        )
+      );
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ access_token: "a", token_type: null })
+        )
+      );
+      const token = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      });
+      expect(token.tokenType).toBe("Bearer");
+    });
+
     it("exchanges authorization code for tokens (standard format)", async () => {
       server.use(
         http.post(tokenEndpoint, async ({ request }) => {

@@ -50,7 +50,26 @@ export type {
   FallbackReason,
   DiscoverySelectionErrorReason,
   DiscoverFromResourceResult,
+  DeviceAuthorization,
 } from "./types.js";
+
+// Device flow (RFC 8628)
+export {
+  requestDeviceAuthorization,
+  pollDeviceToken,
+  DEVICE_CODE_GRANT_TYPE,
+  type RequestDeviceAuthorizationParams,
+  type PollDeviceTokenParams,
+  type MonotonicClock,
+} from "./device.js";
+export {
+  performDeviceLogin,
+  type DeviceLoginOptions,
+} from "./device-login.js";
+export {
+  DeviceFlowError,
+  type DeviceFlowReason,
+} from "./device-errors.js";
 
 // Discovery
 export {

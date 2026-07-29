@@ -227,6 +227,111 @@ Hard cases throw `DiscoverySelectionError` (with a `.reason`); soft cases return
 > discovery hops are SSRF-hardened (HTTPS-only origins, suppressed redirects,
 > bounded body reads).
 
+### Device flow (RFC 8628)
+
+For CLIs and headless/remote environments, use the device authorization grant
+with the public `basecamp-cli` client (no secret). `performDeviceLogin` takes an
+already-selected config, guards the device capability, shows the user code via a
+display hook, and polls for the token:
+
+The device authorization endpoint lives on the **first-party** authorization
+server, not Launchpad — so select a first-party issuer with `discoverFromResource`
+and hand its config to `performDeviceLogin`. (Launchpad advertises no device
+endpoint, so `performDeviceLogin`'s capability guard rejects it with
+`DeviceFlowError("unavailable")`.)
+
+```ts
+import {
+  createBasecampClient,
+  discoverFromResource,
+  performDeviceLogin,
+  refreshToken,
+  isTokenExpired,
+  DeviceFlowError,
+} from "@37signals/basecamp";
+
+// 1. Select an AS config. Discovery can select a config WITHOUT the device
+//    endpoint or device_code grant — performDeviceLogin then rejects it with
+//    DeviceFlowError("unavailable").
+const result = await discoverFromResource("https://3.basecampapi.com");
+if (result.kind !== "selected") {
+  // "resource_discovery_failed" | "no_as_advertised" → Launchpad has no device
+  // flow; use the interactive (authorization-code) login instead.
+  throw new Error(`Device flow unavailable: ${result.reason}`);
+}
+
+// 2. Run the device grant against the selected config.
+const abortController = new AbortController();
+try {
+  const token = await performDeviceLogin({
+    config: result.config,
+    clientId: "basecamp-cli",
+    // scope omitted → server default (read)
+    display: ({ userCode, verificationUri }) => {
+      console.log(`Visit ${verificationUri} and enter code: ${userCode}`);
+    },
+    signal: abortController.signal, // optional: cancel the poll
+  });
+  // Use the token — hand it to a client or persist it via your token store.
+  // Never print the token value itself.
+  const client = createBasecampClient({
+    accountId: process.env.BASECAMP_ACCOUNT_ID!,
+    accessToken: token.accessToken,
+  });
+  // A long-lived CLI should PERSIST the whole token and mint a fresh one once it
+  // expires — a client built from a static accessToken stops working when the
+  // device access token expires. A device-token response MAY omit refresh_token,
+  // so GUARD it: refresh only when one was issued, otherwise re-run the device
+  // login to reauthenticate. Refresh hits the SAME first-party token endpoint
+  // with the standard grant (device tokens never use Launchpad's legacy
+  // `type=refresh` format):
+  if (isTokenExpired(token)) {
+    if (token.refreshToken) {
+      const fresh = await refreshToken({
+        tokenEndpoint: result.config.tokenEndpoint,
+        clientId: "basecamp-cli", // public client — no secret
+        refreshToken: token.refreshToken,
+      });
+      // A refresh response MAY omit refresh_token (the server keeps the current
+      // one). Persist the fresh access token but FALL BACK to the prior refresh
+      // token when none was returned, so the next refresh still works:
+      const nextRefresh = fresh.refreshToken ?? token.refreshToken;
+      // ...persist { ...fresh, refreshToken: nextRefresh } and rebuild the client.
+    } else {
+      // No refresh token was issued: refreshing is impossible, so the user must
+      // authorize again. Re-run the device login to get a new token — pass the
+      // SAME abort signal so Ctrl-C cancels this second poll too, and don't keep
+      // using the expired one.
+      const reauthed = await performDeviceLogin({
+        config: result.config,
+        clientId: "basecamp-cli",
+        display: ({ userCode, verificationUri }) => {
+          console.log(`Visit ${verificationUri} and enter code: ${userCode}`);
+        },
+        signal: abortController.signal,
+      });
+      // ...persist `reauthed` and rebuild the client from reauthed.accessToken.
+    }
+  }
+} catch (err) {
+  if (err instanceof DeviceFlowError) {
+    // err.reason: "access_denied" | "expired" | "transport" | "unavailable" | "cancelled"
+    // err.code (parent category) is derived from the reason:
+    //   access_denied/expired → auth_required, transport → network,
+    //   unavailable → validation, cancelled → usage
+  } else {
+    // performDeviceLogin can also reject with BasecampError (e.g. a malformed
+    // or non-2xx server response) — don't swallow those.
+    throw err;
+  }
+}
+```
+
+The poll loop honors `interval`, sustains `slow_down` (+5s), backs off
+exponentially on connection timeouts, and enforces a monotonic expiry deadline.
+`requestDeviceAuthorization` and `pollDeviceToken` are exported for lower-level
+use; the polling clock is injectable for testing.
+
 ## Services
 
 The SDK provides typed services for the complete Basecamp API:

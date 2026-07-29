@@ -21,6 +21,28 @@ TOKEN_RESPONSE = {
 
 class TestExchangeCode:
     @respx.mock
+    def test_parse_failure_never_echoes_the_body(self):
+        # A syntactically-broken token body can still carry credential
+        # material — the parse error must not echo any of it into the
+        # message, where it would reach logs and exception telemetry.
+        secret = "sk-live-SUPERSECRET"
+        respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, text='{"access_token": "' + secret + "' oops"))
+
+        with pytest.raises(OAuthError) as exc_info:
+            exchange_code(
+                TOKEN_ENDPOINT,
+                code="auth-code-123",
+                redirect_uri="https://myapp.com/callback",
+                client_id="client-id",
+            )
+        assert exc_info.value.oauth_type == "api_error"
+        assert secret not in str(exc_info.value)
+        # from None: JSONDecodeError retains the whole body as .doc — the
+        # chain must be suppressed, not merely sanitized.
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__
+
+    @respx.mock
     def test_exchange_code(self):
         route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
 

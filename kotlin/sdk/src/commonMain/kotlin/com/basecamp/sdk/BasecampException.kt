@@ -17,7 +17,9 @@ package com.basecamp.sdk
  *         is BasecampException.Network -> println("Network error")
  *         is BasecampException.Api -> println("Server error: ${e.httpStatus}")
  *         is BasecampException.Usage -> println("Bad arguments: ${e.message}")
+ *         is BasecampException.Ambiguous -> println("Ambiguous: ${e.message}")
  *         is BasecampException.DiscoverySelection -> println("OAuth discovery: ${e.reason}")
+ *         is BasecampException.DeviceFlow -> println("Device flow: ${e.reason}")
  *     }
  * }
  * ```
@@ -141,6 +143,39 @@ sealed class BasecampException(
         cause,
     )
 
+    /**
+     * Terminal RFC 8628 device authorization grant failure (SPEC.md §16). A
+     * single [reason] carries the precise outcome; the parent [code] (and thus
+     * [exitCode]) is DERIVED from it so callers can branch on either the precise
+     * [reason] or the coarse [code]:
+     *
+     * | reason          | code            | retryable |
+     * |-----------------|-----------------|-----------|
+     * | `access_denied` | `auth_required` | no        |
+     * | `expired`       | `auth_required` | no        |
+     * | `transport`     | `network`       | yes       |
+     * | `unavailable`   | `validation`    | no        |
+     * | `cancelled`     | `usage`         | no        |
+     *
+     * Native coroutine cancellation propagates as [kotlin.coroutines.cancellation.CancellationException]
+     * rather than becoming `DeviceFlow(cancelled)`; the `cancelled` reason exists
+     * only for a non-native cancel signal (SPEC.md §16 terminal-outcomes table).
+     */
+    class DeviceFlow(
+        /** Typed device-flow outcome; see the table above. */
+        val reason: String,
+        message: String = deviceFlowDefaultMessage(reason),
+        cause: Throwable? = null,
+    ) : BasecampException(
+        message,
+        deviceFlowCode(reason),
+        null,
+        null,
+        reason == DEVICE_TRANSPORT,
+        null,
+        cause,
+    )
+
     companion object {
         const val CODE_AUTH = "auth_required"
         const val CODE_FORBIDDEN = "forbidden"
@@ -151,6 +186,33 @@ sealed class BasecampException(
         const val CODE_VALIDATION = "validation"
         const val CODE_AMBIGUOUS = "ambiguous"
         const val CODE_USAGE = "usage"
+
+        // RFC 8628 device-flow reasons (see [DeviceFlow]).
+        const val DEVICE_ACCESS_DENIED = "access_denied"
+        const val DEVICE_EXPIRED = "expired"
+        const val DEVICE_TRANSPORT = "transport"
+        const val DEVICE_UNAVAILABLE = "unavailable"
+        const val DEVICE_CANCELLED = "cancelled"
+
+        /** Derives a [DeviceFlow]'s parent error code from its reason. */
+        private fun deviceFlowCode(reason: String): String = when (reason) {
+            DEVICE_ACCESS_DENIED, DEVICE_EXPIRED -> CODE_AUTH
+            DEVICE_TRANSPORT -> CODE_NETWORK
+            DEVICE_UNAVAILABLE -> CODE_VALIDATION
+            DEVICE_CANCELLED -> CODE_USAGE
+            else -> CODE_API
+        }
+
+        /** Default human-readable message for a [DeviceFlow] reason. */
+        private fun deviceFlowDefaultMessage(reason: String): String = when (reason) {
+            DEVICE_ACCESS_DENIED -> "The authorization request was denied"
+            DEVICE_EXPIRED -> "Device code expired before authorization completed"
+            DEVICE_TRANSPORT -> "Device flow transport failure"
+            DEVICE_UNAVAILABLE ->
+                "The selected authorization server does not support the device authorization grant"
+            DEVICE_CANCELLED -> "Device flow cancelled"
+            else -> "Device flow failed: $reason"
+        }
 
         private const val EXIT_OK = 0
         private const val EXIT_USAGE = 1

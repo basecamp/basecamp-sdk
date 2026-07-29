@@ -5,6 +5,7 @@
  * Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
  */
 
+import { MAX_TOKEN_LIFETIME_SECONDS } from "./limits.js";
 import { BasecampError } from "../errors.js";
 import { isLocalhost } from "../security.js";
 import type {
@@ -310,19 +311,35 @@ async function doTokenRequest(
     try {
       data = JSON.parse(responseText);
     } catch {
-      // Truncate response text to avoid leaking sensitive data in error messages
-      const truncated = responseText.length > 500 ? responseText.slice(0, 497) + "..." : responseText;
-      throw new BasecampError(
-        "api_error",
-        `Failed to parse token response: ${truncated}`,
-        { httpStatus: response.status }
-      );
+      // A token response that fails to parse may still contain credential
+      // material (a syntactically-broken body carrying an access_token) —
+      // never echo ANY of it into an error message, where it would reach
+      // logs and exception telemetry. The status is diagnosis enough.
+      throw new BasecampError("api_error", "Failed to parse token response", {
+        httpStatus: response.status,
+      });
+    }
+
+    // A valid-JSON-but-non-object body (null, array, number, string) is a
+    // malformed response on EVERY status — the error branch below would
+    // otherwise deref null and surface a raw TypeError misclassified as
+    // retryable network. Fail as api_error carrying the HTTP status.
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      throw new BasecampError("api_error", "Token response is not a JSON object", {
+        httpStatus: response.status,
+      });
     }
 
     // Check for error response
     if (!response.ok) {
       const errorData = data as OAuthErrorResponse;
-      const rawMessage = errorData.error_description || errorData.error || "Token request failed";
+      // Non-string error/error_description (numbers, objects) must not throw
+      // a raw TypeError below — that would be misclassified as retryable
+      // network, losing the api_error status context.
+      const rawMessage =
+        (typeof errorData.error_description === "string" && errorData.error_description) ||
+        (typeof errorData.error === "string" && errorData.error) ||
+        "Token request failed";
       const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
 
       if (response.status === 401 || errorData.error === "invalid_grant") {
@@ -340,19 +357,63 @@ async function doTokenRequest(
     // Parse successful response
     const tokenData = data as RawTokenResponse;
 
-    if (!tokenData.access_token) {
-      throw new BasecampError("api_error", "Token response missing access_token");
+    // Non-empty STRING, not merely truthy: a numeric access_token is not a
+    // usable credential. Carry the HTTP status like every other malformed-
+    // response raise so failures are diagnosable.
+    if (typeof tokenData.access_token !== "string" || tokenData.access_token === "") {
+      throw new BasecampError("api_error", "Token response missing or non-string access_token", {
+        httpStatus: response.status,
+      });
+    }
+
+    // Absent/null token_type defaults to Bearer, but a present-but-empty (or
+    // non-string) one is a malformed response — matching the stricter
+    // device-flow validation rather than silently coercing "" to Bearer.
+    if (tokenData.token_type != null && (typeof tokenData.token_type !== "string" || tokenData.token_type === "")) {
+      throw new BasecampError("api_error", "Token response token_type must be a non-empty string when present", {
+        httpStatus: response.status,
+      });
+    }
+
+    // The remaining optional fields get the device-flow strictness: a
+    // non-string refresh_token/scope or a non-finite/fractional/oversized
+    // expires_in would leak malformed values through the public OAuthToken
+    // type (or build an Invalid Date expiry).
+    if (tokenData.refresh_token != null && typeof tokenData.refresh_token !== "string") {
+      throw new BasecampError("api_error", "Token response refresh_token must be a string", {
+        httpStatus: response.status,
+      });
+    }
+    if (tokenData.scope != null && typeof tokenData.scope !== "string") {
+      throw new BasecampError("api_error", "Token response scope must be a string", {
+        httpStatus: response.status,
+      });
+    }
+    if (
+      tokenData.expires_in != null &&
+      (typeof tokenData.expires_in !== "number" ||
+        !Number.isInteger(tokenData.expires_in) ||
+        tokenData.expires_in <= 0 ||
+        tokenData.expires_in > MAX_TOKEN_LIFETIME_SECONDS)
+    ) {
+      throw new BasecampError(
+        "api_error",
+        `Token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`,
+        { httpStatus: response.status }
+      );
     }
 
     return {
       accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token,
-      tokenType: tokenData.token_type || "Bearer",
+      // `?? undefined`: JSON null is legal on the wire for the optional
+      // fields (absent per SPEC) — never leak null through the public type.
+      refreshToken: tokenData.refresh_token ?? undefined,
+      tokenType: tokenData.token_type ?? "Bearer",
       expiresIn: tokenData.expires_in,
       expiresAt: tokenData.expires_in
         ? new Date(Date.now() + tokenData.expires_in * 1000)
         : undefined,
-      scope: tokenData.scope,
+      scope: tokenData.scope ?? undefined,
     };
   } catch (err) {
     if (err instanceof BasecampError) {
