@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import math
 import threading
+import time
 from collections.abc import Callable
 
 import httpx
@@ -125,9 +126,14 @@ def request_bounded(
                     # stream so it is never fully buffered.
                     raise OAuthError("api_error", f"{context} response exceeds size cap")
                 chunks.append(chunk)
-            # Same completed-outcome recording as the skip path: a fully read
-            # body must not be discarded because cleanup crossed the deadline.
-            outcome.append((response.status_code, b"".join(chunks)))
+            # Same completed-outcome recording as the skip path — but ONLY
+            # when the body finished inside the deadline: the task can run
+            # ahead of wait_for's already-due timeout callback, and a body
+            # completing past the advertised bound must not be accepted.
+            # (Skipped statuses stay status-first regardless — their
+            # classification is header-time knowledge.)
+            if time.monotonic() <= deadline_ts:
+                outcome.append((response.status_code, b"".join(chunks)))
             return response.status_code, b"".join(chunks)
 
     # httpx's timeout is per-read (it resets on every received chunk) and httpx has
@@ -155,7 +161,9 @@ def request_bounded(
     # Completed outcomes recorded INSIDE _do before async cleanup: when
     # wait_for cancels mid-unwind, the response is already known and must win
     # over the cancellation (status-first classification for skipped statuses;
-    # a fully read body likewise survives a late cleanup).
+    # a fully read body likewise survives a late cleanup — but only when it
+    # completed inside the monotonic deadline below).
+    deadline_ts = time.monotonic() + timeout
     outcome: list[tuple[int, bytes]] = []
 
     def _runner() -> None:
