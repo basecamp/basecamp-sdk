@@ -1,0 +1,19 @@
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_267ddb5ac82dcb::t_4089fe637c1163 113-116,119-121,127-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "540ee50a949f3d02542f4c991ffeebe103bcfa14",
+  "prompts": {},
+  "sessions": {
+    "s_267ddb5ac82dcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57d110ce-5c18-4d22-aa00-30e788664981",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

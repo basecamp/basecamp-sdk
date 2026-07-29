@@ -1,0 +1,72 @@
+python/README.md
+  s_86d0793371d0f3::t_7e59fa0ff63904 217-221
+SPEC.md
+  s_86d0793371d0f3::t_cfe86cd36ef0cf 1219-1231
+ruby/test/basecamp/oauth_transport_test.rb
+  s_86d0793371d0f3::t_d8e1b57ef51f4c 616-669
+python/src/basecamp/oauth/_transport.py
+  s_86d0793371d0f3::t_e684c9fb56352f 14-19
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_86d0793371d0f3::t_ba4c09d16f7c9a 705-711
+  s_86d0793371d0f3::t_f9ca305e39e5fc 690
+  s_86d0793371d0f3::t_d0a3944bca057c 724-731
+  s_86d0793371d0f3::t_5afb68e344725a 563,565-571,573,600,604,606-607
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_98816492b4bd9e 720
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_8cb9c0daf84170 1482
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_57f2c239441ed9 1027-1028
+  s_86d0793371d0f3::t_b41f62af472c78 1255-1256
+  s_e7f35ff4dfc068::t_c08fd1fb665ae3 1027-1028
+go/pkg/basecamp/auth.go
+  s_86d0793371d0f3::t_7d8ddde38d0c68 350-351
+  s_86d0793371d0f3::t_982d5714e68d02 350-355
+go/pkg/basecamp/oauth/types.go
+  s_2f9a7c1c5bac9e::t_b97377a34e961d 219-221
+go/pkg/basecamp/oauth/exchange.go
+  s_86d0793371d0f3::t_da90e0c2de07ed 156
+python/src/basecamp/oauth/exchange.py
+  s_86d0793371d0f3::t_066bf6a18bd9b6 148
+python/tests/oauth/test_exchange.py
+  s_86d0793371d0f3::t_75f54bbcd80acc 87
+ruby/lib/basecamp/oauth/exchange.rb
+  s_86d0793371d0f3::t_030e11c592ae69 165
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_61f98d16674d8a 237-239,526-529,531
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_ee08bf68bf7a91 823-824,829,831-841
+  s_86d0793371d0f3::t_b162b1e33fead3 843-862
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "10e07fb2ee397f500a4b70dc368bf70a1d6f20e5",
+  "prompts": {},
+  "sessions": {
+    "s_2f9a7c1c5bac9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e10693-5840-43ac-af1c-f34b57b021c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_e7f35ff4dfc068": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26213cdd-36a0-4e69-820b-1d68a49b16d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

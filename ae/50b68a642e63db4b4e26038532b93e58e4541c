@@ -1,0 +1,25 @@
+python/tests/oauth/test_transport.py
+  s_86d0793371d0f3::t_390fe60c0c8ae6 109-126
+ruby/test/basecamp/oauth_transport_test.rb
+  s_86d0793371d0f3::t_2d9ae3054614d4 312-324
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_86d0793371d0f3::t_f2ae345aeb2f2a 299-304
+python/src/basecamp/oauth/_transport.py
+  s_86d0793371d0f3::t_6c26d733575712 106-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ae50b68a642e63db4b4e26038532b93e58e4541c",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
