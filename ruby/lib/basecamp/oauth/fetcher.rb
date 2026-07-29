@@ -77,6 +77,12 @@ module Basecamp
       # Process.clock_gettime — so tests can stub Fetcher's own notion of
       # "now" without touching the process-wide clock that Net::HTTP, the
       # watchdog sleeps, and the test server all rely on.
+      # net-http >= 0.5 (Ruby 3.4+) added Net::HTTP.new's eighth p_use_ssl
+      # parameter; the gem floor is Ruby 3.2, whose bundled net-http lacks it.
+      def self.proxy_tls_capable?
+        Net::HTTP.method(:new).parameters.length >= 8
+      end
+
       def self.monotonic_now
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
@@ -337,25 +343,44 @@ module Basecamp
         # wrongly govern TLS requests). Resolve the proxy against the REAL
         # scheme — matching faraday-net_http's per-scheme resolution — and
         # pass it explicitly; a nil p_addr disables the broken built-in.
-        proxy_uri = uri.find_proxy
+        # The total deadline starts BEFORE proxy resolution: find_proxy
+        # resolves the target hostname (IPSocket.getaddress) to evaluate its
+        # loopback rule — a blocking DNS call that must sit inside the
+        # advertised bound like every other network step. Net::OpenTimeout
+        # maps through the Timeout::Error rescue to the transport timeout.
+        deadline = monotonic_now + timeout
+        deadline_fired = false
+        completed_at = nil
+        proxy_uri = Timeout.timeout(timeout, Net::OpenTimeout) { uri.find_proxy }
         http = if proxy_uri
+                 proxy_tls = proxy_uri.scheme == "https"
+                 # An https:// proxy needs TLS on its own connection via the
+                 # p_use_ssl argument, which exists only in net-http >= 0.5
+                 # (Ruby 3.4+). On the older bundled net-http (Ruby 3.2/3.3)
+                 # the 8-arg call would raise ArgumentError — refuse with an
+                 # actionable error instead of plaintext-to-a-TLS-proxy.
+                 if proxy_tls && !proxy_tls_capable?
+                   raise OauthError.new(
+                     "validation",
+                     "https:// proxies need net-http >= 0.5 (Ruby 3.4+, or add the net-http gem)"
+                   )
+                 end
+
                  # Percent-decode the credentials: URI#user/#password return the
                  # encoded forms, and the explicit-proxy Net::HTTP.new does NOT
                  # unescape them the way its :ENV mode does — p%40ss would be
                  # sent verbatim in Proxy-Authorization and fail authentication.
                  # unescapeURIComponent, NOT form decoding: a literal + in a
                  # userinfo component is a plus sign, never a space.
-                 # p_no_proxy nil (find_proxy already honored no_proxy);
-                 # p_use_ssl from the proxy URL's scheme — an https:// proxy
-                 # expects TLS on its own connection, and omitting it would
-                 # send plaintext to a TLS-only proxy and fail before CONNECT.
-                 Net::HTTP.new(
+                 # p_no_proxy nil (find_proxy already honored no_proxy).
+                 args = [
                    uri.hostname, uri.port,
                    proxy_uri.hostname, proxy_uri.port,
                    proxy_uri.user && CGI.unescapeURIComponent(proxy_uri.user),
-                   proxy_uri.password && CGI.unescapeURIComponent(proxy_uri.password),
-                   nil, proxy_uri.scheme == "https"
-                 )
+                   proxy_uri.password && CGI.unescapeURIComponent(proxy_uri.password)
+                 ]
+                 args += [ nil, true ] if proxy_tls
+                 Net::HTTP.new(*args)
         else
                  Net::HTTP.new(uri.hostname, uri.port, nil)
         end
@@ -399,9 +424,6 @@ module Basecamp
           request["Content-Type"] ||= "application/x-www-form-urlencoded"
         end
 
-        deadline = monotonic_now + timeout
-        deadline_fired = false
-        completed_at = nil
         # Net::HTTP#request implicitly re-starts a finished session, and that
         # restart runs OUTSIDE the connect Timeout.timeout below — an
         # ENV-proxied CONNECT could drip unbounded there (started? stays

@@ -742,6 +742,58 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
+  def test_proxy_resolution_dns_is_inside_the_deadline
+    # find_proxy resolves the target hostname (IPSocket.getaddress) to
+    # evaluate its loopback rule — a stalled resolver must be cut by the
+    # advertised bound, not hold the request open before any deadline exists.
+    real = IPSocket.method(:getaddress)
+    IPSocket.define_singleton_method(:getaddress) do |host|
+      sleep(5)
+      real.call(host)
+    end
+
+    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
+    saved = ENV.to_h.slice(*proxy_env)
+    proxy_env.each { |k| ENV.delete(k) }
+    ENV["https_proxy"] = "http://127.0.0.1:9"
+    begin
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      assert_raises(Faraday::TimeoutError) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "https://dns-stall.test/token", timeout: 0.5)
+      end
+      took = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      assert_operator took, :<, 2.0, "proxy-resolution DNS must be cut by the deadline, took #{took.round(2)}s"
+    ensure
+      proxy_env.each { |k| ENV.delete(k) }
+      saved.each { |k, v| ENV[k] = v }
+      IPSocket.define_singleton_method(:getaddress) { |host| real.call(host) }
+    end
+  end
+
+  def test_https_proxy_refused_without_p_use_ssl_support
+    # On Ruby 3.2/3.3 the bundled net-http lacks Net::HTTP.new's eighth
+    # p_use_ssl parameter — an https:// proxy must refuse with an actionable
+    # validation error, never plaintext-to-a-TLS-proxy or an ArgumentError.
+    real = Basecamp::Oauth::Fetcher.method(:proxy_tls_capable?)
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :proxy_tls_capable?) { false }
+
+    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
+    saved = ENV.to_h.slice(*proxy_env)
+    proxy_env.each { |k| ENV.delete(k) }
+    ENV["https_proxy"] = "https://127.0.0.1:9"
+    begin
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "https://old-net-http.test/token", timeout: 1)
+      end
+      assert_equal "validation", error.type
+      assert_match(/net-http >= 0\.5/, error.message)
+    ensure
+      proxy_env.each { |k| ENV.delete(k) }
+      saved.each { |k, v| ENV[k] = v }
+      Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :proxy_tls_capable?) { real.call }
+    end
+  end
+
   def test_https_proxy_scheme_gets_tls_on_the_proxy_connection
     # An https:// proxy URL means TLS on the PROXY connection itself:
     # Net::HTTP.new's p_use_ssl must be passed through or the transport
