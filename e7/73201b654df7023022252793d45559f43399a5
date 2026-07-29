@@ -1,0 +1,25 @@
+python/src/basecamp/oauth/_transport.py
+  s_86d0793371d0f3::t_e4a8767e42f28a 40,60,98,103
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_17a17cf28ae996 26,98,382
+python/src/basecamp/oauth/discovery.py
+  s_86d0793371d0f3::t_592cb3f5dc09e3 25,150
+ruby/test/basecamp/oauth_transport_test.rb
+  s_86d0793371d0f3::t_a701bfea996938 32-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e773201b654df7023022252793d45559f43399a5",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
