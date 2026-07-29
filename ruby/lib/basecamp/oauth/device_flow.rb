@@ -528,7 +528,9 @@ module Basecamp
             # (request path: :transport; poll path: backoff, capped by code expiry)
             # rather than this status-first classification. Bounded and
             # redirect-safe (3xx Locations are never followed).
-            on_headers&.call(response.headers)
+            # +|| {}+: an injected duck-typed double may omit +headers+ —
+            # absent headers mean no Retry-After, never a nil deref.
+            on_headers&.call(response.headers || {})
             return [ response.status, "" ] if skip_status && skip_status.call(response.status)
 
             # Timeout.timeout's interrupt can be delivered late: a response

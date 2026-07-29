@@ -295,6 +295,9 @@ module Basecamp
       #   session the moment it exists if the deadline fired mid-connect)
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @param skip_status [Proc, nil] statuses whose body is never read
+      # @param on_headers [Proc, nil] called with the +Net::HTTPResponse+ once
+      #   headers arrive, before any body read or skip decision — the device
+      #   poll loop reads +Retry-After+ here without widening the return shape
       # @return [Array(Integer, String)] status and (possibly empty) body
       def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil, on_headers: nil)
         # Response state first, before ANY call the def-level rescues could
@@ -566,15 +569,15 @@ module Basecamp
         end
         [ status, chunks.join.force_encoding(Encoding::UTF_8) ]
       rescue SkipBody => e
-          [ e.status, "" ]
+        [ e.status, "" ]
       rescue Timeout::Error, Errno::ETIMEDOUT => e
-          # Timeout::Error covers Net::OpenTimeout/ReadTimeout/WriteTimeout alike
-          # (a peer that accepts the connection but stops READING trips the write
-          # timeout). Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT:
-          # both must map with the timeouts — the exact pair faraday-net_http
-          # rescues — or the device poll would terminate instead of applying its
-          # transient backoff.
-          raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
+        # Timeout::Error covers Net::OpenTimeout/ReadTimeout/WriteTimeout alike
+        # (a peer that accepts the connection but stops READING trips the write
+        # timeout). Errno::ETIMEDOUT is a SystemCallError, but it is a TIMEOUT:
+        # both must map with the timeouts — the exact pair faraday-net_http
+        # rescues — or the device poll would terminate instead of applying its
+        # transient backoff.
+        raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
       rescue IOError, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
              SystemCallError, SocketError, Zlib::Error => e
         # The clock outranks the watchdog FLAG: a wire fault observed past the
@@ -609,8 +612,8 @@ module Basecamp
 
         raise Faraday::SSLError, e.message
       ensure
-          watchdog&.kill
-          watchdog&.join
+        watchdog&.kill
+        watchdog&.join
       end
 
       # Fetches +url+ and returns the parsed JSON object (a Hash).
