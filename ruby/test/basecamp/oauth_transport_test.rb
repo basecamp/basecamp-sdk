@@ -675,12 +675,14 @@ class OAuthTransportTest < Minitest::Test
       end
     end
 
-    # Net::HTTP's :ENV proxy detection builds an http:// URI for the target
-    # and calls find_proxy on it, so it reads http_proxy even for TLS requests.
+    # The transport resolves the ENV proxy against the REAL scheme (https →
+    # https_proxy), unlike Net::HTTP's broken built-in :ENV detection which
+    # reads http_proxy even for TLS requests — so this ALSO pins that an
+    # https_proxy-only environment routes HTTPS requests through its proxy.
     proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
     saved = ENV.to_h.slice(*proxy_env)
     proxy_env.each { |k| ENV.delete(k) }
-    ENV["http_proxy"] = "http://127.0.0.1:#{proxy.addr[1]}"
+    ENV["https_proxy"] = "http://127.0.0.1:#{proxy.addr[1]}"
     begin
       took = elapsed do
         assert_raises(Faraday::TimeoutError) do

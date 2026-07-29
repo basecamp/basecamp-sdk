@@ -321,8 +321,23 @@ module Basecamp
         end
 
         # URI#hostname strips IPv6 brackets ("[::1]" -> "::1"), which is the form
-        # Net::HTTP.new expects. ENV proxy handling matches faraday-net_http.
-        http = Net::HTTP.new(uri.hostname, uri.port)
+        # Net::HTTP.new expects.
+        #
+        # Net::HTTP's built-in :ENV proxy detection hardcodes an http:// URI
+        # before calling find_proxy, so an HTTPS_PROXY-only environment would
+        # silently bypass its proxy for HTTPS endpoints (and http_proxy would
+        # wrongly govern TLS requests). Resolve the proxy against the REAL
+        # scheme — matching faraday-net_http's per-scheme resolution — and
+        # pass it explicitly; a nil p_addr disables the broken built-in.
+        proxy_uri = uri.find_proxy
+        http = if proxy_uri
+                 Net::HTTP.new(
+                   uri.hostname, uri.port,
+                   proxy_uri.hostname, proxy_uri.port, proxy_uri.user, proxy_uri.password
+                 )
+        else
+                 Net::HTTP.new(uri.hostname, uri.port, nil)
+        end
         http.use_ssl = uri.scheme == "https"
         http.open_timeout = timeout
         http.read_timeout = timeout
