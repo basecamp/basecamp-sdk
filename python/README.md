@@ -214,6 +214,11 @@ redirects, bound the timeout, and read the body under a genuine streaming cap
 that aborts before an oversized body is buffered. Non-2xx on either hop maps to
 `api_error`.
 
+**Timing contract.** A bounded OAuth request returns within its `timeout` plus
+at most 1 second of cleanup grace, spent only when the request already missed
+its deadline. Budget `timeout + 1` when folding these calls into your own
+deadlines.
+
 ### PKCE and Authorization URL
 
 ```python

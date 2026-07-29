@@ -18,16 +18,23 @@ module Basecamp
         end
       end
 
-      # @param http_client [Faraday::Connection, nil] HTTP client (SSRF-hardened default if nil)
-      # @param timeout [Integer] request timeout in seconds (default: 10)
+      # @param http_client [Faraday::Connection, nil] injected Faraday client
+      #   (kept, verified redirect-free); nil selects the default headers-first
+      #   Net::HTTP transport ({Fetcher.stream_http})
+      # @param timeout [Numeric] request timeout in seconds (default: 10); an
+      #   invalid value falls back via {Fetcher.normalize_timeout}
       # @param max_body_bytes [Integer] bounded read cap in bytes
       def initialize(http_client: nil, timeout: 10, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES)
         Fetcher.ensure_redirects_suppressed!(http_client) if http_client
-        # Normalize before building the client and before the fetch computes its
+        # Normalize before storing (nil selects the headers-first Net::HTTP
+        # transport; an injected client is kept) and before the fetch computes its
         # wall-clock deadline: a non-finite/non-positive timeout must not disable
         # either bound (see Fetcher.normalize_timeout).
         @timeout = Fetcher.normalize_timeout(timeout)
-        @http_client = http_client || Fetcher.build_client(@timeout)
+        # nil selects the headers-first {Fetcher.stream_http} transport (total
+        # wall-clock bound incl. the header phase); an injected connection keeps
+        # the Faraday path, verified redirect-free above.
+        @http_client = http_client
         # Normalize the public cap to a finite non-negative Integer: a nil, float,
         # or Float::INFINITY would otherwise disable the streaming memory bound
         # (an infinite/undefined cap never trips +total > max_body_bytes+),

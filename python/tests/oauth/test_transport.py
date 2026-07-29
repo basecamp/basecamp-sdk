@@ -1,0 +1,676 @@
+"""Real-socket transport-bounding tests for the shared bounded request core.
+
+respx serves a complete response instantly, so it can exercise neither a
+header-then-stall nor a byte-drip; these tests run a real localhost TCP server
+(discovery's origin validation exempts http on localhost) and drive the
+discovery fetch through :func:`basecamp.oauth._transport.request_bounded`.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import json
+import socket
+import threading
+import time
+
+import httpx
+import pytest
+
+from basecamp.oauth import OAuthError, discover_protected_resource
+from basecamp.oauth._transport import _WORKER_JOIN_GRACE
+
+
+def _serve_on_localhost() -> tuple[socket.socket, int]:
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    return srv, srv.getsockname()[1]
+
+
+def _settled_thread_count(baseline: int, deadline_s: float = 5.0) -> int:
+    # The transport worker is a daemon thread that asyncio.wait_for bounds at
+    # ~timeout; give its cancellation/cleanup a moment to unwind before counting.
+    deadline = time.monotonic() + deadline_s
+    while threading.active_count() > baseline and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return threading.active_count()
+
+
+def test_discovery_header_stall_is_bounded_and_leaks_no_worker() -> None:
+    # The peer sends complete headers then stalls forever without a body byte.
+    # The fetch must surface a retryable network timeout within ~timeout (plus
+    # the worker-join grace), and the transport's worker thread must be gone —
+    # not parked forever on the dead connection.
+    srv, port = _serve_on_localhost()
+    stop = threading.Event()
+
+    def stall() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nContent-Type: application/json\r\n\r\n")
+            stop.wait()
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    baseline = threading.active_count()
+    server = threading.Thread(target=stall, daemon=True)
+    server.start()
+    timeout = 0.5
+    try:
+        start = time.monotonic()
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=timeout)
+        elapsed = time.monotonic() - start
+        assert exc_info.value.code == "network"
+        assert exc_info.value.retryable
+        assert "timed out" in str(exc_info.value)
+        assert elapsed < timeout + _WORKER_JOIN_GRACE + 1.0, f"fetch not bounded by the timeout: took {elapsed:.2f}s"
+    finally:
+        stop.set()
+        server.join(2)
+        srv.close()
+    assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
+
+
+def test_unknown_method_fails_fast() -> None:
+    # An unknown verb must fail fast, never reach httpx.
+    from basecamp.oauth._transport import request_bounded
+
+    with pytest.raises(ValueError, match="must be GET or POST"):
+        request_bounded(
+            "POTS",
+            "https://issuer.example/x",
+            headers={},
+            params=None,
+            timeout=1.0,
+            max_body_bytes=1024,
+        )
+
+
+def test_params_with_non_post_fails_fast() -> None:
+    # A form body on a GET would emit a GET-with-body; misuse fails fast instead.
+    from basecamp.oauth._transport import request_bounded
+
+    with pytest.raises(ValueError, match="only valid with POST"):
+        request_bounded(
+            "GET",
+            "https://issuer.example/x",
+            headers={},
+            params={"a": "b"},
+            timeout=1.0,
+            max_body_bytes=1024,
+        )
+
+
+def test_invalid_max_body_bytes_fails_fast() -> None:
+    # The cap IS the streaming bound this core exists to provide — a bool,
+    # float (inf included), or negative value would disable or crash it,
+    # so misuse rejects before any connection.
+    from basecamp.oauth._transport import request_bounded
+
+    for cap in (None, True, False, -8, 1.5, float("inf")):
+        with pytest.raises(ValueError, match="max_body_bytes must be a non-negative int"):
+            request_bounded(
+                "GET",
+                "https://issuer.example/x",
+                headers={},
+                params=None,
+                timeout=1.0,
+                max_body_bytes=cap,  # type: ignore[arg-type]
+            )
+
+
+def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) -> None:
+    # Headers that become runnable past the total deadline mean the status was
+    # NOT known before the bound — the skip path must surface the timeout, not
+    # race ahead of wait_for into a status fault. The clock is faked ONLY
+    # inside the transport module (asyncio/httpx keep the real one): it jumps
+    # past any deadline the moment the server has served the late headers.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    past_deadline = threading.Event()
+
+    def respond() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Nope\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    def skip_and_flip(_status: int) -> bool:
+        # Flip the fake clock HERE — inside the transport's own skip
+        # decision — so the deadline gate that runs immediately after reads
+        # a past-deadline "now". Flipping from the server thread raced the
+        # client processing the headers first.
+        past_deadline.set()
+        return False
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if past_deadline.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    server = threading.Thread(target=respond, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.TimeoutException):
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+                read_body=skip_and_flip,
+            )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_recorded_skip_outcome_survives_a_cleanup_http_error(monkeypatch) -> None:
+    # A recorded outcome dominates an httpx error raised BY cleanup: a known
+    # non-2xx skip must not soften into a retryable network error because
+    # closing the unconsumed stream misbehaved after the fact.
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+
+    def respond() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Nope\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    real_aclose = httpx.Response.aclose
+
+    async def exploding_aclose(self):  # noqa: ANN001
+        await real_aclose(self)
+        raise httpx.ReadError("cleanup boom")
+
+    monkeypatch.setattr(httpx.Response, "aclose", exploding_aclose)
+
+    server = threading.Thread(target=respond, daemon=True)
+    server.start()
+    try:
+        status, body = request_bounded(
+            "GET",
+            f"http://127.0.0.1:{port}/doc",
+            headers={},
+            params=None,
+            timeout=10.0,
+            max_body_bytes=1024,
+            read_body=lambda _status: False,
+        )
+        assert status == 500
+        assert body == b""
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_mid_body_wire_error_survives_response_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # A body-phase reset is stamped INSIDE the response context: response
+    # cleanup (aclose) runs before any outer handler, so a cleanup crossing
+    # the deadline would otherwise erase the in-deadline wire fault into a
+    # retryable timeout. The fake clock flips only once aclose begins.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    past_deadline = threading.Event()
+
+    def reset_mid_body() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        with contextlib.suppress(OSError):
+            conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\npartial")
+        conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if past_deadline.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    real_aclose = httpx.Response.aclose
+
+    async def flagging_aclose(self):  # noqa: ANN001
+        past_deadline.set()
+        return await real_aclose(self)
+
+    monkeypatch.setattr(httpx.Response, "aclose", flagging_aclose)
+
+    server = threading.Thread(target=reset_mid_body, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.HTTPError) as exc_info:
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+            )
+        assert not isinstance(exc_info.value, httpx.TimeoutException), (
+            "an in-deadline mid-body wire fault must stay terminal"
+        )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_in_deadline_wire_error_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # The mirror edge: a connection reset observed IN deadline whose async
+    # cleanup (__aexit__) crosses it must surface as the terminal transport
+    # fault — never be misdated by a post-cleanup stamp into a retryable
+    # timeout. The fake clock flips only once cleanup begins, so the
+    # exception-site stamp reads real (in-deadline) time.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    cleanup_started = threading.Event()
+
+    def reset_connection() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if cleanup_started.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    real_aexit = httpx.AsyncClient.__aexit__
+
+    async def flagging_aexit(self, *args):  # noqa: ANN001, ANN002
+        cleanup_started.set()
+        return await real_aexit(self, *args)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__aexit__", flagging_aexit)
+
+    server = threading.Thread(target=reset_connection, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.HTTPError) as exc_info:
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+            )
+        assert not isinstance(exc_info.value, httpx.TimeoutException), (
+            "an in-deadline wire fault must stay terminal, not soften into a timeout"
+        )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_wire_error_past_the_deadline_classifies_as_timeout(monkeypatch) -> None:
+    # A connection reset that becomes runnable past the total deadline is the
+    # timeout it raced, not a distinct transport fault — the poll loop must
+    # back off transiently, never terminate. The fake clock (transport-module
+    # scoped) jumps past any deadline before the server closes the connection,
+    # so the error is captured strictly after the jump.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    past_deadline = threading.Event()
+
+    def reset_connection() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        past_deadline.set()
+        # An abrupt close mid-request surfaces as an httpx wire error (never
+        # a timeout) on the client side.
+        conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if past_deadline.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    server = threading.Thread(target=reset_connection, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.TimeoutException):
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+            )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_exhausted_worker_slots_fail_fast_as_timeout() -> None:
+    # When every transport-worker slot is held (workers stuck on
+    # uninterruptible resolver calls), a new request must fail within its
+    # budget as the timeout it would have become — never add another stuck
+    # thread to the pile.
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    held = 0
+    while _transport._WORKER_SLOTS.acquire(blocking=False):
+        held += 1
+    try:
+        started = time.monotonic()
+        with pytest.raises(httpx.TimeoutException, match="worker slots exhausted"):
+            request_bounded(
+                "GET",
+                "http://127.0.0.1:9/doc",
+                headers={},
+                params=None,
+                timeout=0.3,
+                max_body_bytes=1024,
+            )
+        assert time.monotonic() - started < 2.0
+    finally:
+        for _ in range(held):
+            _transport._WORKER_SLOTS.release()
+
+
+def test_zero_max_body_bytes_is_a_strict_cap_not_a_usage_error() -> None:
+    # _normalize_body_cap accepts zero as a legitimate strict cap, so the
+    # transport must too: the request goes out and any non-empty body trips
+    # the bound, surfacing as the documented cap fault — never ValueError.
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+
+    def respond() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=respond, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as excinfo:
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=2.0,
+                max_body_bytes=0,
+            )
+        assert excinfo.value.oauth_type == "api_error"
+        assert "size cap" in str(excinfo.value)
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
+    # SPEC.md: non-2xx on either discovery hop → api_error, never network —
+    # status dominates even when the error body stalls forever, so the fetch
+    # classifies at header time instead of timing the body out.
+    srv, port = _serve_on_localhost()
+    stop = threading.Event()
+
+    def stall() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 1000\r\n\r\n")
+            stop.wait()
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    baseline = threading.active_count()
+    server = threading.Thread(target=stall, daemon=True)
+    server.start()
+    timeout = 0.5
+    try:
+        start = time.monotonic()
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=timeout)
+        elapsed = time.monotonic() - start
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 500
+        assert elapsed < timeout, f"status must classify at header time, not after a body timeout: {elapsed:.2f}s"
+    finally:
+        stop.set()
+        server.join(2)
+        srv.close()
+    assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
+
+
+def test_skipped_status_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # A skipped non-2xx whose headers arrive just before the total deadline
+    # must classify by STATUS even when the awaited response/client cleanup
+    # crosses the deadline and is cancelled by wait_for — never soften into a
+    # retryable timeout. Deterministic: the patched client aclose stalls past
+    # the deadline after the response is already known.
+    # Patch __aexit__ (NOT aclose — AsyncClient.__aexit__ closes the
+    # transport directly and never routes through aclose).
+    real_aexit = httpx.AsyncClient.__aexit__
+
+    async def slow_aexit(self, *args):
+        await asyncio.sleep(1.5)  # crosses the 0.5s deadline
+        return await real_aexit(self, *args)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__aexit__", slow_aexit)
+
+    srv, port = _serve_on_localhost()
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=0.5)
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 500
+    finally:
+        server.join(3)
+        srv.close()
+
+
+def test_size_cap_error_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # An oversized body trips the documented api_error size cap; when async
+    # cleanup then crosses the deadline and wait_for cancels, the terminal
+    # fault must survive — never soften into a retryable timeout.
+    real_aexit = httpx.AsyncClient.__aexit__
+
+    async def slow_aexit(self, *args):
+        await asyncio.sleep(1.5)  # crosses the 0.5s deadline
+        return await real_aexit(self, *args)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__aexit__", slow_aexit)
+
+    srv, port = _serve_on_localhost()
+    big = b"x" * (2 * 1024 * 1024)
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(
+                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
+                + str(len(big)).encode()
+                + b"\r\n\r\n"
+                + big
+            )
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=0.5)
+        assert exc_info.value.code == "api_error"
+        assert "size cap" in str(exc_info.value)
+    finally:
+        server.join(3)
+        srv.close()
+
+
+def test_compressed_bodies_are_never_inflated_by_the_transport() -> None:
+    # Transparent decompression would let a compression bomb balloon past the
+    # byte cap BEFORE the per-chunk check ran (httpx inflates in
+    # aiter_bytes). The transport requests identity and reads RAW wire bytes:
+    # a server compressing anyway hands over compressed bytes bounded by the
+    # cap, and classification (a JSON parse failure) happens on the small
+    # payload — memory never exceeds the advertised bound.
+    import gzip as gzip_mod
+
+    compressed = gzip_mod.compress(b"x" * 10_000_000)  # ~10 MB decoded
+    assert len(compressed) < 20_000, "bomb premise: tiny on the wire"
+
+    srv, port = _serve_on_localhost()
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(
+                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                b"Content-Encoding: gzip\r\nContent-Length: " + str(len(compressed)).encode() + b"\r\n\r\n" + compressed
+            )
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=2)
+        # The raw bytes flowed through under the cap and failed JSON parsing —
+        # never a decoded blow-up into the size cap.
+        assert exc_info.value.code == "api_error"
+        assert "size cap" not in str(exc_info.value)
+    finally:
+        server.join(2)
+        srv.close()
+
+
+def test_discovery_slow_drip_is_bounded_by_the_total_timeout() -> None:
+    # httpx's read timeout resets on every received chunk, so a peer dripping a
+    # VALID discovery document byte-by-byte (each read under the timeout) would
+    # otherwise hold the fetch open far past it — httpx has no total timeout.
+    # asyncio.wait_for must cancel the whole round-trip at ~timeout regardless
+    # of chunk cadence, surfacing a retryable network timeout.
+    srv, port = _serve_on_localhost()
+    origin = f"http://127.0.0.1:{port}"
+    body = json.dumps({"resource": origin}).encode()
+    payload = (
+        f"HTTP/1.1 200 OK\r\nContent-Length: {len(body)}\r\nContent-Type: application/json\r\n\r\n"
+    ).encode() + body
+
+    def drip() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            # ~100+ bytes dripped at 0.2s each ≈ 20s+ total; the 0.5s timeout must win.
+            for byte in payload:
+                conn.sendall(bytes([byte]))
+                time.sleep(0.2)
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    baseline = threading.active_count()
+    server = threading.Thread(target=drip, daemon=True)
+    server.start()
+    timeout = 0.5
+    try:
+        start = time.monotonic()
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(origin, timeout=timeout)
+        elapsed = time.monotonic() - start
+        assert exc_info.value.code == "network"
+        assert exc_info.value.retryable
+        assert "timed out" in str(exc_info.value)
+        assert elapsed < timeout + _WORKER_JOIN_GRACE + 1.0, f"fetch not bounded by the timeout: took {elapsed:.2f}s"
+    finally:
+        srv.close()
+        server.join(5)
+    assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
+
+
+@pytest.mark.parametrize(
+    "timeout",
+    [None, "5", True, 0, -1, float("inf"), float("nan"), 3601.0, 10**400],
+)
+def test_invalid_timeout_fails_fast(timeout) -> None:
+    # request_bounded's whole purpose is a TOTAL request bound; an unnormalized
+    # timeout (inf/nan/non-positive/oversized/huge-int) would disable or
+    # overflow asyncio.wait_for and the thread join. Callers normalize, but the
+    # contract is enforced here too — a violation is a programming error.
+    from basecamp.oauth._transport import request_bounded
+
+    with pytest.raises(ValueError, match="timeout must be a finite positive"):
+        request_bounded(
+            "GET",
+            "https://issuer.example/x",
+            headers={},
+            timeout=timeout,
+            max_body_bytes=1024,
+        )
