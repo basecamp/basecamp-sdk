@@ -581,7 +581,9 @@ class OAuthDeviceTest {
 
     @Test
     fun poll429MalformedRetryAfterFallsBackToInterval() = runTest {
-        for (header in listOf(null, "abc", "1.5", "-1", "0", "99999999999999999999", "+30", "\uFF11\uFF12", "\u00A030", "\u200930")) {
+        // "99999999999": 11 significant digits — representable in a Long, but
+        // past the shared 10-digit bound, so it must fall back like TS/Py/Rb.
+        for (header in listOf(null, "abc", "1.5", "-1", "0", "99999999999999999999", "99999999999", "+30", "\uFF11\uFF12", "\u00A030", "\u200930")) {
             val pollTimes = mutableListOf<Long>()
             var i = 0
             val start = testScheduler.currentTime

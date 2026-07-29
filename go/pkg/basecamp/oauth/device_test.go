@@ -2121,7 +2121,9 @@ func TestParseRetryAfterSeconds_ASCIIOWSOnly(t *testing.T) {
 func TestPollDeviceToken_429MalformedRetryAfterFallsBackToInterval(t *testing.T) {
 	// The final case runs NBSP+"30" end-to-end through a real HTTP round trip
 	// (Go passes obs-text header bytes through unmodified).
-	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999", "+30", "\u00a030"} {
+	// "99999999999": 11 significant digits — representable in an int, but past
+	// the shared 10-digit bound, so it must fall back like TS/Python/Ruby.
+	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999", "99999999999", "+30", "\u00a030"} {
 		t.Run("header="+header, func(t *testing.T) {
 			srv := queueTokenResponses429(t, []struct {
 				status     int

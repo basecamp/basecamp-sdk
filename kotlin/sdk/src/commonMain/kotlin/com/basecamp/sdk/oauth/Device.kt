@@ -511,7 +511,12 @@ private fun parseRetryAfterSeconds(header: String?): Long {
     // that toLongOrNull() then converts, treating a malformed HTTP
     // delta-seconds value as valid instead of falling back to the interval.
     if (trimmed.isEmpty() || !trimmed.all { it in '0'..'9' }) return 0
-    val value = trimmed.toLongOrNull() ?: return 0
+    // The shared 10-significant-digit bound (SPEC §16): strip leading zeros
+    // first so a padded in-range delta is honored, then treat longer strings
+    // as unrepresentable → interval fallback — matching TS/Python/Ruby.
+    val significant = trimmed.trimStart('0').ifEmpty { "0" }
+    if (significant.length > 10) return 0
+    val value = significant.toLongOrNull() ?: return 0
     if (value <= 0) return 0
     // A representable delta beyond the shared device ceiling clamps rather
     // than falling back: the wait rule clamps to the remaining code lifetime

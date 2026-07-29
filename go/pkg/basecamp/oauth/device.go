@@ -569,8 +569,19 @@ func parseRetryAfterSeconds(header string) int {
 			return 0
 		}
 	}
+	// The shared 10-significant-digit bound (SPEC §16): strip leading zeros
+	// first so a padded in-range delta is honored, then treat longer strings
+	// as unrepresentable → interval fallback — matching TS/Python/Ruby, where
+	// an 11-digit delta must not clamp in one SDK and fall back in another.
+	significant := strings.TrimLeft(trimmed, "0")
+	if significant == "" {
+		significant = "0"
+	}
+	if len(significant) > 10 {
+		return 0
+	}
 	// A digit string too long for int returns ErrRange → malformed → 0.
-	v, err := strconv.Atoi(trimmed)
+	v, err := strconv.Atoi(significant)
 	if err != nil || v <= 0 {
 		return 0
 	}
