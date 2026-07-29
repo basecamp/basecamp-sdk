@@ -42,7 +42,15 @@ gpr.user=YOUR_GITHUB_USERNAME
 gpr.key=YOUR_CLASSIC_TOKEN
 ```
 
-The repository block below falls back to the `GITHUB_USER` and `GITHUB_ACCESS_TOKEN` environment variables, which is usually what you want in CI.
+The repository block below also reads the `GITHUB_USER` and `GITHUB_ACCESS_TOKEN` environment variables. Those names are this project's own convention, not GitHub Actions defaults — Actions gives you `github.actor` and `secrets.GITHUB_TOKEN` — so a workflow has to map them:
+
+```yaml
+env:
+  GITHUB_USER: x-access-token
+  GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+`secrets.GITHUB_TOKEN` is scoped to the repository running the workflow. Consuming this package from a different repository needs a classic PAT stored as a secret instead.
 
 ### 3. Declare the repository and dependency
 
@@ -61,7 +69,8 @@ repositories {
 }
 
 dependencies {
-    // Latest release: https://github.com/basecamp/basecamp-sdk/releases/latest
+    // Replace VERSION with the latest release:
+    // https://github.com/basecamp/basecamp-sdk/releases/latest
     implementation("com.basecamp:basecamp-sdk:VERSION")
 }
 ```
@@ -70,7 +79,43 @@ dependencies {
 
 ### Maven
 
-Use `com.basecamp:basecamp-sdk-jvm` instead. Gradle reads the Gradle Module Metadata that ships alongside the root `com.basecamp:basecamp-sdk` artifact and transparently redirects to the JVM variant; Maven does not, so it resolves the root jar directly and finds a Kotlin Multiplatform metadata jar with no classes in it.
+Maven needs a different artifact, plus its own repository declaration and credentials.
+
+Depend on **`basecamp-sdk-jvm`**, not `basecamp-sdk`. Gradle reads the Gradle Module Metadata that ships alongside the root `com.basecamp:basecamp-sdk` artifact and transparently redirects to the JVM variant. Maven does not read that metadata, so it resolves the root jar directly — which *succeeds*, and puts a Kotlin Multiplatform metadata jar containing no classes on your classpath. Nothing fails until compile time.
+
+```xml
+<dependency>
+  <groupId>com.basecamp</groupId>
+  <artifactId>basecamp-sdk-jvm</artifactId>
+  <!-- Replace with the latest release: https://github.com/basecamp/basecamp-sdk/releases/latest -->
+  <version>VERSION</version>
+</dependency>
+```
+
+Declare the repository in the same `pom.xml`:
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/basecamp/basecamp-sdk</url>
+  </repository>
+</repositories>
+```
+
+And put the credentials in `~/.m2/settings.xml`, where `<id>` must match the repository's:
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>YOUR_GITHUB_USERNAME</username>
+      <password>YOUR_CLASSIC_TOKEN</password>
+    </server>
+  </servers>
+</settings>
+```
 
 ### Troubleshooting
 

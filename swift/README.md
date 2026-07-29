@@ -27,11 +27,12 @@ Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 In Xcode: **File > Add Package Dependencies**, enter `https://github.com/basecamp/basecamp-sdk`, and choose the version you want.
 
-Or add the package to your `Package.swift`:
+Or add the package to your `Package.swift`. Replace `MAJOR.MINOR.PATCH` with the version you want — `Package.swift` requires a literal, so this snippet does not compile until you do:
 
 ```swift
 dependencies: [
-    // Latest release: https://github.com/basecamp/basecamp-sdk/releases/latest
+    // Replace with the latest release:
+    // https://github.com/basecamp/basecamp-sdk/releases/latest
     .package(url: "https://github.com/basecamp/basecamp-sdk", from: "MAJOR.MINOR.PATCH"),
 ],
 targets: [
