@@ -480,7 +480,10 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     // degrading into a 0ms hot loop.
     const waitMs = Math.max(1, Math.floor(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs)));
     try {
-      await sleepFn(waitMs, signal);
+      // Race the injected sleep against the signal: a custom sleepFn that
+      // ignores its signal argument must not hold a cancelled poll open until
+      // its timer fires (or forever, for a never-settling seam).
+      await (signal ? raceAbort(signal, () => sleepFn(waitMs, signal)) : sleepFn(waitMs, signal));
     } catch (err) {
       // The caller aborted the signal mid-wait: surface the contractual
       // cancellation, never let a raw AbortError/DOMException escape.
