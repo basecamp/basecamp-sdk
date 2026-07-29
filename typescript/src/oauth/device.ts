@@ -475,7 +475,10 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     // would round a fractional remainder past the deadline, and the <1ms
     // guard above keeps the floor at >= 1.
     const remainingMs = deadline - now;
-    const waitMs = Math.floor(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs));
+    // max(1, floor(...)): floor stays inside the remaining lifetime, and the
+    // 1ms floor keeps a caller-supplied sub-millisecond interval from
+    // degrading into a 0ms hot loop.
+    const waitMs = Math.max(1, Math.floor(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs)));
     try {
       await sleepFn(waitMs, signal);
     } catch (err) {

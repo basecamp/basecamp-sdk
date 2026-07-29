@@ -333,7 +333,13 @@ async function doTokenRequest(
     // Check for error response
     if (!response.ok) {
       const errorData = data as OAuthErrorResponse;
-      const rawMessage = errorData.error_description || errorData.error || "Token request failed";
+      // Non-string error/error_description (numbers, objects) must not throw
+      // a raw TypeError below — that would be misclassified as retryable
+      // network, losing the api_error status context.
+      const rawMessage =
+        (typeof errorData.error_description === "string" && errorData.error_description) ||
+        (typeof errorData.error === "string" && errorData.error) ||
+        "Token request failed";
       const message = rawMessage.length > 500 ? rawMessage.slice(0, 497) + "..." : rawMessage;
 
       if (response.status === 401 || errorData.error === "invalid_grant") {

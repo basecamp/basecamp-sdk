@@ -212,6 +212,14 @@ func wholeSeconds(v *float64) (int, bool) {
 // (`read`). A network failure yields a DeviceFlowError(transport); a non-2xx,
 // unparsable, or invalid response yields a coded *basecamp.Error.
 func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientID string, opts ...DeviceOption) (*DeviceAuthorization, error) {
+	// An already-cancelled ctx makes no request at all — a context-ignoring
+	// injected RoundTripper would otherwise still send the POST (the standard
+	// transport rejects pre-cancelled contexts itself). Mirrors TS's entry
+	// throwIfAborted.
+	if err := ctx.Err(); err != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
+	}
+
 	cfg := newDeviceConfig(opts)
 
 	if err := basecamp.RequireSecureEndpoint(deviceAuthEndpoint); err != nil {
@@ -304,6 +312,11 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		// Carry the HTTP status like the sibling non-2xx raise above (and Python)
 		// so a failed 2xx-body parse still reports which response it came from.
 		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", HTTPStatus: resp.StatusCode, Cause: err}
+	}
+	// And once more AFTER decoding: a cancellation landing while Unmarshal
+	// chewed a large body must not hand back a usable device code.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
 	}
 	return validateDeviceAuthorization(raw, resp.StatusCode)
 }
