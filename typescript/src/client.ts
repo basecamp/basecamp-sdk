@@ -1055,6 +1055,16 @@ function createRetryMiddleware(
 
         await sleep(delay);
 
+        // The raw fetch below bypasses the middleware chain, so no downstream
+        // middleware sees this attempt begin — start it here.
+        //
+        // Started after the backoff but before any work that can throw. After, so
+        // the attempt's duration measures the request rather than the sleep;
+        // before, so that if the auth refresh or the fetch throws, the catch has a
+        // live attempt to finalize. Starting it later would let onRetry announce
+        // attempt 2 and then never account for it.
+        lifecycle.begin(id, method, url, failedAttempt + 1);
+
         const body = bodyCache.get(id) ?? null;
 
         const retryRequest = new Request(url, {
@@ -1068,10 +1078,6 @@ function createRetryMiddleware(
         if (authStrategy) {
           await authStrategy.authenticate(retryRequest.headers);
         }
-
-        // This raw fetch bypasses the middleware chain, so no downstream middleware
-        // sees the attempt begin — start it here.
-        lifecycle.begin(id, method, url, failedAttempt + 1);
 
         // Deliberately NOT finalized here. The returned response still flows
         // through the cache middleware, which may rewrite a 304 into a cached 200;

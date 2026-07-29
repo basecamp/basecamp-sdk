@@ -342,6 +342,50 @@ describe("middleware request lifecycle", () => {
     }).toEqual({ attempt: 2, statusCode: 200, fromCache: true });
   });
 
+  // Review follow-up. Attempt 2 begins before the auth refresh, so a throw from
+  // that refresh still lands on a live attempt. Otherwise onRetry announces the
+  // upcoming attempt and nothing ever accounts for it — the same blind spot this
+  // PR exists to close, just moved one step later.
+  it("accounts for attempt 2 when the retry's auth refresh throws", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () =>
+        new HttpResponse(null, { status: 429, headers: { "Retry-After": "0" } })
+      )
+    );
+
+    // Succeeds for the initial request, fails when the retry refreshes.
+    let calls = 0;
+    const failingAuth = {
+      async authenticate(headers: Headers) {
+        calls += 1;
+        if (calls > 1) throw new Error("token refresh failed");
+        headers.set("Authorization", "Bearer test-token");
+      },
+    };
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      auth: failingAuth,
+      hooks,
+    });
+
+    await expect(client.GET("/projects.json")).rejects.toThrow("token refresh failed");
+
+    // A retry to attempt 2 was announced...
+    const retries = events.filter((e) => e.kind === "retry");
+    expect(retries.map((r) => r.attempt)).toEqual([2]);
+
+    // ...and attempt 2 is accounted for, not silently dropped.
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2]);
+    const last = ends(events).at(-1)!;
+    expect({ attempt: last.attempt, statusCode: last.statusCode }).toEqual({
+      attempt: 2,
+      statusCode: 0,
+    });
+    expect(last.error).toBeInstanceOf(Error);
+  });
+
   // Review follow-up. A failed response carrying a body has its stream cancelled
   // before the backoff, so a throttled client does not hold a connection per
   // in-flight retry. The other retry tests all use null-body responses, so this is
