@@ -1,0 +1,25 @@
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_beed1703762ffa 759-765,767
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_ed2e277ce88cbc 2146-2173
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_a45967eb350897 672-677
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_94c33e66e60dc0 607-638
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c1d4d8e80d0e3d13384ef462c847ed7eddc749d8",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+ruby/lib/basecamp/oauth/discovery.rb
+  s_86d0793371d0f3::t_6151e424360760 21-25
+ruby/lib/basecamp/oauth/resource.rb
+  s_86d0793371d0f3::t_e5c3b29a9b0432 8-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e19c48e7456331be2bfc894850f6388d6510b287",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

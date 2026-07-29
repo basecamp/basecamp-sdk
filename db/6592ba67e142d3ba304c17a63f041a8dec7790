@@ -1,0 +1,25 @@
+go/README.md
+  s_86d0793371d0f3::t_3e5159fa2f7dfa 293-296
+kotlin/README.md
+  s_86d0793371d0f3::t_67ddf4f38aa858 205-208
+python/README.md
+  s_86d0793371d0f3::t_b2b54924559232 192-196
+ruby/README.md
+  s_86d0793371d0f3::t_2b5fc35c88e812 142-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "db6592ba67e142d3ba304c17a63f041a8dec7790",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

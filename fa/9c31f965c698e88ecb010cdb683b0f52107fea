@@ -1,0 +1,33 @@
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_bc32543e189993 1085
+  s_86d0793371d0f3::t_2d9dd05ea9aeb3 735
+  s_86d0793371d0f3::t_f50fc382560c9c 736-759,1086,1089,1091-1094
+  s_86d0793371d0f3::t_183be65a9a6c9f 1090
+  s_86d0793371d0f3::t_1614c011408fe4 1095-1097
+  s_86d0793371d0f3::t_f7bc2aebeb21ff 1098-1109
+  s_86d0793371d0f3::t_1ef12ae4afc8bf 1087-1088
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_b26a61add9f362 240-244,328-341
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_b26a61add9f362 511-515,754-768
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_c9a950daee2369 947-971
+  s_86d0793371d0f3::t_1cba0b2b01ce89 754-772
+  s_86d0793371d0f3::t_a9c2254b32fe94 23-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fa9c31f965c698e88ecb010cdb683b0f52107fea",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

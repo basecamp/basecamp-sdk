@@ -1,0 +1,39 @@
+SPEC.md
+  s_86d0793371d0f3::t_7081d61e92b738 1334-1344
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_37f8b8ebdf7589 573,576-581
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_cf5005b0d7573e 2063-2066
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_8d03ca90fc4c2c 511-517
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_77d90cc218076a 652-672
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_d5ed41448d4ab9 297-302
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_57c82bc4dbdac5 1020-1023
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_819772de6b4014 713-725
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_a4bca3416d5635 1178-1182
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_ac2d3296311309 604-611
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_e7c626746d501b 1813-1820
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "56254d87a5988a39631bc66542234238e2b97261",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
