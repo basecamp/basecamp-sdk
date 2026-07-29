@@ -477,10 +477,11 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     }
     // Wait the larger of the server interval and the timeout backoff, clamped
     // to the remaining lifetime (guaranteed >= 1ms here) so the wait never
-    // overshoots the monotonic deadline. Ceil to whole milliseconds — timers
-    // truncate fractional delays toward 0.
+    // overshoots the monotonic deadline. FLOOR to whole milliseconds: ceil
+    // would round a fractional remainder past the deadline, and the <1ms
+    // guard above keeps the floor at >= 1.
     const remainingMs = deadline - now;
-    const waitMs = Math.ceil(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs));
+    const waitMs = Math.floor(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs));
     try {
       await sleepFn(waitMs, signal);
     } catch (err) {

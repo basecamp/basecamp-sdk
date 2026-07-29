@@ -629,6 +629,19 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollAcceptsAWhitespaceOnlyAccessToken() = runTest {
+        // Tokens are opaque: the cross-SDK contract requires only
+        // NON-EMPTINESS — a whitespace token is the server's business.
+        val body = """{"access_token":"  ","token_type":"Bearer"}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val token = pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        assertEquals("  ", token.accessToken)
+        client.close()
+    }
+
+    @Test
     fun pollRejectsEmptyAccessToken() = runTest {
         // A 2xx whose access_token is blank must be an api_error, never an accepted
         // token and never a retryable transport error.

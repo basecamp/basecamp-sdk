@@ -228,6 +228,10 @@ suspend fun requestDeviceAuthorization(
                 )
             }
             val body = readBoundedText(response, MAX_DEVICE_BODY_BYTES)
+            // Re-check after the body read, BEFORE decoding: an engine whose
+            // body channel cancels the caller while yielding malformed JSON
+            // must surface the native cancellation, not the parse Api error.
+            currentCoroutineContext().ensureActive()
             val raw = try {
                 deviceJson.decodeFromString<RawDeviceAuthorization>(body)
             } catch (e: SerializationException) {
@@ -505,6 +509,10 @@ private suspend fun postDeviceTokenPoll(
     // buffering (readBoundedText throws api_error past the cap). A 4xx body IS read —
     // it carries authorization_pending/slow_down and other OAuth errors.
     val body = readBoundedText(response, MAX_DEVICE_BODY_BYTES)
+    // Re-check after the body read, BEFORE decoding: an engine whose body
+    // channel cancels the caller while yielding malformed JSON must surface
+    // the native cancellation, not the parse Api error.
+    currentCoroutineContext().ensureActive()
 
     // Exactly HTTP 200, not any 2xx: RFC 8628/6749 token responses are 200, and
     // SPEC §16 pins the contract. A nonstandard 201/202 carrying an access_token
@@ -517,9 +525,11 @@ private suspend fun postDeviceTokenPoll(
             // Malformed 2xx token response — api_error, NOT a retryable transport.
             throw BasecampException.Api("Failed to parse device token response", httpStatus = status, cause = e)
         }
-        if (raw.accessToken.isBlank()) {
-            // A 2xx with an empty/blank access_token is a server/api fault
-            // (api_error), never an accepted token nor a retryable transport error.
+        if (raw.accessToken.isEmpty()) {
+            // A 2xx with an EMPTY access_token is a server/api fault
+            // (api_error). isEmpty, not isBlank: tokens are opaque and the
+            // cross-SDK contract requires only non-emptiness — a whitespace
+            // token is the server's business.
             throw BasecampException.Api("Device token response missing access_token", httpStatus = status)
         }
         // A non-numeric expires_in (string/bool) already fails deserialization
