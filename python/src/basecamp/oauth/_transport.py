@@ -159,4 +159,10 @@ def request_bounded(
         if isinstance(exc, TimeoutError):
             raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline") from exc
         raise exc
+    if not result:
+        # The worker died without a result AND without recording an exception
+        # (a BaseException such as KeyboardInterrupt escaping the except
+        # Exception net). Fail closed inside the documented contract rather
+        # than leak an IndexError.
+        raise httpx.TransportError(f"{context} request worker exited without a result")
     return result[0]
