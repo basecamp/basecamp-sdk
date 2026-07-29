@@ -1,0 +1,19 @@
+python/src/basecamp/oauth/_transport.py
+  s_922a1c40800439::t_8568972569dbaa 18,129-136,164-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d4013c301d9d1e87e919e8f2690a771c370042f0",
+  "prompts": {},
+  "sessions": {
+    "s_922a1c40800439": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8ff2-1e8a-7772-a001-d6c92e147192",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
