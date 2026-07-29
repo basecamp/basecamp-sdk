@@ -39,6 +39,12 @@ class AsyncOAuthTokenProvider:
     """Async token provider that supports OAuth token refresh.
 
     Uses an asyncio lock for concurrency safety.
+
+    Launchpad-only: the token URL is fixed to Launchpad's legacy endpoint and
+    no RFC 8707 ``resource`` indicator is sent. BC5 multi-account refresh
+    tokens require the resource echo — use the discovery +
+    :func:`basecamp.oauth.exchange.refresh_token` path (passing
+    ``token.resource``) instead of this provider.
     """
 
     TOKEN_URL = "https://launchpad.37signals.com/authorization/token"
