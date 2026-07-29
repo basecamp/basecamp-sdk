@@ -1,0 +1,21 @@
+python/src/basecamp/async_auth.py
+  s_86d0793371d0f3::t_ec5e5dd768b781 42-47
+python/src/basecamp/auth.py
+  s_86d0793371d0f3::t_12028254ca8356 41-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "575b8df26d6596a96498b64154a47183581b82a7",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

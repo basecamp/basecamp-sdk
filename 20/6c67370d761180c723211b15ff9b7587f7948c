@@ -1,0 +1,29 @@
+conformance/oauth-token/fixtures/01-resource-round-trip.json
+  s_86d0793371d0f3::t_21ac70c9f87786 7-11,13-17
+conformance/oauth-token/fixtures/02-resource-absent.json
+  s_86d0793371d0f3::t_0793d181da7d99 7-10,12-16
+conformance/oauth-token/fixtures/03-resource-null.json
+  s_86d0793371d0f3::t_7864f6d4a461e0 7-11,13-17
+conformance/oauth-token/fixtures/04-resource-empty-rejected.json
+  s_86d0793371d0f3::t_a9e6943884b429 3,7-11,13-16
+conformance/oauth-token/fixtures/05-resource-non-string-rejected.json
+  s_86d0793371d0f3::t_d05e12de3380d4 7-11,13-16
+conformance/oauth-token/schema.json
+  s_86d0793371d0f3::t_5cd47668c515f5 77-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "206c67370d761180c723211b15ff9b7587f7948c",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
