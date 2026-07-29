@@ -5,6 +5,7 @@
  * Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
  */
 
+import { MAX_TOKEN_LIFETIME_SECONDS } from "./device.js";
 import { BasecampError } from "../errors.js";
 import { isLocalhost } from "../security.js";
 import type {
@@ -337,6 +338,15 @@ async function doTokenRequest(
       });
     }
 
+    // A valid-JSON-but-non-object body (null, array, number, string) is a
+    // malformed response — fail as api_error before any property deref,
+    // never a raw TypeError misclassified as retryable network.
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      throw new BasecampError("api_error", "Token response is not a JSON object", {
+        httpStatus: response.status,
+      });
+    }
+
     // Parse successful response
     const tokenData = data as RawTokenResponse;
 
@@ -356,6 +366,34 @@ async function doTokenRequest(
       throw new BasecampError("api_error", "Token response token_type must be a non-empty string when present", {
         httpStatus: response.status,
       });
+    }
+
+    // The remaining optional fields get the device-flow strictness: a
+    // non-string refresh_token/scope or a non-finite/fractional/oversized
+    // expires_in would leak malformed values through the public OAuthToken
+    // type (or build an Invalid Date expiry).
+    if (tokenData.refresh_token != null && typeof tokenData.refresh_token !== "string") {
+      throw new BasecampError("api_error", "Token response refresh_token must be a string", {
+        httpStatus: response.status,
+      });
+    }
+    if (tokenData.scope != null && typeof tokenData.scope !== "string") {
+      throw new BasecampError("api_error", "Token response scope must be a string", {
+        httpStatus: response.status,
+      });
+    }
+    if (
+      tokenData.expires_in != null &&
+      (typeof tokenData.expires_in !== "number" ||
+        !Number.isInteger(tokenData.expires_in) ||
+        tokenData.expires_in <= 0 ||
+        tokenData.expires_in > MAX_TOKEN_LIFETIME_SECONDS)
+    ) {
+      throw new BasecampError(
+        "api_error",
+        `Token response expires_in must be a finite positive whole number no greater than ${MAX_TOKEN_LIFETIME_SECONDS} seconds`,
+        { httpStatus: response.status }
+      );
     }
 
     return {

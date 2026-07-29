@@ -67,7 +67,7 @@ function resolveDeviceTimeoutMs(timeoutMs: number): number {
  * never expiring. A value past this ceiling is a malformed response. Shared
  * across all five SDKs.
  */
-const MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647;
+export const MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647;
 
 /** slow_down bumps the interval by this many seconds, sustained (RFC 8628 §3.5). */
 const SLOW_DOWN_INCREMENT_SECONDS = 5;

@@ -230,6 +230,26 @@ describe("Token Exchange", () => {
   };
 
   describe("exchangeCode", () => {
+    it.each([
+      ["null body", null],
+      ["array body", []],
+      ["numeric refresh_token", { access_token: "a", refresh_token: 123 }],
+      ["numeric scope", { access_token: "a", scope: 7 }],
+      ["fractional expires_in", { access_token: "a", expires_in: 3600.5 }],
+      ["oversized expires_in", { access_token: "a", expires_in: 9_000_000_000_000_000_000 }],
+    ])("rejects a malformed 200 token body (%s) as api_error with the HTTP status", async (_label, body) => {
+      server.use(http.post(tokenEndpoint, () => HttpResponse.json(body as never)));
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.httpStatus).toBe(200);
+    });
+
     it("rejects a numeric access_token as api_error with the HTTP status", async () => {
       server.use(
         http.post(tokenEndpoint, () =>
