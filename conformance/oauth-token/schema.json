@@ -74,8 +74,8 @@
           "then": { "oneOf": [{ "required": ["resource"] }, { "required": ["resourceAbsent"] }] }
         },
         {
-          "description": "formResource and formResourceAbsent are mutually exclusive — a fixture cannot both pin a sent value and assert the key was absent.",
-          "not": { "required": ["formResource", "formResourceAbsent"] }
+          "description": "Every refresh round-trip sends a form: pin the resource key exactly one way. A fixture omitting both would silently skip the form assertion entirely, and stating both is contradictory.",
+          "oneOf": [{ "required": ["formResource"] }, { "required": ["formResourceAbsent"] }]
         }
       ]
     }

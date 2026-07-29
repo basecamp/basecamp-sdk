@@ -4,7 +4,15 @@
   "operation": "refreshToken",
   "response": {
     "status": 200,
-    "body": { "access_token": "tok", "token_type": "Bearer", "resource": "urn:bc:account:42" }
+    "body": {
+      "access_token": "tok",
+      "token_type": "Bearer",
+      "resource": "urn:bc:account:42"
+    }
   },
-  "expect": { "outcome": "token", "resource": "urn:bc:account:42" }
+  "expect": {
+    "outcome": "token",
+    "resource": "urn:bc:account:42",
+    "formResourceAbsent": true
+  }
 }

@@ -4,7 +4,15 @@
   "operation": "refreshToken",
   "response": {
     "status": 200,
-    "body": { "access_token": "tok", "token_type": "Bearer", "resource": null }
+    "body": {
+      "access_token": "tok",
+      "token_type": "Bearer",
+      "resource": null
+    }
   },
-  "expect": { "outcome": "token", "resourceAbsent": true }
+  "expect": {
+    "outcome": "token",
+    "resourceAbsent": true,
+    "formResourceAbsent": true
+  }
 }
