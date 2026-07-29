@@ -1,0 +1,26 @@
+kotlin/README.md
+  s_267ddb5ac82dcb::t_da8688962b08ce 84
+  s_267ddb5ac82dcb::t_b22a76a9b2e9ae 109-117
+  s_267ddb5ac82dcb::t_e84c535dacc0d4 90
+  s_267ddb5ac82dcb::t_e98678151b9890 45-53
+  s_267ddb5ac82dcb::t_97be2efbcd734e 72-73,83,85-89,91-108,118
+  s_267ddb5ac82dcb::t_f018785606b535 82
+swift/README.md
+  s_267ddb5ac82dcb::t_20626b3a77afbd 30,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7fd308220321189d27e27be24adc9a1e14085b88",
+  "prompts": {},
+  "sessions": {
+    "s_267ddb5ac82dcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57d110ce-5c18-4d22-aa00-30e788664981",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
