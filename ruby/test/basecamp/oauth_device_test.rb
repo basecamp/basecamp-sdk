@@ -92,6 +92,26 @@ class OAuthDeviceTest < Minitest::Test
 
   # --- request_device_authorization -----------------------------------------
 
+  def test_request_maps_an_oversized_default_transport_body_to_api_error
+    # The nil-client path early-returns Fetcher.stream_http, whose raw
+    # BodyTooLarge marker is still mapped by post_form's def-level rescues —
+    # a raise inside `return expr` does not bypass a method-level rescue.
+    stub_request(:post, DEVICE_ENDPOINT).to_return(
+      status: 200, headers: { "Content-Type" => "application/json" },
+      body: "x" * 2048
+    )
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: DEVICE_ENDPOINT, client_id: "basecamp-cli",
+        max_body_bytes: 1024
+      )
+    end
+
+    assert_equal "api_error", error.type
+    assert_match(/size cap/i, error.message)
+  end
+
   def test_request_omits_scope_when_unset_and_validates_response
     stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
 
