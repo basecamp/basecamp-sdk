@@ -1,0 +1,21 @@
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_86d0793371d0f3::t_5751cadc2182e4 284-294
+ruby/test/basecamp/oauth_transport_test.rb
+  s_86d0793371d0f3::t_d8cfcc8215cb57 606-631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "692a07eb184c8e3cb8e93b53cf2f21b2b69e96a0",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

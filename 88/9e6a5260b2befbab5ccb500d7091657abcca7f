@@ -1,0 +1,35 @@
+python/src/basecamp/oauth/_transport.py
+  s_6fb980fffa1941::t_3913c0ae709d36 72
+ruby/lib/basecamp/oauth/discovery.rb
+  s_6fb980fffa1941::t_83398da44bc5e6 26-27
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_86d0793371d0f3::t_ad550e4edfbc87 283-287,309-312,464,531-538,551-569
+ruby/lib/basecamp/oauth/resource.rb
+  s_6fb980fffa1941::t_fd66e8e23d9f17 13-14
+ruby/test/basecamp/oauth_transport_test.rb
+  s_86d0793371d0f3::t_aac15484931ee3 5,8,305-351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "889e6a5260b2befbab5ccb500d7091657abcca7f",
+  "prompts": {},
+  "sessions": {
+    "s_6fb980fffa1941": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa9dc-8bba-7f33-9304-5625162c6978",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
