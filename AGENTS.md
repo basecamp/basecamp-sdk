@@ -1,18 +1,9 @@
 # Basecamp SDK Agent Guidelines
 
-## Current Status
-
-| Component | Status | Details |
-|-----------|--------|---------|
-| **Smithy Spec** | 226 operations | Single source of truth for all APIs |
-| **Go SDK** | Production-ready | Full generated client + service wrappers |
-| **TypeScript SDK** | Production-ready | 46 generated services, openapi-fetch based |
-| **Ruby SDK** | Production-ready | 46 generated services |
-| **Swift SDK** | Production-ready | 46 generated services, URLSession-based |
-| **Kotlin SDK** | Production-ready | 46 accessors over 46 generated service classes (`todos` and `cards` expose composite subclasses of their generated services), Ktor/KMP-based |
-| **Python SDK** | Production-ready | 46 generated services, httpx-based |
-
-All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated services**. All wire operations are generated. The only hand-written runtime API methods are sanctioned composites that call generated wire methods exclusively (today: the merge-safe Todos `update`/`edit` and Cards `update`) — see SPEC.md §18 "Hand-Written Composite Methods" for the rules they must satisfy.
+All six SDKs (Go, TypeScript, Ruby, Swift, Kotlin, Python) share one architecture:
+**Smithy spec -> OpenAPI -> generated services.** Every wire operation is generated. The
+only hand-written runtime API methods are sanctioned composites calling generated wire
+methods exclusively -- see SPEC.md §18 "Hand-Written Composite Methods".
 
 ---
 
@@ -22,25 +13,27 @@ All six SDKs share the same architecture: **Smithy spec -> OpenAPI -> Generated 
 Smithy Spec → OpenAPI → Generated Client → Service Layer → User
 ```
 
+Paths are from the repository root, since that is where you will be working.
+
 | SDK | Generated Client | Service Layer |
 |-----|-----------------|---------------|
-| **Go** | `pkg/generated/client.gen.go` | `pkg/basecamp/*.go` (wraps generated client) |
-| **TypeScript** | `openapi-fetch` + `schema.d.ts` | `src/generated/services/*.ts` |
-| **Ruby** | HTTP client | `lib/basecamp/generated/services/*.rb` |
-| **Swift** | `URLSession` via `Transport` protocol | `Sources/Basecamp/Generated/Services/*.swift` |
-| **Kotlin** | Ktor via `BaseService` | `sdk/src/commonMain/kotlin/.../generated/services/*.kt` |
-| **Python** | httpx via `HttpClient` | `src/basecamp/generated/services/*.py` |
+| **Go** | `go/pkg/generated/client.gen.go` | `go/pkg/basecamp/*.go` (wraps generated client) |
+| **TypeScript** | `openapi-fetch` + `schema.d.ts` | `typescript/src/generated/services/*.ts` |
+| **Ruby** | HTTP client | `ruby/lib/basecamp/generated/services/*.rb` |
+| **Swift** | `URLSession` via `Transport` protocol | `swift/Sources/Basecamp/Generated/Services/*.swift` |
+| **Kotlin** | Ktor via `BaseService` | `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/*.kt` |
+| **Python** | httpx via `HttpClient` | `python/src/basecamp/generated/services/*.py` |
 
 All 226 operations across the ~46-service per-SDK layer are generated. Hand-written code is limited to infrastructure:
 
-| Purpose | TypeScript | Ruby | Swift | Kotlin | Python |
-|---------|-----------|------|-------|--------|--------|
-| HTTP helpers, pagination, hooks | `src/services/base.ts` | `lib/basecamp/services/base_service.rb` | `Sources/Basecamp/Services/BaseService.swift` | `sdk/.../services/BaseService.kt` | `src/basecamp/generated/services/_base.py` |
-| OAuth flows (not in OpenAPI spec) | `src/services/authorization.ts` | `lib/basecamp/services/authorization_service.rb` | — | `sdk/.../oauth/*.kt` | `src/basecamp/services/authorization.py` |
-| Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `src/services/todos-extensions.ts` | `lib/basecamp/services/todos_extensions.rb` | `Sources/Basecamp/TodosServiceExtensions.swift` | `sdk/.../services/TodosService.kt` | `src/basecamp/services/todos.py` |
-| Merge-safe Cards composite (update over generated get+updateVerbatim; SPEC.md §18) | `src/services/cards-extensions.ts` | `lib/basecamp/services/cards_extensions.rb` | `Sources/Basecamp/CardsServiceExtensions.swift` | `sdk/.../services/CardsService.kt` | `src/basecamp/services/cards.py` |
+| Purpose | Location |
+|---------|----------|
+| HTTP helpers, pagination, hooks | `typescript/src/services/base.ts`, `ruby/lib/basecamp/generated/services/base_service.rb`, `swift/Sources/Basecamp/Services/BaseService.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt`, `python/src/basecamp/generated/services/_base.py` |
+| OAuth flows (not in OpenAPI spec) | `typescript/src/services/authorization.ts`, `ruby/lib/basecamp/services/authorization_service.rb`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/`, `python/src/basecamp/services/authorization.py` (no Swift equivalent) |
+| Merge-safe Todos composites (update/edit over generated get+replace; SPEC.md §18) | `typescript/src/services/todos-extensions.ts`, `ruby/lib/basecamp/services/todos_extensions.rb`, `swift/Sources/Basecamp/TodosServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodosService.kt`, `python/src/basecamp/services/todos.py` |
+| Merge-safe Cards composite (update over generated get+updateVerbatim; SPEC.md §18) | `typescript/src/services/cards-extensions.ts`, `ruby/lib/basecamp/services/cards_extensions.rb`, `swift/Sources/Basecamp/CardsServiceExtensions.swift`, `kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/CardsService.kt`, `python/src/basecamp/services/cards.py` |
 
-Hand-written service files in `src/services/` (TS) and `lib/basecamp/services/` (Ruby) beyond the tables above are NOT loaded at runtime. They exist only as reference implementations.
+Hand-written service files in `typescript/src/services/` and `ruby/lib/basecamp/services/` beyond the table above are NOT loaded at runtime. They exist only as reference implementations.
 
 ### Smithy Spec vs Actual API Responses
 
@@ -76,48 +69,6 @@ When verifying API response shapes, check Go generated code in `go/pkg/generated
 
 If you're writing `fmt.Sprintf` with an API path, you're doing it wrong. If the generated client lacks functionality, fix the spec and regenerate — don't work around it.
 
-### Anti-patterns
-
-```go
-// WRONG - Manual path construction
-path := fmt.Sprintf("/buckets/%d/todolists/%d/todos.json", bucketID, todolistID)
-
-// WRONG - Query parameter hacks
-path := generatedPath + "?status=active"
-
-// WRONG - "Just this once" shortcuts
-path := fmt.Sprintf("/projects/%d/people.json", projectID)
-```
-
-### Correct Patterns
-
-```go
-// Single-resource: use generated client directly
-resp, err := client.gen.GetTodoWithResponse(ctx, accountID, bucketID, todoID)
-
-// Paginated: generated client for first page, Link headers for subsequent
-resp, err := client.gen.ListTodosWithResponse(ctx, accountID, bucketID, todolistID, params)
-nextURL := parseNextLink(resp.HTTPResponse.Header.Get("Link"))
-for nextURL != "" {
-    resp, err := client.Get(ctx, nextURL)  // URL from API, not constructed
-    nextURL = parseNextLink(resp.Headers.Get("Link"))
-}
-```
-
-```python
-# Python — single resource
-todo = account.todos.get(todo_id=123)
-
-# Python — paginated (automatic)
-todos = account.todos.list(todolist_id=456, status="active")
-
-# WRONG — manual path construction
-url = f"/buckets/{project_id}/todolists/{todolist_id}/todos.json"
-
-# WRONG — bypassing the SDK
-response = account.http.get(f"/{account_id}/buckets/{project_id}/todos.json")
-```
-
 ### Andon Cord — Stop and Fix Immediately
 
 Pull the andon cord when you see:
@@ -134,58 +85,15 @@ Pull the andon cord when you see:
 
 All new API coverage starts in `spec/basecamp.smithy`. Before writing SDK code, add operations and shapes to the spec.
 
-### Smithy Patterns
+`spec/basecamp.smithy` holds 226 worked operations. Copy the nearest one rather than
+working from a skeleton here: it shows the live conventions for naming, `@http` URIs,
+pagination traits and shape reuse, and it cannot drift from itself.
 
-```smithy
-/// Operation documentation
-@http(method: "GET", uri: "/buckets/{projectId}/resources/{resourceId}.json")
-operation GetResource {
-  input: GetResourceInput
-  output: GetResourceOutput
-}
+Two constraints the examples will not tell you outright:
 
-structure GetResourceInput {
-  @required
-  @httpLabel
-  projectId: ProjectId
-
-  @required
-  @httpLabel
-  resourceId: ResourceId
-}
-
-structure GetResourceOutput {
-  resource: Resource
-}
-```
-
-### Naming Conventions
-
-- Operations: `Verb` + `Noun` (e.g., `ListTodos`, `GetProject`, `CreateMessage`, `TrashComment`)
-- Input structures: `{OperationName}Input`
-- Output structures: `{OperationName}Output`
-- IDs: `{Resource}Id` as `long` type (e.g., `MessageId`, `CommentId`)
-- Status enums: Use `@documentation` string with valid values (e.g., `"active|archived|trashed"`)
-
-### Common URL Patterns
-
-| Pattern | Example |
-|---------|---------|
-| Bucket-scoped | `/buckets/{projectId}/{resources}/{resourceId}.json` |
-| Recording ops | `/buckets/{projectId}/recordings/{recordingId}/status/trashed.json` |
-| Nested resources | `/buckets/{projectId}/recordings/{recordingId}/comments.json` |
-| Account-level | `/reports/{reportType}.json` |
-
-### URI Constraints
-
-Smithy's `@http` URI labels cannot have literal suffixes in the same segment. `.json` is only valid after literal path segments:
-- OK: `/{accountId}/projects.json`
-- OK: `/{accountId}/buckets/{projectId}/todos/{todoId}`
-- WRONG: `/{accountId}/buckets/{projectId}/boosts/{boostId}.json`
-
-### Shape Reuse
-
-Reuse these common shapes: `ProjectId`, `PersonId`, `ISO8601Timestamp`, `ISO8601Date`, `Person`, `TodoParent`/`RecordingParent`, `TodoBucket`/`RecordingBucket`.
+- Every new operation needs a tag in `spec/overlays/tags.smithy`, or it is silently
+  absent from every generated service.
+- Smithy wrapper structures are a spec convention, not the wire shape (see above).
 
 ### Reference Sources
 
@@ -207,12 +115,12 @@ make smithy-build && make -C go generate && make url-routes && \
   make py-generate
 ```
 
-Or `make generate` if it cascades. Never commit a Smithy change without regenerating all downstream artifacts. Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
+`make generate` cascades the whole sequence. Never commit a Smithy change without regenerating all downstream artifacts. Never assume "I'll regenerate later" — regenerate now, or the drift compounds.
 
 ### Invariants
 
 1. **`openapi.json` must always reflect the current Smithy spec.** Run `make smithy-build` after any change to `spec/basecamp.smithy` or `spec/overlays/*.smithy`.
-2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, `kotlin/generator/.../Config.kt`, and `python/scripts/generate_services.py` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
+2. **Service generator mappings must stay current.** `typescript/scripts/generate-services.ts`, `ruby/scripts/generate-services.rb`, `kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt`, and `python/scripts/generate_services.py` all have hardcoded `TAG_TO_SERVICE` mappings. Update them for new/renamed/removed operations. Treat unmapped-operation warnings as errors.
 3. **Tags in `spec/overlays/tags.smithy` control service grouping.** Every new operation needs a tag or it won't appear in any generated service.
 4. **Hand-written Go service methods must use generated client types.** Field names, method signatures, and request/response body types come from `go/pkg/generated/client.gen.go`. One carve-out (SPEC.md §18 "Hand-Written Composite Methods"): where `omitempty` request structs cannot express always-send-empty semantics, a sanctioned composite's transport may marshal an explicit body map through the operation's generated `*WithBody` variant.
 
