@@ -331,9 +331,15 @@ module Basecamp
         # pass it explicitly; a nil p_addr disables the broken built-in.
         proxy_uri = uri.find_proxy
         http = if proxy_uri
+                 # Percent-decode the credentials: URI#user/#password return the
+                 # encoded forms, and the explicit-proxy Net::HTTP.new does NOT
+                 # unescape them the way its :ENV mode does — p%40ss would be
+                 # sent verbatim in Proxy-Authorization and fail authentication.
                  Net::HTTP.new(
                    uri.hostname, uri.port,
-                   proxy_uri.hostname, proxy_uri.port, proxy_uri.user, proxy_uri.password
+                   proxy_uri.hostname, proxy_uri.port,
+                   proxy_uri.user && URI.decode_www_form_component(proxy_uri.user),
+                   proxy_uri.password && URI.decode_www_form_component(proxy_uri.password)
                  )
         else
                  Net::HTTP.new(uri.hostname, uri.port, nil)

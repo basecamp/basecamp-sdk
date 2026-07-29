@@ -650,6 +650,41 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
+  def test_proxy_credentials_are_percent_decoded
+    # URI#user/#password return the percent-encoded forms, and the
+    # explicit-proxy Net::HTTP.new does not unescape them the way its :ENV
+    # mode does — the CONNECT's Proxy-Authorization must carry the DECODED
+    # credentials or authenticated proxies reject the request.
+    proxy = TCPServer.new("127.0.0.1", 0)
+    @servers << proxy
+    captured = +""
+    @server_threads << Thread.new do
+      conn = proxy.accept
+      @conns << conn
+      while (line = conn.gets) && line != "\r\n"
+        captured << line
+      end
+      conn.close
+    rescue IOError, SystemCallError
+      nil
+    end
+
+    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
+    saved = ENV.to_h.slice(*proxy_env)
+    proxy_env.each { |k| ENV.delete(k) }
+    ENV["https_proxy"] = "http://user:p%40ss@127.0.0.1:#{proxy.addr[1]}"
+    begin
+      assert_raises(Faraday::Error) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "https://proxy-auth.test/token", timeout: 1)
+      end
+      expected = [ "user:p@ss" ].pack("m0")
+      assert_includes captured, "Proxy-Authorization: Basic #{expected}"
+    ensure
+      proxy_env.each { |k| ENV.delete(k) }
+      saved.each { |k, v| ENV[k] = v }
+    end
+  end
+
   def test_proxy_connect_drip_is_bounded_by_the_deadline
     # With an ENV-configured proxy and an HTTPS endpoint, Net::HTTP parses the
     # proxy's CONNECT response BEFORE it marks the session started: the
