@@ -359,6 +359,7 @@ def poll_device_token(
     should_cancel: Callable[[], bool] | None = None,
     timeout: float = _DEVICE_TIMEOUT,
     max_body_bytes: int = MAX_DEVICE_BODY_BYTES,
+    deadline_at: float | None = None,
 ) -> OAuthToken:
     """Poll the token endpoint until approval, denial, or expiry (RFC 8628 §3.4–3.5).
 
@@ -427,7 +428,21 @@ def poll_device_token(
             raise OAuthError("usage", "poll_device_token clock must return a finite number of seconds")
         return value
 
-    deadline = _sample_clock() + expires_in
+    # An absolute issuance-anchored deadline (perform_device_login passes
+    # issued_at + expires_in) beats re-anchoring: clock time elapsing between
+    # the caller's remaining-lifetime computation and this entry — a process
+    # suspension above all — must never be handed back to the code. It can
+    # only SHORTEN the validated lifetime, never extend it.
+    if deadline_at is not None:
+        if not math.isfinite(deadline_at) or deadline_at > _sample_clock() + expires_in:
+            raise OAuthError(
+                "usage",
+                "poll_device_token deadline_at must be a finite monotonic timestamp "
+                "no later than expires_in seconds from now",
+            )
+        deadline = deadline_at
+    else:
+        deadline = _sample_clock() + expires_in
 
     params = {
         "grant_type": DEVICE_CODE_GRANT_TYPE,
@@ -735,6 +750,10 @@ def perform_device_login(
         auth.device_code,
         auth.interval,
         remaining,
+        # The EXACT issuance-anchored deadline: a clock advance between the
+        # remaining computation above and the poller's entry must not extend
+        # the code lifetime.
+        deadline_at=issued_at + auth.expires_in,
         clock=clock,
         sleep=sleep,
         should_cancel=should_cancel,

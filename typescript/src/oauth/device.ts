@@ -760,7 +760,13 @@ function raceAbort<T>(signal: AbortSignal, run: () => Promise<T>): Promise<T> {
     // throw SYNCHRONOUSLY despite the TS type — without this, that throw
     // would escape before the handlers attach and strand the listener.
     Promise.resolve()
-      .then(run)
+      .then(() => {
+        // The abort can win between entry and this microtask (the outer
+        // promise has already rejected) — never invoke the seam post-abort;
+        // an AbortSignal-ignoring fetch would still send the POST.
+        if (signal.aborted) throw abortError();
+        return run();
+      })
       .then(
         (value) => {
           signal.removeEventListener("abort", onAbort);

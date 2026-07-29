@@ -309,6 +309,11 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 
 	var raw rawDeviceAuthorization
 	if err := json.Unmarshal(body, &raw); err != nil {
+		// Cancellation wins even over a malformed body: another goroutine can
+		// cancel while Unmarshal chews a large invalid payload.
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+		}
 		// Carry the HTTP status like the sibling non-2xx raise above (and Python)
 		// so a failed 2xx-body parse still reports which response it came from.
 		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", HTTPStatus: resp.StatusCode, Cause: err}

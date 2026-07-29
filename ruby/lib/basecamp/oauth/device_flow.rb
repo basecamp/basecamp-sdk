@@ -144,7 +144,8 @@ module Basecamp
         def poll_device_token(
           token_endpoint:, client_id:, device_code:, interval:, expires_in:,
           clock: DEFAULT_CLOCK, sleeper: DEFAULT_SLEEPER, cancelled: DEFAULT_CANCELLED,
-          http_client: nil, timeout: DEVICE_REQUEST_TIMEOUT, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES
+          http_client: nil, timeout: DEVICE_REQUEST_TIMEOUT, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES,
+          deadline_at: nil
         )
           Basecamp::Security.require_https_unless_localhost!(token_endpoint, "token endpoint")
           Fetcher.ensure_redirects_suppressed!(http_client) if http_client
@@ -169,7 +170,25 @@ module Basecamp
 
           interval_seconds = interval
           backoff_seconds = interval_seconds
-          deadline = clock.call + expires_in
+          # An absolute issuance-anchored deadline (perform_device_login
+          # passes issued_at + expires_in) beats re-anchoring: clock time
+          # elapsing between the caller's remaining-lifetime computation and
+          # this entry — a process suspension above all — must never be handed
+          # back to the code. It can only SHORTEN the validated lifetime.
+          deadline =
+            if deadline_at.nil?
+              clock.call + expires_in
+            else
+              unless deadline_at.is_a?(Numeric) && deadline_at.to_f.finite? \
+                  && deadline_at <= clock.call + expires_in
+                raise OauthError.new(
+                  "usage",
+                  "poll_device_token deadline_at must be a finite monotonic timestamp " \
+                  "no later than expires_in seconds from now"
+                )
+              end
+              deadline_at
+            end
 
           # Normalize ONCE, outside the polling loop, and reuse for the client and
           # every per-poll request (see request_device_authorization). The body cap
@@ -333,6 +352,10 @@ module Basecamp
             token_endpoint: config.token_endpoint,
             client_id: client_id, device_code: auth.device_code,
             interval: auth.interval, expires_in: remaining,
+            # The EXACT issuance-anchored deadline: a clock advance between
+            # the remaining computation above and the poller's entry must not
+            # extend the code lifetime.
+            deadline_at: issued_at + auth.expires_in,
             clock: clock, sleeper: sleeper, cancelled: cancelled,
             http_client: http_client, timeout: timeout, max_body_bytes: max_body_bytes
           )

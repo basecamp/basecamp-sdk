@@ -982,6 +982,21 @@ class OAuthDeviceTest < Minitest::Test
     assert_not_requested(requested)
   end
 
+  def test_poll_rejects_a_deadline_at_beyond_the_code_lifetime
+    # deadline_at can only SHORTEN the validated lifetime (mirrors the TS
+    # deadlineAtMs bound).
+    [ Float::NAN, 10_000_000.0 ].each do |bad|
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900,
+          clock: -> { 0.0 }, deadline_at: bad, sleeper: ->(_s) { }
+        )
+      end
+      assert_equal "usage", error.type
+    end
+  end
+
   def test_perform_cancel_during_display_beats_expiry
     # A display hook that both cancels the flow and consumes the whole code
     # lifetime (a prompt closing in response to cancellation) must surface

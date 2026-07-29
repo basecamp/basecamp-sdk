@@ -614,6 +614,23 @@ class TestPollDeviceToken:
         assert isinstance(token.expires_in, int)
 
     @respx.mock
+    def test_rejects_a_deadline_at_beyond_the_code_lifetime(self):
+        # deadline_at can only SHORTEN the validated lifetime (mirrors the TS
+        # deadlineAtMs bound); NaN defeats every comparison.
+        for bad in (float("nan"), 10_000_000.0):
+            with pytest.raises(OAuthError) as exc_info:
+                poll_device_token(
+                    TOKEN_ENDPOINT,
+                    "basecamp-cli",
+                    "dev-code-123",
+                    interval=5,
+                    expires_in=900,
+                    clock=lambda: 0.0,
+                    deadline_at=bad,
+                    sleep=RecordingSleep(),
+                )
+            assert exc_info.value.code == "usage"
+
     def test_rejects_a_non_finite_clock_sample_as_usage(self):
         # A NaN clock sample makes every deadline comparison false — an
         # authorization_pending endpoint would be polled indefinitely.

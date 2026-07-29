@@ -166,12 +166,14 @@ module Basecamp
     def self.poll_device_token(
       token_endpoint:, client_id:, device_code:, interval:, expires_in:,
       clock: DeviceFlow::DEFAULT_CLOCK, sleeper: DeviceFlow::DEFAULT_SLEEPER,
-      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: DeviceFlow::DEVICE_REQUEST_TIMEOUT
+      cancelled: DeviceFlow::DEFAULT_CANCELLED, timeout: DeviceFlow::DEVICE_REQUEST_TIMEOUT,
+      deadline_at: nil
     )
       DeviceFlow.poll_device_token(
         token_endpoint: token_endpoint, client_id: client_id,
         device_code: device_code, interval: interval, expires_in: expires_in,
-        clock: clock, sleeper: sleeper, cancelled: cancelled, timeout: timeout
+        clock: clock, sleeper: sleeper, cancelled: cancelled, timeout: timeout,
+        deadline_at: deadline_at
       )
     end
 
