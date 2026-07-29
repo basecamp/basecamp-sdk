@@ -320,6 +320,16 @@ async function doTokenRequest(
       );
     }
 
+    // A valid-JSON-but-non-object body (null, array, number, string) is a
+    // malformed response on EVERY status — the error branch below would
+    // otherwise deref null and surface a raw TypeError misclassified as
+    // retryable network. Fail as api_error carrying the HTTP status.
+    if (typeof data !== "object" || data === null || Array.isArray(data)) {
+      throw new BasecampError("api_error", "Token response is not a JSON object", {
+        httpStatus: response.status,
+      });
+    }
+
     // Check for error response
     if (!response.ok) {
       const errorData = data as OAuthErrorResponse;
@@ -334,15 +344,6 @@ async function doTokenRequest(
       }
 
       throw new BasecampError("api_error", message, {
-        httpStatus: response.status,
-      });
-    }
-
-    // A valid-JSON-but-non-object body (null, array, number, string) is a
-    // malformed response — fail as api_error before any property deref,
-    // never a raw TypeError misclassified as retryable network.
-    if (typeof data !== "object" || data === null || Array.isArray(data)) {
-      throw new BasecampError("api_error", "Token response is not a JSON object", {
         httpStatus: response.status,
       });
     }

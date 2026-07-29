@@ -54,7 +54,9 @@ function resolveDeviceTimeoutMs(timeoutMs: number): number {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_DEVICE_REQUEST_TIMEOUT_MS) {
     return DEFAULT_DEVICE_TIMEOUT_MS;
   }
-  return timeoutMs;
+  // Whole milliseconds, at least 1: timers truncate fractional delays toward
+  // 0, so 0.5 would become an immediate abort.
+  return Math.max(1, Math.floor(timeoutMs));
 }
 
 /**
@@ -416,15 +418,19 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
   // before it (the clock only advances after issuance). A deadline at/below
   // "now" is legal — it surfaces as device_flow_expired, matching an
   // issuance-anchored deadline fully consumed by a slow display hook.
-  // A single entry sample validates the injected clock (a NaN/Infinity sample
-  // poisons the deadline math, and setTimeout(NaN) coerces to 0 — a tight
-  // poll loop instead of a fast usage failure) and anchors both the
-  // deadlineAtMs bound and the default deadline without consuming extra
-  // scripted-clock steps in tests.
-  const nowMs = clock();
-  if (!Number.isFinite(nowMs)) {
-    throw new BasecampError("usage", "pollDeviceToken: clock must return a finite number of milliseconds");
-  }
+  // EVERY sample of the injected clock is validated, not just the first: a
+  // NaN/Infinity sample poisons the deadline math, and setTimeout(NaN)
+  // coerces to 0 — a tight poll loop instead of a fast usage failure. The
+  // wrapper preserves scripted-clock step counts (one underlying call per
+  // sample).
+  const safeClock: MonotonicClock = () => {
+    const sample = clock();
+    if (!Number.isFinite(sample)) {
+      throw new BasecampError("usage", "pollDeviceToken: clock must return a finite number of milliseconds");
+    }
+    return sample;
+  };
+  const nowMs = safeClock();
   if (
     params.deadlineAtMs !== undefined &&
     (!Number.isFinite(params.deadlineAtMs) || params.deadlineAtMs > nowMs + expiresIn * 1000)
@@ -460,17 +466,21 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
     // Read the clock ONCE per iteration and reuse it for both the deadline check
     // and the remaining-lifetime clamp: two separate reads could straddle the
     // deadline and yield a negative wait for the (possibly injected) sleep seam.
-    const now = clock();
+    const now = safeClock();
     // Check the deadline before sleeping so a long display hook, a stalled prior
     // request, or a long backoff cannot carry us past expiry undetected.
-    if (now >= deadline) {
+    // Sub-millisecond remainders count as expired: performance.now() is
+    // fractional, and a <1ms residue would truncate into 0ms timers — a tight
+    // loop right at expiry.
+    if (deadline - now < 1) {
       throw new DeviceFlowError("expired", "Device code expired before authorization completed");
     }
     // Wait the larger of the server interval and the timeout backoff, clamped
-    // to the remaining lifetime (guaranteed > 0 here) so the wait never
-    // overshoots the monotonic deadline.
+    // to the remaining lifetime (guaranteed >= 1ms here) so the wait never
+    // overshoots the monotonic deadline. Ceil to whole milliseconds — timers
+    // truncate fractional delays toward 0.
     const remainingMs = deadline - now;
-    const waitMs = Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs);
+    const waitMs = Math.ceil(Math.min(Math.max(intervalSeconds, backoffSeconds) * 1000, remainingMs));
     try {
       await sleepFn(waitMs, signal);
     } catch (err) {
@@ -482,8 +492,8 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
       throw err;
     }
 
-    const postRemainingMs = deadline - clock();
-    if (postRemainingMs <= 0) {
+    const postRemainingMs = deadline - safeClock();
+    if (postRemainingMs < 1) {
       throw new DeviceFlowError("expired", "Device code expired before authorization completed");
     }
 

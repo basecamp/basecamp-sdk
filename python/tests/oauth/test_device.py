@@ -614,6 +614,21 @@ class TestPollDeviceToken:
         assert isinstance(token.expires_in, int)
 
     @respx.mock
+    def test_rejects_a_non_finite_clock_sample_as_usage(self):
+        # A NaN clock sample makes every deadline comparison false — an
+        # authorization_pending endpoint would be polled indefinitely.
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                clock=lambda: float("nan"),
+                sleep=RecordingSleep(),
+            )
+        assert exc_info.value.code == "usage"
+
     def test_expires_against_injected_clock(self):
         _queue_token_responses([httpx.Response(400, json={"error": "authorization_pending"})])
         # Clock: base at 0, then jumps past the 900s deadline on the first check.

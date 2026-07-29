@@ -417,7 +417,17 @@ def poll_device_token(
     # back to the current server interval, so an inflated backoff never sticks.
     interval_seconds = interval
     backoff_seconds = interval_seconds
-    deadline = clock() + expires_in
+
+    def _sample_clock() -> float:
+        # EVERY sample of the injected clock is validated: a NaN sample makes
+        # the deadline (or a comparison against it) permanently false, so an
+        # authorization_pending endpoint would be polled indefinitely.
+        value = clock()
+        if not math.isfinite(value):
+            raise OAuthError("usage", "poll_device_token clock must return a finite number of seconds")
+        return value
+
+    deadline = _sample_clock() + expires_in
 
     params = {
         "grant_type": DEVICE_CODE_GRANT_TYPE,
@@ -432,7 +442,7 @@ def poll_device_token(
         # Bound the wait by the time left to the deadline so a grown backoff
         # interval can never sleep past expiry — a stalled request or a long
         # backoff must not blow through the monotonic deadline.
-        remaining = deadline - clock()
+        remaining = deadline - _sample_clock()
         if remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
         _wait_cancellable(min(max(interval_seconds, backoff_seconds), remaining), should_cancel, sleep)
@@ -440,7 +450,7 @@ def poll_device_token(
         if should_cancel is not None and should_cancel():
             raise DeviceFlowError("cancelled", "Device flow cancelled")
 
-        post_remaining = deadline - clock()
+        post_remaining = deadline - _sample_clock()
         if post_remaining <= 0:
             raise DeviceFlowError("expired", "Device code expired before authorization completed")
 

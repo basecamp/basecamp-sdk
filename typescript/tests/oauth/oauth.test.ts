@@ -230,6 +230,19 @@ describe("Token Exchange", () => {
   };
 
   describe("exchangeCode", () => {
+    it("rejects a non-2xx null body as api_error with the status (never raw TypeError → network)", async () => {
+      server.use(http.post(tokenEndpoint, () => HttpResponse.json(null, { status: 400 })));
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.httpStatus).toBe(400);
+    });
+
     it.each([
       ["null body", null],
       ["array body", []],

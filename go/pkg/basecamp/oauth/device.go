@@ -289,19 +289,21 @@ func RequestDeviceAuthorization(ctx context.Context, deviceAuthEndpoint, clientI
 		return nil, &DeviceFlowError{Reason: DeviceFlowTransport, Err: fmt.Errorf("reading device authorization response: %w", err)}
 	}
 
+	// Re-check cancellation the moment the body is in hand, BEFORE parsing:
+	// a context-ignoring RoundTripper whose Body.Read cancels the parent while
+	// yielding malformed JSON would otherwise classify as api_error first —
+	// cancellation wins over every completed outcome (same contract as the
+	// token poll). This also covers the valid-response-after-cancel case for
+	// direct callers.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
+	}
+
 	var raw rawDeviceAuthorization
 	if err := json.Unmarshal(body, &raw); err != nil {
 		// Carry the HTTP status like the sibling non-2xx raise above (and Python)
 		// so a failed 2xx-body parse still reports which response it came from.
 		return nil, &basecamp.Error{Code: basecamp.CodeAPI, Message: "failed to parse device authorization response", HTTPStatus: resp.StatusCode, Cause: err}
-	}
-	// A custom RoundTripper that ignores the request context can complete a
-	// valid response after the caller cancelled: re-check the parent context
-	// before handing back a usable device code, exactly as the token poll's
-	// success branch does. PerformDeviceLogin re-checks later, but that does
-	// not protect direct callers.
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: ctxErr}
 	}
 	return validateDeviceAuthorization(raw, resp.StatusCode)
 }
