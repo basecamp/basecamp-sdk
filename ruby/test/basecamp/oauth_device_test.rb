@@ -944,6 +944,37 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "device_access_token", token.access_token
   end
 
+  def test_perform_slow_authorization_response_counts_against_the_code_lifetime
+    # The code is minted server-side before the response travels back: a
+    # response arriving 6s late with expires_in 5 is dead on arrival, so the
+    # pre-request anchor must expire it — never grant a fresh lifetime.
+    state = { t: 0 }
+    auth_body = device_auth_response("expires_in" => 5).to_json
+    client = Object.new
+    client.define_singleton_method(:post) do |_url|
+      state[:t] += 6
+      SequencedHttpClient::Response.new(200, auth_body)
+    end
+    polled = stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response))
+    _waits, sleeper = recording_sleeper
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
+    )
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth::DeviceFlow.perform_device_login(
+        config: config, client_id: "basecamp-cli",
+        display: ->(_auth) { }, sleeper: sleeper,
+        http_client: client, clock: -> { state[:t] }
+      )
+    end
+
+    assert_equal :expired, error.reason
+    assert_not_requested(polled)
+  end
+
   def test_perform_cancellation_wins_over_a_device_auth_fault
     # Same contract on the error path: the authorization request fails AND the
     # probe flipped mid-flight — cancelled must win over transport, and the

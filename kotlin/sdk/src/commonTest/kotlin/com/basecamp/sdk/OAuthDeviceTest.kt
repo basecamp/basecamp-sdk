@@ -1054,6 +1054,49 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun performChargesAuthRoundTripAgainstLifetime() = runTest {
+        // The code is minted server-side before the response travels back: a
+        // response arriving 6s late with expires_in 5 is dead on arrival, so
+        // the pre-request anchor must expire it — never grant a fresh full
+        // lifetime. The MockEngine handler advances the manual clock to model
+        // the slow round-trip.
+        val clock = TestTimeSource()
+        var polled = false
+        val slowAuthJson = deviceAuthJson.replace("\"expires_in\": 900", "\"expires_in\": 5")
+        val engine = MockEngine { request ->
+            if (request.url.encodedPath == "/oauth/device") {
+                clock += 6.seconds
+                respond(slowAuthJson, HttpStatusCode.OK, jsonHeaders)
+            } else {
+                polled = true
+                respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
+            }
+        }
+        val client = HttpClient(engine)
+
+        val config = OAuthConfig(
+            issuer = origin,
+            tokenEndpoint = tokenEndpoint,
+            deviceAuthorizationEndpoint = deviceEndpoint,
+            grantTypesSupported = listOf(DEVICE_CODE_GRANT_TYPE, "refresh_token"),
+        )
+
+        val e = assertFailsWith<BasecampException.DeviceFlow> {
+            performDeviceLogin(
+                config = config,
+                clientId = "basecamp-cli",
+                display = { },
+                timeSource = clock,
+                client = client,
+            )
+        }
+
+        assertEquals(BasecampException.DEVICE_EXPIRED, e.reason)
+        assertFalse(polled, "a response slower than expires_in must not be polled")
+        client.close()
+    }
+
+    @Test
     fun performDeviceLoginExpiresWhenDisplayConsumesLifetime() = runTest {
         var polled = false
         val engine = MockEngine { request ->

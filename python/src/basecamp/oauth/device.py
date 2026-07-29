@@ -751,6 +751,13 @@ def perform_device_login(
     if should_cancel is not None and should_cancel():
         raise DeviceFlowError("cancelled", "Device flow cancelled")
 
+    # The code's lifetime starts at SERVER issuance, which precedes the
+    # response: anchor conservatively BEFORE the request goes out, so a slow
+    # authorization response (or one delayed in transit) eats into the deadline
+    # instead of granting the code a fresh full lifetime. The anchor can only
+    # SHORTEN the usable window, never extend it.
+    issued_at = _validated_clock_sample(clock(), "perform_device_login")
+
     try:
         auth = request_device_authorization(
             config.device_authorization_endpoint,
@@ -772,10 +779,6 @@ def perform_device_login(
     if should_cancel is not None and should_cancel():
         raise DeviceFlowError("cancelled", "Device flow cancelled")
 
-    # The code's lifetime starts at issuance, not after display: a slow display
-    # hook must eat into the deadline, never reset it. Measure the elapsed time
-    # across the hook against the monotonic clock and check expiry before polling.
-    issued_at = _validated_clock_sample(clock(), "perform_device_login")
     display(auth)
     # Cancellation raised DURING the display hook (a prompt closing in
     # response to cancellation) wins over expiry: a hook that both cancels

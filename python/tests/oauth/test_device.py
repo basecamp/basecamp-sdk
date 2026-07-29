@@ -1095,6 +1095,31 @@ class TestPerformDeviceLoginCancellation:
         assert displayed == []
 
     @respx.mock
+    def test_slow_authorization_response_counts_against_the_code_lifetime(self):
+        # The code is minted server-side before the response travels back: a
+        # response arriving 6s late with expires_in 5 is dead on arrival, so
+        # the pre-request anchor must expire it — never grant a fresh lifetime.
+        state = {"t": 0.0}
+
+        def serve(_request):
+            state["t"] += 6.0
+            return httpx.Response(200, json={**DEVICE_AUTH_RESPONSE, "expires_in": 5})
+
+        respx.post(DEVICE_ENDPOINT).mock(side_effect=serve)
+        token_route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=lambda _auth: None,
+                sleep=RecordingSleep(),
+                clock=lambda: state["t"],
+            )
+        assert exc_info.value.reason == "expired"
+        assert len(token_route.calls) == 0
+
+    @respx.mock
     def test_cancellation_wins_over_a_device_auth_fault(self):
         # Same contract on the error path: the authorization request fails AND
         # the probe flipped mid-flight — cancelled must win over transport,

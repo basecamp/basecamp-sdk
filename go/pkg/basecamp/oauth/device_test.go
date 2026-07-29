@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1361,6 +1362,57 @@ func TestPollDeviceToken_OversizedBodyIsAPIErrorNotRetryable(t *testing.T) {
 	// through the message rather than via errors.Is.
 	if !strings.Contains(be.Message, "size cap") {
 		t.Errorf("api_error message should identify the size-cap overflow, got %q", be.Message)
+	}
+}
+
+func TestPerformDeviceLogin_ChargesAuthRoundTripAgainstLifetime(t *testing.T) {
+	// The code is minted server-side before the response travels back: a
+	// response arriving 6s late with expires_in 5 is dead on arrival, so the
+	// pre-request anchor must expire it — never grant a fresh full lifetime.
+	// Under the pre-fix behavior (deadline anchored after the response) the
+	// same clock would leave the full 5s window and the token endpoint would
+	// be polled. The handler runs on the server goroutine, so the clock state
+	// is atomic.
+	var nowSec atomic.Int64
+	polled := false
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/device" {
+			nowSec.Store(6)
+			body := map[string]any{}
+			for k, v := range deviceAuthBody {
+				body[k] = v
+			}
+			body["expires_in"] = 5
+			_ = json.NewEncoder(w).Encode(body)
+			return
+		}
+		polled = true
+		_ = json.NewEncoder(w).Encode(tokenBody)
+	}))
+	defer srv.Close()
+
+	endpoint := srv.URL + "/device"
+	config := &Config{
+		Issuer:                      srv.URL,
+		TokenEndpoint:               srv.URL + "/token",
+		DeviceAuthorizationEndpoint: &endpoint,
+		GrantTypesSupported:         []string{DeviceCodeGrantType, "refresh_token"},
+	}
+
+	clock := func() time.Time { return time.Unix(nowSec.Load(), 0) }
+	sleep := &recordingSleep{}
+
+	_, err := PerformDeviceLogin(context.Background(), config, "basecamp-cli",
+		func(DeviceAuthorization) {},
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceClock(clock), WithDeviceSleep(sleep.fn))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowExpired {
+		t.Fatalf("want DeviceFlowError(expired) for a response slower than expires_in, got %v", err)
+	}
+	if polled {
+		t.Error("must not poll: the authorization round-trip consumed the whole lifetime")
 	}
 }
 

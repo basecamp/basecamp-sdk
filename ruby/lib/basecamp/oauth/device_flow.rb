@@ -325,6 +325,13 @@ module Basecamp
           # request and invokes the display hook.
           raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
+          # The code's lifetime starts at SERVER issuance, which precedes the
+          # response: anchor conservatively BEFORE the request goes out, so a
+          # slow authorization response (or one delayed in transit) eats into
+          # the deadline instead of granting the code a fresh full lifetime.
+          # The anchor can only SHORTEN the usable window, never extend it.
+          issued_at = sample_clock(clock, "perform_device_login")
+
           auth = begin
             request_device_authorization(
               device_authorization_endpoint: config.device_authorization_endpoint,
@@ -345,12 +352,6 @@ module Basecamp
           # the display hook.
           raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
-          # The code's lifetime starts at ISSUANCE, not after display: a slow
-          # display hook must eat into the deadline, never reset it. Anchor the
-          # issuance instant on the monotonic clock, run the hook, then poll with
-          # only the REMAINING lifetime. If the hook consumed the whole budget,
-          # raise +expired+ without a single poll.
-          issued_at = sample_clock(clock, "perform_device_login")
           display.call(auth)
           # Cancellation raised DURING the display hook (a prompt closing in
           # response to cancellation) wins over expiry: a hook that both

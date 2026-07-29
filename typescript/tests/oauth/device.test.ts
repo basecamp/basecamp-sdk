@@ -1339,6 +1339,59 @@ describe("performDeviceLogin", () => {
     expect(token.accessToken).toBe("device_access_token");
   });
 
+  it("charges the authorization round-trip against the code lifetime: a slow response → expired, never polls", async () => {
+    // The code is minted server-side before the response travels back: a
+    // 6s-late response carrying expires_in: 5 is already dead on arrival, so
+    // the pre-request anchor must expire it — never grant a fresh lifetime.
+    let polled = false;
+    let now = 0;
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () => {
+        now += 6_000;
+        return HttpResponse.json({ ...deviceAuthResponse, expires_in: 5 });
+      }),
+      mswHttp.post(TOKEN_ENDPOINT, () => {
+        polled = true;
+        return HttpResponse.json(tokenResponse);
+      })
+    );
+
+    const err = await performDeviceLogin({
+      config,
+      clientId: "basecamp-cli",
+      display: () => {},
+      clock: () => now,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(DeviceFlowError);
+    expect(err.reason).toBe("expired");
+    expect(polled).toBe(false);
+  });
+
+  it("rejects a malformed login clock sample as usage before any request", async () => {
+    // The orchestrator validates its own samples like the poller does: a NaN
+    // clock is the typed usage error before any network activity — never a
+    // raw TypeError out of the deadline arithmetic after the code is shown.
+    let requested = false;
+    server.use(
+      mswHttp.post(DEVICE_ENDPOINT, () => {
+        requested = true;
+        return HttpResponse.json(deviceAuthResponse);
+      })
+    );
+
+    const err = await performDeviceLogin({
+      config,
+      clientId: "basecamp-cli",
+      display: () => {},
+      clock: () => NaN,
+    }).catch((e) => e);
+
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+    expect(requested).toBe(false);
+  });
+
   it("deducts display time: a hook that burns the whole expires_in → expired, never polls", async () => {
     let polled = false;
     server.use(

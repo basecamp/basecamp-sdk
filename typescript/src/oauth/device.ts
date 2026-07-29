@@ -86,6 +86,20 @@ export type MonotonicClock = () => number;
 export const defaultClock: MonotonicClock = () =>
   typeof performance !== "undefined" ? performance.now() : Date.now();
 
+/**
+ * Validate one sample from an injected clock seam. `Number.isFinite` performs
+ * no coercion, so a bigint, string, or Symbol sample fails exactly like a
+ * NaN/Infinity one — the typed usage error, never a raw TypeError out of later
+ * deadline arithmetic. Shared by the poller and the login orchestrator so both
+ * validate EVERY sample the same way.
+ */
+export function validatedClockSample(sample: unknown, entry: string): number {
+  if (typeof sample !== "number" || !Number.isFinite(sample)) {
+    throw new BasecampError("usage", `${entry}: clock must return a finite number of milliseconds`);
+  }
+  return sample;
+}
+
 /** Raw RFC 8628 device authorization response. */
 interface RawDeviceAuthorization {
   device_code?: string;
@@ -417,13 +431,7 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
   // coerces to 0 — a tight poll loop instead of a fast usage failure. The
   // wrapper preserves scripted-clock step counts (one underlying call per
   // sample).
-  const safeClock: MonotonicClock = () => {
-    const sample = clock();
-    if (!Number.isFinite(sample)) {
-      throw new BasecampError("usage", "pollDeviceToken: clock must return a finite number of milliseconds");
-    }
-    return sample;
-  };
+  const safeClock: MonotonicClock = () => validatedClockSample(clock(), "pollDeviceToken");
   const nowMs = safeClock();
   if (
     params.deadlineAtMs !== undefined &&

@@ -12,6 +12,7 @@ import {
   requestDeviceAuthorization,
   pollDeviceToken,
   throwIfAborted,
+  validatedClockSample,
   DEVICE_CODE_GRANT_TYPE,
   defaultClock,
   type MonotonicClock,
@@ -87,6 +88,14 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
   // must not fire the authorization request or surface a code via display.
   throwIfAborted(signal);
 
+  // The code's lifetime starts at SERVER issuance, which precedes the response:
+  // anchor conservatively BEFORE the request goes out, so a slow authorization
+  // response (or one delayed in transit) eats into the deadline instead of
+  // granting the code a fresh full lifetime. The anchor can only SHORTEN the
+  // usable window, never extend it. Validated like the poller's samples — a
+  // malformed injected clock is the typed usage error before any network I/O.
+  const issuedAt = validatedClockSample(clock(), "performDeviceLogin");
+
   const auth = await requestDeviceAuthorization({
     deviceAuthorizationEndpoint: config.deviceAuthorizationEndpoint,
     clientId,
@@ -101,12 +110,6 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
   // completion must not reach the display hook.
   throwIfAborted(signal);
 
-  // The code's lifetime starts at issuance, not after display: a slow display
-  // hook must eat into the deadline, never reset it. Capture the monotonic clock
-  // (ms) at issuance, then deduct the elapsed display time so polling anchors its
-  // deadline against the REMAINING lifetime. `expiresIn` is seconds; `clock()` is
-  // ms, so convert the elapsed span before subtracting.
-  const issuedAt = clock();
   // Race an async display hook against the abort signal: a hook awaiting user
   // interaction must not hold a cancelled flow open until it settles. On
   // abort the hook's promise is left to settle on its own (JS cannot cancel
@@ -142,7 +145,11 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
         }
       );
   });
-  const remainingSeconds = auth.expiresIn - (clock() - issuedAt) / 1000;
+  // Deduct everything since the pre-request anchor — request round-trip AND
+  // display time — so polling gets only the REMAINING lifetime. `expiresIn` is
+  // seconds; the clock is ms, so convert the elapsed span before subtracting.
+  const remainingSeconds =
+    auth.expiresIn - (validatedClockSample(clock(), "performDeviceLogin") - issuedAt) / 1000;
   // Re-check after the clock read: an abort landing after the display race
   // settled (its listener is already removed) must still win over expiry —
   // cancellation beats every other classification.
