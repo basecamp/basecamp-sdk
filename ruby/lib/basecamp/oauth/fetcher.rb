@@ -345,11 +345,16 @@ module Basecamp
                  # sent verbatim in Proxy-Authorization and fail authentication.
                  # unescapeURIComponent, NOT form decoding: a literal + in a
                  # userinfo component is a plus sign, never a space.
+                 # p_no_proxy nil (find_proxy already honored no_proxy);
+                 # p_use_ssl from the proxy URL's scheme — an https:// proxy
+                 # expects TLS on its own connection, and omitting it would
+                 # send plaintext to a TLS-only proxy and fail before CONNECT.
                  Net::HTTP.new(
                    uri.hostname, uri.port,
                    proxy_uri.hostname, proxy_uri.port,
                    proxy_uri.user && CGI.unescapeURIComponent(proxy_uri.user),
-                   proxy_uri.password && CGI.unescapeURIComponent(proxy_uri.password)
+                   proxy_uri.password && CGI.unescapeURIComponent(proxy_uri.password),
+                   nil, proxy_uri.scheme == "https"
                  )
         else
                  Net::HTTP.new(uri.hostname, uri.port, nil)

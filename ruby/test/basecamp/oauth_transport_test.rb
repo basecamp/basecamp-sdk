@@ -742,6 +742,42 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
+  def test_https_proxy_scheme_gets_tls_on_the_proxy_connection
+    # An https:// proxy URL means TLS on the PROXY connection itself:
+    # Net::HTTP.new's p_use_ssl must be passed through or the transport
+    # sends plaintext CONNECT to a TLS-only proxy. The plain TCP listener
+    # distinguishes the two by the first bytes: a TLS ClientHello record
+    # (0x16 0x03...) with the fix, a plaintext "CONNECT ..." without.
+    first_bytes = nil
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      conn = server.accept
+      first_bytes = conn.readpartial(5)
+      conn.close
+    rescue IOError, SystemCallError
+      nil
+    end
+
+    proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
+    saved = ENV.to_h.slice(*proxy_env)
+    proxy_env.each { |k| ENV.delete(k) }
+    ENV["https_proxy"] = "https://127.0.0.1:#{port}"
+    begin
+      assert_raises(Faraday::Error) do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "https://tls-proxy.test/token", timeout: 1)
+      end
+      thread.join(2)
+      assert_equal 0x16, first_bytes&.bytes&.first,
+        "expected a TLS ClientHello to the https:// proxy, got #{first_bytes.inspect}"
+    ensure
+      proxy_env.each { |k| ENV.delete(k) }
+      saved.each { |k, v| ENV[k] = v }
+      thread&.kill&.join
+      server&.close
+    end
+  end
+
   def test_proxy_connect_drip_is_bounded_by_the_deadline
     # With an ENV-configured proxy and an HTTPS endpoint, Net::HTTP parses the
     # proxy's CONNECT response BEFORE it marks the session started: the
