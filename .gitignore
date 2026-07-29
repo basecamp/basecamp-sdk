@@ -13,6 +13,7 @@ conformance/runner/typescript/node_modules
 # Claude Code session files (except skills, which are committed)
 .claude/*
 !.claude/skills/
+!.claude/CLAUDE.md
 
 # Ruby SDK build artifacts
 ruby/.yardoc/
