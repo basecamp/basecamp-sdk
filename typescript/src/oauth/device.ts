@@ -756,16 +756,21 @@ function raceAbort<T>(signal: AbortSignal, run: () => Promise<T>): Promise<T> {
       return;
     }
     signal.addEventListener("abort", onAbort, { once: true });
-    run().then(
-      (value) => {
-        signal.removeEventListener("abort", onAbort);
-        resolve(value);
-      },
-      (err) => {
-        signal.removeEventListener("abort", onAbort);
-        reject(err);
-      }
-    );
+    // Microtask wrapper: a user-provided seam (custom fetch/sleepFn) can
+    // throw SYNCHRONOUSLY despite the TS type — without this, that throw
+    // would escape before the handlers attach and strand the listener.
+    Promise.resolve()
+      .then(run)
+      .then(
+        (value) => {
+          signal.removeEventListener("abort", onAbort);
+          resolve(value);
+        },
+        (err) => {
+          signal.removeEventListener("abort", onAbort);
+          reject(err);
+        }
+      );
   });
 }
 
