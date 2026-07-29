@@ -272,6 +272,9 @@ module Basecamp
         # @return [Token]
         # @raise [DeviceFlowError] +:unavailable+ when the config cannot do device
         #   flow; other reasons on denial/expiry/transport/cancellation
+        # @raise [OauthError] +usage+ when +display+ is not callable (checked
+        #   before any request — DeviceFlowError subclasses OauthError, so a
+        #   rescue of the former alone would miss this)
         def perform_device_login(
           config:, client_id:, display:, scope: nil,
           clock: DEFAULT_CLOCK, sleeper: DEFAULT_SLEEPER, cancelled: DEFAULT_CANCELLED,

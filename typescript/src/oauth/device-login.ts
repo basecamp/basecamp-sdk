@@ -143,6 +143,10 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
       );
   });
   const remainingSeconds = auth.expiresIn - (clock() - issuedAt) / 1000;
+  // Re-check after the clock read: an abort landing after the display race
+  // settled (its listener is already removed) must still win over expiry —
+  // cancellation beats every other classification.
+  throwIfAborted(signal);
   if (remainingSeconds <= 0) {
     throw new DeviceFlowError("expired", "Device code expired before authorization completed");
   }
