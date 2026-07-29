@@ -154,59 +154,71 @@ def request_bounded(
 
     async def _request(client: httpx.AsyncClient) -> tuple[int, bytes]:
         async with client.stream(method, url, data=params, headers=request_headers) as response:
-            if not read_body(response.status_code):
-                # Deadline first, symmetric with the body paths: headers
-                # becoming runnable past the total bound mean the status was
-                # NOT known before the deadline — classify as the timeout it
-                # is rather than racing ahead of wait_for's already-due
-                # callback into a status fault.
-                if time.monotonic() > deadline_ts:
-                    raise TimeoutError(f"{context} headers arrived past the total deadline")
-                # Record the KNOWN, in-deadline outcome before the context
-                # managers unwind: the awaited response/client cleanup can
-                # cross the total deadline and be cancelled by wait_for, and a
-                # skipped non-2xx must classify by status (api_error), never
-                # soften into a retryable timeout because only its CLEANUP was
-                # late.
-                outcome.append((response.status_code, b""))
-                return response.status_code, b""
-            chunks: list[bytes] = []
-            total = 0
-            async for chunk in response.aiter_raw():
-                total += len(chunk)
-                if total > max_body_bytes:
-                    # Deadline first, symmetric with body completion: a chunk
-                    # becoming runnable past the bound must classify as the
-                    # timeout it is, not race ahead of wait_for into a
-                    # terminal api_error.
-                    if time.monotonic() > deadline_ts:
-                        raise TimeoutError(f"{context} body exceeded the total deadline")
-                    # An oversized body is api_error, not a timeout — abort the
-                    # stream so it is never fully buffered. Record the terminal
-                    # error BEFORE the context managers unwind: their awaited
-                    # cleanup can cross the deadline and be cancelled by
-                    # wait_for, which would otherwise soften this documented
-                    # size-cap error into a retryable timeout.
-                    exc = OAuthError("api_error", f"{context} response exceeds size cap")
-                    error_outcome.append(exc)
-                    raise exc
-                chunks.append(chunk)
-            # Same completed-outcome recording as the skip path — but ONLY
-            # when the body finished inside the deadline: the task can run
-            # ahead of wait_for's already-due timeout callback, and a body
-            # completing past the advertised bound must not be accepted.
-            # (Skipped statuses stay status-first regardless — their
-            # classification is header-time knowledge.)
+            try:
+                return await _read(response)
+            except httpx.HTTPError as exc:
+                # Stamp INSIDE the response context: response.aclose() runs
+                # before any outer handler sees a body-phase fault, and a
+                # cleanup that crosses the deadline (or is cancelled by
+                # wait_for) would otherwise erase an in-deadline wire fault.
+                if not wire_fault and not isinstance(exc, httpx.TimeoutException):
+                    wire_fault.append((exc, time.monotonic()))
+                raise
+
+    async def _read(response: httpx.Response) -> tuple[int, bytes]:
+        if not read_body(response.status_code):
+            # Deadline first, symmetric with the body paths: headers
+            # becoming runnable past the total bound mean the status was
+            # NOT known before the deadline — classify as the timeout it
+            # is rather than racing ahead of wait_for's already-due
+            # callback into a status fault.
             if time.monotonic() > deadline_ts:
-                # The body finished past the advertised bound but this
-                # coroutine ran ahead of wait_for's already-due timeout
-                # callback — raising (not returning) keeps the late body out
-                # of `result` too, so the caller classifies it as the timeout
-                # it is.
-                raise TimeoutError(f"{context} body completed past the total deadline")
-            joined = b"".join(chunks)
-            outcome.append((response.status_code, joined))
-            return response.status_code, joined
+                raise TimeoutError(f"{context} headers arrived past the total deadline")
+            # Record the KNOWN, in-deadline outcome before the context
+            # managers unwind: the awaited response/client cleanup can
+            # cross the total deadline and be cancelled by wait_for, and a
+            # skipped non-2xx must classify by status (api_error), never
+            # soften into a retryable timeout because only its CLEANUP was
+            # late.
+            outcome.append((response.status_code, b""))
+            return response.status_code, b""
+        chunks: list[bytes] = []
+        total = 0
+        async for chunk in response.aiter_raw():
+            total += len(chunk)
+            if total > max_body_bytes:
+                # Deadline first, symmetric with body completion: a chunk
+                # becoming runnable past the bound must classify as the
+                # timeout it is, not race ahead of wait_for into a
+                # terminal api_error.
+                if time.monotonic() > deadline_ts:
+                    raise TimeoutError(f"{context} body exceeded the total deadline")
+                # An oversized body is api_error, not a timeout — abort the
+                # stream so it is never fully buffered. Record the terminal
+                # error BEFORE the context managers unwind: their awaited
+                # cleanup can cross the deadline and be cancelled by
+                # wait_for, which would otherwise soften this documented
+                # size-cap error into a retryable timeout.
+                exc = OAuthError("api_error", f"{context} response exceeds size cap")
+                error_outcome.append(exc)
+                raise exc
+            chunks.append(chunk)
+        # Same completed-outcome recording as the skip path — but ONLY
+        # when the body finished inside the deadline: the task can run
+        # ahead of wait_for's already-due timeout callback, and a body
+        # completing past the advertised bound must not be accepted.
+        # (Skipped statuses stay status-first regardless — their
+        # classification is header-time knowledge.)
+        if time.monotonic() > deadline_ts:
+            # The body finished past the advertised bound but this
+            # coroutine ran ahead of wait_for's already-due timeout
+            # callback — raising (not returning) keeps the late body out
+            # of `result` too, so the caller classifies it as the timeout
+            # it is.
+            raise TimeoutError(f"{context} body completed past the total deadline")
+        joined = b"".join(chunks)
+        outcome.append((response.status_code, joined))
+        return response.status_code, joined
 
     # httpx's timeout is per-read (it resets on every received chunk) and httpx has
     # NO total-request timeout, so a peer slow-dripping header or body bytes just

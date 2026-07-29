@@ -9,6 +9,7 @@ discovery fetch through :func:`basecamp.oauth._transport.request_bounded`.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import socket
 import threading
@@ -221,6 +222,62 @@ def test_recorded_skip_outcome_survives_a_cleanup_http_error(monkeypatch) -> Non
         )
         assert status == 500
         assert body == b""
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
+def test_mid_body_wire_error_survives_response_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # A body-phase reset is stamped INSIDE the response context: response
+    # cleanup (aclose) runs before any outer handler, so a cleanup crossing
+    # the deadline would otherwise erase the in-deadline wire fault into a
+    # retryable timeout. The fake clock flips only once aclose begins.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    past_deadline = threading.Event()
+
+    def reset_mid_body() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        with contextlib.suppress(OSError):
+            conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\npartial")
+        conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if past_deadline.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    real_aclose = httpx.Response.aclose
+
+    async def flagging_aclose(self):  # noqa: ANN001
+        past_deadline.set()
+        return await real_aclose(self)
+
+    monkeypatch.setattr(httpx.Response, "aclose", flagging_aclose)
+
+    server = threading.Thread(target=reset_mid_body, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.HTTPError) as exc_info:
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+            )
+        assert not isinstance(exc_info.value, httpx.TimeoutException), (
+            "an in-deadline mid-body wire fault must stay terminal"
+        )
     finally:
         server.join(timeout=5)
         srv.close()
