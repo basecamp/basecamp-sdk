@@ -107,7 +107,10 @@ export class FileTokenStore implements TokenStore {
       expiresIn: data.expiresIn,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
       scope: data.scope,
-      resource: data.resource,
+      // A hand-edited or legacy token file can carry null/empty/non-string:
+      // present-but-empty is malformed per SPEC and the public type is
+      // `string | undefined` — normalize anything else to absent.
+      resource: typeof data.resource === "string" && data.resource !== "" ? data.resource : undefined,
     };
   }
 
@@ -119,7 +122,8 @@ export class FileTokenStore implements TokenStore {
       expiresIn: token.expiresIn,
       expiresAt: token.expiresAt?.toISOString(),
       scope: token.scope,
-      resource: token.resource,
+      // Never persist an empty binding: JSON.stringify drops undefined keys.
+      resource: token.resource || undefined,
     };
 
     const json = JSON.stringify(serialized, null, 2) + "\n";

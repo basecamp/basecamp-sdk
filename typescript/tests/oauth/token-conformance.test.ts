@@ -33,9 +33,17 @@ interface TokenFixture {
   };
 }
 
-const fixtureNames = readdirSync(FIXTURE_DIR)
-  .filter((f) => f.endsWith(".json"))
-  .sort();
+// Guarded: a missing/renamed fixture dir must surface as the proper test
+// failure below, not a describe-phase import crash.
+const fixtureNames = (() => {
+  try {
+    return readdirSync(FIXTURE_DIR)
+      .filter((f) => f.endsWith(".json"))
+      .sort();
+  } catch {
+    return [];
+  }
+})();
 
 const server = setupServer();
 

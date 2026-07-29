@@ -21,7 +21,8 @@
       "properties": {
         "resource": {
           "type": "string",
-          "description": "RFC 8707 resource indicator passed to the refresh call. Omit to exercise the unset path."
+          "minLength": 1,
+          "description": "RFC 8707 resource indicator passed to the refresh call. Omit to exercise the unset path (present-but-empty is malformed per SPEC \u00a716)."
         }
       }
     },
@@ -49,6 +50,7 @@
         },
         "resource": {
           "type": "string",
+          "minLength": 1,
           "description": "On `token`: the exact resource value the returned token must carry."
         },
         "resourceAbsent": {
@@ -57,6 +59,7 @@
         },
         "formResource": {
           "type": "string",
+          "minLength": 1,
           "description": "The exact `resource` form value the refresh request must have sent."
         },
         "formResourceAbsent": {
