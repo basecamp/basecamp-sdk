@@ -856,11 +856,21 @@ var operationRetryOn = map[string][]int{
 {{end}}
 }
 
-// GetOperationRetryOn returns the declared retryable status set for the given
-// operation ID. ok is false when the operation carries no per-op set.
+// GetOperationRetryOn returns a COPY of the declared retryable status set for
+// the given operation ID. The copy matters: isRetryableStatus reads the same
+// package-level table on every response, so handing out the stored slice would
+// let any caller rewrite the retry policy for every client in the process, and
+// race with in-flight requests while doing it.
+//
+// ok is false when the operation carries no per-op set. A present-but-empty set
+// returns ok true, which is how "declared empty" stays distinguishable from
+// "absent" — ok, not nilness, is the signal.
 func GetOperationRetryOn(operationId string) ([]int, bool) {
 	r, ok := operationRetryOn[operationId]
-	return r, ok
+	if !ok {
+		return nil, false
+	}
+	return append([]int(nil), r...), true
 }
 
 // GetOperationRetryMax returns the per-operation retry ceiling (maximum total

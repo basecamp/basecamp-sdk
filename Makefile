@@ -854,6 +854,9 @@ kt-check-optional-arrays-and-scalars:
 check-idempotency-parity:
 	@./scripts/check-idempotency-parity
 
+# Verify every SDK's emitted per-operation retry metadata equals
+# behavior-model.json, and that each SDK still consumes the fields it claims to.
+# Python3 — runs anywhere, enforced in CI (test-go job).
 check-retry-metadata-parity:
 	@python3 ./scripts/check-retry-metadata-parity.py
 

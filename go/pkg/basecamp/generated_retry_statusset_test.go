@@ -144,3 +144,56 @@ func TestGeneratedRetryOn_EmptySetIsNotAbsent(t *testing.T) {
 		}
 	}
 }
+
+// The accessor must hand out a COPY. It reads a package-level map that
+// isRetryableStatus consults on every response, so returning the stored slice
+// lets any caller rewrite the retry policy for every client in the process —
+// and race with in-flight requests while doing it. Mutating what the accessor
+// returned must not be observable through a second lookup, nor change behavior.
+func TestGeneratedRetryOn_ReturnsCopy(t *testing.T) {
+	first, ok := generated.GetOperationRetryOn("GetAccount")
+	if !ok {
+		t.Fatal("GetAccount missing from operationRetryOn")
+	}
+	if len(first) != 2 {
+		t.Fatalf("GetAccount retryOn = %v, want 2 statuses", first)
+	}
+	first[0] = 599
+	first[1] = 599
+
+	second, ok := generated.GetOperationRetryOn("GetAccount")
+	if !ok {
+		t.Fatal("GetAccount missing from operationRetryOn after mutation")
+	}
+	if second[0] != 429 || second[1] != 503 {
+		t.Fatalf("accessor leaked the shared slice: after mutating the first result, "+
+			"a second lookup returns %v, want [429 503]", second)
+	}
+
+	// The behavioral half: the poisoned set must not have disabled retries.
+	// 429 is declared retryable for GetAccount, so the client must still retry.
+	var attempts int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&attempts, 1)
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	client, err := generated.NewClient(srv.URL)
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := client.GetAccount(ctx, "1")
+	if err != nil {
+		t.Fatalf("GetAccount: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	if got := atomic.LoadInt32(&attempts); got < 2 {
+		t.Errorf("made %d attempts on a 429 after a caller mutated the accessor result, "+
+			"want the declared retry policy to be intact (>=2)", got)
+	}
+}

@@ -117,6 +117,12 @@ jobs:
         working-directory: .
         run: ./scripts/check-idempotency-parity
 
+      - name: Check retry metadata parity across SDKs
+        # Repo-wide python3 check (preinstalled on ubuntu runners). Runs from
+        # repo root regardless of this job's `working-directory: go`.
+        working-directory: .
+        run: make check-retry-metadata-parity
+
       - name: Test with coverage
         run: |
           # Measure coverage for hand-written code only (generated code is excluded)
