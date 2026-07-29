@@ -309,6 +309,40 @@ class OAuthTransportTest < Minitest::Test
     assert_equal "validation", error.type
   end
 
+  def test_caller_headers_cannot_override_identity_encoding
+    # The identity Accept-Encoding is the compression-bomb bound — a caller
+    # override must be dropped, matching the Python transport.
+    seen = Queue.new
+    server = TCPServer.new("127.0.0.1", 0)
+    @servers << server
+    @server_threads << Thread.new do
+      loop do
+        conn = server.accept
+        @conns << conn
+        lines = []
+        while (line = conn.gets) && line != "\r\n"
+          lines << line
+        end
+        seen << lines.join
+        conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+      rescue IOError, SystemCallError
+        break
+      end
+    end
+    endpoint = "http://127.0.0.1:#{server.addr[1]}"
+
+    Basecamp::Oauth::Fetcher.stream_http(
+      :get, "#{endpoint}/doc",
+      headers: { "Accept-Encoding" => "gzip", "X-Custom" => "kept" },
+      timeout: TIMEOUT
+    )
+
+    request_headers = seen.pop
+    assert_match(/^Accept-Encoding: identity\r?$/i, request_headers)
+    assert_no_match(/gzip/i, request_headers)
+    assert_match(/^X-Custom: kept\r?$/i, request_headers)
+  end
+
   def test_form_with_get_fails_fast
     # A GET-with-body contradicts the method contract and masks call-site
     # mistakes — reject before any connection.

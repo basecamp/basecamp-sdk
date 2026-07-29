@@ -325,7 +325,15 @@ module Basecamp
           when :get then Net::HTTP::Get.new(uri, identity)
           else raise ArgumentError, "stream_http supports :get and :post, got #{method.inspect}"
           end
-        headers.each { |name, value| request[name] = value }
+        headers.each do |name, value|
+          # The identity Accept-Encoding above is load-bearing (compression
+          # bomb bound): a caller-supplied override would reintroduce
+          # transparent inflation, so it is dropped — matching the Python
+          # transport, which forcibly overwrites the header.
+          next if name.to_s.casecmp("accept-encoding").zero?
+
+          request[name] = value
+        end
         if form
           request.body = URI.encode_www_form(form)
           # A form body implies the form content type; explicit headers win.
