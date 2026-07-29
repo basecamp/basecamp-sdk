@@ -183,10 +183,22 @@ module Basecamp
           )
         end
 
+        # token_type: absent/JSON-null defaults to Bearer; present must be a
+        # non-empty String ("" is truthy in Ruby, so || alone would admit it) —
+        # matching the device-flow parser and SPEC §16.
+        token_type = data["token_type"]
+        unless token_type.nil? || (token_type.is_a?(String) && !token_type.empty?)
+          raise OauthError.new(
+            "api_error",
+            "Token response token_type must be a non-empty string when present",
+            http_status: response.status
+          )
+        end
+
         Token.new(
           access_token: data["access_token"],
           refresh_token: data["refresh_token"],
-          token_type: data["token_type"] || "Bearer",
+          token_type: token_type || "Bearer",
           expires_in: data["expires_in"],
           scope: data["scope"],
           resource: resource

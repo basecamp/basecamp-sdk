@@ -584,6 +584,52 @@ func TestExchanger_Refresh_ResourceEcho(t *testing.T) {
 	}
 }
 
+func TestExchanger_TokenTypeContract(t *testing.T) {
+	// SPEC §16: token_type defaults to Bearer only when absent/JSON-null; a
+	// present-but-empty value is a malformed response — matching the
+	// device-flow parser.
+	tests := []struct {
+		name     string
+		response string
+		wantErr  bool
+		wantType string
+	}{
+		{name: "absent token_type defaults to Bearer", response: `{"access_token":"a"}`, wantType: "Bearer"},
+		{name: "null token_type defaults to Bearer", response: `{"access_token":"a","token_type":null}`, wantType: "Bearer"},
+		{name: "present token_type round-trips", response: `{"access_token":"a","token_type":"Bearer"}`, wantType: "Bearer"},
+		{name: "empty token_type rejected", response: `{"access_token":"a","token_type":""}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			defer server.Close()
+
+			e := NewExchanger(server.Client())
+			token, err := e.Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+			})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Refresh() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				var apiErr *basecamp.Error
+				if !errors.As(err, &apiErr) || apiErr.Code != basecamp.CodeAPI {
+					t.Fatalf("error = %T %v, want *basecamp.Error with CodeAPI", err, err)
+				}
+				return
+			}
+			if token.TokenType != tt.wantType {
+				t.Errorf("TokenType = %q, want %q", token.TokenType, tt.wantType)
+			}
+		})
+	}
+}
+
 func TestExchanger_TokenResponseResource(t *testing.T) {
 	tests := []struct {
 		name         string

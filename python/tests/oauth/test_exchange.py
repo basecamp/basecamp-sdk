@@ -85,6 +85,38 @@ class TestExchangeCode:
         assert "grant_type" not in body
 
     @respx.mock
+    def test_token_type_contract(self):
+        # SPEC §16: token_type defaults to Bearer only when absent/JSON-null;
+        # a present-but-empty or non-string value is a malformed response —
+        # matching the device-flow parser.
+        for body, expected in (
+            ({"access_token": "a"}, "Bearer"),
+            ({"access_token": "a", "token_type": None}, "Bearer"),
+            ({"access_token": "a", "token_type": "Bearer"}, "Bearer"),
+        ):
+            respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=body))
+            token = exchange_code(
+                TOKEN_ENDPOINT,
+                code="c",
+                redirect_uri="https://myapp.com/callback",
+                client_id="client-id",
+            )
+            assert token.token_type == expected, body
+
+        for bad in ("", 7):
+            respx.post(TOKEN_ENDPOINT).mock(
+                return_value=httpx.Response(200, json={"access_token": "a", "token_type": bad})
+            )
+            with pytest.raises(OAuthError) as exc_info:
+                exchange_code(
+                    TOKEN_ENDPOINT,
+                    code="c",
+                    redirect_uri="https://myapp.com/callback",
+                    client_id="client-id",
+                )
+            assert exc_info.value.oauth_type == "api_error", bad
+
+    @respx.mock
     def test_exchange_error(self):
         respx.post(TOKEN_ENDPOINT).mock(
             return_value=httpx.Response(

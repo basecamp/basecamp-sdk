@@ -177,9 +177,22 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
             http_status=response.status_code,
         )
 
+    # token_type: absent or JSON null defaults to Bearer (dict.get's default
+    # covers only absence — an explicit null passed through as None); present
+    # must be a non-empty string — matching the device-flow parser (SPEC §16).
+    token_type = data.get("token_type")
+    if token_type is None:
+        token_type = "Bearer"
+    elif not isinstance(token_type, str) or not token_type:
+        raise OAuthError(
+            "api_error",
+            "Token response token_type must be a non-empty string when present",
+            http_status=response.status_code,
+        )
+
     return OAuthToken(
         access_token=data["access_token"],
-        token_type=data.get("token_type", "Bearer"),
+        token_type=token_type,
         refresh_token=data.get("refresh_token"),
         expires_in=data.get("expires_in"),
         scope=data.get("scope"),

@@ -231,6 +231,36 @@ class OAuthTest < Minitest::Test
     assert_nil error.cause
   end
 
+  def test_exchange_token_type_contract
+    # SPEC §16: token_type defaults to Bearer only when absent/JSON-null; a
+    # present-but-empty or non-string value ("" is truthy in Ruby) is a
+    # malformed response — matching the device-flow parser.
+    endpoint = "https://launchpad.37signals.com/authorization/token"
+    [ {}, { "token_type" => nil }, { "token_type" => "Bearer" } ].each do |extra|
+      stub_request(:post, endpoint)
+        .to_return(status: 200, body: { "access_token" => "a" }.merge(extra).to_json,
+                   headers: { "Content-Type" => "application/json" })
+      token = Basecamp::Oauth.exchange_code(
+        token_endpoint: endpoint, code: "c",
+        redirect_uri: "https://myapp.com/callback", client_id: "id"
+      )
+      assert_equal "Bearer", token.token_type, extra.inspect
+    end
+
+    [ "", 7 ].each do |bad|
+      stub_request(:post, endpoint)
+        .to_return(status: 200, body: { "access_token" => "a", "token_type" => bad }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.exchange_code(
+          token_endpoint: endpoint, code: "c",
+          redirect_uri: "https://myapp.com/callback", client_id: "id"
+        )
+      end
+      assert_equal "api_error", error.type, bad.inspect
+    end
+  end
+
   def test_exchange_code
     token_response = {
       "access_token" => "access_token_123",

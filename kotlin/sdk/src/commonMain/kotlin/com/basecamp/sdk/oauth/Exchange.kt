@@ -36,7 +36,7 @@ data class OAuthToken(
 internal data class RawTokenResponse(
     @SerialName("access_token") val accessToken: String,
     @SerialName("refresh_token") val refreshToken: String? = null,
-    @SerialName("token_type") val tokenType: String = "Bearer",
+    @SerialName("token_type") val tokenType: String? = null,
     @SerialName("expires_in") val expiresIn: Long? = null,
     val scope: String? = null,
     val resource: String? = null,
@@ -217,10 +217,21 @@ private suspend fun postTokenRequest(
         val now = currentTimeMillis()
         val expiresAt = raw.expiresIn?.let { now + it * 1000 }
 
+        // token_type: absent/JSON-null defaults to Bearer; a present-but-empty
+        // value is malformed (SPEC §16) — matching the device-flow parser.
+        val tokenType = raw.tokenType?.also {
+            if (it.isEmpty()) {
+                throw BasecampException.Api(
+                    "Token response token_type must be a non-empty string when present",
+                    httpStatus = response.status.value,
+                )
+            }
+        } ?: "Bearer"
+
         return OAuthToken(
             accessToken = raw.accessToken,
             refreshToken = raw.refreshToken,
-            tokenType = raw.tokenType,
+            tokenType = tokenType,
             expiresIn = raw.expiresIn,
             expiresAt = expiresAt,
             scope = raw.scope,

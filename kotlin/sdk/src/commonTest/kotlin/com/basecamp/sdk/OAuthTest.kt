@@ -173,6 +173,53 @@ class OAuthTest {
     }
 
     @Test
+    fun exchangeEmptyTokenTypeIsApiFault() = runTest {
+        // SPEC §16: token_type defaults to Bearer only when absent/JSON-null;
+        // a present-but-empty value is a malformed response — matching the
+        // device-flow parser.
+        val engine = MockEngine {
+            respond(
+                content = "{\"access_token\": \"a\", \"token_type\": \"\"}",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+        val httpClient = HttpClient(engine)
+        val e = assertFailsWith<BasecampException.Api> {
+            exchangeCode(
+                tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                code = "c",
+                redirectUri = "https://myapp.com/callback",
+                clientId = "id",
+                clientSecret = "s",
+                client = httpClient,
+            )
+        }
+        assertTrue(e.message!!.contains("token_type"))
+    }
+
+    @Test
+    fun exchangeNullTokenTypeDefaultsToBearer() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = "{\"access_token\": \"a\", \"token_type\": null}",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+        val httpClient = HttpClient(engine)
+        val token = exchangeCode(
+            tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+            code = "c",
+            redirectUri = "https://myapp.com/callback",
+            clientId = "id",
+            clientSecret = "s",
+            client = httpClient,
+        )
+        assertEquals("Bearer", token.tokenType)
+    }
+
+    @Test
     fun exchangeCodeSuccess() = runTest {
         val engine = MockEngine { request ->
             assertEquals(HttpMethod.Post, request.method)

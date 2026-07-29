@@ -172,7 +172,8 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 	// malformed response (SPEC §16) — an empty binding is not a binding. A
 	// non-string resource already failed the Token unmarshal above.
 	var rawResource struct {
-		Resource *string `json:"resource"`
+		Resource  *string `json:"resource"`
+		TokenType *string `json:"token_type"`
 	}
 	if err := json.Unmarshal(body, &rawResource); err != nil {
 		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token response: %v", err))
@@ -182,6 +183,14 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 		// malformed server responses via errors.As(*basecamp.Error) and need
 		// the HTTP status — matching the device-token and AuthManager paths.
 		return nil, basecamp.ErrAPI(resp.StatusCode, "token response resource must be a non-empty string when present")
+	}
+	// token_type: absent/JSON-null defaults to Bearer; a present-but-empty
+	// value is malformed (SPEC §16) — matching the device-flow parser.
+	if rawResource.TokenType != nil && *rawResource.TokenType == "" {
+		return nil, basecamp.ErrAPI(resp.StatusCode, "token response token_type must be a non-empty string when present")
+	}
+	if rawResource.TokenType == nil {
+		token.TokenType = "Bearer"
 	}
 
 	// Calculate ExpiresAt from ExpiresIn
