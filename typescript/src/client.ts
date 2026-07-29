@@ -322,9 +322,11 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   // from there rather than by a middleware that is only visited once.
   const lifecycle = new RequestLifecycle(hooks);
 
-  if (hooks) {
-    client.use(createHooksMiddleware(lifecycle));
-  }
+  // Registered even when no hooks are configured. It emits nothing in that case
+  // (every call is optional-chained), but it still owns releasing per-request
+  // state — and the retry middleware records an attempt whether or not anyone is
+  // listening, so skipping this would strand one map entry per retried request.
+  client.use(createLifecycleMiddleware(lifecycle));
 
   if (enableCache) {
     client.use(createCacheMiddleware());
@@ -615,7 +617,7 @@ class RequestLifecycle {
   }
 }
 
-function createHooksMiddleware(lifecycle: RequestLifecycle): Middleware {
+function createLifecycleMiddleware(lifecycle: RequestLifecycle): Middleware {
   return {
     async onRequest({ request, id }) {
       lifecycle.begin(id, request.method, request.url, 1);
@@ -1061,24 +1063,28 @@ function createRetryMiddleware(
           await authStrategy.authenticate(retryRequest.headers);
         }
 
-        // This raw fetch bypasses the middleware chain, so nothing downstream will
-        // observe it — this middleware owns the whole lifecycle of the retry.
+        // This raw fetch bypasses the middleware chain, so no downstream middleware
+        // sees the attempt begin — start it here.
         lifecycle.begin(id, method, url, failedAttempt + 1);
-        try {
-          const retryResponse = await fetch(retryRequest);
-          lifecycle.finalize(id, method, url, { statusCode: retryResponse.status });
-          return retryResponse;
-        } catch (error) {
-          // openapi-fetch only routes the INITIAL fetch through onError, so a
-          // failed retry would otherwise escape unobserved. End it here and
-          // rethrow the original error unchanged.
-          lifecycle.finalize(id, method, url, {
-            statusCode: 0,
-            error: error instanceof Error ? error : new Error(String(error)),
-          });
-          lifecycle.release(id);
-          throw error;
-        }
+
+        // Deliberately NOT finalized here. The returned response still flows
+        // through the cache middleware, which may rewrite a 304 into a cached 200;
+        // finalizing now would freeze the pre-transformation status and
+        // fromCache: false, and an idempotent finalize means the hooks pass could
+        // not correct it. The hooks middleware ends this attempt instead, reading
+        // attempt 2 from the state begun above.
+        return await fetch(retryRequest);
+      } catch (error) {
+        // openapi-fetch routes only the INITIAL fetch through onError, so anything
+        // thrown in here — the retry fetch, the auth refresh, the sleep — would
+        // otherwise escape with the attempt still open and its state stranded.
+        lifecycle.finalize(id, method, url, {
+          statusCode: 0,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+        lifecycle.release(id);
+        // Rethrow the original value so its identity survives.
+        throw error;
       } finally {
         bodyCache.delete(id);
       }

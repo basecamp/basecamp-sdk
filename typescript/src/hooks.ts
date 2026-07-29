@@ -286,8 +286,11 @@ export function consoleHooks(options: ConsoleHooksOptions = {}): BasecampHooks {
 
     onRetry: logRetries
       ? (info, attempt, error, delayMs) => {
+          // `attempt` is already the UPCOMING attempt per SPEC section 7 — print it
+          // as given. It used to be incremented here, which happened to read
+          // correctly only because the callers passed the failed attempt instead.
           logger.warn(
-            `[Basecamp] Retrying ${info.method} ${info.url} (attempt ${attempt + 1}, waiting ${delayMs}ms): ${error.message}`
+            `[Basecamp] Retrying ${info.method} ${info.url} (attempt ${attempt}, waiting ${delayMs}ms): ${error.message}`
           );
         }
       : undefined,

@@ -386,10 +386,11 @@ describe("consoleHooks", () => {
       };
       const error = new Error("Rate limited");
 
+      // 2 is the upcoming attempt (SPEC section 7), so it is logged verbatim.
       hooks.onRetry?.(info, 2, error, 2000);
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
-        "[Basecamp] Retrying GET https://api.example.com/todos.json (attempt 3, waiting 2000ms): Rate limited"
+        "[Basecamp] Retrying GET https://api.example.com/todos.json (attempt 2, waiting 2000ms): Rate limited"
       );
     });
 

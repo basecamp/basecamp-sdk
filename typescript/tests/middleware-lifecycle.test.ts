@@ -256,6 +256,83 @@ describe("middleware request lifecycle", () => {
     expect(seen[0]!.upcoming).toBe(2);
   });
 
+  // Review follow-up. The lifecycle middleware is registered even with no hooks
+  // configured, because it owns releasing per-request state and the retry
+  // middleware records an attempt regardless of whether anyone is listening.
+  // Without it, every retried request stranded one entry for the client's life.
+  it("does not retain per-request state when no hooks are configured", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts % 2 === 1) {
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        return HttpResponse.json([]);
+      })
+    );
+
+    // No `hooks` option at all — the path where state was stranded, because the
+    // middleware that releases it used to be registered only when hooks existed.
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+
+    // Exercises the no-hooks retry path end to end. The release itself is
+    // structural (the lifecycle middleware is now unconditional) and not directly
+    // observable through the public API, so this pins the behaviour around it:
+    // retries still work, and each logical request completes.
+    for (let i = 0; i < 3; i++) {
+      const { data } = await client.GET("/projects.json");
+      expect(data).toEqual([]);
+    }
+    expect(attempts).toBe(6);
+  });
+
+  // Review follow-up. A cached conditional GET whose retry returns 304 must be
+  // reported as the cache middleware finally resolved it (200, fromCache), not as
+  // the raw 304 the retry saw — the retry deliberately leaves finalization to the
+  // downstream hooks pass so the cache can transform the response first.
+  it("reports the post-cache outcome when a retried conditional GET returns 304", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+        attempts++;
+        if (attempts === 1) {
+          return HttpResponse.json([{ id: 1 }], { headers: { ETag: 'W/"v1"' } });
+        }
+        if (attempts === 2) {
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        // The retry carries the conditional header and the server confirms.
+        expect(request.headers.get("If-None-Match")).toBe('W/"v1"');
+        return new HttpResponse(null, { status: 304 });
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+      enableCache: true,
+    });
+
+    await client.GET("/projects.json"); // populates the cache
+    await client.GET("/projects.json"); // 429 -> retry -> 304 -> cached 200
+
+    const last = ends(events).at(-1)!;
+    expect(last.attempt).toBe(2);
+    expect(last.statusCode).toBe(200);
+  });
+
   // Defect 3. A successful retry must leave no per-request state behind. We
   // cannot read the private maps, so assert the observable consequence: many
   // retried requests in sequence stay balanced and never mis-attribute an
