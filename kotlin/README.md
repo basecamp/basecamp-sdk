@@ -27,23 +27,58 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Installation
 
-The SDK is published to GitHub Packages. Add the repository and dependency to your `build.gradle.kts`:
+The SDK is published to [GitHub Packages](https://github.com/basecamp/basecamp-sdk/packages). GitHub Packages requires an access token for every download — including for public packages like this one — so there are three steps rather than one.
+
+### 1. Create an access token
+
+Create a [**classic** personal access token](https://github.com/settings/tokens) with the `read:packages` scope. Fine-grained personal access tokens do not work with GitHub Packages.
+
+### 2. Store the credentials
+
+Put them in `~/.gradle/gradle.properties`, so they stay out of your repository:
+
+```properties
+gpr.user=YOUR_GITHUB_USERNAME
+gpr.key=YOUR_CLASSIC_TOKEN
+```
+
+The repository block below falls back to the `GITHUB_USER` and `GITHUB_ACCESS_TOKEN` environment variables, which is usually what you want in CI.
+
+### 3. Declare the repository and dependency
+
+In your `build.gradle.kts`:
 
 ```kotlin
 repositories {
+    mavenCentral()
     maven {
         url = uri("https://maven.pkg.github.com/basecamp/basecamp-sdk")
         credentials {
-            username = System.getenv("GITHUB_USER") ?: "x-access-token"
-            password = System.getenv("GITHUB_ACCESS_TOKEN") ?: ""
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USER")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_ACCESS_TOKEN")
         }
     }
 }
 
 dependencies {
-    implementation("com.basecamp:basecamp-sdk:0.2.1")
+    // Latest release: https://github.com/basecamp/basecamp-sdk/releases/latest
+    implementation("com.basecamp:basecamp-sdk:VERSION")
 }
 ```
+
+`mavenCentral()` is needed for the SDK's own dependencies — Ktor, kotlinx.serialization, and the Kotlin stdlib all resolve from there.
+
+### Maven
+
+Use `com.basecamp:basecamp-sdk-jvm` instead. Gradle reads the Gradle Module Metadata that ships alongside the root `com.basecamp:basecamp-sdk` artifact and transparently redirects to the JVM variant; Maven does not, so it resolves the root jar directly and finds a Kotlin Multiplatform metadata jar with no classes in it.
+
+### Troubleshooting
+
+| Error | Cause |
+|---|---|
+| `Could not find com.basecamp:basecamp-sdk` | The `maven { }` repository block is missing. |
+| `Username must not be null!` | Neither `gpr.user` nor `GITHUB_USER` is set. |
+| `Received status code 401 from server: Unauthorized` | The token is wrong, expired, fine-grained rather than classic, or missing the `read:packages` scope. |
 
 ## Quick Start
 
