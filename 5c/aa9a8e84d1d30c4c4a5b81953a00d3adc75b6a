@@ -1,0 +1,60 @@
+typescript/tests/oauth/token-store.test.ts
+  s_86d0793371d0f3::t_ead0cdc274e968 50-67
+go/README.md
+  s_86d0793371d0f3::t_9a5f83704a8600 277-281
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_ea7009528bb6f8 2096
+typescript/tests/oauth/token-conformance.test.ts
+  s_86d0793371d0f3::t_c2b0707889f129 47-51
+go/pkg/basecamp/auth_test.go
+  s_86d0793371d0f3::t_d0927164bd9ec2 6,457-493
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_d624ab8b9260b4 676-680
+typescript/README.md
+  s_86d0793371d0f3::t_54c5d4fedd3b2b 274-275
+go/pkg/basecamp/auth.go
+  s_86d0793371d0f3::t_6195ccbf39de98 375-378
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_57f2c239441ed9 1042-1043
+  s_86d0793371d0f3::t_b41f62af472c78 1027-1041,1270-1271,1303
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_e54588915a664c 554-558,560-570
+ruby/test/basecamp/oauth_test.rb
+  s_86d0793371d0f3::t_da1ac00112c4e0 317-324,326-330,332-334
+python/tests/oauth/test_exchange.py
+  s_86d0793371d0f3::t_f97d6bb15a5f78 164-167,170
+typescript/src/oauth/token-store.ts
+  s_86d0793371d0f3::t_3ab491d7bcb367 35-40
+  s_86d0793371d0f3::t_bbfd85d3e24ab7 110
+  s_86d0793371d0f3::t_c0a0a8c18d7d5d 122
+SPEC.md
+  s_86d0793371d0f3::t_afe9c70be31272 1341,1347-1349
+conformance/oauth-token/schema.json
+  s_86d0793371d0f3::t_1d383c168f0eec 69,71-75
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_7d2bf58799c201 272-283,285
+  s_86d0793371d0f3::t_b3cbfdc3a4c562 18
+python/src/basecamp/oauth/exchange.py
+  s_86d0793371d0f3::t_8ac8f28af846fb 88-91
+ruby/lib/basecamp/oauth/exchange.rb
+  s_86d0793371d0f3::t_55a22ba142c7f1 137-139
+  s_86d0793371d0f3::t_44fd5ec323849e 140
+python/tests/oauth/test_token_conformance.py
+  s_86d0793371d0f3::t_b4e4f8895d06d1 35,45,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5caa9a8e84d1d30c4c4a5b81953a00d3adc75b6a",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
