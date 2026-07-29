@@ -181,6 +181,53 @@ def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) 
         srv.close()
 
 
+def test_wire_error_past_the_deadline_classifies_as_timeout(monkeypatch) -> None:
+    # A connection reset that becomes runnable past the total deadline is the
+    # timeout it raced, not a distinct transport fault — the poll loop must
+    # back off transiently, never terminate. The fake clock (transport-module
+    # scoped) jumps past any deadline before the server closes the connection,
+    # so the error is captured strictly after the jump.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    past_deadline = threading.Event()
+
+    def reset_connection() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        past_deadline.set()
+        # An abrupt close mid-request surfaces as an httpx wire error (never
+        # a timeout) on the client side.
+        conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if past_deadline.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    server = threading.Thread(target=reset_connection, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.TimeoutException):
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+            )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
 def test_zero_max_body_bytes_is_a_strict_cap_not_a_usage_error() -> None:
     # _normalize_body_cap accepts zero as a legitimate strict cap, so the
     # transport must too: the request goes out and any non-empty body trips

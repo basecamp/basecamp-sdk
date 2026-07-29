@@ -461,6 +461,33 @@ class OAuthTransportTest < Minitest::Test
     Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
   end
 
+  def test_wire_error_past_the_deadline_classifies_as_timeout
+    # A peer reset observed past the monotonic deadline — before the watchdog
+    # thread is scheduled to flip deadline_fired — is the timeout it raced:
+    # the device poll retries only Faraday::TimeoutError, so classifying it
+    # as ConnectionFailed would terminate polling. The handler flips
+    # Fetcher's stubbed clock before resetting, so the classification read
+    # sees a past-deadline now while the watchdog flag is still false.
+    state = { past_deadline: false }
+    real = Basecamp::Oauth::Fetcher.method(:monotonic_now)
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) do
+      state[:past_deadline] ? 1e12 : real.call
+    end
+
+    endpoint, = start_server do |conn|
+      state[:past_deadline] = true
+      # An abrupt RST mid-request surfaces as a wire error, never a timeout.
+      conn.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, [ 1, 0 ].pack("ii"))
+      conn.close
+    end
+
+    assert_raises(Faraday::TimeoutError) do
+      Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/doc", timeout: 5)
+    end
+  ensure
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
+  end
+
   def test_fetch_json_buffered_oversized_error_body_is_the_status_fault
     # fetch_json discards non-2xx bodies (status dominates): a buffered adapter
     # whose oversized ERROR body is already in memory must surface the status

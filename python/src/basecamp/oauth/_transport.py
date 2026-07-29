@@ -204,7 +204,7 @@ def request_bounded(
     # ~timeout, so the bounded join below normally returns almost immediately; the
     # is_alive backstop after it covers only a pathological async-cleanup hang.
     result: list[tuple[int, bytes]] = []
-    error: list[Exception] = []
+    error: list[tuple[Exception, float]] = []
     # Completed outcomes recorded INSIDE _do before async cleanup: when
     # wait_for cancels mid-unwind, the response is already known and must win
     # over the cancellation (status-first classification for skipped statuses;
@@ -230,7 +230,11 @@ def request_bounded(
                 raise TimeoutError(f"{context} deadline expired before the request started")
             result.append(asyncio.run(asyncio.wait_for(_do(), remaining)))
         except Exception as exc:  # captured and re-raised on the caller thread
-            error.append(exc)
+            # Stamp the capture instant: the caller must classify a wire
+            # fault by WHEN it happened (in or past the deadline), and its
+            # own clock read after the join would misdate an in-deadline
+            # fault whose join crossed the bound.
+            error.append((exc, time.monotonic()))
 
     worker = threading.Thread(target=_runner, daemon=True)
     worker.start()
@@ -246,7 +250,7 @@ def request_bounded(
     if worker.is_alive():
         raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline")
     if error:
-        exc = error[0]
+        exc, captured_at = error[0]
         # On Python >= 3.11 (this package's floor) asyncio.TimeoutError IS the
         # builtin TimeoutError, so this catches wait_for's deadline expiry.
         if isinstance(exc, TimeoutError):
@@ -260,6 +264,16 @@ def request_bounded(
                 # dominates the deadline race.
                 return outcome[0]
             raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline") from exc
+        if (
+            isinstance(exc, httpx.HTTPError)
+            and not isinstance(exc, httpx.TimeoutException)
+            and captured_at > deadline_ts
+        ):
+            # A wire fault that became runnable past the total deadline is the
+            # timeout it raced (wait_for's already-due cancellation), not a
+            # distinct transport fault: a late connection reset must feed the
+            # poll loop's transient backoff, never terminate the flow.
+            raise httpx.ReadTimeout(f"{context} failed past the total deadline") from exc
         raise exc
     if not result:
         # The worker died without a result AND without recording an exception

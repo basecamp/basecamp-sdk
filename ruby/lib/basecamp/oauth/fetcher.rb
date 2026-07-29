@@ -505,7 +505,12 @@ module Basecamp
         raise Faraday::TimeoutError, "OAuth request timed out: #{e.message}"
       rescue IOError, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError,
              SystemCallError, SocketError, Zlib::Error => e
-        raise classify_stream_error(e, deadline_fired)
+        # The clock outranks the watchdog FLAG: a wire fault observed past the
+        # monotonic deadline is the timeout it raced, even when the watchdog
+        # thread has not yet been scheduled to flip deadline_fired — otherwise
+        # a post-deadline peer reset classifies as ConnectionFailed and the
+        # device poll terminates instead of applying its transient backoff.
+        raise classify_stream_error(e, deadline_fired || monotonic_now > deadline)
       rescue OpenSSL::SSL::SSLError => e
         # TLS failures (an unverifiable peer certificate above all) map to
         # Faraday::SSLError exactly as faraday-net_http maps them, so the
