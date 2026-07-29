@@ -136,7 +136,7 @@ def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) 
     from basecamp.oauth._transport import request_bounded
 
     srv, port = _serve_on_localhost()
-    served = threading.Event()
+    past_deadline = threading.Event()
 
     def respond() -> None:
         conn, _ = srv.accept()
@@ -146,13 +146,20 @@ def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) 
         except OSError:
             pass
         finally:
-            served.set()
             conn.close()
+
+    def skip_and_flip(_status: int) -> bool:
+        # Flip the fake clock HERE — inside the transport's own skip
+        # decision — so the deadline gate that runs immediately after reads
+        # a past-deadline "now". Flipping from the server thread raced the
+        # client processing the headers first.
+        past_deadline.set()
+        return False
 
     class FakeTime:
         @staticmethod
         def monotonic() -> float:
-            return 1e9 if served.is_set() else real_time.monotonic()
+            return 1e9 if past_deadline.is_set() else real_time.monotonic()
 
     monkeypatch.setattr(_transport, "time", FakeTime)
 
@@ -167,7 +174,7 @@ def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) 
                 params=None,
                 timeout=10.0,
                 max_body_bytes=1024,
-                read_body=lambda _status: False,
+                read_body=skip_and_flip,
             )
     finally:
         server.join(timeout=5)
