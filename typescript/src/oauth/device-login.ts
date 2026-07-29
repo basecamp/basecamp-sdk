@@ -88,14 +88,6 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
   // must not fire the authorization request or surface a code via display.
   throwIfAborted(signal);
 
-  // The code's lifetime starts at SERVER issuance, which precedes the response:
-  // anchor conservatively BEFORE the request goes out, so a slow authorization
-  // response (or one delayed in transit) eats into the deadline instead of
-  // granting the code a fresh full lifetime. The anchor can only SHORTEN the
-  // usable window, never extend it. Validated like the poller's samples — a
-  // malformed injected clock is the typed usage error before any network I/O.
-  const issuedAt = validatedClockSample(clock(), "performDeviceLogin");
-
   const auth = await requestDeviceAuthorization({
     deviceAuthorizationEndpoint: config.deviceAuthorizationEndpoint,
     clientId,
@@ -106,8 +98,17 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
     signal,
   });
 
+  // Anchor the code's lifetime at ISSUANCE — the response's arrival, per
+  // SPEC §16 — before the display hook, so a slow display eats into the
+  // deadline instead of resetting it. Expiry past this point is arbitrated
+  // by the server (expired_token), so receipt-anchoring fails safe.
+  // Validated like the poller's samples — a malformed injected clock is the
+  // typed usage error before the code is surfaced.
+  const issuedAt = validatedClockSample(clock(), "performDeviceLogin");
+
   // Re-check before surfacing the code: an abort racing the request's
-  // completion must not reach the display hook.
+  // completion — or landing during the clock sample above (itself a callback
+  // seam) — must not reach the display hook.
   throwIfAborted(signal);
 
   // Race an async display hook against the abort signal: a hook awaiting user
@@ -145,9 +146,9 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
         }
       );
   });
-  // Deduct everything since the pre-request anchor — request round-trip AND
-  // display time — so polling gets only the REMAINING lifetime. `expiresIn` is
-  // seconds; the clock is ms, so convert the elapsed span before subtracting.
+  // Deduct the elapsed display time from the issuance anchor so polling gets
+  // only the REMAINING lifetime. `expiresIn` is seconds; the clock is ms, so
+  // convert the elapsed span before subtracting.
   const remainingSeconds =
     auth.expiresIn - (validatedClockSample(clock(), "performDeviceLogin") - issuedAt) / 1000;
   // Re-check after the clock read: an abort landing after the display race

@@ -1054,21 +1054,20 @@ class OAuthDeviceTest {
     }
 
     @Test
-    fun performChargesAuthRoundTripAgainstLifetime() = runTest {
-        // The code is minted server-side before the response travels back: a
-        // response arriving 6s late with expires_in 5 is dead on arrival, so
-        // the pre-request anchor must expire it — never grant a fresh full
-        // lifetime. The MockEngine handler advances the manual clock to model
-        // the slow round-trip.
+    fun performAnchorsExpiryAtResponseReceipt() = runTest {
+        // SPEC §16: the deadline is markNow() + expiresIn taken AFTER
+        // requestDeviceAuthorization returns — a 6s request leg with
+        // expires_in 5 must NOT expire the fresh code client-side; expiry
+        // past receipt is arbitrated by the server (expired_token). The
+        // MockEngine handler advances the manual clock to model the slow
+        // round-trip.
         val clock = TestTimeSource()
-        var polled = false
         val slowAuthJson = deviceAuthJson.replace("\"expires_in\": 900", "\"expires_in\": 5")
         val engine = MockEngine { request ->
             if (request.url.encodedPath == "/oauth/device") {
                 clock += 6.seconds
                 respond(slowAuthJson, HttpStatusCode.OK, jsonHeaders)
             } else {
-                polled = true
                 respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
             }
         }
@@ -1081,18 +1080,15 @@ class OAuthDeviceTest {
             grantTypesSupported = listOf(DEVICE_CODE_GRANT_TYPE, "refresh_token"),
         )
 
-        val e = assertFailsWith<BasecampException.DeviceFlow> {
-            performDeviceLogin(
-                config = config,
-                clientId = "basecamp-cli",
-                display = { },
-                timeSource = clock,
-                client = client,
-            )
-        }
+        val token = performDeviceLogin(
+            config = config,
+            clientId = "basecamp-cli",
+            display = { },
+            timeSource = clock,
+            client = client,
+        )
 
-        assertEquals(BasecampException.DEVICE_EXPIRED, e.reason)
-        assertFalse(polled, "a response slower than expires_in must not be polled")
+        assertEquals("device_access_token", token.accessToken)
         client.close()
     }
 

@@ -642,12 +642,6 @@ suspend fun performDeviceLogin(
         throw BasecampException.DeviceFlow(BasecampException.DEVICE_UNAVAILABLE)
     }
 
-    // The code's lifetime starts at SERVER issuance, which precedes the
-    // response: anchor conservatively BEFORE the request goes out, so a slow
-    // authorization response (or one delayed in transit) eats into the
-    // deadline instead of granting the code a fresh full lifetime. The anchor
-    // can only SHORTEN the usable window, never extend it.
-    val issuedAt = timeSource.markNow()
     val auth = requestDeviceAuthorization(endpoint, clientId, scope, client)
     // Re-check cancellation before surfacing the code: coroutine cancellation
     // normally throws at the request's own suspension points, but an injected
@@ -655,9 +649,11 @@ suspend fun performDeviceLogin(
     // cancelled — the display hook must never fire then. Mirrors the
     // Go/TS/Python/Ruby orchestrators' post-request re-check.
     currentCoroutineContext().ensureActive()
-    // Derive the deadline from the pre-request anchor so neither a slow
-    // response nor a slow display hook resets the lifetime.
-    val deadline = issuedAt + auth.expiresIn.seconds
+    // Anchor the code's lifetime at ISSUANCE — the response's arrival, per
+    // SPEC §16 — before the display hook, so a slow display eats into the
+    // deadline instead of resetting it. Expiry past this point is arbitrated
+    // by the server (expired_token), so receipt-anchoring fails safe.
+    val deadline = timeSource.markNow() + auth.expiresIn.seconds
     display(auth)
     // Cancellation raised INSIDE the display hook (a prompt closing in
     // response to cancellation) wins over expiry: a hook that both cancels

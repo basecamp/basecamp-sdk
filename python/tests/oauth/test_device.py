@@ -1122,12 +1122,13 @@ class TestPerformDeviceLoginCancellation:
         assert exc_info.value.reason == "cancelled"
 
     @respx.mock
-    def test_cancel_during_the_anchor_clock_sample_stops_the_request(self):
-        # The injected clock is itself a callback seam: a cancel flipped inside
-        # the pre-request anchor sample must stop the flow before the
-        # authorization request fires.
-        route = respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+    def test_cancel_during_the_anchor_clock_sample_never_reaches_display(self):
+        # The injected clock is itself a callback seam: a cancel flipped
+        # inside the post-response issuance anchor must surface cancelled
+        # before the display hook fires.
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
         state = {"cancelled": False}
+        displayed: list[object] = []
 
         def clock() -> float:
             state["cancelled"] = True
@@ -1137,19 +1138,20 @@ class TestPerformDeviceLoginCancellation:
             perform_device_login(
                 CONFIG,
                 "basecamp-cli",
-                display=lambda _auth: None,
+                display=displayed.append,
                 sleep=RecordingSleep(),
                 clock=clock,
                 should_cancel=lambda: state["cancelled"],
             )
         assert exc_info.value.reason == "cancelled"
-        assert len(route.calls) == 0
+        assert displayed == []
 
     @respx.mock
-    def test_slow_authorization_response_counts_against_the_code_lifetime(self):
-        # The code is minted server-side before the response travels back: a
-        # response arriving 6s late with expires_in 5 is dead on arrival, so
-        # the pre-request anchor must expire it — never grant a fresh lifetime.
+    def test_expiry_anchors_at_response_receipt_not_request_start(self):
+        # SPEC §16: the deadline is clock() + expires_in taken AFTER the
+        # authorization request returns — a 6s request leg with expires_in 5
+        # must NOT expire the fresh code client-side; expiry past receipt is
+        # arbitrated by the server (expired_token).
         state = {"t": 0.0}
 
         def serve(_request):
@@ -1157,18 +1159,16 @@ class TestPerformDeviceLoginCancellation:
             return httpx.Response(200, json={**DEVICE_AUTH_RESPONSE, "expires_in": 5})
 
         respx.post(DEVICE_ENDPOINT).mock(side_effect=serve)
-        token_route = respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
+        respx.post(TOKEN_ENDPOINT).mock(return_value=httpx.Response(200, json=TOKEN_RESPONSE))
 
-        with pytest.raises(DeviceFlowError) as exc_info:
-            perform_device_login(
-                CONFIG,
-                "basecamp-cli",
-                display=lambda _auth: None,
-                sleep=RecordingSleep(),
-                clock=lambda: state["t"],
-            )
-        assert exc_info.value.reason == "expired"
-        assert len(token_route.calls) == 0
+        token = perform_device_login(
+            CONFIG,
+            "basecamp-cli",
+            display=lambda _auth: None,
+            sleep=RecordingSleep(),
+            clock=lambda: state["t"],
+        )
+        assert token.access_token == TOKEN_RESPONSE["access_token"]
 
     @respx.mock
     def test_cancellation_wins_over_a_device_auth_fault(self):

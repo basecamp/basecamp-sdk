@@ -977,11 +977,11 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal :cancelled, error.reason
   end
 
-  def test_perform_cancel_during_the_anchor_clock_call_stops_the_request
-    # The injected clock is itself a callback seam: a cancel flipped inside the
-    # pre-request anchor sample must stop the flow before the authorization
-    # request fires.
-    requested = stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
+  def test_perform_cancel_during_the_anchor_clock_call_never_reaches_display
+    # The injected clock is itself a callback seam: a cancel flipped inside
+    # the post-response issuance anchor must surface cancelled before the
+    # display hook fires.
+    stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
     state = { cancelled: false }
     clock = lambda do
       state[:cancelled] = true
@@ -994,29 +994,36 @@ class OAuthDeviceTest < Minitest::Test
       grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
     )
 
+    displayed = []
     error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
       Basecamp::Oauth.perform_device_login(
-        config: config, client_id: "basecamp-cli", display: ->(_auth) { },
+        config: config, client_id: "basecamp-cli",
+        display: ->(auth) { displayed << auth },
         sleeper: sleeper, clock: clock, cancelled: -> { state[:cancelled] }
       )
     end
 
     assert_equal :cancelled, error.reason
-    assert_not_requested(requested)
+    assert_empty displayed
   end
 
-  def test_perform_slow_authorization_response_counts_against_the_code_lifetime
-    # The code is minted server-side before the response travels back: a
-    # response arriving 6s late with expires_in 5 is dead on arrival, so the
-    # pre-request anchor must expire it — never grant a fresh lifetime.
+  def test_perform_expiry_anchors_at_response_receipt_not_request_start
+    # SPEC §16: the deadline is clock() + expires_in taken AFTER the
+    # authorization request returns — a 6s request leg with expires_in 5 must
+    # NOT expire the fresh code client-side; expiry past receipt is
+    # arbitrated by the server (expired_token).
     state = { t: 0 }
     auth_body = device_auth_response("expires_in" => 5).to_json
+    token_body = token_response.to_json
     client = Object.new
-    client.define_singleton_method(:post) do |_url|
-      state[:t] += 6
-      SequencedHttpClient::Response.new(200, auth_body)
+    client.define_singleton_method(:post) do |url|
+      if url.include?("/oauth/device")
+        state[:t] += 6
+        SequencedHttpClient::Response.new(200, auth_body)
+      else
+        SequencedHttpClient::Response.new(200, token_body)
+      end
     end
-    polled = stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response))
     _waits, sleeper = recording_sleeper
     config = Basecamp::Oauth::Config.new(
       issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
@@ -1024,16 +1031,13 @@ class OAuthDeviceTest < Minitest::Test
       grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
     )
 
-    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
-      Basecamp::Oauth::DeviceFlow.perform_device_login(
-        config: config, client_id: "basecamp-cli",
-        display: ->(_auth) { }, sleeper: sleeper,
-        http_client: client, clock: -> { state[:t] }
-      )
-    end
+    token = Basecamp::Oauth::DeviceFlow.perform_device_login(
+      config: config, client_id: "basecamp-cli",
+      display: ->(_auth) { }, sleeper: sleeper,
+      http_client: client, clock: -> { state[:t] }
+    )
 
-    assert_equal :expired, error.reason
-    assert_not_requested(polled)
+    assert_equal "device_access_token", token.access_token
   end
 
   def test_perform_cancellation_wins_over_a_device_auth_fault

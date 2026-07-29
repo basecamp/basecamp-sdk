@@ -716,13 +716,6 @@ func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, di
 
 	cfg := newDeviceConfig(opts)
 
-	// The code's lifetime starts at SERVER issuance, which precedes the
-	// response: anchor conservatively BEFORE the request goes out, so a slow
-	// authorization response (or one delayed in transit) eats into the
-	// deadline instead of granting the code a fresh full lifetime. The anchor
-	// can only SHORTEN the usable window, never extend it.
-	issuedAt := cfg.clock()
-
 	auth, err := RequestDeviceAuthorization(ctx, *config.DeviceAuthorizationEndpoint, clientID, opts...)
 	if err != nil {
 		return nil, err
@@ -737,10 +730,11 @@ func PerformDeviceLogin(ctx context.Context, config *Config, clientID string, di
 		return nil, &DeviceFlowError{Reason: DeviceFlowCancelled, Err: err}
 	}
 
-	// Derive the deadline from the pre-request anchor so neither a slow
-	// authorization response nor a slow display hook can yield a fresh full
-	// polling window.
-	deadline := issuedAt.Add(time.Duration(auth.ExpiresIn) * time.Second)
+	// Anchor the code's lifetime at ISSUANCE — the response's arrival, per
+	// SPEC §16 — before the display hook, so a slow display eats into the
+	// deadline instead of resetting it. Expiry past this point is arbitrated
+	// by the server (expired_token), so receipt-anchoring fails safe.
+	deadline := cfg.clock().Add(time.Duration(auth.ExpiresIn) * time.Second)
 
 	display(*auth)
 
