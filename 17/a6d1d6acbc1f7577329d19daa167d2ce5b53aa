@@ -1,0 +1,24 @@
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_ec5e8de5f088b6 480-482,484
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_0f5d6ff104e132 632-643
+  s_86d0793371d0f3::t_28a736aabcd5bb 631
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_dc824f2578e66f 231-234,512-515,528-532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "17a6d1d6acbc1f7577329d19daa167d2ce5b53aa",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
