@@ -319,18 +319,18 @@ module Basecamp
             raise OauthError.new("usage", "perform_device_login requires a callable display hook")
           end
 
-          # Honor a cancellation raised BEFORE the flow does any work: the sync
-          # authorization POST cannot observe the probe in flight, so without
-          # this entry check an already-cancelled flow still performs the
-          # request and invokes the display hook.
-          raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
-
           # The code's lifetime starts at SERVER issuance, which precedes the
           # response: anchor conservatively BEFORE the request goes out, so a
           # slow authorization response (or one delayed in transit) eats into
           # the deadline instead of granting the code a fresh full lifetime.
           # The anchor can only SHORTEN the usable window, never extend it.
           issued_at = sample_clock(clock, "perform_device_login")
+
+          # Honor a cancellation raised BEFORE the flow does any work — checked
+          # AFTER the anchor so a cancel flipped during the injected clock call
+          # (itself a callback seam) still stops the request: the sync
+          # authorization POST cannot observe the probe in flight.
+          raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
           auth = begin
             request_device_authorization(

@@ -944,6 +944,34 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "device_access_token", token.access_token
   end
 
+  def test_perform_cancel_during_the_anchor_clock_call_stops_the_request
+    # The injected clock is itself a callback seam: a cancel flipped inside the
+    # pre-request anchor sample must stop the flow before the authorization
+    # request fires.
+    requested = stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
+    state = { cancelled: false }
+    clock = lambda do
+      state[:cancelled] = true
+      0
+    end
+    _waits, sleeper = recording_sleeper
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
+    )
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.perform_device_login(
+        config: config, client_id: "basecamp-cli", display: ->(_auth) { },
+        sleeper: sleeper, clock: clock, cancelled: -> { state[:cancelled] }
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+    assert_not_requested(requested)
+  end
+
   def test_perform_slow_authorization_response_counts_against_the_code_lifetime
     # The code is minted server-side before the response travels back: a
     # response arriving 6s late with expires_in 5 is dead on arrival, so the

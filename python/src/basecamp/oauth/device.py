@@ -744,19 +744,19 @@ def perform_device_login(
     if not callable(display):
         raise OAuthError("usage", "perform_device_login requires a callable display hook")
 
-    # Honor a cancellation raised BEFORE the flow does any work: the sync
-    # authorization POST cannot observe the probe in flight, so without this
-    # entry check an already-cancelled flow still performs the request and
-    # invokes the display hook.
-    if should_cancel is not None and should_cancel():
-        raise DeviceFlowError("cancelled", "Device flow cancelled")
-
     # The code's lifetime starts at SERVER issuance, which precedes the
     # response: anchor conservatively BEFORE the request goes out, so a slow
     # authorization response (or one delayed in transit) eats into the deadline
     # instead of granting the code a fresh full lifetime. The anchor can only
     # SHORTEN the usable window, never extend it.
     issued_at = _validated_clock_sample(clock(), "perform_device_login")
+
+    # Honor a cancellation raised BEFORE the flow does any work — checked AFTER
+    # the anchor so a cancel flipped during the injected clock call (itself a
+    # callback seam) still stops the request: the sync authorization POST
+    # cannot observe the probe in flight.
+    if should_cancel is not None and should_cancel():
+        raise DeviceFlowError("cancelled", "Device flow cancelled")
 
     try:
         auth = request_device_authorization(

@@ -1095,6 +1095,30 @@ class TestPerformDeviceLoginCancellation:
         assert displayed == []
 
     @respx.mock
+    def test_cancel_during_the_anchor_clock_sample_stops_the_request(self):
+        # The injected clock is itself a callback seam: a cancel flipped inside
+        # the pre-request anchor sample must stop the flow before the
+        # authorization request fires.
+        route = respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+        state = {"cancelled": False}
+
+        def clock() -> float:
+            state["cancelled"] = True
+            return 0.0
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=lambda _auth: None,
+                sleep=RecordingSleep(),
+                clock=clock,
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+        assert len(route.calls) == 0
+
+    @respx.mock
     def test_slow_authorization_response_counts_against_the_code_lifetime(self):
         # The code is minted server-side before the response travels back: a
         # response arriving 6s late with expires_in 5 is dead on arrival, so

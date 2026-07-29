@@ -95,7 +95,7 @@ module Basecamp
       class ReadDeadlineExceeded < StandardError; end
 
       # Raised from +on_data+ to STOP reading a response whose body the caller does
-      # not use (a non-2xx device-auth, a 3xx token redirect). Draining a slow such
+      # not use (a non-2xx device-auth, a 3xx token redirect). Draining such a slow
       # body would otherwise time out and be misclassified as a transport failure.
       # Carries the response status so the caller can classify by it. Never escapes.
       class SkipBody < StandardError
