@@ -1,0 +1,39 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthTest.kt
+  s_86d0793371d0f3::t_9776275bd1777d 14,172
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_9776275bd1777d 603-626
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_072b1da830be73 548-551
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_9776275bd1777d 824-841
+  s_86d0793371d0f3::t_a482b61bb60be2 823
+ruby/test/basecamp/oauth_test.rb
+  s_86d0793371d0f3::t_9776275bd1777d 229-231
+python/src/basecamp/oauth/exchange.py
+  s_86d0793371d0f3::t_072b1da830be73 127-129,134
+  s_86d0793371d0f3::t_082e0ecff6fc6f 122
+python/tests/oauth/test_exchange.py
+  s_86d0793371d0f3::t_9776275bd1777d 40-43
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_072b1da830be73 237-240,526-531
+ruby/lib/basecamp/oauth/exchange.rb
+  s_86d0793371d0f3::t_072b1da830be73 178-179,184
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_072b1da830be73 232-234,239,682-684,689
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "e4f617efd7d0b776b733dcb4cdfb1b5e5fee9ea4",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
