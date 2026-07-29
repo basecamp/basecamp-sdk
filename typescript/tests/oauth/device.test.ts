@@ -1866,6 +1866,12 @@ describe("pollDeviceToken 429 handling", () => {
     // interval; a beyond-2^53 digit string is unrepresentable → fallback.
     expect(parseRetryAfterSeconds("2147484")).toBe(2_147_483);
     expect(parseRetryAfterSeconds("99999999999999999999")).toBe(0);
+    // The shared 10-significant-digit bound: leading zeros strip first, so a
+    // padded in-range delta is honored while >10 significant digits (or an
+    // unbounded digit string) fall back without feeding parseInt.
+    expect(parseRetryAfterSeconds("0".repeat(30) + "30")).toBe(30);
+    expect(parseRetryAfterSeconds("9".repeat(11))).toBe(0);
+    expect(parseRetryAfterSeconds("1" + "0".repeat(100000))).toBe(0);
   });
 
   it("decays the Retry-After override after one wait", async () => {

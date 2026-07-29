@@ -616,7 +616,14 @@ export function parseRetryAfterSeconds(header: string | null): number {
   if (!header) return 0;
   const trimmed = header.replace(/^[ \t]+|[ \t]+$/g, "");
   if (!/^\d+$/.test(trimmed)) return 0;
-  const parsed = parseInt(trimmed, 10);
+  // The shared 10-significant-digit bound (Python/Ruby mirror it; Go/Kotlin
+  // get it from bounded int parses): strip leading zeros first so a padded
+  // in-range delta ("00000000030") is honored, then treat longer strings as
+  // unrepresentable — interval fallback — instead of feeding parseInt an
+  // unbounded digit string. Comfortably covers MAX_DEVICE_SECONDS (7 digits).
+  const significant = trimmed.replace(/^0+/, "") || "0";
+  if (significant.length > 10) return 0;
+  const parsed = parseInt(significant, 10);
   // Safe-integer, not merely integer: parseInt("9".repeat(20)) yields an
   // integer-valued double past 2^53 — unrepresentable → interval fallback. A
   // representable delta beyond the shared device ceiling CLAMPS instead: the

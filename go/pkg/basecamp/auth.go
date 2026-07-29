@@ -402,17 +402,17 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		return ErrAPI(resp.StatusCode, "token refresh response missing access_token")
 	}
 
-	creds.AccessToken = tokenResp.AccessToken
-	if tokenResp.RefreshToken != "" {
-		creds.RefreshToken = tokenResp.RefreshToken
-	}
+	// Validate EVERYTHING before mutating creds — an error return below must
+	// not leave a partially-updated in-memory Credentials behind (the nearby
+	// access_token check states the same fail-before-mutating intent).
+	var expiresAt int64
 	switch {
 	case tokenResp.ExpiresIn == nil:
 		// A refresh response may legally omit expires_in. Leaving the OLD
 		// (already-passed) ExpiresAt would mark the fresh token expired and
 		// force a refresh on EVERY subsequent call — clear to 0, the
 		// no-known-expiry state AccessToken never force-refreshes.
-		creds.ExpiresAt = 0
+		expiresAt = 0
 	case *tokenResp.ExpiresIn <= 0:
 		// An EXPLICIT zero/negative lifetime is a malformed response, not an
 		// omission (SPEC §16's positive-lifetime rule): treating it as
@@ -427,17 +427,23 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		// token-lifetime ceiling (SPEC §16) makes it a malformed response.
 		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh response expires_in must be no greater than %d seconds", maxRefreshTokenLifetimeSeconds))
 	default:
-		creds.ExpiresAt = time.Now().Unix() + *tokenResp.ExpiresIn
+		expiresAt = time.Now().Unix() + *tokenResp.ExpiresIn
 	}
 	// An omitted (or null) resource preserves the stored binding
 	// (carry-forward, like an omitted rotated refresh_token); a present one
 	// replaces it. A present-but-EMPTY resource is a malformed response
 	// (SPEC §16: present ⇒ non-empty) — fail the refresh rather than
 	// persisting rotated credentials under a stale binding.
+	if tokenResp.Resource != nil && *tokenResp.Resource == "" {
+		return ErrAPI(resp.StatusCode, "token refresh response resource must be a non-empty string when present")
+	}
+
+	creds.AccessToken = tokenResp.AccessToken
+	if tokenResp.RefreshToken != "" {
+		creds.RefreshToken = tokenResp.RefreshToken
+	}
+	creds.ExpiresAt = expiresAt
 	if tokenResp.Resource != nil {
-		if *tokenResp.Resource == "" {
-			return ErrAPI(resp.StatusCode, "token refresh response resource must be a non-empty string when present")
-		}
 		creds.Resource = *tokenResp.Resource
 	}
 
