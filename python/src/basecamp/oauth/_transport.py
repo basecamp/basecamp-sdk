@@ -108,7 +108,12 @@ def request_bounded(
         # read the RAW wire bytes; a server compressing anyway hands over
         # compressed bytes bounded by the cap, which then fail classification
         # upstream instead of exhausting memory.
-        request_headers = {**headers, "Accept-Encoding": "identity"}
+        # Case-insensitive replacement: a caller passing "accept-encoding"
+        # would otherwise coexist with our key and emit duplicate headers,
+        # undermining the identity-only compression-bomb bound (the Ruby
+        # transport filters the same way).
+        request_headers = {k: v for k, v in headers.items() if k.lower() != "accept-encoding"}
+        request_headers["Accept-Encoding"] = "identity"
         async with (
             httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
             client.stream(method, url, data=params, headers=request_headers) as response,
@@ -126,6 +131,12 @@ def request_bounded(
             async for chunk in response.aiter_raw():
                 total += len(chunk)
                 if total > max_body_bytes:
+                    # Deadline first, symmetric with body completion: a chunk
+                    # becoming runnable past the bound must classify as the
+                    # timeout it is, not race ahead of wait_for into a
+                    # terminal api_error.
+                    if time.monotonic() > deadline_ts:
+                        raise TimeoutError(f"{context} body exceeded the total deadline")
                     # An oversized body is api_error, not a timeout — abort the
                     # stream so it is never fully buffered. Record the terminal
                     # error BEFORE the context managers unwind: their awaited
