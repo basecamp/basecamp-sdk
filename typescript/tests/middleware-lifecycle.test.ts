@@ -342,6 +342,41 @@ describe("middleware request lifecycle", () => {
     }).toEqual({ attempt: 2, statusCode: 200, fromCache: true });
   });
 
+  // Review follow-up. A failed response carrying a body has its stream cancelled
+  // before the backoff, so a throttled client does not hold a connection per
+  // in-flight retry. The other retry tests all use null-body responses, so this is
+  // the only one that reaches that branch — it pins that cancelling cannot break
+  // the retry itself. (Connection reuse is not observable from here.)
+  it("retries successfully when the failed response carries a body", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts === 1) {
+          // A body, unlike the null-body 429s used elsewhere in this file.
+          return HttpResponse.json(
+            { error: "Rate limited", details: "x".repeat(2048) },
+            { status: 429, headers: { "Retry-After": "0" } }
+          );
+        }
+        return HttpResponse.json([{ id: 1 }]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const { data } = await client.GET("/projects.json");
+
+    expect(attempts).toBe(2);
+    expect(data).toEqual([{ id: 1 }]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([429, 200]);
+  });
+
   // Repeated retried requests each report their own two attempts, in order, with
   // no cross-talk between logical requests. This says nothing about state being
   // released — that is not observable from here — only that attempt attribution

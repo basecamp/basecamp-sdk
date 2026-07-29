@@ -1046,6 +1046,13 @@ function createRetryMiddleware(
         lifecycle.finalize(id, method, url, { statusCode: response.status });
         lifecycle.retrying(id, method, url, failedAttempt, statusError, delay);
 
+        // This response is being discarded, so release its stream before we sleep
+        // rather than leaving it open across the backoff — otherwise a throttled
+        // client holds a connection per in-flight retry and cannot reuse any of
+        // them. The multipart transport in services/base.ts already does this.
+        // Errors are ignored: the body may already be consumed or closed.
+        void response.body?.cancel().catch(() => {});
+
         await sleep(delay);
 
         const body = bodyCache.get(id) ?? null;
