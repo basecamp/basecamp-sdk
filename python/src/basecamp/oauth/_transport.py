@@ -200,7 +200,12 @@ def request_bounded(
 
     def _runner() -> None:
         try:
-            result.append(asyncio.run(asyncio.wait_for(_do(), timeout)))
+            # Budget from the CALLER'S deadline, not a fresh full timeout: a
+            # late-scheduled worker (thread/CPU pressure) must not start a
+            # whole new window after the advertised bound — near zero, the
+            # request times out immediately instead of POSTing past it.
+            remaining = max(0.001, deadline_ts - time.monotonic())
+            result.append(asyncio.run(asyncio.wait_for(_do(), remaining)))
         except Exception as exc:  # captured and re-raised on the caller thread
             error.append(exc)
 
