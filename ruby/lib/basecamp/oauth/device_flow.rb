@@ -470,7 +470,13 @@ module Basecamp
             # would otherwise hold the POST open indefinitely — on_data (a
             # body callback) never runs during the header phase, leaving
             # nothing else to enforce the wall clock on an injected client.
-            response = Timeout.timeout(timeout, Faraday::TimeoutError) do
+            # The window is the REMAINING budget, not a fresh +timeout+: time
+            # spent before dispatch (descheduling included) already counts
+            # against the deadline, so the request can never run past it.
+            remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            raise Faraday::TimeoutError, "request budget exhausted before dispatch" if remaining <= 0
+
+            response = Timeout.timeout(remaining, Faraday::TimeoutError) do
               client.post(url) do |req|
                 req.headers["Content-Type"] = "application/x-www-form-urlencoded"
                 req.headers["Accept"] = "application/json"
@@ -499,6 +505,15 @@ module Basecamp
             # headers-first semantics for it belong to the transport primitive shared
             # with discovery, tracked as a pre-go-live hardening follow-up.
             return [ response.status, "" ] if skip_status && skip_status.call(response.status)
+
+            # Timeout.timeout's interrupt can be delivered late: a response
+            # whose final byte lands just before the deadline but whose block
+            # returns just after it would otherwise be accepted past the wall
+            # clock. Status-first classification above outranks this re-check
+            # (a completed skip-status is definitive); everything else past
+            # the deadline is refused as the same transport-shaped timeout.
+            raise Faraday::TimeoutError, "response completed after the deadline" \
+              if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
             body =
               if chunks.empty?

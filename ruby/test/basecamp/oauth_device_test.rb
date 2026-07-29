@@ -821,6 +821,56 @@ class OAuthDeviceTest < Minitest::Test
     server&.close
   end
 
+  def test_injected_client_dispatch_refused_when_budget_already_spent
+    # The wall-clock wrap must grant the REMAINING budget, not a fresh full
+    # timeout: when the deadline has already passed by dispatch time (thread
+    # descheduled after the deadline was captured), the POST must be refused
+    # rather than handed a whole new request window.
+    fetcher = Basecamp::Oauth::Fetcher
+    original = fetcher.method(:bounded_reader)
+    fetcher.define_singleton_method(:bounded_reader) do |*args, **kwargs|
+      sleep 0.1 # burn the entire budget between deadline capture and dispatch
+      original.call(*args, **kwargs)
+    end
+    dispatched = false
+    client = Object.new
+    client.define_singleton_method(:post) { |_url| dispatched = true }
+
+    assert_raises(Faraday::TimeoutError) do
+      Basecamp::Oauth::DeviceFlow.send(
+        :post_form, client, TOKEN_ENDPOINT, { "grant_type" => "test" },
+        timeout: 0.05, max_body_bytes: 1024
+      )
+    end
+    assert_equal false, dispatched, "POST must not dispatch on an exhausted budget"
+  ensure
+    fetcher.define_singleton_method(:bounded_reader, original)
+  end
+
+  def test_injected_client_response_completing_past_the_deadline_is_refused
+    # Timeout.timeout's interrupt can be delivered late: simulate that race by
+    # neutering the wrap so the request returns a 200 after the deadline has
+    # passed. The post-return monotonic re-check must refuse the late response
+    # as the same transport-shaped timeout — never hand back a token past the
+    # wall clock.
+    original = Timeout.method(:timeout)
+    Timeout.define_singleton_method(:timeout) { |*_args, &block| block.call }
+    client = Object.new
+    client.define_singleton_method(:post) do |_url|
+      sleep 0.1 # completes past the 0.05s deadline; the interrupt never lands
+      SequencedHttpClient::Response.new(200, +%({"access_token":"late"}))
+    end
+
+    assert_raises(Faraday::TimeoutError) do
+      Basecamp::Oauth::DeviceFlow.send(
+        :post_form, client, TOKEN_ENDPOINT, { "grant_type" => "test" },
+        timeout: 0.05, max_body_bytes: 1024
+      )
+    end
+  ensure
+    Timeout.define_singleton_method(:timeout, original)
+  end
+
   def test_poll_cancellation_wins_over_a_transport_fault
     # Cancellation-beats-classification on the error path: the probe flips as
     # the doomed request fails (index goes positive before the step raises),
