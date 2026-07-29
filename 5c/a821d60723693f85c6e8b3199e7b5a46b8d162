@@ -1,0 +1,38 @@
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_4b558f7d4c37d1 704-714,720-721
+ruby/lib/basecamp/oauth.rb
+  s_86d0793371d0f3::t_42b477d9c6ee91 136,141
+ruby/lib/basecamp/oauth/exchange.rb
+  s_86d0793371d0f3::t_26c20efbb6fb78 137
+  s_86d0793371d0f3::t_36c6d4677987b0 167-177,183-184
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_6087a006f81196 466
+  s_86d0793371d0f3::t_a1e5e50f5afd04 456-465,467-485
+ruby/lib/basecamp/oauth/token.rb
+  s_86d0793371d0f3::t_32f3a817741548 13-16,23-24,32-33,43-44
+ruby/lib/basecamp/oauth/refresh_request.rb
+  s_86d0793371d0f3::t_24bdbff4082642 12-15,21-22,29-30
+ruby/test/basecamp/oauth_test.rb
+  s_86d0793371d0f3::t_96b678749a5da9 319
+  s_86d0793371d0f3::t_206963ec5d852e 277-318,320-335,337-340
+  s_86d0793371d0f3::t_b66905e1e1b7d0 336
+ruby/README.md
+  s_86d0793371d0f3::t_4bf266b9009c76 141-144
+  s_86d0793371d0f3::t_276ec28f2ae7b3 168-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5ca821d60723693f85c6e8b3199e7b5a46b8d162",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
