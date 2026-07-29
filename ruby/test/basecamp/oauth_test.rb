@@ -231,6 +231,36 @@ class OAuthTest < Minitest::Test
     assert_nil error.cause
   end
 
+  def test_exchange_token_type_contract
+    # SPEC §16: token_type defaults to Bearer only when absent/JSON-null; a
+    # present-but-empty or non-string value ("" is truthy in Ruby) is a
+    # malformed response — matching the device-flow parser.
+    endpoint = "https://launchpad.37signals.com/authorization/token"
+    [ {}, { "token_type" => nil }, { "token_type" => "Bearer" } ].each do |extra|
+      stub_request(:post, endpoint)
+        .to_return(status: 200, body: { "access_token" => "a" }.merge(extra).to_json,
+                   headers: { "Content-Type" => "application/json" })
+      token = Basecamp::Oauth.exchange_code(
+        token_endpoint: endpoint, code: "c",
+        redirect_uri: "https://myapp.com/callback", client_id: "id"
+      )
+      assert_equal "Bearer", token.token_type, extra.inspect
+    end
+
+    [ "", 7 ].each do |bad|
+      stub_request(:post, endpoint)
+        .to_return(status: 200, body: { "access_token" => "a", "token_type" => bad }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.exchange_code(
+          token_endpoint: endpoint, code: "c",
+          redirect_uri: "https://myapp.com/callback", client_id: "id"
+        )
+      end
+      assert_equal "api_error", error.type, bad.inspect
+    end
+  end
+
   def test_exchange_code
     token_response = {
       "access_token" => "access_token_123",
@@ -296,6 +326,76 @@ class OAuthTest < Minitest::Test
 
     assert_equal "new_access_token", token.access_token
     assert_equal "new_refresh_token", token.refresh_token
+  end
+
+  def test_refresh_token_sends_resource_when_set
+    stub = stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+      .with(body: hash_including("resource" => "urn:bc:account:42"))
+      .to_return(status: 200, body: { "access_token" => "new_access_token" }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    Basecamp::Oauth.refresh_token(
+      token_endpoint: "https://launchpad.37signals.com/authorization/token",
+      refresh_token: "old_refresh_token",
+      client_id: "basecamp-cli",
+      resource: "urn:bc:account:42"
+    )
+
+    assert_requested stub
+  end
+
+  def test_refresh_token_omits_resource_when_unset_or_empty
+    # nil is unset; "" is truthy in Ruby but an empty resource is not a
+    # binding — both must omit the form key entirely (send-only-when-set).
+    [ nil, "" ].each do |resource|
+      stub = stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+        .with { |req| !URI.decode_www_form(req.body).to_h.key?("resource") }
+        .to_return(status: 200, body: { "access_token" => "new_access_token" }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+
+      Basecamp::Oauth.refresh_token(
+        token_endpoint: "https://launchpad.37signals.com/authorization/token",
+        refresh_token: "old_refresh_token",
+        resource: resource
+      )
+
+      assert_requested stub
+      WebMock.reset!
+    end
+  end
+
+  def test_token_response_resource_round_trips_and_null_is_absent
+    [ [ "urn:bc:account:42", "urn:bc:account:42" ], [ nil, nil ] ].each do |sent, expected|
+      stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+        .to_return(status: 200,
+                   body: { "access_token" => "a", "resource" => sent }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+
+      token = Basecamp::Oauth.refresh_token(
+        token_endpoint: "https://launchpad.37signals.com/authorization/token",
+        refresh_token: "old_refresh_token"
+      )
+
+      expected.nil? ? assert_nil(token.resource) : assert_equal(expected, token.resource)
+    end
+  end
+
+  def test_token_response_malformed_resource_rejected
+    [ "", 7 ].each do |resource|
+      stub_request(:post, "https://launchpad.37signals.com/authorization/token")
+        .to_return(status: 200,
+                   body: { "access_token" => "a", "resource" => resource }.to_json,
+                   headers: { "Content-Type" => "application/json" })
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.refresh_token(
+          token_endpoint: "https://launchpad.37signals.com/authorization/token",
+          refresh_token: "old_refresh_token"
+        )
+      end
+      assert_equal "api_error", error.type
+      assert_match(/resource/, error.message)
+    end
   end
 
   def test_token_expired

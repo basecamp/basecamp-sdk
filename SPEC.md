@@ -244,7 +244,12 @@ END
 **OAuthTokenProvider** (Go/Ruby only):
 - Caches the access token and its expiry timestamp.
 - Proactively refreshes when `expires_at - now() < TOKEN_REFRESH_BUFFER` (Go uses 300s; Ruby refreshes only on expiry).
-- `refresh()` POSTs to the token URL with `grant_type=refresh_token`.
+- `refresh()` POSTs to the token URL with `grant_type=refresh_token`. Go's
+  `AuthManager` additionally submits `client_id` when stored (BC5 public
+  clients authenticate by id alone) and echoes/preserves the stored RFC 8707
+  `resource` per §16's Token Response `resource` section. The Ruby and Python
+  legacy token providers are Launchpad-only and out of the BC5 resource-echo
+  scope.
 
 ### 401 Refresh-and-Retry Algorithm
 
@@ -1063,8 +1068,8 @@ END
 *Rubric-critical: BC5 OAuth go-live (communique §2/§3).*
 
 BC5's Authorization Server (AS) metadata lives **only** at the canonical issuer
-(the web host, e.g. `https://3.basecamp.com`). Probing the API host
-(`3.basecampapi.com/.well-known/oauth-authorization-server`) 404s permanently
+(the web host — production canonical `https://app.basecamp.com`). Probing the
+API host (`3.basecampapi.com/.well-known/oauth-authorization-server`) 404s permanently
 because RFC 8414 §3.3 requires `issuer` to equal the URL the metadata was
 derived from, and BC5's issuer is the web host. Discovery therefore starts from
 the **resource** (RFC 9728) and composes with AS discovery (RFC 8414).
@@ -1210,9 +1215,11 @@ every `fetchJSON` above MUST:
    re-validate each target against the origin-root profile.
 4. **Read the body under a genuine, bounded/streaming cap that aborts once the
    limit is exceeded** — NOT a post-hoc size check on an already-buffered body.
-   Python (`httpx.stream()`) and Ruby (Faraday `on_data`/capped read) must switch
-   from buffered reads to bounded streaming reads; Go/Kotlin/TS gain bounded reads
-   they lack today.
+   Python streams via `httpx.stream()`; Ruby's default transport is the
+   headers-first bounded `Fetcher.stream_http` primitive (Net::HTTP block form:
+   status classified at header time, watchdog wall-clock deadline, streamed cap
+   — injected Faraday connections keep a capped `on_data` read); Go/Kotlin/TS
+   use bounded reads.
 
 Non-2xx on either hop → `api_error` (not `network`).
 
@@ -1254,11 +1261,51 @@ FUNCTION exchangeCode(token_endpoint, code, redirect_uri, client_id, client_secr
 END
 ```
 
+### Token Response `resource` Indicator (RFC 8707) `[conformance]`
+
+*BC5 go-live. Contract source: bc3 #9471 (`Oauth::RefreshToken#resolve_target_account!`,
+`Oauth::ResourceIndicator`).*
+
+Every token response — authorization-code exchange, device grant, AND refresh —
+MAY carry a `resource` member: an RFC 8707 resource indicator naming the account
+the token is bound to. BC5 emits the URN form `urn:bc:account:<queenbee_id>`
+(the server also parses a URL form). Token models in all five SDKs carry it as
+an **optional string, appended after all existing fields** (never repositioning
+existing positional/keyword parameters):
+
+- Omitted or JSON `null` → absent (same null-as-absent rule as
+  `refresh_token`/`scope` in §16 device validation).
+- Present → MUST be a non-empty string; a present-but-empty `""` or non-string
+  value is a malformed response (`api_error`). No format validation beyond
+  non-empty: the indicator is an opaque echo token from the client's viewpoint.
+
+**Refresh contract.** Refresh requests accept an optional `resource` form
+parameter, sent only when set and appended without repositioning existing
+parameters. BC5's `trusted` clients (e.g. `basecamp-cli`) receive
+**multi-account refresh tokens** (identity-wide grant, no bound account); for
+these the BC5 refresh grant HARD-REQUIRES `resource` — a refresh without it is
+rejected 400 `invalid_request` ("resource parameter required for multi-account
+token"). The rule for every consumer:
+
+> **Echo the stored token's `resource` when refreshing.**
+
+**Lifecycle managers** (TS `TokenManager`, Go `AuthManager`, and any consumer
+that owns the refresh loop) do this automatically: they submit the stored
+`resource` on every refresh, and when a refresh response OMITS `resource` they
+preserve the prior stored value on the rotated credentials (same
+carry-forward rule as an omitted rotated `refresh_token`). A refresh response
+that carries `resource` replaces the stored value.
+
 ### RFC 8628 Device Authorization Grant `[conformance]`
 
 *BC5 go-live (communique §4). Public pre-registered client `basecamp-cli`:
 `token_endpoint_auth_method: none`, grants `device_code`+`refresh_token`, no
-redirect URIs, no secret. An omitted scope defaults to `read`.*
+redirect URIs, no secret. An omitted scope defaults to the registry's
+least-privilege first entry (`read` for `basecamp-cli`) — consumers SHOULD pin
+the scope explicitly rather than rely on the server default. While BC5 OAuth is
+dark-launched (`issuance_enabled` off), the device authorization endpoint
+answers **503** — surfaced as `api_error` with that status, meaning "not yet
+enabled here", not a protocol failure.*
 
 Three functions per SDK. All device-auth + token requests are TLS-guarded (§9).
 
@@ -1291,12 +1338,15 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
   2. deadline = clock.now() + expiresIn    # MONOTONIC clock, injectable
      backoff = interval                    # transient timeout backoff, SEPARATE
                                            # from the server-driven interval
+     nextWaitOverride = 0                  # one-shot 429 Retry-After override
   3. LOOP (cancellation-aware):
        IF cancelled → raise DeviceFlowError(cancelled)
        IF clock.now() ≥ deadline → raise DeviceFlowError(expired)   # check BEFORE waiting,
               # so a long display hook, a stalled prior request, or a long backoff
               # cannot carry the loop past expiry undetected
-       wait = max(interval, backoff), clamped to the remaining lifetime (> 0 here)
+       wait = max(interval, backoff, nextWaitOverride), clamped to the
+              remaining lifetime (> 0 here)
+       nextWaitOverride = 0   # one-shot: consumed by this wait, then gone
        SLEEP wait   # abortable; a cancel mid-wait → DeviceFlowError(cancelled)
        IF clock.now() ≥ deadline → raise DeviceFlowError(expired)
               # re-check AFTER the wait, before POSTing: the clamp above makes the
@@ -1327,11 +1377,14 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
               accepted and coerced to whole seconds, matching the device-duration
               rule; every SDK decodes the numeric value and validates it
               explicitly to reject a fractional lifetime);
-              refresh_token/token_type/scope, when present and non-null, MUST be
-              strings — a JSON null is treated as absent (like an omitted field),
-              consistent with the null-duration rule above. token_type is
+              refresh_token/token_type/scope/resource, when present and non-null,
+              MUST be strings — a JSON null is treated as absent (like an omitted
+              field), consistent with the null-duration rule above. token_type is
               additionally non-empty when present: absent or JSON null defaults to
-              Bearer, while an explicit "" is malformed (api_error). A non-object
+              Bearer, while an explicit "" is malformed (api_error). resource is
+              likewise non-empty when present (RFC 8707 indicator, see the
+              Token Response `resource` section above) and is captured onto the
+              returned Token. A non-object
               or unparsable body, and every field/status error above, carries the
               HTTP status on the raised api_error.
               Absent expires_in is allowed (the token carries no expiry).
@@ -1347,11 +1400,34 @@ FUNCTION pollDeviceToken(tokenEndpoint, clientId, deviceCode, interval, expiresI
          error slow_down → interval += 5   (this AND all subsequent polls)
          error access_denied → raise DeviceFlowError(access_denied)
          error expired_token → raise DeviceFlowError(expired)
+         HTTP 429 AND error too_many_requests → keep polling with a ONE-SHOT
+              next-wait override: nextWaitOverride = max(interval, retryAfter)
+              when the response carries a positive integral Retry-After delta
+              (seconds), else the current interval. The override applies to the
+              NEXT wait only (still clamped to the remaining lifetime by the
+              wait rule above) and then decays — it never permanently inflates
+              the slow_down-driven interval. A missing, malformed, fractional,
+              non-positive, or UNREPRESENTABLE (overflowing the parser's native
+              integer range or digit bound) Retry-After falls back to the
+              current interval. A representable delta beyond the shared device
+              ceiling CLAMPS to the ceiling instead of falling back: the wait
+              rule clamps to the remaining code lifetime anyway, so an
+              over-ceiling throttle waits out the rest of the lifetime rather
+              than resending before the server's throttle. Parsing trims ONLY
+              ASCII SP and HTAB around the value (RFC 9110 optional
+              whitespace): delta-seconds is 1*DIGIT, so a value wrapped in any
+              other whitespace (NBSP, Unicode spaces) is malformed and falls
+              back — never trimmed into validity. Cancellation stays live through the (possibly longer)
+              wait. ONLY this exact combination is retryable: a 429 without
+              error=too_many_requests, or too_many_requests on any other
+              status, stays terminal (api_error) like any unrecognized error.
          connection timeout → backoff = min(backoff × 2, 60), keep polling
        ANY completed round-trip (2xx or OAuth error) → backoff = interval
        # The two timers never contaminate each other: slow_down inflates
        # interval permanently; timeouts inflate backoff transiently, and a
-       # completed round-trip resets backoff to the current interval.
+       # completed round-trip resets backoff to the current interval; a 429
+       # Retry-After override outlives neither — it is consumed by the next
+       # wait and gone.
 END
 ```
 

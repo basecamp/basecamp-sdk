@@ -1,0 +1,11 @@
+{
+  "name": "refresh-sends-resource",
+  "description": "A refresh with a resource set sends it as the resource form parameter (the multi-account echo).",
+  "operation": "refreshToken",
+  "request": { "resource": "urn:bc:account:42" },
+  "response": {
+    "status": 200,
+    "body": { "access_token": "tok", "token_type": "Bearer" }
+  },
+  "expect": { "outcome": "token", "resourceAbsent": true, "formResource": "urn:bc:account:42" }
+}

@@ -295,8 +295,11 @@ module Basecamp
       #   session the moment it exists if the deadline fired mid-connect)
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @param skip_status [Proc, nil] statuses whose body is never read
+      # @param on_headers [Proc, nil] called with the +Net::HTTPResponse+ once
+      #   headers arrive, before any body read or skip decision — the device
+      #   poll loop reads +Retry-After+ here without widening the return shape
       # @return [Array(Integer, String)] status and (possibly empty) body
-      def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil)
+      def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil, on_headers: nil)
         # Response state first, before ANY call the def-level rescues could
         # catch, so every rescue path sees it assigned (the completed_at guard
         # means it is only READ once genuinely populated).
@@ -498,6 +501,9 @@ module Basecamp
 
           http.request(request) do |response|
             status = response.code.to_i
+            # Headers are available before any body read; the device poll loop
+            # uses this to read Retry-After without widening the return shape.
+            on_headers&.call(response)
             if skip_status&.call(status)
               # Deadline first for a status NOT known in time: headers that
               # become runnable past the monotonic deadline (but before the

@@ -134,6 +134,10 @@ module Basecamp
         params["refresh_token"] = request.refresh_token
         params["client_id"] = request.client_id if request.client_id
         params["client_secret"] = request.client_secret if request.client_secret
+        # An empty string is truthy in Ruby but an empty resource is not a
+        # binding — treat it as unset (omit) per the send-only-when-set
+        # contract, matching Go/TS/Kotlin.
+        params["resource"] = request.resource unless request.resource.to_s.empty?
 
         params
       end
@@ -161,14 +165,43 @@ module Basecamp
 
         handle_error_response(response.status, data) unless response.success?
 
-        raise OauthError.new("api_error", "Token response missing access_token") unless data["access_token"]
+        unless data["access_token"].is_a?(String) && !data["access_token"].empty?
+          raise OauthError.new(
+            "api_error", "Token response missing or non-string access_token",
+            http_status: response.status
+          )
+        end
+
+        # resource: absent and JSON null are unset; when present it must be a
+        # non-empty string (SPEC §16) — an empty binding is not a binding.
+        resource = data["resource"]
+        unless resource.nil? || (resource.is_a?(String) && !resource.empty?)
+          raise OauthError.new(
+            "api_error",
+            "Token response resource must be a non-empty string when present",
+            http_status: response.status
+          )
+        end
+
+        # token_type: absent/JSON-null defaults to Bearer; present must be a
+        # non-empty String ("" is truthy in Ruby, so || alone would admit it) —
+        # matching the device-flow parser and SPEC §16.
+        token_type = data["token_type"]
+        unless token_type.nil? || (token_type.is_a?(String) && !token_type.empty?)
+          raise OauthError.new(
+            "api_error",
+            "Token response token_type must be a non-empty string when present",
+            http_status: response.status
+          )
+        end
 
         Token.new(
           access_token: data["access_token"],
           refresh_token: data["refresh_token"],
-          token_type: data["token_type"] || "Bearer",
+          token_type: token_type || "Bearer",
           expires_in: data["expires_in"],
-          scope: data["scope"]
+          scope: data["scope"],
+          resource: resource
         )
       rescue JSON::ParserError
         # A token response that fails to parse may still contain credential

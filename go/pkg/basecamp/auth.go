@@ -16,6 +16,14 @@ import (
 
 const serviceName = "basecamp-sdk"
 
+// maxRefreshTokenLifetimeSeconds caps a refresh response's expires_in at the
+// shared cross-SDK token-lifetime ceiling (2147483647 s ≈ 68 years, SPEC §16
+// — the same bound the oauth package's device/exchange parsers enforce). It
+// bounds the Unix-time addition in refreshLocked: an unbounded value like
+// math.MaxInt64 would overflow into a negative ExpiresAt that the
+// no-known-expiry rule reads as never-expiring.
+const maxRefreshTokenLifetimeSeconds = 2_147_483_647
+
 // Credentials holds OAuth tokens and metadata.
 type Credentials struct {
 	AccessToken   string `json:"access_token"`
@@ -24,6 +32,22 @@ type Credentials struct {
 	Scope         string `json:"scope"`
 	TokenEndpoint string `json:"token_endpoint"`
 	UserID        string `json:"user_id,omitempty"`
+
+	// ClientID is the OAuth client the tokens were issued to. BC5 public
+	// clients (token_endpoint_auth_method: none) authenticate refreshes by
+	// client_id alone, so refresh submits it when present.
+	ClientID string `json:"client_id,omitempty"`
+
+	// Resource is the RFC 8707 resource indicator the tokens are bound to
+	// (BC5: urn:bc:account:<id>). Refresh echoes it and preserves it when a
+	// refresh response omits it — BC5 multi-account refresh tokens reject a
+	// refresh without it (SPEC §16).
+	//
+	// The oauth helpers only return an oauth.Token; after a device login or
+	// code exchange the CALLER saves Credentials carrying the ClientID it
+	// used and the token's Resource (see the README OAuth section) — there is
+	// no automatic bridge from oauth.Token to Credentials.
+	Resource string `json:"resource,omitempty"`
 }
 
 // TokenProvider is the interface for obtaining access tokens.
@@ -254,8 +278,13 @@ func (m *AuthManager) AccessToken(ctx context.Context) (string, error) {
 		return "", ErrAuth("Not authenticated")
 	}
 
-	// Check if token is expired (with 5 minute buffer)
-	if time.Now().Unix() >= creds.ExpiresAt-300 {
+	// Check if token is expired (with 5 minute buffer). ExpiresAt <= 0 means
+	// NO KNOWN EXPIRY (a token response may legally omit expires_in — the
+	// device/exchange parsers leave ExpiresAt zero, and refreshLocked stores
+	// no expiry when the server sends none): such credentials are used as-is,
+	// never force-refreshed — a fresh token without a refresh token would
+	// otherwise hard-fail here despite being perfectly usable.
+	if creds.ExpiresAt > 0 && time.Now().Unix() >= creds.ExpiresAt-300 {
 		if err := m.refreshLocked(ctx, origin, creds); err != nil {
 			return "", err
 		}
@@ -317,6 +346,12 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", creds.RefreshToken)
+	if creds.ClientID != "" {
+		data.Set("client_id", creds.ClientID)
+	}
+	if creds.Resource != "" {
+		data.Set("resource", creds.Resource)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, strings.NewReader(data.Encode()))
 	if err != nil {
@@ -338,7 +373,14 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 	var tokenResp struct {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int64  `json:"expires_in"`
+		// *int64 so an omitted (or null) expires_in is distinguishable from an
+		// explicit value: omission clears the stale expiry (no known expiry),
+		// while an explicit non-positive value is a malformed response.
+		ExpiresIn *int64 `json:"expires_in"`
+		// *string so an omitted (or null) resource is distinguishable from a
+		// present one: omission preserves the stored value, presence replaces
+		// it (SPEC §16 lifecycle rule).
+		Resource *string `json:"resource"`
 	}
 	const maxTokenResponseSize int64 = 1 << 20 // 1 MB
 	body, err := limitedReadAll(resp.Body, maxTokenResponseSize)
@@ -346,15 +388,63 @@ func (m *AuthManager) refreshLocked(ctx context.Context, origin string, creds *C
 		return fmt.Errorf("reading token response: %w", err)
 	}
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return err
+		// A malformed 200 body — including a non-string resource failing the
+		// *string decode — is an api fault (SPEC §16), not a raw
+		// json.UnmarshalTypeError callers cannot classify.
+		return ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token refresh response: %v", err))
+	}
+
+	// A 200 with a missing or empty access_token is a malformed response
+	// (SPEC §16), not a rotation: persisting it would overwrite working
+	// credentials with an unusable empty token — an effective logout. Fail
+	// before mutating anything, matching the device/exchange paths.
+	if tokenResp.AccessToken == "" {
+		return ErrAPI(resp.StatusCode, "token refresh response missing access_token")
+	}
+
+	// Validate EVERYTHING before mutating creds — an error return below must
+	// not leave a partially-updated in-memory Credentials behind (the nearby
+	// access_token check states the same fail-before-mutating intent).
+	var expiresAt int64
+	switch {
+	case tokenResp.ExpiresIn == nil:
+		// A refresh response may legally omit expires_in. Leaving the OLD
+		// (already-passed) ExpiresAt would mark the fresh token expired and
+		// force a refresh on EVERY subsequent call — clear to 0, the
+		// no-known-expiry state AccessToken never force-refreshes.
+		expiresAt = 0
+	case *tokenResp.ExpiresIn <= 0:
+		// An EXPLICIT zero/negative lifetime is a malformed response, not an
+		// omission (SPEC §16's positive-lifetime rule): treating it as
+		// no-expiry would persist an already-expired token that never
+		// refreshes again. Fail without persisting anything.
+		return ErrAPI(resp.StatusCode, "token refresh response expires_in must be positive when present")
+	case *tokenResp.ExpiresIn > maxRefreshTokenLifetimeSeconds:
+		// An absurd lifetime (math.MaxInt64 above all) would overflow the
+		// Unix-time addition below into a NEGATIVE ExpiresAt — which the
+		// no-known-expiry rule then treats as never-expiring, so an
+		// effectively-expired token would never refresh again. The shared
+		// token-lifetime ceiling (SPEC §16) makes it a malformed response.
+		return ErrAPI(resp.StatusCode, fmt.Sprintf("token refresh response expires_in must be no greater than %d seconds", maxRefreshTokenLifetimeSeconds))
+	default:
+		expiresAt = time.Now().Unix() + *tokenResp.ExpiresIn
+	}
+	// An omitted (or null) resource preserves the stored binding
+	// (carry-forward, like an omitted rotated refresh_token); a present one
+	// replaces it. A present-but-EMPTY resource is a malformed response
+	// (SPEC §16: present ⇒ non-empty) — fail the refresh rather than
+	// persisting rotated credentials under a stale binding.
+	if tokenResp.Resource != nil && *tokenResp.Resource == "" {
+		return ErrAPI(resp.StatusCode, "token refresh response resource must be a non-empty string when present")
 	}
 
 	creds.AccessToken = tokenResp.AccessToken
 	if tokenResp.RefreshToken != "" {
 		creds.RefreshToken = tokenResp.RefreshToken
 	}
-	if tokenResp.ExpiresIn > 0 {
-		creds.ExpiresAt = time.Now().Unix() + tokenResp.ExpiresIn
+	creds.ExpiresAt = expiresAt
+	if tokenResp.Resource != nil {
+		creds.Resource = *tokenResp.Resource
 	}
 
 	return m.store.Save(origin, creds)

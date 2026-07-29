@@ -18,7 +18,7 @@ class OAuthDeviceTest < Minitest::Test
   # A Faraday-shaped double that returns a scripted sequence of outcomes. Each
   # step is either a StandardError (raised) or a Hash (a status/body response).
   class SequencedHttpClient
-    Response = Struct.new(:status, :body)
+    Response = Struct.new(:status, :body, :headers)
 
     # Exposed so cancellation tests can flip a probe the moment a request
     # has been attempted (index goes positive before a step raises).
@@ -34,7 +34,7 @@ class OAuthDeviceTest < Minitest::Test
       @index += 1
       raise step if step.is_a?(StandardError)
 
-      Response.new(step[:status], step[:body])
+      Response.new(step[:status], step[:body], step[:headers] || {})
     end
   end
 
@@ -475,6 +475,36 @@ class OAuthDeviceTest < Minitest::Test
       )
     end
     assert_equal :cancelled, error.reason
+  end
+
+  def test_poll_captures_resource_and_treats_null_as_absent
+    [ [ "urn:bc:account:42", "urn:bc:account:42" ], [ nil, nil ] ].each do |sent, expected|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("resource" => sent)))
+      _waits, sleeper = recording_sleeper
+
+      token = Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+
+      expected.nil? ? assert_nil(token.resource) : assert_equal(expected, token.resource)
+    end
+  end
+
+  def test_poll_rejects_malformed_resource_on_token_response
+    [ "", 7 ].each do |resource|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(json(token_response.merge("resource" => resource)))
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+      assert_match(/resource/, error.message)
+    end
   end
 
   def test_poll_accepts_token_response_without_expires_in
@@ -1369,5 +1399,147 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal :expired, error.reason
     assert_equal [ 3 ], waits # clamped to the 3s remaining, not the full 900s
     assert_not_requested(polled)
+  end
+
+  # --- poll_device_token 429 handling ---------------------------------------
+
+  def json429(retry_after: nil)
+    headers = { "Content-Type" => "application/json" }
+    headers["Retry-After"] = retry_after if retry_after
+    { status: 429, body: { "error" => "too_many_requests" }.to_json, headers: headers }
+  end
+
+  def test_poll_retries_after_429_with_retry_after_override
+    stub_request(:post, TOKEN_ENDPOINT).to_return(
+      json429(retry_after: "30"),
+      json(token_response)
+    )
+    waits, sleeper = recording_sleeper
+
+    token = Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    assert_equal "device_access_token", token.access_token
+    # Initial 5s wait, then the one-shot max(interval, Retry-After) = 30s.
+    assert_equal [ 5, 30 ], waits
+  end
+
+  def test_poll_429_missing_or_malformed_retry_after_falls_back_to_interval
+    [ nil, "abc", "1.5", "-1", "0", "99999999999999999999", "\u00a030", "\u200930" ].each do |header|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(
+        json429(retry_after: header),
+        json(token_response)
+      )
+      waits, sleeper = recording_sleeper
+
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+
+      assert_equal [ 5, 5 ], waits, "header=#{header.inspect}"
+    end
+  end
+
+  def test_parse_retry_after_trims_only_ascii_ows
+    # RFC 9110: delta-seconds is 1*DIGIT and OWS is only SP/HTAB. String#strip
+    # also removes \v \f \r \n \0 — which would trim a malformed value into
+    # validity — so the parser trims exactly SP/HTAB (SPEC \u00a716). Control
+    # characters cannot ride a WebMock header, so the parser is exercised
+    # directly, like the NBSP cases in the other SDKs.
+    parse = ->(header) { Basecamp::Oauth::DeviceFlow.send(:parse_retry_after_seconds, header) }
+
+    assert_equal 30, parse.call(" 30 ")
+    assert_equal 30, parse.call("\t30\t")
+    assert_equal 30, parse.call(" \t30\t ")
+    assert_equal 0, parse.call("\v30")
+    assert_equal 0, parse.call("\f30\f")
+    assert_equal 0, parse.call("\r30\n")
+    assert_equal 0, parse.call("\u00a030")
+    assert_equal 0, parse.call("\u200930")
+    # Representable over-ceiling clamps (the wait rule clips to the remaining
+    # lifetime); >10 significant digits is unrepresentable -> fallback.
+    assert_equal 2_147_483, parse.call("2147484")
+    assert_equal 30, parse.call("00000000030")
+    assert_equal 0, parse.call("99999999999")
+  end
+
+  def test_poll_429_retry_after_override_decays_after_one_wait
+    stub_request(:post, TOKEN_ENDPOINT).to_return(
+      json429(retry_after: "30"),
+      json({ "error" => "authorization_pending" }, status: 400),
+      json(token_response)
+    )
+    waits, sleeper = recording_sleeper
+
+    Basecamp::Oauth.poll_device_token(
+      token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+      device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+    )
+
+    # 5s initial, 30s one-shot override, then back to the 5s interval.
+    assert_equal [ 5, 30, 5 ], waits
+  end
+
+  def test_poll_429_wrong_pair_stays_terminal
+    [
+      json({ "error" => "rate_limited" }, status: 429),
+      json({ "error" => "authorization_pending" }, status: 429),
+      json({ "error" => "slow_down" }, status: 429),
+      json({ "error" => "too_many_requests" }, status: 400)
+    ].each do |response|
+      stub_request(:post, TOKEN_ENDPOINT).to_return(response)
+      _waits, sleeper = recording_sleeper
+
+      error = assert_raises(Basecamp::Oauth::OauthError) do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+        )
+      end
+      assert_equal "api_error", error.type
+    end
+  end
+
+  def test_poll_429_wait_clamped_to_expiry
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json429(retry_after: "3600"))
+    waits, sleeper = recording_sleeper
+    # Scripted monotonic clock: deadline anchors at t=0 with a 20s lifetime.
+    # The second iteration's huge Retry-After override must clamp to the 14s
+    # remaining, and the post-wait check then expires the flow.
+    clock = scripted_clock([ 0, 0, 5, 6, 20 ])
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 20,
+        sleeper: sleeper, clock: clock
+      )
+    end
+    assert_equal :expired, error.reason
+    assert_equal [ 5, 14 ], waits
+  end
+
+  def test_poll_cancellation_during_429_wait
+    stub_request(:post, TOKEN_ENDPOINT).to_return(json429(retry_after: "30"))
+    slept = { total: 0.0 }
+    cancelled = { flag: false }
+    # The cancellable wait chunks each interval, so count elapsed time: once
+    # past the first 5s wait we are inside the post-429 override wait.
+    sleeper = lambda do |seconds|
+      slept[:total] += seconds
+      cancelled[:flag] = true if slept[:total] > 5.0
+    end
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        sleeper: sleeper, cancelled: -> { cancelled[:flag] }
+      )
+    end
+    assert_equal :cancelled, error.reason
   end
 end

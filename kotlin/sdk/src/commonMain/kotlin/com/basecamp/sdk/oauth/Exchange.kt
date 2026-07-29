@@ -23,15 +23,23 @@ data class OAuthToken(
     /** Computed wall-clock expiration time (epoch milliseconds). */
     val expiresAt: Long?,
     val scope: String?,
+    /**
+     * RFC 8707 resource indicator the token is bound to (BC5:
+     * `urn:bc:account:<id>`). Echo it as the `resource` parameter when
+     * refreshing — BC5 multi-account refresh tokens reject a refresh without
+     * it (SPEC §16). Appended last: earlier parameters keep their positions.
+     */
+    val resource: String? = null,
 )
 
 @Serializable
 internal data class RawTokenResponse(
     @SerialName("access_token") val accessToken: String,
     @SerialName("refresh_token") val refreshToken: String? = null,
-    @SerialName("token_type") val tokenType: String = "Bearer",
+    @SerialName("token_type") val tokenType: String? = null,
     @SerialName("expires_in") val expiresIn: Long? = null,
     val scope: String? = null,
+    val resource: String? = null,
 )
 
 @Serializable
@@ -116,6 +124,10 @@ suspend fun refreshToken(
     clientSecret: String? = null,
     useLegacyFormat: Boolean = false,
     client: HttpClient? = null,
+    // RFC 8707 resource indicator, sent only when set. Echo the stored
+    // token's resource: BC5 multi-account refresh tokens hard-require it
+    // (SPEC §16). Appended last: earlier parameters keep their positions.
+    resource: String? = null,
 ): OAuthToken {
     val params = Parameters.build {
         if (useLegacyFormat) {
@@ -126,6 +138,7 @@ suspend fun refreshToken(
         append("refresh_token", refreshToken)
         append("client_id", clientId)
         if (!clientSecret.isNullOrEmpty()) append("client_secret", clientSecret)
+        if (!resource.isNullOrEmpty()) append("resource", resource)
     }
 
     return postTokenRequest(tokenEndpoint, params, client)
@@ -183,16 +196,46 @@ private suspend fun postTokenRequest(
         val raw = runCatching { tokenJson.decodeFromString<RawTokenResponse>(body) }.getOrElse {
             throw BasecampException.Api("Failed to parse token response", httpStatus = response.status.value)
         }
+        // resource: absent and JSON null decode to null (unset); when present
+        // it must be non-empty (SPEC §16) — an empty binding is not a binding.
+        // A non-string resource fails deserialization above.
+        if (raw.resource != null && raw.resource.isEmpty()) {
+            throw BasecampException.Api(
+                "Token response resource must be a non-empty string when present",
+                httpStatus = response.status.value,
+            )
+        }
+        // A 2xx with an EMPTY access_token is malformed, not a success —
+        // matching the device flow and the other SDKs' non-empty contract.
+        if (raw.accessToken.isEmpty()) {
+            throw BasecampException.Api(
+                "Token response missing access_token",
+                httpStatus = response.status.value,
+            )
+        }
+
         val now = currentTimeMillis()
         val expiresAt = raw.expiresIn?.let { now + it * 1000 }
+
+        // token_type: absent/JSON-null defaults to Bearer; a present-but-empty
+        // value is malformed (SPEC §16) — matching the device-flow parser.
+        val tokenType = raw.tokenType?.also {
+            if (it.isEmpty()) {
+                throw BasecampException.Api(
+                    "Token response token_type must be a non-empty string when present",
+                    httpStatus = response.status.value,
+                )
+            }
+        } ?: "Bearer"
 
         return OAuthToken(
             accessToken = raw.accessToken,
             refreshToken = raw.refreshToken,
-            tokenType = raw.tokenType,
+            tokenType = tokenType,
             expiresIn = raw.expiresIn,
             expiresAt = expiresAt,
             scope = raw.scope,
+            resource = raw.resource,
         )
     } finally {
         if (shouldClose) httpClient.close()

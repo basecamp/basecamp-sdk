@@ -32,6 +32,12 @@ interface SerializedToken {
   expiresIn?: number;
   expiresAt?: string; // ISO 8601
   scope?: string;
+  /**
+   * RFC 8707 resource indicator. Must round-trip through persistence: losing
+   * it strands a BC5 multi-account refresh token — after a restart the
+   * refresh would carry no resource and be rejected (400).
+   */
+  resource?: string;
 }
 
 /**
@@ -101,6 +107,10 @@ export class FileTokenStore implements TokenStore {
       expiresIn: data.expiresIn,
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
       scope: data.scope,
+      // A hand-edited or legacy token file can carry null/empty/non-string:
+      // present-but-empty is malformed per SPEC and the public type is
+      // `string | undefined` — normalize anything else to absent.
+      resource: typeof data.resource === "string" && data.resource !== "" ? data.resource : undefined,
     };
   }
 
@@ -112,6 +122,8 @@ export class FileTokenStore implements TokenStore {
       expiresIn: token.expiresIn,
       expiresAt: token.expiresAt?.toISOString(),
       scope: token.scope,
+      // Never persist an empty binding: JSON.stringify drops undefined keys.
+      resource: token.resource || undefined,
     };
 
     const json = JSON.stringify(serialized, null, 2) + "\n";

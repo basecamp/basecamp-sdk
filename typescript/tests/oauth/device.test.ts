@@ -15,6 +15,7 @@ import {
   DeviceFlowError,
   DEVICE_CODE_GRANT_TYPE,
 } from "../../src/oauth/index.js";
+import { parseRetryAfterSeconds } from "../../src/oauth/device.js";
 import type { OAuthConfig, DeviceAuthorization } from "../../src/oauth/types.js";
 import { BasecampError } from "../../src/errors.js";
 
@@ -1739,5 +1740,199 @@ describe("performDeviceLogin cancellation around the authorization request", () 
       })
     ).rejects.toMatchObject({ reason: "cancelled" });
     expect(displayed).toEqual([]);
+  });
+});
+
+describe("pollDeviceToken resource capture", () => {
+  it("captures resource from the device token response and treats null as absent", async () => {
+    queueTokenResponses([
+      { status: 200, body: { ...tokenResponse, resource: "urn:bc:account:42" } },
+    ]);
+    const { fn } = recordingSleep();
+
+    const token = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: fn,
+    });
+    expect(token.resource).toBe("urn:bc:account:42");
+
+    queueTokenResponses([
+      { status: 200, body: { ...tokenResponse, resource: null } },
+    ]);
+    const nullToken = await pollDeviceToken({
+      tokenEndpoint: TOKEN_ENDPOINT,
+      clientId: "basecamp-cli",
+      deviceCode: "dev-code-123",
+      interval: 5,
+      expiresIn: 900,
+      sleepFn: recordingSleep().fn,
+    });
+    expect(nullToken.resource).toBeUndefined();
+  });
+
+  it("rejects a present-but-empty or non-string resource as api_error", async () => {
+    for (const resource of ["", 7]) {
+      queueTokenResponses([
+        { status: 200, body: { ...tokenResponse, resource } },
+      ]);
+      await expect(
+        pollDeviceToken({
+          tokenEndpoint: TOKEN_ENDPOINT,
+          clientId: "basecamp-cli",
+          deviceCode: "dev-code-123",
+          interval: 5,
+          expiresIn: 900,
+          sleepFn: recordingSleep().fn,
+        })
+      ).rejects.toMatchObject({ code: "api_error" });
+    }
+  });
+});
+
+/** Serves a fixed response sequence with optional Retry-After headers. */
+function queueTokenResponses429(
+  responses: Array<{ status: number; body: object; retryAfter?: string }>
+) {
+  let i = 0;
+  server.use(
+    mswHttp.post(TOKEN_ENDPOINT, () => {
+      const r = responses[Math.min(i, responses.length - 1)];
+      i += 1;
+      const headers = r.retryAfter != null ? { "Retry-After": r.retryAfter } : undefined;
+      return HttpResponse.json(r.body, { status: r.status, headers });
+    })
+  );
+}
+
+const tooManyRequestsBody = { error: "too_many_requests" };
+
+describe("pollDeviceToken 429 handling", () => {
+  const pollParams = {
+    tokenEndpoint: TOKEN_ENDPOINT,
+    clientId: "basecamp-cli",
+    deviceCode: "dev-code-123",
+    interval: 5,
+    expiresIn: 900,
+  };
+
+  it("retries after 429 too_many_requests with a one-shot max(interval, Retry-After) wait", async () => {
+    queueTokenResponses429([
+      { status: 429, body: tooManyRequestsBody, retryAfter: "30" },
+      { status: 200, body: tokenResponse },
+    ]);
+    const { waits, fn } = recordingSleep();
+
+    const token = await pollDeviceToken({ ...pollParams, sleepFn: fn });
+
+    expect(token.accessToken).toBe("device_access_token");
+    expect(waits).toEqual([5000, 30000]);
+  });
+
+  it.each(["abc", "1.5", "-1", "0", "99999999999999999999", undefined])(
+    "falls back to the interval on a missing/malformed Retry-After (%s)",
+    async (retryAfter) => {
+      queueTokenResponses429([
+        { status: 429, body: tooManyRequestsBody, retryAfter },
+        { status: 200, body: tokenResponse },
+      ]);
+      const { waits, fn } = recordingSleep();
+
+      await pollDeviceToken({ ...pollParams, sleepFn: fn });
+
+      expect(waits).toEqual([5000, 5000]);
+    }
+  );
+
+  it("trims only ASCII SP/HTAB around a Retry-After delta (RFC 9110 OWS)", () => {
+    // Direct parser test: msw cannot carry NBSP header values (the Python
+    // suite tests its parser directly for the same reason). Unicode
+    // whitespace must never trim a malformed value into validity.
+    expect(parseRetryAfterSeconds(" 30 ")).toBe(30);
+    expect(parseRetryAfterSeconds("\t30\t")).toBe(30);
+    expect(parseRetryAfterSeconds(" \t30\t ")).toBe(30);
+    expect(parseRetryAfterSeconds("\u00a030")).toBe(0);
+    expect(parseRetryAfterSeconds("30\u00a0")).toBe(0);
+    expect(parseRetryAfterSeconds("\u200930")).toBe(0);
+    expect(parseRetryAfterSeconds("\n30\n")).toBe(0);
+  });
+
+  it("clamps a representable over-ceiling Retry-After; unrepresentable falls back", () => {
+    // The wait rule clips to the remaining code lifetime, so clamping honors
+    // the throttle (wait out the lifetime) instead of resending on the
+    // interval; a beyond-2^53 digit string is unrepresentable → fallback.
+    expect(parseRetryAfterSeconds("2147484")).toBe(2_147_483);
+    expect(parseRetryAfterSeconds("99999999999999999999")).toBe(0);
+    // The shared 10-significant-digit bound: leading zeros strip first, so a
+    // padded in-range delta is honored while >10 significant digits (or an
+    // unbounded digit string) fall back without feeding parseInt.
+    expect(parseRetryAfterSeconds("0".repeat(30) + "30")).toBe(30);
+    expect(parseRetryAfterSeconds("9".repeat(11))).toBe(0);
+    expect(parseRetryAfterSeconds("1" + "0".repeat(100000))).toBe(0);
+  });
+
+  it("decays the Retry-After override after one wait", async () => {
+    queueTokenResponses429([
+      { status: 429, body: tooManyRequestsBody, retryAfter: "30" },
+      { status: 400, body: { error: "authorization_pending" } },
+      { status: 200, body: tokenResponse },
+    ]);
+    const { waits, fn } = recordingSleep();
+
+    await pollDeviceToken({ ...pollParams, sleepFn: fn });
+
+    expect(waits).toEqual([5000, 30000, 5000]);
+  });
+
+  it.each([
+    { name: "429 without too_many_requests", status: 429, body: { error: "rate_limited" } },
+    { name: "429 parroting authorization_pending", status: 429, body: { error: "authorization_pending" } },
+    { name: "429 parroting slow_down", status: 429, body: { error: "slow_down" } },
+    { name: "too_many_requests on 400", status: 400, body: tooManyRequestsBody },
+  ])("stays terminal on $name", async ({ status, body }) => {
+    queueTokenResponses429([{ status, body, retryAfter: "30" }]);
+
+    await expect(
+      pollDeviceToken({ ...pollParams, sleepFn: recordingSleep().fn })
+    ).rejects.toMatchObject({ code: "api_error" });
+  });
+
+  it("clamps the 429 override wait to the expiry deadline", async () => {
+    queueTokenResponses429([{ status: 429, body: tooManyRequestsBody, retryAfter: "3600" }]);
+    const { waits, fn } = recordingSleep();
+    // Scripted monotonic clock (ms): deadline anchors at t=0 with a 20s
+    // lifetime; the second iteration's huge override clamps to the 14s
+    // remaining and the post-wait check expires the flow.
+    const times = [0, 0, 5000, 6000, 20000];
+    let i = 0;
+    const clock = () => times[Math.min(i++, times.length - 1)];
+
+    await expect(
+      pollDeviceToken({ ...pollParams, expiresIn: 20, sleepFn: fn, clock })
+    ).rejects.toMatchObject({ reason: "expired" });
+    expect(waits).toEqual([5000, 14000]);
+  });
+
+  it("preserves cancellation during the 429 override wait", async () => {
+    queueTokenResponses429([{ status: 429, body: tooManyRequestsBody, retryAfter: "30" }]);
+    const controller = new AbortController();
+    let waitCount = 0;
+    const fn = (ms: number, signal?: AbortSignal): Promise<void> => {
+      waitCount += 1;
+      if (waitCount === 2) {
+        controller.abort(); // cancel during the post-429 override wait
+        return Promise.reject(Object.assign(new Error("Aborted"), { name: "AbortError" }));
+      }
+      void ms;
+      void signal;
+      return Promise.resolve();
+    };
+
+    await expect(
+      pollDeviceToken({ ...pollParams, signal: controller.signal, sleepFn: fn })
+    ).rejects.toMatchObject({ reason: "cancelled" });
   });
 });

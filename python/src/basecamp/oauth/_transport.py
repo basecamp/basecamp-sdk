@@ -65,6 +65,7 @@ def request_bounded(
     timeout: float,
     max_body_bytes: int,
     read_body: Callable[[int], bool] = lambda _status: True,
+    on_headers: Callable[[httpx.Headers], None] | None = None,
     context: str = "OAuth",
 ) -> tuple[int, bytes]:
     """SSRF-hardened request: suppress redirects, bound the WHOLE round-trip by
@@ -169,6 +170,7 @@ def request_bounded(
                 raise
 
     async def _request(client: httpx.AsyncClient) -> tuple[int, bytes]:
+
         async with client.stream(method, url, data=params, headers=request_headers) as response:
             try:
                 return await _read(response)
@@ -182,6 +184,10 @@ def request_bounded(
                 raise
 
     async def _read(response: httpx.Response) -> tuple[int, bytes]:
+        # Response headers are available once the stream opens; the poll
+        # loop uses this to read Retry-After without widening the return.
+        if on_headers is not None:
+            on_headers(response.headers)
         if not read_body(response.status_code):
             # Deadline first, symmetric with the body paths: headers
             # becoming runnable past the total bound mean the status was

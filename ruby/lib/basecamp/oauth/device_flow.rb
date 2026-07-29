@@ -179,6 +179,10 @@ module Basecamp
 
           interval_seconds = interval
           backoff_seconds = interval_seconds
+          # One-shot next-wait override from a 429 too_many_requests Retry-After
+          # (SPEC.md §16): consumed by the next wait, never inflating the
+          # slow_down interval. 0 = none.
+          override_seconds = 0
           # An absolute issuance-anchored deadline (perform_device_login
           # passes issued_at + expires_in) beats re-anchoring: clock time
           # elapsing between the caller's remaining-lifetime computation and
@@ -223,7 +227,9 @@ module Basecamp
             now = sample_clock(clock, "poll_device_token")
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if now >= deadline
 
-            wait_cancellable([ [ interval_seconds, backoff_seconds ].max, deadline - now ].min, cancelled, sleeper)
+            wait = [ [ interval_seconds, backoff_seconds, override_seconds ].max, deadline - now ].min
+            override_seconds = 0 # one-shot: consumed by this wait, then gone
+            wait_cancellable(wait, cancelled, sleeper)
 
             raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
@@ -263,12 +269,23 @@ module Basecamp
             # current server-driven interval.
             backoff_seconds = interval_seconds
 
-            kind, value, status = outcome
+            kind, value, status, retry_after = outcome
             return value if kind == :token
 
             case value
             when "authorization_pending"
               next
+            when "too_many_requests"
+              # Retryable ONLY as the exact 429 + too_many_requests pair
+              # (SPEC.md §16). The next wait honors a positive integral
+              # Retry-After delta via a one-shot max(interval, Retry-After)
+              # override — a missing/malformed header falls back to the current
+              # interval, and the override decays after one wait.
+              unless status == 429
+                raise OauthError.new("api_error", "Device token request failed: #{value}", http_status: status)
+              end
+
+              override_seconds = parse_retry_after_seconds(retry_after)
             when "slow_down"
               interval_seconds += SLOW_DOWN_INCREMENT_SECONDS
               # Re-sync the backoff to the GROWN interval (the reset above used the
@@ -450,12 +467,17 @@ module Basecamp
           # forever), and a watchdog bounds the whole request — including a
           # stalled or byte-dripped header phase — at the timeout. An INJECTED
           # Faraday connection keeps the Faraday path below.
-          def post_form(client, url, params, timeout:, max_body_bytes:, skip_status: nil)
+          #
+          # +on_headers+, when given, receives a case-insensitive header lookup
+          # (+#[]+) once response headers are available — the poll loop reads
+          # Retry-After through it without widening the return shape.
+          def post_form(client, url, params, timeout:, max_body_bytes:, skip_status: nil, on_headers: nil)
             if client.nil?
               return Fetcher.stream_http(
                 :post, url,
                 headers: { "Content-Type" => "application/x-www-form-urlencoded", "Accept" => "application/json" },
-                form: params, timeout: timeout, max_body_bytes: max_body_bytes, skip_status: skip_status
+                form: params, timeout: timeout, max_body_bytes: max_body_bytes, skip_status: skip_status,
+                on_headers: on_headers
               )
             end
 
@@ -506,6 +528,9 @@ module Basecamp
             # (request path: :transport; poll path: backoff, capped by code expiry)
             # rather than this status-first classification. Bounded and
             # redirect-safe (3xx Locations are never followed).
+            # +|| {}+: an injected duck-typed double may omit +headers+ —
+            # absent headers mean no Retry-After, never a nil deref.
+            on_headers&.call(response.headers || {})
             return [ response.status, "" ] if skip_status && skip_status.call(response.status)
 
             # Timeout.timeout's interrupt can be delivered late: a response
@@ -650,16 +675,20 @@ module Basecamp
             value.is_a?(Numeric) && value.positive? && value <= MAX_DEVICE_SECONDS && (value % 1).zero?
           end
 
-          # Returns +[:token, Token, status]+ on success or +[:error, code, status]+
-          # when the server reports an OAuth error. Raises +api_error+ on a
-          # malformed, redirecting, or 2xx-but-tokenless response.
+          # Returns +[:token, Token, status]+ on success or
+          # +[:error, code, status, retry_after]+ when the server reports an
+          # OAuth error — +retry_after+ is the raw Retry-After header (or nil),
+          # consumed only by the poll loop's 429 handling. Raises +api_error+
+          # on a malformed, redirecting, or 200-but-tokenless response.
           def post_device_token(client, token_endpoint, params, timeout:, max_body_bytes:)
+            retry_after = nil
             status, body = post_form(
               client, token_endpoint, params,
               timeout: timeout, max_body_bytes: max_body_bytes,
               # A 3xx token response is a redirect fault whose body is unused; a 4xx
               # body IS read (it carries authorization_pending/slow_down).
-              skip_status: ->(s) { !(s == 200 || (400..499).cover?(s)) }
+              skip_status: ->(s) { !(s == 200 || (400..499).cover?(s)) },
+              on_headers: ->(headers) { retry_after = headers["Retry-After"] }
             )
 
             # A redirect is never a valid token-endpoint outcome: it is not
@@ -711,11 +740,48 @@ module Basecamp
               # back to http_<status>, which the loop terminates as api_error.
               error = data["error"]
               recognized = (400..499).cover?(status) && error.is_a?(String) && !error.empty?
+              # A 429 recognizes ONLY too_many_requests (the exact retryable
+              # pair): a throttling endpoint whose body parrots
+              # authorization_pending/slow_down must not keep the loop polling
+              # until code expiry.
+              recognized &&= error == "too_many_requests" if status == 429
               # Truncate at extraction (SPEC §9's 500-unit cap): the server
               # controls this string and an unrecognized value is interpolated
               # into the api_error message. Real protocol codes are short, so
               # classification is unaffected.
-              [ :error, recognized ? Basecamp::Security.truncate(error) : "http_#{status}", status ]
+              [ :error, recognized ? Basecamp::Security.truncate(error) : "http_#{status}", status, retry_after ]
+            end
+          end
+
+          # Validates a Retry-After delta for the 429 poll contract (SPEC.md
+          # §16): a positive integral number of seconds. A representable delta
+          # beyond {MAX_DEVICE_SECONDS} (the shared 32-bit-ms timer bound)
+          # CLAMPS to the ceiling — the wait rule clips to the remaining code
+          # lifetime, honoring the throttle. Anything else — missing, an
+          # HTTP-date, fractional, non-positive, or unrepresentable (the digit
+          # bound below) — returns 0 so the caller falls back to the current
+          # interval.
+          def parse_retry_after_seconds(header)
+            # ASCII SP/HTAB only (RFC 9110 OWS) — NOT String#strip, which also
+            # removes \v \f \r \n \0 and would trim a malformed value into
+            # validity (SPEC §16 pins SP/HTAB-only trimming).
+            trimmed = header.is_a?(String) ? header.gsub(/\A[ \t]+|[ \t]+\z/, "") : ""
+            if trimmed.match?(/\A\d+\z/)
+              # Leading zeros stripped BEFORE the length bound so a padded
+              # in-range delta is honored; >10 significant digits is
+              # unrepresentable (matches the Python parser) -> fallback. A
+              # representable delta beyond the shared device ceiling CLAMPS:
+              # the wait rule clamps to the remaining code lifetime anyway, so
+              # an over-ceiling throttle waits out the rest of the lifetime
+              # instead of resending before the server's throttle.
+              significant = trimmed.sub(/\A0+/, "")
+              if significant.empty? || significant.length > 10
+                0
+              else
+                [ significant.to_i, MAX_DEVICE_SECONDS ].min
+              end
+            else
+              0
             end
           end
 
@@ -767,12 +833,24 @@ module Basecamp
               )
             end
 
+            # resource: absent and JSON null are unset; when present it must be
+            # a non-empty string (SPEC §16) — an empty binding is not a binding.
+            resource = data["resource"]
+            unless resource.nil? || (resource.is_a?(String) && !resource.empty?)
+              raise OauthError.new(
+                "api_error",
+                "Invalid device token response: resource must be a non-empty string when present",
+                http_status: status
+              )
+            end
+
             Token.new(
               access_token: data["access_token"],
               refresh_token: refresh_token,
               token_type: token_type || "Bearer",
               expires_in: expires_in,
-              scope: scope
+              scope: scope,
+              resource: resource
             )
           end
 

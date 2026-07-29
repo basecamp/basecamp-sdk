@@ -58,8 +58,16 @@ def refresh_token(
     client_id: str | None = None,
     client_secret: str | None = None,
     use_legacy_format: bool = False,
+    # APPENDED LAST (SPEC append-only refresh contract): keyword-only keeps
+    # calls source-compatible, but reflected/published signature order must
+    # not shift existing parameters.
+    resource: str | None = None,
 ) -> OAuthToken:
     """Refresh an access token.
+
+    Pass *resource* to echo the stored token's RFC 8707 resource indicator —
+    BC5 multi-account refresh tokens reject a refresh without it (SPEC §16);
+    it is sent only when set.
 
     Set *use_legacy_format* to ``True`` for Launchpad's non-standard
     ``type=refresh`` format instead of the standard ``grant_type``.
@@ -80,6 +88,11 @@ def refresh_token(
         params["client_id"] = client_id
     if client_secret is not None:
         params["client_secret"] = client_secret
+    # Truthiness, not `is not None`: an empty string is not a binding — treat
+    # it as unset (omit) per the send-only-when-set contract, matching the
+    # other SDKs. Sending `resource=` would provoke a 400 on BC5.
+    if resource:
+        params["resource"] = resource
 
     return _token_request(token_endpoint, params)
 
@@ -143,15 +156,47 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
     if not response.is_success:
         _handle_error(response.status_code, data)
 
-    if not data.get("access_token"):
-        raise OAuthError("api_error", "Token response missing access_token")
+    access_token = data.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        # Non-empty STRING, not merely truthy: a numeric access_token is not a
+        # usable credential (SPEC §16), and the status makes the malformed
+        # response diagnosable — matching the device-flow parser.
+        raise OAuthError(
+            "api_error",
+            "Token response missing or non-string access_token",
+            http_status=response.status_code,
+        )
+
+    # resource: absent and JSON null are unset; when present it must be a
+    # non-empty string (SPEC §16) — an empty binding is not a binding.
+    resource = data.get("resource")
+    if resource is not None and (not isinstance(resource, str) or not resource):
+        raise OAuthError(
+            "api_error",
+            "Token response resource must be a non-empty string when present",
+            http_status=response.status_code,
+        )
+
+    # token_type: absent or JSON null defaults to Bearer (dict.get's default
+    # covers only absence — an explicit null passed through as None); present
+    # must be a non-empty string — matching the device-flow parser (SPEC §16).
+    token_type = data.get("token_type")
+    if token_type is None:
+        token_type = "Bearer"
+    elif not isinstance(token_type, str) or not token_type:
+        raise OAuthError(
+            "api_error",
+            "Token response token_type must be a non-empty string when present",
+            http_status=response.status_code,
+        )
 
     return OAuthToken(
         access_token=data["access_token"],
-        token_type=data.get("token_type", "Bearer"),
+        token_type=token_type,
         refresh_token=data.get("refresh_token"),
         expires_in=data.get("expires_in"),
         scope=data.get("scope"),
+        resource=resource,
     )
 
 

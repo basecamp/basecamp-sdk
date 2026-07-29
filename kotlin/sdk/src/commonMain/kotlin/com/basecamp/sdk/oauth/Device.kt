@@ -143,6 +143,7 @@ private data class RawDeviceTokenResponse(
     @SerialName("token_type") val tokenType: String? = null,
     @SerialName("expires_in") val expiresIn: Double? = null,
     val scope: String? = null,
+    val resource: String? = null,
 )
 
 /** Raw RFC 8628 device authorization response; all fields nullable to validate. */
@@ -365,6 +366,10 @@ suspend fun pollDeviceToken(
     // cadence: each wait is max(interval, backoff), a timeout doubles the
     // backoff (capped), and any completed round-trip resets it to the interval.
     var backoffSeconds = intervalSeconds
+    // One-shot next-wait override from a 429 too_many_requests Retry-After
+    // (SPEC §16): consumed by the next wait, never inflating the slow_down
+    // interval. 0 = none.
+    var overrideSeconds = 0L
 
     val params = parametersOf(
         "grant_type" to listOf(DEVICE_CODE_GRANT_TYPE),
@@ -383,7 +388,8 @@ suspend fun pollDeviceToken(
             // Clamp the wait to the time remaining so a long interval or an
             // exponential backoff can never overshoot the monotonic deadline.
             val remaining = -deadline.elapsedNow()
-            val wait = minOf(maxOf(intervalSeconds, backoffSeconds).seconds, remaining)
+            val wait = minOf(maxOf(intervalSeconds, backoffSeconds, overrideSeconds).seconds, remaining)
+            overrideSeconds = 0L // one-shot: consumed by this wait, then gone
             delay(if (wait > Duration.ZERO) wait else Duration.ZERO)
 
             val postRemaining = -deadline.elapsedNow()
@@ -436,6 +442,14 @@ suspend fun pollDeviceToken(
             when (result) {
                 is PollResult.Token -> return result.token
                 PollResult.Pending -> continue
+                is PollResult.TooManyRequests -> {
+                    // The next wait honors the validated Retry-After via a
+                    // one-shot max(interval, Retry-After) override — 0 (missing/
+                    // malformed) falls back to the current interval, and the
+                    // override decays after one wait.
+                    overrideSeconds = result.retryAfterSeconds
+                    continue
+                }
                 PollResult.SlowDown -> {
                     intervalSeconds += SLOW_DOWN_INCREMENT_SECONDS
                     // Re-sync the backoff to the GROWN interval (the reset above used
@@ -469,7 +483,47 @@ private sealed interface PollResult {
     data object SlowDown : PollResult
     data object AccessDenied : PollResult
     data object Expired : PollResult
+
+    /**
+     * The exact 429 + too_many_requests pair (SPEC §16): retryable with a
+     * one-shot next-wait override. [retryAfterSeconds] is the validated
+     * Retry-After delta, 0 when missing/malformed (→ current interval).
+     */
+    data class TooManyRequests(val retryAfterSeconds: Long) : PollResult
     data class Other(val error: String, val status: Int) : PollResult
+}
+
+/**
+ * Validates a Retry-After delta for the 429 poll contract (SPEC §16): a
+ * positive integral number of seconds. A representable delta beyond
+ * [MAX_DEVICE_SECONDS] (the shared 32-bit-ms timer bound) CLAMPS to the
+ * ceiling — the wait rule clips to the remaining code lifetime, honoring the
+ * throttle. Anything else — missing, an HTTP-date, fractional, non-positive,
+ * or unrepresentable (toLongOrNull() overflow) — returns 0 so the caller
+ * falls back to the current interval.
+ */
+private fun parseRetryAfterSeconds(header: String?): Long {
+    // ASCII SP/HTAB only (RFC 9110 OWS) — NOT String.trim(), whose Unicode
+    // whitespace (NBSP above all) would trim a malformed value into validity.
+    val trimmed = header?.trim { it == ' ' || it == '\t' } ?: return 0
+    // ASCII '0'..'9' only — NOT Char.isDigit(), which is Unicode-aware and
+    // accepts digit-shaped non-ASCII (fullwidth "１２", Arabic-Indic "٣٠")
+    // that toLongOrNull() then converts, treating a malformed HTTP
+    // delta-seconds value as valid instead of falling back to the interval.
+    if (trimmed.isEmpty() || !trimmed.all { it in '0'..'9' }) return 0
+    // The shared 10-significant-digit bound (SPEC §16): strip leading zeros
+    // first so a padded in-range delta is honored, then treat longer strings
+    // as unrepresentable → interval fallback — matching TS/Python/Ruby.
+    val significant = trimmed.trimStart('0').ifEmpty { "0" }
+    if (significant.length > 10) return 0
+    val value = significant.toLongOrNull() ?: return 0
+    if (value <= 0) return 0
+    // A representable delta beyond the shared device ceiling clamps rather
+    // than falling back: the wait rule clamps to the remaining code lifetime
+    // anyway, so an over-ceiling throttle waits out the rest of the lifetime
+    // instead of resending before the server's throttle. Only unrepresentable
+    // strings (toLongOrNull() overflow above) are malformed → interval fallback.
+    return minOf(value, MAX_DEVICE_SECONDS)
 }
 
 private suspend fun postDeviceTokenPoll(
@@ -564,6 +618,15 @@ private suspend fun postDeviceTokenPoll(
                 )
             }
         } ?: "Bearer"
+        // resource: absent and JSON null decode to null (unset); when present
+        // it must be non-empty (SPEC §16) — an empty binding is not a binding.
+        // A non-string resource fails deserialization above.
+        if (raw.resource != null && raw.resource.isEmpty()) {
+            throw BasecampException.Api(
+                "Device token response resource must be a non-empty string when present",
+                httpStatus = status,
+            )
+        }
         val now = currentTimeMillis()
         val expiresAt = expiresInSeconds?.let { now + it * 1000 }
         PollResult.Token(
@@ -574,6 +637,7 @@ private suspend fun postDeviceTokenPoll(
                 expiresIn = expiresInSeconds,
                 expiresAt = expiresAt,
                 scope = raw.scope,
+                resource = raw.resource,
             ),
         )
     } else {
@@ -603,11 +667,24 @@ private suspend fun postDeviceTokenPoll(
                 "http_$status"
             }
         }
-        when (error) {
-            "authorization_pending" -> PollResult.Pending
-            "slow_down" -> PollResult.SlowDown
-            "access_denied" -> PollResult.AccessDenied
-            "expired_token" -> PollResult.Expired
+        when {
+            // A 429 recognizes ONLY too_many_requests (the exact retryable
+            // pair, SPEC §16): a throttling endpoint whose body parrots
+            // authorization_pending/slow_down must not keep the loop polling
+            // until code expiry — any other code on a 429 is terminal via
+            // Other. Conversely too_many_requests off a 429 is terminal too.
+            status == 429 && error == "too_many_requests" ->
+                // Exactly one Retry-After field line: duplicates make the
+                // combined field ambiguous (headers[] silently takes the
+                // first) — anything else falls back to the current interval.
+                PollResult.TooManyRequests(
+                    parseRetryAfterSeconds(response.headers.getAll("Retry-After")?.singleOrNull()),
+                )
+            status == 429 -> PollResult.Other("http_$status", status)
+            error == "authorization_pending" -> PollResult.Pending
+            error == "slow_down" -> PollResult.SlowDown
+            error == "access_denied" -> PollResult.AccessDenied
+            error == "expired_token" -> PollResult.Expired
             else -> PollResult.Other(error, status)
         }
     }

@@ -255,7 +255,57 @@ between polls, enforces a monotonic expiry deadline, sustains `slow_down` bumps
 cancellation. The clock (`oauth.WithDeviceClock`) and inter-poll wait
 (`oauth.WithDeviceSleep`) are injectable for deterministic tests; scope is
 omitted from the authorization request unless set with `oauth.WithDeviceScope`,
-so the server applies its default (`read`).
+so the server applies its default (`read`) — prefer pinning it explicitly.
+
+### Persisting device-login credentials (RFC 8707 resource echo)
+
+BC5 device logins as `basecamp-cli` mint **multi-account** refresh tokens: the
+token response carries an RFC 8707 `resource` indicator
+(`urn:bc:account:<id>`, on `token.Resource`), and every refresh of a
+multi-account token MUST send it back or the server rejects the refresh
+(400 `invalid_request`). `AuthManager` echoes the stored `resource` (and
+submits the stored `client_id` — BC5 public clients send no secret)
+automatically, and preserves the stored value when a refresh response omits
+it.
+
+The oauth helpers return an `*oauth.Token`; they never write the root
+package's `Credentials`. After a device login (or code exchange) the caller
+bridges the two — saving the client id it used and the token's resource so
+later refreshes can echo them:
+
+```go
+import (
+    "net/http"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
+
+// sdkCfg is the SDK *basecamp.Config (the device-login example above binds
+// its discovery result to result.Config, an *oauth.Config — a different type).
+sdkCfg := &basecamp.Config{BaseURL: "https://3.basecampapi.com"}
+authMgr := basecamp.NewAuthManager(sdkCfg, http.DefaultClient)
+creds := &basecamp.Credentials{
+    AccessToken:   token.AccessToken,
+    RefreshToken:  token.RefreshToken,
+    Scope:         token.Scope,
+    TokenEndpoint: result.Config.TokenEndpoint,
+    ClientID:      "basecamp-cli",       // the id the login used
+    Resource:      token.Resource,       // the account binding to echo on refresh
+}
+// A token response may omit expires_in; a zero ExpiresAt means no known
+// expiry (never force-refreshed) — storing zero-time.Unix()'s negative value
+// would instead mark the fresh token expired.
+if !token.ExpiresAt.IsZero() {
+    creds.ExpiresAt = token.ExpiresAt.Unix()
+}
+err = authMgr.Store().Save(basecamp.NormalizeBaseURL(sdkCfg.BaseURL), creds)
+```
+
+Pass the discovered base origin without a trailing slash everywhere a base URL
+or issuer is expected: binding is code-point exact — a trailing-slash
+`WithExpectedIssuer` value fails the advertised-member lookup as a **hard**
+`ErrExpectedIssuerUnavailable`, while a trailing-slash resource origin breaks
+the hop-1 binding and silently soft-falls back to Launchpad.
 
 ## Configuration
 

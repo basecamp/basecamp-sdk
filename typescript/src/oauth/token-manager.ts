@@ -146,13 +146,24 @@ export class TokenManager {
       refreshToken: refreshTokenValue,
       clientId: this.clientId,
       clientSecret: this.clientSecret,
+      // Echo the stored RFC 8707 resource: BC5 multi-account refresh tokens
+      // reject a refresh without it (SPEC §16).
+      resource: this.token?.resource,
       useLegacyFormat: this.useLegacyFormat,
     });
 
-    // Preserve the previous refresh token when the server omits one
-    const merged: OAuthToken = newToken.refreshToken
-      ? newToken
-      : { ...newToken, refreshToken: refreshTokenValue };
+    // Preserve the previous refresh token when the server omits one, and the
+    // previous resource binding when the response omits it (SPEC §16
+    // carry-forward rule). Truthiness, not ?? — the standard exchange path
+    // already rejects a present-empty resource, but an injected refreshToken
+    // implementation could hand back resource: "", and persisting it would
+    // strand a multi-account token (present ⇒ non-empty everywhere else,
+    // and later refreshes would omit the binding via the truthy send check).
+    const merged: OAuthToken = {
+      ...newToken,
+      refreshToken: newToken.refreshToken || refreshTokenValue,
+      resource: newToken.resource || this.token?.resource,
+    };
 
     this.token = merged;
     await this.store.save(merged);

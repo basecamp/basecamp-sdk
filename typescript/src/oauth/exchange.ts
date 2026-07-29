@@ -162,6 +162,9 @@ export async function refreshToken(
   if (request.clientSecret) {
     body.set("client_secret", request.clientSecret);
   }
+  if (request.resource) {
+    body.set("resource", request.resource);
+  }
 
   return doTokenRequest(request.tokenEndpoint, body, options);
 }
@@ -403,6 +406,14 @@ async function doTokenRequest(
       );
     }
 
+    // resource: absent and JSON null are unset; when present it must be a
+    // non-empty string (SPEC §16) — an empty binding is not a binding.
+    if (tokenData.resource != null && (typeof tokenData.resource !== "string" || tokenData.resource === "")) {
+      throw new BasecampError("api_error", "Token response resource must be a non-empty string when present", {
+        httpStatus: response.status,
+      });
+    }
+
     return {
       accessToken: tokenData.access_token,
       // `?? undefined`: JSON null is legal on the wire for the optional
@@ -414,6 +425,7 @@ async function doTokenRequest(
         ? new Date(Date.now() + tokenData.expires_in * 1000)
         : undefined,
       scope: tokenData.scope ?? undefined,
+      resource: tokenData.resource ?? undefined,
     };
   } catch (err) {
     if (err instanceof BasecampError) {

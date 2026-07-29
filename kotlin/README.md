@@ -25,6 +25,12 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 - JDK 17+
 - Kotlin 2.0+
 
+**Compatibility policy (pre-1.0).** Releases in the 0.x series guarantee
+*source* compatibility only: public APIs evolve append-only (new optional
+parameters are added after existing ones), so code compiles unchanged across
+minor versions, but recompile against each release — Kotlin default-argument
+and data-class synthetics make JVM *binary* compatibility infeasible to
+promise, and we don't.
 ## Installation
 
 The SDK is published to [GitHub Packages](https://github.com/basecamp/basecamp-sdk/packages). GitHub Packages requires an access token for every download — including for public packages like this one — so there are three steps rather than one.
@@ -283,7 +289,11 @@ if (isTokenExpired(token)) {
 For input-constrained clients (CLIs, TVs) the SDK implements the OAuth 2.0 device
 authorization grant. The public `basecamp-cli` client is pre-registered with
 `token_endpoint_auth_method: none` — it sends no client secret, and an omitted
-scope defaults to `read`.
+scope defaults to `read` (prefer pinning it explicitly with `scope = "read"`).
+Pass bare origins everywhere (no trailing slash): binding is code-point exact
+— a trailing-slash `expectedIssuer` fails the advertised-member lookup as a
+**hard** `expected_issuer_unavailable`, while a trailing-slash resource origin
+breaks the hop-1 binding and silently soft-falls back to Launchpad.
 
 ```kotlin
 import com.basecamp.sdk.BasecampClient
@@ -315,6 +325,27 @@ val token = performDeviceLogin(
 // Use the token to build a client — never print or log its value.
 val client = BasecampClient {
     accessToken(token.accessToken)
+}
+
+// BC5 device logins as basecamp-cli mint MULTI-ACCOUNT refresh tokens: the
+// token carries an RFC 8707 resource indicator (token.resource,
+// "urn:bc:account:<id>"), and refreshing without echoing it is rejected
+// (400 invalid_request). Persist token.resource alongside the tokens and
+// echo it on refresh:
+// A device-token response MAY omit refresh_token — GUARD it rather than
+// force-unwrapping: without one, refreshing is impossible and the user must
+// re-run the device login when the access token expires.
+val storedRefresh = token.refreshToken
+if (storedRefresh != null) {
+    val fresh = refreshToken(
+        tokenEndpoint = config.tokenEndpoint,
+        refreshToken = storedRefresh,
+        clientId = "basecamp-cli",  // public client — no secret
+        resource = token.resource,
+    )
+    // A refresh response MAY omit refresh_token and resource — persist
+    // `fresh.refreshToken ?: storedRefresh` and `fresh.resource ?: token.resource`
+    // so the next refresh still works and still echoes the binding.
 }
 ```
 

@@ -87,6 +87,9 @@ func (e *Exchanger) Refresh(ctx context.Context, req RefreshRequest) (*Token, er
 	if req.ClientSecret != "" {
 		data.Set("client_secret", req.ClientSecret)
 	}
+	if req.Resource != "" {
+		data.Set("resource", req.Resource)
+	}
 
 	return e.doTokenRequest(ctx, req.TokenEndpoint, data)
 }
@@ -152,7 +155,42 @@ func (e *Exchanger) doTokenRequest(ctx context.Context, tokenEndpoint string, da
 
 	var token Token
 	if err := json.Unmarshal(body, &token); err != nil {
-		return nil, fmt.Errorf("parsing token response: %w", err)
+		// A malformed 200 body — including a non-string resource failing the
+		// string decode — is a typed api fault (SPEC §16) so callers can
+		// classify it via errors.As(*basecamp.Error) with the HTTP status.
+		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token response: %v", err))
+	}
+	// A 2xx without a usable access_token is malformed, not a success — the
+	// device-flow and AuthManager paths already enforce this.
+	if token.AccessToken == "" {
+		return nil, basecamp.ErrAPI(resp.StatusCode, "token response missing access_token")
+	}
+
+	// resource re-decodes through a *string because Token's plain string field
+	// cannot distinguish an absent field from an explicit "": absent and JSON
+	// null map to unset (nil), while a present-but-empty resource is a
+	// malformed response (SPEC §16) — an empty binding is not a binding. A
+	// non-string resource already failed the Token unmarshal above.
+	var rawResource struct {
+		Resource  *string `json:"resource"`
+		TokenType *string `json:"token_type"`
+	}
+	if err := json.Unmarshal(body, &rawResource); err != nil {
+		return nil, basecamp.ErrAPI(resp.StatusCode, fmt.Sprintf("parsing token response: %v", err))
+	}
+	if rawResource.Resource != nil && *rawResource.Resource == "" {
+		// A typed api fault (SPEC §16), not a bare error: callers classify
+		// malformed server responses via errors.As(*basecamp.Error) and need
+		// the HTTP status — matching the device-token and AuthManager paths.
+		return nil, basecamp.ErrAPI(resp.StatusCode, "token response resource must be a non-empty string when present")
+	}
+	// token_type: absent/JSON-null defaults to Bearer; a present-but-empty
+	// value is malformed (SPEC §16) — matching the device-flow parser.
+	if rawResource.TokenType != nil && *rawResource.TokenType == "" {
+		return nil, basecamp.ErrAPI(resp.StatusCode, "token response token_type must be a non-empty string when present")
+	}
+	if rawResource.TokenType == nil {
+		token.TokenType = "Bearer"
 	}
 
 	// Calculate ExpiresAt from ExpiresIn

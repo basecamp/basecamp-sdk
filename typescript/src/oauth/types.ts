@@ -114,6 +114,13 @@ export interface OAuthToken {
   expiresAt?: Date;
   /** OAuth scope granted (optional) */
   scope?: string;
+  /**
+   * RFC 8707 resource indicator the token is bound to (BC5:
+   * `urn:bc:account:<id>`). Echo it as the `resource` parameter when
+   * refreshing — BC5 multi-account refresh tokens reject a refresh
+   * without it (SPEC §16).
+   */
+  resource?: string;
 }
 
 /**
@@ -156,6 +163,13 @@ export interface RefreshRequest {
    * When true, uses `type=refresh` instead of `grant_type=refresh_token`.
    */
   useLegacyFormat?: boolean;
+  /**
+   * RFC 8707 resource indicator to bind the refreshed token to, sent only
+   * when set. Echo the stored token's `resource`: BC5 multi-account refresh
+   * tokens hard-require it (SPEC §16). APPENDED LAST: declaration order is
+   * published API surface for schema/doc generators (append-only contract).
+   */
+  resource?: string;
 }
 
 /**
@@ -172,6 +186,7 @@ export interface RawTokenResponse {
   token_type?: string | null;
   expires_in?: number;
   scope?: string | null;
+  resource?: string | null;
 }
 
 /**

@@ -133,12 +133,12 @@ module Basecamp
     def self.refresh_token(
       token_endpoint:, refresh_token:,
       client_id: nil, client_secret: nil,
-      use_legacy_format: false, timeout: 30
+      use_legacy_format: false, timeout: 30, resource: nil
     )
       request = RefreshRequest.new(
         token_endpoint: token_endpoint, refresh_token: refresh_token,
         client_id: client_id, client_secret: client_secret,
-        use_legacy_format: use_legacy_format
+        use_legacy_format: use_legacy_format, resource: resource
       )
       Exchange.new(timeout: timeout).refresh(request)
     end

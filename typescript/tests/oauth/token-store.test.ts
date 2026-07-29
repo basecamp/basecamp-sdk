@@ -47,6 +47,24 @@ describe("FileTokenStore", () => {
       expect(loaded!.scope).toBe("read write");
     });
 
+    it("round-trips the RFC 8707 resource through save and load", async () => {
+      // Losing resource across persistence strands a BC5 multi-account
+      // refresh token: after a restart the refresh would carry no resource
+      // and be rejected (400 invalid_request).
+      const store = new FileTokenStore(join(tempDir, "tokens.json"));
+      const token = makeToken({ resource: "urn:bc:account:42" });
+
+      await store.save(token);
+      const loaded = await store.load();
+
+      expect(loaded!.resource).toBe("urn:bc:account:42");
+
+      // Absent stays absent — no phantom key on the round-trip.
+      await store.save(makeToken());
+      const noResource = await store.load();
+      expect(noResource!.resource).toBeUndefined();
+    });
+
     it("serializes expiresAt as ISO string and deserializes back to Date", async () => {
       const store = new FileTokenStore(join(tempDir, "tokens.json"));
       const expiresAt = new Date("2026-06-15T12:00:00.000Z");

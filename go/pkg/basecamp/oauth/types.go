@@ -193,6 +193,12 @@ type Token struct {
 	ExpiresIn    int       `json:"expires_in,omitempty"`
 	ExpiresAt    time.Time `json:"-"`
 	Scope        string    `json:"scope,omitempty"`
+
+	// Resource is the RFC 8707 resource indicator the token is bound to
+	// (BC5: urn:bc:account:<id>). Empty when the server sent none. Echo it
+	// as the resource form parameter when refreshing — BC5 multi-account
+	// refresh tokens reject a refresh without it (SPEC §16).
+	Resource string `json:"resource,omitempty"`
 }
 
 // ExchangeRequest contains parameters for exchanging an authorization code for tokens.
@@ -219,4 +225,10 @@ type RefreshRequest struct {
 	// UseLegacyFormat uses Launchpad's non-standard token format:
 	// type=refresh instead of grant_type=refresh_token
 	UseLegacyFormat bool
+
+	// Resource is the RFC 8707 resource indicator to bind the refreshed
+	// token to, sent only when non-empty. Echo the stored token's Resource:
+	// BC5 multi-account refresh tokens hard-require it (SPEC §16).
+	// APPENDED LAST: existing positional literals keep their field positions.
+	Resource string
 }

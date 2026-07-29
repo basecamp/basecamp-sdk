@@ -539,3 +539,142 @@ func TestNewDeviceConfig_TimeoutClamp(t *testing.T) {
 		})
 	}
 }
+
+func TestExchanger_Refresh_ResourceEcho(t *testing.T) {
+	tests := []struct {
+		name         string
+		resource     string
+		wantSent     bool
+		wantResource string
+	}{
+		{name: "resource sent when set", resource: "urn:bc:account:123", wantSent: true, wantResource: "urn:bc:account:123"},
+		{name: "resource omitted when unset", resource: "", wantSent: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var sawResourceKey bool
+			var receivedResource string
+
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = r.ParseForm()
+				_, sawResourceKey = r.PostForm["resource"]
+				receivedResource = r.PostFormValue("resource")
+				_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "new_access"})
+			}))
+			defer server.Close()
+
+			e := NewExchanger(server.Client())
+			_, err := e.Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+				ClientID:      "basecamp-cli",
+				Resource:      tt.resource,
+			})
+			if err != nil {
+				t.Fatalf("Refresh() error = %v", err)
+			}
+			if sawResourceKey != tt.wantSent {
+				t.Errorf("resource form key present = %v, want %v", sawResourceKey, tt.wantSent)
+			}
+			if receivedResource != tt.wantResource {
+				t.Errorf("resource form value = %q, want %q", receivedResource, tt.wantResource)
+			}
+		})
+	}
+}
+
+func TestExchanger_TokenTypeContract(t *testing.T) {
+	// SPEC §16: token_type defaults to Bearer only when absent/JSON-null; a
+	// present-but-empty value is a malformed response — matching the
+	// device-flow parser.
+	tests := []struct {
+		name     string
+		response string
+		wantErr  bool
+		wantType string
+	}{
+		{name: "absent token_type defaults to Bearer", response: `{"access_token":"a"}`, wantType: "Bearer"},
+		{name: "null token_type defaults to Bearer", response: `{"access_token":"a","token_type":null}`, wantType: "Bearer"},
+		{name: "present token_type round-trips", response: `{"access_token":"a","token_type":"Bearer"}`, wantType: "Bearer"},
+		{name: "empty token_type rejected", response: `{"access_token":"a","token_type":""}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			defer server.Close()
+
+			e := NewExchanger(server.Client())
+			token, err := e.Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+			})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Refresh() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				var apiErr *basecamp.Error
+				if !errors.As(err, &apiErr) || apiErr.Code != basecamp.CodeAPI {
+					t.Fatalf("error = %T %v, want *basecamp.Error with CodeAPI", err, err)
+				}
+				return
+			}
+			if token.TokenType != tt.wantType {
+				t.Errorf("TokenType = %q, want %q", token.TokenType, tt.wantType)
+			}
+		})
+	}
+}
+
+func TestExchanger_TokenResponseResource(t *testing.T) {
+	tests := []struct {
+		name         string
+		response     string
+		wantErr      bool
+		wantResource string
+	}{
+		{name: "resource round-trips", response: `{"access_token":"a","resource":"urn:bc:account:42"}`, wantResource: "urn:bc:account:42"},
+		{name: "absent resource is unset", response: `{"access_token":"a"}`, wantResource: ""},
+		{name: "null resource is unset", response: `{"access_token":"a","resource":null}`, wantResource: ""},
+		{name: "empty resource rejected", response: `{"access_token":"a","resource":""}`, wantErr: true},
+		{name: "non-string resource rejected", response: `{"access_token":"a","resource":7}`, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			defer server.Close()
+
+			e := NewExchanger(server.Client())
+			token, err := e.Refresh(context.Background(), RefreshRequest{
+				TokenEndpoint: server.URL,
+				RefreshToken:  "refresh123",
+			})
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Refresh() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.name == "empty resource rejected" || tt.name == "non-string resource rejected" {
+				// A typed api fault (SPEC §16), not a bare error: callers
+				// classify malformed responses via errors.As and need the
+				// HTTP status, matching the device-token/AuthManager paths.
+				var apiErr *basecamp.Error
+				if !errors.As(err, &apiErr) || apiErr.Code != basecamp.CodeAPI {
+					t.Fatalf("%s error = %T %v, want *basecamp.Error with CodeAPI", tt.name, err, err)
+				}
+				if apiErr.HTTPStatus != http.StatusOK {
+					t.Errorf("HTTPStatus = %d, want 200", apiErr.HTTPStatus)
+				}
+			}
+			if !tt.wantErr && token.Resource != tt.wantResource {
+				t.Errorf("token.Resource = %q, want %q", token.Resource, tt.wantResource)
+			}
+		})
+	}
+}

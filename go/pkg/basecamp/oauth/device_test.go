@@ -1985,3 +1985,302 @@ func TestPollDeviceToken_CancelledDuringIgnoredTransportBeatsTerminalError(t *te
 		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
 	}
 }
+
+func TestPollDeviceToken_CapturesResource(t *testing.T) {
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{
+		{http.StatusOK, map[string]any{
+			"access_token":  "device_access_token",
+			"refresh_token": "device_refresh_token",
+			"resource":      "urn:bc:account:42",
+		}},
+	})
+	sleep := &recordingSleep{}
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.Resource != "urn:bc:account:42" {
+		t.Errorf("Resource = %q, want urn:bc:account:42", token.Resource)
+	}
+}
+
+func TestPollDeviceToken_ResourceValidation(t *testing.T) {
+	cases := []struct {
+		name     string
+		resource any
+		wantErr  bool
+	}{
+		{"null resource is absent", nil, false},
+		{"empty resource is malformed", "", true},
+		{"non-string resource is malformed", 7, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"access_token": "device_access_token", "resource": tc.resource}
+			srv, _ := queueTokenResponses(t, []struct {
+				status int
+				body   map[string]any
+			}{{http.StatusOK, body}})
+			sleep := &recordingSleep{}
+
+			token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+				WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+			if tc.wantErr {
+				assertBasecampCode(t, err, basecamp.CodeAPI)
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if token.Resource != "" {
+				t.Errorf("Resource = %q, want unset", token.Resource)
+			}
+		})
+	}
+}
+
+// queueTokenResponses429 serves a fixed sequence of token-endpoint responses
+// with an optional Retry-After header per response (the last repeats).
+func queueTokenResponses429(t *testing.T, responses []struct {
+	status     int
+	body       map[string]any
+	retryAfter string
+}) *httptest.Server {
+	t.Helper()
+	calls := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		i := min(calls, len(responses)-1)
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		if responses[i].retryAfter != "" {
+			w.Header().Set("Retry-After", responses[i].retryAfter)
+		}
+		w.WriteHeader(responses[i].status)
+		_ = json.NewEncoder(w).Encode(responses[i].body)
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+var tooManyRequestsBody = map[string]any{"error": "too_many_requests"}
+
+func TestPollDeviceToken_RetriesAfter429WithRetryAfterOverride(t *testing.T) {
+	srv := queueTokenResponses429(t, []struct {
+		status     int
+		body       map[string]any
+		retryAfter string
+	}{
+		{http.StatusTooManyRequests, tooManyRequestsBody, "30"},
+		{http.StatusOK, tokenBody, ""},
+	})
+	sleep := &recordingSleep{}
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.AccessToken != "device_access_token" {
+		t.Errorf("AccessToken = %q", token.AccessToken)
+	}
+	// Initial 5s wait, then the one-shot max(interval, Retry-After) = 30s.
+	assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 30 * time.Second})
+}
+
+func TestParseRetryAfterSeconds_ASCIIOWSOnly(t *testing.T) {
+	// RFC 9110: delta-seconds is 1*DIGIT and optional whitespace is ONLY
+	// SP/HTAB. Unicode whitespace (NBSP above all) must not be trimmed into
+	// validity — strings.TrimSpace would accept NBSP+"30" as 30.
+	for _, tc := range []struct {
+		header string
+		want   int
+	}{
+		{" 30 ", 30},
+		{"\t30\t", 30},
+		{" \t30\t ", 30},
+		{"\u00a030", 0},
+		{"30\u00a0", 0},
+		{"\u200930", 0},
+		{"\n30\n", 0},
+		// A representable over-ceiling delta clamps (the wait rule clips to
+		// the remaining lifetime); an unrepresentable one stays malformed.
+		{"2147484", maxDeviceSeconds},
+		{"99999999999999999999", 0},
+	} {
+		if got := parseRetryAfterSeconds(tc.header); got != tc.want {
+			t.Errorf("parseRetryAfterSeconds(%q) = %d, want %d", tc.header, got, tc.want)
+		}
+	}
+}
+
+func TestPollDeviceToken_429MalformedRetryAfterFallsBackToInterval(t *testing.T) {
+	// The final case runs NBSP+"30" end-to-end through a real HTTP round trip
+	// (Go passes obs-text header bytes through unmodified).
+	// "99999999999": 11 significant digits — representable in an int, but past
+	// the shared 10-digit bound, so it must fall back like TS/Python/Ruby.
+	for _, header := range []string{"", "abc", "1.5", "-1", "0", "99999999999999999999", "99999999999", "+30", "\u00a030"} {
+		t.Run("header="+header, func(t *testing.T) {
+			srv := queueTokenResponses429(t, []struct {
+				status     int
+				body       map[string]any
+				retryAfter string
+			}{
+				{http.StatusTooManyRequests, tooManyRequestsBody, header},
+				{http.StatusOK, tokenBody, ""},
+			})
+			sleep := &recordingSleep{}
+
+			_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+				WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 5 * time.Second})
+		})
+	}
+}
+
+func TestPollDeviceToken_429DuplicateRetryAfterFallsBackToInterval(t *testing.T) {
+	// Duplicate Retry-After field lines are ambiguous — Header.Get would
+	// silently take the first ("30") even though the combined field is
+	// malformed; the override must fall back to the current interval.
+	step := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if step == 0 {
+			step++
+			w.Header().Add("Retry-After", "30")
+			w.Header().Add("Retry-After", "bogus")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_ = json.NewEncoder(w).Encode(tooManyRequestsBody)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(tokenBody)
+	}))
+	defer srv.Close()
+	sleep := &recordingSleep{}
+
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 5 * time.Second})
+}
+
+func TestPollDeviceToken_429RetryAfterOverrideDecaysAfterOneWait(t *testing.T) {
+	srv := queueTokenResponses429(t, []struct {
+		status     int
+		body       map[string]any
+		retryAfter string
+	}{
+		{http.StatusTooManyRequests, tooManyRequestsBody, "30"},
+		{http.StatusBadRequest, map[string]any{"error": "authorization_pending"}, ""},
+		{http.StatusOK, tokenBody, ""},
+	})
+	sleep := &recordingSleep{}
+
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// 5s initial, 30s one-shot override, then back to the 5s interval — the
+	// override never inflates the slow_down-driven cadence.
+	assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 30 * time.Second, 5 * time.Second})
+}
+
+func TestPollDeviceToken_429WrongPairStaysTerminal(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   map[string]any
+	}{
+		{"429 without too_many_requests", http.StatusTooManyRequests, map[string]any{"error": "rate_limited"}},
+		{"429 parroting authorization_pending", http.StatusTooManyRequests, map[string]any{"error": "authorization_pending"}},
+		{"429 parroting slow_down", http.StatusTooManyRequests, map[string]any{"error": "slow_down"}},
+		{"too_many_requests on 400", http.StatusBadRequest, tooManyRequestsBody},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := queueTokenResponses429(t, []struct {
+				status     int
+				body       map[string]any
+				retryAfter string
+			}{{tc.status, tc.body, "30"}})
+			sleep := &recordingSleep{}
+
+			_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+				WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+			assertBasecampCode(t, err, basecamp.CodeAPI)
+		})
+	}
+}
+
+func TestPollDeviceToken_429WaitClampedToExpiry(t *testing.T) {
+	srv := queueTokenResponses429(t, []struct {
+		status     int
+		body       map[string]any
+		retryAfter string
+	}{{http.StatusTooManyRequests, tooManyRequestsBody, "3600"}})
+	sleep := &recordingSleep{}
+
+	// Scripted monotonic clock: deadline anchors at t=0 with a 20s lifetime.
+	// The second iteration's huge Retry-After override must clamp to the 14s
+	// remaining, and the post-wait check then expires the flow.
+	times := []time.Time{
+		time.Unix(0, 0),  // deadline anchor
+		time.Unix(0, 0),  // iter 1 remaining
+		time.Unix(5, 0),  // iter 1 post-wait check
+		time.Unix(6, 0),  // iter 2 remaining
+		time.Unix(20, 0), // iter 2 post-wait check → expired
+	}
+	idx := 0
+	clock := func() time.Time {
+		v := times[min(idx, len(times)-1)]
+		idx++
+		return v
+	}
+
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 20,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn), WithDeviceClock(clock))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowExpired {
+		t.Fatalf("want DeviceFlowError(expired), got %v", err)
+	}
+	assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 14 * time.Second})
+}
+
+func TestPollDeviceToken_CancellationDuring429Wait(t *testing.T) {
+	srv := queueTokenResponses429(t, []struct {
+		status     int
+		body       map[string]any
+		retryAfter string
+	}{{http.StatusTooManyRequests, tooManyRequestsBody, "30"}})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	waitCount := 0
+	sleep := &recordingSleep{before: func() {
+		waitCount++
+		if waitCount == 2 {
+			cancel() // cancel during the post-429 override wait
+		}
+	}}
+
+	_, err := PollDeviceToken(ctx, srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+
+	var dfe *DeviceFlowError
+	if !errors.As(err, &dfe) || dfe.Reason != DeviceFlowCancelled {
+		t.Fatalf("want DeviceFlowError(cancelled), got %v", err)
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("cancelled error should wrap context.Canceled, got %v", err)
+	}
+}

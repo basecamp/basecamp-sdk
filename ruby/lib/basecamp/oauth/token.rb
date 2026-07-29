@@ -10,13 +10,18 @@ module Basecamp
     # @attr expires_in [Integer, nil] Lifetime of the access token in seconds
     # @attr expires_at [Time, nil] Calculated expiration time
     # @attr scope [String, nil] OAuth scope granted
+    # @attr resource [String, nil] RFC 8707 resource indicator the token is
+    #   bound to (BC5: +urn:bc:account:<id>+). Echo it when refreshing —
+    #   BC5 multi-account refresh tokens reject a refresh without it
+    #   (SPEC §16). Appended last so earlier members keep their positions.
     Token = Data.define(
       :access_token,
       :token_type,
       :refresh_token,
       :expires_in,
       :expires_at,
-      :scope
+      :scope,
+      :resource
     ) do
       def initialize(
         access_token:,
@@ -24,7 +29,8 @@ module Basecamp
         refresh_token: nil,
         expires_in: nil,
         expires_at: nil,
-        scope: nil
+        scope: nil,
+        resource: nil
       )
         # Calculate expires_at from expires_in if not provided
         calculated_expires_at = expires_at || (expires_in ? Time.now + expires_in : nil)
@@ -34,7 +40,8 @@ module Basecamp
           refresh_token: refresh_token,
           expires_in: expires_in,
           expires_at: calculated_expires_at,
-          scope: scope
+          scope: scope,
+          resource: resource
         )
       end
 

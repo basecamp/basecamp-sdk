@@ -1,0 +1,17 @@
+{
+  "name": "resource-absent",
+  "description": "A token response without a resource member yields a token with no resource binding.",
+  "operation": "refreshToken",
+  "response": {
+    "status": 200,
+    "body": {
+      "access_token": "tok",
+      "token_type": "Bearer"
+    }
+  },
+  "expect": {
+    "outcome": "token",
+    "resourceAbsent": true,
+    "formResourceAbsent": true
+  }
+}
