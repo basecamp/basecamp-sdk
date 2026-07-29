@@ -337,6 +337,9 @@ token = poll_device_token(
     auth.device_code,
     auth.interval,
     auth.expires_in - (time.monotonic() - issued_at),
+    # The EXACT issuance-anchored deadline: a suspension between the remaining
+    # computation above and poller entry must not extend the code lifetime.
+    deadline_at=issued_at + auth.expires_in,
 )
 ```
 

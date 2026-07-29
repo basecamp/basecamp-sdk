@@ -321,6 +321,28 @@ class _PollResult:
     status: int = 0
 
 
+def _validated_clock_sample(value: object, entry: str) -> float:
+    """Validate one sample from an injected clock seam.
+
+    Type-gated and overflow-safe like the ``deadline_at`` guard: a NaN sample
+    defeats every deadline comparison (an ``authorization_pending`` endpoint
+    would be polled indefinitely), and a string or huge-int sample must surface
+    as the typed usage error — never a raw ``TypeError``/``OverflowError`` out
+    of the deadline arithmetic.
+    """
+    result = 0.0
+    valid = False
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            result = float(value)
+            valid = math.isfinite(result)
+        except OverflowError:
+            valid = False
+    if not valid:
+        raise OAuthError("usage", f"{entry} clock must return a finite number of seconds")
+    return result
+
+
 def _wait_cancellable(
     seconds: float,
     should_cancel: Callable[[], bool] | None,
@@ -423,10 +445,7 @@ def poll_device_token(
         # EVERY sample of the injected clock is validated: a NaN sample makes
         # the deadline (or a comparison against it) permanently false, so an
         # authorization_pending endpoint would be polled indefinitely.
-        value = clock()
-        if not math.isfinite(value):
-            raise OAuthError("usage", "poll_device_token clock must return a finite number of seconds")
-        return value
+        return _validated_clock_sample(clock(), "poll_device_token")
 
     # An absolute issuance-anchored deadline (perform_device_login passes
     # issued_at + expires_in) beats re-anchoring: clock time elapsing between
@@ -743,14 +762,14 @@ def perform_device_login(
     # The code's lifetime starts at issuance, not after display: a slow display
     # hook must eat into the deadline, never reset it. Measure the elapsed time
     # across the hook against the monotonic clock and check expiry before polling.
-    issued_at = clock()
+    issued_at = _validated_clock_sample(clock(), "perform_device_login")
     display(auth)
     # Cancellation raised DURING the display hook (a prompt closing in
     # response to cancellation) wins over expiry: a hook that both cancels
     # and consumes the lifetime must surface cancelled, not expired.
     if should_cancel is not None and should_cancel():
         raise DeviceFlowError("cancelled", "Device flow cancelled")
-    remaining = auth.expires_in - (clock() - issued_at)
+    remaining = auth.expires_in - (_validated_clock_sample(clock(), "perform_device_login") - issued_at)
     if remaining <= 0:
         raise DeviceFlowError("expired", "Device code expired before authorization completed")
 

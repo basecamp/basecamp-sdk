@@ -710,6 +710,43 @@ class OAuthDeviceTest < Minitest::Test
     assert_not_requested(:post, TOKEN_ENDPOINT)
   end
 
+  def test_poll_rejects_malformed_clock_samples_as_usage
+    # A String or huge-int sample must surface as the typed usage fault —
+    # never a raw TypeError out of the deadline arithmetic, and never an
+    # Infinity that defeats every deadline comparison.
+    [ "now", 10**400, Complex(1, 1) ].each do |bad|
+      _waits, sleeper = recording_sleeper
+      error = assert_raises(Basecamp::Oauth::OauthError, "clock sample #{bad.inspect}") do
+        Basecamp::Oauth.poll_device_token(
+          token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+          device_code: "dev-code-123", interval: 5, expires_in: 900,
+          clock: -> { bad }, sleeper: sleeper
+        )
+      end
+      assert_equal "usage", error.type, "clock sample #{bad.inspect}"
+      assert_match(/clock must return a finite number of seconds/, error.message)
+    end
+  end
+
+  def test_poll_rejects_a_malformed_later_clock_sample_as_usage
+    # EVERY sample is validated, not just the first: a clock that goes bad
+    # mid-flight (sample 2 here, before the first request) must surface the
+    # same typed usage fault instead of a raw TypeError.
+    clock = scripted_clock([ 0, "now" ])
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        clock: clock, sleeper: sleeper
+      )
+    end
+
+    assert_equal "usage", error.type
+    assert_not_requested(:post, TOKEN_ENDPOINT)
+  end
+
   def test_poll_raises_transport_on_non_timeout_failure
     client = SequencedHttpClient.new([ Faraday::ConnectionFailed.new("boom") ])
     _waits, sleeper = recording_sleeper

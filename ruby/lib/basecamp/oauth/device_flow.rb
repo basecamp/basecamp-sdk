@@ -177,10 +177,10 @@ module Basecamp
           # back to the code. It can only SHORTEN the validated lifetime.
           deadline =
             if deadline_at.nil?
-              clock.call + expires_in
+              sample_clock(clock, "poll_device_token") + expires_in
             else
               unless deadline_at.is_a?(Numeric) && deadline_at.real? \
-                  && deadline_at.to_f.finite? && deadline_at <= clock.call + expires_in
+                  && deadline_at.to_f.finite? && deadline_at <= sample_clock(clock, "poll_device_token") + expires_in
                 raise OauthError.new(
                   "usage",
                   "poll_device_token deadline_at must be a finite monotonic timestamp " \
@@ -212,14 +212,14 @@ module Basecamp
             # the LARGER of the server-driven interval and the transient timeout
             # backoff — the two schedules stay separate so a backoff can drain
             # back down to the server interval once round-trips resume.
-            now = clock.call
+            now = sample_clock(clock, "poll_device_token")
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if now >= deadline
 
             wait_cancellable([ [ interval_seconds, backoff_seconds ].max, deadline - now ].min, cancelled, sleeper)
 
             raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
-            post_remaining = deadline - clock.call
+            post_remaining = deadline - sample_clock(clock, "poll_device_token")
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed") if post_remaining <= 0
 
             outcome = begin
@@ -336,14 +336,14 @@ module Basecamp
           # issuance instant on the monotonic clock, run the hook, then poll with
           # only the REMAINING lifetime. If the hook consumed the whole budget,
           # raise +expired+ without a single poll.
-          issued_at = clock.call
+          issued_at = sample_clock(clock, "perform_device_login")
           display.call(auth)
           # Cancellation raised DURING the display hook (a prompt closing in
           # response to cancellation) wins over expiry: a hook that both
           # cancels and consumes the lifetime must surface cancelled.
           raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
-          remaining = auth.expires_in - (clock.call - issued_at)
+          remaining = auth.expires_in - (sample_clock(clock, "perform_device_login") - issued_at)
           if remaining <= 0
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed")
           end
@@ -377,6 +377,19 @@ module Basecamp
           # A positive, finite, real number of seconds within the shared device
           # ceiling. +real?+ gates out Complex before +finite?+/+positive?+ (which
           # Complex does not define), matching {Fetcher.valid_timeout?}.
+          # EVERY sample of the injected clock seam is validated: a String or
+          # Complex sample would raise a raw TypeError out of the deadline
+          # arithmetic, and a NaN sample makes every deadline comparison
+          # permanently false — polling an authorization_pending endpoint
+          # forever. A malformed sample is the typed usage fault instead.
+          def sample_clock(clock, entry)
+            value = clock.call
+            unless value.is_a?(Numeric) && value.real? && value.to_f.finite?
+              raise OauthError.new("usage", "#{entry} clock must return a finite number of seconds")
+            end
+            value
+          end
+
           def valid_device_seconds?(value)
             value.is_a?(Numeric) && value.real? && value.finite? && value.positive? && value <= MAX_DEVICE_SECONDS
           end

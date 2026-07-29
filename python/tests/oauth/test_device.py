@@ -646,6 +646,40 @@ class TestPollDeviceToken:
             )
         assert exc_info.value.code == "usage"
 
+    def test_rejects_malformed_clock_samples_as_usage(self):
+        # A string, bool, or huge-int sample must surface as the typed usage
+        # error — never a raw TypeError/OverflowError out of the deadline
+        # arithmetic. Covers both the poller and the login orchestrator seams.
+        for bad in ("now", True, 10**400):
+            with pytest.raises(OAuthError) as exc_info:
+                poll_device_token(
+                    TOKEN_ENDPOINT,
+                    "basecamp-cli",
+                    "dev-code-123",
+                    interval=5,
+                    expires_in=900,
+                    clock=lambda bad=bad: bad,
+                    sleep=RecordingSleep(),
+                )
+            assert exc_info.value.code == "usage", f"clock sample {bad!r}"
+
+    def test_rejects_a_malformed_later_clock_sample_as_usage(self):
+        # EVERY sample is validated, not just the first: a clock that goes bad
+        # mid-flight (sample 2 here, before the first request) must surface the
+        # same typed usage error instead of a raw TypeError.
+        times = iter([0.0, "now"])
+        with pytest.raises(OAuthError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                clock=lambda: next(times),
+                sleep=RecordingSleep(),
+            )
+        assert exc_info.value.code == "usage"
+
     def test_expires_against_injected_clock(self):
         _queue_token_responses([httpx.Response(400, json={"error": "authorization_pending"})])
         # Clock: base at 0, then jumps past the 900s deadline on the first check.
