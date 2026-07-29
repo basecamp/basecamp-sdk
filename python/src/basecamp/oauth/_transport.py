@@ -33,6 +33,16 @@ from basecamp.oauth.errors import OAuthError
 #: worker never blocks interpreter exit if even this stalls.
 _WORKER_JOIN_GRACE = 1.0
 
+#: Cap on concurrently OUTSTANDING transport workers. A worker abandoned on a
+#: stuck resolver (getaddrinfo is uninterruptible; asyncio.run then blocks in
+#: shutdown_default_executor) parks itself AND an executor thread — and
+#: concurrent.futures joins executor threads at interpreter shutdown, so
+#: unbounded accumulation against a black-holed resolver could pile up
+#: threads and delay process exit. Each worker releases its own slot when it
+#: actually finishes; an abandoned worker keeps its slot held until the
+#: resolver unsticks, so at most this many can ever be outstanding.
+_WORKER_SLOTS = threading.BoundedSemaphore(8)
+
 #: Upper bound (seconds) on a bounded request timeout. A per-request timeout
 #: beyond this is nonsensical, and a huge finite value would overflow the
 #: wall-clock wait primitive (asyncio.wait_for / thread join); callers clamp
@@ -257,6 +267,15 @@ def request_bounded(
 
     def _runner() -> None:
         try:
+            _run_bounded()
+        finally:
+            # The worker itself releases the slot: an abandoned (still-stuck)
+            # worker keeps its slot held, which is exactly what bounds the
+            # pile-up.
+            _WORKER_SLOTS.release()
+
+    def _run_bounded() -> None:
+        try:
             # Budget from the CALLER'S deadline, not a fresh full timeout: a
             # late-scheduled worker (thread/CPU pressure) must not start a
             # whole new window after the advertised bound.
@@ -274,13 +293,25 @@ def request_bounded(
             # fault whose join crossed the bound.
             error.append((exc, time.monotonic()))
 
+    # Acquire a worker slot inside the remaining budget: if every slot is
+    # held by workers stuck on uninterruptible resolver calls, fail as the
+    # timeout this request would have become anyway — without adding another
+    # stuck thread to the pile.
+    if not _WORKER_SLOTS.acquire(timeout=max(0.001, deadline_ts - time.monotonic())):
+        raise httpx.ConnectTimeout(f"{context} transport worker slots exhausted")
     worker = threading.Thread(target=_runner, daemon=True)
-    worker.start()
+    try:
+        worker.start()
+    except BaseException:
+        _WORKER_SLOTS.release()
+        raise
     # asyncio.wait_for cancels the request at `timeout`, so the worker normally
     # finishes well within it. Join with a small grace for the cancellation/cleanup
-    # to unwind; if even that stalls (a pathological async cleanup hang), return a
-    # timeout rather than block the caller — the daemon worker never blocks
-    # interpreter exit. This is bounded AND non-leaking in every non-pathological case.
+    # to unwind; if even that stalls (an uninterruptible resolver call above
+    # all), return a timeout rather than block the caller. The abandoned
+    # worker holds its _WORKER_SLOTS slot until it unsticks, bounding how many
+    # can ever pile up (executor threads are joined at interpreter shutdown,
+    # so the pile-up — not this single worker — is what could delay exit).
     # Join with the REMAINING deadline budget (not the full timeout): a
     # late-started worker already consumed part of the window, and the caller's
     # total bound must hold regardless of scheduling pressure.

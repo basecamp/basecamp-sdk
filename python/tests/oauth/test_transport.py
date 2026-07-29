@@ -385,6 +385,34 @@ def test_wire_error_past_the_deadline_classifies_as_timeout(monkeypatch) -> None
         srv.close()
 
 
+def test_exhausted_worker_slots_fail_fast_as_timeout() -> None:
+    # When every transport-worker slot is held (workers stuck on
+    # uninterruptible resolver calls), a new request must fail within its
+    # budget as the timeout it would have become — never add another stuck
+    # thread to the pile.
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    held = 0
+    while _transport._WORKER_SLOTS.acquire(blocking=False):
+        held += 1
+    try:
+        started = time.monotonic()
+        with pytest.raises(httpx.TimeoutException, match="worker slots exhausted"):
+            request_bounded(
+                "GET",
+                "http://127.0.0.1:9/doc",
+                headers={},
+                params=None,
+                timeout=0.3,
+                max_body_bytes=1024,
+            )
+        assert time.monotonic() - started < 2.0
+    finally:
+        for _ in range(held):
+            _transport._WORKER_SLOTS.release()
+
+
 def test_zero_max_body_bytes_is_a_strict_cap_not_a_usage_error() -> None:
     # _normalize_body_cap accepts zero as a legitimate strict cap, so the
     # transport must too: the request goes out and any non-empty body trips
