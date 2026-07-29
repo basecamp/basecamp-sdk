@@ -985,7 +985,7 @@ class OAuthDeviceTest < Minitest::Test
   def test_poll_rejects_a_deadline_at_beyond_the_code_lifetime
     # deadline_at can only SHORTEN the validated lifetime (mirrors the TS
     # deadlineAtMs bound).
-    [ Float::NAN, 10_000_000.0 ].each do |bad|
+    [ Float::NAN, 10_000_000.0, Complex(1, 2), "soon" ].each do |bad|
       error = assert_raises(Basecamp::Oauth::OauthError) do
         Basecamp::Oauth.poll_device_token(
           token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",

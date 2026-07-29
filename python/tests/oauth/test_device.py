@@ -617,7 +617,7 @@ class TestPollDeviceToken:
     def test_rejects_a_deadline_at_beyond_the_code_lifetime(self):
         # deadline_at can only SHORTEN the validated lifetime (mirrors the TS
         # deadlineAtMs bound); NaN defeats every comparison.
-        for bad in (float("nan"), 10_000_000.0):
+        for bad in (float("nan"), 10_000_000.0, "soon", True, 10**400):
             with pytest.raises(OAuthError) as exc_info:
                 poll_device_token(
                     TOKEN_ENDPOINT,

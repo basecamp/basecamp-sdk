@@ -179,8 +179,8 @@ module Basecamp
             if deadline_at.nil?
               clock.call + expires_in
             else
-              unless deadline_at.is_a?(Numeric) && deadline_at.to_f.finite? \
-                  && deadline_at <= clock.call + expires_in
+              unless deadline_at.is_a?(Numeric) && deadline_at.real? \
+                  && deadline_at.to_f.finite? && deadline_at <= clock.call + expires_in
                 raise OauthError.new(
                   "usage",
                   "poll_device_token deadline_at must be a finite monotonic timestamp " \

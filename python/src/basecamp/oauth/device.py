@@ -434,7 +434,17 @@ def poll_device_token(
     # suspension above all — must never be handed back to the code. It can
     # only SHORTEN the validated lifetime, never extend it.
     if deadline_at is not None:
-        if not math.isfinite(deadline_at) or deadline_at > _sample_clock() + expires_in:
+        # Type-gated and overflow-safe: bool is not a timestamp, non-numerics
+        # would raise TypeError out of isfinite, and a huge int overflows the
+        # float conversion — every invalid shape must be the typed usage
+        # error, matching the other duration guards.
+        valid = isinstance(deadline_at, (int, float)) and not isinstance(deadline_at, bool)
+        if valid:
+            try:
+                valid = math.isfinite(float(deadline_at)) and deadline_at <= _sample_clock() + expires_in
+            except OverflowError:
+                valid = False
+        if not valid:
             raise OAuthError(
                 "usage",
                 "poll_device_token deadline_at must be a finite monotonic timestamp "
