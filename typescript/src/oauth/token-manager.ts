@@ -154,11 +154,15 @@ export class TokenManager {
 
     // Preserve the previous refresh token when the server omits one, and the
     // previous resource binding when the response omits it (SPEC §16
-    // carry-forward rule).
+    // carry-forward rule). Truthiness, not ?? — the standard exchange path
+    // already rejects a present-empty resource, but an injected refreshToken
+    // implementation could hand back resource: "", and persisting it would
+    // strand a multi-account token (present ⇒ non-empty everywhere else,
+    // and later refreshes would omit the binding via the truthy send check).
     const merged: OAuthToken = {
       ...newToken,
       refreshToken: newToken.refreshToken || refreshTokenValue,
-      resource: newToken.resource ?? this.token?.resource,
+      resource: newToken.resource || this.token?.resource,
     };
 
     this.token = merged;
