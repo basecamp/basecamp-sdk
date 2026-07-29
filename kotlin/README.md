@@ -50,7 +50,9 @@ env:
   GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-`secrets.GITHUB_TOKEN` is scoped to the repository running the workflow. Consuming this package from a different repository needs a classic PAT stored as a secret instead.
+`secrets.GITHUB_TOKEN` is scoped to the repository running the workflow. To consume the package from a *different* repository, grant that repository access under the package's Actions access settings and give the job `permissions: packages: read` — that avoids a long-lived PAT. Failing that, store a classic PAT as a secret and use it as `GITHUB_ACCESS_TOKEN`.
+
+The username is not load-bearing; GitHub Packages authenticates on the token. `${{ github.actor }}` works just as well as `x-access-token`.
 
 ### 3. Declare the repository and dependency
 
