@@ -275,8 +275,11 @@ new_token = refresh_token(
     # without it (400 invalid_request); it is sent only when set.
     resource=token.resource,
 )
-# A refresh response MAY omit resource (the binding is unchanged) — persist
-# `new_token.resource or token.resource` so the next refresh still echoes it.
+# A refresh response MAY omit resource (binding unchanged) AND refresh_token
+# (no rotation) — carry BOTH forward when persisting, or the next refresh
+# loses its token:
+#   stored_resource = new_token.resource or token.resource
+#   stored_refresh  = new_token.refresh_token or token.refresh_token
 ```
 
 ### Launchpad Legacy Format

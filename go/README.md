@@ -274,10 +274,12 @@ bridges the two — saving the client id it used and the token's resource so
 later refreshes can echo them:
 
 ```go
+import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+
 // sdkCfg is the SDK *basecamp.Config (the device-login example above binds
 // its discovery result to result.Config, an *oauth.Config — a different type).
 sdkCfg := &basecamp.Config{BaseURL: "https://3.basecampapi.com"}
-authMgr := basecamp.NewAuthManager(sdkCfg, httpClient)
+authMgr := basecamp.NewAuthManager(sdkCfg, http.DefaultClient)
 creds := &basecamp.Credentials{
     AccessToken:   token.AccessToken,
     RefreshToken:  token.RefreshToken,

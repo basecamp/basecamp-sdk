@@ -159,16 +159,17 @@ export interface RefreshRequest {
   /** The client secret (optional) */
   clientSecret?: string;
   /**
-   * RFC 8707 resource indicator to bind the refreshed token to, sent only
-   * when set. Echo the stored token's `resource`: BC5 multi-account refresh
-   * tokens hard-require it (SPEC §16).
-   */
-  resource?: string;
-  /**
    * Use Launchpad's non-standard token format.
    * When true, uses `type=refresh` instead of `grant_type=refresh_token`.
    */
   useLegacyFormat?: boolean;
+  /**
+   * RFC 8707 resource indicator to bind the refreshed token to, sent only
+   * when set. Echo the stored token's `resource`: BC5 multi-account refresh
+   * tokens hard-require it (SPEC §16). APPENDED LAST: declaration order is
+   * published API surface for schema/doc generators (append-only contract).
+   */
+  resource?: string;
 }
 
 /**
