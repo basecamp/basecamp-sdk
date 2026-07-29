@@ -7,7 +7,10 @@ client from a watchdog thread does not interrupt a blocked read either. The
 core here runs an async client under ``asyncio.wait_for`` on a dedicated
 worker thread, so the deadline CANCELS the request (and closes the socket) —
 the caller is bounded regardless of chunk cadence AND the work is actually
-terminated, no leaked connection.
+terminated. (One documented residual below: a getaddrinfo blocked in the OS
+resolver runs on an executor thread cancellation cannot interrupt, so a
+slow-DNS attempt's daemon worker outlives the deadline until the resolver's
+own OS-bounded timeout.)
 """
 
 from __future__ import annotations
@@ -202,9 +205,13 @@ def request_bounded(
         try:
             # Budget from the CALLER'S deadline, not a fresh full timeout: a
             # late-scheduled worker (thread/CPU pressure) must not start a
-            # whole new window after the advertised bound — near zero, the
-            # request times out immediately instead of POSTing past it.
-            remaining = max(0.001, deadline_ts - time.monotonic())
+            # whole new window after the advertised bound.
+            remaining = deadline_ts - time.monotonic()
+            if remaining <= 0:
+                # Past the deadline before the request even started: refuse to
+                # open a connection at all (a device-token POST after code
+                # expiry above all).
+                raise TimeoutError(f"{context} deadline expired before the request started")
             result.append(asyncio.run(asyncio.wait_for(_do(), remaining)))
         except Exception as exc:  # captured and re-raised on the caller thread
             error.append(exc)
@@ -216,7 +223,10 @@ def request_bounded(
     # to unwind; if even that stalls (a pathological async cleanup hang), return a
     # timeout rather than block the caller — the daemon worker never blocks
     # interpreter exit. This is bounded AND non-leaking in every non-pathological case.
-    worker.join(timeout + _WORKER_JOIN_GRACE)
+    # Join with the REMAINING deadline budget (not the full timeout): a
+    # late-started worker already consumed part of the window, and the caller's
+    # total bound must hold regardless of scheduling pressure.
+    worker.join(max(0.001, deadline_ts - time.monotonic()) + _WORKER_JOIN_GRACE)
     if worker.is_alive():
         raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline")
     if error:
