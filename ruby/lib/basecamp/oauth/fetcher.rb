@@ -605,17 +605,26 @@ module Basecamp
 
         body =
           if chunks.empty?
-            # A buffered adapter (Faraday's test adapter above all) never
-            # invokes on_data: the streamed chunks are empty while the body
-            # sits on the response. Fall back to it under the same cap so an
-            # injected buffered client gets the document instead of a bogus
-            # empty-body parse failure — mirroring post_form's fallback.
-            # +dup+: a frozen response body (test adapters return literals)
-            # cannot take force_encoding below.
-            raw = response.body.to_s.dup
-            raise BodyTooLarge if raw.bytesize > max_body_bytes
+            if (200..299).cover?(response.status)
+              # A buffered adapter (Faraday's test adapter above all) never
+              # invokes on_data: the streamed chunks are empty while the body
+              # sits on the response. Fall back to it under the same cap so an
+              # injected buffered client gets the document instead of a bogus
+              # empty-body parse failure — mirroring post_form's fallback.
+              # +dup+: a frozen response body (test adapters return literals)
+              # cannot take force_encoding below.
+              raw = response.body.to_s.dup
+              raise BodyTooLarge if raw.bytesize > max_body_bytes
 
-            raw
+              raw
+            else
+              # fetch_json discards non-2xx bodies (status dominates, SPEC.md):
+              # return status-only rather than dup-and-size-checking a body
+              # nobody reads, so an oversized buffered error body surfaces as
+              # the status fault — not a size-cap one — and is never copied.
+              # +"" — the frozen literal cannot take force_encoding below.
+              +""
+            end
           else
             chunks.join
           end

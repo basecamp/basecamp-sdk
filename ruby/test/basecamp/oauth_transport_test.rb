@@ -427,6 +427,24 @@ class OAuthTransportTest < Minitest::Test
     assert_equal({ "ok" => true }, doc)
   end
 
+  def test_fetch_json_buffered_oversized_error_body_is_the_status_fault
+    # fetch_json discards non-2xx bodies (status dominates): a buffered adapter
+    # whose oversized ERROR body is already in memory must surface the status
+    # api_error, not a size-cap fault — the body is never read or copied.
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.get("/doc") { [ 500, { "Content-Type" => "text/html" }, "x" * 2048 ] }
+    end
+    connection = Faraday.new { |f| f.adapter :test, stubs }
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.fetch_json(connection, "https://example.test/doc", timeout: 1, max_body_bytes: 1024)
+    end
+
+    assert_equal "api_error", error.type
+    assert_equal 500, error.http_status
+    assert_match(/status 500/, error.message)
+  end
+
   def test_fetch_json_injected_streaming_non_2xx_is_status_first_api_error
     # A streaming injected adapter (net_http via WebMock) classifies a non-2xx
     # at header time through the SkipBody seam; the observable stays the
