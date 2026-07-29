@@ -124,6 +124,56 @@ def test_invalid_max_body_bytes_fails_fast() -> None:
             )
 
 
+def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) -> None:
+    # Headers that become runnable past the total deadline mean the status was
+    # NOT known before the bound — the skip path must surface the timeout, not
+    # race ahead of wait_for into a status fault. The clock is faked ONLY
+    # inside the transport module (asyncio/httpx keep the real one): it jumps
+    # past any deadline the moment the server has served the late headers.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    served = threading.Event()
+
+    def respond() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Nope\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno")
+        except OSError:
+            pass
+        finally:
+            served.set()
+            conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if served.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    server = threading.Thread(target=respond, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.TimeoutException):
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+                read_body=lambda _status: False,
+            )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
 def test_zero_max_body_bytes_is_a_strict_cap_not_a_usage_error() -> None:
     # _normalize_body_cap accepts zero as a legitimate strict cap, so the
     # transport must too: the request goes out and any non-empty body trips

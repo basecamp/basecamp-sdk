@@ -130,11 +130,19 @@ def request_bounded(
             client.stream(method, url, data=params, headers=request_headers) as response,
         ):
             if not read_body(response.status_code):
-                # Record the KNOWN outcome before the context managers unwind:
-                # the awaited response/client cleanup can cross the total
-                # deadline and be cancelled by wait_for, and a skipped non-2xx
-                # must classify by status (api_error), never soften into a
-                # retryable timeout because only its cleanup was late.
+                # Deadline first, symmetric with the body paths: headers
+                # becoming runnable past the total bound mean the status was
+                # NOT known before the deadline — classify as the timeout it
+                # is rather than racing ahead of wait_for's already-due
+                # callback into a status fault.
+                if time.monotonic() > deadline_ts:
+                    raise TimeoutError(f"{context} headers arrived past the total deadline")
+                # Record the KNOWN, in-deadline outcome before the context
+                # managers unwind: the awaited response/client cleanup can
+                # cross the total deadline and be cancelled by wait_for, and a
+                # skipped non-2xx must classify by status (api_error), never
+                # soften into a retryable timeout because only its CLEANUP was
+                # late.
                 outcome.append((response.status_code, b""))
                 return response.status_code, b""
             chunks: list[bytes] = []
