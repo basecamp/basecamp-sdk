@@ -342,6 +342,18 @@ module Basecamp
 
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         deadline_fired = false
+        # Net::HTTP#request implicitly re-starts a finished session, and that
+        # restart runs OUTSIDE the connect Timeout.timeout below — an
+        # ENV-proxied CONNECT could drip unbounded there (started? stays
+        # false, so the watchdog cannot close it). The only path to a
+        # finished session is the watchdog, which fires only after the
+        # deadline: guarding EVERY start on deadline_fired closes every
+        # implicit-reconnect path deterministically.
+        http.define_singleton_method(:start) do |&blk|
+          raise Net::OpenTimeout, "total deadline exceeded before (re)connect" if deadline_fired
+
+          super(&blk)
+        end
         watchdog = Thread.new do
           remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
           sleep(remaining) if remaining.positive?

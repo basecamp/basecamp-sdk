@@ -70,6 +70,10 @@ def request_bounded(
     raises :class:`OAuthError` (``api_error``). ``context`` labels both messages.
     """
 
+    # Fail fast on unknown verbs (a typo like "POTS" would otherwise go to
+    # httpx as-is), matching the Ruby primitive's :get/:post contract.
+    if method.upper() not in ("GET", "POST"):
+        raise ValueError("request_bounded: method must be GET or POST")
     if params is not None and method.upper() != "POST":
         # A form body on a non-POST would emit e.g. a GET-with-body — commonly
         # rejected server-side and hard to debug; fail fast on the misuse.
@@ -139,8 +143,9 @@ def request_bounded(
                 # of `result` too, so the caller classifies it as the timeout
                 # it is.
                 raise TimeoutError(f"{context} body completed past the total deadline")
-            outcome.append((response.status_code, b"".join(chunks)))
-            return response.status_code, b"".join(chunks)
+            joined = b"".join(chunks)
+            outcome.append((response.status_code, joined))
+            return response.status_code, joined
 
     # httpx's timeout is per-read (it resets on every received chunk) and httpx has
     # NO total-request timeout, so a peer slow-dripping header or body bytes just

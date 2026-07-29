@@ -520,18 +520,19 @@ class OAuthTransportTest < Minitest::Test
     end
   end
 
-  def test_skipped_status_outranks_the_deadline_race
-    # Status-first survives the deadline race (SPEC §16): when a SKIPPED
-    # status (here a token 302) completes while deadline_fired is already
-    # true, the known status must classify as its api_error path — never
-    # soften into ReadDeadlineExceeded/timeout, which the poll would back off
-    # and retry. Same deterministic harness as the reopen test: hold the
-    # request until the watchdog has finished the session.
+  def test_watchdog_close_cannot_mint_a_second_connection
+    # Once the watchdog closes the session post-deadline, Net::HTTP#request's
+    # implicit re-start must be refused outright (the restart runs outside the
+    # connect Timeout.timeout, where an ENV-proxied CONNECT could drip
+    # unbounded). Same deterministic hold harness as the reopen test — but the
+    # guarded start now raises, and CRITICALLY no second connection is minted.
+    accepts = []
     server = TCPServer.new("127.0.0.1", 0)
     @servers << server
     @server_threads << Thread.new do
       loop do
         conn = server.accept
+        accepts << conn
         @conns << conn
         begin
           while (line = conn.gets) && line != "\r\n"; end
@@ -567,15 +568,16 @@ class OAuthTransportTest < Minitest::Test
     original_new = Net::HTTP.method(:new)
     Net::HTTP.define_singleton_method(:new) { |*| http }
     begin
-      status, body = Basecamp::Oauth::Fetcher.stream_http(
-        :get, "#{endpoint}/token", timeout: 0.3,
-        skip_status: ->(s) { (300..399).cover?(s) }
-      )
-      assert_equal 302, status
-      assert_equal "", body
+      assert_raises(Faraday::TimeoutError) do
+        Basecamp::Oauth::Fetcher.stream_http(
+          :get, "#{endpoint}/token", timeout: 0.3,
+          skip_status: ->(s) { (300..399).cover?(s) }
+        )
+      end
     ensure
       Net::HTTP.define_singleton_method(:new, original_new)
     end
+    assert_equal 1, accepts.length, "the post-deadline implicit re-start must never mint a second connection"
   end
 
   def test_watchdog_close_racing_the_request_cannot_reopen_past_the_deadline

@@ -76,6 +76,21 @@ def test_discovery_header_stall_is_bounded_and_leaks_no_worker() -> None:
     assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
 
 
+def test_unknown_method_fails_fast() -> None:
+    # An unknown verb must fail fast, never reach httpx.
+    from basecamp.oauth._transport import request_bounded
+
+    with pytest.raises(ValueError, match="must be GET or POST"):
+        request_bounded(
+            "POTS",
+            "https://issuer.example/x",
+            headers={},
+            params=None,
+            timeout=1.0,
+            max_body_bytes=1024,
+        )
+
+
 def test_params_with_non_post_fails_fast() -> None:
     # A form body on a GET would emit a GET-with-body; misuse fails fast instead.
     from basecamp.oauth._transport import request_bounded
