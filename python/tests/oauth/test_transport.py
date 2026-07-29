@@ -181,6 +181,61 @@ def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) 
         srv.close()
 
 
+def test_in_deadline_wire_error_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # The mirror edge: a connection reset observed IN deadline whose async
+    # cleanup (__aexit__) crosses it must surface as the terminal transport
+    # fault — never be misdated by a post-cleanup stamp into a retryable
+    # timeout. The fake clock flips only once cleanup begins, so the
+    # exception-site stamp reads real (in-deadline) time.
+    import time as real_time
+
+    from basecamp.oauth import _transport
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+    cleanup_started = threading.Event()
+
+    def reset_connection() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        conn.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+        conn.close()
+
+    class FakeTime:
+        @staticmethod
+        def monotonic() -> float:
+            return 1e9 if cleanup_started.is_set() else real_time.monotonic()
+
+    monkeypatch.setattr(_transport, "time", FakeTime)
+
+    real_aexit = httpx.AsyncClient.__aexit__
+
+    async def flagging_aexit(self, *args):  # noqa: ANN001, ANN002
+        cleanup_started.set()
+        return await real_aexit(self, *args)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__aexit__", flagging_aexit)
+
+    server = threading.Thread(target=reset_connection, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(httpx.HTTPError) as exc_info:
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=10.0,
+                max_body_bytes=1024,
+            )
+        assert not isinstance(exc_info.value, httpx.TimeoutException), (
+            "an in-deadline wire fault must stay terminal, not soften into a timeout"
+        )
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
 def test_wire_error_past_the_deadline_classifies_as_timeout(monkeypatch) -> None:
     # A connection reset that becomes runnable past the total deadline is the
     # timeout it raced, not a distinct transport fault — the poll loop must

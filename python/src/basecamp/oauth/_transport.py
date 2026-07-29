@@ -111,24 +111,49 @@ def request_bounded(
     if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0:
         raise ValueError("request_bounded: max_body_bytes must be a non-negative int")
 
+    # Identity encoding + aiter_raw(): httpx transparently inflates
+    # gzip/deflate in aiter_bytes(), so the per-chunk cap would measure
+    # DECODED bytes — a small compressed body could balloon far past
+    # max_body_bytes in memory (compression bomb). Request identity and
+    # read the RAW wire bytes; a server compressing anyway hands over
+    # compressed bytes bounded by the cap, which then fail classification
+    # upstream instead of exhausting memory.
+    # Case-insensitive replacement: a caller passing "accept-encoding"
+    # would otherwise coexist with our key and emit duplicate headers,
+    # undermining the identity-only compression-bomb bound (the Ruby
+    # transport filters the same way).
+    request_headers = {k: v for k, v in headers.items() if k.lower() != "accept-encoding"}
+    request_headers["Accept-Encoding"] = "identity"
+
     async def _do() -> tuple[int, bytes]:
-        # Identity encoding + aiter_raw(): httpx transparently inflates
-        # gzip/deflate in aiter_bytes(), so the per-chunk cap would measure
-        # DECODED bytes — a small compressed body could balloon far past
-        # max_body_bytes in memory (compression bomb). Request identity and
-        # read the RAW wire bytes; a server compressing anyway hands over
-        # compressed bytes bounded by the cap, which then fail classification
-        # upstream instead of exhausting memory.
-        # Case-insensitive replacement: a caller passing "accept-encoding"
-        # would otherwise coexist with our key and emit duplicate headers,
-        # undermining the identity-only compression-bomb bound (the Ruby
-        # transport filters the same way).
-        request_headers = {k: v for k, v in headers.items() if k.lower() != "accept-encoding"}
-        request_headers["Accept-Encoding"] = "identity"
-        async with (
-            httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
-            client.stream(method, url, data=params, headers=request_headers) as response,
-        ):
+        try:
+            return await _do_inner()
+        except httpx.HTTPError as exc:
+            # Backstop stamp for faults that escape before the interior
+            # try (client construction above all); the interior stamp — taken
+            # before any context manager unwinds — wins when present.
+            if not wire_fault and not isinstance(exc, httpx.TimeoutException):
+                wire_fault.append((exc, time.monotonic()))
+            raise
+
+    async def _do_inner() -> tuple[int, bytes]:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            try:
+                return await _request(client)
+            except httpx.HTTPError as exc:
+                # Stamp non-timeout wire faults at the exception SITE, before
+                # the client's cleanup unwinds: __aexit__ can cross the
+                # deadline (misdating an in-deadline fault as post-deadline)
+                # or be cancelled by wait_for (replacing the fault with
+                # TimeoutError entirely) — either way the terminal transport
+                # failure must survive, mirroring completed-outcome
+                # preservation.
+                if not wire_fault and not isinstance(exc, httpx.TimeoutException):
+                    wire_fault.append((exc, time.monotonic()))
+                raise
+
+    async def _request(client: httpx.AsyncClient) -> tuple[int, bytes]:
+        async with client.stream(method, url, data=params, headers=request_headers) as response:
             if not read_body(response.status_code):
                 # Deadline first, symmetric with the body paths: headers
                 # becoming runnable past the total bound mean the status was
@@ -205,6 +230,7 @@ def request_bounded(
     # is_alive backstop after it covers only a pathological async-cleanup hang.
     result: list[tuple[int, bytes]] = []
     error: list[tuple[Exception, float]] = []
+    wire_fault: list[tuple[Exception, float]] = []
     # Completed outcomes recorded INSIDE _do before async cleanup: when
     # wait_for cancels mid-unwind, the response is already known and must win
     # over the cancellation (status-first classification for skipped statuses;
@@ -263,17 +289,23 @@ def request_bounded(
                 # cleanup crossed it and was cancelled. The known outcome
                 # dominates the deadline race.
                 return outcome[0]
+            if wire_fault and wire_fault[0][1] <= deadline_ts:
+                # A wire fault observed IN deadline whose cleanup was
+                # cancelled by wait_for: the terminal transport failure
+                # dominates the cancellation that replaced it.
+                raise wire_fault[0][0]
             raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline") from exc
-        if (
-            isinstance(exc, httpx.HTTPError)
-            and not isinstance(exc, httpx.TimeoutException)
-            and captured_at > deadline_ts
-        ):
-            # A wire fault that became runnable past the total deadline is the
-            # timeout it raced (wait_for's already-due cancellation), not a
-            # distinct transport fault: a late connection reset must feed the
-            # poll loop's transient backoff, never terminate the flow.
-            raise httpx.ReadTimeout(f"{context} failed past the total deadline") from exc
+        if isinstance(exc, httpx.HTTPError) and not isinstance(exc, httpx.TimeoutException):
+            # Date the fault by its exception-SITE stamp when available — the
+            # runner-level stamp lands after cleanup, which can cross the
+            # deadline and misdate an in-deadline fault.
+            stamped_at = wire_fault[0][1] if wire_fault else captured_at
+            if stamped_at > deadline_ts:
+                # A wire fault that became runnable past the total deadline is
+                # the timeout it raced (wait_for's already-due cancellation),
+                # not a distinct transport fault: a late connection reset must
+                # feed the poll loop's transient backoff, never terminate.
+                raise httpx.ReadTimeout(f"{context} failed past the total deadline") from exc
         raise exc
     if not result:
         # The worker died without a result AND without recording an exception
