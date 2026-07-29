@@ -10,6 +10,11 @@ import { BasecampError, truncateErrorMessage } from "../errors.js";
 import { requireSecureEndpoint } from "../security.js";
 import { readBodyBounded } from "./discovery.js";
 import { DeviceFlowError } from "./device-errors.js";
+import { MAX_TOKEN_LIFETIME_SECONDS } from "./limits.js";
+
+// Re-exported for existing importers; the declaration lives in limits.ts so
+// non-device consumers need not pull this module.
+export { MAX_TOKEN_LIFETIME_SECONDS };
 import type { DeviceAuthorization, OAuthToken, RawTokenResponse, OAuthErrorResponse } from "./types.js";
 
 /** URN grant type for the device authorization grant. */
@@ -59,17 +64,6 @@ function resolveDeviceTimeoutMs(timeoutMs: number): number {
   return Math.max(1, Math.floor(timeoutMs));
 }
 
-/**
- * Upper bound (seconds) for an OAuth token's `expires_in`: 2_147_483_647 s
- * (~68 years) — cross-runtime safe and vastly beyond any realistic token
- * lifetime. Unlike {@link MAX_DEVICE_SECONDS} this bounds `expiresAt` Date
- * arithmetic rather than a timer: a very large finite value (or a non-finite one
- * from `1e400`) makes `new Date(Date.now() + expires_in * 1000)` an Invalid Date
- * whose `getTime()` is NaN, so downstream expiry checks would treat the token as
- * never expiring. A value past this ceiling is a malformed response. Shared
- * across all five SDKs.
- */
-export const MAX_TOKEN_LIFETIME_SECONDS = 2_147_483_647;
 
 /** slow_down bumps the interval by this many seconds, sustained (RFC 8628 §3.5). */
 const SLOW_DOWN_INCREMENT_SECONDS = 5;

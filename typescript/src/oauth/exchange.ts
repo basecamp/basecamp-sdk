@@ -5,7 +5,7 @@
  * Supports both standard OAuth 2.0 and Basecamp's Launchpad legacy format.
  */
 
-import { MAX_TOKEN_LIFETIME_SECONDS } from "./device.js";
+import { MAX_TOKEN_LIFETIME_SECONDS } from "./limits.js";
 import { BasecampError } from "../errors.js";
 import { isLocalhost } from "../security.js";
 import type {
