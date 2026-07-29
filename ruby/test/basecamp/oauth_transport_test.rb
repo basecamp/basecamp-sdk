@@ -345,6 +345,7 @@ class OAuthTransportTest < Minitest::Test
     # Net::HTTP derives Host from the bracket-stripped connect address,
     # emitting the invalid "Host: ::1:PORT" — the transport must send the
     # RFC 3986 authority form for bracketed IPv6 endpoints.
+    server = nil
     begin
       server = TCPServer.new("::1", 0)
     rescue Errno::EADDRNOTAVAIL, Errno::EAFNOSUPPORT

@@ -351,6 +351,12 @@ module Basecamp
         deadline = monotonic_now + timeout
         deadline_fired = false
         completed_at = nil
+        # Response state, initialized before ANY raising step so the rescue
+        # branches below can reference it on every path (the completed_at
+        # guard means it is only READ once genuinely populated).
+        status = nil
+        chunks = []
+        total = 0
         proxy_uri = Timeout.timeout(timeout, Net::OpenTimeout) { uri.find_proxy }
         http = if proxy_uri
                  proxy_tls = proxy_uri.scheme == "https"
@@ -465,9 +471,6 @@ module Basecamp
           end
         end
 
-        status = nil
-        chunks = []
-        total = 0
         # The connection phases (TCP connect, proxy CONNECT, TLS handshake) run
         # before Net::HTTP marks the session started, so the watchdog cannot
         # interrupt them (finish raises IOError until then) — and only TCP
