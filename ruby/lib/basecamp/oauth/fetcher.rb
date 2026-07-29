@@ -387,8 +387,13 @@ module Basecamp
         connect_remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raise ReadDeadlineExceeded unless connect_remaining.positive?
 
-        Timeout.timeout(connect_remaining, Net::OpenTimeout) { http.start }
         begin
+          # start INSIDE the cleanup region: Timeout.timeout's asynchronous
+          # Net::OpenTimeout can land after do_start marked the session
+          # started but before the next statement — outside the ensure, that
+          # window leaked a live connection until GC (the outer ensure can
+          # kill the watchdog before it ever closes).
+          Timeout.timeout(connect_remaining, Net::OpenTimeout) { http.start }
           # Re-check the deadline the moment the session is up: if setup
           # consumed the whole budget, fail now rather than granting the
           # request a fresh header wait.
