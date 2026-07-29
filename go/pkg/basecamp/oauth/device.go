@@ -587,12 +587,16 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 		// explicit "token_type":"" is malformed metadata (api_error), uniform
 		// with the other SDKs. Non-string token_type/refresh_token/scope still
 		// fail Unmarshal here as pollInvalidResponse.
+		// RefreshToken/Scope decode via *string to make null-tolerance
+		// EXPLICIT: encoding/json also no-ops JSON null into a plain string
+		// (leaving the zero value), but the pointer form documents the
+		// absent/null-are-absent contract instead of relying on that quirk.
 		var raw struct {
 			AccessToken  string   `json:"access_token"`
-			RefreshToken string   `json:"refresh_token"`
+			RefreshToken *string  `json:"refresh_token"`
 			TokenType    *string  `json:"token_type"`
 			ExpiresIn    *float64 `json:"expires_in"`
-			Scope        string   `json:"scope"`
+			Scope        *string  `json:"scope"`
 		}
 		if err := json.Unmarshal(body, &raw); err != nil {
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: fmt.Errorf("parsing device token response: %w", err)}
@@ -604,10 +608,14 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			return pollResult{kind: pollInvalidResponse, status: resp.StatusCode, err: errors.New("device token response token_type must be a non-empty string")}
 		}
 		token := Token{
-			AccessToken:  raw.AccessToken,
-			RefreshToken: raw.RefreshToken,
-			TokenType:    "Bearer",
-			Scope:        raw.Scope,
+			AccessToken: raw.AccessToken,
+			TokenType:   "Bearer",
+		}
+		if raw.RefreshToken != nil {
+			token.RefreshToken = *raw.RefreshToken
+		}
+		if raw.Scope != nil {
+			token.Scope = *raw.Scope
 		}
 		if raw.TokenType != nil {
 			token.TokenType = *raw.TokenType

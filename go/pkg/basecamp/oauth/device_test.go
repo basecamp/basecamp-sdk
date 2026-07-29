@@ -862,6 +862,34 @@ func TestPollDeviceToken_AcceptsTokenWithoutExpiresIn(t *testing.T) {
 	}
 }
 
+func TestPollDeviceToken_NullOptionalFieldsAreAbsent(t *testing.T) {
+	// JSON null for refresh_token/scope/token_type is absent per SPEC — the
+	// token must be accepted with zero values (and Bearer default), never an
+	// api_error.
+	srv, _ := queueTokenResponses(t, []struct {
+		status int
+		body   map[string]any
+	}{{http.StatusOK, map[string]any{
+		"access_token":  "tok",
+		"refresh_token": nil,
+		"scope":         nil,
+		"token_type":    nil,
+	}}})
+	sleep := &recordingSleep{}
+
+	token, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if token.RefreshToken != "" || token.Scope != "" {
+		t.Errorf("null optional fields must map to zero values, got %q/%q", token.RefreshToken, token.Scope)
+	}
+	if token.TokenType != "Bearer" {
+		t.Errorf("TokenType = %q, want Bearer default", token.TokenType)
+	}
+}
+
 func TestPollDeviceToken_CancelledViaContext(t *testing.T) {
 	srv, _ := queueTokenResponses(t, []struct {
 		status int
