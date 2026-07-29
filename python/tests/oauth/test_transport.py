@@ -108,12 +108,12 @@ def test_params_with_non_post_fails_fast() -> None:
 
 def test_invalid_max_body_bytes_fails_fast() -> None:
     # The cap IS the streaming bound this core exists to provide — a bool,
-    # float (inf included), or non-positive value would disable or crash it,
+    # float (inf included), or negative value would disable or crash it,
     # so misuse rejects before any connection.
     from basecamp.oauth._transport import request_bounded
 
-    for cap in (None, True, False, 0, -8, 1.5, float("inf")):
-        with pytest.raises(ValueError, match="max_body_bytes must be a positive int"):
+    for cap in (None, True, False, -8, 1.5, float("inf")):
+        with pytest.raises(ValueError, match="max_body_bytes must be a non-negative int"):
             request_bounded(
                 "GET",
                 "https://issuer.example/x",
@@ -122,6 +122,43 @@ def test_invalid_max_body_bytes_fails_fast() -> None:
                 timeout=1.0,
                 max_body_bytes=cap,  # type: ignore[arg-type]
             )
+
+
+def test_zero_max_body_bytes_is_a_strict_cap_not_a_usage_error() -> None:
+    # _normalize_body_cap accepts zero as a legitimate strict cap, so the
+    # transport must too: the request goes out and any non-empty body trips
+    # the bound, surfacing as the documented cap fault — never ValueError.
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+
+    def respond() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=respond, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as excinfo:
+            request_bounded(
+                "GET",
+                f"http://127.0.0.1:{port}/doc",
+                headers={},
+                params=None,
+                timeout=2.0,
+                max_body_bytes=0,
+            )
+        assert excinfo.value.oauth_type == "api_error"
+        assert "size cap" in str(excinfo.value)
+    finally:
+        server.join(timeout=5)
+        srv.close()
 
 
 def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:

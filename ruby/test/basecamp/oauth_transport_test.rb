@@ -311,15 +311,31 @@ class OAuthTransportTest < Minitest::Test
 
   def test_invalid_max_body_bytes_fails_closed_as_validation_error
     # The cap IS the streaming bound this transport exists to provide — nil,
-    # a float, a bool, or a non-positive value would disable or crash it, so
+    # a float, a bool, or a negative value would disable or crash it, so
     # misuse rejects before any connection.
-    [ nil, 0, -1, 1.5, true, Float::INFINITY ].each do |cap|
+    [ nil, -1, 1.5, true, Float::INFINITY ].each do |cap|
       error = assert_raises(Basecamp::Oauth::OauthError, "cap=#{cap.inspect}") do
         Basecamp::Oauth::Fetcher.stream_http(:get, "http://127.0.0.1:9/doc", timeout: TIMEOUT, max_body_bytes: cap)
       end
       assert_equal "validation", error.type, "cap=#{cap.inspect}"
-      assert_match(/max_body_bytes must be a positive Integer/, error.message)
+      assert_match(/max_body_bytes must be a non-negative Integer/, error.message)
     end
+  end
+
+  def test_zero_max_body_bytes_is_a_strict_cap_not_a_validation_error
+    # normalize_body_cap accepts zero as a legitimate strict cap, so the
+    # transport must too: the request goes out and any non-empty body trips
+    # the bound, surfacing as the documented cap fault — never "validation".
+    endpoint, = start_server do |conn|
+      conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi")
+    end
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.fetch_json(nil, "#{endpoint}/doc", timeout: TIMEOUT, max_body_bytes: 0)
+    end
+
+    assert_equal "api_error", error.type
+    assert_match(/size cap/i, error.message)
   end
 
   def test_bracketed_ipv6_host_header_keeps_its_brackets

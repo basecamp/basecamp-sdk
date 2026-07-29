@@ -297,10 +297,12 @@ module Basecamp
             "stream_http timeout must be a positive number of seconds no greater than #{MAX_REQUEST_TIMEOUT}")
         end
         # The body cap gets the same fail-closed discipline: nil, a Float
-        # (Infinity included), or a non-positive value would disable or crash
-        # the streaming bound.
-        unless max_body_bytes.is_a?(Integer) && max_body_bytes.positive?
-          raise OauthError.new("validation", "stream_http max_body_bytes must be a positive Integer")
+        # (Infinity included), or a negative value would disable or crash the
+        # streaming bound. Same predicate as {normalize_body_cap} so the
+        # transport can never reject a cap the public entry points accept —
+        # zero is a legitimate strict cap (any non-empty body trips it).
+        unless valid_body_cap?(max_body_bytes)
+          raise OauthError.new("validation", "stream_http max_body_bytes must be a non-negative Integer")
         end
 
         # URI#hostname strips IPv6 brackets ("[::1]" -> "::1"), which is the form

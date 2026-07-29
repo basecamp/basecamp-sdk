@@ -104,10 +104,12 @@ def request_bounded(
         )
 
     # The body cap gets the same fail-fast discipline: a bool, float (inf
-    # included), or non-positive value would disable or crash the streaming
-    # bound this core exists to provide.
-    if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes <= 0:
-        raise ValueError("request_bounded: max_body_bytes must be a positive int")
+    # included), or negative value would disable or crash the streaming bound
+    # this core exists to provide. Same predicate as ``_normalize_body_cap``
+    # so the transport can never reject a cap the public entry points accept —
+    # zero is a legitimate strict cap (any non-empty body trips it).
+    if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes < 0:
+        raise ValueError("request_bounded: max_body_bytes must be a non-negative int")
 
     async def _do() -> tuple[int, bytes]:
         # Identity encoding + aiter_raw(): httpx transparently inflates
