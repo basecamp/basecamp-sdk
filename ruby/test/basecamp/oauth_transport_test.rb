@@ -461,6 +461,40 @@ class OAuthTransportTest < Minitest::Test
     Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
   end
 
+  def test_tls_failure_past_the_deadline_classifies_as_timeout
+    # The watchdog's forced close during a TLS operation surfaces as an
+    # SSLError, not a timeout — past the monotonic deadline it must classify
+    # as the timeout it raced, or the device poll terminates instead of
+    # backing off. The handler flips Fetcher's stubbed clock before feeding
+    # the handshake garbage, so the SSLError is observed strictly after it.
+    state = { past_deadline: false }
+    real = Basecamp::Oauth::Fetcher.method(:monotonic_now)
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) do
+      state[:past_deadline] ? 1e12 : real.call
+    end
+
+    tcp = TCPServer.new("127.0.0.1", 0)
+    port = tcp.addr[1]
+    thread = Thread.new do
+      conn = tcp.accept
+      state[:past_deadline] = true
+      # Non-TLS bytes during the handshake surface client-side as an
+      # OpenSSL::SSL::SSLError ("wrong version number"), never a timeout.
+      conn.write("HTTP/1.1 200 OK\r\n\r\n")
+      conn.close
+    rescue IOError
+      nil
+    end
+
+    assert_raises(Faraday::TimeoutError) do
+      Basecamp::Oauth::Fetcher.stream_http(:get, "https://127.0.0.1:#{port}/doc", timeout: 5)
+    end
+  ensure
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
+    thread&.kill&.join
+    tcp&.close
+  end
+
   def test_wire_error_past_the_deadline_classifies_as_timeout
     # A peer reset observed past the monotonic deadline — before the watchdog
     # thread is scheduled to flip deadline_fired — is the timeout it raced:

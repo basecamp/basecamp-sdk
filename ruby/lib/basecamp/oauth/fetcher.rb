@@ -512,9 +512,15 @@ module Basecamp
         # device poll terminates instead of applying its transient backoff.
         raise classify_stream_error(e, deadline_fired || monotonic_now > deadline)
       rescue OpenSSL::SSL::SSLError => e
-        # TLS failures (an unverifiable peer certificate above all) map to
-        # Faraday::SSLError exactly as faraday-net_http maps them, so the
+        # The watchdog's forced close surfaces mid-handshake/mid-read as an
+        # SSLError: past the deadline it is the timeout it raced, same clock
+        # rule as the wire-error branch above. A genuine pre-deadline TLS
+        # failure (an unverifiable peer certificate above all) still maps to
+        # Faraday::SSLError exactly as faraday-net_http maps it, so the
         # default and injected paths classify certificate rejection alike.
+        raise Faraday::TimeoutError, "OAuth request timed out: TLS interrupted past the deadline" \
+          if deadline_fired || monotonic_now > deadline
+
         raise Faraday::SSLError, e.message
       ensure
         watchdog&.kill
