@@ -38,6 +38,7 @@ function recordingHooks() {
     kind: "start" | "end" | "retry";
     attempt: number;
     statusCode?: number;
+    fromCache?: boolean;
     error?: unknown;
   }> = [];
   const hooks: BasecampHooks = {
@@ -49,6 +50,7 @@ function recordingHooks() {
         kind: "end",
         attempt: info.attempt,
         statusCode: result.statusCode,
+        fromCache: result.fromCache,
         error: (result as { error?: unknown }).error,
       });
     },
@@ -260,7 +262,7 @@ describe("middleware request lifecycle", () => {
   // configured, because it owns releasing per-request state and the retry
   // middleware records an attempt regardless of whether anyone is listening.
   // Without it, every retried request stranded one entry for the client's life.
-  it("does not retain per-request state when no hooks are configured", async () => {
+  it("retries correctly when no hooks are configured", async () => {
     let attempts = 0;
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => {
@@ -328,16 +330,23 @@ describe("middleware request lifecycle", () => {
     await client.GET("/projects.json"); // populates the cache
     await client.GET("/projects.json"); // 429 -> retry -> 304 -> cached 200
 
+    // Asserted as one object so BOTH halves of the transformation are proven:
+    // eager finalization froze the status at 304 *and* fromCache at false, and a
+    // sequence of separate expects would stop at the first and leave the second
+    // unproven.
     const last = ends(events).at(-1)!;
-    expect(last.attempt).toBe(2);
-    expect(last.statusCode).toBe(200);
+    expect({
+      attempt: last.attempt,
+      statusCode: last.statusCode,
+      fromCache: last.fromCache,
+    }).toEqual({ attempt: 2, statusCode: 200, fromCache: true });
   });
 
-  // Defect 3. A successful retry must leave no per-request state behind. We
-  // cannot read the private maps, so assert the observable consequence: many
-  // retried requests in sequence stay balanced and never mis-attribute an
-  // attempt number, which a leaking/colliding key would break.
-  it("finalizes state so repeated retried requests stay balanced", async () => {
+  // Repeated retried requests each report their own two attempts, in order, with
+  // no cross-talk between logical requests. This says nothing about state being
+  // released — that is not observable from here — only that attempt attribution
+  // stays correct across many sequential retries.
+  it("attributes attempts correctly across repeated retried requests", async () => {
     let attempts = 0;
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => {
