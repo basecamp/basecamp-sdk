@@ -613,6 +613,60 @@ class OAuthTransportTest < Minitest::Test
     WebMock.disable!
   end
 
+  def test_injected_dispatch_refused_when_budget_already_spent
+    # The wall-clock wrap must grant the REMAINING budget, not a fresh full
+    # timeout: when the deadline has already passed by dispatch time (thread
+    # descheduled after the deadline was captured), the GET must be refused
+    # rather than handed a whole new request window. The stubbed clock jumps
+    # after the deadline capture, so the remaining budget is negative at
+    # dispatch.
+    calls = 0
+    real = Basecamp::Oauth::Fetcher.method(:monotonic_now)
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) do
+      calls += 1
+      calls == 1 ? real.call : real.call + 10
+    end
+    dispatched = false
+    client = Object.new
+    client.define_singleton_method(:get) { |_url| dispatched = true }
+
+    assert_raises(Faraday::TimeoutError) do
+      Basecamp::Oauth::Fetcher.faraday_fetch(
+        client, "https://example.test/doc", timeout: 1, max_body_bytes: 1024
+      )
+    end
+    assert_equal false, dispatched, "GET must not dispatch on an exhausted budget"
+  ensure
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
+  end
+
+  def test_injected_2xx_completing_past_the_deadline_is_refused
+    # Timeout.timeout's interrupt can be delivered late: simulate that race
+    # with a client that completes a 200 while the stubbed clock has moved
+    # past the deadline. The post-return monotonic re-check must refuse the
+    # late 2xx as a transport-shaped timeout — a completed non-2xx stays
+    # status-classified (status outranks the deadline race).
+    state = { late: false }
+    real = Basecamp::Oauth::Fetcher.method(:monotonic_now)
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) do
+      state[:late] ? real.call + 10 : real.call
+    end
+    response = Struct.new(:status, :body).new(200, +"{}")
+    client = Object.new
+    client.define_singleton_method(:get) do |_url|
+      state[:late] = true
+      response
+    end
+
+    assert_raises(Faraday::TimeoutError) do
+      Basecamp::Oauth::Fetcher.faraday_fetch(
+        client, "https://example.test/doc", timeout: 1, max_body_bytes: 1024
+      )
+    end
+  ensure
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
+  end
+
   def test_unsupported_method_fails_fast
     # A typo'd verb must not silently become a GET.
     assert_raises(ArgumentError) do

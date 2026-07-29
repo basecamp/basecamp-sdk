@@ -1216,6 +1216,19 @@ every `fetchJSON` above MUST:
 
 Non-2xx on either hop → `api_error` (not `network`).
 
+#### Injected-client fidelity tier `[static]`
+
+SDKs that accept a caller-supplied HTTP client (Ruby `http_client:`, and any
+future equivalent) MUST hold the same security invariants on it — redirect
+suppression, bounded/streaming body cap, and a wall-clock bound on the whole
+request — but MAY deliver coarser timing and classification fidelity than the
+default transport: status classification may occur only after the body read
+completes (no headers-time seam), and deadline enforcement is wall-clock
+around the call rather than woven through each read. A definitive completed
+status still outranks a deadline race; a response completing past the
+deadline without one is refused as a transport timeout. Callers needing exact
+headers-time classification use the default transport.
+
 ### Launchpad Legacy Format
 
 The Basecamp Launchpad OAuth endpoints use a mix of standard and legacy parameters:

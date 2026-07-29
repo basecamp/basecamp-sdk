@@ -687,7 +687,7 @@ module Basecamp
         # Wall-clock deadline over the WHOLE read: req.options.timeout below bounds
         # only each socket read and resets on every chunk, so a slow-drip peer could
         # otherwise hang the fetch indefinitely while staying under max_body_bytes.
-        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        deadline = monotonic_now + timeout
         # Streaming adapters (Faraday >= 2.5 pass +env+ to on_data) classify a
         # non-2xx at HEADER time like the default path — fetch_json discards
         # non-2xx bodies, so draining one is pure waste. Buffered adapters
@@ -702,7 +702,13 @@ module Basecamp
         # otherwise hold the request open indefinitely — on_data (a body
         # callback) never runs during the header phase, leaving nothing else
         # to enforce the wall clock on an injected client.
-        response = Timeout.timeout(timeout, Faraday::TimeoutError) do
+        # The window is the REMAINING budget, not a fresh +timeout+: time
+        # spent before dispatch (descheduling included) already counts
+        # against the deadline, so the request can never run past it.
+        remaining = deadline - monotonic_now
+        raise Faraday::TimeoutError, "request budget exhausted before dispatch" if remaining <= 0
+
+        response = Timeout.timeout(remaining, Faraday::TimeoutError) do
           http_client.get(url) do |req|
             req.headers["Accept"] = "application/json"
             # Bounded streaming read: abort the moment the cap is exceeded so an
@@ -714,6 +720,14 @@ module Basecamp
             req.options.open_timeout = timeout
           end
         end
+
+        # Timeout.timeout's interrupt can be delivered late: a 2xx whose block
+        # returns just after the deadline would otherwise be accepted past the
+        # wall clock. A completed non-2xx stays status-classified (status
+        # outranks the deadline race, matching the default path); only a late
+        # 2xx is refused as the same transport-shaped timeout.
+        raise Faraday::TimeoutError, "response completed after the deadline" \
+          if (200..299).cover?(response.status) && monotonic_now > deadline
 
         body =
           if chunks.empty?

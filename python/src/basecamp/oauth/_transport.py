@@ -11,6 +11,12 @@ terminated. (One documented residual below: a getaddrinfo blocked in the OS
 resolver runs on an executor thread cancellation cannot interrupt, so a
 slow-DNS attempt's daemon worker outlives the deadline until the resolver's
 own OS-bounded timeout.)
+
+Timing contract: a bounded request returns within ``timeout`` plus a fixed
+cleanup grace of at most 1 second (``_WORKER_JOIN_GRACE``), spent only when
+the request already missed its deadline and its cancellation is unwinding.
+Callers folding these timeouts into their own budgets should budget
+``timeout + 1``.
 """
 
 from __future__ import annotations
