@@ -110,18 +110,22 @@ module Basecamp
         end
       end
 
-      # Raised internally to abort a streaming read once the cap is exceeded.
-      # Never escapes this module — it is mapped to an OauthError.
+      # Raised to abort a streaming read once the cap is exceeded. Crosses the
+      # module boundary by design: {stream_http} lets it propagate raw, and each
+      # caller (fetch_json here, the device flow's post paths) maps it to its
+      # own typed cap fault.
       class BodyTooLarge < StandardError; end
 
-      # Raised internally when a streaming read exceeds its wall-clock deadline.
-      # Never escapes this module — it is mapped to a retryable +network+ OauthError.
+      # Raised when a streaming read exceeds its wall-clock deadline. Crosses
+      # the module boundary like {BodyTooLarge}: callers map it to a retryable
+      # +network+ fault (fetch_json) or a Faraday timeout (the device flow).
       class ReadDeadlineExceeded < StandardError; end
 
       # Raised from +on_data+ to STOP reading a response whose body the caller does
       # not use (a non-2xx device-auth, a 3xx token redirect). Draining such a slow
       # body would otherwise time out and be misclassified as a transport failure.
-      # Carries the response status so the caller can classify by it. Never escapes.
+      # Carries the response status so the caller can classify by it; like the
+      # markers above it crosses the module boundary raw and is mapped there.
       class SkipBody < StandardError
         attr_reader :status
 
