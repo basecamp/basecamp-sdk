@@ -9,6 +9,8 @@ import java.security.MessageDigest
 import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -139,6 +141,34 @@ class OAuthTest {
     // =========================================================================
     // exchangeCode with mock HTTP
     // =========================================================================
+
+    @Test
+    fun exchangeParseFailureNeverEchoesTheBody() = runTest {
+        // A syntactically-broken token body can still carry credential
+        // material, and kotlinx embeds input excerpts in its exception
+        // messages — the mapped fault must not echo any of it.
+        val secret = "sk-live-SUPERSECRET"
+        val engine = MockEngine {
+            respond(
+                content = "{\"access_token\": \"$secret' oops",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }
+
+        val httpClient = HttpClient(engine)
+        val e = assertFailsWith<BasecampException.Api> {
+            exchangeCode(
+                tokenEndpoint = "https://launchpad.37signals.com/authorization/token",
+                code = "test-code",
+                redirectUri = "https://myapp.com/callback",
+                clientId = "test-client",
+                clientSecret = "test-secret",
+                client = httpClient,
+            )
+        }
+        assertFalse(e.message!!.contains(secret), "parse fault must not echo the body")
+    }
 
     @Test
     fun exchangeCodeSuccess() = runTest {

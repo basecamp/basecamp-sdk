@@ -120,9 +120,13 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
     try:
         data = response.json()
     except ValueError as exc:
+        # A token response that fails to parse may still contain credential
+        # material (a syntactically-broken body carrying an access_token) —
+        # never echo ANY of it into an error message, where it would reach
+        # logs and exception telemetry. The status is diagnosis enough.
         raise OAuthError(
             "api_error",
-            f"Failed to parse token response: {truncate(response.text)}",
+            "Failed to parse token response",
             http_status=response.status_code,
         ) from exc
 

@@ -176,7 +176,13 @@ private suspend fun postTokenRequest(
             )
         }
 
-        val raw = tokenJson.decodeFromString<RawTokenResponse>(body)
+        // A token response that fails to decode may still contain credential
+        // material, and kotlinx embeds input excerpts in its exception
+        // messages — map to a status-only fault (no cause: cause messages
+        // surface in stack traces) instead of propagating it.
+        val raw = runCatching { tokenJson.decodeFromString<RawTokenResponse>(body) }.getOrElse {
+            throw BasecampException.Api("Failed to parse token response", httpStatus = response.status.value)
+        }
         val now = currentTimeMillis()
         val expiresAt = raw.expiresIn?.let { now + it * 1000 }
 

@@ -311,13 +311,13 @@ async function doTokenRequest(
     try {
       data = JSON.parse(responseText);
     } catch {
-      // Truncate response text to avoid leaking sensitive data in error messages
-      const truncated = responseText.length > 500 ? responseText.slice(0, 497) + "..." : responseText;
-      throw new BasecampError(
-        "api_error",
-        `Failed to parse token response: ${truncated}`,
-        { httpStatus: response.status }
-      );
+      // A token response that fails to parse may still contain credential
+      // material (a syntactically-broken body carrying an access_token) —
+      // never echo ANY of it into an error message, where it would reach
+      // logs and exception telemetry. The status is diagnosis enough.
+      throw new BasecampError("api_error", "Failed to parse token response", {
+        httpStatus: response.status,
+      });
     }
 
     // A valid-JSON-but-non-object body (null, array, number, string) is a

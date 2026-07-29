@@ -230,6 +230,25 @@ describe("Token Exchange", () => {
   };
 
   describe("exchangeCode", () => {
+    it("never echoes the body when a token response fails to parse", async () => {
+      // A syntactically-broken token body can still carry credential
+      // material — the parse error must not echo any of it into the
+      // message, where it would reach logs and exception telemetry.
+      const secret = "sk-live-SUPERSECRET";
+      server.use(
+        http.post(tokenEndpoint, () => new HttpResponse(`{"access_token": "${secret}' oops`, { status: 200 }))
+      );
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+      expect(err.message).not.toContain(secret);
+    });
+
     it("rejects a non-2xx null body as api_error with the status (never raw TypeError → network)", async () => {
       server.use(http.post(tokenEndpoint, () => HttpResponse.json(null, { status: 400 })));
       const err = await exchangeCode({
