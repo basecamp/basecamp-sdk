@@ -1,0 +1,37 @@
+python/tests/oauth/test_exchange.py
+  s_86d0793371d0f3::t_2e14920b716e79 24-40
+  s_86d0793371d0f3::t_452503f07d074a 23
+ruby/test/basecamp/oauth_test.rb
+  s_86d0793371d0f3::t_8af24c6a21a5eb 210-230
+typescript/tests/oauth/oauth.test.ts
+  s_86d0793371d0f3::t_0bc6b2dd74777d 233-251
+ruby/lib/basecamp/oauth/exchange.rb
+  s_86d0793371d0f3::t_b4c9cdfd7675ed 174-177,180
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Exchange.kt
+  s_86d0793371d0f3::t_03bd96e1323fe5 179-185
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthTest.kt
+  s_86d0793371d0f3::t_29221108cfecec 12-13
+  s_86d0793371d0f3::t_0bc6b2dd74777d 146-165,167-172
+  s_86d0793371d0f3::t_03bd96e1323fe5 166
+  s_86d0793371d0f3::t_00b9c8e5cadd8d 145
+python/src/basecamp/oauth/exchange.py
+  s_86d0793371d0f3::t_b4c9cdfd7675ed 123-126,129
+typescript/src/oauth/exchange.ts
+  s_86d0793371d0f3::t_b4c9cdfd7675ed 314-320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "22d9334c24a3ab8548364c80550771d1c002fd7c",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

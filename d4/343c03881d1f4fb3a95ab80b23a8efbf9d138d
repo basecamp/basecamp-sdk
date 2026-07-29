@@ -1,0 +1,25 @@
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_44ef4cc4076b5e 479-492
+typescript/tests/oauth/oauth.test.ts
+  s_86d0793371d0f3::t_44ef4cc4076b5e 233-249
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_5258c73cf846bf 419-427,430,450
+typescript/src/oauth/exchange.ts
+  s_86d0793371d0f3::t_cbfcb3b2d4d72f 343-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d4343c03881d1f4fb3a95ab80b23a8efbf9d138d",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

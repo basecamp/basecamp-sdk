@@ -1,0 +1,21 @@
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_cf5513488961c4 689-697
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_58372c10a0dae0 483-486
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "84f8bc55647970a0d63c0ca99ebbf503f7152855",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

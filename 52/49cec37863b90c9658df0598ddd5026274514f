@@ -1,0 +1,54 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_480ffc3c4f2a95 748-764
+  s_86d0793371d0f3::t_cc796807ac2c18 747
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_7dc95378858e5b 538,553-561
+  s_86d0793371d0f3::t_487eadd82f1c85 562-565
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_480ffc3c4f2a95 1294-1334
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_9abf9a5e983100 403-407
+  s_86d0793371d0f3::t_c0ddaa8074249e 575
+  s_86d0793371d0f3::t_8d2df181dd1ae8 588-599
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_480ffc3c4f2a95 898-920,928-931
+  s_86d0793371d0f3::t_096b383373d7e2 921-927
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_65ff91341ee869 404
+  s_86d0793371d0f3::t_4979b40924e647 494-504
+  s_86d0793371d0f3::t_670d413bdb427c 343-349
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_80ae5806a81ee1 10
+  s_86d0793371d0f3::t_a7d4dc12186720 1584-1605
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_4862119cfe75b2 515-522
+  s_70ea5a80b3efd3::t_2266c3dc917923 513-514
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_7dc95378858e5b 460-468
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_480ffc3c4f2a95 413-432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5249cec37863b90c9658df0598ddd5026274514f",
+  "prompts": {},
+  "sessions": {
+    "s_70ea5a80b3efd3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8c1d-a0af-7e91-a3a4-2bd35bdff875",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

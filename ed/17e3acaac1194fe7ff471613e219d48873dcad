@@ -1,0 +1,32 @@
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_ec6df430b74f85 18
+  s_86d0793371d0f3::t_ff08da8ec40625 985-1003
+typescript/src/oauth/device-login.ts
+  s_86d0793371d0f3::t_cad24d9086fad6 78-85
+  s_86d0793371d0f3::t_c18755d8558a3a 9
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_240fb48728bb22 287-294
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_ef0da459be60d8 1007-1017
+  s_86d0793371d0f3::t_9b117029605f27 1006
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_ef0da459be60d8 964-984
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_240fb48728bb22 668-674
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ed17e3acaac1194fe7ff471613e219d48873dcad",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

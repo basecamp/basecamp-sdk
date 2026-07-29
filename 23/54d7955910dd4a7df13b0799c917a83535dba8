@@ -1,0 +1,21 @@
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_96e95cf7759270 425-433
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_8298c5a8b42d73 1777-1799
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "2354d7955910dd4a7df13b0799c917a83535dba8",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
