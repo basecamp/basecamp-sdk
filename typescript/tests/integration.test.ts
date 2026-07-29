@@ -95,15 +95,20 @@ describe("Integration", () => {
 
       await client.GET("/projects.json");
 
-      // onRequestStart fires for the initial request going through the middleware stack.
-      // The retry uses raw fetch, so it bypasses the hooks middleware.
-      expect(hooks.onRequestStart).toHaveBeenCalledTimes(1);
-      expect(hooks.onRequestStart).toHaveBeenCalledWith(
+      // Both attempts are observed. The retry leaves the middleware chain, so the
+      // retry middleware emits that attempt's start/end itself.
+      expect(hooks.onRequestStart).toHaveBeenCalledTimes(2);
+      expect(hooks.onRequestStart).toHaveBeenNthCalledWith(
+        1,
         expect.objectContaining({
           method: "GET",
           url: expect.stringContaining("/projects.json"),
           attempt: 1,
         })
+      );
+      expect(hooks.onRequestStart).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ attempt: 2 })
       );
 
       // onRetry fires from the retry middleware when it decides to retry.
@@ -112,19 +117,26 @@ describe("Integration", () => {
         expect.objectContaining({
           method: "GET",
           url: expect.stringContaining("/projects.json"),
+          attempt: 1, // the attempt that just failed
         }),
-        1, // attempt number
+        2, // SPEC section 7: the UPCOMING attempt
         expect.any(Error),
         expect.any(Number) // delay
       );
 
-      // onRequestEnd fires once — for the final response that propagates back
-      // through the middleware stack (the 200 returned by the retry's raw fetch).
-      expect(hooks.onRequestEnd).toHaveBeenCalledTimes(1);
-      expect(hooks.onRequestEnd).toHaveBeenCalledWith(
+      // One end per attempt: the failed 429, then the 200 from the retry.
+      expect(hooks.onRequestEnd).toHaveBeenCalledTimes(2);
+      expect(hooks.onRequestEnd).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ attempt: 1 }),
+        expect.objectContaining({ statusCode: 429, durationMs: expect.any(Number) })
+      );
+      expect(hooks.onRequestEnd).toHaveBeenNthCalledWith(
+        2,
         expect.objectContaining({
           method: "GET",
           url: expect.stringContaining("/projects.json"),
+          attempt: 2,
         }),
         expect.objectContaining({
           statusCode: 200,

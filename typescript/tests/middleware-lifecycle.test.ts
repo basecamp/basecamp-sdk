@@ -1,0 +1,297 @@
+/**
+ * Request lifecycle regressions for the client middleware.
+ *
+ * Four defects motivated these, all in createRetryMiddleware/createHooksMiddleware:
+ *
+ *   1. bodyCache was keyed on `${method}:${url}:${Date.now()}`, so two concurrent
+ *      mutations to the same URL in the same millisecond shared one cache slot —
+ *      a retry replayed the other request's body, or none at all.
+ *   2. onRequestEnd never fired when the initial fetch rejected (network error or
+ *      timeout), because openapi-fetch skips onResponse entirely on that path and
+ *      no middleware implemented onError.
+ *   3. bodyCache/timings were pruned only in onResponse, so retried and
+ *      network-failed requests leaked their serialized bodies for the process
+ *      lifetime.
+ *   4. The raw `fetch(retryRequest)` retry bypassed middleware, so attempt 2 got
+ *      no onRequestStart/onRequestEnd at all, and onRetry reported the attempt
+ *      that just failed (1) where SPEC section 7 requires the upcoming one (2).
+ *
+ * SPEC section 7 attempt semantics, which these pin:
+ *   - RequestInfo.attempt  — the failed/current attempt, 1-based
+ *   - onRetry's 2nd arg    — the UPCOMING attempt, so 2 on the first retry
+ * Go, Python, Ruby and Kotlin all pass (1, 2); TypeScript passed (1, 1).
+ *
+ * Note TypeScript caps at one retry by design (SPEC waiver 2B.1), so attempt 2 is
+ * terminal here. These tests assert the two-attempt lifecycle, not three.
+ */
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { http, HttpResponse } from "msw";
+import { server } from "./setup.js";
+import { createBasecampClient } from "../src/client.js";
+import type { BasecampHooks, RequestInfo, RequestResult } from "../src/hooks.js";
+
+const BASE_URL = "https://3.basecampapi.com/12345";
+
+/** Records every lifecycle callback in order, so we can assert balance and args. */
+function recordingHooks() {
+  const events: Array<{
+    kind: "start" | "end" | "retry";
+    attempt: number;
+    statusCode?: number;
+    error?: unknown;
+  }> = [];
+  const hooks: BasecampHooks = {
+    onRequestStart(info: RequestInfo) {
+      events.push({ kind: "start", attempt: info.attempt });
+    },
+    onRequestEnd(info: RequestInfo, result: RequestResult) {
+      events.push({
+        kind: "end",
+        attempt: info.attempt,
+        statusCode: result.statusCode,
+        error: (result as { error?: unknown }).error,
+      });
+    },
+    onRetry(_info: RequestInfo, upcomingAttempt: number, error: Error) {
+      events.push({ kind: "retry", attempt: upcomingAttempt, error });
+    },
+  };
+  return { hooks, events };
+}
+
+const starts = (e: ReturnType<typeof recordingHooks>["events"]) =>
+  e.filter((x) => x.kind === "start");
+const ends = (e: ReturnType<typeof recordingHooks>["events"]) =>
+  e.filter((x) => x.kind === "end");
+
+describe("middleware request lifecycle", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Defect 1. Two concurrent same-method/same-URL mutations with Date.now()
+  // pinned. Under the old timestamp key both computed the SAME cache key, so one
+  // body overwrote the other and at least one retry replayed the wrong bytes.
+  it("replays each concurrent same-URL mutation's own body on retry", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    const seen: Array<{ phase: "initial" | "retry"; body: string }> = [];
+    let release: (() => void) | undefined;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let arrived = 0;
+
+    server.use(
+      http.put(`${BASE_URL}/buckets/1/todos/2.json`, async ({ request }) => {
+        const body = await request.text();
+        const n = ++arrived;
+
+        // The first two arrivals are the initial attempts. The barrier holds both
+        // of them until both have arrived, so their onRequest handlers provably
+        // interleave — and it makes the initial/retry split deterministic without
+        // relying on any wire header.
+        if (n <= 2) {
+          seen.push({ phase: "initial", body });
+          if (n === 2) release?.();
+          await barrier;
+          // Retry-After: 0 keeps the test off the real backoff clock.
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          });
+        }
+
+        seen.push({ phase: "retry", body });
+        return HttpResponse.json({ ok: true });
+      })
+    );
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+
+    await Promise.all([
+      client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
+        params: { path: { bucketId: 1, todoId: 2 } },
+        body: { content: "AAA" },
+      } as never),
+      client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
+        params: { path: { bucketId: 1, todoId: 2 } },
+        body: { content: "BBB" },
+      } as never),
+    ]);
+
+    const firstBodies = seen.filter((s) => s.phase === "initial").map((s) => s.body).sort();
+    const retryBodies = seen.filter((s) => s.phase === "retry").map((s) => s.body).sort();
+
+    expect(firstBodies).toHaveLength(2);
+    expect(retryBodies).toHaveLength(2);
+    // The retries must carry the same multiset of bodies as the originals.
+    // The old key made both retries send one request's body (or an empty one).
+    expect(retryBodies).toEqual(firstBodies);
+  });
+
+  // Defect 2. A rejected initial fetch must still produce a balanced
+  // start/end pair, with statusCode 0 and the original error preserved.
+  it("fires a balanced start/end with statusCode 0 when the initial fetch fails", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => HttpResponse.error())
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    await expect(client.GET("/projects.json")).rejects.toBeTruthy();
+
+    expect(starts(events)).toHaveLength(1);
+    expect(ends(events)).toHaveLength(1);
+    const end = ends(events)[0]!;
+    expect(end.attempt).toBe(1);
+    expect(end.statusCode).toBe(0);
+    expect(end.error).toBeInstanceOf(Error);
+  });
+
+  // Defect 2, timeout variant. The auth middleware installs
+  // AbortSignal.timeout, so a stalled request rejects the same way.
+  it("fires a balanced start/end with statusCode 0 when the request times out", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, async () => {
+        await new Promise((r) => setTimeout(r, 200));
+        return HttpResponse.json([]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+      requestTimeoutMs: 20,
+    });
+
+    await expect(client.GET("/projects.json")).rejects.toBeTruthy();
+
+    expect(starts(events)).toHaveLength(1);
+    expect(ends(events)).toHaveLength(1);
+    const end = ends(events)[0]!;
+    expect(end.statusCode).toBe(0);
+    expect(end.error).toBeInstanceOf(Error);
+  });
+
+  // Defect 4. Both attempts get balanced hooks even when the RETRY fetch
+  // itself fails at the network level, and all state is finalized.
+  it("fires balanced lifecycle hooks for both attempts when the retry fetch fails", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts === 1) {
+          return new HttpResponse(null, {
+            status: 503,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        return HttpResponse.error();
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    await expect(client.GET("/projects.json")).rejects.toBeTruthy();
+
+    expect(attempts).toBe(2);
+    // One start and one end per attempt — nothing dangling.
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2]);
+    expect(ends(events)[0]!.statusCode).toBe(503);
+    expect(ends(events)[1]!.statusCode).toBe(0);
+    expect(ends(events)[1]!.error).toBeInstanceOf(Error);
+  });
+
+  // Defect 4, attempt numbering. SPEC section 7: RequestInfo.attempt is the
+  // attempt that just failed (1); onRetry's second argument is the UPCOMING
+  // attempt (2). TypeScript passed 1 for both.
+  it("reports the failed attempt in RequestInfo and the upcoming attempt to onRetry", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts === 1) {
+          return new HttpResponse(null, {
+            status: 503,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        return HttpResponse.json([]);
+      })
+    );
+
+    const seen: Array<{ infoAttempt: number; upcoming: number }> = [];
+    const hooks: BasecampHooks = {
+      onRetry(info: RequestInfo, upcoming: number) {
+        seen.push({ infoAttempt: info.attempt, upcoming });
+      },
+    };
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    await client.GET("/projects.json");
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]!.infoAttempt).toBe(1);
+    expect(seen[0]!.upcoming).toBe(2);
+  });
+
+  // Defect 3. A successful retry must leave no per-request state behind. We
+  // cannot read the private maps, so assert the observable consequence: many
+  // retried requests in sequence stay balanced and never mis-attribute an
+  // attempt number, which a leaking/colliding key would break.
+  it("finalizes state so repeated retried requests stay balanced", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts % 2 === 1) {
+          // 429 rather than 503: Retry-After is honoured only for 429, so this
+          // keeps the loop off the real exponential-backoff clock.
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        return HttpResponse.json([]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      await client.GET("/projects.json");
+    }
+
+    // 5 logical requests x 2 attempts each.
+    expect(starts(events)).toHaveLength(10);
+    expect(ends(events)).toHaveLength(10);
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 1, 2, 1, 2, 1, 2, 1, 2]);
+  });
+});
