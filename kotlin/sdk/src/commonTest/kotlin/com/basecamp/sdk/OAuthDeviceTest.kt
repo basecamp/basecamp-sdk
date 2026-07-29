@@ -1039,7 +1039,7 @@ class OAuthDeviceTest {
         client.close()
     }
 
-        @Test
+    @Test
     fun pollRejectsMalformedTokenExpiresInOn2xx() = runTest {
         // A 2xx whose expires_in cannot be a schedulable lifetime is api_error:
         // 1e400 parses to Infinity (past the ceiling), an explicit 0 or negative
@@ -1063,7 +1063,7 @@ class OAuthDeviceTest {
         }
     }
 
-        @Test
+    @Test
     fun pollRejectsExplicitEmptyTokenTypeOn2xx() = runTest {
         // An explicit "token_type": "" is malformed token metadata (api_error),
         // distinct from an absent field — uniform with Go/Python/Ruby/TS.
