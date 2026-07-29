@@ -1,0 +1,31 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_02a61386032c2d 568-576,587
+  s_86d0793371d0f3::t_4cda40d5b6ea76 146
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Exchange.kt
+  s_86d0793371d0f3::t_292a522044b1d3 26-32,42
+  s_86d0793371d0f3::t_5112f4f739680e 127-130,141
+  s_86d0793371d0f3::t_104cf62e673a2f 199-207,218
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthTest.kt
+  s_86d0793371d0f3::t_79b3d90529e150 315-400
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_ae663ff5ecf8f0 968-1002
+kotlin/README.md
+  s_86d0793371d0f3::t_72ff7a1ef6a54d 204-207
+  s_86d0793371d0f3::t_4269108ce04a48 240-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a7a30e81b1e26b96d3205bb9b77f637328cc48b4",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
