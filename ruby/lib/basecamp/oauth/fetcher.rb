@@ -625,9 +625,11 @@ module Basecamp
               # sits on the response. Fall back to it under the same cap so an
               # injected buffered client gets the document instead of a bogus
               # empty-body parse failure — mirroring post_form's fallback.
-              # +dup+: a frozen response body (test adapters return literals)
-              # cannot take force_encoding below.
-              raw = response.body.to_s.dup
+              # dup ONLY a frozen body (test adapters return literals, which
+              # cannot take force_encoding below): copying every large
+              # buffered 2xx unconditionally would double peak memory.
+              raw = response.body.to_s
+              raw = raw.dup if raw.frozen?
               raise BodyTooLarge if raw.bytesize > max_body_bytes
 
               raw
