@@ -461,6 +461,30 @@ class OAuthTransportTest < Minitest::Test
     Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
   end
 
+  def test_completed_response_survives_the_watchdog_finish_race
+    # The watchdog's cross-thread finish can nil @socket while the request
+    # thread is inside Net::HTTP's own end_transport, whose @socket.closed?
+    # then raises NoMethodError. An in-deadline COMPLETED response must
+    # dominate that cleanup race (mirroring the Python transport), never
+    # leak the raw NoMethodError. end_transport is delayed past the 0.5s
+    # watchdog to land in the race window deterministically.
+    real = Net::HTTP.instance_method(:end_transport)
+    Net::HTTP.send(:define_method, :end_transport) do |*args|
+      sleep(0.9)
+      real.bind_call(self, *args)
+    end
+
+    endpoint, = start_server do |conn|
+      conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nhi")
+    end
+
+    status, body = Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/doc", timeout: 0.5)
+    assert_equal 200, status
+    assert_equal "hi", body
+  ensure
+    Net::HTTP.send(:define_method, :end_transport, real)
+  end
+
   def test_tls_failure_past_the_deadline_classifies_as_timeout
     # The watchdog's forced close during a TLS operation surfaces as an
     # SSLError, not a timeout — past the monotonic deadline it must classify

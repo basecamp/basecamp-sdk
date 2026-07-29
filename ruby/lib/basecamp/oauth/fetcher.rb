@@ -396,6 +396,7 @@ module Basecamp
 
         deadline = monotonic_now + timeout
         deadline_fired = false
+        completed_at = nil
         # Net::HTTP#request implicitly re-starts a finished session, and that
         # restart runs OUTSIDE the connect Timeout.timeout below — an
         # ENV-proxied CONNECT could drip unbounded there (started? stays
@@ -498,6 +499,10 @@ module Basecamp
 
               chunks << chunk
             end
+            # Stamp completion INSIDE the request block: Net::HTTP's own
+            # end_transport runs before http.request returns, and the
+            # watchdog racing that cleanup must not erase a completed body.
+            completed_at = monotonic_now
           end
           # Final monotonic re-check AFTER the response completes: a peer can
           # deliver the last body chunk just before the deadline and the
@@ -545,6 +550,20 @@ module Basecamp
         # a post-deadline peer reset classifies as ConnectionFailed and the
         # device poll terminates instead of applying its transient backoff.
         raise classify_stream_error(e, deadline_fired || monotonic_now > deadline)
+      rescue NoMethodError => e
+        # The watchdog's cross-thread finish can nil @socket between the body
+        # completing and Net::HTTP's own end_transport, whose @socket.closed?
+        # then raises NoMethodError on the request thread. An in-deadline
+        # COMPLETED response dominates that cleanup race (mirroring the
+        # Python transport's outcome preservation); otherwise, past the
+        # deadline, it is the timeout the cleanup raced. A genuine
+        # NoMethodError (a bug) re-raises untouched.
+        if completed_at && completed_at <= deadline
+          return [ status, chunks.join.force_encoding(Encoding::UTF_8) ]
+        end
+        raise classify_stream_error(e, true) if deadline_fired || monotonic_now > deadline
+
+        raise
       rescue OpenSSL::SSL::SSLError => e
         # The watchdog's forced close surfaces mid-handshake/mid-read as an
         # SSLError: past the deadline it is the timeout it raced, same clock
@@ -651,15 +670,22 @@ module Basecamp
           skip_status: ->(s) { !(200..299).cover?(s) }
         )
 
-        response = http_client.get(url) do |req|
-          req.headers["Accept"] = "application/json"
-          # Bounded streaming read: abort the moment the cap is exceeded so an
-          # oversized body is never fully buffered.
-          req.options.on_data = on_data
-          # Apply the request timeout on every request — even an injected client —
-          # so a stalled socket can't hang discovery under the adapter default.
-          req.options.timeout = timeout
-          req.options.open_timeout = timeout
+        # Timeout.timeout wraps the WHOLE call: the per-read timeout resets on
+        # every socket read, so a peer dripping HEADER bytes under it would
+        # otherwise hold the request open indefinitely — on_data (a body
+        # callback) never runs during the header phase, leaving nothing else
+        # to enforce the wall clock on an injected client.
+        response = Timeout.timeout(timeout, Faraday::TimeoutError) do
+          http_client.get(url) do |req|
+            req.headers["Accept"] = "application/json"
+            # Bounded streaming read: abort the moment the cap is exceeded so an
+            # oversized body is never fully buffered.
+            req.options.on_data = on_data
+            # Apply the request timeout on every request — even an injected client —
+            # so a stalled socket can't hang discovery under the adapter default.
+            req.options.timeout = timeout
+            req.options.open_timeout = timeout
+          end
         end
 
         body =
