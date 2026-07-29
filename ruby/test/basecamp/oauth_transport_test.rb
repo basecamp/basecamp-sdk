@@ -427,6 +427,37 @@ class OAuthTransportTest < Minitest::Test
     assert_equal({ "ok" => true }, doc)
   end
 
+  def test_skip_status_headers_past_the_deadline_classify_as_timeout
+    # Headers that become runnable past the monotonic deadline — but before
+    # the watchdog flips deadline_fired — mean the status was NOT known in
+    # time: the skip fast-path must surface the timeout, never race into a
+    # status classification (matching the Python transport). The skip
+    # callable itself flips Fetcher's stubbed clock, so exactly the reads
+    # AFTER header arrival see a past-deadline "now".
+    served = false
+    real = Basecamp::Oauth::Fetcher.method(:monotonic_now)
+    skip = lambda do |status|
+      served = true
+      !(200..299).cover?(status)
+    end
+
+    # The suite does not load minitest/mock — swap the singleton by hand and
+    # restore it in ensure (the established idiom in this file).
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) do
+      served ? 1e12 : real.call
+    end
+
+    endpoint, = start_server do |conn|
+      conn.write("HTTP/1.1 500 Nope\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno")
+    end
+
+    assert_raises(Basecamp::Oauth::Fetcher::ReadDeadlineExceeded) do
+      Basecamp::Oauth::Fetcher.stream_http(:get, "#{endpoint}/doc", timeout: 5, skip_status: skip)
+    end
+  ensure
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
+  end
+
   def test_fetch_json_buffered_oversized_error_body_is_the_status_fault
     # fetch_json discards non-2xx bodies (status dominates): a buffered adapter
     # whose oversized ERROR body is already in memory must surface the status

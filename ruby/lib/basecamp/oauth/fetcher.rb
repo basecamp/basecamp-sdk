@@ -69,6 +69,14 @@ module Basecamp
       # +real?+ gates out Complex before +finite?+/+positive?+ (which Complex does
       # not define — calling them would raise NoMethodError). Integer, Float, and
       # Rational are all real and answer both.
+      # Monotonic clock read (seconds). A module seam — rather than inline
+      # Process.clock_gettime — so tests can stub Fetcher's own notion of
+      # "now" without touching the process-wide clock that Net::HTTP, the
+      # watchdog sleeps, and the test server all rely on.
+      def self.monotonic_now
+        Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
+
       def self.valid_timeout?(value)
         value.is_a?(Numeric) && value.real? && value.finite? && value.positive? \
           && value <= MAX_REQUEST_TIMEOUT
@@ -352,7 +360,7 @@ module Basecamp
           request["Content-Type"] ||= "application/x-www-form-urlencoded"
         end
 
-        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        deadline = monotonic_now + timeout
         deadline_fired = false
         # Net::HTTP#request implicitly re-starts a finished session, and that
         # restart runs OUTSIDE the connect Timeout.timeout below — an
@@ -367,7 +375,7 @@ module Basecamp
           super(&blk)
         end
         watchdog = Thread.new do
-          remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          remaining = deadline - monotonic_now
           sleep(remaining) if remaining.positive?
           deadline_fired = true
           # Close the session and KEEP closing until the ensure below kills this
@@ -408,7 +416,7 @@ module Basecamp
         # Timeout.timeout's async raise is safe here precisely because the
         # guarded region is ONLY connection setup: no response state exists
         # yet, and Net::HTTP's connect rescue closes both sockets on any raise.
-        connect_remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        connect_remaining = deadline - monotonic_now
         raise ReadDeadlineExceeded unless connect_remaining.positive?
 
         begin
@@ -421,18 +429,24 @@ module Basecamp
           # Re-check the deadline the moment the session is up: if setup
           # consumed the whole budget, fail now rather than granting the
           # request a fresh header wait.
-          raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          raise ReadDeadlineExceeded if monotonic_now > deadline
 
           http.request(request) do |response|
             status = response.code.to_i
-            # Status-first: a skipped status's body is NEVER read — the raise
-            # unwinds to the ensure below, which closes the socket undrained.
-            # This outranks the deadline-race check below (SPEC §16): a
-            # completed response's KNOWN status must classify as its api_error
-            # even when the deadline fired while the headers were in flight —
-            # a discovery 500 or token redirect must never soften into a
-            # retryable timeout.
-            raise SkipBody.new(status) if skip_status&.call(status)
+            if skip_status&.call(status)
+              # Deadline first for a status NOT known in time: headers that
+              # become runnable past the monotonic deadline (but before the
+              # watchdog flips deadline_fired) are a timeout, not a
+              # classification — matching the Python transport. A status
+              # known IN time is still raised before any body read: the
+              # SkipBody unwinds to the ensure below, which closes the
+              # socket undrained, so a skipped status's body is NEVER
+              # drained and a discovery 500 or token redirect known before
+              # the deadline never softens into a retryable timeout.
+              raise ReadDeadlineExceeded if monotonic_now > deadline
+
+              raise SkipBody.new(status)
+            end
 
             # Net::HTTP#request implicitly re-starts a finished session: if the
             # watchdog's close landed between the deadline re-check above and
@@ -443,7 +457,7 @@ module Basecamp
             raise ReadDeadlineExceeded if deadline_fired
 
             response.read_body do |chunk|
-              raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+              raise ReadDeadlineExceeded if monotonic_now > deadline
 
               total += chunk.bytesize
               raise BodyTooLarge if total > max_body_bytes
@@ -458,7 +472,7 @@ module Basecamp
           # the watchdog sets deadline_fired. A completed response is never
           # accepted past the advertised total-request bound. (Skipped statuses
           # keep status-first classification — SkipBody unwinds before this.)
-          raise ReadDeadlineExceeded if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          raise ReadDeadlineExceeded if monotonic_now > deadline
         ensure
           # Block-form start would close the session itself; with the explicit
           # start (needed so ONLY connection setup sits under Timeout.timeout)
