@@ -297,6 +297,12 @@ module Basecamp
       # @param skip_status [Proc, nil] statuses whose body is never read
       # @return [Array(Integer, String)] status and (possibly empty) body
       def self.stream_http(method, url, headers: {}, form: nil, timeout:, max_body_bytes: DEFAULT_MAX_BODY_BYTES, skip_status: nil)
+        # Response state first, before ANY call the def-level rescues could
+        # catch, so every rescue path sees it assigned (the completed_at guard
+        # means it is only READ once genuinely populated).
+        status = nil
+        chunks = []
+        total = 0
         uri = begin
           URI.parse(url)
         rescue URI::InvalidURIError
@@ -351,12 +357,6 @@ module Basecamp
         deadline = monotonic_now + timeout
         deadline_fired = false
         completed_at = nil
-        # Response state, initialized before ANY raising step so the rescue
-        # branches below can reference it on every path (the completed_at
-        # guard means it is only READ once genuinely populated).
-        status = nil
-        chunks = []
-        total = 0
         proxy_uri = Timeout.timeout(timeout, Net::OpenTimeout) { uri.find_proxy }
         http = if proxy_uri
                  proxy_tls = proxy_uri.scheme == "https"
