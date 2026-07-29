@@ -779,6 +779,48 @@ class OAuthDeviceTest < Minitest::Test
     assert_not_requested(:post, TOKEN_ENDPOINT)
   end
 
+  def test_poll_header_drip_on_injected_client_is_bounded
+    # An injected Faraday client's per-read timeout resets on every socket
+    # read: a peer dripping HEADER bytes under it would hold the POST open
+    # indefinitely (on_data never runs during the header phase). The outer
+    # wall clock must cut it at ~timeout and surface the transport-shaped
+    # timeout the poll loop's backoff understands.
+    server = TCPServer.new("127.0.0.1", 0)
+    port = server.addr[1]
+    thread = Thread.new do
+      conn = server.accept
+      # Drip one header byte per 0.1s for ~5s — far past the 0.5s timeout,
+      # each gap well under the per-read timeout.
+      "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n".each_char do |ch|
+        conn.write(ch)
+        sleep(0.1)
+      end
+    rescue IOError, SystemCallError
+      nil
+    end
+
+    WebMock.disable!
+    # Adapter-only: the SSRF guard refuses middleware it cannot verify
+    # redirect-free (Faraday.new's default stack includes UrlEncoded).
+    connection = Faraday.new { |f| f.adapter :net_http }
+    _waits, sleeper = recording_sleeper
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth::DeviceFlow.request_device_authorization(
+        device_authorization_endpoint: "http://127.0.0.1:#{port}/device",
+        client_id: "basecamp-cli", http_client: connection, timeout: 0.5
+      )
+    end
+    took = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+    assert_equal :transport, error.reason
+    assert_operator took, :<, 2.0, "header drip must be cut by the wall clock, took #{took.round(2)}s"
+  ensure
+    WebMock.enable!
+    thread&.kill&.join
+    server&.close
+  end
+
   def test_poll_cancellation_wins_over_a_transport_fault
     # Cancellation-beats-classification on the error path: the probe flips as
     # the doomed request fails (index goes positive before the step raises),

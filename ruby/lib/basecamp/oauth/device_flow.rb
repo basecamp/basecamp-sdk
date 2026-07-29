@@ -2,6 +2,7 @@
 
 require "faraday"
 require "json"
+require "timeout"
 require "uri"
 
 module Basecamp
@@ -464,13 +465,20 @@ module Basecamp
             # for a status whose body the caller doesn't use (non-2xx / 3xx).
             deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
             chunks, on_data = Fetcher.bounded_reader(max_body_bytes, deadline: deadline, skip_status: skip_status)
-            response = client.post(url) do |req|
-              req.headers["Content-Type"] = "application/x-www-form-urlencoded"
-              req.headers["Accept"] = "application/json"
-              req.body = URI.encode_www_form(params)
-              req.options.timeout = timeout
-              req.options.open_timeout = timeout
-              req.options.on_data = on_data
+            # Timeout.timeout wraps the WHOLE call: the per-read timeout resets
+            # on every socket read, so a peer dripping HEADER bytes under it
+            # would otherwise hold the POST open indefinitely — on_data (a
+            # body callback) never runs during the header phase, leaving
+            # nothing else to enforce the wall clock on an injected client.
+            response = Timeout.timeout(timeout, Faraday::TimeoutError) do
+              client.post(url) do |req|
+                req.headers["Content-Type"] = "application/x-www-form-urlencoded"
+                req.headers["Accept"] = "application/json"
+                req.body = URI.encode_www_form(params)
+                req.options.timeout = timeout
+                req.options.open_timeout = timeout
+                req.options.on_data = on_data
+              end
             end
 
             # Status-first backstop on the completed response. The +on_data+ SkipBody
