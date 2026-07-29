@@ -113,7 +113,7 @@ class OAuthDeviceTest {
 
         requestDeviceAuthorization(deviceEndpoint, "basecamp-cli", scope = "read write", client = client)
 
-        assertTrue(sentBody.contains("scope=read"), "scope must be sent when set")
+        assertTrue(sentBody.contains("scope=read+write"), "the FULL scope must be sent when set: $sentBody")
         client.close()
     }
 

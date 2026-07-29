@@ -123,7 +123,13 @@ AS metadata discovery (RFC 8414). The `oauth` package exposes three composable
 operations on `*oauth.Discoverer`:
 
 ```go
-import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
+import (
+    "errors"
+    "fmt"
+    "net/http"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
+)
 
 d := oauth.NewDiscoverer(http.DefaultClient)
 
@@ -179,7 +185,13 @@ configured endpoint is required to use HTTPS (localhost exempt) and redirects ar
 suppressed.
 
 ```go
-import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
+import (
+    "errors"
+    "fmt"
+    "net/http"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
+)
 
 // The device grant lives on BC5's authorization server, not Launchpad, so the
 // config must be the selected first-party result of resource-first discovery. A

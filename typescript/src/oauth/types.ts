@@ -164,10 +164,13 @@ export interface RefreshRequest {
  */
 export interface RawTokenResponse {
   access_token: string;
-  refresh_token?: string;
+  // JSON null is legal on the wire for the optional fields (SPEC treats it
+  // as absent); consumers normalize null to undefined before it reaches the
+  // public OAuthToken type.
+  refresh_token?: string | null;
   token_type: string;
   expires_in?: number;
-  scope?: string;
+  scope?: string | null;
 }
 
 /**

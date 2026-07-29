@@ -346,13 +346,15 @@ async function doTokenRequest(
 
     return {
       accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token,
+      // `?? undefined`: JSON null is legal on the wire for the optional
+      // fields (absent per SPEC) — never leak null through the public type.
+      refreshToken: tokenData.refresh_token ?? undefined,
       tokenType: tokenData.token_type || "Bearer",
       expiresIn: tokenData.expires_in,
       expiresAt: tokenData.expires_in
         ? new Date(Date.now() + tokenData.expires_in * 1000)
         : undefined,
-      scope: tokenData.scope,
+      scope: tokenData.scope ?? undefined,
     };
   } catch (err) {
     if (err instanceof BasecampError) {

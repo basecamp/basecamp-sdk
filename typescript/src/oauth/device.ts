@@ -674,11 +674,13 @@ async function postDeviceToken(
           kind: "token",
           token: {
             accessToken: token.access_token,
-            refreshToken: token.refresh_token,
+            // `?? undefined`: validation admits JSON null (absent per SPEC),
+            // but the public type is `string | undefined` — never leak null.
+            refreshToken: token.refresh_token ?? undefined,
             tokenType: token.token_type || "Bearer",
             expiresIn: token.expires_in ?? undefined,
             expiresAt: token.expires_in != null ? new Date(Date.now() + token.expires_in * 1000) : undefined,
-            scope: token.scope,
+            scope: token.scope ?? undefined,
           },
         };
       }
