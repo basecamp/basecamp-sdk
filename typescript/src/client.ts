@@ -232,7 +232,7 @@ export interface BasecampClientOptions {
   maxPages?: number;
 }
 
-export const VERSION = "0.9.0";
+export const VERSION = "0.10.0";
 export const API_VERSION = "2026-07-28";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
