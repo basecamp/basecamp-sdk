@@ -2,7 +2,10 @@
 
 require "faraday"
 require "json"
-require "cgi/escape"
+# Full cgi, not cgi/escape: on Ruby 3.2-3.4 (the gem floor is 3.2) the
+# escape-only require leaves CGI.unescapeURIComponent broken with an
+# uninitialized @@accept_charset NameError.
+require "cgi"
 require "net/http"
 require "openssl"
 require "timeout"
