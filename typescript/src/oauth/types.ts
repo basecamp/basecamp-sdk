@@ -168,7 +168,8 @@ export interface RawTokenResponse {
   // as absent); consumers normalize null to undefined before it reaches the
   // public OAuthToken type.
   refresh_token?: string | null;
-  token_type: string;
+  // Absent/null token_type is valid on the wire (defaults to Bearer).
+  token_type?: string | null;
   expires_in?: number;
   scope?: string | null;
 }

@@ -125,7 +125,6 @@ operations on `*oauth.Discoverer`:
 ```go
 import (
     "errors"
-    "fmt"
     "net/http"
 
     "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/oauth"
