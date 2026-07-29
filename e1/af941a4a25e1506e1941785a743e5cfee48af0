@@ -1,0 +1,29 @@
+typescript/src/client.ts
+  s_267ddb5ac82dcb::t_01469f19beb823 320-322
+  s_267ddb5ac82dcb::t_8e720a3a58230a 532
+  s_5b9fe3c20c58a4::t_72d98e613c5dc8 315,317,336,502,510,1012,1073,1094
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "e1af941a4a25e1506e1941785a743e5cfee48af0",
+  "prompts": {},
+  "sessions": {
+    "s_267ddb5ac82dcb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57d110ce-5c18-4d22-aa00-30e788664981",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_5b9fe3c20c58a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2635ee6f-2679-455c-9180-2cc86588b9e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
