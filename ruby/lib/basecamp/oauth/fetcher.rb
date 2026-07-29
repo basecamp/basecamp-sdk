@@ -114,7 +114,10 @@ module Basecamp
         if deadline_fired
           Faraday::TimeoutError.new("OAuth request exceeded the timeout deadline")
         else
-          Faraday::ConnectionFailed.new(error.message)
+          # Wrap the exception itself (the conventional Faraday pattern), not
+          # just its message: the original class and backtrace survive for
+          # debugging while callers' rescues see the same Faraday class.
+          Faraday::ConnectionFailed.new(error)
         end
       end
 
