@@ -109,6 +109,12 @@ def request_bounded(
             client.stream(method, url, data=params, headers=request_headers) as response,
         ):
             if not read_body(response.status_code):
+                # Record the KNOWN outcome before the context managers unwind:
+                # the awaited response/client cleanup can cross the total
+                # deadline and be cancelled by wait_for, and a skipped non-2xx
+                # must classify by status (api_error), never soften into a
+                # retryable timeout because only its cleanup was late.
+                outcome.append((response.status_code, b""))
                 return response.status_code, b""
             chunks: list[bytes] = []
             total = 0
@@ -119,6 +125,9 @@ def request_bounded(
                     # stream so it is never fully buffered.
                     raise OAuthError("api_error", f"{context} response exceeds size cap")
                 chunks.append(chunk)
+            # Same completed-outcome recording as the skip path: a fully read
+            # body must not be discarded because cleanup crossed the deadline.
+            outcome.append((response.status_code, b"".join(chunks)))
             return response.status_code, b"".join(chunks)
 
     # httpx's timeout is per-read (it resets on every received chunk) and httpx has
@@ -143,6 +152,11 @@ def request_bounded(
     # is_alive backstop after it covers only a pathological async-cleanup hang.
     result: list[tuple[int, bytes]] = []
     error: list[Exception] = []
+    # Completed outcomes recorded INSIDE _do before async cleanup: when
+    # wait_for cancels mid-unwind, the response is already known and must win
+    # over the cancellation (status-first classification for skipped statuses;
+    # a fully read body likewise survives a late cleanup).
+    outcome: list[tuple[int, bytes]] = []
 
     def _runner() -> None:
         try:
@@ -165,6 +179,11 @@ def request_bounded(
         # On Python >= 3.11 (this package's floor) asyncio.TimeoutError IS the
         # builtin TimeoutError, so this catches wait_for's deadline expiry.
         if isinstance(exc, TimeoutError):
+            if outcome:
+                # The response COMPLETED before the deadline — only the async
+                # cleanup crossed it and was cancelled. The known outcome
+                # dominates the deadline race.
+                return outcome[0]
             raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline") from exc
         raise exc
     if not result:

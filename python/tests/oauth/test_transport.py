@@ -8,11 +8,13 @@ discovery fetch through :func:`basecamp.oauth._transport.request_bounded`.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import socket
 import threading
 import time
 
+import httpx
 import pytest
 
 from basecamp.oauth import OAuthError, discover_protected_resource
@@ -124,6 +126,46 @@ def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
         server.join(2)
         srv.close()
     assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
+
+
+def test_skipped_status_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # A skipped non-2xx whose headers arrive just before the total deadline
+    # must classify by STATUS even when the awaited response/client cleanup
+    # crosses the deadline and is cancelled by wait_for — never soften into a
+    # retryable timeout. Deterministic: the patched client aclose stalls past
+    # the deadline after the response is already known.
+    # Patch __aexit__ (NOT aclose — AsyncClient.__aexit__ closes the
+    # transport directly and never routes through aclose).
+    real_aexit = httpx.AsyncClient.__aexit__
+
+    async def slow_aexit(self, *args):
+        await asyncio.sleep(1.5)  # crosses the 0.5s deadline
+        return await real_aexit(self, *args)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__aexit__", slow_aexit)
+
+    srv, port = _serve_on_localhost()
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=0.5)
+        assert exc_info.value.code == "api_error"
+        assert exc_info.value.http_status == 500
+    finally:
+        server.join(3)
+        srv.close()
 
 
 def test_compressed_bodies_are_never_inflated_by_the_transport() -> None:
