@@ -508,6 +508,11 @@ def poll_device_token(
             backoff_seconds = min(backoff_seconds * 2, MAX_BACKOFF_SECONDS)
             continue
         except httpx.HTTPError as exc:
+            # Cancellation-beats-classification on the error path too: a cancel
+            # that flipped while the doomed request was in flight must surface
+            # as cancelled, not as the transport fault it happened to raise.
+            if should_cancel is not None and should_cancel():
+                raise DeviceFlowError("cancelled", "Device flow cancelled") from None
             raise DeviceFlowError("transport", f"Device token poll failed: {exc}") from exc
 
         # Re-check cancellation the moment the round-trip completes: the sync
@@ -746,13 +751,21 @@ def perform_device_login(
     if should_cancel is not None and should_cancel():
         raise DeviceFlowError("cancelled", "Device flow cancelled")
 
-    auth = request_device_authorization(
-        config.device_authorization_endpoint,
-        client_id,
-        scope,
-        timeout=timeout,
-        max_body_bytes=max_body_bytes,
-    )
+    try:
+        auth = request_device_authorization(
+            config.device_authorization_endpoint,
+            client_id,
+            scope,
+            timeout=timeout,
+            max_body_bytes=max_body_bytes,
+        )
+    except (DeviceFlowError, OAuthError):
+        # Cancellation-beats-classification on the error path too: a cancel
+        # that flipped while the authorization request was in flight wins over
+        # whatever fault the doomed request raised.
+        if should_cancel is not None and should_cancel():
+            raise DeviceFlowError("cancelled", "Device flow cancelled") from None
+        raise
 
     # Re-check after the round-trip, before surfacing the code: a cancel set
     # while the authorization request was in flight must not reach display.

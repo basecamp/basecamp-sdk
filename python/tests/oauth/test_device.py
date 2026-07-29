@@ -733,6 +733,31 @@ class TestPollDeviceToken:
         assert exc_info.value.retryable is True
 
     @respx.mock
+    def test_cancellation_wins_over_a_transport_fault(self):
+        # Cancellation-beats-classification on the error path: the mock flips
+        # the probe as the doomed request fails, so the poll must surface
+        # cancelled — never the transport fault the request happened to raise.
+        state = {"cancelled": False}
+
+        def explode(_request):
+            state["cancelled"] = True
+            raise httpx.ConnectError("boom")
+
+        respx.post(TOKEN_ENDPOINT).mock(side_effect=explode)
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            poll_device_token(
+                TOKEN_ENDPOINT,
+                "basecamp-cli",
+                "dev-code-123",
+                interval=5,
+                expires_in=900,
+                sleep=RecordingSleep(),
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+
+    @respx.mock
     def test_cancellation_raises_cancelled(self):
         _queue_token_responses([httpx.Response(400, json={"error": "authorization_pending"})])
         cancelled = {"flag": False}
@@ -1056,6 +1081,31 @@ class TestPerformDeviceLoginCancellation:
             return httpx.Response(200, json=DEVICE_AUTH_RESPONSE)
 
         respx.post(DEVICE_ENDPOINT).mock(side_effect=serve)
+        displayed = []
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=displayed.append,
+                sleep=RecordingSleep(),
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+        assert displayed == []
+
+    @respx.mock
+    def test_cancellation_wins_over_a_device_auth_fault(self):
+        # Same contract on the error path: the authorization request fails AND
+        # the probe flipped mid-flight — cancelled must win over transport,
+        # and the display hook must never fire.
+        state = {"cancelled": False}
+
+        def explode(_request):
+            state["cancelled"] = True
+            raise httpx.ConnectError("boom")
+
+        respx.post(DEVICE_ENDPOINT).mock(side_effect=explode)
         displayed = []
 
         with pytest.raises(DeviceFlowError) as exc_info:

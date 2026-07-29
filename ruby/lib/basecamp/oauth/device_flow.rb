@@ -237,6 +237,11 @@ module Basecamp
               backoff_seconds = [ backoff_seconds * 2, MAX_BACKOFF_SECONDS ].min
               next
             rescue Faraday::Error => e
+              # Cancellation-beats-classification on the error path too: a
+              # cancel that flipped while the doomed request was in flight must
+              # surface as cancelled, not as the transport fault it raised.
+              raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
+
               raise DeviceFlowError.new(:transport, "Device token poll failed: #{e.message}")
             end
 
@@ -320,11 +325,20 @@ module Basecamp
           # request and invokes the display hook.
           raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
-          auth = request_device_authorization(
-            device_authorization_endpoint: config.device_authorization_endpoint,
-            client_id: client_id, scope: scope,
-            http_client: http_client, timeout: timeout, max_body_bytes: max_body_bytes
-          )
+          auth = begin
+            request_device_authorization(
+              device_authorization_endpoint: config.device_authorization_endpoint,
+              client_id: client_id, scope: scope,
+              http_client: http_client, timeout: timeout, max_body_bytes: max_body_bytes
+            )
+          rescue DeviceFlowError, OauthError
+            # Cancellation-beats-classification on the error path too: a cancel
+            # that flipped while the authorization request was in flight wins
+            # over whatever fault the doomed request raised.
+            raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
+
+            raise
+          end
 
           # Re-check after the round-trip, before surfacing the code: a cancel
           # set while the authorization request was in flight must not reach

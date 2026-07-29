@@ -20,6 +20,10 @@ class OAuthDeviceTest < Minitest::Test
   class SequencedHttpClient
     Response = Struct.new(:status, :body)
 
+    # Exposed so cancellation tests can flip a probe the moment a request
+    # has been attempted (index goes positive before a step raises).
+    attr_reader :index
+
     def initialize(steps)
       @steps = steps
       @index = 0
@@ -747,6 +751,25 @@ class OAuthDeviceTest < Minitest::Test
     assert_not_requested(:post, TOKEN_ENDPOINT)
   end
 
+  def test_poll_cancellation_wins_over_a_transport_fault
+    # Cancellation-beats-classification on the error path: the probe flips as
+    # the doomed request fails (index goes positive before the step raises),
+    # so the poll must surface cancelled — never the transport fault.
+    client = SequencedHttpClient.new([ Faraday::ConnectionFailed.new("boom") ])
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth::DeviceFlow.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900,
+        http_client: client, sleeper: sleeper,
+        cancelled: -> { client.index.positive? }
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+  end
+
   def test_poll_raises_transport_on_non_timeout_failure
     client = SequencedHttpClient.new([ Faraday::ConnectionFailed.new("boom") ])
     _waits, sleeper = recording_sleeper
@@ -919,6 +942,31 @@ class OAuthDeviceTest < Minitest::Test
 
     assert_equal "WDJB-MJHT", displayed.user_code
     assert_equal "device_access_token", token.access_token
+  end
+
+  def test_perform_cancellation_wins_over_a_device_auth_fault
+    # Same contract on the error path: the authorization request fails AND the
+    # probe flipped mid-flight — cancelled must win over transport, and the
+    # display hook must never fire.
+    client = SequencedHttpClient.new([ Faraday::ConnectionFailed.new("boom") ])
+    _waits, sleeper = recording_sleeper
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
+    )
+
+    displayed = []
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth::DeviceFlow.perform_device_login(
+        config: config, client_id: "basecamp-cli",
+        display: ->(auth) { displayed << auth }, sleeper: sleeper,
+        http_client: client, cancelled: -> { client.index.positive? }
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+    assert_empty displayed
   end
 
   def test_perform_already_cancelled_flow_makes_no_request
