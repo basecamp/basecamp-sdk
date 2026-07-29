@@ -1039,31 +1039,31 @@ class OAuthDeviceTest {
         client.close()
     }
 
-    @Test
-fun pollRejectsMalformedTokenExpiresInOn2xx() = runTest {
-    // A 2xx whose expires_in cannot be a schedulable lifetime is api_error:
-    // 1e400 parses to Infinity (past the ceiling), an explicit 0 or negative
-    // value violates the positive rule, a past-ceiling value would overflow
-    // `it * 1000` in expiresAt, and 3600.5 breaks the whole-second contract.
-    val bodies = listOf(
-        """{"access_token":"tok","token_type":"Bearer","expires_in":1e400}""",
-        """{"access_token":"tok","token_type":"Bearer","expires_in":-1}""",
-        """{"access_token":"tok","token_type":"Bearer","expires_in":0}""",
-        """{"access_token":"tok","token_type":"Bearer","expires_in":2147483648}""",
-        """{"access_token":"tok","token_type":"Bearer","expires_in":3600.5}""",
-    )
-    for (body in bodies) {
-        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
-        val client = HttpClient(engine)
-        val e = assertFailsWith<BasecampException.Api>("expected api_error for $body") {
-            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        @Test
+    fun pollRejectsMalformedTokenExpiresInOn2xx() = runTest {
+        // A 2xx whose expires_in cannot be a schedulable lifetime is api_error:
+        // 1e400 parses to Infinity (past the ceiling), an explicit 0 or negative
+        // value violates the positive rule, a past-ceiling value would overflow
+        // `it * 1000` in expiresAt, and 3600.5 breaks the whole-second contract.
+        val bodies = listOf(
+            """{"access_token":"tok","token_type":"Bearer","expires_in":1e400}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":-1}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":0}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":2147483648}""",
+            """{"access_token":"tok","token_type":"Bearer","expires_in":3600.5}""",
+        )
+        for (body in bodies) {
+            val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+            val client = HttpClient(engine)
+            val e = assertFailsWith<BasecampException.Api>("expected api_error for $body") {
+                pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+            }
+            assertEquals("api_error", e.code)
+            client.close()
         }
-        assertEquals("api_error", e.code)
-        client.close()
     }
-}
 
-    @Test
+        @Test
     fun pollRejectsExplicitEmptyTokenTypeOn2xx() = runTest {
         // An explicit "token_type": "" is malformed token metadata (api_error),
         // distinct from an absent field — uniform with Go/Python/Ruby/TS.
