@@ -180,6 +180,7 @@ jobs:
             echo '```kotlin'
             echo "implementation(\"com.basecamp:basecamp-sdk:${SEMVER}\")"
             echo '```'
+            echo "Requires the GitHub Packages repository and a token — see [Kotlin installation](https://github.com/basecamp/basecamp-sdk/blob/${VERSION}/kotlin/README.md#installation)."
             echo ""
             echo "**Python**"
             echo '```'

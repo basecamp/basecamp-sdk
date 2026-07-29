@@ -27,23 +27,105 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 ## Installation
 
-The SDK is published to GitHub Packages. Add the repository and dependency to your `build.gradle.kts`:
+The SDK is published to [GitHub Packages](https://github.com/basecamp/basecamp-sdk/packages). GitHub Packages requires an access token for every download — including for public packages like this one — so there are three steps rather than one.
+
+### 1. Create an access token
+
+Create a [**classic** personal access token](https://github.com/settings/tokens) with the `read:packages` scope. Fine-grained personal access tokens do not work with GitHub Packages.
+
+### 2. Store the credentials
+
+Put them in `~/.gradle/gradle.properties`, so they stay out of your repository:
+
+```properties
+gpr.user=YOUR_GITHUB_USERNAME
+gpr.key=YOUR_CLASSIC_TOKEN
+```
+
+The repository block below also reads the `GITHUB_USER` and `GITHUB_ACCESS_TOKEN` environment variables. Those names are this project's own convention, not GitHub Actions defaults — Actions gives you `github.actor` and `secrets.GITHUB_TOKEN` — so a workflow has to map them:
+
+```yaml
+env:
+  GITHUB_USER: x-access-token
+  GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+`secrets.GITHUB_TOKEN` is scoped to the repository running the workflow. To consume the package from a *different* repository, grant that repository access under the package's Actions access settings and give the job `permissions: packages: read` — that avoids a long-lived PAT. Failing that, store a classic PAT as a secret and use it as `GITHUB_ACCESS_TOKEN`.
+
+The username is not load-bearing; GitHub Packages authenticates on the token. `${{ github.actor }}` works just as well as `x-access-token`.
+
+### 3. Declare the repository and dependency
+
+In your `build.gradle.kts`:
 
 ```kotlin
 repositories {
+    mavenCentral()
     maven {
         url = uri("https://maven.pkg.github.com/basecamp/basecamp-sdk")
         credentials {
-            username = System.getenv("GITHUB_USER") ?: "x-access-token"
-            password = System.getenv("GITHUB_ACCESS_TOKEN") ?: ""
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USER")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_ACCESS_TOKEN")
         }
     }
 }
 
 dependencies {
-    implementation("com.basecamp:basecamp-sdk:0.2.1")
+    // Replace VERSION with the latest release:
+    // https://github.com/basecamp/basecamp-sdk/releases/latest
+    implementation("com.basecamp:basecamp-sdk:VERSION")
 }
 ```
+
+`mavenCentral()` is needed for the SDK's own dependencies — Ktor, kotlinx.serialization, and the Kotlin stdlib all resolve from there.
+
+### Maven
+
+Maven needs a different artifact, plus its own repository declaration and credentials.
+
+Depend on **`basecamp-sdk-jvm`**, not `basecamp-sdk`. Gradle reads the Gradle Module Metadata that ships alongside the root `com.basecamp:basecamp-sdk` artifact and transparently redirects to the JVM variant. Maven does not read that metadata, so it resolves the root jar directly — which *succeeds*, and puts a Kotlin Multiplatform metadata jar containing no classes on your classpath. Nothing fails until compile time.
+
+```xml
+<dependency>
+  <groupId>com.basecamp</groupId>
+  <artifactId>basecamp-sdk-jvm</artifactId>
+  <!-- Replace with the latest release: https://github.com/basecamp/basecamp-sdk/releases/latest -->
+  <version>VERSION</version>
+</dependency>
+```
+
+Declare the repository in the same `pom.xml`:
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/basecamp/basecamp-sdk</url>
+  </repository>
+</repositories>
+```
+
+And put the credentials in `~/.m2/settings.xml`, where `<id>` must match the repository's:
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>YOUR_GITHUB_USERNAME</username>
+      <password>YOUR_CLASSIC_TOKEN</password>
+    </server>
+  </servers>
+</settings>
+```
+
+### Troubleshooting
+
+| Error | Cause |
+|---|---|
+| `Could not find com.basecamp:basecamp-sdk` | The `maven { }` repository block is missing. |
+| `Username must not be null!` | Neither `gpr.user` nor `GITHUB_USER` is set. |
+| `Received status code 401 from server: Unauthorized` | The token is wrong, expired, fine-grained rather than classic, or missing the `read:packages` scope. |
 
 ## Quick Start
 
