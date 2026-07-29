@@ -156,8 +156,16 @@ def _parse_token_response(response: httpx.Response) -> OAuthToken:
     if not response.is_success:
         _handle_error(response.status_code, data)
 
-    if not data.get("access_token"):
-        raise OAuthError("api_error", "Token response missing access_token")
+    access_token = data.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        # Non-empty STRING, not merely truthy: a numeric access_token is not a
+        # usable credential (SPEC §16), and the status makes the malformed
+        # response diagnosable — matching the device-flow parser.
+        raise OAuthError(
+            "api_error",
+            "Token response missing or non-string access_token",
+            http_status=response.status_code,
+        )
 
     # resource: absent and JSON null are unset; when present it must be a
     # non-empty string (SPEC §16) — an empty binding is not a binding.
