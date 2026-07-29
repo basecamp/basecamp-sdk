@@ -2,6 +2,7 @@
 
 require "faraday"
 require "json"
+require "cgi/escape"
 require "net/http"
 require "openssl"
 require "timeout"
@@ -339,11 +340,13 @@ module Basecamp
                  # encoded forms, and the explicit-proxy Net::HTTP.new does NOT
                  # unescape them the way its :ENV mode does — p%40ss would be
                  # sent verbatim in Proxy-Authorization and fail authentication.
+                 # unescapeURIComponent, NOT form decoding: a literal + in a
+                 # userinfo component is a plus sign, never a space.
                  Net::HTTP.new(
                    uri.hostname, uri.port,
                    proxy_uri.hostname, proxy_uri.port,
-                   proxy_uri.user && URI.decode_www_form_component(proxy_uri.user),
-                   proxy_uri.password && URI.decode_www_form_component(proxy_uri.password)
+                   proxy_uri.user && CGI.unescapeURIComponent(proxy_uri.user),
+                   proxy_uri.password && CGI.unescapeURIComponent(proxy_uri.password)
                  )
         else
                  Net::HTTP.new(uri.hostname, uri.port, nil)

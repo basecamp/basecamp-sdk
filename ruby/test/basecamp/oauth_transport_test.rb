@@ -703,12 +703,14 @@ class OAuthTransportTest < Minitest::Test
     proxy_env = %w[http_proxy HTTP_PROXY https_proxy HTTPS_PROXY no_proxy NO_PROXY]
     saved = ENV.to_h.slice(*proxy_env)
     proxy_env.each { |k| ENV.delete(k) }
-    ENV["https_proxy"] = "http://user:p%40ss@127.0.0.1:#{proxy.addr[1]}"
+    # p%40s+s: the %40 percent-decodes to @, while the literal + must stay a
+    # plus (userinfo is percent-decoded, never form-decoded).
+    ENV["https_proxy"] = "http://user:p%40s+s@127.0.0.1:#{proxy.addr[1]}"
     begin
       assert_raises(Faraday::Error) do
         Basecamp::Oauth::Fetcher.stream_http(:get, "https://proxy-auth.test/token", timeout: 1)
       end
-      expected = [ "user:p@ss" ].pack("m0")
+      expected = [ "user:p@s+s" ].pack("m0")
       assert_includes captured, "Proxy-Authorization: Basic #{expected}"
     ensure
       proxy_env.each { |k| ENV.delete(k) }
