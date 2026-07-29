@@ -1,0 +1,123 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Device.kt
+  s_86d0793371d0f3::t_042f3e270ba5be 369-372
+  s_86d0793371d0f3::t_c8b84a7b10cdbf 391-392
+  s_86d0793371d0f3::t_340be024398e9e 486-492,496-507
+  s_86d0793371d0f3::t_c3d668b80f409f 445-452
+  s_86d0793371d0f3::t_bdfa726621efd4 651-660
+  s_86d0793371d0f3::t_e0aae42176e48e 508-509
+ruby/lib/basecamp/oauth/fetcher.rb
+  s_86d0793371d0f3::t_44b2cf3e45efb0 293
+  s_86d0793371d0f3::t_daeddb66a0ce3a 476-478
+typescript/src/oauth/device.ts
+  s_86d0793371d0f3::t_ac613af992ebfd 577-581
+  s_86d0793371d0f3::t_2edec372958b02 571-576,582-583
+  s_86d0793371d0f3::t_e5dce578fbd408 464-467
+  s_86d0793371d0f3::t_d9b222a9d9300c 500-501,503
+  s_86d0793371d0f3::t_294bb41b254e49 602-616
+python/tests/oauth/test_device.py
+  s_86d0793371d0f3::t_638a17861dcf48 1355-1364
+  s_86d0793371d0f3::t_da503f4dfbf980 1352-1354
+  s_86d0793371d0f3::t_6f08200048ef48 1365-1367
+  s_86d0793371d0f3::t_4fbafa3c9f96ff 1255-1351,1368-1374
+python/src/basecamp/oauth/_transport.py
+  s_86d0793371d0f3::t_8045a8c05ac09c 52
+ruby/lib/basecamp/oauth/device_flow.rb
+  s_86d0793371d0f3::t_78af16141d1ade 182-185
+  s_86d0793371d0f3::t_ffe206bcda3aa6 729-743
+  s_86d0793371d0f3::t_050222c28c621a 665,672
+  s_86d0793371d0f3::t_d2d7f0560ca706 230-232
+  s_86d0793371d0f3::t_31b3c56f00af09 470-474,479-480
+  s_86d0793371d0f3::t_6a30521b05f91e 272,278-288
+  s_86d0793371d0f3::t_be7643cb97250a 525
+python/src/basecamp/oauth/device.py
+  s_86d0793371d0f3::t_00678b6aa2a652 108
+  s_86d0793371d0f3::t_ae4db45a91c29f 700
+  s_86d0793371d0f3::t_e1ff54df0e4ccb 508-515
+  s_86d0793371d0f3::t_34f0ad1c3f44b6 632,639,641
+  s_86d0793371d0f3::t_48694ffc981045 461-463
+  s_86d0793371d0f3::t_4f5ac7f063f628 265-280
+  s_86d0793371d0f3::t_a0bd353290585c 79
+  s_86d0793371d0f3::t_e1f4a74062ed4e 415-418
+ruby/test/basecamp/oauth_device_test.rb
+  s_86d0793371d0f3::t_a73b5f27fa690a 21,37
+  s_7ac6692c142f59::t_105e2e9daa4509 1353-1469
+go/pkg/basecamp/oauth/device.go
+  s_86d0793371d0f3::t_b9c3ac7fa5c380 12,415-418,440-441,492-503,548-563,731-732
+go/pkg/basecamp/oauth/device_test.go
+  s_86d0793371d0f3::t_074237d6692ac0 2046-2226
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthDeviceTest.kt
+  s_86d0793371d0f3::t_cff285fca293e0 543-685
+typescript/tests/oauth/device.test.ts
+  s_86d0793371d0f3::t_75d65a3feb51d2 1794-1908
+Makefile
+  s_86d0793371d0f3::t_8381f43cffc2f6 424-432
+  s_86d0793371d0f3::t_72d3f519359d1c 411
+  s_86d0793371d0f3::t_6f2b09f304f6d6 519
+  s_86d0793371d0f3::t_325c2131f5917a 966
+conformance/oauth-token/README.md
+  s_86d0793371d0f3::t_65186aefbf69e8 1-29
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/OAuthTest.kt
+  s_86d0793371d0f3::t_56c78cc1e50bbf 376-402
+  s_effaf9ebecb0f4::t_ef2a8a58aba4ac 375
+go/pkg/basecamp/oauth/token_conformance_test.go
+  s_86d0793371d0f3::t_0b5d585fa17942 1-136
+typescript/tests/oauth/token-conformance.test.ts
+  s_86d0793371d0f3::t_01851b74289655 1-95
+ruby/test/basecamp/oauth_token_conformance_test.rb
+  s_86d0793371d0f3::t_2ad48b7d4acded 24-31
+  s_86d0793371d0f3::t_9ce56679af62b6 1-23,32-51,55-57
+  s_86d0793371d0f3::t_e3b82cbf62b836 52-54
+conformance/oauth-token/schema.json
+  s_86d0793371d0f3::t_e44fcc498b4982 1-76
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/oauth/Exchange.kt
+  s_86d0793371d0f3::t_ff5a84ecaac28f 10
+  s_86d0793371d0f3::t_72d5c56d21d4b5 199
+python/tests/oauth/test_token_conformance.py
+  s_86d0793371d0f3::t_cfeccb75c9f0fc 1-65
+conformance/oauth-token/fixtures/01-resource-round-trip.json
+  s_86d0793371d0f3::t_5875b7adf6be12 1-10
+conformance/oauth-token/fixtures/02-resource-absent.json
+  s_86d0793371d0f3::t_16ffc9cb110364 1-10
+conformance/oauth-token/fixtures/03-resource-null.json
+  s_86d0793371d0f3::t_a9017ffc1be5e6 1-10
+conformance/oauth-token/fixtures/04-resource-empty-rejected.json
+  s_86d0793371d0f3::t_6d586e520b3727 1-10
+conformance/oauth-token/fixtures/05-resource-non-string-rejected.json
+  s_86d0793371d0f3::t_91d5e1190860e3 1-10
+conformance/oauth-token/fixtures/06-refresh-sends-resource.json
+  s_86d0793371d0f3::t_46679c262bf35c 1-11
+conformance/oauth-token/fixtures/07-refresh-omits-resource.json
+  s_86d0793371d0f3::t_73eb20f7d4555a 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6ac1d661777bc70c861d2d4473b43c14f0de70a9",
+  "prompts": {},
+  "sessions": {
+    "s_7ac6692c142f59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a45c325-2a24-4067-91bf-fad8b3424e98",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_effaf9ebecb0f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9d6aa32-1196-4ab5-8699-c047b7e5bbb5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
