@@ -545,7 +545,10 @@ module Basecamp
 
             data
           rescue JSON::ParserError
-            raise OauthError.new("api_error", "Failed to parse #{label} response", http_status: status)
+            # cause: nil — the parser error's message embeds the offending
+            # input, and these bodies carry device codes and access tokens:
+            # full_message and cause-aware loggers must not disclose them.
+            raise OauthError.new("api_error", "Failed to parse #{label} response", http_status: status), cause: nil
           end
 
           # Every validation error carries the (2xx) status so a malformed success

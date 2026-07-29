@@ -11,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -168,6 +169,7 @@ class OAuthTest {
             )
         }
         assertFalse(e.message!!.contains(secret), "parse fault must not echo the body")
+        assertNull(e.cause, "decoder cause must be dropped — its message embeds the body")
     }
 
     @Test

@@ -234,11 +234,13 @@ suspend fun requestDeviceAuthorization(
             currentCoroutineContext().ensureActive()
             val raw = try {
                 deviceJson.decodeFromString<RawDeviceAuthorization>(body)
-            } catch (e: SerializationException) {
+            } catch (_: SerializationException) {
+                // No cause: kotlinx embeds JSON input excerpts in decoder
+                // messages, and the body carries the device_code — a logged
+                // exception chain must not disclose it.
                 throw BasecampException.Api(
                     "Failed to parse device authorization response",
                     httpStatus = status,
-                    cause = e,
                 )
             }
             // A custom engine that ignores coroutine cancellation can complete
@@ -521,9 +523,12 @@ private suspend fun postDeviceTokenPoll(
     if (status == 200) {
         val raw = try {
             deviceJson.decodeFromString<RawDeviceTokenResponse>(body)
-        } catch (e: SerializationException) {
-            // Malformed 2xx token response — api_error, NOT a retryable transport.
-            throw BasecampException.Api("Failed to parse device token response", httpStatus = status, cause = e)
+        } catch (_: SerializationException) {
+            // Malformed 2xx token response — api_error, NOT a retryable
+            // transport. No cause: kotlinx embeds JSON input excerpts in
+            // decoder messages, and the body carries the access token — a
+            // logged exception chain must not disclose it.
+            throw BasecampException.Api("Failed to parse device token response", httpStatus = status)
         }
         if (raw.accessToken.isEmpty()) {
             // A 2xx with an EMPTY access_token is a server/api fault

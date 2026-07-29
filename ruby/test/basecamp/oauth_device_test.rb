@@ -600,6 +600,30 @@ class OAuthDeviceTest < Minitest::Test
     assert_match(/size cap/i, error.message)
   end
 
+  def test_poll_parse_fault_suppresses_the_parser_cause
+    # A malformed 200 token body can carry the access token, and
+    # JSON::ParserError embeds the offending input in its message — the
+    # mapped fault must not chain it (full_message and cause-aware loggers
+    # would disclose the body).
+    secret = "sk-live-SUPERSECRET"
+    stub_request(:post, TOKEN_ENDPOINT).to_return(
+      status: 200, headers: { "Content-Type" => "application/json" },
+      body: "{\"access_token\": \"#{secret}' oops"
+    )
+    _waits, sleeper = recording_sleeper
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.poll_device_token(
+        token_endpoint: TOKEN_ENDPOINT, client_id: "basecamp-cli",
+        device_code: "dev-code-123", interval: 5, expires_in: 900, sleeper: sleeper
+      )
+    end
+
+    assert_equal "api_error", error.type
+    assert_not_includes error.message, secret
+    assert_nil error.cause
+  end
+
   def test_poll_rejects_out_of_range_caller_durations
     # Caller-input sanity on the public entry point: nil/non-numeric would raise
     # NoMethodError/TypeError deeper in, a non-finite expires_in builds a deadline

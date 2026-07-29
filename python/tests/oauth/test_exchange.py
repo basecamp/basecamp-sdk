@@ -37,6 +37,10 @@ class TestExchangeCode:
             )
         assert exc_info.value.oauth_type == "api_error"
         assert secret not in str(exc_info.value)
+        # from None: JSONDecodeError retains the whole body as .doc — the
+        # chain must be suppressed, not merely sanitized.
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__
 
     @respx.mock
     def test_exchange_code(self):

@@ -226,6 +226,9 @@ class OAuthTest < Minitest::Test
 
     assert_equal "api_error", error.type
     assert_not_includes error.message, secret
+    # cause: nil — JSON::ParserError's message embeds the offending input,
+    # so the implicit chain would leak it via full_message.
+    assert_nil error.cause
   end
 
   def test_exchange_code

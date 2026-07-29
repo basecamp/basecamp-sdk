@@ -821,6 +821,25 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun pollDecodeFaultOmitsTheCauseAndBody() = runTest {
+        // A malformed 2xx token body can carry the access token: the mapped
+        // fault must not chain the SerializationException, whose message
+        // embeds JSON input excerpts — a logged exception chain must not
+        // disclose the token.
+        val secret = "sk-live-SUPERSECRET"
+        val body = """{"access_token":"$secret","token_type":7}"""
+        val engine = MockEngine { respond(body, HttpStatusCode.OK, jsonHeaders) }
+        val client = HttpClient(engine)
+
+        val e = assertFailsWith<BasecampException.Api> {
+            pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+        }
+        assertNull(e.cause, "decoder cause must be dropped — its message embeds the body")
+        assertFalse(e.message!!.contains(secret))
+        client.close()
+    }
+
+    @Test
     fun pollRejectsMalformedTokenExpiresInOn2xx() = runTest {
         // A 2xx whose expires_in cannot be a schedulable lifetime is api_error:
         // 1e400 parses to Infinity (past the ceiling), an explicit 0 or negative

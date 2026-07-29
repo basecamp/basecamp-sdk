@@ -229,12 +229,14 @@ def request_device_authorization(
 
     try:
         data = json.loads(body)
-    except ValueError as exc:
+    except ValueError:
+        # from None — json.JSONDecodeError retains the whole document as its
+        # .doc attribute; these bodies carry device codes and access tokens.
         raise OAuthError(
             "api_error",
             "Failed to parse device authorization response",
             http_status=status,
-        ) from exc
+        ) from None
 
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device authorization response is not a JSON object", http_status=status)
@@ -677,12 +679,14 @@ def _post_device_token(
 
     try:
         data = json.loads(body)
-    except ValueError as exc:
+    except ValueError:
+        # from None — json.JSONDecodeError retains the whole document as its
+        # .doc attribute; these bodies carry device codes and access tokens.
         raise OAuthError(
             "api_error",
             "Failed to parse device token response",
             http_status=status,
-        ) from exc
+        ) from None
     if not isinstance(data, dict):
         raise OAuthError("api_error", "Device token response is not a JSON object", http_status=status)
 
