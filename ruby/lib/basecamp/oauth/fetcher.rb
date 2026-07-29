@@ -450,9 +450,18 @@ module Basecamp
         ensure
           # Block-form start would close the session itself; with the explicit
           # start (needed so ONLY connection setup sits under Timeout.timeout)
-          # close it here.
+          # close it here. When the connect timeout fires between Net::HTTP's
+          # connect assigning a live @socket and do_start marking the session
+          # started, started? is still false and Net::HTTP's own connect
+          # rescue is out of scope — close the orphaned socket directly or it
+          # leaks until GC.
           begin
-            http.finish if http.started?
+            if http.started?
+              http.finish
+            else
+              orphan = http.instance_variable_get(:@socket)
+              orphan&.close
+            end
           rescue IOError
             # Already closed by the watchdog.
           end
