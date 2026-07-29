@@ -669,7 +669,12 @@ private suspend fun postDeviceTokenPoll(
             // until code expiry — any other code on a 429 is terminal via
             // Other. Conversely too_many_requests off a 429 is terminal too.
             status == 429 && error == "too_many_requests" ->
-                PollResult.TooManyRequests(parseRetryAfterSeconds(response.headers["Retry-After"]))
+                // Exactly one Retry-After field line: duplicates make the
+                // combined field ambiguous (headers[] silently takes the
+                // first) — anything else falls back to the current interval.
+                PollResult.TooManyRequests(
+                    parseRetryAfterSeconds(response.headers.getAll("Retry-After")?.singleOrNull()),
+                )
             status == 429 -> PollResult.Other("http_$status", status)
             error == "authorization_pending" -> PollResult.Pending
             error == "slow_down" -> PollResult.SlowDown

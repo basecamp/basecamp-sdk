@@ -605,6 +605,38 @@ class OAuthDeviceTest {
     }
 
     @Test
+    fun poll429DuplicateRetryAfterFallsBackToInterval() = runTest {
+        // Duplicate Retry-After field lines are ambiguous — headers[] would
+        // silently take the first ("30") even though the combined field is
+        // malformed; the override must fall back to the current interval.
+        val pollTimes = mutableListOf<Long>()
+        var i = 0
+        val start = testScheduler.currentTime
+        val engine = MockEngine {
+            pollTimes.add(testScheduler.currentTime - start)
+            i += 1
+            if (i == 1) {
+                respond(
+                    tooManyJson,
+                    HttpStatusCode.TooManyRequests,
+                    headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        HttpHeaders.RetryAfter to listOf("30", "bogus"),
+                    ),
+                )
+            } else {
+                respond(tokenJson, HttpStatusCode.OK, jsonHeaders)
+            }
+        }
+        val client = HttpClient(engine)
+
+        pollDeviceToken(tokenEndpoint, "basecamp-cli", "dev-code-123", 5, 900, testTimeSource, client)
+
+        assertEquals(listOf(5_000L, 10_000L), pollTimes)
+        client.close()
+    }
+
+    @Test
     fun poll429RetryAfterOverrideDecaysAfterOneWait() = runTest {
         val pollTimes = mutableListOf<Long>()
         val responses = listOf(

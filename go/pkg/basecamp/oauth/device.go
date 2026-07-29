@@ -756,8 +756,15 @@ func postDeviceToken(ctx context.Context, cfg deviceConfig, tokenEndpoint string
 			oauthError = fmt.Sprintf("http_%d", resp.StatusCode)
 		}
 	}
+	// Exactly one Retry-After field line: duplicates make the combined field
+	// ambiguous (Header.Get silently takes the first), so anything but a
+	// single value falls back to the current interval via the empty string.
+	retryAfter := ""
+	if vals := resp.Header.Values("Retry-After"); len(vals) == 1 {
+		retryAfter = vals[0]
+	}
 	return pollResult{kind: pollOAuthError, oauthError: oauthError, status: resp.StatusCode,
-		retryAfter: resp.Header.Get("Retry-After")}
+		retryAfter: retryAfter}
 }
 
 // PerformDeviceLogin runs the full RFC 8628 device authorization grant against

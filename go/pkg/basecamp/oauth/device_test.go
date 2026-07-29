@@ -2143,6 +2143,34 @@ func TestPollDeviceToken_429MalformedRetryAfterFallsBackToInterval(t *testing.T)
 	}
 }
 
+func TestPollDeviceToken_429DuplicateRetryAfterFallsBackToInterval(t *testing.T) {
+	// Duplicate Retry-After field lines are ambiguous — Header.Get would
+	// silently take the first ("30") even though the combined field is
+	// malformed; the override must fall back to the current interval.
+	step := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if step == 0 {
+			step++
+			w.Header().Add("Retry-After", "30")
+			w.Header().Add("Retry-After", "bogus")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_ = json.NewEncoder(w).Encode(tooManyRequestsBody)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(tokenBody)
+	}))
+	defer srv.Close()
+	sleep := &recordingSleep{}
+
+	_, err := PollDeviceToken(context.Background(), srv.URL, "basecamp-cli", testDeviceCode, 5, 900,
+		WithDeviceHTTPClient(tlsClient(srv)), WithDeviceSleep(sleep.fn))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	assertWaits(t, sleep.waits, []time.Duration{5 * time.Second, 5 * time.Second})
+}
+
 func TestPollDeviceToken_429RetryAfterOverrideDecaysAfterOneWait(t *testing.T) {
 	srv := queueTokenResponses429(t, []struct {
 		status     int
