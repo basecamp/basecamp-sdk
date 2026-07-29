@@ -5,8 +5,11 @@ module Basecamp
     # Fetches RFC 9728 protected-resource metadata (hop 1 of resource-first
     # discovery) and binds the returned +resource+ to the requested origin.
     class Resource
-      # @param http_client [Faraday::Connection, nil] HTTP client (SSRF-hardened default if nil)
-      # @param timeout [Integer] request timeout in seconds (default: 10)
+      # @param http_client [Faraday::Connection, nil] injected Faraday client
+      #   (kept, verified redirect-free); nil selects the default headers-first
+      #   Net::HTTP transport ({Fetcher.stream_http})
+      # @param timeout [Numeric] request timeout in seconds (default: 10); an
+      #   invalid value falls back via {Fetcher.normalize_timeout}
       # @param max_body_bytes [Integer] bounded read cap in bytes
       def initialize(http_client: nil, timeout: 10, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES)
         Fetcher.ensure_redirects_suppressed!(http_client) if http_client
