@@ -558,6 +558,37 @@ class OAuthTransportTest < Minitest::Test
     WebMock.disable!
   end
 
+  def test_injected_skip_status_past_the_deadline_classifies_as_timeout
+    # The injected-Faraday bounded_reader gates the SkipBody fast-path on the
+    # monotonic deadline: a first chunk that becomes runnable past the total
+    # bound means the status was not known in time — the timeout must win,
+    # matching the default transport's header-time gate. The stubbed clock
+    # jumps once WebMock is serving, so the on_data callback observes a
+    # past-deadline now while the per-read timeout would have admitted it.
+    state = { past_deadline: false }
+    real = Basecamp::Oauth::Fetcher.method(:monotonic_now)
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) do
+      state[:past_deadline] ? 1e12 : real.call
+    end
+
+    WebMock.enable!
+    WebMock.disable_net_connect!
+    stub_request(:get, "https://example.test/doc").to_return do
+      state[:past_deadline] = true
+      { status: 500, body: "x" * 1000 }
+    end
+    connection = Faraday.new
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.fetch_json(connection, "https://example.test/doc", timeout: 1)
+    end
+    assert_equal "network", error.type
+    assert error.retryable
+  ensure
+    Basecamp::Oauth::Fetcher.singleton_class.send(:define_method, :monotonic_now) { real.call }
+    WebMock.disable!
+  end
+
   def test_unsupported_method_fails_fast
     # A typo'd verb must not silently become a GET.
     assert_raises(ArgumentError) do

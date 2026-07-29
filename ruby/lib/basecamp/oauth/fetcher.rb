@@ -179,11 +179,15 @@ module Basecamp
           # callback, so the one unreachable case — headers arrive, then the body
           # stalls past the read timeout — surfaces as a bounded transport timeout
           # instead (never followed, never unbounded; see +post_form+).
-          raise SkipBody.new(env.status) if skip_status && env && skip_status.call(env.status)
-
-          if deadline && Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          # Deadline FIRST: a first chunk that becomes runnable past the total
+          # bound means the status was not known in time — the timeout wins,
+          # matching the default transport's header-time gate. (The resetting
+          # per-read timeout alone would admit it.)
+          if deadline && monotonic_now > deadline
             raise ReadDeadlineExceeded
           end
+
+          raise SkipBody.new(env.status) if skip_status && env && skip_status.call(env.status)
 
           total += chunk.bytesize
           raise BodyTooLarge if total > max_body_bytes
