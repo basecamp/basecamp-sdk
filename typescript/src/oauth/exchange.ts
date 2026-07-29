@@ -344,12 +344,21 @@ async function doTokenRequest(
       throw new BasecampError("api_error", "Token response missing access_token");
     }
 
+    // Absent/null token_type defaults to Bearer, but a present-but-empty (or
+    // non-string) one is a malformed response — matching the stricter
+    // device-flow validation rather than silently coercing "" to Bearer.
+    if (tokenData.token_type != null && (typeof tokenData.token_type !== "string" || tokenData.token_type === "")) {
+      throw new BasecampError("api_error", "Token response token_type must be a non-empty string when present", {
+        httpStatus: response.status,
+      });
+    }
+
     return {
       accessToken: tokenData.access_token,
       // `?? undefined`: JSON null is legal on the wire for the optional
       // fields (absent per SPEC) — never leak null through the public type.
       refreshToken: tokenData.refresh_token ?? undefined,
-      tokenType: tokenData.token_type || "Bearer",
+      tokenType: tokenData.token_type ?? "Bearer",
       expiresIn: tokenData.expires_in,
       expiresAt: tokenData.expires_in
         ? new Date(Date.now() + tokenData.expires_in * 1000)

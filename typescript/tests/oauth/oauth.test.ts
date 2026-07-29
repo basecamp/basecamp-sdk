@@ -230,6 +230,35 @@ describe("Token Exchange", () => {
   };
 
   describe("exchangeCode", () => {
+    it("rejects a present-but-empty token_type as api_error (null/absent default to Bearer)", async () => {
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ access_token: "a", token_type: "" })
+        )
+      );
+      const err = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      }).catch((e) => e);
+      expect(err).toBeInstanceOf(BasecampError);
+      expect(err.code).toBe("api_error");
+
+      server.use(
+        http.post(tokenEndpoint, () =>
+          HttpResponse.json({ access_token: "a", token_type: null })
+        )
+      );
+      const token = await exchangeCode({
+        tokenEndpoint,
+        code: "auth_code_123",
+        redirectUri: "https://myapp.com/callback",
+        clientId: "my_client_id",
+      });
+      expect(token.tokenType).toBe("Bearer");
+    });
+
     it("exchanges authorization code for tokens (standard format)", async () => {
       server.use(
         http.post(tokenEndpoint, async ({ request }) => {
