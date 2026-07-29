@@ -127,8 +127,14 @@ def request_bounded(
                 total += len(chunk)
                 if total > max_body_bytes:
                     # An oversized body is api_error, not a timeout — abort the
-                    # stream so it is never fully buffered.
-                    raise OAuthError("api_error", f"{context} response exceeds size cap")
+                    # stream so it is never fully buffered. Record the terminal
+                    # error BEFORE the context managers unwind: their awaited
+                    # cleanup can cross the deadline and be cancelled by
+                    # wait_for, which would otherwise soften this documented
+                    # size-cap error into a retryable timeout.
+                    exc = OAuthError("api_error", f"{context} response exceeds size cap")
+                    error_outcome.append(exc)
+                    raise exc
                 chunks.append(chunk)
             # Same completed-outcome recording as the skip path — but ONLY
             # when the body finished inside the deadline: the task can run
@@ -176,6 +182,10 @@ def request_bounded(
     # completed inside the monotonic deadline below).
     deadline_ts = time.monotonic() + timeout
     outcome: list[tuple[int, bytes]] = []
+    # Terminal errors recorded before async cleanup, same rationale as
+    # `outcome`: a documented api fault must survive a cleanup-crossing
+    # cancellation.
+    error_outcome: list[Exception] = []
 
     def _runner() -> None:
         try:
@@ -198,6 +208,10 @@ def request_bounded(
         # On Python >= 3.11 (this package's floor) asyncio.TimeoutError IS the
         # builtin TimeoutError, so this catches wait_for's deadline expiry.
         if isinstance(exc, TimeoutError):
+            if error_outcome:
+                # A documented terminal fault (the size cap) fired before the
+                # deadline — only its cleanup crossed it. The fault dominates.
+                raise error_outcome[0]
             if outcome:
                 # The response COMPLETED before the deadline — only the async
                 # cleanup crossed it and was cancelled. The known outcome

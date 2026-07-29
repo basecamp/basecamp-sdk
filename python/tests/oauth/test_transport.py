@@ -183,6 +183,48 @@ def test_skipped_status_survives_cleanup_crossing_the_deadline(monkeypatch) -> N
         srv.close()
 
 
+def test_size_cap_error_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
+    # An oversized body trips the documented api_error size cap; when async
+    # cleanup then crosses the deadline and wait_for cancels, the terminal
+    # fault must survive — never soften into a retryable timeout.
+    real_aexit = httpx.AsyncClient.__aexit__
+
+    async def slow_aexit(self, *args):
+        await asyncio.sleep(1.5)  # crosses the 0.5s deadline
+        return await real_aexit(self, *args)
+
+    monkeypatch.setattr(httpx.AsyncClient, "__aexit__", slow_aexit)
+
+    srv, port = _serve_on_localhost()
+    big = b"x" * (2 * 1024 * 1024)
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(
+                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
+                + str(len(big)).encode()
+                + b"\r\n\r\n"
+                + big
+            )
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=0.5)
+        assert exc_info.value.code == "api_error"
+        assert "size cap" in str(exc_info.value)
+    finally:
+        server.join(3)
+        srv.close()
+
+
 def test_compressed_bodies_are_never_inflated_by_the_transport() -> None:
     # Transparent decompression would let a compression bomb balloon past the
     # byte cap BEFORE the per-chunk check ran (httpx inflates in
