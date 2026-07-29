@@ -2,8 +2,10 @@
 
 require "test_helper"
 require "faraday"
+require "net/http"
 require "openssl"
 require "socket"
+require "zlib"
 
 # Acceptance tests for the headers-first default transport
 # ({Basecamp::Oauth::Fetcher.stream_http}) against REAL sockets — the response
@@ -298,6 +300,53 @@ class OAuthTransportTest < Minitest::Test
     assert error.retryable
     assert_match(/certificate|SSL/i, error.message)
     assert_equal 0, handshakes_completed, "the client must abort the handshake, not complete it"
+  end
+
+  def test_non_http_scheme_fails_closed_as_validation_error
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.stream_http(:get, "ftp://127.0.0.1/doc", timeout: TIMEOUT)
+    end
+    assert_equal "validation", error.type
+  end
+
+  def test_form_with_get_fails_fast
+    # A GET-with-body contradicts the method contract and masks call-site
+    # mistakes — reject before any connection.
+    error = assert_raises(ArgumentError) do
+      Basecamp::Oauth::Fetcher.stream_http(:get, "http://127.0.0.1:9/doc", form: { "a" => "b" }, timeout: TIMEOUT)
+    end
+    assert_match(/form is only valid with :post/, error.message)
+  end
+
+  def test_fetch_json_buffered_injected_adapter_still_yields_the_body
+    # Faraday's test adapter BUFFERS and never invokes on_data: the streamed
+    # chunks are empty while the body sits on the response. The fallback must
+    # hand the document to the parser instead of a bogus empty-body failure.
+    stubs = Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.get("/doc") { [ 200, { "Content-Type" => "application/json" }, '{"ok":true}' ] }
+    end
+    connection = Faraday.new { |f| f.adapter :test, stubs }
+
+    doc = Basecamp::Oauth::Fetcher.fetch_json(connection, "https://example.test/doc", timeout: 1)
+    assert_equal({ "ok" => true }, doc)
+  end
+
+  def test_fetch_json_injected_streaming_non_2xx_is_status_first_api_error
+    # A streaming injected adapter (net_http via WebMock) classifies a non-2xx
+    # at header time through the SkipBody seam; the observable stays the
+    # status-only api_error.
+    WebMock.enable!
+    WebMock.disable_net_connect!
+    stub_request(:get, "https://example.test/doc").to_return(status: 500, body: "x" * 1000)
+    connection = Faraday.new
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth::Fetcher.fetch_json(connection, "https://example.test/doc", timeout: 1)
+    end
+    assert_equal "api_error", error.type
+    assert_equal 500, error.http_status
+  ensure
+    WebMock.disable!
   end
 
   def test_unsupported_method_fails_fast

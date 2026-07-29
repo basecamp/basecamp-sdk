@@ -280,6 +280,11 @@ module Basecamp
         if uri.nil? || uri.hostname.nil? || uri.hostname.empty?
           raise OauthError.new("validation", "OAuth endpoint URL has no host: #{url.inspect}")
         end
+        # Fail closed on a non-HTTP(S) scheme: callers TLS-guard upstream, but
+        # the primitive must not run an HTTP conversation against ftp:// etc.
+        unless %w[http https].include?(uri.scheme)
+          raise OauthError.new("validation", "OAuth endpoint URL must be http(s): #{url.inspect}")
+        end
 
         # Fail closed on an un-normalized timeout (the operation entry points
         # normalize; this guards direct callers): a non-finite, non-positive,
@@ -300,6 +305,10 @@ module Basecamp
         http.read_timeout = timeout
         http.write_timeout = timeout
         http.max_retries = 0
+
+        # A form body is only meaningful on POST — a GET-with-body masks a
+        # call-site mistake and contradicts this method's own contract.
+        raise ArgumentError, "stream_http: form is only valid with :post" if form && method != :post
 
         request =
           case method
@@ -452,7 +461,7 @@ module Basecamp
       # @param http_client [Faraday::Connection, nil] injected connection, or
       #   nil for the default headers-first transport
       # @param url [String] fully-qualified well-known URL to fetch
-      # @param timeout [Integer] per-request timeout in seconds
+      # @param timeout [Numeric] per-request timeout in seconds (fractional accepted)
       # @param max_body_bytes [Integer] bounded read cap in bytes
       # @return [Hash] the parsed JSON document
       # @raise [OauthError] +api_error+ on non-2xx, oversized body, non-object
@@ -519,7 +528,14 @@ module Basecamp
         # only each socket read and resets on every chunk, so a slow-drip peer could
         # otherwise hang the fetch indefinitely while staying under max_body_bytes.
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-        chunks, on_data = bounded_reader(max_body_bytes, deadline: deadline)
+        # Streaming adapters (Faraday >= 2.5 pass +env+ to on_data) classify a
+        # non-2xx at HEADER time like the default path — fetch_json discards
+        # non-2xx bodies, so draining one is pure waste. Buffered adapters
+        # remain the documented drain-then-classify residual.
+        chunks, on_data = bounded_reader(
+          max_body_bytes, deadline: deadline,
+          skip_status: ->(s) { !(200..299).cover?(s) }
+        )
 
         response = http_client.get(url) do |req|
           req.headers["Accept"] = "application/json"
@@ -532,7 +548,25 @@ module Basecamp
           req.options.open_timeout = timeout
         end
 
-        [ response.status, chunks.join.force_encoding(Encoding::UTF_8) ]
+        body =
+          if chunks.empty?
+            # A buffered adapter (Faraday's test adapter above all) never
+            # invokes on_data: the streamed chunks are empty while the body
+            # sits on the response. Fall back to it under the same cap so an
+            # injected buffered client gets the document instead of a bogus
+            # empty-body parse failure — mirroring post_form's fallback.
+            # +dup+: a frozen response body (test adapters return literals)
+            # cannot take force_encoding below.
+            raw = response.body.to_s.dup
+            raise BodyTooLarge if raw.bytesize > max_body_bytes
+
+            raw
+          else
+            chunks.join
+          end
+        [ response.status, body.force_encoding(Encoding::UTF_8) ]
+      rescue SkipBody => e
+        [ e.status, "" ]
       end
     end
   end

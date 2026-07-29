@@ -10,7 +10,8 @@ module Basecamp
       # @param max_body_bytes [Integer] bounded read cap in bytes
       def initialize(http_client: nil, timeout: 10, max_body_bytes: Fetcher::DEFAULT_MAX_BODY_BYTES)
         Fetcher.ensure_redirects_suppressed!(http_client) if http_client
-        # Normalize before building the client and before the fetch computes its
+        # Normalize before storing (nil selects the headers-first Net::HTTP
+        # transport; an injected client is kept) and before the fetch computes its
         # wall-clock deadline: a non-finite/non-positive timeout must not disable
         # either bound (see Fetcher.normalize_timeout).
         @timeout = Fetcher.normalize_timeout(timeout)
