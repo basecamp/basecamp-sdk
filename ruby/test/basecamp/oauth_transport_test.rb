@@ -29,10 +29,13 @@ class OAuthTransportTest < Minitest::Test
     # Stop the server threads FIRST (they append to @conns), then close every
     # accepted socket and listener — the stall handlers sleep for tens of
     # seconds, so without the kill+join each test would leak a live thread and
-    # its socket well past the test's end.
+    # its socket well past the test's end. Close the LISTENERS first: a
+    # thread blocked in accept is unblocked deterministically by the close,
+    # where Thread#kill alone can hang the join mid-syscall on some
+    # platforms/builds.
+    @servers.each { |server| server.close rescue nil }
     @server_threads.each(&:kill).each(&:join)
     @conns.each { |conn| conn.close rescue nil }
-    @servers.each { |server| server.close rescue nil }
     WebMock.enable!
     WebMock.disable_net_connect!
   end

@@ -22,7 +22,7 @@ import httpx
 
 from basecamp._security import require_origin_root
 from basecamp.errors import BasecampError
-from basecamp.oauth._transport import _MAX_REQUEST_TIMEOUT, request_bounded
+from basecamp.oauth._transport import MAX_REQUEST_TIMEOUT, request_bounded
 from basecamp.oauth.config import (
     DiscoveryResult,
     FallbackReason,
@@ -147,7 +147,7 @@ def _fetch_discovery_document(url: str, timeout: float, max_body_bytes: int) -> 
     # Normalize BEFORE the transport core, which requires a finite, positive,
     # in-range timeout: a non-finite/non-positive value must not disable the
     # total-request bound (see _normalize_timeout / request_bounded).
-    timeout = _normalize_timeout(timeout, maximum=_MAX_REQUEST_TIMEOUT)
+    timeout = _normalize_timeout(timeout, maximum=MAX_REQUEST_TIMEOUT)
     try:
         # STATUS DOMINATES THE BODY (SPEC.md: non-2xx on either hop → api_error,
         # never network): skip draining a non-2xx body so a stalled/dripped error

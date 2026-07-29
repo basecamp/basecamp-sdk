@@ -23,7 +23,7 @@ from typing import Any
 import httpx
 
 from basecamp._security import is_localhost, require_https, truncate
-from basecamp.oauth._transport import _MAX_REQUEST_TIMEOUT, request_bounded
+from basecamp.oauth._transport import MAX_REQUEST_TIMEOUT, request_bounded
 from basecamp.oauth.config import OAuthConfig
 from basecamp.oauth.device_authorization import DeviceAuthorization
 from basecamp.oauth.discovery import _normalize_body_cap, _normalize_timeout
@@ -95,7 +95,7 @@ def _post_form_bounded(
     """
     # Normalize BEFORE the transport core, which requires a finite, positive,
     # in-range timeout (see request_bounded).
-    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_REQUEST_TIMEOUT)
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=MAX_REQUEST_TIMEOUT)
     return request_bounded(
         "POST",
         url,
@@ -379,7 +379,7 @@ def poll_device_token(
     # remaining-lifetime clamp takes min() against it, and an invalid runtime
     # value (None → TypeError from min, a negative, an oversized 1e100) must
     # resolve to the device budget BEFORE any arithmetic touches it.
-    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=_MAX_REQUEST_TIMEOUT)
+    timeout = _normalize_timeout(timeout, _DEVICE_TIMEOUT, maximum=MAX_REQUEST_TIMEOUT)
 
     # The server-driven interval (initial value + sustained slow_down bumps) is
     # tracked SEPARATELY from the transient timeout backoff: each wait is

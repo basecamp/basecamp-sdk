@@ -37,7 +37,7 @@ _WORKER_JOIN_GRACE = 1.0
 #: beyond this is nonsensical, and a huge finite value would overflow the
 #: wall-clock wait primitive (asyncio.wait_for / thread join); callers clamp
 #: to their operation default above it (see ``_normalize_timeout``).
-_MAX_REQUEST_TIMEOUT = 3600.0
+MAX_REQUEST_TIMEOUT = 3600.0
 
 
 def request_bounded(
@@ -57,7 +57,7 @@ def request_bounded(
     body). ``params``, when given, is sent as a form body (POST).
 
     ``timeout`` must arrive ALREADY normalized — finite, positive, and no greater
-    than :data:`_MAX_REQUEST_TIMEOUT` (callers run it through
+    than :data:`MAX_REQUEST_TIMEOUT` (callers run it through
     ``discovery._normalize_timeout``, which this module cannot import without a
     cycle). An unnormalized value would disable the ``wait_for`` deadline
     (``inf`` never fires) or overflow the wait primitive.
@@ -95,12 +95,12 @@ def request_bounded(
         isinstance(timeout, bool)
         or not isinstance(timeout, (int, float))
         or timeout <= 0
-        or timeout > _MAX_REQUEST_TIMEOUT
+        or timeout > MAX_REQUEST_TIMEOUT
         or not math.isfinite(timeout)
     ):
         raise ValueError(
             "request_bounded: timeout must be a finite positive number of seconds "
-            f"no greater than {_MAX_REQUEST_TIMEOUT}"
+            f"no greater than {MAX_REQUEST_TIMEOUT}"
         )
 
     # The body cap gets the same fail-fast discipline: a bool, float (inf
