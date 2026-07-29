@@ -309,6 +309,39 @@ class OAuthTransportTest < Minitest::Test
     assert_equal "validation", error.type
   end
 
+  def test_bracketed_ipv6_host_header_keeps_its_brackets
+    # Net::HTTP derives Host from the bracket-stripped connect address,
+    # emitting the invalid "Host: ::1:PORT" — the transport must send the
+    # RFC 3986 authority form for bracketed IPv6 endpoints.
+    begin
+      server = TCPServer.new("::1", 0)
+    rescue Errno::EADDRNOTAVAIL, Errno::EAFNOSUPPORT
+      skip "IPv6 loopback unavailable"
+    end
+    @servers << server
+    seen = Queue.new
+    @server_threads << Thread.new do
+      loop do
+        conn = server.accept
+        @conns << conn
+        lines = []
+        while (line = conn.gets) && line != "\r\n"
+          lines << line
+        end
+        seen << lines.join
+        conn.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+      rescue IOError, SystemCallError
+        break
+      end
+    end
+    port = server.addr[1]
+
+    status, = Basecamp::Oauth::Fetcher.stream_http(:get, "http://[::1]:#{port}/doc", timeout: TIMEOUT)
+    assert_equal 200, status
+    request_headers = seen.pop
+    assert_match(/^Host: \[::1\]:#{port}\r?$/i, request_headers)
+  end
+
   def test_caller_headers_cannot_override_identity_encoding
     # The identity Accept-Encoding is the compression-bomb bound — a caller
     # override must be dropped, matching the Python transport.
