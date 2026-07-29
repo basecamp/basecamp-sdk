@@ -440,7 +440,7 @@ Every `BasecampError` provides:
 - `code` - `ErrorCode` enum value
 - `hint` - Human-readable suggestion
 - `http_status` - HTTP status code (if applicable)
-- `retryable` - Whether the error is safe to retry
+- `retryable` - Whether the error is safe to retry. This is a classification hint for your own code, not a prediction of SDK behavior: whether an HTTP status is actually retried is governed by the operation's declared set (see [Retry Behavior](#retry-behavior)). A 500 reports `retryable=True` but is not retried
 - `retry_after` - Seconds to wait before retry (for rate limits)
 - `request_id` - Server request ID (if available)
 - `exit_code` - CLI-friendly exit code (`ExitCode` enum)
@@ -449,13 +449,14 @@ Every `BasecampError` provides:
 
 The SDK automatically retries failed requests with exponential backoff:
 
-- **GET requests** - Retried on `RateLimitError` (429), `NetworkError`, and retryable `ApiError` (500, 502, 503, 504)
+- **Which statuses** - Only the statuses an operation declares retryable. Every operation declares `429, 503`, and the declared set is exhaustive: a status outside it — **including 500, 502, and 504** — is surfaced to you on the first attempt rather than retried
+- **GET requests** - Retried on the declared statuses above, plus `NetworkError`, which carries no HTTP status and so is governed by its error classification instead
 - **Idempotent mutations** - Operations marked idempotent in the OpenAPI metadata also retry through the same path
 - **Non-idempotent mutations** - NOT retried to prevent duplicate operations
 - **401 responses** - Token refresh attempted, then single retry for all methods (regardless of idempotency)
 - **Backoff** - Exponential with jitter (`base_delay * 2^(attempt-1) + random() * max_jitter`)
 - **Retry-After** - Respected for 429 responses (overrides calculated backoff)
-- **Max retries** - Controlled by `config.max_retries` (a total attempt count including the initial request; default: 3 attempts. `0` means a single request with no retry)
+- **Max retries** - `min(config.max_retries, the operation's declared maximum)`. `config.max_retries` is a total attempt count including the initial request (default: 3 attempts; `0` means a single request with no retry). An operation declaring a lower maximum wins — the declared value can only lower the cap, never raise it
 
 ## Observability
 
