@@ -132,8 +132,14 @@ def request_bounded(
             # completing past the advertised bound must not be accepted.
             # (Skipped statuses stay status-first regardless — their
             # classification is header-time knowledge.)
-            if time.monotonic() <= deadline_ts:
-                outcome.append((response.status_code, b"".join(chunks)))
+            if time.monotonic() > deadline_ts:
+                # The body finished past the advertised bound but this
+                # coroutine ran ahead of wait_for's already-due timeout
+                # callback — raising (not returning) keeps the late body out
+                # of `result` too, so the caller classifies it as the timeout
+                # it is.
+                raise TimeoutError(f"{context} body completed past the total deadline")
+            outcome.append((response.status_code, b"".join(chunks)))
             return response.status_code, b"".join(chunks)
 
     # httpx's timeout is per-read (it resets on every received chunk) and httpx has
