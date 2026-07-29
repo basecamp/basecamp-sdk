@@ -106,6 +106,24 @@ def test_params_with_non_post_fails_fast() -> None:
         )
 
 
+def test_invalid_max_body_bytes_fails_fast() -> None:
+    # The cap IS the streaming bound this core exists to provide — a bool,
+    # float (inf included), or non-positive value would disable or crash it,
+    # so misuse rejects before any connection.
+    from basecamp.oauth._transport import request_bounded
+
+    for cap in (None, True, False, 0, -8, 1.5, float("inf")):
+        with pytest.raises(ValueError, match="max_body_bytes must be a positive int"):
+            request_bounded(
+                "GET",
+                "https://issuer.example/x",
+                headers={},
+                params=None,
+                timeout=1.0,
+                max_body_bytes=cap,  # type: ignore[arg-type]
+            )
+
+
 def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
     # SPEC.md: non-2xx on either discovery hop → api_error, never network —
     # status dominates even when the error body stalls forever, so the fetch

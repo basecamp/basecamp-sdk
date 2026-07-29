@@ -103,6 +103,12 @@ def request_bounded(
             f"no greater than {_MAX_REQUEST_TIMEOUT}"
         )
 
+    # The body cap gets the same fail-fast discipline: a bool, float (inf
+    # included), or non-positive value would disable or crash the streaming
+    # bound this core exists to provide.
+    if isinstance(max_body_bytes, bool) or not isinstance(max_body_bytes, int) or max_body_bytes <= 0:
+        raise ValueError("request_bounded: max_body_bytes must be a positive int")
+
     async def _do() -> tuple[int, bytes]:
         # Identity encoding + aiter_raw(): httpx transparently inflates
         # gzip/deflate in aiter_bytes(), so the per-chunk cap would measure

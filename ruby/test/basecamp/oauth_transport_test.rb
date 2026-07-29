@@ -309,6 +309,19 @@ class OAuthTransportTest < Minitest::Test
     assert_equal "validation", error.type
   end
 
+  def test_invalid_max_body_bytes_fails_closed_as_validation_error
+    # The cap IS the streaming bound this transport exists to provide — nil,
+    # a float, a bool, or a non-positive value would disable or crash it, so
+    # misuse rejects before any connection.
+    [ nil, 0, -1, 1.5, true, Float::INFINITY ].each do |cap|
+      error = assert_raises(Basecamp::Oauth::OauthError, "cap=#{cap.inspect}") do
+        Basecamp::Oauth::Fetcher.stream_http(:get, "http://127.0.0.1:9/doc", timeout: TIMEOUT, max_body_bytes: cap)
+      end
+      assert_equal "validation", error.type, "cap=#{cap.inspect}"
+      assert_match(/max_body_bytes must be a positive Integer/, error.message)
+    end
+  end
+
   def test_bracketed_ipv6_host_header_keeps_its_brackets
     # Net::HTTP derives Host from the bracket-stripped connect address,
     # emitting the invalid "Host: ::1:PORT" — the transport must send the

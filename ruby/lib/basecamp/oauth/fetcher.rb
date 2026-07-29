@@ -296,6 +296,12 @@ module Basecamp
           raise OauthError.new("validation", \
             "stream_http timeout must be a positive number of seconds no greater than #{MAX_REQUEST_TIMEOUT}")
         end
+        # The body cap gets the same fail-closed discipline: nil, a Float
+        # (Infinity included), or a non-positive value would disable or crash
+        # the streaming bound.
+        unless max_body_bytes.is_a?(Integer) && max_body_bytes.positive?
+          raise OauthError.new("validation", "stream_http max_body_bytes must be a positive Integer")
+        end
 
         # URI#hostname strips IPv6 brackets ("[::1]" -> "::1"), which is the form
         # Net::HTTP.new expects. ENV proxy handling matches faraday-net_http.
