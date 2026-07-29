@@ -444,6 +444,9 @@ describe("pollDeviceToken", () => {
     ["zero", 0],
     ["negative", -1],
     ["oversized", 1e100],
+    // Whole seconds (RFC 8628): a fractional interval would permit ~1000
+    // polls per second.
+    ["fractional", 0.001],
   ])("rejects a nonsense caller interval (%s) as usage before any request", async (_label, interval) => {
     const err = await pollDeviceToken({
       tokenEndpoint: TOKEN_ENDPOINT,
@@ -541,21 +544,22 @@ describe("pollDeviceToken", () => {
     expect(err.code).toBe("auth_required");
   });
 
-  it("accepts fractional caller durations (remaining-lifetime deduction produces them)", async () => {
+  it("accepts a fractional caller expiresIn (remaining-lifetime deduction produces it)", async () => {
     // performDeviceLogin passes a fractional remaining lifetime after deducting
-    // display-hook time — caller sanity here must not impose whole seconds.
+    // display-hook time — caller sanity must not impose whole seconds THERE.
+    // The interval, by contrast, is whole seconds (RFC 8628).
     queueTokenResponses([{ status: 200, body: tokenResponse }]);
     const { waits, fn } = recordingSleep();
     const token = await pollDeviceToken({
       tokenEndpoint: TOKEN_ENDPOINT,
       clientId: "basecamp-cli",
       deviceCode: "dev-code-123",
-      interval: 2.5,
+      interval: 2,
       expiresIn: 42.5,
       sleepFn: fn,
     });
     expect(token.accessToken).toBe("device_access_token");
-    expect(waits).toEqual([2500]);
+    expect(waits).toEqual([2000]);
   });
 
   it("expires against the injected monotonic clock (parent category auth)", async () => {

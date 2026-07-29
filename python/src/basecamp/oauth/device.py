@@ -407,21 +407,27 @@ def poll_device_token(
     # schedulable wait. Fractional values are accepted: perform_device_login
     # legitimately passes a fractional remaining lifetime after deducting
     # display-hook time. Mirrors the Go/TS/Ruby/Kotlin caller guards.
-    for name, value in (("expires_in", expires_in), ("interval", interval)):
-        # Range checks run BEFORE math.isfinite: isfinite converts an int to float,
-        # so an astronomically large int (10**400) would raise OverflowError out of
-        # the guard instead of the usage error. Int/float comparisons never convert,
-        # and NaN compares False on both, falling through to the isfinite reject.
+    # Range checks run BEFORE math.isfinite: isfinite converts an int to float,
+    # so an astronomically large int (10**400) would raise OverflowError out of
+    # the guard instead of the usage error. Int/float comparisons never convert,
+    # and NaN compares False on both, falling through to the isfinite reject.
+    # The polling interval is additionally whole seconds (RFC 8628), matching
+    # the response validation and the integer-typed Go/Kotlin APIs — a
+    # fractional interval (0.001) would otherwise permit ~1000 polls/second;
+    # the integral check runs LAST so an oversized int never reaches float().
+    for name, value, whole in (("expires_in", expires_in, False), ("interval", interval, True)):
         if (
             isinstance(value, bool)
             or not isinstance(value, (int, float))
             or value <= 0
             or value > MAX_DEVICE_SECONDS
             or not math.isfinite(value)
+            or (whole and float(value) != int(value))
         ):
+            noun = "positive whole number" if whole else "positive number"
             raise OAuthError(
                 "usage",
-                f"poll_device_token: {name} must be a positive number of seconds no greater than {MAX_DEVICE_SECONDS}",
+                f"poll_device_token: {name} must be a {noun} of seconds no greater than {MAX_DEVICE_SECONDS}",
             )
 
     # Normalize the cap at the public boundary: an invalid runtime value (None,

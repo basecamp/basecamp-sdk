@@ -158,14 +158,24 @@ module Basecamp
           # wait. Fractional values are accepted — perform_device_login legitimately
           # passes a fractional remaining lifetime after deducting display-hook
           # time. Mirrors the Go/TS/Python/Kotlin caller guards.
-          { "expires_in" => expires_in, "interval" => interval }.each do |name, value|
-            unless valid_device_seconds?(value)
-              raise OauthError.new(
-                "usage",
-                "poll_device_token: #{name} must be a positive number of seconds " \
-                "no greater than #{MAX_DEVICE_SECONDS}"
-              )
-            end
+          unless valid_device_seconds?(expires_in)
+            raise OauthError.new(
+              "usage",
+              "poll_device_token: expires_in must be a positive number of seconds " \
+              "no greater than #{MAX_DEVICE_SECONDS}"
+            )
+          end
+          # The polling interval is additionally whole seconds (RFC 8628),
+          # matching the response validation and the integer-typed Go/Kotlin
+          # APIs — a fractional interval (0.001) would otherwise permit ~1000
+          # polls per second. real? in valid_device_seconds? screens Complex
+          # before the modulo runs.
+          unless valid_device_seconds?(interval) && (interval % 1).zero?
+            raise OauthError.new(
+              "usage",
+              "poll_device_token: interval must be a positive whole number of seconds " \
+              "no greater than #{MAX_DEVICE_SECONDS}"
+            )
           end
 
           interval_seconds = interval

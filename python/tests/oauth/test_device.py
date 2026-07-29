@@ -373,6 +373,10 @@ class TestPollDeviceToken:
             {"interval": -1, "expires_in": 900},
             {"interval": MAX_DEVICE_SECONDS + 1, "expires_in": 900},
             {"interval": 10**400, "expires_in": 900},
+            # Whole seconds (RFC 8628): a fractional interval would permit
+            # ~1000 polls per second. expires_in stays legitimately fractional.
+            {"interval": 0.001, "expires_in": 900},
+            {"interval": 2.5, "expires_in": 900},
         ]
         for kwargs in cases:
             with pytest.raises(OAuthError) as exc_info:

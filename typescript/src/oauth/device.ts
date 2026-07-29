@@ -406,16 +406,22 @@ export async function pollDeviceToken(params: PollDeviceTokenParams): Promise<OA
 
   // Caller-input sanity (usage, not the RFC response validation): a non-finite
   // or oversized duration builds a broken deadline or an unschedulable wait.
-  // Fractional values are ACCEPTED — performDeviceLogin legitimately passes a
-  // fractional remaining lifetime after deducting display-hook time; whole-second
-  // enforcement applies only to raw server responses (validateDeviceAuthorization).
-  for (const [name, value] of [["expiresIn", expiresIn], ["interval", params.interval]] as const) {
-    if (!Number.isFinite(value) || value <= 0 || value > MAX_DEVICE_SECONDS) {
-      throw new BasecampError(
-        "usage",
-        `pollDeviceToken: ${name} must be a positive number of seconds no greater than ${MAX_DEVICE_SECONDS}`
-      );
-    }
+  // expiresIn MAY be fractional — performDeviceLogin legitimately passes a
+  // fractional remaining lifetime after deducting display-hook time — but the
+  // polling interval is whole seconds (RFC 8628), matching the response
+  // validation and the integer-typed Go/Kotlin APIs: a fractional interval
+  // (0.001) would otherwise permit ~1000 polls per second.
+  if (!Number.isFinite(expiresIn) || expiresIn <= 0 || expiresIn > MAX_DEVICE_SECONDS) {
+    throw new BasecampError(
+      "usage",
+      `pollDeviceToken: expiresIn must be a positive number of seconds no greater than ${MAX_DEVICE_SECONDS}`
+    );
+  }
+  if (!Number.isInteger(params.interval) || params.interval <= 0 || params.interval > MAX_DEVICE_SECONDS) {
+    throw new BasecampError(
+      "usage",
+      `pollDeviceToken: interval must be a positive whole number of seconds no greater than ${MAX_DEVICE_SECONDS}`
+    );
   }
 
   // Same caller-input sanity for the optional absolute deadline: Infinity polls

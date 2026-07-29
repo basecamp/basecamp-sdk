@@ -614,7 +614,11 @@ class OAuthDeviceTest < Minitest::Test
       { interval: 5, expires_in: 2_147_484 },
       { interval: nil, expires_in: 900 },
       { interval: 0, expires_in: 900 },
-      { interval: 2_147_484, expires_in: 900 }
+      { interval: 2_147_484, expires_in: 900 },
+      # Whole seconds (RFC 8628): a fractional interval would permit ~1000
+      # polls per second. expires_in stays legitimately fractional.
+      { interval: 0.001, expires_in: 900 },
+      { interval: 2.5, expires_in: 900 }
     ].each do |args|
       error = assert_raises(Basecamp::Oauth::OauthError, args.inspect) do
         Basecamp::Oauth.poll_device_token(
