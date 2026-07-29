@@ -181,6 +181,51 @@ def test_skip_status_headers_past_the_deadline_classify_as_timeout(monkeypatch) 
         srv.close()
 
 
+def test_recorded_skip_outcome_survives_a_cleanup_http_error(monkeypatch) -> None:
+    # A recorded outcome dominates an httpx error raised BY cleanup: a known
+    # non-2xx skip must not soften into a retryable network error because
+    # closing the unconsumed stream misbehaved after the fact.
+    from basecamp.oauth._transport import request_bounded
+
+    srv, port = _serve_on_localhost()
+
+    def respond() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(b"HTTP/1.1 500 Nope\r\nContent-Length: 2\r\nConnection: close\r\n\r\nno")
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    real_aclose = httpx.Response.aclose
+
+    async def exploding_aclose(self):  # noqa: ANN001
+        await real_aclose(self)
+        raise httpx.ReadError("cleanup boom")
+
+    monkeypatch.setattr(httpx.Response, "aclose", exploding_aclose)
+
+    server = threading.Thread(target=respond, daemon=True)
+    server.start()
+    try:
+        status, body = request_bounded(
+            "GET",
+            f"http://127.0.0.1:{port}/doc",
+            headers={},
+            params=None,
+            timeout=10.0,
+            max_body_bytes=1024,
+            read_body=lambda _status: False,
+        )
+        assert status == 500
+        assert body == b""
+    finally:
+        server.join(timeout=5)
+        srv.close()
+
+
 def test_in_deadline_wire_error_survives_cleanup_crossing_the_deadline(monkeypatch) -> None:
     # The mirror edge: a connection reset observed IN deadline whose async
     # cleanup (__aexit__) crosses it must surface as the terminal transport

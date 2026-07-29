@@ -277,18 +277,20 @@ def request_bounded(
         raise httpx.ReadTimeout(f"{context} request exceeded the timeout deadline")
     if error:
         exc, captured_at = error[0]
+        # Recorded outcomes dominate WHATEVER the exception is — a wait_for
+        # cancellation of late cleanup, or an httpx error raised BY the
+        # response/client __aexit__ while closing an unconsumed stream. A
+        # known non-2xx skip or completed body must not soften into a
+        # retryable network error, and a documented terminal fault (the size
+        # cap) must not become a transport failure, because only CLEANUP
+        # misbehaved after the fact.
+        if error_outcome:
+            raise error_outcome[0]
+        if outcome:
+            return outcome[0]
         # On Python >= 3.11 (this package's floor) asyncio.TimeoutError IS the
         # builtin TimeoutError, so this catches wait_for's deadline expiry.
         if isinstance(exc, TimeoutError):
-            if error_outcome:
-                # A documented terminal fault (the size cap) fired before the
-                # deadline — only its cleanup crossed it. The fault dominates.
-                raise error_outcome[0]
-            if outcome:
-                # The response COMPLETED before the deadline — only the async
-                # cleanup crossed it and was cancelled. The known outcome
-                # dominates the deadline race.
-                return outcome[0]
             if wire_fault and wire_fault[0][1] <= deadline_ts:
                 # A wire fault observed IN deadline whose cleanup was
                 # cancelled by wait_for: the terminal transport failure
