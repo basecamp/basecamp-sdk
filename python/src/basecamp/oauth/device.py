@@ -665,6 +665,13 @@ def perform_device_login(
     :class:`DeviceFlowError` (``unavailable``) before any request. Then requests
     a device code, surfaces it through ``display``, and polls for the token.
     """
+    # A non-callable display is a usage error, not a late TypeError: it is
+    # the only mechanism surfacing the verification code, so dereferencing it
+    # AFTER the request would mint a code nobody can approve. Reject before
+    # any network activity (matching Go).
+    if not callable(display):
+        raise OAuthError("usage", "perform_device_login requires a callable display hook")
+
     # Require a real list before the membership test: a malformed config
     # carrying the URN as a plain str would substring-match `in` and pass the
     # guard. A non-list grant_types_supported fails the capability check.

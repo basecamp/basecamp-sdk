@@ -284,6 +284,14 @@ module Basecamp
             )
           end
 
+          # A non-callable display is a usage error, not a late NoMethodError:
+          # it is the only mechanism surfacing the verification code, so
+          # dereferencing it AFTER the request would mint a code nobody can
+          # approve. Reject before any network activity (matching Go).
+          unless display.respond_to?(:call)
+            raise OauthError.new("usage", "perform_device_login requires a callable display hook")
+          end
+
           # Honor a cancellation raised BEFORE the flow does any work: the sync
           # authorization POST cannot observe the probe in flight, so without
           # this entry check an already-cancelled flow still performs the

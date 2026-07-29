@@ -961,6 +961,27 @@ class OAuthDeviceTest < Minitest::Test
     assert_not_requested(polled)
   end
 
+  def test_perform_rejects_a_non_callable_display_before_any_request
+    # display is the only mechanism surfacing the verification code:
+    # dereferencing nil AFTER the request would mint a code nobody can
+    # approve. Reject as usage with zero network activity.
+    requested = stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT ]
+    )
+
+    error = assert_raises(Basecamp::Oauth::OauthError) do
+      Basecamp::Oauth.perform_device_login(
+        config: config, client_id: "basecamp-cli", display: nil
+      )
+    end
+
+    assert_equal "usage", error.type
+    assert_not_requested(requested)
+  end
+
   def test_perform_cancel_during_display_beats_expiry
     # A display hook that both cancels the flow and consumes the whole code
     # lifetime (a prompt closing in response to cancellation) must surface

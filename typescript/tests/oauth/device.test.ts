@@ -15,7 +15,7 @@ import {
   DeviceFlowError,
   DEVICE_CODE_GRANT_TYPE,
 } from "../../src/oauth/index.js";
-import type { OAuthConfig } from "../../src/oauth/types.js";
+import type { OAuthConfig, DeviceAuthorization } from "../../src/oauth/types.js";
 import { BasecampError } from "../../src/errors.js";
 
 const ORIGIN = "https://issuer.device-test.example";
@@ -979,6 +979,25 @@ describe("pollDeviceToken", () => {
     }).catch((e) => e);
     expect(err).toBeInstanceOf(BasecampError);
     expect(err.code).toBe("api_error");
+  });
+});
+
+describe("performDeviceLogin display guard", () => {
+  it("rejects a non-function display as usage before any request", async () => {
+    let requests = 0;
+    const recordingFetch = (async () => {
+      requests += 1;
+      return new Response("{}", { status: 500 });
+    }) as unknown as typeof fetch;
+    const err = await performDeviceLogin({
+      config,
+      clientId: "basecamp-cli",
+      display: undefined as unknown as (auth: DeviceAuthorization) => void,
+      fetch: recordingFetch,
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(BasecampError);
+    expect(err.code).toBe("usage");
+    expect(requests).toBe(0);
   });
 });
 

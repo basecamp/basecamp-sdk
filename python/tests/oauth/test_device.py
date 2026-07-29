@@ -1004,6 +1004,18 @@ class TestPerformDeviceLoginCancellation:
         assert displayed == []
 
     @respx.mock
+    def test_rejects_a_non_callable_display_before_any_request(self):
+        # display is the only mechanism surfacing the verification code:
+        # dereferencing None AFTER the request would mint a code nobody can
+        # approve. Reject as usage with zero network activity.
+        route = respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+
+        with pytest.raises(OAuthError) as exc_info:
+            perform_device_login(CONFIG, "basecamp-cli", display=None)  # type: ignore[arg-type]
+        assert exc_info.value.code == "usage"
+        assert len(route.calls) == 0
+
+    @respx.mock
     def test_cancel_during_display_beats_expiry(self):
         # A display hook that both cancels the flow and consumes the whole
         # code lifetime (a prompt closing in response to cancellation) must

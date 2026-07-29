@@ -6,6 +6,7 @@
  * display hook, and polls for the token.
  */
 
+import { BasecampError } from "../errors.js";
 import { DeviceFlowError } from "./device-errors.js";
 import {
   requestDeviceAuthorization,
@@ -72,6 +73,14 @@ export async function performDeviceLogin(options: DeviceLoginOptions): Promise<O
       "unavailable",
       "The selected authorization server does not support the device authorization grant"
     );
+  }
+
+  // A non-function display is a usage error, not a late TypeError: it is the
+  // only mechanism surfacing the verification code, so dereferencing it AFTER
+  // the request would mint a code nobody can approve. Reject before any
+  // network activity (matching Go) — a JS caller can pass anything.
+  if (typeof display !== "function") {
+    throw new BasecampError("usage", "performDeviceLogin requires a display callback function");
   }
 
   // Honor a cancellation raised before any work: an already-aborted signal
