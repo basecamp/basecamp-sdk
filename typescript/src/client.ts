@@ -312,14 +312,14 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   const client = createClient<paths>({ baseUrl });
 
-  // Apply middleware in order: auth first, then hooks, then cache, then retry.
+  // Apply middleware in order: auth, lifecycle, cache, retry.
   // onRequest runs in this order; onResponse and onError run in reverse, so the
-  // retry middleware sees a response first and the hooks middleware last.
+  // retry middleware sees a response first and the lifecycle middleware last.
   client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs, baseUrl));
 
-  // One lifecycle shared by the hooks and retry middleware: the retry loop lives
-  // inside a single middleware callback, so per-attempt hooks have to be emitted
-  // from there rather than by a middleware that is only visited once.
+  // One lifecycle, shared with the retry middleware: the retry loop lives inside a
+  // single middleware callback, so per-attempt hooks have to be emitted from there
+  // rather than by a middleware that is only visited once per request.
   const lifecycle = new RequestLifecycle(hooks);
 
   // Registered even when no hooks are configured. It emits nothing in that case
@@ -333,7 +333,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   }
 
   // Registered last so that on the reverse-order response pass it runs first,
-  // before the cache and hooks middleware see the response.
+  // before the cache and lifecycle middleware see the response.
   if (enableRetry) {
     client.use(createRetryMiddleware(lifecycle, authStrategy));
   }
@@ -499,16 +499,15 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
 }
 
 // =============================================================================
-// Hooks Middleware
+// Request Lifecycle
 // =============================================================================
 
-/** Tracks request timing for hooks */
 /**
  * Per-attempt observability state for one logical request.
  *
  * `attempt` is the 1-based attempt currently in flight. `finalized` makes
  * onRequestEnd idempotent: the retry middleware ends an attempt as soon as it
- * knows its outcome, and the hooks middleware's own onResponse then runs later
+ * knows its outcome, and the lifecycle middleware's onResponse then runs later
  * for the same logical request and must not emit a second end.
  */
 interface AttemptState {
@@ -530,7 +529,7 @@ interface AttemptState {
  * spec-reserved BC3 *response* header; sending an SDK-internal value under that
  * name was a collision.)
  *
- * Shared by the hooks and retry middleware because the retry loop lives inside
+ * Shared with the retry middleware because the retry loop lives inside
  * one middleware callback: openapi-fetch visits each middleware once per request,
  * so per-attempt hooks cannot be emitted by a separate middleware.
  */
@@ -1010,7 +1009,7 @@ function createRetryMiddleware(
       // Get operation-specific retry config from metadata
       const retryConfig = getRetryConfigForRequest(method, url);
 
-      // Not retrying: let the hooks middleware end the attempt, and drop the body.
+      // Not retrying: let the lifecycle middleware end the attempt, and drop the body.
       if (!retryConfig.retryOn.includes(response.status)) {
         bodyCache.delete(id);
         return response;
@@ -1071,7 +1070,7 @@ function createRetryMiddleware(
         // through the cache middleware, which may rewrite a 304 into a cached 200;
         // finalizing now would freeze the pre-transformation status and
         // fromCache: false, and an idempotent finalize means the hooks pass could
-        // not correct it. The hooks middleware ends this attempt instead, reading
+        // not correct it. The lifecycle middleware ends this attempt instead, reading
         // attempt 2 from the state begun above.
         return await fetch(retryRequest);
       } catch (error) {
@@ -1092,7 +1091,7 @@ function createRetryMiddleware(
 
     async onError({ id }) {
       // The initial fetch rejected, so onResponse never ran and the cached body
-      // would leak. The hooks middleware owns ending the attempt.
+      // would leak. The lifecycle middleware owns ending the attempt.
       bodyCache.delete(id);
       return undefined;
     },
