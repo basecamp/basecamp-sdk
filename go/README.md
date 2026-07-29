@@ -274,7 +274,11 @@ bridges the two — saving the client id it used and the token's resource so
 later refreshes can echo them:
 
 ```go
-import "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+import (
+    "net/http"
+
+    "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
+)
 
 // sdkCfg is the SDK *basecamp.Config (the device-login example above binds
 // its discovery result to result.Config, an *oauth.Config — a different type).
