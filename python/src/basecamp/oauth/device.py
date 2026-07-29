@@ -780,12 +780,13 @@ def perform_device_login(
         raise DeviceFlowError("cancelled", "Device flow cancelled")
 
     display(auth)
-    # Cancellation raised DURING the display hook (a prompt closing in
-    # response to cancellation) wins over expiry: a hook that both cancels
-    # and consumes the lifetime must surface cancelled, not expired.
+    remaining = auth.expires_in - (_validated_clock_sample(clock(), "perform_device_login") - issued_at)
+    # Cancellation raised DURING the display hook OR during the clock sample
+    # just above (the clock is a cancellation-capable callback seam, exactly
+    # like the pre-request anchor) wins over expiry: checked after the sample
+    # and before the expiry branch, matching the TS orchestrator's ordering.
     if should_cancel is not None and should_cancel():
         raise DeviceFlowError("cancelled", "Device flow cancelled")
-    remaining = auth.expires_in - (_validated_clock_sample(clock(), "perform_device_login") - issued_at)
     if remaining <= 0:
         raise DeviceFlowError("expired", "Device code expired before authorization completed")
 

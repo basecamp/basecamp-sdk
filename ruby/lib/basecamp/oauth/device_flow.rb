@@ -353,12 +353,14 @@ module Basecamp
           raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
           display.call(auth)
-          # Cancellation raised DURING the display hook (a prompt closing in
-          # response to cancellation) wins over expiry: a hook that both
-          # cancels and consumes the lifetime must surface cancelled.
+          remaining = auth.expires_in - (sample_clock(clock, "perform_device_login") - issued_at)
+          # Cancellation raised DURING the display hook OR during the clock
+          # sample just above (the clock is a cancellation-capable callback
+          # seam, exactly like the pre-request anchor) wins over expiry:
+          # checked after the sample and before the expiry branch, matching
+          # the TS orchestrator's ordering.
           raise DeviceFlowError.new(:cancelled, "Device flow cancelled") if cancelled.call
 
-          remaining = auth.expires_in - (sample_clock(clock, "perform_device_login") - issued_at)
           if remaining <= 0
             raise DeviceFlowError.new(:expired, "Device code expired before authorization completed")
           end

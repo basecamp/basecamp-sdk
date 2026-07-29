@@ -944,6 +944,39 @@ class OAuthDeviceTest < Minitest::Test
     assert_equal "device_access_token", token.access_token
   end
 
+  def test_perform_cancel_during_the_post_display_clock_call_beats_expiry
+    # The post-display sample is the same cancellation-capable callback seam
+    # as the pre-request anchor: a cancel flipped inside it — even one
+    # returning a beyond-deadline value — must surface cancelled, never
+    # expired.
+    stub_request(:post, DEVICE_ENDPOINT).to_return(json(device_auth_response))
+    state = { cancelled: false, calls: 0 }
+    clock = lambda do
+      state[:calls] += 1
+      if state[:calls] >= 2
+        state[:cancelled] = true
+        10_000
+      else
+        0
+      end
+    end
+    _waits, sleeper = recording_sleeper
+    config = Basecamp::Oauth::Config.new(
+      issuer: ORIGIN, token_endpoint: TOKEN_ENDPOINT,
+      device_authorization_endpoint: DEVICE_ENDPOINT,
+      grant_types_supported: [ DEVICE_GRANT, "refresh_token" ]
+    )
+
+    error = assert_raises(Basecamp::Oauth::DeviceFlowError) do
+      Basecamp::Oauth.perform_device_login(
+        config: config, client_id: "basecamp-cli", display: ->(_auth) { },
+        sleeper: sleeper, clock: clock, cancelled: -> { state[:cancelled] }
+      )
+    end
+
+    assert_equal :cancelled, error.reason
+  end
+
   def test_perform_cancel_during_the_anchor_clock_call_stops_the_request
     # The injected clock is itself a callback seam: a cancel flipped inside the
     # pre-request anchor sample must stop the flow before the authorization

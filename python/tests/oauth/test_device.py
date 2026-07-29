@@ -1095,6 +1095,33 @@ class TestPerformDeviceLoginCancellation:
         assert displayed == []
 
     @respx.mock
+    def test_cancel_during_the_post_display_clock_sample_beats_expiry(self):
+        # The post-display sample is the same cancellation-capable callback
+        # seam as the pre-request anchor: a cancel flipped inside it — even
+        # one returning a beyond-deadline value — must surface cancelled,
+        # never expired.
+        respx.post(DEVICE_ENDPOINT).mock(return_value=httpx.Response(200, json=DEVICE_AUTH_RESPONSE))
+        state = {"cancelled": False, "calls": 0}
+
+        def clock() -> float:
+            state["calls"] += 1
+            if state["calls"] >= 2:
+                state["cancelled"] = True
+                return 10_000.0
+            return 0.0
+
+        with pytest.raises(DeviceFlowError) as exc_info:
+            perform_device_login(
+                CONFIG,
+                "basecamp-cli",
+                display=lambda _auth: None,
+                sleep=RecordingSleep(),
+                clock=clock,
+                should_cancel=lambda: state["cancelled"],
+            )
+        assert exc_info.value.reason == "cancelled"
+
+    @respx.mock
     def test_cancel_during_the_anchor_clock_sample_stops_the_request(self):
         # The injected clock is itself a callback seam: a cancel flipped inside
         # the pre-request anchor sample must stop the flow before the
