@@ -1,0 +1,21 @@
+go/pkg/basecamp/auth.go
+  s_86d0793371d0f3::t_2de0d7409ed052 392-397
+go/pkg/basecamp/auth_test.go
+  s_86d0793371d0f3::t_24c8b129dc5ba3 531-580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f0cd17310ddd35fca71747010c976535f160c517",
+  "prompts": {},
+  "sessions": {
+    "s_86d0793371d0f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a2b9cb3-4f1e-4edb-91b2-3d486f097400",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
