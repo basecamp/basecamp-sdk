@@ -386,20 +386,34 @@ class OAuthTransportTest < Minitest::Test
     assert error.retryable
   end
 
-  def test_malformed_gzip_body_is_a_transport_failure
-    # Net::HTTP auto-decodes Content-Encoding; malformed gzip bytes raise
-    # Zlib::DataError mid-read_body, which must map through the documented
-    # transport classification (Faraday::ConnectionFailed → the public
-    # network OauthError) — never leak Zlib::DataError raw.
+  def test_compressed_bodies_are_never_inflated_by_the_transport
+    # Transparent decompression would let a compression bomb balloon past the
+    # byte cap BEFORE the per-chunk check ran (Net::HTTP inflates before
+    # read_body yields). The transport requests identity and disables
+    # decoding: a server compressing anyway hands over raw bytes bounded by
+    # the cap, and classification (here: a JSON parse failure) happens on the
+    # small compressed payload — memory never exceeds the advertised bound.
+    require "stringio"
+    gz = StringIO.new
+    writer = Zlib::GzipWriter.new(gz)
+    writer.write("x" * 10_000_000) # ~10 MB decoded
+    writer.close
+    compressed = gz.string
+    assert_operator compressed.bytesize, :<, 20_000, "bomb premise: tiny on the wire"
+
     endpoint, = start_server do |conn|
-      body = "not gzip at all"
-      conn.write("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}")
+      conn.write("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: #{compressed.bytesize}\r\n\r\n#{compressed}")
     end
 
     error = assert_raises(Basecamp::Oauth::OauthError) do
       Basecamp::Oauth.discover(endpoint)
     end
-    assert_equal "network", error.type
+    # The RAW bytes flowed through under the cap and failed JSON parsing —
+    # never a BodyTooLarge/decoded blow-up (both would be api_error, but the
+    # parse failure proves no inflation happened).
+    assert_equal "api_error", error.type
+    # scrub: the parse-failure message can embed raw compressed bytes.
+    assert_match(/parse|JSON/i, error.message.scrub)
   end
 
   def test_classify_stream_error_maps_every_forced_close_shape_after_deadline

@@ -310,10 +310,19 @@ module Basecamp
         # call-site mistake and contradicts this method's own contract.
         raise ArgumentError, "stream_http: form is only valid with :post" if form && method != :post
 
+        # Identity encoding IN THE INITHEADER: Net::HTTP inflates gzip/deflate
+        # BEFORE read_body yields, so the per-chunk cap would measure DECODED
+        # bytes — a small compressed body could balloon far past max_body_bytes
+        # in memory (compression bomb). A caller-supplied Accept-Encoding at
+        # construction time is the supported way to switch decode_content off
+        # (assigning the header later does not); a server compressing anyway
+        # hands us raw bytes bounded by the cap, which then fail
+        # classification upstream instead of exhausting memory.
+        identity = { "Accept-Encoding" => "identity" }
         request =
           case method
-          when :post then Net::HTTP::Post.new(uri)
-          when :get then Net::HTTP::Get.new(uri)
+          when :post then Net::HTTP::Post.new(uri, identity)
+          when :get then Net::HTTP::Get.new(uri, identity)
           else raise ArgumentError, "stream_http supports :get and :post, got #{method.inspect}"
           end
         headers.each { |name, value| request[name] = value }

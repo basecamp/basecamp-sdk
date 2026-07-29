@@ -96,15 +96,23 @@ def request_bounded(
         )
 
     async def _do() -> tuple[int, bytes]:
+        # Identity encoding + aiter_raw(): httpx transparently inflates
+        # gzip/deflate in aiter_bytes(), so the per-chunk cap would measure
+        # DECODED bytes — a small compressed body could balloon far past
+        # max_body_bytes in memory (compression bomb). Request identity and
+        # read the RAW wire bytes; a server compressing anyway hands over
+        # compressed bytes bounded by the cap, which then fail classification
+        # upstream instead of exhausting memory.
+        request_headers = {**headers, "Accept-Encoding": "identity"}
         async with (
             httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client,
-            client.stream(method, url, data=params, headers=headers) as response,
+            client.stream(method, url, data=params, headers=request_headers) as response,
         ):
             if not read_body(response.status_code):
                 return response.status_code, b""
             chunks: list[bytes] = []
             total = 0
-            async for chunk in response.aiter_bytes():
+            async for chunk in response.aiter_raw():
                 total += len(chunk)
                 if total > max_body_bytes:
                     # An oversized body is api_error, not a timeout — abort the

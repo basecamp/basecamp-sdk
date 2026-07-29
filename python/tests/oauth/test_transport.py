@@ -126,6 +126,47 @@ def test_discovery_non_2xx_with_stalled_body_is_immediate_api_error() -> None:
     assert _settled_thread_count(baseline) == baseline, "leaked transport worker thread"
 
 
+def test_compressed_bodies_are_never_inflated_by_the_transport() -> None:
+    # Transparent decompression would let a compression bomb balloon past the
+    # byte cap BEFORE the per-chunk check ran (httpx inflates in
+    # aiter_bytes). The transport requests identity and reads RAW wire bytes:
+    # a server compressing anyway hands over compressed bytes bounded by the
+    # cap, and classification (a JSON parse failure) happens on the small
+    # payload — memory never exceeds the advertised bound.
+    import gzip as gzip_mod
+
+    compressed = gzip_mod.compress(b"x" * 10_000_000)  # ~10 MB decoded
+    assert len(compressed) < 20_000, "bomb premise: tiny on the wire"
+
+    srv, port = _serve_on_localhost()
+
+    def serve() -> None:
+        conn, _ = srv.accept()
+        conn.recv(4096)
+        try:
+            conn.sendall(
+                b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                b"Content-Encoding: gzip\r\nContent-Length: " + str(len(compressed)).encode() + b"\r\n\r\n" + compressed
+            )
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        with pytest.raises(OAuthError) as exc_info:
+            discover_protected_resource(f"http://127.0.0.1:{port}", timeout=2)
+        # The raw bytes flowed through under the cap and failed JSON parsing —
+        # never a decoded blow-up into the size cap.
+        assert exc_info.value.code == "api_error"
+        assert "size cap" not in str(exc_info.value)
+    finally:
+        server.join(2)
+        srv.close()
+
+
 def test_discovery_slow_drip_is_bounded_by_the_total_timeout() -> None:
     # httpx's read timeout resets on every received chunk, so a peer dripping a
     # VALID discovery document byte-by-byte (each read under the timeout) would
