@@ -1,10 +1,10 @@
 ---
 gap: everything-boosts-withdrawn
-status: addressed-in-bc3-pr-12464
+status: no-json-contract
 detected: 2026-07-29
 sdk_demand: medium
-bc3_pr: 12464
 bc3_refs:
+  withdrawal_pr: 12464
   introduced_in: master
   routes:
     - "GET /:account_id/boosts.json"
@@ -19,14 +19,14 @@ bc3_refs:
 
 # Everything boosts feed withdrawn (subtractive delta, endpoint removed)
 
-> **Not an additive gap.** Every other entry in this registry tracks *new* BC5
-> surface awaiting JSON coverage. This entry tracks a *subtractive* delta — an
-> endpoint BC5 shipped and later withdrew — and records the SDK's matching
-> removal. `addressed-in-bc3-pr-12464` here means BC3 shipped the *withdrawal*
-> of the route, not a new contract. #12464 merged to `master` on 2026-07-30
-> (`b06acfac1`), after the provenance pin (`dffa7e11` / 2026-07-28) — the SDK
-> removal is absorption ahead of the pin; the next repin will find it already
-> absorbed.
+> **A gap by subtraction.** Most entries in this registry track surface BC5
+> shipped that the SDK has yet to cover. This entry is the inverse history:
+> the endpoint shipped, the SDK absorbed it, BC5 withdrew it (BC3 #12464,
+> merged 2026-07-30, `b06acfac1`), and the SDK removed its coverage to match.
+> `no-json-contract` is literal — no JSON API exists for the account-wide
+> boosts feed today. The entry advances to `addressed-in-bc3-pr-12463` when
+> the reintroduction ships, then to `absorbed-in-sdk` when the SDK re-adds
+> the operation.
 
 ## What's missing
 
