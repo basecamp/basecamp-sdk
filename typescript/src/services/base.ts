@@ -214,9 +214,11 @@ export abstract class BaseService {
 
         try {
           const retryError = new Error(`${response.status} ${response.statusText}`);
+          // SPEC section 7: RequestInfo.attempt is the attempt that just failed
+          // (1-based), while the standalone argument is the UPCOMING attempt.
           this.hooks?.onRetry?.(
             { method, url, attempt: attempt + 1 },
-            attempt + 1,
+            attempt + 2,
             retryError,
             delay,
           );

@@ -616,8 +616,9 @@ describe("BasecampClient", () => {
         expect.objectContaining({
           method: "GET",
           url: expect.stringContaining("/projects.json"),
+          attempt: 1, // the attempt that just failed
         }),
-        1,
+        2, // SPEC section 7: the UPCOMING attempt
         expect.any(Error),
         expect.any(Number)
       );

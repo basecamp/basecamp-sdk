@@ -312,19 +312,30 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
 
   const client = createClient<paths>({ baseUrl });
 
-  // Apply middleware in order: auth first, then hooks, then cache, then retry
+  // Apply middleware in order: auth, lifecycle, cache, retry.
+  // onRequest runs in this order; onResponse and onError run in reverse, so the
+  // retry middleware sees a response first and the lifecycle middleware last.
   client.use(createAuthMiddleware(authStrategy, userAgent, requestTimeoutMs, baseUrl));
 
-  if (hooks) {
-    client.use(createHooksMiddleware(hooks));
-  }
+  // One lifecycle, shared with the retry middleware: the retry loop lives inside a
+  // single middleware callback, so per-attempt hooks have to be emitted from there
+  // rather than by a middleware that is only visited once per request.
+  const lifecycle = new RequestLifecycle(hooks);
+
+  // Registered even when no hooks are configured. It emits nothing in that case
+  // (every call is optional-chained), but it still owns releasing per-request
+  // state — and the retry middleware records an attempt whether or not anyone is
+  // listening, so skipping this would strand one map entry per retried request.
+  client.use(createLifecycleMiddleware(lifecycle));
 
   if (enableCache) {
     client.use(createCacheMiddleware());
   }
 
+  // Registered last so that on the reverse-order response pass it runs first,
+  // before the cache and lifecycle middleware see the response.
   if (enableRetry) {
-    client.use(createRetryMiddleware(hooks, authStrategy));
+    client.use(createRetryMiddleware(lifecycle, authStrategy));
   }
 
   // Create enhanced client with additional properties
@@ -488,81 +499,157 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
 }
 
 // =============================================================================
-// Hooks Middleware
+// Request Lifecycle
 // =============================================================================
 
-/** Tracks request timing for hooks */
-interface RequestTiming {
+/**
+ * Per-attempt observability state for one logical request.
+ *
+ * `attempt` is the 1-based attempt currently in flight. `finalized` makes
+ * onRequestEnd idempotent: the retry middleware ends an attempt as soon as it
+ * knows its outcome, and the lifecycle middleware's onResponse then runs later
+ * for the same logical request and must not emit a second end.
+ */
+interface AttemptState {
   startTime: number;
   attempt: number;
+  finalized: boolean;
 }
 
-/** Counter for generating unique request IDs */
-let requestIdCounter = 0;
+/**
+ * Owns the onRequestStart / onRequestEnd / onRetry lifecycle for every attempt of
+ * every in-flight request, keyed by openapi-fetch's per-request `id`.
+ *
+ * The id is minted once per logical request (one client.GET/POST/... call) and is
+ * passed unchanged to onRequest, onResponse and onError, so it survives a
+ * middleware replacing the Request object. It deliberately does NOT distinguish
+ * attempts — per-attempt data lives nested under it here — and it never goes on
+ * the wire, which is why this replaces the old `X-SDK-Request-Id` and
+ * `X-Request-Id` correlation headers. (`X-Request-Id` in particular is a
+ * spec-reserved BC3 *response* header; sending an SDK-internal value under that
+ * name was a collision.)
+ *
+ * Shared with the retry middleware because the retry loop lives inside
+ * one middleware callback: openapi-fetch visits each middleware once per request,
+ * so per-attempt hooks cannot be emitted by a separate middleware.
+ */
+class RequestLifecycle {
+  private readonly states = new Map<string, AttemptState>();
 
-function createHooksMiddleware(hooks: BasecampHooks): Middleware {
-  // Track request timing by unique request ID
-  const timings = new Map<string, RequestTiming>();
+  constructor(private readonly hooks: BasecampHooks | undefined) {}
 
+  /** Begin an attempt and fire onRequestStart for it. */
+  begin(id: string, method: string, url: string, attempt: number): void {
+    this.states.set(id, { startTime: performance.now(), attempt, finalized: false });
+    this.emit(() => this.hooks?.onRequestStart?.({ method, url, attempt }));
+  }
+
+  /** The attempt currently in flight, or 1 if we have no record. */
+  attemptOf(id: string): number {
+    return this.states.get(id)?.attempt ?? 1;
+  }
+
+  /**
+   * Fire onRequestEnd for the in-flight attempt, exactly once.
+   *
+   * A network failure or timeout carries statusCode 0 and the originating error,
+   * matching the multipart transport in services/base.ts and SPEC section 7.
+   */
+  finalize(
+    id: string,
+    method: string,
+    url: string,
+    outcome: { statusCode: number; fromCache?: boolean; error?: Error },
+  ): void {
+    const state = this.states.get(id);
+    if (!state || state.finalized) return;
+    state.finalized = true;
+
+    const durationMs = Math.round(performance.now() - state.startTime);
+    const result: RequestResult = {
+      statusCode: outcome.statusCode,
+      durationMs,
+      fromCache: outcome.fromCache ?? false,
+      ...(outcome.error ? { error: outcome.error } : {}),
+    };
+    this.emit(() =>
+      this.hooks?.onRequestEnd?.({ method, url, attempt: state.attempt }, result),
+    );
+  }
+
+  /**
+   * Fire onRetry between two attempts.
+   *
+   * SPEC section 7 splits the two numbers: RequestInfo.attempt is the attempt that
+   * just FAILED, while the standalone argument is the UPCOMING attempt. Go,
+   * Python, Ruby and Kotlin all pass (failed, failed + 1).
+   */
+  retrying(
+    id: string,
+    method: string,
+    url: string,
+    failedAttempt: number,
+    error: Error,
+    delayMs: number,
+  ): void {
+    this.emit(() =>
+      this.hooks?.onRetry?.(
+        { method, url, attempt: failedAttempt },
+        failedAttempt + 1,
+        error,
+        delayMs,
+      ),
+    );
+  }
+
+  /** Drop all state for a logical request. Safe to call more than once. */
+  release(id: string): void {
+    this.states.delete(id);
+  }
+
+  private emit(fn: () => void): void {
+    try {
+      fn();
+    } catch {
+      // Hooks must never interrupt the request.
+    }
+  }
+}
+
+function createLifecycleMiddleware(lifecycle: RequestLifecycle): Middleware {
   return {
-    async onRequest({ request }) {
-      // Generate unique request ID to handle concurrent identical requests
-      const requestId = `${++requestIdCounter}`;
-      request.headers.set("X-SDK-Request-Id", requestId);
-
-      const attemptHeader = request.headers.get("X-Retry-Attempt");
-      const attempt = attemptHeader ? parseInt(attemptHeader, 10) + 1 : 1;
-
-      timings.set(requestId, { startTime: performance.now(), attempt });
-
-      const info: RequestInfo = {
-        method: request.method,
-        url: request.url,
-        attempt,
-      };
-
-      try {
-        hooks.onRequestStart?.(info);
-      } catch {
-        // Hooks should not interrupt the request
-      }
-
+    async onRequest({ request, id }) {
+      lifecycle.begin(id, request.method, request.url, 1);
       return request;
     },
 
-    async onResponse({ request, response }) {
-      const requestId = request.headers.get("X-SDK-Request-Id") ?? "";
-      const timing = timings.get(requestId);
-      const durationMs = timing ? Math.round(performance.now() - timing.startTime) : 0;
-      const attempt = timing?.attempt ?? 1;
-
-      timings.delete(requestId);
-
-      const info: RequestInfo = {
-        method: request.method,
-        url: request.url,
-        attempt,
-      };
-
-      // Check for cache hit via header set by cache middleware
+    async onResponse({ request, response, id }) {
+      // Runs after the retry middleware, which has already ended the final
+      // attempt whenever it retried — finalize is idempotent, so this is a no-op
+      // in that case and the authoritative end for a single-attempt request.
       const fromCacheHeader = response.headers.get("X-From-Cache");
-      const fromCache =
-        fromCacheHeader === "1" ||
-        response.status === 304;
+      const fromCache = fromCacheHeader === "1" || response.status === 304;
 
-      const result: RequestResult = {
+      lifecycle.finalize(id, request.method, request.url, {
         statusCode: response.status,
-        durationMs,
         fromCache,
-      };
-
-      try {
-        hooks.onRequestEnd?.(info, result);
-      } catch {
-        // Hooks should not interrupt the response
-      }
+      });
+      lifecycle.release(id);
 
       return response;
+    },
+
+    async onError({ request, error, id }) {
+      // openapi-fetch skips onResponse entirely when the initial fetch rejects,
+      // so this is the only place a network error or timeout can be observed.
+      lifecycle.finalize(id, request.method, request.url, {
+        statusCode: 0,
+        error: error instanceof Error ? error : new Error(String(error)),
+      });
+      lifecycle.release(id);
+
+      // Returning nothing preserves the original error's identity and rethrows it.
+      return undefined;
     },
   };
 }
@@ -889,123 +976,137 @@ function getRetryConfigForRequest(method: string, url: string): RetryConfig {
   return DEFAULT_RETRY_CONFIG;
 }
 
-function createRetryMiddleware(hooks?: BasecampHooks, authStrategy?: AuthStrategy): Middleware {
-  // Store request body clones keyed by a request identifier
-  // This is needed because Request.body can only be read once
+function createRetryMiddleware(
+  lifecycle: RequestLifecycle,
+  authStrategy?: AuthStrategy,
+): Middleware {
+  // Serialized request bodies, keyed by openapi-fetch's per-request id, because
+  // Request.body can only be read once and the retry needs to replay it. Keyed on
+  // the id rather than method+url+timestamp: two concurrent mutations to the same
+  // URL used to collide on one slot and replay each other's bytes.
   const bodyCache = new Map<string, ArrayBuffer | null>();
 
   return {
-    async onRequest({ request }) {
+    async onRequest({ request, id }) {
       // For methods that may have a body, clone it before the initial fetch
       // so we can use it for retries. Request.body can only be consumed once.
       const method = request.method.toUpperCase();
       if (method === "POST" || method === "PUT" || method === "PATCH") {
-        const requestId = `${method}:${request.url}:${Date.now()}`;
-        request.headers.set("X-Request-Id", requestId);
-
         if (request.body) {
           // Clone the body before it gets consumed
           const cloned = request.clone();
-          bodyCache.set(requestId, await cloned.arrayBuffer());
+          bodyCache.set(id, await cloned.arrayBuffer());
         } else {
-          bodyCache.set(requestId, null);
+          bodyCache.set(id, null);
         }
       }
 
       return request;
     },
 
-    async onResponse({ request, response }) {
+    async onResponse({ request, response, id }) {
+      const { method, url } = request;
       // Get operation-specific retry config from metadata
-      const retryConfig = getRetryConfigForRequest(request.method, request.url);
+      const retryConfig = getRetryConfigForRequest(method, url);
 
-      const requestId = request.headers.get("X-Request-Id");
-
-      // Helper to clean up cached body
-      const cleanupBody = () => {
-        if (requestId) bodyCache.delete(requestId);
-      };
-
-      // Check if status code should trigger retry
+      // Not retrying: let the lifecycle middleware end the attempt, and drop the body.
       if (!retryConfig.retryOn.includes(response.status)) {
-        cleanupBody();
+        bodyCache.delete(id);
         return response;
       }
 
-      // Extract current retry attempt from custom header
-      const attemptHeader = request.headers.get("X-Retry-Attempt");
-      const attempt = attemptHeader ? parseInt(attemptHeader, 10) : 0;
+      const failedAttempt = lifecycle.attemptOf(id);
 
-      // Check if we've exhausted retries (maxAttempts is total attempts, not retries)
-      // With maxAttempts=3: attempt 0 (initial), 1 (retry 1), 2 (retry 2) = 3 total
-      if (attempt >= retryConfig.maxAttempts - 1) {
-        cleanupBody();
+      // maxAttempts is a total attempt count, so attempt N is terminal when it
+      // equals the cap. TypeScript additionally chains at most one retry, since
+      // the retry below leaves the middleware chain (SPEC waiver 2B.1).
+      if (failedAttempt >= retryConfig.maxAttempts) {
+        bodyCache.delete(id);
         return response;
       }
 
-      // Calculate delay
+      // For 429, respect Retry-After; otherwise back off.
       let delay: number;
-
-      // For 429, respect Retry-After header
-      if (response.status === 429) {
-        const retryAfter = response.headers.get("Retry-After");
-        if (retryAfter) {
-          const seconds = parseInt(retryAfter, 10);
-          if (!isNaN(seconds)) {
-            delay = seconds * 1000;
-          } else {
-            delay = calculateBackoffDelay(retryConfig, attempt);
-          }
-        } else {
-          delay = calculateBackoffDelay(retryConfig, attempt);
-        }
+      const retryAfter =
+        response.status === 429 ? response.headers.get("Retry-After") : null;
+      const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
+      if (!isNaN(retryAfterSeconds)) {
+        delay = retryAfterSeconds * 1000;
       } else {
-        delay = calculateBackoffDelay(retryConfig, attempt);
+        delay = calculateBackoffDelay(retryConfig, failedAttempt - 1);
       }
 
-      // Notify hooks of retry
-      if (hooks?.onRetry) {
-        const info: RequestInfo = {
-          method: request.method,
-          url: request.url,
-          attempt: attempt + 1,
-        };
-        const error = new Error(`HTTP ${response.status}: ${response.statusText || "Request failed"}`);
-        try {
-          hooks.onRetry(info, attempt + 1, error, delay);
-        } catch {
-          // Hooks should not interrupt the retry
+      const statusError = new Error(
+        `HTTP ${response.status}: ${response.statusText || "Request failed"}`,
+      );
+
+      try {
+        // End the failed attempt before sleeping, so a slow backoff cannot leave
+        // an attempt open, then announce the upcoming one.
+        lifecycle.finalize(id, method, url, { statusCode: response.status });
+        lifecycle.retrying(id, method, url, failedAttempt, statusError, delay);
+
+        // This response is being discarded, so release its stream before we sleep
+        // rather than leaving it open across the backoff — otherwise a throttled
+        // client holds a connection per in-flight retry and cannot reuse any of
+        // them. The multipart transport in services/base.ts already does this.
+        // Errors are ignored: the body may already be consumed or closed.
+        void response.body?.cancel().catch(() => {});
+
+        await sleep(delay);
+
+        // The raw fetch below bypasses the middleware chain, so no downstream
+        // middleware sees this attempt begin — start it here.
+        //
+        // Started after the backoff but before any work that can throw. After, so
+        // the attempt's duration measures the request rather than the sleep;
+        // before, so that if the auth refresh or the fetch throws, the catch has a
+        // live attempt to finalize. Starting it later would let onRetry announce
+        // attempt 2 and then never account for it.
+        lifecycle.begin(id, method, url, failedAttempt + 1);
+
+        const body = bodyCache.get(id) ?? null;
+
+        const retryRequest = new Request(url, {
+          method,
+          headers: new Headers(request.headers),
+          body,
+          signal: request.signal,
+        });
+
+        // Refresh auth header for retry (token may have been refreshed since initial request)
+        if (authStrategy) {
+          await authStrategy.authenticate(retryRequest.headers);
         }
+
+        // Deliberately NOT finalized here. The returned response still flows
+        // through the cache middleware, which may rewrite a 304 into a cached 200;
+        // finalizing now would freeze the pre-transformation status and
+        // fromCache: false, and an idempotent finalize means the hooks pass could
+        // not correct it. The lifecycle middleware ends this attempt instead, reading
+        // attempt 2 from the state begun above.
+        return await fetch(retryRequest);
+      } catch (error) {
+        // openapi-fetch routes only the INITIAL fetch through onError, so anything
+        // thrown in here — the retry fetch, the auth refresh, the sleep — would
+        // otherwise escape with the attempt still open and its state stranded.
+        lifecycle.finalize(id, method, url, {
+          statusCode: 0,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+        lifecycle.release(id);
+        // Rethrow the original value so its identity survives.
+        throw error;
+      } finally {
+        bodyCache.delete(id);
       }
+    },
 
-      // Wait before retry
-      await sleep(delay);
-
-      // Get cached body for methods that may have one
-      let body: ArrayBuffer | null = null;
-      if (requestId && bodyCache.has(requestId)) {
-        const cachedBody = bodyCache.get(requestId);
-        if (cachedBody) {
-          body = cachedBody;
-        }
-      }
-
-      // Create retry request with fresh body
-      const retryRequest = new Request(request.url, {
-        method: request.method,
-        headers: new Headers(request.headers),
-        body,
-        signal: request.signal,
-      });
-      retryRequest.headers.set("X-Retry-Attempt", String(attempt + 1));
-
-      // Refresh auth header for retry (token may have been refreshed since initial request)
-      if (authStrategy) {
-        await authStrategy.authenticate(retryRequest.headers);
-      }
-
-      // Retry using native fetch
-      return fetch(retryRequest);
+    async onError({ id }) {
+      // The initial fetch rejected, so onResponse never ran and the cached body
+      // would leak. The lifecycle middleware owns ending the attempt.
+      bodyCache.delete(id);
+      return undefined;
     },
   };
 }
