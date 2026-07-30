@@ -30,7 +30,10 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 parameters are added after existing ones), so code compiles unchanged across
 minor versions, but recompile against each release — Kotlin default-argument
 and data-class synthetics make JVM *binary* compatibility infeasible to
-promise, and we don't.
+promise, and we don't. One exception: when Basecamp withdraws an endpoint,
+the SDK removes the corresponding operation rather than keeping a stub whose
+only possible response is an error. Such removals track the server, ship in
+a minor version bump, and are called out in the release notes.
 ## Installation
 
 The SDK is published to [GitHub Packages](https://github.com/basecamp/basecamp-sdk/packages). GitHub Packages requires an access token for every download — including for public packages like this one — so there are three steps rather than one.

@@ -23,8 +23,10 @@ bc3_refs:
 > surface awaiting JSON coverage. This entry tracks a *subtractive* delta — an
 > endpoint BC5 shipped and later withdrew — and records the SDK's matching
 > removal. `addressed-in-bc3-pr-12464` here means BC3 shipped the *withdrawal*
-> of the route, not a new contract. (#12464 was still open at the time of
-> writing; the SDK removal is intentionally ahead of the merge.)
+> of the route, not a new contract. #12464 merged to `master` on 2026-07-30
+> (`b06acfac1`), after the provenance pin (`dffa7e11` / 2026-07-28) — the SDK
+> removal is absorption ahead of the pin; the next repin will find it already
+> absorbed.
 
 ## What's missing
 
@@ -32,7 +34,8 @@ The account-wide `GET /:account_id/boosts.json` aggregate feed. BC5 shipped it
 in the everything-aggregates flat family (BC3 #11627, see
 [everything-aggregates.md](everything-aggregates.md)), then withdrew it: the
 feed's rendering was diagnosed as broken in BC3 **#12458**, and BC3 **#12464**
-removes both routes to the endpoint. The SDK removed its `GetEverythingBoosts`
+(merged 2026-07-30, `b06acfac1`) removes both routes to the endpoint. The SDK
+removed its `GetEverythingBoosts`
 operation, the `EverythingBoost` feed element, and all downstream artifacts
 across the six SDKs to match — the SDK does not model an endpoint the server
 no longer serves.
