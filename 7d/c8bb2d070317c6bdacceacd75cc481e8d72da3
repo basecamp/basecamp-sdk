@@ -1,0 +1,25 @@
+spec/api-gaps/README.md
+  s_138183e6f31d8b::t_d6dcf16b01eeda 66-67
+  s_138183e6f31d8b::t_f6c2577a88aa1a 81-82,84-97
+spec/api-gaps/everything-todo-card-filters.md
+  s_138183e6f31d8b::t_955ae0f16703b6 1-84
+spec/api-gaps/everything-boosts-withdrawn.md
+  s_138183e6f31d8b::t_edc3e42d06b6e6 22-29
+  s_138183e6f31d8b::t_eb43084f518629 3,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7dc8bb2d070317c6bdacceacd75cc481e8d72da3",
+  "prompts": {},
+  "sessions": {
+    "s_138183e6f31d8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "736697bf-6220-4510-9379-6b0e764c1be5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
