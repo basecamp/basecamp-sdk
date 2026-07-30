@@ -13,29 +13,6 @@ import kotlinx.serialization.json.JsonElement
 class EverythingService(client: AccountClient) : BaseService(client) {
 
     /**
-     * Get every boost across all accessible projects, newest-first (paginated).
-     * @param options Optional query parameters and pagination control
-     */
-    suspend fun everythingBoosts(options: GetEverythingBoostsOptions? = null): ListResult<EverythingBoost> {
-        val info = OperationInfo(
-            service = "Everything",
-            operation = "GetEverythingBoosts",
-            resourceType = "everything_boost",
-            isMutation = false,
-            projectId = null,
-            resourceId = null,
-        )
-        val qs = buildQueryString(
-            "page" to options?.page,
-        )
-        return requestPaginated(info, options?.toPaginationOptions(), {
-            httpGet("/boosts.json" + qs, operationName = info.operation)
-        }) { body ->
-            json.decodeFromString<List<EverythingBoost>>(body)
-        }
-    }
-
-    /**
      * Completed cards across all accessible projects, grouped by project (paginated).
      * @param options Optional query parameters and pagination control
      */

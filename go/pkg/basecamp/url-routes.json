@@ -57,19 +57,6 @@
       }
     },
     {
-      "pattern": "/{accountId}/boosts",
-      "resource": "Everything",
-      "operations": {
-        "GET": "GetEverythingBoosts"
-      },
-      "params": {
-        "accountId": {
-          "role": "account",
-          "type": "string"
-        }
-      }
-    },
-    {
       "pattern": "/{accountId}/boosts/{boostId}",
       "resource": "Boosts",
       "operations": {

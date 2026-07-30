@@ -294,7 +294,6 @@ service Basecamp {
     GetEverythingComments,
     GetEverythingCheckins,
     GetEverythingForwards,
-    GetEverythingBoosts,
     GetEverythingFiles,
     GetEverythingOverdueTodos,
     GetEverythingOverdueCards,
@@ -2992,7 +2991,7 @@ structure RecordingParent {
   app_url: String
   // Optional project context. Absent for a recording's `parent` reference (same
   // bucket as the recording); populated when a boost feed embeds the boosted
-  // recording (my/boosts, everything/boosts) so callers can identify its project.
+  // recording (my/boosts) so callers can identify its project.
   bucket: RecordingBucket
 }
 
@@ -8357,11 +8356,11 @@ structure Boost {
   @required
   created_at: ISO8601Timestamp
   booster: Person
-  // The boosted recording on the feeds that embed it (my/boosts,
-  // everything/boosts); absent on the per-recording boosts list. Kept as the
-  // shared RecordingParent (unchanged public type) so this additive coverage
-  // does not break existing Boost callers; RecordingParent now carries an
-  // optional `bucket` so an account-wide boost keeps its project context.
+  // The boosted recording on the feeds that embed it (my/boosts); absent on
+  // the per-recording boosts list. Kept as the shared RecordingParent
+  // (unchanged public type) so this additive coverage does not break existing
+  // Boost callers; RecordingParent carries an optional `bucket` so a
+  // feed-embedded boost keeps its project context.
   recording: RecordingParent
 }
 
@@ -8996,32 +8995,6 @@ structure GetEverythingForwardsOutput {
   recordings: RecordingList
 }
 
-/// Get every boost across all accessible projects, newest-first (paginated).
-/// Each boost carries its `booster` and the `recording` it boosts.
-@readonly
-@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
-@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
-@http(method: "GET", uri: "/{accountId}/boosts.json")
-operation GetEverythingBoosts {
-  input: GetEverythingBoostsInput
-  output: GetEverythingBoostsOutput
-  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
-}
-
-structure GetEverythingBoostsInput {
-  @required
-  @httpLabel
-  accountId: AccountId
-
-  /// Page number for paginating through results. Defaults to 1.
-  @httpQuery("page")
-  page: Integer
-}
-
-structure GetEverythingBoostsOutput {
-  boosts: EverythingBoostList
-}
-
 /// Get every file recording across all accessible projects, newest-first (paginated).
 /// Heterogeneous: uploads and Basecamp documents carry their
 /// standard recording shapes, while rich-text attachments are wrapped in a
@@ -9100,35 +9073,6 @@ structure GetEverythingOverdueCardsInput {
 
 structure GetEverythingOverdueCardsOutput {
   cards: CardList
-}
-
-// ===== Everything Boost Shapes =====
-
-list EverythingBoostList {
-  member: EverythingBoost
-}
-
-/// A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
-/// shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
-/// kept source-compatible for existing callers), this feed renders each boost's
-/// `recording` through the FULL recording projection, so it gets a dedicated
-/// element type carrying the complete `Recording`.
-structure EverythingBoost {
-  @required
-  id: BoostId
-  /// The boost's content (the reaction/emoji). BC3 renders it unconditionally.
-  @required
-  content: String
-  @required
-  created_at: ISO8601Timestamp
-  /// The person who boosted. BC3 renders it unconditionally on this feed.
-  @required
-  booster: Person
-
-  /// The boosted recording, rendered as the full recording projection (not the
-  /// reduced parent shape). BC3 renders it unconditionally on this feed.
-  @required
-  recording: Recording
 }
 
 // ===== Everything File Shapes =====

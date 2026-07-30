@@ -87,7 +87,6 @@ object Metadata {
         "GetClientReply" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetComment" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetDocument" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
-        "GetEverythingBoosts" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetEverythingCheckins" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetEverythingComments" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "GetEverythingCompletedCards" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

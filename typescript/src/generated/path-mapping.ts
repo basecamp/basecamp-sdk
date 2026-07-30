@@ -11,7 +11,6 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "DELETE:/{accountId}/account/logo.json": "RemoveAccountLogo",
   "PUT:/{accountId}/account/logo.json": "UpdateAccountLogo",
   "PUT:/{accountId}/account/name.json": "UpdateAccountName",
-  "GET:/{accountId}/boosts.json": "GetEverythingBoosts",
   "DELETE:/{accountId}/boosts/{boostId}": "DeleteBoost",
   "GET:/{accountId}/boosts/{boostId}": "GetBoost",
   "POST:/{accountId}/buckets/{bucketId}/card_tables/{cardTableId}/wormholes.json": "CreateWormhole",

@@ -492,104 +492,6 @@
         }
       }
     },
-    "/{accountId}/boosts.json": {
-      "get": {
-        "description": "Get every boost across all accessible projects, newest-first (paginated).\nEach boost carries its `booster` and the `recording` it boosts.",
-        "operationId": "GetEverythingBoosts",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "description": "Basecamp account ID (numeric string)",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9]+$",
-              "description": "Basecamp account ID (numeric string)"
-            },
-            "required": true
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number for paginating through results. Defaults to 1.",
-            "schema": {
-              "type": "integer",
-              "description": "Page number for paginating through results. Defaults to 1.",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "GetEverythingBoosts 200 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetEverythingBoostsResponseContent"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "UnauthorizedError 401 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "ForbiddenError 403 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "RateLimitError 429 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "InternalServerError 500 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Everything"
-        ],
-        "x-basecamp-pagination": {
-          "style": "link",
-          "totalCountHeader": "X-Total-Count",
-          "maxPageSize": 50
-        },
-        "x-basecamp-retry": {
-          "maxAttempts": 3,
-          "baseDelayMs": 1000,
-          "backoff": "exponential",
-          "retryOn": [
-            429,
-            503
-          ]
-        }
-      }
-    },
     "/{accountId}/boosts/{boostId}": {
       "delete": {
         "description": "Delete a boost",
@@ -25704,42 +25606,6 @@
           }
         }
       },
-      "EverythingBoost": {
-        "type": "object",
-        "description": "A single item in the account-wide `/boosts.json` aggregate feed. Unlike the\nshared `Boost` (whose `recording` is the reduced `RecordingParent` projection,\nkept source-compatible for existing callers), this feed renders each boost's\n`recording` through the FULL recording projection, so it gets a dedicated\nelement type carrying the complete `Recording`.",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "x-go-type-skip-optional-pointer": false
-          },
-          "content": {
-            "type": "string",
-            "description": "The boost's content (the reaction/emoji). BC3 renders it unconditionally."
-          },
-          "created_at": {
-            "type": "string",
-            "x-go-type": "time.Time",
-            "x-go-type-import": {
-              "path": "time"
-            },
-            "x-go-type-skip-optional-pointer": true
-          },
-          "booster": {
-            "$ref": "#/components/schemas/Person"
-          },
-          "recording": {
-            "$ref": "#/components/schemas/Recording"
-          }
-        },
-        "required": [
-          "booster",
-          "content",
-          "created_at",
-          "id",
-          "recording"
-        ]
-      },
       "EverythingFile": {
         "type": "object",
         "description": "A single item in the /files.json feed. An optional-field superset over three\nwire variants — a full Upload recording, a Basecamp Document recording, and a\nrich-text attachment wrapped in a recording envelope (distinguished by\n`attachable_sgid` and blob metadata). Every field is optional; a given\ninstance populates only the fields of the variant it represents. Unknown\nfields are ignored by every SDK decoder, so the superset need not enumerate\nevery field of the Upload/Document recordings.",
@@ -26424,12 +26290,6 @@
       },
       "GetDocumentResponseContent": {
         "$ref": "#/components/schemas/Document"
-      },
-      "GetEverythingBoostsResponseContent": {
-        "type": "array",
-        "items": {
-          "$ref": "#/components/schemas/EverythingBoost"
-        }
       },
       "GetEverythingCheckinsResponseContent": {
         "type": "array",

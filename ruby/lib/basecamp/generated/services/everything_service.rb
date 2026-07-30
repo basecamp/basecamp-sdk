@@ -7,16 +7,6 @@ module Basecamp
     # @generated from OpenAPI spec
     class EverythingService < BaseService
 
-      # Get every boost across all accessible projects, newest-first (paginated).
-      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
-      # @return [Enumerator<Hash>] paginated results
-      def get_everything_boosts(page: nil)
-        wrap_paginated(service: "everything", operation: "get_everything_boosts", is_mutation: false) do
-          params = compact_query_params(page: page)
-          paginate("/boosts.json", params: params)
-        end
-      end
-
       # Completed cards across all accessible projects, grouped by project (paginated).
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results

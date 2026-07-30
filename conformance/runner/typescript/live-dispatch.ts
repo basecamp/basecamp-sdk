@@ -137,10 +137,6 @@ export const LIVE_OPERATIONS: Record<string, DispatchSpec> = {
     fixtures: [],
     call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingForwards({ maxItems: 5 }) }),
   },
-  GetEverythingBoosts: {
-    fixtures: [],
-    call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingBoosts({ maxItems: 5 }) }),
-  },
   GetEverythingFiles: {
     fixtures: [],
     call: async (ctx) => ({ resolvedIds: {}, result: await ctx.client.everything.everythingFiles({ maxItems: 5 }) }),

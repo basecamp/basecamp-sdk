@@ -1,6 +1,5 @@
 export { AccountService } from "./account.js";
 export { AttachmentsService } from "./attachments.js";
-export { EverythingService } from "./everything.js";
 export { BoostsService } from "./boosts.js";
 export { CardColumnsService } from "./card-columns.js";
 export { WormholesService } from "./wormholes.js";
@@ -10,6 +9,7 @@ export { WebhooksService } from "./webhooks.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardTablesService } from "./card-tables.js";
+export { EverythingService } from "./everything.js";
 export { CampfiresService } from "./campfires.js";
 export { PeopleService } from "./people.js";
 export { ClientApprovalsService } from "./client-approvals.js";

@@ -19,10 +19,9 @@ type Boost struct {
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 	Booster   *Person   `json:"booster,omitempty"`
-	// Recording is the boosted recording on the feeds that embed it — my/boosts
-	// and the account-wide everything/boosts. It reuses the shared Parent
-	// projection, whose optional Bucket carries the project context for those
-	// feeds. Absent on the per-recording boosts list.
+	// Recording is the boosted recording on the feeds that embed it (my/boosts).
+	// It reuses the shared Parent projection, whose optional Bucket carries the
+	// project context for that feed. Absent on the per-recording boosts list.
 	Recording *Parent `json:"recording,omitempty"`
 }
 

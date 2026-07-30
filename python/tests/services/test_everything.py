@@ -177,29 +177,6 @@ _FORWARDS_FEED = [
     },
 ]
 
-# A boost is a tiny reaction wrapping the `recording` it was applied to.
-_BOOSTS_FEED = [
-    {
-        "id": 1400,
-        "content": "👍",
-        "created_at": "2024-01-01T00:00:00Z",
-        "booster": {"id": 1, "name": "Victor Cooper"},
-        "recording": {
-            "id": 1000,
-            "type": "Message",
-            "title": "Kickoff",
-            "bucket": {"id": 9, "name": "The Leto Laptop", "type": "Project"},
-        },
-    },
-    {
-        "id": 1401,
-        "content": "🔥",
-        "created_at": "2024-01-02T00:00:00Z",
-        "booster": {"id": 2, "name": "Annie Bryan"},
-        "recording": {"id": 1100, "type": "Comment", "title": "Nice work"},
-    },
-]
-
 # Overdue feeds are unpaginated bare arrays sorted oldest-first by due_on.
 _OVERDUE_TODOS_FEED = [
     {
@@ -308,26 +285,6 @@ class TestEverythingRecordingFeeds:
         assert result[0]["subject"] == "FW: Invoice"
         assert result[0]["bucket"]["id"] == 2
 
-    @respx.mock
-    def test_boosts_feed_wraps_nested_recording(self):
-        route = respx.get("https://3.basecampapi.com/12345/boosts.json").mock(
-            return_value=httpx.Response(200, json=_BOOSTS_FEED)
-        )
-
-        account = Client(access_token="test-token").for_account("12345")
-        result = account.everything.get_everything_boosts()
-
-        assert route.called
-        assert len(result) == 2
-        assert result[0]["id"] == 1400
-        assert result[0]["content"] == "👍"
-        assert result[0]["booster"]["name"] == "Victor Cooper"
-        assert result[0]["recording"]["id"] == 1000
-        # The boosted recording carries its bucket for project context (the
-        # everything feed renders the recording with its bucket).
-        assert result[0]["recording"]["bucket"] == {"id": 9, "name": "The Leto Laptop", "type": "Project"}
-        assert result[1]["recording"]["type"] == "Comment"
-
 
 class TestEverythingOverdueFeeds:
     @respx.mock
@@ -392,7 +349,6 @@ _FLAT_ERROR_CASES = [
     ("comments.json", lambda acct: acct.everything.get_everything_comments()),
     ("checkins.json", lambda acct: acct.everything.get_everything_checkins()),
     ("forwards.json", lambda acct: acct.everything.get_everything_forwards()),
-    ("boosts.json", lambda acct: acct.everything.get_everything_boosts()),
     ("files.json", lambda acct: acct.everything.get_everything_files(kind=None, people_ids=None)),
     ("todos/overdue.json", lambda acct: acct.everything.get_everything_overdue_todos()),
     ("cards/overdue.json", lambda acct: acct.everything.get_everything_overdue_cards()),

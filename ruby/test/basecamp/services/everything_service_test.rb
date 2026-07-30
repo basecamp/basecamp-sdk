@@ -216,47 +216,6 @@ class EverythingServiceTest < Minitest::Test
     assert_equal 2, result[0]["bucket"]["id"]
   end
 
-  def test_get_everything_boosts_decodes_boost_feed
-    boosts = [
-      {
-        "id" => 5001,
-        "content" => "🎉",
-        "created_at" => "2024-01-15T10:00:00Z",
-        "booster" => { "id" => 1, "name" => "Victor Cooper" },
-        "recording" => {
-          "id" => 1001,
-          "type" => "Message",
-          "title" => "Kickoff",
-          "bucket" => { "id" => 2, "name" => "The Leto Laptop", "type" => "Project" }
-        }
-      },
-      {
-        "id" => 5002,
-        "content" => "👏",
-        "created_at" => "2024-01-15T09:00:00Z",
-        "booster" => { "id" => 1, "name" => "Victor Cooper" },
-        "recording" => {
-          "id" => 2001,
-          "type" => "Comment",
-          "bucket" => { "id" => 3, "name" => "Honcho Design", "type" => "Project" }
-        }
-      }
-    ]
-
-    stub_get("/12345/boosts.json", response_body: boosts)
-
-    result = @account.everything.get_everything_boosts.to_a
-
-    assert_kind_of Array, result
-    assert_equal 2, result.length
-    assert_equal 5001, result[0]["id"]
-    assert_equal "🎉", result[0]["content"]
-    assert_equal "Victor Cooper", result[0]["booster"]["name"]
-    assert_not_nil result[0]["recording"]
-    assert_equal 1001, result[0]["recording"]["id"]
-    assert_equal "Message", result[0]["recording"]["type"]
-  end
-
   def test_get_everything_overdue_todos_decodes_oldest_first
     todos = [
       {
@@ -332,7 +291,6 @@ class EverythingServiceTest < Minitest::Test
       "/12345/comments.json" => -> { @account.everything.get_everything_comments.to_a },
       "/12345/checkins.json" => -> { @account.everything.get_everything_checkins.to_a },
       "/12345/forwards.json" => -> { @account.everything.get_everything_forwards.to_a },
-      "/12345/boosts.json" => -> { @account.everything.get_everything_boosts.to_a },
       "/12345/files.json" => -> { @account.everything.get_everything_files(kind: nil, people_ids: nil).to_a },
       "/12345/todos/overdue.json" => -> { @account.everything.get_everything_overdue_todos.to_a },
       "/12345/cards/overdue.json" => -> { @account.everything.get_everything_overdue_cards.to_a },

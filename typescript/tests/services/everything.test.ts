@@ -244,51 +244,6 @@ describe("EverythingService", () => {
     });
   });
 
-  describe("everythingBoosts", () => {
-    it("should decode the /boosts.json feed with booster and nested recording", async () => {
-      const fixture = [
-        {
-          id: 5001,
-          content: "👏",
-          created_at: "2024-01-15T10:00:00Z",
-          booster: { id: 1, name: "Victor Cooper" },
-          recording: {
-            id: 800,
-            title: "A message",
-            type: "Message",
-            bucket: { id: 9, name: "The Leto Laptop", type: "Project" },
-          },
-        },
-        {
-          id: 5002,
-          content: "🔥",
-          created_at: "2024-01-15T11:00:00Z",
-          booster: { id: 5, name: "Annie Bryan" },
-          recording: { id: 801, title: "A comment", type: "Comment" },
-        },
-      ];
-
-      server.use(
-        http.get(`${BASE_URL}/boosts.json`, () => {
-          return HttpResponse.json(fixture);
-        })
-      );
-
-      const result = (await client.everything.everythingBoosts()) as any[];
-      expect(result).toHaveLength(2);
-      expect(result[0].id).toBe(5001);
-      expect(result[0].booster).toEqual({ id: 1, name: "Victor Cooper" });
-      expect(result[0].recording.id).toBe(800);
-      expect(result[0].recording.title).toBe("A message");
-      expect(result[0].recording.type).toBe("Message");
-      // The boosted recording carries its bucket for project context (the
-      // everything feed renders the recording with its bucket).
-      expect(result[0].recording.bucket).toEqual({ id: 9, name: "The Leto Laptop", type: "Project" });
-      expect(result[1].id).toBe(5002);
-      expect(result[1].recording.id).toBe(801);
-    });
-  });
-
   describe("everythingOverdueTodos", () => {
     it("should decode the unpaginated /todos/overdue.json array, oldest-first", async () => {
       const fixture = [
@@ -367,7 +322,6 @@ describe("EverythingService", () => {
       ["everythingComments", "/comments.json", () => client.everything.everythingComments()],
       ["everythingCheckins", "/checkins.json", () => client.everything.everythingCheckins()],
       ["everythingForwards", "/forwards.json", () => client.everything.everythingForwards()],
-      ["everythingBoosts", "/boosts.json", () => client.everything.everythingBoosts()],
       ["everythingFiles", "/files.json", () => client.everything.everythingFiles()],
       ["everythingOverdueTodos", "/todos/overdue.json", () => client.everything.everythingOverdueTodos()],
       ["everythingOverdueCards", "/cards/overdue.json", () => client.everything.everythingOverdueCards()],

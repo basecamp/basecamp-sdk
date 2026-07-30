@@ -687,32 +687,6 @@
     ]
   },
   {
-    "name": "GetEverythingBoosts constructs /boosts.json",
-    "description": "Verifies GetEverythingBoosts constructs the flat top-level URL path /boosts.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
-    "operation": "GetEverythingBoosts",
-    "method": "GET",
-    "path": "/boosts.json",
-    "mockResponses": [
-      {
-        "status": 200,
-        "body": []
-      }
-    ],
-    "assertions": [
-      {
-        "type": "requestPath",
-        "expected": "/999/boosts.json"
-      },
-      {
-        "type": "noError"
-      }
-    ],
-    "tags": [
-      "path",
-      "everything"
-    ]
-  },
-  {
     "name": "GetEverythingFiles constructs /files.json",
     "description": "Verifies GetEverythingFiles constructs the flat top-level URL path /files.json (the /everything/ segment is the Rails controller namespace, not part of the URL).",
     "operation": "GetEverythingFiles",

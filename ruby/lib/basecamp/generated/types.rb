@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-28T21:34:14Z
+# Generated: 2026-07-30T21:05:11Z
 
 require "json"
 require "time"
@@ -1406,39 +1406,6 @@ module Basecamp
           "added_person_ids" => @added_person_ids,
           "notified_recipient_ids" => @notified_recipient_ids,
           "removed_person_ids" => @removed_person_ids,
-        }.compact
-      end
-
-      def to_json(*args)
-        to_h.to_json(*args)
-      end
-    end
-
-    # EverythingBoost
-    class EverythingBoost
-      include TypeHelpers
-      attr_accessor :booster, :content, :created_at, :id, :recording
-
-      # @return [Array<Symbol>]
-      def self.required_fields
-        %i[booster content created_at id recording].freeze
-      end
-
-      def initialize(data = {})
-        @booster = parse_type(data["booster"], "Person")
-        @content = data["content"]
-        @created_at = parse_datetime(data["created_at"])
-        @id = parse_integer(data["id"])
-        @recording = parse_type(data["recording"], "Recording")
-      end
-
-      def to_h
-        {
-          "booster" => @booster,
-          "content" => @content,
-          "created_at" => @created_at,
-          "id" => @id,
-          "recording" => @recording,
         }.compact
       end
 

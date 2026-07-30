@@ -11,14 +11,6 @@ from basecamp.hooks import OperationInfo
 
 
 class EverythingService(BaseService):
-    def get_everything_boosts(self, *, page: int | None = None) -> ListResult:
-        return self._request_paginated(
-            OperationInfo(service="everything", operation="get_everything_boosts", is_mutation=False),
-            "/boosts.json",
-            params=self._compact(page=page),
-            operation="GetEverythingBoosts",
-        )
-
     def get_everything_completed_cards(self, *, page: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
@@ -149,14 +141,6 @@ class EverythingService(BaseService):
 
 
 class AsyncEverythingService(AsyncBaseService):
-    async def get_everything_boosts(self, *, page: int | None = None) -> ListResult:
-        return await self._request_paginated(
-            OperationInfo(service="everything", operation="get_everything_boosts", is_mutation=False),
-            "/boosts.json",
-            params=self._compact(page=page),
-            operation="GetEverythingBoosts",
-        )
-
     async def get_everything_completed_cards(self, *, page: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
