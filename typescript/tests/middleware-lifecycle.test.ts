@@ -389,9 +389,13 @@ describe("middleware request lifecycle", () => {
   // Review follow-up. A failed response carrying a body has its stream cancelled
   // before the backoff, so a throttled client does not hold a connection per
   // in-flight retry. The other retry tests all use null-body responses, so this is
-  // the only one that reaches that branch — it pins that cancelling cannot break
-  // the retry itself. (Connection reuse is not observable from here.)
-  it("retries successfully when the failed response carries a body", async () => {
+  // the only one that reaches that branch.
+  //
+  // Connection reuse is not observable here, but the cancellation itself is:
+  // without the spy this test passed unchanged when the cancel was deleted, which
+  // made it no regression at all.
+  it("cancels the failed response's stream before retrying", async () => {
+    const cancelSpy = vi.spyOn(ReadableStream.prototype, "cancel");
     let attempts = 0;
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => {
@@ -419,6 +423,8 @@ describe("middleware request lifecycle", () => {
     expect(attempts).toBe(2);
     expect(data).toEqual([{ id: 1 }]);
     expect(ends(events).map((e) => e.statusCode)).toEqual([429, 200]);
+    // The point of the test: the discarded body's stream was actually cancelled.
+    expect(cancelSpy).toHaveBeenCalled();
   });
 
   // Repeated retried requests each report their own two attempts, in order, with
