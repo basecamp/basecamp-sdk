@@ -1,0 +1,19 @@
+spec/api-gaps/everything-aggregates.md
+  s_138183e6f31d8b::t_147bbb87a4023c 132-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "fabe583b9d943d52d8c9501718a264923ec3da31",
+  "prompts": {},
+  "sessions": {
+    "s_138183e6f31d8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "736697bf-6220-4510-9379-6b0e764c1be5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
