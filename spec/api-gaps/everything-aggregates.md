@@ -129,7 +129,9 @@ operations:
 - Six recency-ordered, Link-paginated roots — `GetEverythingMessages`,
   `GetEverythingComments`, `GetEverythingCheckins`, `GetEverythingForwards`
   (element = the generic `Recording` projection the wire actually returns, which
-  embeds `bucket`), and `GetEverythingFiles`.
+  embeds `bucket`), `GetEverythingBoosts` (element = `Boost`, carrying its
+  `booster` and nested `recording`; since removed with the feed's withdrawal —
+  see above), and `GetEverythingFiles`.
 - Two unpaginated, oldest-due-date-first arrays — `GetEverythingOverdueTodos`
   (`Todo`) and `GetEverythingOverdueCards` (`Card`) — modeled as plain full
   arrays (single-member output, no pagination → bare array via the
