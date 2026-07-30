@@ -1,0 +1,19 @@
+AGENTS.md
+  s_138183e6f31d8b::t_01bbe4aba19cb9 183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "5caee532f0bc69d5396642780724e17c84fd1a29",
+  "prompts": {},
+  "sessions": {
+    "s_138183e6f31d8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "736697bf-6220-4510-9379-6b0e764c1be5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
