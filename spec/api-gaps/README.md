@@ -63,6 +63,7 @@ making the absorption journey publicly auditable.
 | [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | absorbed-in-sdk | post-train | low |
 | [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 | [bubble-ups-surface](bubble-ups-surface.md) | absorbed-in-sdk | launch | high |
+| [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | addressed-in-bc3-pr-12464 | post-train | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -74,8 +75,12 @@ making the absorption journey publicly auditable.
 > `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
 > classification record (Stacks — renamed Folders in the product — are
 > web-only on both `four` and `master`).
+> `everything-boosts-withdrawn` is likewise *subtractive*: it records BC5
+> withdrawing the account-wide `/boosts.json` feed (BC3 #12464, reintroduction
+> tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`.
 >
-> Provenance pin advanced to `c3086931` (2026-07-26). The earlier
+> The provenance pin is `dffa7e11` (2026-07-28). The note below records the
+> triage that accompanied the earlier `c3086931` (2026-07-26) repin. The earlier
 > `ca1d34bc..d7bc88da` sub-range — 30 commits — is a reviewed no-op for the SDK:
 > **26** UI/CSS/JS/lexxy commits (including their PR merge commits
 > #12208/#12399/#12400/#12401); the **3** duplicate-cookie migration code commits

@@ -12,7 +12,7 @@ import (
 )
 
 // These tests pin Gate 3's STATUS SET, the half the per-operation ceiling work
-// did not cover. behavior-model.json declares retry_on: [429, 503] for all 226
+// did not cover. behavior-model.json declares retry_on: [429, 503] for all 225
 // operations; the generated client previously used a global
 // {429, 500, 502, 503, 504} allowlist, so it retried three statuses the spec
 // never declared retryable. The declared set is now emitted as

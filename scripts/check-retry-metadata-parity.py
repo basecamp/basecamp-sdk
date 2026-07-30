@@ -14,7 +14,7 @@ emits the wrong retry semantics.
 Two acceptance criteria:
 
   (1) Metadata parity (static). Every file that emits the per-op retry block must
-      carry, for all 226 operations, values equal to behavior-model.json:
+      carry, for all 225 operations, values equal to behavior-model.json:
         * Full tuple (max, base_delay_ms, backoff, retry_on):
             - python/src/basecamp/generated/metadata.json   (snake_case)
             - ruby/lib/basecamp/generated/metadata.json     (camelCase)
