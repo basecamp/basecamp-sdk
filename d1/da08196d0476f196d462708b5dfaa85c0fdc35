@@ -1,0 +1,45 @@
+AGENTS.md
+  s_138183e6f31d8b::t_cce217b4cb2112 27
+  s_138183e6f31d8b::t_1f0b72819b5f6c 88
+SECURITY.md
+  s_138183e6f31d8b::t_95aea1a2698fd4 187
+python/tests/test_http.py
+  s_138183e6f31d8b::t_981d481c6d1979 534
+spec/api-gaps/README.md
+  s_138183e6f31d8b::t_2d31621218812e 78-80,82
+  s_138183e6f31d8b::t_c942d27eb4f902 66
+  s_138183e6f31d8b::t_1bbb631240971e 83
+SPEC.md
+  s_138183e6f31d8b::t_371929bb202a42 1874,1876
+  s_138183e6f31d8b::t_7c847554977ed2 568
+go/pkg/basecamp/generated_retry_statusset_test.go
+  s_138183e6f31d8b::t_9935a2617f5ea7 15
+scripts/check-retry-metadata-parity.py
+  s_138183e6f31d8b::t_76e139774f86af 17
+spec/api-gaps/everything-aggregates.md
+  s_138183e6f31d8b::t_da27c1069680fa 183-184
+  s_138183e6f31d8b::t_c29907a86b4c62 99-102
+  s_138183e6f31d8b::t_244b83a691f5b4 132
+  s_138183e6f31d8b::t_63a89293dc9586 8
+  s_138183e6f31d8b::t_4aa13bc072b2bd 112-113
+  s_138183e6f31d8b::t_2f2db7fdc1d245 55-57,61-62
+  s_138183e6f31d8b::t_a8e3a06d84d063 119-124
+spec/api-gaps/everything-boosts-withdrawn.md
+  s_138183e6f31d8b::t_4e46e2911f1d54 1-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "d1da08196d0476f196d462708b5dfaa85c0fdc35",
+  "prompts": {},
+  "sessions": {
+    "s_138183e6f31d8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "736697bf-6220-4510-9379-6b0e764c1be5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
