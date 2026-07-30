@@ -1,0 +1,22 @@
+spec/api-gaps/everything-boosts-withdrawn.md
+  s_138183e6f31d8b::t_8b664fc1f6e945 26-29
+  s_138183e6f31d8b::t_ce915e79f77e12 37-38
+kotlin/README.md
+  s_138183e6f31d8b::t_dea2e2ac5d0d62 33-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.17",
+  "base_commit_sha": "72be3198a41b0860e856157898d016dd5a17250b",
+  "prompts": {},
+  "sessions": {
+    "s_138183e6f31d8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "736697bf-6220-4510-9379-6b0e764c1be5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
