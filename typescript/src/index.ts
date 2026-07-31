@@ -304,6 +304,12 @@ export {
 } from "./generated/services/bookmarks.js";
 
 export {
+  DraftsService,
+  type Draft,
+  type ListMyDraftsDraftOptions,
+} from "./generated/services/drafts.js";
+
+export {
   SubscriptionsService,
   type Subscription,
   type UpdateSubscriptionRequest,
