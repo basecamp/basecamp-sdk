@@ -1,0 +1,45 @@
+go/pkg/basecamp/api-provenance.json
+  s_289a344fc8a3ac::t_9882b74f3e3c9f 4-5
+go/pkg/basecamp/my_assignments.go
+  s_289a344fc8a3ac::t_ae86dbec69c0ce 167-251
+go/pkg/basecamp/version.go
+  s_289a344fc8a3ac::t_873c43a8c4abf1 7
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_289a344fc8a3ac::t_2221ccd8445651 32
+python/src/basecamp/_version.py
+  s_289a344fc8a3ac::t_bd67ef88dcd12d 2
+python/src/basecamp/async_client.py
+  s_289a344fc8a3ac::t_bdf5e1f07ad5be 394-399
+python/src/basecamp/client.py
+  s_289a344fc8a3ac::t_a3bebdb9d46bac 395-400
+ruby/lib/basecamp/version.rb
+  s_289a344fc8a3ac::t_a2d1c6ea86c517 5
+spec/api-provenance.json
+  s_289a344fc8a3ac::t_0e1d633af6c1db 4-5
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_289a344fc8a3ac::t_4e7169d249ca36 30
+typescript/src/client.ts
+  s_289a344fc8a3ac::t_35481e58eb9c7f 252
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_289a344fc8a3ac::t_4c0e66d2e97a4f 807-826
+spec/api-gaps/README.md
+  s_289a344fc8a3ac::t_6caaa222ec7488 62
+spec/api-gaps/my-assignments-priorities.md
+  s_289a344fc8a3ac::t_5e2bfba332472c 3,7-10,89-99,103-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ec3ad47f51786d333e4d575498bc275f42e13b58",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
