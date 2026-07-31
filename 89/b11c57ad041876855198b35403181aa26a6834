@@ -1,0 +1,52 @@
+typescript/tests/errors.test.ts
+  s_34dec3eb0265b2::t_9e2c92231628c8 449,455-461
+  s_34dec3eb0265b2::t_669c9d0166698d 87-102
+  s_34dec3eb0265b2::t_a57c5f3e44ae89 397-448,450-454,462-574
+  s_b1b74299ef0baf::t_921e984d5dbdae 575
+typescript/src/services/base.ts
+  s_34dec3eb0265b2::t_9b4151562ef398 599-603
+typescript/tests/services/my-assignments.test.ts
+  s_34dec3eb0265b2::t_5fa3f60d163e9f 113-114
+typescript/tests/services/calendars.test.ts
+  s_34dec3eb0265b2::t_cead77cec4c9cc 84-86
+typescript/tests/services/webhooks.test.ts
+  s_34dec3eb0265b2::t_5a78353e879d76 210-234
+typescript/README.md
+  s_34dec3eb0265b2::t_e9bf94f31d97fb 556-578
+typescript/src/errors.ts
+  s_34dec3eb0265b2::t_32db21d16d9726 312
+  s_34dec3eb0265b2::t_32ffa85a1921d8 170
+  s_34dec3eb0265b2::t_39fe843e70b13c 290-292,298
+  s_34dec3eb0265b2::t_6d6c996b7adf3b 375
+  s_34dec3eb0265b2::t_ca8c5ac54f84c9 282-289,293-297,299-311,313-359,361-374,376-390,394-398,402-403,410,412-426,428-435,440,442,444,452,456,465
+  s_34dec3eb0265b2::t_de786ceff28529 411
+  s_34dec3eb0265b2::t_63a7bdeccda638 360
+  s_34dec3eb0265b2::t_dbb3f56f64471f 72-73
+  s_34dec3eb0265b2::t_0f34862781ae9d 117-123,136
+typescript/tests/services/my-notes.test.ts
+  s_34dec3eb0265b2::t_9fa3d306ce5533 86,89,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "89b11c57ad041876855198b35403181aa26a6834",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
