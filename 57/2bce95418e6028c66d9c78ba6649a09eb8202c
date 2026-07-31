@@ -1,0 +1,20 @@
+typescript/src/client.ts
+  s_fb0636163f77d1::t_7223f0cd64f77c 1167
+  s_fb0636163f77d1::t_7c05ec926db668 1211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "572bce95418e6028c66d9c78ba6649a09eb8202c",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
