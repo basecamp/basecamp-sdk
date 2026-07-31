@@ -1164,7 +1164,7 @@ function sleep(ms: number): Promise<void> {
  *
  * const allProjects = await fetchAllPages(
  *   response.response,
- *   (r) => r.json()
+ *   (r) => r.json() as Promise<any[]>
  * );
  * ```
  */
@@ -1208,7 +1208,7 @@ export async function fetchAllPages<T>(
  *
  * @example
  * ```ts
- * for await (const page of paginateAll(response.response, (r) => r.json())) {
+ * for await (const page of paginateAll(response.response, (r) => r.json() as Promise<any[]>)) {
  *   console.log(`Processing ${page.length} items`);
  * }
  * ```

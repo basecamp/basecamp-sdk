@@ -24,7 +24,8 @@ module Basecamp
     # @return [Integer] request timeout in seconds
     attr_accessor :timeout
 
-    # @return [Integer] maximum retry attempts for GET requests
+    # @return [Integer] total request attempts for GET requests, including the
+    #   initial request (0 sends no requests at all and raises)
     attr_accessor :max_retries
 
     # @return [Float] initial backoff delay in seconds
@@ -48,7 +49,7 @@ module Basecamp
     #
     # @param base_url [String] API base URL
     # @param timeout [Integer] request timeout in seconds
-    # @param max_retries [Integer] maximum retry attempts
+    # @param max_retries [Integer] total request attempts for GET requests, including the initial request
     # @param base_delay [Float] initial backoff delay
     # @param max_jitter [Float] maximum jitter
     # @param max_pages [Integer] maximum pages to fetch
@@ -78,7 +79,7 @@ module Basecamp
     # Environment variables:
     # - BASECAMP_BASE_URL: API base URL
     # - BASECAMP_TIMEOUT: Request timeout in seconds
-    # - BASECAMP_MAX_RETRIES: Maximum retry attempts
+    # - BASECAMP_MAX_RETRIES: Total request attempts for GET requests, including the initial request
     #
     # @return [Config]
     def self.from_env

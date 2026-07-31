@@ -56,7 +56,7 @@ todo = account.todos.create(
 config = Basecamp::Config.new(
   base_url: "https://3.basecampapi.com",  # Default
   timeout: 30,                             # Request timeout in seconds
-  max_retries: 3,                          # Max retry attempts for GET requests
+  max_retries: 3,                          # Total request attempts for GET requests (including the initial request)
   base_delay: 1.0,                         # Base delay for exponential backoff
   max_pages: 10_000                         # Max pages for pagination
 )
@@ -71,7 +71,7 @@ client = Basecamp::Client.new(config: config, token_provider: token_provider)
 |--------|---------|-------------|
 | `base_url` | `https://3.basecampapi.com` | Basecamp API base URL |
 | `timeout` | `30` | HTTP request timeout (seconds) |
-| `max_retries` | `3` | Maximum retry attempts for GET requests |
+| `max_retries` | `3` | Total request attempts for GET requests (including the initial request) |
 | `base_delay` | `1.0` | Base delay for exponential backoff (seconds) |
 | `max_jitter` | `0.1` | Maximum random jitter added to delays |
 | `max_pages` | `10_000` | Maximum pages to fetch during pagination |
@@ -352,13 +352,15 @@ result = account.download_url(url)
 
 ## Retry Behavior
 
-GET requests automatically retry on transient failures with exponential backoff:
+Only plain GET requests retry — automatically, with exponential backoff. Mutation operations (POST, PUT, DELETE) do **not** retry to prevent data duplication, and the raw upload and download paths skip the retry loop entirely (the upload path is strictly one request; the download hop keeps only the one-shot 401 replay below).
 
-- **Retryable errors**: 429 (rate limit), 502, 503, 504 (gateway errors)
-- **Backoff**: Exponential with jitter (1s, 2s, 4s...)
-- **Rate limits**: Respects `Retry-After` header
-
-Mutation operations (POST, PUT, DELETE) do **not** retry to prevent data duplication.
+- **Which errors**: Retry keys off the error's `retryable?` classification, not a declared status list — 429 (rate limit), 500, 502, 503, 504, and any other 5xx all retry, as does `NetworkError` (connection failures, including DNS and connect-phase timeouts). Read timeouts are the exception: Faraday surfaces them as a status-less `ApiError` with `retryable? == false`, so a GET that times out mid-response fails on the first attempt. 400, 401, 403, 404, and 422 never retry.
+- **`max_retries`**: Total request attempts for GET requests, including the initial request — the default `3` means one initial attempt plus two retries. **`max_retries: 0` sends zero requests** and raises `Basecamp::ApiError` (`"Request failed after 0 attempts"`).
+- **Backoff**: Exponential with jitter — `base_delay * 2^(attempt - 1) + rand * max_jitter` — uncapped, bounded in practice by the attempt budget.
+- **Rate limits**: A 429's `Retry-After` header overrides the calculated backoff. Only 429 carries it: 5xx and network errors always use the exponential backoff.
+- **401 responses**: With a refresh-capable token provider, the SDK refreshes the token and replays the request **once** — for all methods, including mutations — outside the `max_retries` budget. A second 401 is surfaced. The raw upload path has no 401 replay.
+- **Per-operation metadata**: The retry policy operations declare (`retry_on` statuses, per-operation `max`) is inert in Ruby — every API GET issued through the client, including the Launchpad authorization fetch, rides the same classification-based loop bounded by `config.max_retries` alone. (The download flow's redirect hop and OAuth discovery use their own single-attempt transports.)
+- **`retryable?`**: Unlike SDKs where the error classification is only a hint for your own code, in Ruby an error's `retryable?` (and `retry_after`) is exactly what the transport acts on for GET requests.
 
 ## Error Handling
 
@@ -427,6 +429,8 @@ client = Basecamp::Client.new(
 | `BASECAMP_TOKEN` | OAuth access token |
 | `BASECAMP_ACCOUNT_ID` | Account ID |
 | `BASECAMP_BASE_URL` | API base URL (default: `https://3.basecampapi.com`) |
+| `BASECAMP_TIMEOUT` | Request timeout in seconds (default: `30`) |
+| `BASECAMP_MAX_RETRIES` | Total request attempts for GET requests, including the initial request (default: `3`) |
 
 ## Development
 
