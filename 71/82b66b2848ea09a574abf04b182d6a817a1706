@@ -1,0 +1,30 @@
+typescript/src/pagination.ts
+  s_555508c40a7b3b::t_5d536801f0ce7e 42
+typescript/src/index.ts
+  s_555508c40a7b3b::t_88a5f430c6d549 17
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_555508c40a7b3b::t_52ec676327cd26 24,26-29
+  s_555508c40a7b3b::t_834051ab278ba6 408-416
+typescript/src/errors.ts
+  s_555508c40a7b3b::t_ad7c7e3a4465ba 12
+typescript/src/hooks/otel.ts
+  s_555508c40a7b3b::t_a268218ba3f715 181
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_555508c40a7b3b::t_f0046927c2ac5f 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7182b66b2848ea09a574abf04b182d6a817a1706",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
