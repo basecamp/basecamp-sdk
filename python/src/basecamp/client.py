@@ -387,6 +387,12 @@ class AccountClient:
         return self._service("drafts", lambda: DraftsService(self))
 
     @property
+    def my_notes(self):
+        from basecamp.generated.services.my_notes import MyNotesService
+
+        return self._service("my_notes", lambda: MyNotesService(self))
+
+    @property
     def subscriptions(self):
         from basecamp.generated.services.subscriptions import SubscriptionsService
 
