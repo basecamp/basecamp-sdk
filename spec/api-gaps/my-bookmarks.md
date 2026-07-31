@@ -1,9 +1,16 @@
 ---
 gap: my-bookmarks
-status: addressed-in-bc3-pr-12383
+status: absorbed-in-sdk
 detected: 2026-07-25
 sdk_demand: medium
 bc3_pr: 12383
+smithy_refs:
+  - "ListMyBookmarks operation"
+  - "GetBookmark operation"
+  - "CreateBookmark operation"
+  - "DeleteBookmark operation"
+  - "Bookmark structure"
+  - "BookmarkStatus structure"
 bc3_refs:
   introduced_in: master
   routes:
@@ -84,10 +91,10 @@ delete is `204`, both idempotent.
 
 ## SDK absorption plan when this lands
 
-Registered here as `addressed-in-bc3-pr-12383` (documented in BC3, not yet
-modeled in the SDK). Absorption is a follow-up on top of this provenance sync:
-add the `BookmarksService` (four ops above), a `Bookmark` envelope shape and a
-`BookmarkStatus` (`{ bookmarked }`) output, Go wrappers, the two idempotent
-mutations gated per SPEC §7, and per-op happy-path + 4xx tests in TS/Ruby/Python
-plus conformance `paths.json` entries. Track as a dedicated absorption PR; this
-entry flips to `absorbed-in-sdk` with `smithy_refs` when that lands.
+**Absorbed** (post-#504 program C5): `BookmarksService` models all four
+operations with the `Bookmark` envelope and `BookmarkStatus` output; the tag
+`Bookmarks` resolves to `BookmarksService` in every generator via the default
+fallback (zero overrides). Both mutations are flagged idempotent and covered by
+idempotency conformance cases; per-op happy-path + 4xx tests in TS/Ruby/Python,
+Go wrappers with an `AccountClient.Bookmarks()` accessor, and `paths.json`
+entries with dispatch in all five runners.
