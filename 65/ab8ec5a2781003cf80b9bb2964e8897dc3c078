@@ -1,0 +1,23 @@
+typescript/scripts/generate-services.ts
+  s_289a344fc8a3ac::t_3ec61841fdc88e 463-464
+typescript/src/generated/services/bookmarks.ts
+  s_289a344fc8a3ac::t_021c85ab362967 16-19,42,52,73,81,103,111
+typescript/src/index.ts
+  s_289a344fc8a3ac::t_ab97ca38b59159 301-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "65ab8ec5a2781003cf80b9bb2964e8897dc3c078",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
