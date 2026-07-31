@@ -1,0 +1,35 @@
+kotlin/README.md
+  s_555508c40a7b3b::t_0fcd50aa23bd79 528
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_555508c40a7b3b::t_89193a9a58e670 474-500,509-574,579-680
+  s_555508c40a7b3b::t_51121bdaca639a 3
+  s_555508c40a7b3b::t_fb0f87272aa214 681
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
+  s_555508c40a7b3b::t_e66d145224eff1 9
+  s_555508c40a7b3b::t_e0f63b56fb43aa 298-307
+  s_555508c40a7b3b::t_017e10b1a290b3 62-70,82-98,100-106,127-152
+SPEC.md
+  s_555508c40a7b3b::t_d7d556388468ba 1973
+  s_555508c40a7b3b::t_513e7e3efc1a75 1969
+  s_555508c40a7b3b::t_90d02a57bc18fc 476
+  s_555508c40a7b3b::t_15c71f52afe60d 439
+  s_555508c40a7b3b::t_3cf9f2b3b8e17e 473
+conformance/tests/network-retry.json
+  s_555508c40a7b3b::t_7418ddfb2a8089 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fddd45d6501757d6d6c7230e7b4cdc055cb1fa47",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
