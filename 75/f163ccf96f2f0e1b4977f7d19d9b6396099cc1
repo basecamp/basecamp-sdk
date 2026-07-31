@@ -1,0 +1,110 @@
+python/src/basecamp/generated/services/_base.py
+  s_555508c40a7b3b::t_31fec1b0585007 323-329
+  s_555508c40a7b3b::t_fd4e87d73a2ee4 258,264
+  s_555508c40a7b3b::t_ffa8f732706767 236,242
+  s_555508c40a7b3b::t_699abf9d7733e0 354-358
+  s_555508c40a7b3b::t_e539a83d26c376 374-380
+  s_555508c40a7b3b::t_2435347c2af00e 404-406,426-431
+python/README.md
+  s_555508c40a7b3b::t_8e2ffda6cc460d 506,516-523
+  s_555508c40a7b3b::t_39e79091e36282 524
+python/src/basecamp/generated/services/_async_base.py
+  s_555508c40a7b3b::t_3e0073f1090e5a 349-353
+  s_555508c40a7b3b::t_76a76b74ff3f40 253,259
+  s_555508c40a7b3b::t_db943955e703cd 369-375
+  s_555508c40a7b3b::t_f74427dff664d3 399-401,421-426
+  s_555508c40a7b3b::t_abbe759e329b7d 318-324
+  s_555508c40a7b3b::t_02999b3d848a22 231,237
+conformance/runner/python/runner.py
+  s_555508c40a7b3b::t_5f846989fdc644 80,88-89
+  s_555508c40a7b3b::t_af9244ba9df4b0 295
+python/scripts/generate_services.py
+  s_555508c40a7b3b::t_a8ced42394c7c5 710,713,718,721
+  s_555508c40a7b3b::t_8ab6a712c61d42 586-590
+python/tests/test_max_items_public.py
+  s_555508c40a7b3b::t_2801190da639f8 1-249
+python/tests/test_paginate_truncated.py
+  s_555508c40a7b3b::t_db2749f7af8069 16-18
+python/src/basecamp/generated/services/bookmarks.py
+  s_555508c40a7b3b::t_70c55dcc08ade2 14,19,49,54
+python/src/basecamp/generated/services/boosts.py
+  s_555508c40a7b3b::t_33bf95f1a440cf 30,36,51,55,86,92,107,111
+python/src/basecamp/generated/services/campfires.py
+  s_555508c40a7b3b::t_c7b18b05978c30 14,18,30,34,74-76,81,119-121,126,142,146,158,162,205,211,250,256
+python/src/basecamp/generated/services/cards.py
+  s_555508c40a7b3b::t_2b0ab97e119ec1 48,52,109,113
+python/src/basecamp/generated/services/checkins.py
+  s_555508c40a7b3b::t_8dade82d708c74 14,18,49,55,91,95,108,112,116,120,157,161,192,198,234,238,251,255,259,263
+python/src/basecamp/generated/services/client_approvals.py
+  s_555508c40a7b3b::t_8cf4f161463a56 14-16,21,35-37,42
+python/src/basecamp/generated/services/client_correspondences.py
+  s_555508c40a7b3b::t_85652e556b3ddb 14-16,21,37-39,44
+python/src/basecamp/generated/services/client_replies.py
+  s_555508c40a7b3b::t_04161ecc0a9d4c 14,18,32,36
+python/src/basecamp/generated/services/comments.py
+  s_555508c40a7b3b::t_9937b477bc43d3 31,35,67,71
+python/src/basecamp/generated/services/documents.py
+  s_555508c40a7b3b::t_e6c697c9325d71 31,35,82,86
+python/src/basecamp/generated/services/drafts.py
+  s_555508c40a7b3b::t_0a536d2f0463f6 14,19,25,30
+python/src/basecamp/generated/services/events.py
+  s_555508c40a7b3b::t_d891bb823d33c2 14,18,24,28
+python/src/basecamp/generated/services/everything.py
+  s_555508c40a7b3b::t_473978560a5229 15-20,28,33-38,46,51-56,64,69-74,82,97-102,110,114,119,123,128,133-138,144,148,153,157,162,167-172,180,185-190,198,203-208,216,231-236,244,251-256,264,269-274,282,287-292,300,305-310,318,333-338,346,350,355,359,364,369-374,380,384,389,393,398,403-408,416,421-426,434,439-444,452,467-472,480
+python/src/basecamp/generated/services/forwards.py
+  s_555508c40a7b3b::t_9040baff4882b6 22,26,55-57,62,76,80,109-111,116
+python/src/basecamp/generated/services/gauges.py
+  s_555508c40a7b3b::t_018d7c1b03549a 48,52,67,72,112,116,131,136
+python/src/basecamp/generated/services/message_types.py
+  s_555508c40a7b3b::t_0c1d431b8648fd 14,18,66,70
+python/src/basecamp/generated/services/messages.py
+  s_555508c40a7b3b::t_251dc01369eef7 14-16,21,94-96,101
+python/src/basecamp/generated/services/my_notifications.py
+  s_555508c40a7b3b::t_f2371996f4f2fc 23,28,54,59
+python/src/basecamp/generated/services/people.py
+  s_555508c40a7b3b::t_e5b340050c5678 14,18,76,78-81,117,121,150,154,212,214-217,253,257
+python/src/basecamp/generated/services/projects.py
+  s_555508c40a7b3b::t_8bcdb0619d5517 14,19,69,74
+python/src/basecamp/generated/services/recordings.py
+  s_555508c40a7b3b::t_5dc50ee7f36e5d 22,28,74,80
+python/src/basecamp/generated/services/reports.py
+  s_555508c40a7b3b::t_c247ef3c11eb5d 14,18,48,53,59,63,95,100
+python/src/basecamp/generated/services/schedules.py
+  s_555508c40a7b3b::t_af183fdef21adc 77,82,183-185,190
+python/src/basecamp/generated/services/search.py
+  s_555508c40a7b3b::t_9459c3f6f98b8d 28,56,84,112
+python/src/basecamp/generated/services/templates.py
+  s_555508c40a7b3b::t_7b08b08b65df01 14,19,78,83
+python/src/basecamp/generated/services/timeline.py
+  s_555508c40a7b3b::t_ffe2b7fe0d3bdf 14,20,26,32
+python/src/basecamp/generated/services/timesheets.py
+  s_555508c40a7b3b::t_e881ef6f1fe4a3 15-21,27,32-38,44,95-101,107,112-118,124
+python/src/basecamp/generated/services/todolist_groups.py
+  s_555508c40a7b3b::t_a98946db196e26 23,27,51,55
+python/src/basecamp/generated/services/todolists.py
+  s_555508c40a7b3b::t_5228122f608ae6 40,45,88,93
+python/src/basecamp/generated/services/todos.py
+  s_555508c40a7b3b::t_0e30ff6b2d6988 49-56,61,199-206,211
+python/src/basecamp/generated/services/uploads.py
+  s_555508c40a7b3b::t_bdd37554efe8af 31,35,39,43,92,96,100,104
+python/src/basecamp/generated/services/vaults.py
+  s_555508c40a7b3b::t_9a26132a238579 31,35,67,71
+python/src/basecamp/generated/services/webhooks_service.py
+  s_555508c40a7b3b::t_8c2f1ebdc22a16 14,18,67,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "75f163ccf96f2f0e1b4977f7d19d9b6396099cc1",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
