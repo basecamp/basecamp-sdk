@@ -72,4 +72,63 @@ class MyAssignmentsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<JsonElement>(body)
         }
     }
+
+    /**
+     * Add a recording to Up Next — the current user's ordered list of prioritized
+     * @param body Request body
+     */
+    suspend fun prioritizeAssignment(body: PrioritizeAssignmentBody): Unit {
+        val info = OperationInfo(
+            service = "MyAssignments",
+            operation = "PrioritizeAssignment",
+            resourceType = "resource",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        request(info, {
+            httpPost("/my/priorities.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("id", kotlinx.serialization.json.JsonPrimitive(body.id))
+            }), operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Remove a recording from Up Next. Exact-target:
+     * @param recordingId The recording ID
+     */
+    suspend fun deprioritizeAssignment(recordingId: Long): Unit {
+        val info = OperationInfo(
+            service = "MyAssignments",
+            operation = "DeprioritizeAssignment",
+            resourceType = "resource",
+            isMutation = true,
+            projectId = null,
+            resourceId = recordingId,
+        )
+        request(info, {
+            httpDelete("/my/priorities/${recordingId}", operationName = info.operation)
+        }) { Unit }
+    }
+
+    /**
+     * Move an already-prioritized recording to a new 1-based position in Up Next
+     * @param body Request body
+     */
+    suspend fun reorderUpNext(body: ReorderUpNextBody): Unit {
+        val info = OperationInfo(
+            service = "MyAssignments",
+            operation = "ReorderUpNext",
+            resourceType = "resource",
+            isMutation = true,
+            projectId = null,
+            resourceId = null,
+        )
+        request(info, {
+            httpPost("/my/priority_moves.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("source_id", kotlinx.serialization.json.JsonPrimitive(body.sourceId))
+                put("position", kotlinx.serialization.json.JsonPrimitive(body.position))
+            }), operationName = info.operation)
+        }) { Unit }
+    }
 }

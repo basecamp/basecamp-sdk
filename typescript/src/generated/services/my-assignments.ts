@@ -21,6 +21,24 @@ due_later_this_week, due_next_week, due_later */
   scope?: string;
 }
 
+/**
+ * Request parameters for prioritizeAssignment.
+ */
+export interface PrioritizeAssignmentMyAssignmentRequest {
+  /** The recording id to prioritize. */
+  id: number;
+}
+
+/**
+ * Request parameters for reorderUpNext.
+ */
+export interface ReorderUpNextMyAssignmentRequest {
+  /** The recording id to move, chosen the same way as when prioritizing. */
+  sourceId: number;
+  /** The 1-based position to move it to. */
+  position: number;
+}
+
 
 // =============================================================================
 // Service
@@ -105,5 +123,91 @@ export class MyAssignmentsService extends BaseService {
         })
     );
     return response ?? [];
+  }
+
+  /**
+   * Add a recording to Up Next — the current user's ordered list of prioritized
+   * @param req - Resource request parameters
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.myAssignments.prioritizeAssignment({ id: 1 });
+   * ```
+   */
+  async prioritizeAssignment(req: PrioritizeAssignmentMyAssignmentRequest): Promise<void> {
+    await this.request(
+      {
+        service: "MyAssignments",
+        operation: "PrioritizeAssignment",
+        resourceType: "resource",
+        isMutation: true,
+      },
+      () =>
+        this.client.POST("/my/priorities.json", {
+          body: {
+            id: req.id,
+          },
+        })
+    );
+  }
+
+  /**
+   * Remove a recording from Up Next. Exact-target:
+   * @param recordingId - The recording ID
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.myAssignments.deprioritizeAssignment(123);
+   * ```
+   */
+  async deprioritizeAssignment(recordingId: number): Promise<void> {
+    await this.request(
+      {
+        service: "MyAssignments",
+        operation: "DeprioritizeAssignment",
+        resourceType: "resource",
+        isMutation: true,
+        resourceId: recordingId,
+      },
+      () =>
+        this.client.DELETE("/my/priorities/{recordingId}", {
+          params: {
+            path: { recordingId },
+          },
+        })
+    );
+  }
+
+  /**
+   * Move an already-prioritized recording to a new 1-based position in Up Next
+   * @param req - Resource request parameters
+   * @returns void
+   * @throws {BasecampError} If the request fails
+   *
+   * @example
+   * ```ts
+   * await client.myAssignments.reorderUpNext({ sourceId: 1, position: 1 });
+   * ```
+   */
+  async reorderUpNext(req: ReorderUpNextMyAssignmentRequest): Promise<void> {
+    await this.request(
+      {
+        service: "MyAssignments",
+        operation: "ReorderUpNext",
+        resourceType: "resource",
+        isMutation: true,
+      },
+      () =>
+        this.client.POST("/my/priority_moves.json", {
+          body: {
+            source_id: req.sourceId,
+            position: req.position,
+          },
+        })
+    );
   }
 }

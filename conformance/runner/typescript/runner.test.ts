@@ -251,6 +251,21 @@ async function executeOperation(
         await client.myNotes.getMyNote();
         break;
 
+      case "PrioritizeAssignment":
+        await client.myAssignments.prioritizeAssignment({ id: Number(body.id) });
+        break;
+
+      case "DeprioritizeAssignment":
+        await client.myAssignments.deprioritizeAssignment(Number(params.recordingId));
+        break;
+
+      case "ReorderUpNext":
+        await client.myAssignments.reorderUpNext({
+          sourceId: Number(body.source_id),
+          position: Number(body.position),
+        });
+        break;
+
       case "GetCalendar":
         await client.calendars.getCalendar(Number(params.calendarId));
         break;

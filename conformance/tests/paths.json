@@ -1428,5 +1428,90 @@
       "path",
       "calendars"
     ]
+  },
+  {
+    "name": "PrioritizeAssignment constructs /my/priorities.json",
+    "description": "Verifies PrioritizeAssignment POSTs the personal /my/priorities.json path with the {id} body (BC3 #12380).",
+    "operation": "PrioritizeAssignment",
+    "method": "POST",
+    "path": "/my/priorities.json",
+    "requestBody": {
+      "id": 1069479801
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/my/priorities.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "my-assignments"
+    ]
+  },
+  {
+    "name": "DeprioritizeAssignment constructs the exact-target priorities path",
+    "description": "Verifies DeprioritizeAssignment DELETEs /my/priorities/{recordingId} \u2014 the exact-target contract from BC3 #12483.",
+    "operation": "DeprioritizeAssignment",
+    "method": "DELETE",
+    "path": "/my/priorities/{recordingId}",
+    "pathParams": {
+      "recordingId": 1069479801
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/my/priorities/1069479801"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "my-assignments"
+    ]
+  },
+  {
+    "name": "ReorderUpNext constructs /my/priority_moves.json",
+    "description": "Verifies ReorderUpNext POSTs /my/priority_moves.json with the {source_id, position} body (BC3 #12380).",
+    "operation": "ReorderUpNext",
+    "method": "POST",
+    "path": "/my/priority_moves.json",
+    "requestBody": {
+      "source_id": 1069479801,
+      "position": 1
+    },
+    "mockResponses": [
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/my/priority_moves.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "my-assignments"
+    ]
   }
 ]

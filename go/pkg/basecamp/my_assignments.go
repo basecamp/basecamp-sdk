@@ -164,3 +164,88 @@ func (s *MyAssignmentsService) Due(ctx context.Context, scope string) (result []
 
 	return assignments, nil
 }
+
+// Prioritize adds a recording to Up Next — the current user's ordered list of
+// prioritized assignments. Identify the item by the recording id that carries
+// the priority; for a card table step surfaced under its parent card, that is
+// the entry's PriorityRecordingID. Idempotent: re-prioritizing an
+// already-prioritized recording is a no-op.
+func (s *MyAssignmentsService) Prioritize(ctx context.Context, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "MyAssignments", Operation: "Prioritize",
+		ResourceType: "assignment_priority", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	body := generated.PrioritizeAssignmentJSONRequestBody{Id: recordingID}
+	resp, err := s.client.parent.gen.PrioritizeAssignmentWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// Deprioritize removes a recording from Up Next. Exact-target: only the
+// priority carried by the identified recording is cleared, and deleting an
+// absent priority is a no-op 204 — safe to retry. Address a surfaced card
+// table step by its PriorityRecordingID, not its parent card's id.
+func (s *MyAssignmentsService) Deprioritize(ctx context.Context, recordingID int64) (err error) {
+	op := OperationInfo{
+		Service: "MyAssignments", Operation: "Deprioritize",
+		ResourceType: "assignment_priority", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.DeprioritizeAssignmentWithResponse(ctx, s.client.accountID, recordingID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// Reorder moves an already-prioritized recording to a new 1-based position in
+// Up Next. NOT retry-safe: a positional move's meaning shifts as the list
+// changes, so the SDK never retries it.
+func (s *MyAssignmentsService) Reorder(ctx context.Context, recordingID int64, position int32) (err error) {
+	op := OperationInfo{
+		Service: "MyAssignments", Operation: "Reorder",
+		ResourceType: "assignment_priority", IsMutation: true,
+		ResourceID: recordingID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if position < 1 {
+		err = ErrUsage("position must be a 1-based index")
+		return err
+	}
+
+	body := generated.ReorderUpNextJSONRequestBody{SourceId: recordingID, Position: position}
+	resp, err := s.client.parent.gen.ReorderUpNextWithResponse(ctx, s.client.accountID, body)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}

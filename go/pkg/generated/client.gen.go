@@ -1938,6 +1938,12 @@ type PreviewableAttachment struct {
 	Width       int32  `json:"width,omitempty"`
 }
 
+// PrioritizeAssignmentRequestContent defines model for PrioritizeAssignmentRequestContent.
+type PrioritizeAssignmentRequestContent struct {
+	// Id The recording id to prioritize.
+	Id int64 `json:"id"`
+}
+
 // Project defines model for Project.
 type Project struct {
 	AppUrl         string        `json:"app_url"`
@@ -2212,6 +2218,15 @@ type RecordingParent struct {
 	Title  string          `json:"title"`
 	Type   string          `json:"type"`
 	Url    string          `json:"url"`
+}
+
+// ReorderUpNextRequestContent defines model for ReorderUpNextRequestContent.
+type ReorderUpNextRequestContent struct {
+	// Position The 1-based position to move it to.
+	Position int32 `json:"position"`
+
+	// SourceId The recording id to move, chosen the same way as when prioritizing.
+	SourceId int64 `json:"source_id"`
 }
 
 // ReplaceTodoRequestContent defines model for ReplaceTodoRequestContent.
@@ -3950,6 +3965,12 @@ type UpdateMyNoteJSONRequestBody = UpdateMyNoteRequestContent
 // UpdateMyPreferencesJSONRequestBody defines body for UpdateMyPreferences for application/json ContentType.
 type UpdateMyPreferencesJSONRequestBody = UpdateMyPreferencesRequestContent
 
+// PrioritizeAssignmentJSONRequestBody defines body for PrioritizeAssignment for application/json ContentType.
+type PrioritizeAssignmentJSONRequestBody = PrioritizeAssignmentRequestContent
+
+// ReorderUpNextJSONRequestBody defines body for ReorderUpNext for application/json ContentType.
+type ReorderUpNextJSONRequestBody = ReorderUpNextRequestContent
+
 // UpdateMyProfileJSONRequestBody defines body for UpdateMyProfile for application/json ContentType.
 type UpdateMyProfileJSONRequestBody = UpdateMyProfileRequestContent
 
@@ -5006,6 +5027,19 @@ type ClientInterface interface {
 	UpdateMyPreferencesWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateMyPreferences(ctx context.Context, accountId string, body UpdateMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PrioritizeAssignmentWithBody request with any body
+	PrioritizeAssignmentWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PrioritizeAssignment(ctx context.Context, accountId string, body PrioritizeAssignmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeprioritizeAssignment request
+	DeprioritizeAssignment(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ReorderUpNextWithBody request with any body
+	ReorderUpNextWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ReorderUpNext(ctx context.Context, accountId string, body ReorderUpNextJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyProfile request
 	GetMyProfile(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -7027,6 +7061,64 @@ func (c *Client) UpdateMyPreferences(ctx context.Context, accountId string, body
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewUpdateMyPreferencesRequest(c.Server, accountId, body)
 	}, true, "UpdateMyPreferences", reqEditors...)
+
+}
+
+// PrioritizeAssignmentWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) PrioritizeAssignmentWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewPrioritizeAssignmentRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "PrioritizeAssignment", reqEditors...)
+
+}
+
+func (c *Client) PrioritizeAssignment(ctx context.Context, accountId string, body PrioritizeAssignmentJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewPrioritizeAssignmentRequest(c.Server, accountId, body)
+	}, true, "PrioritizeAssignment", reqEditors...)
+
+}
+
+// DeprioritizeAssignment is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeprioritizeAssignment(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeprioritizeAssignmentRequest(c.Server, accountId, recordingId)
+	}, true, "DeprioritizeAssignment", reqEditors...)
+
+}
+
+// ReorderUpNextWithBody executes the ReorderUpNext operation.
+
+func (c *Client) ReorderUpNextWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewReorderUpNextRequestWithBody(c.Server, accountId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) ReorderUpNext(ctx context.Context, accountId string, body ReorderUpNextJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewReorderUpNextRequest(c.Server, accountId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 
 }
 
@@ -14411,6 +14503,141 @@ func NewUpdateMyPreferencesRequestWithBody(server string, accountId string, cont
 	return req, nil
 }
 
+// NewPrioritizeAssignmentRequest calls the generic PrioritizeAssignment builder with application/json body
+func NewPrioritizeAssignmentRequest(server string, accountId string, body PrioritizeAssignmentJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPrioritizeAssignmentRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewPrioritizeAssignmentRequestWithBody generates requests for PrioritizeAssignment with any type of body
+func NewPrioritizeAssignmentRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/priorities.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDeprioritizeAssignmentRequest generates requests for DeprioritizeAssignment
+func NewDeprioritizeAssignmentRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/priorities/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewReorderUpNextRequest calls the generic ReorderUpNext builder with application/json body
+func NewReorderUpNextRequest(server string, accountId string, body ReorderUpNextJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReorderUpNextRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewReorderUpNextRequestWithBody generates requests for ReorderUpNext with any type of body
+func NewReorderUpNextRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/priority_moves.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetMyProfileRequest generates requests for GetMyProfile
 func NewGetMyProfileRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -21142,6 +21369,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateMyNote":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetMyPreferences":                   {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMyPreferences":                {Idempotent: true, HasSensitiveParams: false},
+	"PrioritizeAssignment":               {Idempotent: true, HasSensitiveParams: false},
+	"DeprioritizeAssignment":             {Idempotent: true, HasSensitiveParams: false},
+	"ReorderUpNext":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMyProfile":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetQuestionReminders":               {Idempotent: true, HasSensitiveParams: false},
@@ -21386,6 +21616,9 @@ var operationRetryMax = map[string]int{
 	"UpdateMyNote":                       3,
 	"GetMyPreferences":                   3,
 	"UpdateMyPreferences":                2,
+	"PrioritizeAssignment":               3,
+	"DeprioritizeAssignment":             3,
+	"ReorderUpNext":                      3,
 	"GetMyProfile":                       3,
 	"UpdateMyProfile":                    3,
 	"GetQuestionReminders":               3,
@@ -21628,6 +21861,9 @@ var operationRetryOn = map[string][]int{
 	"UpdateMyNote":                       {429, 503},
 	"GetMyPreferences":                   {429, 503},
 	"UpdateMyPreferences":                {429, 503},
+	"PrioritizeAssignment":               {429, 503},
+	"DeprioritizeAssignment":             {429, 503},
+	"ReorderUpNext":                      {429, 503},
 	"GetMyProfile":                       {429, 503},
 	"UpdateMyProfile":                    {429, 503},
 	"GetQuestionReminders":               {429, 503},
@@ -23106,6 +23342,19 @@ type ClientWithResponsesInterface interface {
 	UpdateMyPreferencesWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyPreferencesResponse, error)
 
 	UpdateMyPreferencesWithResponse(ctx context.Context, accountId string, body UpdateMyPreferencesJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMyPreferencesResponse, error)
+
+	// PrioritizeAssignmentWithBodyWithResponse request with any body
+	PrioritizeAssignmentWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PrioritizeAssignmentResponse, error)
+
+	PrioritizeAssignmentWithResponse(ctx context.Context, accountId string, body PrioritizeAssignmentJSONRequestBody, reqEditors ...RequestEditorFn) (*PrioritizeAssignmentResponse, error)
+
+	// DeprioritizeAssignmentWithResponse request
+	DeprioritizeAssignmentWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeprioritizeAssignmentResponse, error)
+
+	// ReorderUpNextWithBodyWithResponse request with any body
+	ReorderUpNextWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReorderUpNextResponse, error)
+
+	ReorderUpNextWithResponse(ctx context.Context, accountId string, body ReorderUpNextJSONRequestBody, reqEditors ...RequestEditorFn) (*ReorderUpNextResponse, error)
 
 	// GetMyProfileWithResponse request
 	GetMyProfileWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyProfileResponse, error)
@@ -27235,6 +27484,109 @@ func (r UpdateMyPreferencesResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateMyPreferencesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PrioritizeAssignmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r PrioritizeAssignmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PrioritizeAssignmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PrioritizeAssignmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeprioritizeAssignmentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeprioritizeAssignmentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeprioritizeAssignmentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeprioritizeAssignmentResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ReorderUpNextResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *BadRequestErrorResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ReorderUpNextResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReorderUpNextResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ReorderUpNextResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32867,6 +33219,49 @@ func (c *ClientWithResponses) UpdateMyPreferencesWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParseUpdateMyPreferencesResponse(rsp)
+}
+
+// PrioritizeAssignmentWithBodyWithResponse request with arbitrary body returning *PrioritizeAssignmentResponse
+func (c *ClientWithResponses) PrioritizeAssignmentWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PrioritizeAssignmentResponse, error) {
+	rsp, err := c.PrioritizeAssignmentWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePrioritizeAssignmentResponse(rsp)
+}
+
+func (c *ClientWithResponses) PrioritizeAssignmentWithResponse(ctx context.Context, accountId string, body PrioritizeAssignmentJSONRequestBody, reqEditors ...RequestEditorFn) (*PrioritizeAssignmentResponse, error) {
+	rsp, err := c.PrioritizeAssignment(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePrioritizeAssignmentResponse(rsp)
+}
+
+// DeprioritizeAssignmentWithResponse request returning *DeprioritizeAssignmentResponse
+func (c *ClientWithResponses) DeprioritizeAssignmentWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeprioritizeAssignmentResponse, error) {
+	rsp, err := c.DeprioritizeAssignment(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeprioritizeAssignmentResponse(rsp)
+}
+
+// ReorderUpNextWithBodyWithResponse request with arbitrary body returning *ReorderUpNextResponse
+func (c *ClientWithResponses) ReorderUpNextWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReorderUpNextResponse, error) {
+	rsp, err := c.ReorderUpNextWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReorderUpNextResponse(rsp)
+}
+
+func (c *ClientWithResponses) ReorderUpNextWithResponse(ctx context.Context, accountId string, body ReorderUpNextJSONRequestBody, reqEditors ...RequestEditorFn) (*ReorderUpNextResponse, error) {
+	rsp, err := c.ReorderUpNext(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReorderUpNextResponse(rsp)
 }
 
 // GetMyProfileWithResponse request returning *GetMyProfileResponse
@@ -40351,6 +40746,187 @@ func ParseUpdateMyPreferencesResponse(rsp *http.Response) (*UpdateMyPreferencesR
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePrioritizeAssignmentResponse parses an HTTP response from a PrioritizeAssignmentWithResponse call
+func ParsePrioritizeAssignmentResponse(rsp *http.Response) (*PrioritizeAssignmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PrioritizeAssignmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeprioritizeAssignmentResponse parses an HTTP response from a DeprioritizeAssignmentWithResponse call
+func ParseDeprioritizeAssignmentResponse(rsp *http.Response) (*DeprioritizeAssignmentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeprioritizeAssignmentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseReorderUpNextResponse parses an HTTP response from a ReorderUpNextWithResponse call
+func ParseReorderUpNextResponse(rsp *http.Response) (*ReorderUpNextResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReorderUpNextResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequestErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest ValidationErrorResponseContent

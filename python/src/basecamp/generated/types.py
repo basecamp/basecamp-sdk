@@ -1165,6 +1165,10 @@ class PreviewableAttachment(TypedDict):
     width: NotRequired[int]
 
 
+class PrioritizeAssignmentRequestContent(TypedDict):
+    id: int
+
+
 class Project(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -1362,6 +1366,11 @@ class RecordingParent(TypedDict):
     title: str
     type: str
     url: str
+
+
+class ReorderUpNextRequestContent(TypedDict):
+    position: int
+    source_id: int
 
 
 class ReplaceTodoRequestContent(TypedDict):

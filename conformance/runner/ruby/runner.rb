@@ -97,6 +97,12 @@ class OperationMapper
       @account.drafts.list_my_drafts.to_a
     when "GetMyNote"
       @account.my_notes.get_my_note
+    when "PrioritizeAssignment"
+      @account.my_assignments.prioritize_assignment(id: body["id"])
+    when "DeprioritizeAssignment"
+      @account.my_assignments.deprioritize_assignment(recording_id: path_params["recordingId"])
+    when "ReorderUpNext"
+      @account.my_assignments.reorder_up_next(source_id: body["source_id"], position: body["position"])
     when "GetCalendar"
       @account.calendars.get_calendar(calendar_id: path_params["calendarId"])
     when "UpdateCalendar"
@@ -283,6 +289,8 @@ RUBY_SKIPS = Set.new([
   "DeleteBookmark DELETE retries when marked idempotent",
   "UpdateMyNote PUT retries when marked idempotent",
   "UpdateCalendar PUT retries when marked idempotent",
+  "PrioritizeAssignment POST retries when marked idempotent",
+  "DeprioritizeAssignment DELETE retries when marked idempotent",
   "Total count header is accessible",
   "Missing X-Total-Count returns zero",
   "Pagination stops at maxPages safety cap",
@@ -303,6 +311,8 @@ RUBY_SKIP_REASONS = {
   "DeleteBookmark DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateMyNote PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
+  "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",
+  "DeprioritizeAssignment DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",

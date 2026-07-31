@@ -4,4 +4,4 @@ package basecamp
 const Version = "0.11.0"
 
 // APIVersion is the Basecamp API version this SDK targets.
-const APIVersion = "2026-07-30"
+const APIVersion = "2026-07-31"
