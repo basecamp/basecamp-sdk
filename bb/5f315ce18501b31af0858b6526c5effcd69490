@@ -1,0 +1,85 @@
+typescript/tests/errors.test.ts
+  s_555508c40a7b3b::t_15aa80c8a26070 488-512
+  s_555508c40a7b3b::t_b629ed873ea36d 8
+  s_555508c40a7b3b::t_f33cc6f7d92bfc 338-487
+go/pkg/basecamp/helpers.go
+  s_555508c40a7b3b::t_d8308bdcfee5dc 186-189,193,196
+  s_555508c40a7b3b::t_7d4b8a492261ec 88-91,93,96-98,101-174
+  s_555508c40a7b3b::t_364a608cd0ff73 65,68-70
+  s_555508c40a7b3b::t_7e31c66ba702ef 9,11
+ruby/lib/basecamp.rb
+  s_555508c40a7b3b::t_6c182475ac66b9 108-110
+  s_555508c40a7b3b::t_096f06bdac239f 160-205
+ruby/lib/basecamp/validation_error.rb
+  s_555508c40a7b3b::t_f1713e0c8a75bb 6-13,20
+go/pkg/basecamp/helpers_test.go
+  s_555508c40a7b3b::t_7d964aaf76a1f0 7-8
+  s_555508c40a7b3b::t_43a3c5ebb73bef 136-301
+swift/Sources/Basecamp/BasecampError.swift
+  s_555508c40a7b3b::t_d3e5348f608ae8 222-249
+  s_555508c40a7b3b::t_8fd70aee1c3665 44-49
+  s_555508c40a7b3b::t_caa3f2e49c181a 184-191,193
+  s_555508c40a7b3b::t_bcbcdbbdd5483e 165-166
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_555508c40a7b3b::t_61ad38d46c6728 102-109
+  s_555508c40a7b3b::t_82951852d34767 258-267,275,283
+ruby/lib/basecamp/http.rb
+  s_555508c40a7b3b::t_6da234c7f5e78a 530-534
+ruby/test/basecamp/errors_test.rb
+  s_555508c40a7b3b::t_d6e748251ea224 102-179
+typescript/src/errors.ts
+  s_555508c40a7b3b::t_25f6f1fd14fba8 171
+  s_555508c40a7b3b::t_d5ea8a155fbe15 358
+  s_555508c40a7b3b::t_60d539086a3dd4 371-400,404-406
+  s_555508c40a7b3b::t_8c1a30c25e9122 401-403
+  s_555508c40a7b3b::t_f5d96e282c3908 117-124
+  s_555508c40a7b3b::t_76f4ec960a2ae0 72-73
+  s_555508c40a7b3b::t_253aa96d89416c 317,319
+  s_555508c40a7b3b::t_3082382b91d45a 291-311,315,321-336
+  s_555508c40a7b3b::t_3051d2ef49b1d2 137
+python/src/basecamp/errors.py
+  s_555508c40a7b3b::t_58c9e600ea6cf8 118-124,126-131
+  s_555508c40a7b3b::t_c4fb5ece903f54 147-182
+  s_555508c40a7b3b::t_10e5538afcc689 200-208
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_555508c40a7b3b::t_2995dc05eb913d 505-507
+  s_555508c40a7b3b::t_953066f5224213 13,15
+  s_555508c40a7b3b::t_30c9e8d3ed1106 495,497,512-521,528-549
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ErrorTest.kt
+  s_555508c40a7b3b::t_818bd4ae0a726d 123-154
+swift/Tests/BasecampTests/ErrorTests.swift
+  s_555508c40a7b3b::t_2ec02fa0de374e 128-228
+ruby/test/basecamp/http_test.rb
+  s_555508c40a7b3b::t_9368d25d9616c7 206-234
+python/tests/test_errors.py
+  s_555508c40a7b3b::t_9e0762591d813f 122-184
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FieldKeyed422Test.kt
+  s_555508c40a7b3b::t_600744b331820b 1-133
+go/pkg/basecamp/errors.go
+  s_555508c40a7b3b::t_bee7bd4ae4bb12 51-63
+typescript/src/services/base.ts
+  s_555508c40a7b3b::t_c601f77bd54841 26
+  s_555508c40a7b3b::t_60128bef2a92fe 599-605
+conformance/tests/error-mapping.json
+  s_555508c40a7b3b::t_1b42e71a0a77e2 86-137
+typescript/src/index.ts
+  s_555508c40a7b3b::t_94a755c8676bca 61
+SPEC.md
+  s_555508c40a7b3b::t_26ae22c3e7eb31 404-420
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "bb5f315ce18501b31af0858b6526c5effcd69490",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
