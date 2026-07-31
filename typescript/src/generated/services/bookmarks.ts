@@ -13,6 +13,10 @@ import type { PaginationOptions } from "../../pagination.js";
 // Types
 // =============================================================================
 
+/** Bookmark entity from the Basecamp API. */
+export type Bookmark = components["schemas"]["Bookmark"];
+/** BookmarkStatus entity from the Basecamp API. */
+export type BookmarkStatus = components["schemas"]["BookmarkStatus"];
 
 /**
  * Options for listMyBookmarks.
@@ -35,7 +39,7 @@ export class BookmarksService extends BaseService {
   /**
    * List the current user's bookmarks, most recently bookmarked first (paginated).
    * @param options - Optional query parameters
-   * @returns All results across all pages, with .meta.totalCount
+   * @returns All Bookmark across all pages, with .meta.totalCount
    *
    * @example
    * ```ts
@@ -45,7 +49,7 @@ export class BookmarksService extends BaseService {
    * const filtered = await client.bookmarks.listMyBookmarks({ page: 1 });
    * ```
    */
-  async listMyBookmarks(options?: ListMyBookmarksBookmarkOptions): Promise<components["schemas"]["ListMyBookmarksResponseContent"]> {
+  async listMyBookmarks(options?: ListMyBookmarksBookmarkOptions): Promise<ListResult<Bookmark>> {
     return this.requestPaginated(
       {
         service: "Bookmarks",
@@ -66,7 +70,7 @@ export class BookmarksService extends BaseService {
   /**
    * Report whether the current user has bookmarked the recording.
    * @param recordingId - The recording ID
-   * @returns The bookmark
+   * @returns The BookmarkStatus
    * @throws {BasecampError} If the resource is not found
    *
    * @example
@@ -74,7 +78,7 @@ export class BookmarksService extends BaseService {
    * const result = await client.bookmarks.getBookmark(123);
    * ```
    */
-  async getBookmark(recordingId: number): Promise<components["schemas"]["GetBookmarkResponseContent"]> {
+  async getBookmark(recordingId: number): Promise<BookmarkStatus> {
     const response = await this.request(
       {
         service: "Bookmarks",
@@ -96,7 +100,7 @@ export class BookmarksService extends BaseService {
   /**
    * Bookmark a recording for the current user.
    * @param recordingId - The recording ID
-   * @returns The bookmark
+   * @returns The Bookmark
    * @throws {BasecampError} If required fields are missing or invalid
    *
    * @example
@@ -104,7 +108,7 @@ export class BookmarksService extends BaseService {
    * const result = await client.bookmarks.createBookmark(123);
    * ```
    */
-  async createBookmark(recordingId: number): Promise<components["schemas"]["CreateBookmarkResponseContent"]> {
+  async createBookmark(recordingId: number): Promise<Bookmark> {
     const response = await this.request(
       {
         service: "Bookmarks",

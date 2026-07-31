@@ -298,6 +298,8 @@ export { createNodeHandler, type NodeHandlerOptions } from "./webhooks/adapters/
 
 export {
   BookmarksService,
+  type Bookmark,
+  type BookmarkStatus,
   type ListMyBookmarksBookmarkOptions,
 } from "./generated/services/bookmarks.js";
 

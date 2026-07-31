@@ -460,6 +460,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Question: ["Question", "entity"],
   QuestionAnswer: ["Answer", "entity"], // Schema is QuestionAnswer, type alias is Answer
   Subscription: ["Subscription", "entity"],
+  Bookmark: ["Bookmark", "entity"],
+  BookmarkStatus: ["BookmarkStatus", "entity"],
   Forward: ["Forward", "entity"],
   ForwardReply: ["ForwardReply", "entity"],
   Inbox: ["Inbox", "entity"],
