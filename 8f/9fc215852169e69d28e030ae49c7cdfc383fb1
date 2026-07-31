@@ -1,0 +1,22 @@
+rubric-audit.json
+  s_555508c40a7b3b::t_d01711d18b59f5 21
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_555508c40a7b3b::t_bed41161194628 413-417,419,426
+  s_555508c40a7b3b::t_32ae7acac1e038 22-26,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "8f9fc215852169e69d28e030ae49c7cdfc383fb1",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
