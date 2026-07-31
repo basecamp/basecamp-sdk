@@ -91,6 +91,16 @@ package final class HTTPClient: Sendable {
         let retryable = Self.retryableMethods.contains(method.uppercased()) || idempotent
         let maxAttempts = max((config.enableRetry && retryable) ? effectiveConfig.maxAttempts : 1, 1)
 
+        /// Outcome of a single attempt. Computed inside the do/catch below —
+        /// which covers only the transport call and response classification —
+        /// and acted on at the loop tail, so retry side effects (onRetry,
+        /// backoff sleep, reauth) never run inside a catch clause.
+        enum AttemptDirective {
+            case done(Data, HTTPURLResponse)
+            case retry(error: any Error, delaySeconds: TimeInterval)
+            case fail(any Error)
+        }
+
         for attempt in 1...maxAttempts {
             let info = RequestInfo(method: method, url: url, attempt: attempt)
 
@@ -98,6 +108,7 @@ package final class HTTPClient: Sendable {
             safeInvokeHooks { $0.onRequestStart(info) }
 
             let startTime = CFAbsoluteTimeGetCurrent()
+            let directive: AttemptDirective
 
             do {
                 let (data, response) = try await transport.data(for: request)
@@ -121,48 +132,43 @@ package final class HTTPClient: Sendable {
                         httpVersion: "HTTP/1.1",
                         headerFields: httpResponse.allHeaderFields as? [String: String] ?? [:]
                     )!
-                    return (cached, syntheticResponse)
+                    directive = .done(cached, syntheticResponse)
+                } else {
+                    // Cache successful GET responses with ETag
+                    if method == "GET", httpResponse.statusCode == 200,
+                       let cache, let etag = httpResponse.value(forHTTPHeaderField: "ETag") {
+                        cache.store(url: url, data: data, etag: etag)
+                    }
+
+                    safeInvokeHooks {
+                        $0.onRequestEnd(info, result: RequestResult(
+                            statusCode: httpResponse.statusCode, durationMs: durationMs))
+                    }
+
+                    // Check if we should retry
+                    let statusCode = httpResponse.statusCode
+                    if effectiveConfig.retryOn.contains(statusCode), attempt < maxAttempts {
+                        let delaySeconds = calculateDelay(
+                            attempt: attempt,
+                            baseDelayMs: effectiveConfig.baseDelayMs,
+                            backoff: effectiveConfig.backoff,
+                            retryAfterHeader: httpResponse.value(forHTTPHeaderField: "Retry-After"),
+                            statusCode: statusCode
+                        )
+                        let error = BasecampError.fromHTTPResponse(
+                            status: statusCode, data: data,
+                            headers: httpResponse.allHeaderFields as? [String: String] ?? [:],
+                            requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id")
+                        )
+                        directive = .retry(error: error, delaySeconds: delaySeconds)
+                    } else {
+                        directive = .done(data, httpResponse)
+                    }
                 }
-
-                // Cache successful GET responses with ETag
-                if method == "GET", httpResponse.statusCode == 200,
-                   let cache, let etag = httpResponse.value(forHTTPHeaderField: "ETag") {
-                    cache.store(url: url, data: data, etag: etag)
-                }
-
-                safeInvokeHooks {
-                    $0.onRequestEnd(info, result: RequestResult(
-                        statusCode: httpResponse.statusCode, durationMs: durationMs))
-                }
-
-                // Check if we should retry
-                let statusCode = httpResponse.statusCode
-                if effectiveConfig.retryOn.contains(statusCode), attempt < maxAttempts {
-                    let delaySeconds = calculateDelay(
-                        attempt: attempt,
-                        baseDelayMs: effectiveConfig.baseDelayMs,
-                        backoff: effectiveConfig.backoff,
-                        retryAfterHeader: httpResponse.value(forHTTPHeaderField: "Retry-After"),
-                        statusCode: statusCode
-                    )
-                    let error = BasecampError.fromHTTPResponse(
-                        status: statusCode, data: data,
-                        headers: httpResponse.allHeaderFields as? [String: String] ?? [:],
-                        requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id")
-                    )
-                    safeInvokeHooks { $0.onRetry(info, attempt: attempt, error: error, delaySeconds: delaySeconds) }
-
-                    try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
-
-                    // Re-authenticate for retry (e.g. refresh expired token)
-                    try await authStrategy.authenticate(&request)
-                    continue
-                }
-
-                return (data, httpResponse)
-
             } catch let error as BasecampError {
-                throw error
+                // A BasecampError thrown by the transport (or the response-type
+                // guard) is rethrown untouched, with no request-end event.
+                directive = .fail(error)
             } catch {
                 // Network-level error
                 let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
@@ -178,14 +184,29 @@ package final class HTTPClient: Sendable {
                         retryAfterHeader: nil,
                         statusCode: nil
                     )
-                    safeInvokeHooks {
-                        $0.onRetry(info, attempt: attempt, error: error, delaySeconds: delaySeconds)
-                    }
-                    try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
-                    continue
+                    directive = .retry(error: error, delaySeconds: delaySeconds)
+                } else {
+                    directive = .fail(BasecampError.network(message: "Network error", cause: error))
                 }
+            }
 
-                throw BasecampError.network(message: "Network error", cause: error)
+            // Loop tail — SPEC §7 steps 3.j (on_retry), 3.k (sleep), 3.l (refresh
+            // auth), shared by the status and network retry paths. These run
+            // outside any catch, so a CancellationError from the backoff sleep or
+            // an error from re-authentication propagates raw — no phantom request
+            // events for an attempt that already ended, no wrapping.
+            switch directive {
+            case .done(let data, let response):
+                return (data, response)
+            case .fail(let error):
+                throw error
+            case .retry(let error, let delaySeconds):
+                safeInvokeHooks { $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds) }
+
+                try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+
+                // Re-authenticate for retry (e.g. refresh expired token)
+                try await authStrategy.authenticate(&request)
             }
         }
 

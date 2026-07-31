@@ -165,7 +165,8 @@ final class HooksTests: XCTestCase {
         )
 
         XCTAssertEqual(spy.retries.count, 1, "onRetry should fire once for one retry")
-        XCTAssertEqual(spy.retries.first?.attempt, 1, "First retry attempt number should be 1")
+        XCTAssertEqual(spy.retries.first?.attempt, 2, "Standalone attempt is the upcoming attempt: first retry = attempt 2")
+        XCTAssertEqual(spy.retries.first?.info.attempt, 1, "RequestInfo carries the attempt that just failed")
         XCTAssertGreaterThanOrEqual(spy.retries.first?.delaySeconds ?? -1, 0)
     }
 

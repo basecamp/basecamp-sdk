@@ -194,15 +194,63 @@ final class RetryTests: XCTestCase {
             )
         )
 
-        // The second request should have a different auth token than the first
+        // The second request should have a different auth token than the first:
+        // the retry re-authenticates and the provider rotates (SPEC §7 step 3.l).
         let requests = transport.requests
         XCTAssertEqual(requests.count, 2)
         let firstAuth = requests[0].request.value(forHTTPHeaderField: "Authorization")
         let secondAuth = requests[1].request.value(forHTTPHeaderField: "Authorization")
-        // Both get token from the provider; the retry re-authenticates
-        // The key thing is that authenticate() was called again
-        XCTAssertNotNil(firstAuth)
-        XCTAssertNotNil(secondAuth)
+        XCTAssertEqual(firstAuth, "Bearer token-1")
+        XCTAssertEqual(secondAuth, "Bearer token-2", "The retry after a retryable status must re-authenticate")
+    }
+
+    /// Network-path twin of `testAuthReauthenticatesOnRetry`: a retry after a
+    /// transport-level failure must also refresh auth before the next attempt
+    /// (SPEC §7 step 3.l applies to both retry paths).
+    func testAuthReauthenticatesOnRetryAfterNetworkError() async throws {
+        let requestCounter = Counter()
+
+        let tokenProvider = RotatingTokenProvider(tokens: ["token-1", "token-2", "token-3"])
+
+        let transport = MockTransport { request in
+            let count = requestCounter.increment()
+            if count == 1 {
+                throw URLError(.networkConnectionLost)
+            }
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 200,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!
+            return (Data("{}".utf8), response)
+        }
+
+        let client = BasecampClient(
+            tokenProvider: tokenProvider,
+            userAgent: "test-suite",
+            config: BasecampConfig(
+                baseURL: "https://3.basecampapi.com",
+                enableRetry: true,
+                enableCache: false
+            ),
+            transport: transport
+        )
+        let account = client.forAccount("999999999")
+
+        _ = try await account.httpClient.performRequest(
+            method: "GET",
+            url: "https://3.basecampapi.com/999999999/projects.json",
+            retryConfig: RetryConfig(
+                maxAttempts: 3, baseDelayMs: 1,
+                backoff: .constant, retryOn: [429, 503]
+            )
+        )
+
+        let requests = transport.requests
+        XCTAssertEqual(requests.count, 2)
+        let firstAuth = requests[0].request.value(forHTTPHeaderField: "Authorization")
+        let secondAuth = requests[1].request.value(forHTTPHeaderField: "Authorization")
+        XCTAssertEqual(firstAuth, "Bearer token-1")
+        XCTAssertEqual(secondAuth, "Bearer token-2", "The retry after a network error must re-authenticate")
     }
 
     // MARK: - Retry-After Header
@@ -308,6 +356,104 @@ final class RetryTests: XCTestCase {
         }
 
         XCTAssertEqual(counter.value, 2, "Should exhaust all retry attempts")
+    }
+
+    // MARK: - Retry Lifecycle (#509): backoff/reauth run outside the attempt's do/catch
+
+    /// A failing re-authentication before a retry must propagate its error raw:
+    /// no phantom onRequestEnd(statusCode: 0) for an attempt that already ended,
+    /// no second onRetry, and no further attempt with stale headers.
+    func testAuthFailureOnRetryPropagatesRaw() async throws {
+        let spy = RetrySpyHooks()
+        let counter = Counter()
+        let transport = MockTransport { request in
+            let count = counter.increment()
+            let statusCode = count == 1 ? 429 : 200
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: statusCode,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!
+            return (Data("{}".utf8), response)
+        }
+
+        let client = BasecampClient(
+            auth: FailingSecondAuth(),
+            userAgent: "test-suite",
+            config: BasecampConfig(
+                baseURL: "https://3.basecampapi.com",
+                enableRetry: true,
+                enableCache: false
+            ),
+            hooks: spy,
+            transport: transport
+        )
+        let account = client.forAccount("999999999")
+
+        do {
+            _ = try await account.httpClient.performRequest(
+                method: "GET",
+                url: "https://3.basecampapi.com/999999999/projects.json",
+                retryConfig: RetryConfig(
+                    maxAttempts: 3, baseDelayMs: 1,
+                    backoff: .constant, retryOn: [429, 503]
+                )
+            )
+            XCTFail("Expected RefreshError")
+        } catch is RefreshError {
+            // Expected: the authenticate error propagates untouched.
+        } catch {
+            XCTFail("Expected RefreshError, got \(error)")
+        }
+
+        XCTAssertEqual(spy.requestEnds.count, 1, "A failed reauth must not emit a phantom onRequestEnd")
+        XCTAssertEqual(spy.retries.count, 1, "A failed reauth must not emit a second onRetry")
+    }
+
+    /// Cancelling the task while it sleeps between attempts must propagate
+    /// CancellationError raw: no phantom onRequestEnd(statusCode: 0) and no
+    /// second onRetry for the attempt that already ended.
+    func testCancellationDuringBackoffPropagatesRaw() async throws {
+        let spy = RetrySpyHooks()
+        let transport = MockTransport { request in
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 503,
+                httpVersion: "HTTP/1.1", headerFields: [:]
+            )!
+            return (Data(), response)
+        }
+
+        let client = makeTestClient(transport: transport, enableRetry: true, hooks: spy)
+        let httpClient = client.forAccount("999999999").httpClient
+
+        let task = Task {
+            _ = try await httpClient.performRequest(
+                method: "GET",
+                url: "https://3.basecampapi.com/999999999/projects.json",
+                retryConfig: RetryConfig(
+                    maxAttempts: 3, baseDelayMs: 5_000,
+                    backoff: .constant, retryOn: [429, 503]
+                )
+            )
+        }
+
+        // Wait until the first attempt's 503 has been served — the client is
+        // then headed into (or already inside) its ~5s backoff sleep — and cancel.
+        while transport.requests.isEmpty {
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected: cooperative cancellation propagates raw.
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+
+        XCTAssertEqual(spy.requestEnds.count, 1, "A cancelled backoff must not emit a phantom onRequestEnd")
+        XCTAssertEqual(spy.retries.count, 1, "A cancelled backoff must not emit a second onRetry")
     }
 
     // MARK: - Idempotency Gate (Layer A: transport)
@@ -572,6 +718,67 @@ final class RetryTests: XCTestCase {
 }
 
 // MARK: - Test Helpers
+
+/// Error thrown by `FailingSecondAuth` to simulate a token-refresh failure.
+private struct RefreshError: Error {}
+
+/// An auth strategy whose second `authenticate` call throws `RefreshError`,
+/// simulating a token refresh that fails between retry attempts.
+private final class FailingSecondAuth: AuthStrategy, @unchecked Sendable {
+    private let lock = NSLock()
+    private var calls = 0
+
+    func authenticate(_ request: inout URLRequest) async throws {
+        let call: Int = lock.withLock {
+            calls += 1
+            return calls
+        }
+        if call >= 2 {
+            throw RefreshError()
+        }
+        request.setValue("Bearer token-\(call)", forHTTPHeaderField: "Authorization")
+    }
+}
+
+/// File-local spy recording request-level hook callbacks for the retry
+/// lifecycle tests. (HooksTests' SpyHooks is private to that file.)
+private final class RetrySpyHooks: BasecampHooks, @unchecked Sendable {
+    struct RetryRecord {
+        let info: RequestInfo
+        let attempt: Int
+        let error: any Error
+        let delaySeconds: TimeInterval
+    }
+
+    private let lock = NSLock()
+    private var _requestStarts: [RequestInfo] = []
+    private var _requestEnds: [(RequestInfo, RequestResult)] = []
+    private var _retries: [RetryRecord] = []
+
+    var requestStarts: [RequestInfo] {
+        lock.withLock { _requestStarts }
+    }
+
+    var requestEnds: [(RequestInfo, RequestResult)] {
+        lock.withLock { _requestEnds }
+    }
+
+    var retries: [RetryRecord] {
+        lock.withLock { _retries }
+    }
+
+    func onRequestStart(_ info: RequestInfo) {
+        lock.withLock { _requestStarts.append(info) }
+    }
+
+    func onRequestEnd(_ info: RequestInfo, result: RequestResult) {
+        lock.withLock { _requestEnds.append((info, result)) }
+    }
+
+    func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+        lock.withLock { _retries.append(RetryRecord(info: info, attempt: attempt, error: error, delaySeconds: delaySeconds)) }
+    }
+}
 
 /// A token provider that returns tokens from a list, cycling through them.
 private final class RotatingTokenProvider: TokenProvider, @unchecked Sendable {
