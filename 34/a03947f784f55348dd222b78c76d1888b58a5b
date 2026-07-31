@@ -1,0 +1,23 @@
+spec/api-gaps/README.md
+  s_289a344fc8a3ac::t_a015207263f11b 50
+  s_289a344fc8a3ac::t_73a5c6752f1f8a 74-76
+spec/api-gaps/memories-emptied-regression.md
+  s_289a344fc8a3ac::t_1070ae06a22086 3,7-8
+  s_289a344fc8a3ac::t_1ff68a2be9e6b9 22-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "34a03947f784f55348dd222b78c76d1888b58a5b",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
