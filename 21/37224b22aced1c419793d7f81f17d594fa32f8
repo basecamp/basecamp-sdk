@@ -1,0 +1,44 @@
+go/pkg/basecamp/client_test.go
+  s_34dec3eb0265b2::t_2775124c120ce3 9
+  s_34dec3eb0265b2::t_d80399d6308af2 474-489,492,494-519,522,524-534
+  s_34dec3eb0265b2::t_a7abbb5cf6b635 490-491,493,520-521,523
+go/pkg/basecamp/errors.go
+  s_34dec3eb0265b2::t_b90a1bfb7bf101 57-61
+go/pkg/basecamp/client.go
+  s_34dec3eb0265b2::t_2ea1c5ba717e36 835-845,848-852
+go/pkg/basecamp/calendars_test.go
+  s_34dec3eb0265b2::t_f8e29e80dc6b69 1-37,39-62,65,67-77
+  s_34dec3eb0265b2::t_a7abbb5cf6b635 38,63-64,66
+go/pkg/basecamp/webhooks_test.go
+  s_34dec3eb0265b2::t_4a7d08076e597f 4,6-7,10
+  s_34dec3eb0265b2::t_a7abbb5cf6b635 344-345,347
+  s_34dec3eb0265b2::t_68395db3b8a1cd 341
+  s_34dec3eb0265b2::t_d80399d6308af2 324-340,342-343,346,348-358
+go/README.md
+  s_34dec3eb0265b2::t_3d460af0eaeb61 532-546
+go/pkg/basecamp/helpers_test.go
+  s_34dec3eb0265b2::t_a7abbb5cf6b635 355
+  s_34dec3eb0265b2::t_bb648e2719a130 212-354,356-366
+  s_34dec3eb0265b2::t_9931dc399aa8d7 7-8
+go/pkg/basecamp/helpers.go
+  s_34dec3eb0265b2::t_2f0f90aa2866cf 9,11
+  s_34dec3eb0265b2::t_db6c9962a47594 65,69,71,73,75,77,79,82,89-97,99,101,103-171,174-175,177-184,186-212,217-221,223,225-256
+  s_34dec3eb0265b2::t_b59174b4739933 172-173,176
+  s_34dec3eb0265b2::t_5fa17d7d0e37f7 213-216,222,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "2137224b22aced1c419793d7f81f17d594fa32f8",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
