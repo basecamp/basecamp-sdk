@@ -110,6 +110,14 @@ class OperationMapper:
                 return self._account.drafts.list_my_drafts()
             case "GetMyNote":
                 return self._account.my_notes.get_my_note()
+            case "PrioritizeAssignment":
+                return self._account.my_assignments.prioritize_assignment(id=body["id"])
+            case "DeprioritizeAssignment":
+                return self._account.my_assignments.deprioritize_assignment(recording_id=path_params["recordingId"])
+            case "ReorderUpNext":
+                return self._account.my_assignments.reorder_up_next(
+                    source_id=body["source_id"], position=body["position"]
+                )
             case "GetCalendar":
                 return self._account.calendars.get_calendar(calendar_id=path_params["calendarId"])
             case "UpdateCalendar":

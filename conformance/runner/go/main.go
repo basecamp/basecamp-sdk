@@ -547,6 +547,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.MyNotes().Get(ctx)
 		return operationResult{err: err}
 
+	case "PrioritizeAssignment":
+		id := getInt64Param(tc.RequestBody, "id")
+		err := account.MyAssignments().Prioritize(ctx, id)
+		return operationResult{err: err}
+
+	case "DeprioritizeAssignment":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		err := account.MyAssignments().Deprioritize(ctx, recordingID)
+		return operationResult{err: err}
+
+	case "ReorderUpNext":
+		sourceID := getInt64Param(tc.RequestBody, "source_id")
+		position := getInt64Param(tc.RequestBody, "position")
+		err := account.MyAssignments().Reorder(ctx, sourceID, int32(position))
+		return operationResult{err: err}
+
 	case "GetCalendar":
 		calendarID := getInt64Param(tc.PathParams, "calendarId")
 		_, err := account.Calendars().Get(ctx, calendarID)

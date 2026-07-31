@@ -804,6 +804,26 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "PrioritizeAssignment" -> {
+            account.myAssignments.prioritizeAssignment(PrioritizeAssignmentBody(id = tc.requestBody.longParam("id")))
+            DispatchResult()
+        }
+
+        "DeprioritizeAssignment" -> {
+            account.myAssignments.deprioritizeAssignment(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
+        "ReorderUpNext" -> {
+            account.myAssignments.reorderUpNext(
+                ReorderUpNextBody(
+                    sourceId = tc.requestBody.longParam("source_id"),
+                    position = tc.requestBody.longParam("position").toInt(),
+                )
+            )
+            DispatchResult()
+        }
+
         "GetCalendar" -> {
             account.calendars.getCalendar(tc.pathParams.longParam("calendarId"))
             DispatchResult()

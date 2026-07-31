@@ -262,5 +262,97 @@
       "idempotent",
       "put"
     ]
+  },
+  {
+    "name": "PrioritizeAssignment POST retries when marked idempotent",
+    "description": "Prioritizing is set-membership (Assignment#prioritize is priority || create_priority! \u2014 a repeat is a pure no-op), flagged idempotent; it must retry on 503 in the metadata-driven SDKs.",
+    "operation": "PrioritizeAssignment",
+    "method": "POST",
+    "path": "/my/priorities.json",
+    "requestBody": {
+      "id": 1069479801
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "post"
+    ]
+  },
+  {
+    "name": "DeprioritizeAssignment DELETE retries when marked idempotent",
+    "description": "Exact-target delete-of-absent is a no-op 204 (BC3 #12483), so the DELETE is idempotent and must retry on 503.",
+    "operation": "DeprioritizeAssignment",
+    "method": "DELETE",
+    "path": "/my/priorities/{recordingId}",
+    "pathParams": {
+      "recordingId": 1069479801
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 204
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "delete"
+    ]
+  },
+  {
+    "name": "ReorderUpNext POST does NOT retry (positional move)",
+    "description": "A positional move's meaning shifts as the list changes, so ReorderUpNext carries no idempotency flag and must be attempted exactly once on 503.",
+    "operation": "ReorderUpNext",
+    "method": "POST",
+    "path": "/my/priority_moves.json",
+    "requestBody": {
+      "source_id": 1069479801,
+      "position": 1
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 1
+      },
+      {
+        "type": "statusCode",
+        "expected": 503
+      }
+    ],
+    "tags": [
+      "no-retry",
+      "post"
+    ]
   }
 ]
