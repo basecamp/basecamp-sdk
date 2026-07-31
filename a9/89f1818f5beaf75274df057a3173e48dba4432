@@ -1,0 +1,24 @@
+typescript/tests/middleware-lifecycle.test.ts
+  s_555508c40a7b3b::t_dcec73d7915eb1 218-221,245,247-251
+  s_555508c40a7b3b::t_755bf3cc210606 138-141,155-189
+typescript/tests/client.test.ts
+  s_555508c40a7b3b::t_0da1b70a4ed570 309-371
+typescript/src/client.ts
+  s_555508c40a7b3b::t_3e83b09ad75f30 1064-1098
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a989f1818f5beaf75274df057a3173e48dba4432",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
