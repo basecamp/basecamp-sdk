@@ -31,6 +31,7 @@ enum Metadata {
         "CreateTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateTodolist": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateTodolistGroup": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
+        "CreateTodosetTodo": RetryConfig(maxAttempts: 3, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateTool": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateUpload": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),
         "CreateVault": RetryConfig(maxAttempts: 2, baseDelayMs: 1000, backoff: .exponential, retryOn: [429, 503]),

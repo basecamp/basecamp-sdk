@@ -230,6 +230,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/buckets/{bucketId}/todosets/{todosetId}/todos.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Create a to-do directly under a project's to-do set, outside any to-do list.
+         *     This form exists only project-scoped (no account-scoped variant); parameters
+         *     and response match the to-do-list create. Find a project's to-do set id via
+         *     GetTodoset.
+         */
+        post: operations["CreateTodosetTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/buckets/{bucketId}/webhooks.json": {
         parameters: {
             query?: never;
@@ -3484,6 +3506,16 @@ export interface components {
             visible_to_clients?: boolean;
         };
         CreateTodolistResponseContent: components["schemas"]["Todolist"];
+        CreateTodosetTodoRequestContent: {
+            content: string;
+            description?: string;
+            assignee_ids?: number[];
+            completion_subscriber_ids?: number[];
+            notify?: boolean;
+            due_on?: string;
+            starts_on?: string;
+        };
+        CreateTodosetTodoResponseContent: components["schemas"]["Todo"];
         CreateToolRequestContent: {
             /** @description Tool type to add to the project dock. Values: Chat::Transcript|Inbox|Kanban::Board|Message::Board|Questionnaire|Schedule|Todoset|Vault. */
             tool_type: string;
@@ -6798,6 +6830,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreateToolResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateTodosetTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bucketId: number;
+                todosetId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTodosetTodoRequestContent"];
+            };
+        };
+        responses: {
+            /** @description CreateTodosetTodo 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTodosetTodoResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

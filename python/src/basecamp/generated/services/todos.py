@@ -11,6 +11,41 @@ from basecamp.hooks import OperationInfo
 
 
 class TodosService(BaseService):
+    def create_todoset_todo(
+        self,
+        *,
+        bucket_id: int,
+        todoset_id: int,
+        content: str,
+        description: str | None = None,
+        assignee_ids: list[int] | None = None,
+        completion_subscriber_ids: list[int] | None = None,
+        notify: bool | None = None,
+        due_on: str | None = None,
+        starts_on: str | None = None,
+    ) -> dict[str, Any]:
+        return self._request(
+            OperationInfo(
+                service="todos",
+                operation="create_todoset_todo",
+                is_mutation=True,
+                project_id=bucket_id,
+                resource_id=todoset_id,
+            ),
+            "POST",
+            f"/buckets/{bucket_id}/todosets/{todoset_id}/todos.json",
+            json_body=self._compact(
+                content=content,
+                description=description,
+                assignee_ids=assignee_ids,
+                completion_subscriber_ids=completion_subscriber_ids,
+                notify=notify,
+                due_on=due_on,
+                starts_on=starts_on,
+            ),
+            operation="CreateTodosetTodo",
+        )
+
     def list(self, *, todolist_id: int, status: str | None = None, completed: bool | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
@@ -118,6 +153,41 @@ class TodosService(BaseService):
 
 
 class AsyncTodosService(AsyncBaseService):
+    async def create_todoset_todo(
+        self,
+        *,
+        bucket_id: int,
+        todoset_id: int,
+        content: str,
+        description: str | None = None,
+        assignee_ids: list[int] | None = None,
+        completion_subscriber_ids: list[int] | None = None,
+        notify: bool | None = None,
+        due_on: str | None = None,
+        starts_on: str | None = None,
+    ) -> dict[str, Any]:
+        return await self._request(
+            OperationInfo(
+                service="todos",
+                operation="create_todoset_todo",
+                is_mutation=True,
+                project_id=bucket_id,
+                resource_id=todoset_id,
+            ),
+            "POST",
+            f"/buckets/{bucket_id}/todosets/{todoset_id}/todos.json",
+            json_body=self._compact(
+                content=content,
+                description=description,
+                assignee_ids=assignee_ids,
+                completion_subscriber_ids=completion_subscriber_ids,
+                notify=notify,
+                due_on=due_on,
+                starts_on=starts_on,
+            ),
+            operation="CreateTodosetTodo",
+        )
+
     async def list(self, *, todolist_id: int, status: str | None = None, completed: bool | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),

@@ -313,6 +313,17 @@
         ]
       }
     },
+    "CreateTodosetTodo": {
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateTool": {
       "retry": {
         "max": 2,

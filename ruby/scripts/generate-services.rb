@@ -116,7 +116,7 @@ class ServiceGenerator
       'ClientVisibility' => %w[SetClientVisibility]
     },
     'Todos' => {
-      'Todos' => %w[ListTodos CreateTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo TrashTodo],
+      'Todos' => %w[ListTodos CreateTodo CreateTodosetTodo GetTodo ReplaceTodo CompleteTodo UncompleteTodo TrashTodo],
       'Todolists' => %w[GetTodolistOrGroup UpdateTodolistOrGroup ListTodolists CreateTodolist RepositionTodolist],
       'Todosets' => %w[GetTodoset],
       'HillCharts' => %w[GetHillChart UpdateHillChartSettings],

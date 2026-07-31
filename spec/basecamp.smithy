@@ -64,6 +64,7 @@ service Basecamp {
     ListTodos,
     GetTodo,
     CreateTodo,
+    CreateTodosetTodo,
     ReplaceTodo,
     TrashTodo,
     CompleteTodo,
@@ -734,6 +735,42 @@ structure CreateTodoInput {
 structure CreateTodoOutput {
 
   todo: Todo
+}
+
+/// Create a to-do directly under a project's to-do set, outside any to-do list.
+/// This form exists only project-scoped (no account-scoped variant); parameters
+/// and response match the to-do-list create. Find a project's to-do set id via
+/// GetTodoset.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos.json", code: 201)
+operation CreateTodosetTodo {
+  input: CreateTodosetTodoInput
+  output: CreateTodoOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateTodosetTodoInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  bucketId: ProjectId
+
+  @required
+  @httpLabel
+  todosetId: TodosetId
+
+  @required
+  content: TodoContent
+
+  description: TodoDescription
+  assignee_ids: PersonIdList
+  completion_subscriber_ids: PersonIdList
+  notify: Boolean
+  due_on: ISO8601Date
+  starts_on: ISO8601Date
 }
 
 /// Replace a todo with a new complete representation.

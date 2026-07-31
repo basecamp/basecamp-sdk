@@ -728,6 +728,17 @@ data class CreateTodolistBody(
     val visibleToClients: Boolean? = null
 )
 
+/** Request body for CreateTodosetTodo. */
+data class CreateTodosetTodoBody(
+    val content: String,
+    val description: String? = null,
+    val assigneeIds: List<Long>? = null,
+    val completionSubscriberIds: List<Long>? = null,
+    val notify: Boolean? = null,
+    val dueOn: String? = null,
+    val startsOn: String? = null
+)
+
 /** Options for ListTodos. */
 data class ListTodosOptions(
     val status: String? = null,

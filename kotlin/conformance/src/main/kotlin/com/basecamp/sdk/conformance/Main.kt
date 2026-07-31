@@ -771,6 +771,14 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "CreateTodosetTodo" -> {
+            val bucketId = tc.pathParams.longParam("bucketId")
+            val todosetId = tc.pathParams.longParam("todosetId")
+            val content = tc.requestBody.stringParam("content")
+            account.todos.createTodosetTodo(bucketId, todosetId, CreateTodosetTodoBody(content = content))
+            DispatchResult()
+        }
+
         "CompleteTodo" -> {
             account.todos.complete(tc.pathParams.longParam("todoId"))
             DispatchResult()

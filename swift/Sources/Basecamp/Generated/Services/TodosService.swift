@@ -34,6 +34,16 @@ public final class TodosService: BaseService, @unchecked Sendable {
         )
     }
 
+    public func createTodosetTodo(bucketId: Int, todosetId: Int, req: CreateTodosetTodoRequest) async throws -> Todo {
+        return try await request(
+            OperationInfo(service: "Todos", operation: "CreateTodosetTodo", resourceType: "todoset_todo", isMutation: true, projectId: bucketId, resourceId: todosetId),
+            method: "POST",
+            path: "/buckets/\(bucketId)/todosets/\(todosetId)/todos.json",
+            body: req,
+            retryConfig: Metadata.retryConfig(for: "CreateTodosetTodo")
+        )
+    }
+
     public func get(todoId: Int) async throws -> Todo {
         return try await request(
             OperationInfo(service: "Todos", operation: "GetTodo", resourceType: "todo", isMutation: false, resourceId: todoId),

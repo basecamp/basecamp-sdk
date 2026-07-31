@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-31T06:58:28.046Z",
+  "generated": "2026-07-31T09:42:13.305Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -278,6 +278,17 @@ const metadata: MetadataOutput = {
     "CreateTool": {
       "retry": {
         "maxAttempts": 2,
+        "baseDelayMs": 1000,
+        "backoff": "exponential",
+        "retryOn": [
+          429,
+          503
+        ]
+      }
+    },
+    "CreateTodosetTodo": {
+      "retry": {
+        "maxAttempts": 3,
         "baseDelayMs": 1000,
         "backoff": "exponential",
         "retryOn": [

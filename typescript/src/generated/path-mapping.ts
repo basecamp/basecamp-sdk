@@ -25,6 +25,7 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "GET:/{accountId}/buckets/{bucketId}/categories/{typeId}": "GetMessageType",
   "PUT:/{accountId}/buckets/{bucketId}/categories/{typeId}": "UpdateMessageType",
   "POST:/{accountId}/buckets/{bucketId}/dock/tools.json": "CreateTool",
+  "POST:/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos.json": "CreateTodosetTodo",
   "GET:/{accountId}/buckets/{bucketId}/webhooks.json": "ListWebhooks",
   "POST:/{accountId}/buckets/{bucketId}/webhooks.json": "CreateWebhook",
   "GET:/{accountId}/card_tables/{cardTableId}": "GetCardTable",

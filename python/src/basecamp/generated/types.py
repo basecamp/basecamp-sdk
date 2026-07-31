@@ -531,6 +531,16 @@ class CreateTodolistRequestContent(TypedDict):
     visible_to_clients: NotRequired[bool]
 
 
+class CreateTodosetTodoRequestContent(TypedDict):
+    assignee_ids: NotRequired[list[int]]
+    completion_subscriber_ids: NotRequired[list[int]]
+    content: str
+    description: NotRequired[str]
+    due_on: NotRequired[str]
+    notify: NotRequired[bool]
+    starts_on: NotRequired[str]
+
+
 class CreateToolRequestContent(TypedDict):
     title: NotRequired[str]
     tool_type: str

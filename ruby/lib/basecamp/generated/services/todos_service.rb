@@ -7,6 +7,23 @@ module Basecamp
     # @generated from OpenAPI spec
     class TodosService < BaseService
 
+      # Create a to-do directly under a project's to-do set, outside any to-do list.
+      # @param bucket_id [Integer] bucket id ID
+      # @param todoset_id [Integer] todoset id ID
+      # @param content [String] content
+      # @param description [String, nil] description
+      # @param assignee_ids [Array, nil] assignee ids
+      # @param completion_subscriber_ids [Array, nil] completion subscriber ids
+      # @param notify [Boolean, nil] notify
+      # @param due_on [String, nil] due on (YYYY-MM-DD)
+      # @param starts_on [String, nil] starts on (YYYY-MM-DD)
+      # @return [Hash] response data
+      def create_todoset_todo(bucket_id:, todoset_id:, content:, description: nil, assignee_ids: nil, completion_subscriber_ids: nil, notify: nil, due_on: nil, starts_on: nil)
+        with_operation(service: "todos", operation: "create_todoset_todo", is_mutation: true, project_id: bucket_id, resource_id: todoset_id) do
+          http_post("/buckets/#{bucket_id}/todosets/#{todoset_id}/todos.json", body: compact_params(content: content, description: description, assignee_ids: assignee_ids, completion_subscriber_ids: completion_subscriber_ids, notify: notify, due_on: due_on, starts_on: starts_on)).json
+        end
+      end
+
       # List todos in a todolist
       # @param todolist_id [Integer] todolist id ID
       # @param status [String, nil] active|archived|trashed

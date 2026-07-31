@@ -18,6 +18,26 @@ import { Errors } from "../../errors.js";
 export type Todo = components["schemas"]["Todo"];
 
 /**
+ * Request parameters for createTodosetTodo.
+ */
+export interface CreateTodosetTodoTodoRequest {
+  /** Text content */
+  content: string;
+  /** Rich text description (HTML) */
+  description?: string;
+  /** Person IDs to assign to */
+  assigneeIds?: number[];
+  /** Person IDs to notify on completion */
+  completionSubscriberIds?: number[];
+  /** Whether to send notifications to relevant people */
+  notify?: boolean;
+  /** Due date (YYYY-MM-DD) */
+  dueOn?: string;
+  /** Start date (YYYY-MM-DD) */
+  startsOn?: string;
+}
+
+/**
  * Options for list.
  */
 export interface ListTodoOptions extends PaginationOptions {
@@ -86,6 +106,57 @@ export interface RepositionTodoRequest {
  * Service for Todos operations.
  */
 export class TodosService extends BaseService {
+
+  /**
+   * Create a to-do directly under a project's to-do set, outside any to-do list.
+   * @param bucketId - The bucket ID
+   * @param todosetId - The todoset ID
+   * @param req - Todoset_todo creation parameters
+   * @returns The Todo
+   * @throws {BasecampError} If required fields are missing or invalid
+   *
+   * @example
+   * ```ts
+   * const result = await client.todos.createTodosetTodo(123, 123, { content: "Hello world" });
+   * ```
+   */
+  async createTodosetTodo(bucketId: number, todosetId: number, req: CreateTodosetTodoTodoRequest): Promise<Todo> {
+    if (!req.content) {
+      throw Errors.validation("Content is required");
+    }
+    if (req.dueOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.dueOn)) {
+      throw Errors.validation("Due on must be in YYYY-MM-DD format");
+    }
+    if (req.startsOn && !/^\d{4}-\d{2}-\d{2}$/.test(req.startsOn)) {
+      throw Errors.validation("Starts on must be in YYYY-MM-DD format");
+    }
+    const response = await this.request(
+      {
+        service: "Todos",
+        operation: "CreateTodosetTodo",
+        resourceType: "todoset_todo",
+        isMutation: true,
+        projectId: bucketId,
+        resourceId: todosetId,
+      },
+      () =>
+        this.client.POST("/buckets/{bucketId}/todosets/{todosetId}/todos.json", {
+          params: {
+            path: { bucketId, todosetId },
+          },
+          body: {
+            content: req.content,
+            description: req.description,
+            assignee_ids: req.assigneeIds,
+            completion_subscriber_ids: req.completionSubscriberIds,
+            notify: req.notify,
+            due_on: req.dueOn,
+            starts_on: req.startsOn,
+          },
+        })
+    );
+    return response;
+  }
 
   /**
    * List todos in a todolist

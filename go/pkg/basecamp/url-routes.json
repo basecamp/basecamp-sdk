@@ -219,6 +219,27 @@
       }
     },
     {
+      "pattern": "/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos",
+      "resource": "Todos",
+      "operations": {
+        "POST": "CreateTodosetTodo"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "bucketId": {
+          "role": "parent",
+          "type": "int64"
+        },
+        "todosetId": {
+          "role": "parent",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/buckets/{bucketId}/webhooks",
       "resource": "Automation",
       "operations": {
