@@ -1273,6 +1273,11 @@ type GetMyCompletedAssignmentsResponseContent = []MyAssignment
 // GetMyDueAssignmentsResponseContent defines model for GetMyDueAssignmentsResponseContent.
 type GetMyDueAssignmentsResponseContent = []MyAssignment
 
+// GetMyNoteResponseContent The per-user notebook note (wire type Notebook::Note). Before the first
+// write, id/created_at/updated_at are present-but-null (required-nullable,
+// layered in the OpenAPI via jsonAdd) and content is empty.
+type GetMyNoteResponseContent = MyNote
+
 // GetMyNotificationsResponseContent defines model for GetMyNotificationsResponseContent.
 type GetMyNotificationsResponseContent struct {
 	// BubbleUps Items the user has saved with Bubble Up (BC5 addition). Roughly the
@@ -1705,6 +1710,33 @@ type MyAssignmentParent struct {
 	AppUrl string `json:"app_url,omitempty"`
 	Id     int64  `json:"id"`
 	Title  string `json:"title,omitempty"`
+}
+
+// MyNote The per-user notebook note (wire type Notebook::Note). Before the first
+// write, id/created_at/updated_at are present-but-null (required-nullable,
+// layered in the OpenAPI via jsonAdd) and content is empty.
+type MyNote struct {
+	AppUrl             string               `json:"app_url"`
+	Content            string               `json:"content"`
+	ContentAttachments []RichTextAttachment `json:"content_attachments"`
+
+	// CreatedAt Null until the note is first written.
+	CreatedAt *time.Time `json:"created_at"`
+
+	// Id Null until the note is first written.
+	Id   *int64 `json:"id"`
+	Type string `json:"type"`
+
+	// UpdatedAt Null until the note is first written.
+	UpdatedAt *time.Time `json:"updated_at"`
+	Url       string     `json:"url"`
+}
+
+// MyNoteAttributes The writable note payload — the wire body is the nested {note: {content}}
+// envelope, the ProjectConstructionAttributes treatment.
+type MyNoteAttributes struct {
+	// Content The note's rich-text body (HTML).
+	Content string `json:"content"`
 }
 
 // NotFoundErrorResponseContent defines model for NotFoundErrorResponseContent.
@@ -2949,6 +2981,18 @@ type UpdateMessageTypeRequestContent struct {
 // UpdateMessageTypeResponseContent defines model for UpdateMessageTypeResponseContent.
 type UpdateMessageTypeResponseContent = MessageType
 
+// UpdateMyNoteRequestContent defines model for UpdateMyNoteRequestContent.
+type UpdateMyNoteRequestContent struct {
+	// Note The writable note payload — the wire body is the nested {note: {content}}
+	// envelope, the ProjectConstructionAttributes treatment.
+	Note MyNoteAttributes `json:"note"`
+}
+
+// UpdateMyNoteResponseContent The per-user notebook note (wire type Notebook::Note). Before the first
+// write, id/created_at/updated_at are present-but-null (required-nullable,
+// layered in the OpenAPI via jsonAdd) and content is empty.
+type UpdateMyNoteResponseContent = MyNote
+
 // UpdateMyPreferencesRequestContent defines model for UpdateMyPreferencesRequestContent.
 type UpdateMyPreferencesRequestContent struct {
 	Person PreferencesPayload `json:"person"`
@@ -3846,6 +3890,9 @@ type CreateMessageJSONRequestBody = CreateMessageRequestContent
 
 // UpdateMessageJSONRequestBody defines body for UpdateMessage for application/json ContentType.
 type UpdateMessageJSONRequestBody = UpdateMessageRequestContent
+
+// UpdateMyNoteJSONRequestBody defines body for UpdateMyNote for application/json ContentType.
+type UpdateMyNoteJSONRequestBody = UpdateMyNoteRequestContent
 
 // UpdateMyPreferencesJSONRequestBody defines body for UpdateMyPreferences for application/json ContentType.
 type UpdateMyPreferencesJSONRequestBody = UpdateMyPreferencesRequestContent
@@ -4882,6 +4929,14 @@ type ClientInterface interface {
 
 	// ListMyDrafts request
 	ListMyDrafts(ctx context.Context, accountId string, params *ListMyDraftsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetMyNote request
+	GetMyNote(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateMyNoteWithBody request with any body
+	UpdateMyNoteWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateMyNote(ctx context.Context, accountId string, body UpdateMyNoteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyPreferences request
 	GetMyPreferences(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6827,6 +6882,34 @@ func (c *Client) ListMyDrafts(ctx context.Context, accountId string, params *Lis
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListMyDraftsRequest(c.Server, accountId, params)
 	}, true, "ListMyDrafts", reqEditors...)
+
+}
+
+// GetMyNote is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetMyNote(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetMyNoteRequest(c.Server, accountId)
+	}, true, "GetMyNote", reqEditors...)
+
+}
+
+// UpdateMyNoteWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateMyNoteWithBody(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyNoteRequestWithBody(c.Server, accountId, contentType, body)
+	}, true, "UpdateMyNote", reqEditors...)
+
+}
+
+func (c *Client) UpdateMyNote(ctx context.Context, accountId string, body UpdateMyNoteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateMyNoteRequest(c.Server, accountId, body)
+	}, true, "UpdateMyNote", reqEditors...)
 
 }
 
@@ -13982,6 +14065,87 @@ func NewListMyDraftsRequest(server string, accountId string, params *ListMyDraft
 	return req, nil
 }
 
+// NewGetMyNoteRequest generates requests for GetMyNote
+func NewGetMyNoteRequest(server string, accountId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/notes.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateMyNoteRequest calls the generic UpdateMyNote builder with application/json body
+func NewUpdateMyNoteRequest(server string, accountId string, body UpdateMyNoteJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateMyNoteRequestWithBody(server, accountId, "application/json", bodyReader)
+}
+
+// NewUpdateMyNoteRequestWithBody generates requests for UpdateMyNote with any type of body
+func NewUpdateMyNoteRequestWithBody(server string, accountId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/notes.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGetMyPreferencesRequest generates requests for GetMyPreferences
 func NewGetMyPreferencesRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -20788,6 +20952,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMyDueAssignments":                {Idempotent: true, HasSensitiveParams: false},
 	"ListMyBookmarks":                    {Idempotent: true, HasSensitiveParams: false},
 	"ListMyDrafts":                       {Idempotent: true, HasSensitiveParams: false},
+	"GetMyNote":                          {Idempotent: true, HasSensitiveParams: false},
+	"UpdateMyNote":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetMyPreferences":                   {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMyPreferences":                {Idempotent: true, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
@@ -21028,6 +21194,8 @@ var operationRetryMax = map[string]int{
 	"GetMyDueAssignments":                3,
 	"ListMyBookmarks":                    3,
 	"ListMyDrafts":                       3,
+	"GetMyNote":                          3,
+	"UpdateMyNote":                       3,
 	"GetMyPreferences":                   3,
 	"UpdateMyPreferences":                2,
 	"GetMyProfile":                       3,
@@ -21266,6 +21434,8 @@ var operationRetryOn = map[string][]int{
 	"GetMyDueAssignments":                {429, 503},
 	"ListMyBookmarks":                    {429, 503},
 	"ListMyDrafts":                       {429, 503},
+	"GetMyNote":                          {429, 503},
+	"UpdateMyNote":                       {429, 503},
 	"GetMyPreferences":                   {429, 503},
 	"UpdateMyPreferences":                {429, 503},
 	"GetMyProfile":                       {429, 503},
@@ -22722,6 +22892,14 @@ type ClientWithResponsesInterface interface {
 
 	// ListMyDraftsWithResponse request
 	ListMyDraftsWithResponse(ctx context.Context, accountId string, params *ListMyDraftsParams, reqEditors ...RequestEditorFn) (*ListMyDraftsResponse, error)
+
+	// GetMyNoteWithResponse request
+	GetMyNoteWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyNoteResponse, error)
+
+	// UpdateMyNoteWithBodyWithResponse request with any body
+	UpdateMyNoteWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyNoteResponse, error)
+
+	UpdateMyNoteWithResponse(ctx context.Context, accountId string, body UpdateMyNoteJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMyNoteResponse, error)
 
 	// GetMyPreferencesWithResponse request
 	GetMyPreferencesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyPreferencesResponse, error)
@@ -26651,6 +26829,75 @@ func (r ListMyDraftsResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListMyDraftsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetMyNoteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetMyNoteResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetMyNoteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetMyNoteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetMyNoteResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateMyNoteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateMyNoteResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateMyNoteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateMyNoteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateMyNoteResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32273,6 +32520,32 @@ func (c *ClientWithResponses) ListMyDraftsWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseListMyDraftsResponse(rsp)
+}
+
+// GetMyNoteWithResponse request returning *GetMyNoteResponse
+func (c *ClientWithResponses) GetMyNoteWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyNoteResponse, error) {
+	rsp, err := c.GetMyNote(ctx, accountId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetMyNoteResponse(rsp)
+}
+
+// UpdateMyNoteWithBodyWithResponse request with arbitrary body returning *UpdateMyNoteResponse
+func (c *ClientWithResponses) UpdateMyNoteWithBodyWithResponse(ctx context.Context, accountId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMyNoteResponse, error) {
+	rsp, err := c.UpdateMyNoteWithBody(ctx, accountId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMyNoteResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateMyNoteWithResponse(ctx context.Context, accountId string, body UpdateMyNoteJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMyNoteResponse, error) {
+	rsp, err := c.UpdateMyNote(ctx, accountId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateMyNoteResponse(rsp)
 }
 
 // GetMyPreferencesWithResponse request returning *GetMyPreferencesResponse
@@ -39438,6 +39711,121 @@ func ParseListMyDraftsResponse(rsp *http.Response) (*ListMyDraftsResponse, error
 			return nil, err
 		}
 		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetMyNoteResponse parses an HTTP response from a GetMyNoteWithResponse call
+func ParseGetMyNoteResponse(rsp *http.Response) (*GetMyNoteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetMyNoteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetMyNoteResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateMyNoteResponse parses an HTTP response from a UpdateMyNoteWithResponse call
+func ParseUpdateMyNoteResponse(rsp *http.Response) (*UpdateMyNoteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateMyNoteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateMyNoteResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent

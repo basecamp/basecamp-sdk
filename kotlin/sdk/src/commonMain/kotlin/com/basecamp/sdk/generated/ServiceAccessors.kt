@@ -123,6 +123,10 @@ val AccountClient.messages: MessagesService
 val AccountClient.myAssignments: MyAssignmentsService
     get() = service("MyAssignments") { MyAssignmentsService(this) }
 
+/** MyNotes operations. */
+val AccountClient.myNotes: MyNotesService
+    get() = service("MyNotes") { MyNotesService(this) }
+
 /** MyNotifications operations. */
 val AccountClient.myNotifications: MyNotificationsService
     get() = service("MyNotifications") { MyNotificationsService(this) }

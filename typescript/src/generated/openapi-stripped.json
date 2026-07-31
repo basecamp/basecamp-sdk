@@ -9324,6 +9324,169 @@
         }
       }
     },
+    "/my/notes.json": {
+      "get": {
+        "description": "Get the authenticated user's note — a per-person notebook singleton at\n/my/notes.json. If the user has not yet written anything, the shape is the\nsame with empty content and null id/created_at/updated_at; the record is\ncreated on first update.",
+        "operationId": "GetMyNote",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "GetMyNote 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetMyNoteResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyNotes"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Replace the note's content, recording a new revision server-side. The first\nupdate also creates the underlying notebook if the user did not have one\nyet. Returns the updated note.",
+        "operationId": "UpdateMyNote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMyNoteRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "UpdateMyNote 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateMyNoteResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "ValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MyNotes"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/my/preferences.json": {
       "get": {
         "description": "Get the current user's preferences",
@@ -24934,6 +25097,9 @@
           "$ref": "#/components/schemas/MyAssignment"
         }
       },
+      "GetMyNoteResponseContent": {
+        "$ref": "#/components/schemas/MyNote"
+      },
       "GetMyNotificationsResponseContent": {
         "type": "object",
         "properties": {
@@ -26015,6 +26181,78 @@
         },
         "required": [
           "id"
+        ]
+      },
+      "MyNote": {
+        "type": "object",
+        "description": "The per-user notebook note (wire type Notebook::Note). Before the first\nwrite, id/created_at/updated_at are present-but-null (required-nullable,\nlayered in the OpenAPI via jsonAdd) and content is empty.",
+        "properties": {
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Null until the note is first written.",
+            "format": "int64",
+            "x-go-type": "*int64"
+          },
+          "type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null until the note is first written.",
+            "x-go-type": "*time.Time"
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null until the note is first written.",
+            "x-go-type": "*time.Time"
+          },
+          "content": {
+            "type": "string"
+          },
+          "content_attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RichTextAttachment"
+            }
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "content",
+          "content_attachments",
+          "created_at",
+          "id",
+          "type",
+          "updated_at",
+          "url"
+        ]
+      },
+      "MyNoteAttributes": {
+        "type": "object",
+        "description": "The writable note payload — the wire body is the nested {note: {content}}\nenvelope, the ProjectConstructionAttributes treatment.",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The note's rich-text body (HTML)."
+          }
+        },
+        "required": [
+          "content"
         ]
       },
       "NotFoundErrorResponseContent": {
@@ -29260,6 +29498,20 @@
       },
       "UpdateMessageTypeResponseContent": {
         "$ref": "#/components/schemas/MessageType"
+      },
+      "UpdateMyNoteRequestContent": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/MyNoteAttributes"
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "UpdateMyNoteResponseContent": {
+        "$ref": "#/components/schemas/MyNote"
       },
       "UpdateMyPreferencesRequestContent": {
         "type": "object",

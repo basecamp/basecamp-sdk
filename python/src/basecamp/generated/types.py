@@ -1013,6 +1013,21 @@ class MyAssignmentParent(TypedDict):
     title: NotRequired[str]
 
 
+class MyNote(TypedDict):
+    app_url: str
+    content: str
+    content_attachments: list[RichTextAttachment]
+    created_at: str | None
+    id: int | None
+    type: str
+    updated_at: str | None
+    url: str
+
+
+class MyNoteAttributes(TypedDict):
+    content: str
+
+
 class NotFoundErrorResponseContent(TypedDict):
     error: str
     message: NotRequired[str]
@@ -1807,6 +1822,10 @@ class UpdateMessageRequestContent(TypedDict):
 class UpdateMessageTypeRequestContent(TypedDict):
     icon: NotRequired[str]
     name: NotRequired[str]
+
+
+class UpdateMyNoteRequestContent(TypedDict):
+    note: MyNoteAttributes
 
 
 class UpdateMyPreferencesRequestContent(TypedDict):

@@ -30,6 +30,7 @@ extension AccountClient {
     public var messageTypes: MessageTypesService { service("messageTypes") { MessageTypesService(accountClient: self) } }
     public var messages: MessagesService { service("messages") { MessagesService(accountClient: self) } }
     public var myAssignments: MyAssignmentsService { service("myAssignments") { MyAssignmentsService(accountClient: self) } }
+    public var myNotes: MyNotesService { service("myNotes") { MyNotesService(accountClient: self) } }
     public var myNotifications: MyNotificationsService { service("myNotifications") { MyNotificationsService(accountClient: self) } }
     public var people: PeopleService { service("people") { PeopleService(accountClient: self) } }
     public var projects: ProjectsService { service("projects") { ProjectsService(accountClient: self) } }

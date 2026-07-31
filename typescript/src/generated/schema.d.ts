@@ -1363,6 +1363,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/notes.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get the authenticated user's note — a per-person notebook singleton at
+         *     /my/notes.json. If the user has not yet written anything, the shape is the
+         *     same with empty content and null id/created_at/updated_at; the record is
+         *     created on first update.
+         */
+        get: operations["GetMyNote"];
+        /**
+         * @description Replace the note's content, recording a new revision server-side. The first
+         *     update also creates the underlying notebook if the user did not have one
+         *     yet. Returns the updated note.
+         */
+        put: operations["UpdateMyNote"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my/preferences.json": {
         parameters: {
             query?: never;
@@ -4003,6 +4030,7 @@ export interface components {
         };
         GetMyCompletedAssignmentsResponseContent: components["schemas"]["MyAssignment"][];
         GetMyDueAssignmentsResponseContent: components["schemas"]["MyAssignment"][];
+        GetMyNoteResponseContent: components["schemas"]["MyNote"];
         GetMyNotificationsResponseContent: {
             unreads?: components["schemas"]["Notification"][];
             reads?: components["schemas"]["Notification"][];
@@ -4293,6 +4321,35 @@ export interface components {
             id: number;
             title?: string;
             app_url?: string;
+        };
+        /**
+         * @description The per-user notebook note (wire type Notebook::Note). Before the first
+         *     write, id/created_at/updated_at are present-but-null (required-nullable,
+         *     layered in the OpenAPI via jsonAdd) and content is empty.
+         */
+        MyNote: {
+            /**
+             * Format: int64
+             * @description Null until the note is first written.
+             */
+            id: number | null;
+            type: string;
+            /** @description Null until the note is first written. */
+            created_at: string | null;
+            /** @description Null until the note is first written. */
+            updated_at: string | null;
+            content: string;
+            content_attachments: components["schemas"]["RichTextAttachment"][];
+            url: string;
+            app_url: string;
+        };
+        /**
+         * @description The writable note payload — the wire body is the nested {note: {content}}
+         *     envelope, the ProjectConstructionAttributes treatment.
+         */
+        MyNoteAttributes: {
+            /** @description The note's rich-text body (HTML). */
+            content: string;
         };
         NotFoundErrorResponseContent: {
             error: string;
@@ -5453,6 +5510,10 @@ export interface components {
             icon?: string;
         };
         UpdateMessageTypeResponseContent: components["schemas"]["MessageType"];
+        UpdateMyNoteRequestContent: {
+            note: components["schemas"]["MyNoteAttributes"];
+        };
+        UpdateMyNoteResponseContent: components["schemas"]["MyNote"];
         UpdateMyPreferencesRequestContent: {
             person: components["schemas"]["PreferencesPayload"];
         };
@@ -12169,6 +12230,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetMyNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetMyNote 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetMyNoteResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateMyNote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyNoteRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateMyNote 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateMyNoteResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description ValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

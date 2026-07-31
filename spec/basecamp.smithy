@@ -314,6 +314,8 @@ service Basecamp {
     GetMyNotifications,
     GetBubbleUps,
     MarkAsRead,
+    GetMyNote,
+    UpdateMyNote,
     ListMyDrafts,
     ListMyBookmarks,
     GetBookmark,
@@ -9552,6 +9554,86 @@ structure GetBubbleUpsInput {
 
 structure GetBubbleUpsOutput {
   bubble_ups: NotificationList
+}
+
+// ===== My Notes (Scratchpad) Operations =====
+
+/// Get the authenticated user's note — a per-person notebook singleton at
+/// /my/notes.json. If the user has not yet written anything, the shape is the
+/// same with empty content and null id/created_at/updated_at; the record is
+/// created on first update.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/my/notes.json")
+operation GetMyNote {
+  input: GetMyNoteInput
+  output: MyNoteOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetMyNoteInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+}
+
+/// Replace the note's content, recording a new revision server-side. The first
+/// update also creates the underlying notebook if the user did not have one
+/// yet. Returns the updated note.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/my/notes.json")
+operation UpdateMyNote {
+  input: UpdateMyNoteInput
+  output: MyNoteOutput
+  errors: [ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UpdateMyNoteInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  note: MyNoteAttributes
+}
+
+/// The writable note payload — the wire body is the nested {note: {content}}
+/// envelope, the ProjectConstructionAttributes treatment.
+structure MyNoteAttributes {
+  /// The note's rich-text body (HTML).
+  @required
+  content: String
+}
+
+structure MyNoteOutput {
+  note: MyNote
+}
+
+/// The per-user notebook note (wire type Notebook::Note). Before the first
+/// write, id/created_at/updated_at are present-but-null (required-nullable,
+/// layered in the OpenAPI via jsonAdd) and content is empty.
+structure MyNote {
+  /// Null until the note is first written.
+  @required
+  id: Long
+  @required
+  type: String
+  /// Null until the note is first written.
+  @required
+  created_at: ISO8601Timestamp
+  /// Null until the note is first written.
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  content: String
+  @required
+  content_attachments: RichTextAttachmentList
+  @required
+  url: String
+  @required
+  app_url: String
 }
 
 // ===== My Drafts Operations =====
