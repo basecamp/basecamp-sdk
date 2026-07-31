@@ -624,11 +624,17 @@ function createLifecycleMiddleware(lifecycle: RequestLifecycle): Middleware {
     },
 
     async onResponse({ request, response, id }) {
-      // Runs after the retry middleware, which has already ended the final
-      // attempt whenever it retried — finalize is idempotent, so this is a no-op
-      // in that case and the authoritative end for a single-attempt request.
-      const fromCacheHeader = response.headers.get("X-From-Cache");
-      const fromCache = fromCacheHeader === "1" || response.status === 304;
+      // The authoritative end for whichever attempt is in flight: attempt 1 for a
+      // single-attempt request, or attempt 2 after a retry — the retry middleware
+      // deliberately does not finalize a successful attempt, so that the cache
+      // middleware (which runs between the two) can transform the response first.
+      // finalize stays idempotent as a backstop.
+      //
+      // fromCache means "served out of the ETag cache", and only the header the
+      // cache middleware sets proves that. A bare 304 does NOT: it reaches here
+      // when the cache is disabled, or is enabled but holds no entry for this key,
+      // and in both cases the caller's own conditional request went to the server.
+      const fromCache = response.headers.get("X-From-Cache") === "1";
 
       lifecycle.finalize(id, request.method, request.url, {
         statusCode: response.status,
