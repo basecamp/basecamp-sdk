@@ -294,8 +294,8 @@ class AsyncBaseService:
             all_items.extend(items)
 
             if max_items and len(all_items) >= max_items:
+                truncated = len(all_items) > max_items or parse_next_link(response.headers.get("link")) is not None
                 all_items = all_items[:max_items]
-                truncated = True
                 break
 
             next_url = parse_next_link(response.headers.get("link"))
@@ -319,6 +319,7 @@ class AsyncBaseService:
         url = base_url
         all_items: list = []
         total_count = 0
+        truncated = False
 
         for page in range(1, self._client.config.max_pages + 1):
             safe_hook(self._hooks.on_paginate, url, page)
@@ -346,8 +347,10 @@ class AsyncBaseService:
                 raise ApiError(f"Pagination Link header points to different origin: {_security.truncate(next_url)}")
 
             url = next_url
+        else:
+            truncated = True
 
-        return ListResult(all_items, ListMeta(total_count=total_count))
+        return ListResult(all_items, ListMeta(total_count=total_count, truncated=truncated))
 
     async def _paginate_wrapped(
         self, path: str, key: str, *, params: dict | None = None, operation: str | None = None
@@ -393,7 +396,7 @@ class AsyncBaseService:
             next_link = parse_next_link(response.headers.get("link"))
             url = next_url
 
-        wrapper[key] = ListResult(all_items, ListMeta(total_count=total_count))
+        wrapper[key] = ListResult(all_items, ListMeta(total_count=total_count, truncated=next_link is not None))
         return wrapper
 
     def _compact(self, **kwargs: Any) -> dict:
