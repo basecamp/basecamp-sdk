@@ -1,0 +1,86 @@
+spec/basecamp.smithy
+  s_289a344fc8a3ac::t_b7a39bd7fbcef8 9556-9681
+  s_289a344fc8a3ac::t_80b9fa73c4faba 317-320
+behavior-model.json
+  s_289a344fc8a3ac::t_76a0f93c1609f4 52-63,394-405,648-659,1960-1975
+go/pkg/basecamp/url-routes.json
+  s_289a344fc8a3ac::t_52454e4240aabb 1141-1153,1628-1646
+go/pkg/generated/client.gen.go
+  s_289a344fc8a3ac::t_96e021d154e32a 131-145,492-496,1107-1109,1494-1496,3486-3491,4831-4833,4991-4999,6761-6770,7379-7408,13811-13866,15953-15954,15976,15986,15994-15995,16017,16027,16035-16036,16058,16068,16076-16077,16099,16117-16118,16125,16128-16129,16151,16171-16183,16205,16215,16220-16221,16225-16226,16248,16266-16267,16274,16277-16278,16300,16320-16321,16343,16353,16361-16362,16379-16385,16391,16401,16409-16421,16438-16444,16450,16460,16465-16466,16470-16594,20671,20715-20717,20910,20954-20956,21147,21191-21193,22599-22601,22759-22767,26468-26501,27972-28075,32102-32110,32610-32636,39186-39239,41642-41820
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_289a344fc8a3ac::t_555eec195ba48b 168-169,276-278,316-317
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_289a344fc8a3ac::t_fa93e4147ec5b0 27,58,79,175
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/ServiceAccessors.kt
+  s_289a344fc8a3ac::t_cc5195c0ac7b2c 26-29
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/Bookmark.kt
+  s_289a344fc8a3ac::t_2b48baddd739f2 1-19
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/models/BookmarkStatus.kt
+  s_289a344fc8a3ac::t_0b9d52d164fea4 1-16
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_289a344fc8a3ac::t_caa578e4e13f03 18-25
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/bookmarks.kt
+  s_289a344fc8a3ac::t_563897786e0dc3 1-95
+openapi.json
+  s_289a344fc8a3ac::t_3ce49105fe8ffd 10252-10349,14741-15041,24140-24187,25513-25515,27152-27154,27899-27904
+python/src/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_985fb9dac11e8c 48-59,390-401,636-646,1692-1702
+python/src/basecamp/generated/services/__init__.py
+  s_289a344fc8a3ac::t_b1b2eb53d8e5fa 6,61-62
+python/src/basecamp/generated/services/bookmarks.py
+  s_289a344fc8a3ac::t_a38b49116d69ed 1-78
+python/src/basecamp/generated/types.py
+  s_289a344fc8a3ac::t_a81a9b4ffa2ca5 73-83
+ruby/lib/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_4754a6ca8d2967 4,1305-1320,1898-1936
+ruby/lib/basecamp/generated/services/bookmarks_service.rb
+  s_289a344fc8a3ac::t_79414bb6443761 1-49
+ruby/lib/basecamp/generated/types.rb
+  s_289a344fc8a3ac::t_7db8cc5adbc945 4,258-313
+spec/overlays/tags.smithy
+  s_289a344fc8a3ac::t_aa15bc1d5c7197 244-247
+swift/Sources/Basecamp/Generated/AccountClient+Services.swift
+  s_289a344fc8a3ac::t_49e8564ac30010 8
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_289a344fc8a3ac::t_1a30d10dd239a6 10,41,62,158,245-246
+swift/Sources/Basecamp/Generated/Models/Bookmark.swift
+  s_289a344fc8a3ac::t_545f0149f9bec4 1-21
+swift/Sources/Basecamp/Generated/Models/BookmarkStatus.swift
+  s_289a344fc8a3ac::t_4e44e8e4027b1c 1-10
+swift/Sources/Basecamp/Generated/Services/BookmarksService.swift
+  s_289a344fc8a3ac::t_fb5728210d8c04 1-56
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_289a344fc8a3ac::t_4eaacc45746016 37-38
+swift/Sources/BasecampGenerator/Utilities.swift
+  s_289a344fc8a3ac::t_845d4ded752ac1 151-153
+typescript/scripts/generate-services.ts
+  s_289a344fc8a3ac::t_9a5aacd22c2619 309-311,319-320
+typescript/src/generated/metadata.ts
+  s_289a344fc8a3ac::t_d8b4cdf51fe93d 40,1341-1356,1934-1972
+typescript/src/generated/openapi-stripped.json
+  s_289a344fc8a3ac::t_9915a8d8483f23 9153-9239,13116-13383,21522-21569,22895-22897,24534-24536,25281-25286
+typescript/src/generated/path-mapping.ts
+  s_289a344fc8a3ac::t_826ec5836a0114 121-123,212
+typescript/src/generated/schema.d.ts
+  s_289a344fc8a3ac::t_94160fbd5d9b67 1322-1342,1914-1938,3059-3074,3414,3897,4093,12011-12069,14755-14953
+typescript/src/generated/services/bookmarks.ts
+  s_289a344fc8a3ac::t_b0d00b6c8b6f2a 1-154
+typescript/src/generated/services/index.ts
+  s_289a344fc8a3ac::t_4761323b4a1f00 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f8739fcad55a29d51513dd8c2d2ca088146186f9",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
