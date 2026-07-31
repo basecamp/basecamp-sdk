@@ -1,7 +1,8 @@
 /**
  * Request lifecycle regressions for the client middleware.
  *
- * Four defects motivated these, all in createRetryMiddleware/createHooksMiddleware:
+ * Four defects motivated these, all in the since-replaced retry/hooks middleware
+ * (the retry loop now lives in createRetryingFetch, beneath the chain):
  *
  *   1. bodyCache was keyed on `${method}:${url}:${Date.now()}`, so two concurrent
  *      mutations to the same URL in the same millisecond shared one cache slot —
@@ -21,8 +22,11 @@
  *   - onRetry's 2nd arg    — the UPCOMING attempt, so 2 on the first retry
  * Go, Python, Ruby and Kotlin all pass (1, 2); TypeScript passed (1, 1).
  *
- * Note TypeScript caps at one retry by design (SPEC waiver 2B.1), so attempt 2 is
- * terminal here. These tests assert the two-attempt lifecycle, not three.
+ * The retry loop now runs beneath the middleware chain as the client's custom
+ * fetch (closing SPEC waiver 2B.1), so attempts run to each operation's
+ * declared maxAttempts and network errors retry under the idempotency gate.
+ * The multi-attempt tests below pin that; the two-attempt tests remain as the
+ * minimal shape of each original defect.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";

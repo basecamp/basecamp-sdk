@@ -1,6 +1,6 @@
 /**
- * Integration smoke tests — verify the full middleware stack works in concert:
- * auth → hooks → cache → retry all interacting together.
+ * Integration smoke tests — verify the full transport works in concert:
+ * auth → hooks → cache middleware, with the retrying fetch beneath them.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -45,9 +45,9 @@ describe("Integration", () => {
         enableRetry: true,
       });
 
-      // Call 1: middleware pipeline sees 429 → retry middleware does raw fetch → 200 with ETag.
-      // The retry's raw-fetch response flows back through the middleware stack in reverse,
-      // so the cache middleware's onResponse sees the 200 + ETag and stores it.
+      // Call 1: the retrying fetch sees the 429 beneath the chain and re-sends → 200
+      // with ETag. The terminal response flows up through the middleware stack in
+      // reverse, so the cache middleware's onResponse sees the 200 + ETag and stores it.
       const result1 = await client.GET("/projects.json");
       expect(result1.data).toHaveLength(1);
 
@@ -57,7 +57,7 @@ describe("Integration", () => {
 
       // Breakdown:
       //   callCount 1 = initial request, 429
-      //   callCount 2 = retry (raw fetch, bypasses cache onRequest — no If-None-Match), 200
+      //   callCount 2 = retry attempt (replays the original headers; nothing cached yet, so no If-None-Match), 200
       //   callCount 3 = second client.GET, cache attaches If-None-Match → 304
       expect(callCount).toBe(3);
     });
@@ -95,8 +95,8 @@ describe("Integration", () => {
 
       await client.GET("/projects.json");
 
-      // Both attempts are observed. The retry leaves the middleware chain, so the
-      // retry middleware emits that attempt's start/end itself.
+      // Both attempts are observed. The retrying fetch beneath the chain emits
+      // every attempt's start and each abandoned attempt's end.
       expect(hooks.onRequestStart).toHaveBeenCalledTimes(2);
       expect(hooks.onRequestStart).toHaveBeenNthCalledWith(
         1,
@@ -111,7 +111,7 @@ describe("Integration", () => {
         expect.objectContaining({ attempt: 2 })
       );
 
-      // onRetry fires from the retry middleware when it decides to retry.
+      // onRetry fires from the retrying fetch when it decides to retry.
       expect(hooks.onRetry).toHaveBeenCalledTimes(1);
       expect(hooks.onRetry).toHaveBeenCalledWith(
         expect.objectContaining({

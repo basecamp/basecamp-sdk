@@ -229,11 +229,15 @@ def check_max_only(name: str, emitted: dict[str, int], model: dict[str, tuple]) 
 # a consumption site but cannot prove the field governs a retry decision (a token
 # surviving in a comment would pass). Behavioral proof lives in each SDK's own
 # retry test suite (go generated_*retry_test.go, python tests/test_http.py,
-# swift RetryTests.swift, the conformance runners).
+# swift RetryTests.swift, typescript tests/client.test.ts +
+# tests/middleware-lifecycle.test.ts, the conformance runners).
 RUNTIME_CONSUMPTION = [
     ("TypeScript", "full tuple", "typescript/src/services/base.ts",
      ["retryOn.includes", "maxAttempts", "baseDelayMs ??"], [],
      "base.ts: retryOn.includes(status), attempt vs maxAttempts, baseDelayMs backoff"),
+    ("TypeScript", "full tuple", "typescript/src/client.ts",
+     ["retryOn.includes", "attempt >= maxAttempts", "calculateBackoffDelay", "config.baseDelayMs"], [],
+     "client.ts createRetryingFetch: retryOn.includes(status), attempt >= maxAttempts, backoff from baseDelayMs"),
     ("Swift", "full tuple", "swift/Sources/Basecamp/HTTP/HTTPClient.swift",
      ["retryOn.contains", "< maxAttempts", "baseDelayMs"], [],
      "HTTPClient.swift: retryOn.contains(status), attempt < maxAttempts, baseDelayMs"),

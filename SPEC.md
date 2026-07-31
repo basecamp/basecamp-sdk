@@ -436,7 +436,7 @@ If `behavior-model.json` marks an operation with `idempotent: true`, the POST be
 The error must be retryable. Two categories qualify:
 
 - **HTTP status retry:** Response status is in the operation's **declared** retryable set. `behavior-model.json` specifies `retry_on: [429, 503]` for all operations. The declared set is **exhaustive**: a status outside it — including 500, 502, and 504 — is not retried and is surfaced to the caller on the first attempt. An implementation may still *classify* those statuses as retryable in its error taxonomy (§6); that is a caller-facing hint and must not widen the transport's gate.
-- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** **Go, Python, and Swift** retry network errors for retry-eligible operations — including idempotent mutations — with Swift and Go gating on operation idempotency, so a non-idempotent POST is attempted once. **Ruby** retries network errors too, but only on GET: its transport routes every non-GET to a single-attempt path, so no mutation ever sees a network retry. **TypeScript** retries only after receiving an HTTP response; **Kotlin** surfaces network errors immediately without retry. The spec prescribes network error retry as the target behavior.
+- **Network error retry:** Connection failures, timeouts, and DNS errors (no HTTP response received) are retryable. These correspond to `BasecampError(code: "network", retryable: true)` in §6. **Divergence:** **Go, Python, Swift, and TypeScript** retry network errors for retry-eligible operations — including idempotent mutations — with Swift, Go, and TypeScript gating on operation idempotency, so a non-idempotent POST is attempted once (TypeScript additionally treats caller aborts and request timeouts as terminal). **Ruby** retries network errors too, but only on GET: its transport routes every non-GET to a single-attempt path, so no mutation ever sees a network retry. **Kotlin** surfaces network errors immediately without retry. The spec prescribes network error retry as the target behavior.
 
 **Non-retryable statuses (never retry regardless of method):** 401, 403, 404, 400, 422.
 
@@ -447,7 +447,7 @@ are consumed unevenly:
 |---|---|---|
 | Go | yes | yes — `min(caller_cap, operation_max)` |
 | Python | yes | yes — `min(caller_cap, operation_max)` |
-| TypeScript | yes | n/a — exposes no numeric cap (only `enableRetry`), so the operation value is the only input. Additionally caps at one retry (waiver 2B.1) |
+| TypeScript | yes | n/a — exposes no numeric cap (only `enableRetry`), so the operation value is the only input |
 | Swift | yes | n/a — exposes no numeric cap (only `enableRetry`) |
 | Kotlin | yes | yes — `min(caller cap, operation max)`, with the cap coerced to at least one attempt |
 | Ruby | yes for governed GETs — a status-bearing error retries exactly when the declared `retryOn` says so; the error taxonomy's 500/502/504 classification neither widens nor vetoes the declared set. Status-less network errors keep the taxonomy's judgment | yes — governed GETs are bounded by `min(caller cap, operation max)`; Ruby's transport is GET-only, so mutations never reach the retry loop |
@@ -464,17 +464,17 @@ policy ever reaches OAuth traffic.
 
 **Enforcement.** `scripts/check-retry-metadata-parity.py` asserts every SDK's emitted per-operation
 retry metadata equals `behavior-model.json`, and records which fields each SDK actually consumes at
-runtime. It deliberately does not assert *effective behavior* parity, since TypeScript's one-retry
-cap and Ruby's GET-only transport are intentional. Effective Gate 3 behavior is pinned by tests in
-Go, Python, Kotlin, and Ruby.
+runtime. It deliberately does not assert *effective behavior* parity, since Ruby's GET-only
+transport is intentional. Effective Gate 3 behavior is pinned by tests in Go, Python, TypeScript,
+Kotlin, and Ruby.
 
 ### Cross-SDK Divergence `[CONFLICT]`
 
-- **TypeScript** implements the three-gate algorithm but chains at most 1 retry — on a retryable status, TS returns `fetch(retryRequest)` which bypasses middleware after the first retry (waiver 2B.1 in `rubric-audit.json`). **Kotlin** implements the three-gate algorithm for HTTP status retries (POST retries only when `idempotent: true`, full exponential backoff) but does not retry on network errors — transport exceptions are returned immediately as `BasecampException.Network`.
+- **TypeScript** implements the three-gate algorithm with the retry loop beneath the openapi-fetch middleware chain (the client's custom `fetch`), so attempts run to each operation's declared `retry.max` and network errors retry under the same idempotency gate; caller aborts and request timeouts are terminal. **Kotlin** implements the three-gate algorithm for HTTP status retries (POST retries only when `idempotent: true`, full exponential backoff) but does not retry on network errors — transport exceptions are returned immediately as `BasecampException.Network`.
 - **Go** implements the three-gate on its generated operation path: it retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (the naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and the flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Governed GETs (those carrying their canonical operation ID) are bounded by the per-op ceiling and status-gated on the declared `retryOn`; ungoverned GETs (`get_absolute`, OAuth discovery) keep the taxonomy-driven pre-metadata contract. Ruby is acceptably conservative.
-- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors (unlike Kotlin/TS) but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
-- The spec prescribes the three-gate algorithm. **TS note:** TS retry returns `fetch(retryRequest)` which bypasses middleware after the first retry, so TS effectively caps at 1 retry per request regardless of `max_attempts`. This is a known limitation (waiver 2B.1).
+- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors (unlike Kotlin) but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
+- The spec prescribes the three-gate algorithm.
 
 ### Retry Algorithm
 
@@ -1675,11 +1675,9 @@ logic is covered by `TestIsSameOrigin` unit tests:
 - "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
 
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
-- "GET operation retries on 503" — retry middleware chains at most 1 retry (waiver 2B.1).
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
 - "DownloadURL retries on 503 at the auth'd first hop" — `downloadURL` uses raw fetch bypassing retry (unwaivered).
 - "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
-- "Network error on an idempotent POST is retried then succeeds" — only HTTP-status retries are implemented (unwaivered).
 
 **Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` plus one tag-based
 branch ahead of it):
@@ -1966,12 +1964,12 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 | SDK | Retry behavior |
 |-----|---------------|
-| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. Chains at most 1 retry via `fetch(retryRequest)` which bypasses middleware (waiver 2B.1). |
+| TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata to each operation's declared `max`, with the retry loop beneath the openapi-fetch middleware chain as the client's custom `fetch`. Network errors retry under the same idempotency gate; caller aborts and request timeouts are terminal. |
 | Kotlin | Three-gate for HTTP status retries: POST retries only when `idempotent: true`, full exponential backoff. Does not retry network errors (transport exceptions returned immediately). |
 | Go | Generated operation path retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh. |
 | Ruby | Simplified: only GET retries. All non-GET methods never retry. Governed GETs gate status retries on the declared `retryOn` and bound attempts by `min(config.max_retries, operation max)`; ungoverned traffic (no operation ID: `get_absolute`, OAuth) keeps the taxonomy-driven contract. |
 | Python | Three-gate, sync and async: `_mutation()` retries only when `behavior-model` metadata classifies the operation retryable, so non-idempotent POSTs are single-attempt; GETs always retry. Gate 3 uses the operation's declared `retry_on` and `max`. Non-Smithy traffic (`get_absolute()`, Launchpad authorization) passes no operation id and keeps the pre-Smithy contract. |
-| Swift | Three-gate: retries when the method is naturally idempotent (GET/HEAD/PUT/DELETE) or the operation is marked `idempotent: true`; non-idempotent POSTs make a single attempt. Gate covers both HTTP status and network-error retries, so Swift *does* retry network errors (unlike Kotlin/TS), gated by idempotency. |
+| Swift | Three-gate: retries when the method is naturally idempotent (GET/HEAD/PUT/DELETE) or the operation is marked `idempotent: true`; non-idempotent POSTs make a single attempt. Gate covers both HTTP status and network-error retries, so Swift *does* retry network errors (unlike Kotlin), gated by idempotency. |
 
 The table above describes **Gate 1 and Gate 2** — *whether* an operation retries. Gate 3's parameters
 are tracked separately: all six SDKs gate status retry on the declared `retryOn` (Ruby for governed

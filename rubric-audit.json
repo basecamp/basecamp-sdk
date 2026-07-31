@@ -74,9 +74,7 @@
     },
     "2B.1": {
       "pass": true,
-      "waiver": true,
-      "note": "TS retry middleware uses native fetch for retries, limiting chained retry count to 1; initial + 1 retry still provides resilience",
-      "language": "typescript"
+      "note": "Retry driven by per-operation metadata exists in all six SDKs. A prior TypeScript waiver ('retry middleware uses native fetch for retries, limiting chained retry count to 1') is obsolete: the TS retry loop now runs beneath the openapi-fetch middleware chain as the client's custom fetch, so status retries run to each operation's declared retry.max and network errors retry under the idempotency gate (caller aborts and request timeouts are terminal). The TS runner passes the 503 multi-retry and idempotent-POST network-retry conformance cases un-skipped."
     },
     "2B.3": {
       "pass": true,
