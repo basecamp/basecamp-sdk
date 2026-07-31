@@ -248,11 +248,15 @@ All SDKs are generated from a single Smithy specification. When adding support f
      | Documentation | `documentation` |
      | Other | anything else |
 
-     A PR may carry several — `breaking` plus `bug` is common — and language
-     labels (`go`, `python`, …) are applied automatically and don't affect
-     categorization. `ci` is configured in `.github/release.yml` but does not
-     yet exist as a repository label; use `github-actions` for workflow changes
-     until it does.
+     A PR may carry several — `breaking` plus `bug` is common. A PR lands in
+     the first matching section in the table's order, so an extra low-priority
+     label is harmless once the right one is applied. Language and area labels
+     (`go`, `python`, `spec`, `conformance`, …) are applied automatically from
+     changed paths and don't affect categorization; `github-actions` is the one
+     auto-applied label that does, filing otherwise-unlabeled workflow PRs
+     under CI & Infrastructure. `documentation` and `dependencies` are applied
+     by hand (Dependabot labels its own PRs), never by the path labeler — a
+     feature that touches docs or a manifest should read as a feature.
 
 ## Spec-shape lints
 
