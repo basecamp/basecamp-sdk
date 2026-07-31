@@ -25,7 +25,7 @@ module Basecamp
       def search(q:, type_names: nil, bucket_ids: nil, creator_ids: nil, file_type: nil, exclude_chat: nil, since: nil, sort: nil, type: nil, bucket_id: nil, creator_id: nil)
         wrap_paginated(service: "search", operation: "search", is_mutation: false) do
           params = compact_query_params(q: q, type_names: type_names, bucket_ids: bucket_ids, creator_ids: creator_ids, file_type: file_type, exclude_chat: exclude_chat, since: since, sort: sort, type: type, bucket_id: bucket_id, creator_id: creator_id)
-          paginate("/search.json", params: params)
+          paginate("/search.json", params: params, operation: "Search")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       # @return [Hash] response data
       def metadata()
         with_operation(service: "search", operation: "metadata", is_mutation: false) do
-          http_get("/searches/metadata.json").json
+          http_get("/searches/metadata.json", operation: "GetSearchMetadata").json
         end
       end
     end

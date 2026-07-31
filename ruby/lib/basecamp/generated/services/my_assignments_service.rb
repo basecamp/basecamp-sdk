@@ -11,7 +11,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_assignments()
         with_operation(service: "myassignments", operation: "get_my_assignments", is_mutation: false) do
-          http_get("/my/assignments.json").json
+          http_get("/my/assignments.json", operation: "GetMyAssignments").json
         end
       end
 
@@ -19,7 +19,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def get_my_completed_assignments()
         with_operation(service: "myassignments", operation: "get_my_completed_assignments", is_mutation: false) do
-          http_get("/my/assignments/completed.json").json
+          http_get("/my/assignments/completed.json", operation: "GetMyCompletedAssignments").json
         end
       end
 
@@ -29,7 +29,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def get_my_due_assignments(scope: nil)
         with_operation(service: "myassignments", operation: "get_my_due_assignments", is_mutation: false) do
-          http_get("/my/assignments/due.json", params: compact_query_params(scope: scope)).json
+          http_get("/my/assignments/due.json", params: compact_query_params(scope: scope), operation: "GetMyDueAssignments").json
         end
       end
     end

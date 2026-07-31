@@ -1,5 +1,6 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.projects
 import com.basecamp.sdk.generated.todos
 import com.basecamp.sdk.http.BasecampHttpClient
 import io.ktor.client.engine.mock.*
@@ -251,6 +252,139 @@ class RetryTest {
         // Should stop after maxRetries (3)
         assertEquals(429, response.status.value)
         assertEquals(3, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun callerCapWinsOverOperationMax() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            maxRetries = 1
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects/1.json"
+        // GetProject declares max 3, but the caller capped attempts at 1.
+        // The operation value is a ceiling, not a replacement: min(1, 3) = 1.
+        val response = account.httpClient.requestWithRetry(
+            HttpMethod.Get, url,
+            operationName = "GetProject",
+        )
+
+        assertEquals(503, response.status.value)
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun operationCeilingBoundsRaisedCap() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            maxRetries = 5
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/my/preferences.json"
+        // UpdateMyPreferences declares max 2; a raised caller cap must not
+        // push past the operation's ceiling: min(5, 2) = 2.
+        val response = account.httpClient.requestWithRetry(
+            HttpMethod.Put, url, """{"theme":"dark"}""",
+            operationName = "UpdateMyPreferences",
+        )
+
+        assertEquals(503, response.status.value)
+        assertEquals(2, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun paginationFollowUpPagesKeepTheOperationCeiling() = runTest {
+        var page2Requests = 0
+        val engine = MockEngine { request ->
+            if (request.url.parameters["page"] == "2") {
+                page2Requests++
+                respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+            } else {
+                respond(
+                    content = """[{
+                        "id": 1, "status": "active", "name": "One",
+                        "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z",
+                        "url": "https://3.basecampapi.com/12345/projects/1.json",
+                        "app_url": "https://3.basecamp.com/12345/projects/1",
+                        "dock": []
+                    }]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        HttpHeaders.Link to listOf("""<http://localhost:3000/12345/projects.json?page=2>; rel="next""""),
+                    ),
+                )
+            }
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            maxRetries = 5
+            this.engine = engine
+        }
+
+        // ListProjects declares max 3. The ceiling must survive onto pagination
+        // follow-up requests: a raised caller cap of 5 still clamps page 2 to 3
+        // attempts, exactly like page 1.
+        val account = client.forAccount("12345")
+        try {
+            account.projects.list()
+        } catch (_: BasecampException) {
+            // expected: page 2 exhausts its attempts on 503
+        }
+
+        assertEquals(3, page2Requests)
+        client.close()
+    }
+
+    @Test
+    fun zeroCapCoercesToOneAttempt() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            respond(content = "", status = HttpStatusCode.ServiceUnavailable)
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            maxRetries = 0
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects/1.json"
+        // maxRetries counts total attempts, so 0 makes no sense as written;
+        // it coerces to a single attempt rather than short-circuiting to none.
+        val response = account.httpClient.requestWithRetry(
+            HttpMethod.Get, url,
+            operationName = "GetProject",
+        )
+
+        assertEquals(503, response.status.value)
+        assertEquals(1, requestCount)
         client.close()
     }
 

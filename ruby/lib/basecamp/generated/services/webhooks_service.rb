@@ -12,7 +12,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(bucket_id:)
         wrap_paginated(service: "webhooks", operation: "list", is_mutation: false, project_id: bucket_id) do
-          paginate("/buckets/#{bucket_id}/webhooks.json")
+          paginate("/buckets/#{bucket_id}/webhooks.json", operation: "ListWebhooks")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       # @return [Hash] response data
       def get(webhook_id:)
         with_operation(service: "webhooks", operation: "get", is_mutation: false, resource_id: webhook_id) do
-          http_get("/webhooks/#{webhook_id}").json
+          http_get("/webhooks/#{webhook_id}", operation: "GetWebhook").json
         end
       end
 

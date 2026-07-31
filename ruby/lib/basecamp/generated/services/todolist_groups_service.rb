@@ -23,7 +23,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(todolist_id:)
         wrap_paginated(service: "todolistgroups", operation: "list", is_mutation: false, resource_id: todolist_id) do
-          paginate("/todolists/#{todolist_id}/groups.json")
+          paginate("/todolists/#{todolist_id}/groups.json", operation: "ListTodolistGroups")
         end
       end
 

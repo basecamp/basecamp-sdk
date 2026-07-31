@@ -15,7 +15,7 @@ module Basecamp
       def list(todolist_id:, status: nil, completed: nil)
         wrap_paginated(service: "todos", operation: "list", is_mutation: false, resource_id: todolist_id) do
           params = compact_query_params(status: status, completed: completed)
-          paginate("/todolists/#{todolist_id}/todos.json", params: params)
+          paginate("/todolists/#{todolist_id}/todos.json", params: params, operation: "ListTodos")
         end
       end
 
@@ -40,7 +40,7 @@ module Basecamp
       # @return [Hash] response data
       def get(todo_id:)
         with_operation(service: "todos", operation: "get", is_mutation: false, resource_id: todo_id) do
-          http_get("/todos/#{todo_id}").json
+          http_get("/todos/#{todo_id}", operation: "GetTodo").json
         end
       end
 

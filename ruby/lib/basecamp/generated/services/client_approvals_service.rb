@@ -14,7 +14,7 @@ module Basecamp
       def list(sort: nil, direction: nil)
         wrap_paginated(service: "clientapprovals", operation: "list", is_mutation: false) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/client/approvals.json", params: params)
+          paginate("/client/approvals.json", params: params, operation: "ListClientApprovals")
         end
       end
 
@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def get(approval_id:)
         with_operation(service: "clientapprovals", operation: "get", is_mutation: false, resource_id: approval_id) do
-          http_get("/client/approvals/#{approval_id}").json
+          http_get("/client/approvals/#{approval_id}", operation: "GetClientApproval").json
         end
       end
     end

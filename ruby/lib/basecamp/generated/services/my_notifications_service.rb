@@ -16,7 +16,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_notifications(page: nil, limit_bubble_ups: nil)
         with_operation(service: "mynotifications", operation: "get_my_notifications", is_mutation: false) do
-          http_get("/my/readings.json", params: compact_query_params(page: page, limit_bubble_ups: limit_bubble_ups)).json
+          http_get("/my/readings.json", params: compact_query_params(page: page, limit_bubble_ups: limit_bubble_ups), operation: "GetMyNotifications").json
         end
       end
 
@@ -26,7 +26,7 @@ module Basecamp
       def get_bubble_ups(page: nil)
         wrap_paginated(service: "mynotifications", operation: "get_bubble_ups", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/my/readings/bubble_ups.json", params: params)
+          paginate("/my/readings/bubble_ups.json", params: params, operation: "GetBubbleUps")
         end
       end
 

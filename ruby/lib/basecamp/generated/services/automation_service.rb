@@ -11,7 +11,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def list_lineup_markers()
         with_operation(service: "automation", operation: "list_lineup_markers", is_mutation: false) do
-          http_get("/lineup/markers.json").json
+          http_get("/lineup/markers.json", operation: "ListLineupMarkers").json
         end
       end
     end

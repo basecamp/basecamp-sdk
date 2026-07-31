@@ -11,7 +11,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def reminders()
         wrap_paginated(service: "checkins", operation: "reminders", is_mutation: false) do
-          paginate("/my/question_reminders.json")
+          paginate("/my/question_reminders.json", operation: "GetQuestionReminders")
         end
       end
 
@@ -20,7 +20,7 @@ module Basecamp
       # @return [Hash] response data
       def get_answer(answer_id:)
         with_operation(service: "checkins", operation: "get_answer", is_mutation: false, resource_id: answer_id) do
-          http_get("/question_answers/#{answer_id}").json
+          http_get("/question_answers/#{answer_id}", operation: "GetAnswer").json
         end
       end
 
@@ -41,7 +41,7 @@ module Basecamp
       # @return [Hash] response data
       def get_questionnaire(questionnaire_id:)
         with_operation(service: "checkins", operation: "get_questionnaire", is_mutation: false, resource_id: questionnaire_id) do
-          http_get("/questionnaires/#{questionnaire_id}").json
+          http_get("/questionnaires/#{questionnaire_id}", operation: "GetQuestionnaire").json
         end
       end
 
@@ -50,7 +50,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_questions(questionnaire_id:)
         wrap_paginated(service: "checkins", operation: "list_questions", is_mutation: false, resource_id: questionnaire_id) do
-          paginate("/questionnaires/#{questionnaire_id}/questions.json")
+          paginate("/questionnaires/#{questionnaire_id}/questions.json", operation: "ListQuestions")
         end
       end
 
@@ -71,7 +71,7 @@ module Basecamp
       # @return [Hash] response data
       def get_question(question_id:)
         with_operation(service: "checkins", operation: "get_question", is_mutation: false, resource_id: question_id) do
-          http_get("/questions/#{question_id}").json
+          http_get("/questions/#{question_id}", operation: "GetQuestion").json
         end
       end
 
@@ -92,7 +92,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_answers(question_id:)
         wrap_paginated(service: "checkins", operation: "list_answers", is_mutation: false, resource_id: question_id) do
-          paginate("/questions/#{question_id}/answers.json")
+          paginate("/questions/#{question_id}/answers.json", operation: "ListAnswers")
         end
       end
 
@@ -112,7 +112,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def answerers(question_id:)
         wrap_paginated(service: "checkins", operation: "answerers", is_mutation: false, resource_id: question_id) do
-          paginate("/questions/#{question_id}/answers/by.json")
+          paginate("/questions/#{question_id}/answers/by.json", operation: "ListQuestionAnswerers")
         end
       end
 
@@ -122,7 +122,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def by_person(question_id:, person_id:)
         wrap_paginated(service: "checkins", operation: "by_person", is_mutation: false, resource_id: person_id) do
-          paginate("/questions/#{question_id}/answers/by/#{person_id}")
+          paginate("/questions/#{question_id}/answers/by/#{person_id}", operation: "GetAnswersByPerson")
         end
       end
 

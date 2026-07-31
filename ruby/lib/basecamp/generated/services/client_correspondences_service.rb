@@ -14,7 +14,7 @@ module Basecamp
       def list(sort: nil, direction: nil)
         wrap_paginated(service: "clientcorrespondences", operation: "list", is_mutation: false) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/client/correspondences.json", params: params)
+          paginate("/client/correspondences.json", params: params, operation: "ListClientCorrespondences")
         end
       end
 
@@ -23,7 +23,7 @@ module Basecamp
       # @return [Hash] response data
       def get(correspondence_id:)
         with_operation(service: "clientcorrespondences", operation: "get", is_mutation: false, resource_id: correspondence_id) do
-          http_get("/client/correspondences/#{correspondence_id}").json
+          http_get("/client/correspondences/#{correspondence_id}", operation: "GetClientCorrespondence").json
         end
       end
     end

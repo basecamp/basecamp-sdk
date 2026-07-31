@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(vault_id:)
         with_operation(service: "vaults", operation: "get", is_mutation: false, resource_id: vault_id) do
-          http_get("/vaults/#{vault_id}").json
+          http_get("/vaults/#{vault_id}", operation: "GetVault").json
         end
       end
 
@@ -31,7 +31,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(vault_id:)
         wrap_paginated(service: "vaults", operation: "list", is_mutation: false, resource_id: vault_id) do
-          paginate("/vaults/#{vault_id}/vaults.json")
+          paginate("/vaults/#{vault_id}/vaults.json", operation: "ListVaults")
         end
       end
 

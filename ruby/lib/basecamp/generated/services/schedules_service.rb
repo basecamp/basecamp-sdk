@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_entry(entry_id:)
         with_operation(service: "schedules", operation: "get_entry", is_mutation: false, resource_id: entry_id) do
-          http_get("/schedule_entries/#{entry_id}").json
+          http_get("/schedule_entries/#{entry_id}", operation: "GetScheduleEntry").json
         end
       end
 
@@ -46,7 +46,7 @@ module Basecamp
       # @return [Hash] response data
       def get_entry_occurrence(entry_id:, date:)
         with_operation(service: "schedules", operation: "get_entry_occurrence", is_mutation: false, resource_id: entry_id) do
-          http_get("/schedule_entries/#{entry_id}/occurrences/#{date}").json
+          http_get("/schedule_entries/#{entry_id}/occurrences/#{date}", operation: "GetScheduleEntryOccurrence").json
         end
       end
 
@@ -55,7 +55,7 @@ module Basecamp
       # @return [Hash] response data
       def get(schedule_id:)
         with_operation(service: "schedules", operation: "get", is_mutation: false, resource_id: schedule_id) do
-          http_get("/schedules/#{schedule_id}").json
+          http_get("/schedules/#{schedule_id}", operation: "GetSchedule").json
         end
       end
 
@@ -76,7 +76,7 @@ module Basecamp
       def list_entries(schedule_id:, status: nil)
         wrap_paginated(service: "schedules", operation: "list_entries", is_mutation: false, resource_id: schedule_id) do
           params = compact_query_params(status: status)
-          paginate("/schedules/#{schedule_id}/entries.json", params: params)
+          paginate("/schedules/#{schedule_id}/entries.json", params: params, operation: "ListScheduleEntries")
         end
       end
 

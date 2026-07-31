@@ -15,7 +15,7 @@ module Basecamp
       def list(board_id:, sort: nil, direction: nil)
         wrap_paginated(service: "messages", operation: "list", is_mutation: false, resource_id: board_id) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/message_boards/#{board_id}/messages.json", params: params)
+          paginate("/message_boards/#{board_id}/messages.json", params: params, operation: "ListMessages")
         end
       end
 
@@ -39,7 +39,7 @@ module Basecamp
       # @return [Hash] response data
       def get(message_id:)
         with_operation(service: "messages", operation: "get", is_mutation: false, resource_id: message_id) do
-          http_get("/messages/#{message_id}").json
+          http_get("/messages/#{message_id}", operation: "GetMessage").json
         end
       end
 

@@ -11,7 +11,7 @@ module Basecamp
       # @return [Hash] response data
       def get_account()
         with_operation(service: "account", operation: "get_account", is_mutation: false) do
-          http_get("/account.json").json
+          http_get("/account.json", operation: "GetAccount").json
         end
       end
 

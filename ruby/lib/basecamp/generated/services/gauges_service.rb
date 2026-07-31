@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_gauge_needle(needle_id:)
         with_operation(service: "gauges", operation: "get_gauge_needle", is_mutation: false, resource_id: needle_id) do
-          http_get("/gauge_needles/#{needle_id}").json
+          http_get("/gauge_needles/#{needle_id}", operation: "GetGaugeNeedle").json
         end
       end
 
@@ -52,7 +52,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_gauge_needles(project_id:)
         wrap_paginated(service: "gauges", operation: "list_gauge_needles", is_mutation: false, project_id: project_id) do
-          paginate("/projects/#{project_id}/gauge/needles.json")
+          paginate("/projects/#{project_id}/gauge/needles.json", operation: "ListGaugeNeedles")
         end
       end
 
@@ -75,7 +75,7 @@ module Basecamp
       def list_gauges(bucket_ids: nil)
         wrap_paginated(service: "gauges", operation: "list_gauges", is_mutation: false) do
           params = compact_query_params(bucket_ids: bucket_ids)
-          paginate("/reports/gauges.json", params: params)
+          paginate("/reports/gauges.json", params: params, operation: "ListGauges")
         end
       end
     end

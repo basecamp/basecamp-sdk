@@ -117,7 +117,14 @@ internal class BasecampHttpClient(
         } else {
             status in RETRYABLE_STATUS_CODES
         }
-        val maxAttempts = opRetry?.maxRetries ?: config.maxRetries
+        // The operation's declared max is a ceiling on the caller's configured
+        // attempt count, never a replacement for it (SPEC.md §2): a caller who
+        // lowered maxRetries is honored, and a raised cap is still clamped to
+        // the operation's declared max.
+        val maxAttempts = minOf(
+            config.maxRetries.coerceAtLeast(1),
+            opRetry?.maxRetries ?: config.maxRetries,
+        )
         val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds
 
         if (shouldRetry && attempt < maxAttempts) {

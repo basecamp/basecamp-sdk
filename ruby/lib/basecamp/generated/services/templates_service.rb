@@ -13,7 +13,7 @@ module Basecamp
       def list(status: nil)
         wrap_paginated(service: "templates", operation: "list", is_mutation: false) do
           params = compact_query_params(status: status)
-          paginate("/templates.json", params: params)
+          paginate("/templates.json", params: params, operation: "ListTemplates")
         end
       end
 
@@ -32,7 +32,7 @@ module Basecamp
       # @return [Hash] response data
       def get(template_id:)
         with_operation(service: "templates", operation: "get", is_mutation: false, resource_id: template_id) do
-          http_get("/templates/#{template_id}").json
+          http_get("/templates/#{template_id}", operation: "GetTemplate").json
         end
       end
 
@@ -73,7 +73,7 @@ module Basecamp
       # @return [Hash] response data
       def get_construction(template_id:, construction_id:)
         with_operation(service: "templates", operation: "get_construction", is_mutation: false, resource_id: construction_id) do
-          http_get("/templates/#{template_id}/project_constructions/#{construction_id}").json
+          http_get("/templates/#{template_id}/project_constructions/#{construction_id}", operation: "GetProjectConstruction").json
         end
       end
     end

@@ -11,7 +11,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_pingable()
         wrap_paginated(service: "people", operation: "list_pingable", is_mutation: false) do
-          paginate("/circles/people.json")
+          paginate("/circles/people.json", operation: "ListPingablePeople")
         end
       end
 
@@ -19,7 +19,7 @@ module Basecamp
       # @return [Hash] response data
       def get_my_preferences()
         with_operation(service: "people", operation: "get_my_preferences", is_mutation: false) do
-          http_get("/my/preferences.json").json
+          http_get("/my/preferences.json", operation: "GetMyPreferences").json
         end
       end
 
@@ -36,7 +36,7 @@ module Basecamp
       # @return [Hash] response data
       def my_profile()
         with_operation(service: "people", operation: "my_profile", is_mutation: false) do
-          http_get("/my/profile.json").json
+          http_get("/my/profile.json", operation: "GetMyProfile").json
         end
       end
 
@@ -61,7 +61,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list()
         wrap_paginated(service: "people", operation: "list", is_mutation: false) do
-          paginate("/people.json")
+          paginate("/people.json", operation: "ListPeople")
         end
       end
 
@@ -70,7 +70,7 @@ module Basecamp
       # @return [Hash] response data
       def get(person_id:)
         with_operation(service: "people", operation: "get", is_mutation: false, resource_id: person_id) do
-          http_get("/people/#{person_id}").json
+          http_get("/people/#{person_id}", operation: "GetPerson").json
         end
       end
 
@@ -79,7 +79,7 @@ module Basecamp
       # @return [Hash] response data
       def get_out_of_office(person_id:)
         with_operation(service: "people", operation: "get_out_of_office", is_mutation: false, resource_id: person_id) do
-          http_get("/people/#{person_id}/out_of_office.json").json
+          http_get("/people/#{person_id}/out_of_office.json", operation: "GetOutOfOffice").json
         end
       end
 
@@ -108,7 +108,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_for_project(project_id:)
         wrap_paginated(service: "people", operation: "list_for_project", is_mutation: false, project_id: project_id) do
-          paginate("/projects/#{project_id}/people.json")
+          paginate("/projects/#{project_id}/people.json", operation: "ListProjectPeople")
         end
       end
 
@@ -128,7 +128,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def list_assignable()
         with_operation(service: "people", operation: "list_assignable", is_mutation: false) do
-          http_get("/reports/todos/assigned.json").json
+          http_get("/reports/todos/assigned.json", operation: "ListAssignablePeople").json
         end
       end
     end

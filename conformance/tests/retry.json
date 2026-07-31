@@ -115,5 +115,21 @@
       {"type": "errorCode", "expected": "forbidden"}
     ],
     "tags": ["retry", "non-retryable", "403"]
+  },
+  {
+    "name": "GET 500 is not retried",
+    "description": "500 is absent from every operation's declared retryOn [429, 503]; the declared set gates status retries in all six SDKs, so a 500 must surface after exactly one attempt. Pins the #485 Ruby fix: its error taxonomy calls 500 retryable, but the taxonomy must not widen the declared set for governed traffic.",
+    "operation": "GetProject",
+    "method": "GET",
+    "path": "/projects/{projectId}",
+    "pathParams": {"projectId": 12345},
+    "mockResponses": [
+      {"status": 500, "body": {"error": "Internal Server Error"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 500}
+    ],
+    "tags": ["retry", "non-retryable", "500"]
   }
 ]

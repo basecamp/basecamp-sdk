@@ -322,6 +322,95 @@ class HTTPRetryTest < Minitest::Test
   end
 end
 
+# Governed retries: a GET carrying its canonical operation ID is bounded by
+# min(caller cap, operation maxAttempts) and status-gated on the operation's
+# declared retryOn set — the error taxonomy neither widens nor vetoes it.
+# Ungoverned traffic (no operation keyword: get_absolute, OAuth discovery)
+# keeps the pre-metadata contract.
+class HTTPGovernedRetryTest < Minitest::Test
+  include TestHelper
+
+  def http_with_max_retries(max_retries)
+    config = Basecamp::Config.new(
+      base_url: "https://3.basecampapi.com",
+      timeout: 5,
+      max_retries: max_retries,
+      base_delay: 0.01,
+      max_jitter: 0.001
+    )
+    Basecamp::Http.new(config: config, token_provider: test_token_provider)
+  end
+
+  def test_operation_ceiling_bounds_raised_cap
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 503, body: "{}")
+
+    # GetProject declares maxAttempts 3; a caller cap of 5 must clamp to it.
+    assert_raises(Basecamp::Error) do
+      http_with_max_retries(5).get("/test.json", operation: "GetProject")
+    end
+
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 3)
+  end
+
+  def test_caller_lower_cap_wins
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 503, body: "{}")
+
+    assert_raises(Basecamp::Error) do
+      http_with_max_retries(1).get("/test.json", operation: "GetProject")
+    end
+
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+  end
+
+  def test_governed_get_does_not_retry_500
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 500, body: "{}")
+
+    # 500 is retryable in the error taxonomy but absent from the declared
+    # retryOn [429, 503]; the declared set wins for governed traffic.
+    assert_raises(Basecamp::Error) do
+      http_with_max_retries(3).get("/test.json", operation: "GetProject")
+    end
+
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+  end
+
+  def test_ungoverned_get_still_retries_500
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 500, body: "{}")
+
+    assert_raises(Basecamp::Error) do
+      http_with_max_retries(3).get("/test.json")
+    end
+
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 3)
+  end
+
+  def test_paginate_follow_up_pages_stay_governed
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(
+        status: 200,
+        body: '[{"id": 1}]',
+        headers: {
+          "Content-Type" => "application/json",
+          "Link" => '<https://3.basecampapi.com/test.json?page=2>; rel="next"'
+        }
+      )
+    stub_request(:get, "https://3.basecampapi.com/test.json?page=2")
+      .to_return(status: 500, body: "{}")
+
+    # The governance must survive onto follow-up pages: page 2's 500 is not
+    # in the declared retryOn set, so it must not be retried mid-stream.
+    assert_raises(Basecamp::Error) do
+      http_with_max_retries(3).paginate("/test.json", operation: "ListProjects").to_a
+    end
+
+    assert_requested(:get, "https://3.basecampapi.com/test.json?page=2", times: 1)
+  end
+end
+
 class HTTPPaginationTest < Minitest::Test
   include TestHelper
 

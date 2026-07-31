@@ -13,7 +13,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list()
         wrap_paginated(service: "campfires", operation: "list", is_mutation: false) do
-          paginate("/chats.json")
+          paginate("/chats.json", operation: "ListCampfires")
         end
       end
 
@@ -22,7 +22,7 @@ module Basecamp
       # @return [Hash] response data
       def get(campfire_id:)
         with_operation(service: "campfires", operation: "get", is_mutation: false, resource_id: campfire_id) do
-          http_get("/chats/#{campfire_id}").json
+          http_get("/chats/#{campfire_id}", operation: "GetCampfire").json
         end
       end
 
@@ -31,7 +31,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_chatbots(campfire_id:)
         wrap_paginated(service: "campfires", operation: "list_chatbots", is_mutation: false, resource_id: campfire_id) do
-          paginate("/chats/#{campfire_id}/integrations.json")
+          paginate("/chats/#{campfire_id}/integrations.json", operation: "ListChatbots")
         end
       end
 
@@ -52,7 +52,7 @@ module Basecamp
       # @return [Hash] response data
       def get_chatbot(campfire_id:, chatbot_id:)
         with_operation(service: "campfires", operation: "get_chatbot", is_mutation: false, resource_id: chatbot_id) do
-          http_get("/chats/#{campfire_id}/integrations/#{chatbot_id}").json
+          http_get("/chats/#{campfire_id}/integrations/#{chatbot_id}", operation: "GetChatbot").json
         end
       end
 
@@ -87,7 +87,7 @@ module Basecamp
       def list_lines(campfire_id:, sort: nil, direction: nil)
         wrap_paginated(service: "campfires", operation: "list_lines", is_mutation: false, resource_id: campfire_id) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/chats/#{campfire_id}/lines.json", params: params)
+          paginate("/chats/#{campfire_id}/lines.json", params: params, operation: "ListCampfireLines")
         end
       end
 
@@ -108,7 +108,7 @@ module Basecamp
       # @return [Hash] response data
       def get_line(campfire_id:, line_id:)
         with_operation(service: "campfires", operation: "get_line", is_mutation: false, resource_id: line_id) do
-          http_get("/chats/#{campfire_id}/lines/#{line_id}").json
+          http_get("/chats/#{campfire_id}/lines/#{line_id}", operation: "GetCampfireLine").json
         end
       end
 
@@ -143,7 +143,7 @@ module Basecamp
       def list_uploads(campfire_id:, sort: nil, direction: nil)
         wrap_paginated(service: "campfires", operation: "list_uploads", is_mutation: false, resource_id: campfire_id) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/chats/#{campfire_id}/uploads.json", params: params)
+          paginate("/chats/#{campfire_id}/uploads.json", params: params, operation: "ListCampfireUploads")
         end
       end
 
