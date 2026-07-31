@@ -220,6 +220,56 @@ describe("BasecampClient", () => {
       expect(error).toBeDefined();
     });
 
+    it("should exhaust the operation's maxAttempts and surface the final 503", async () => {
+      let attempts = 0;
+
+      server.use(
+        http.get(`${BASE_URL}/projects.json`, () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      const { error, response } = await client.GET("/projects.json");
+
+      // The declared maxAttempts (3) is a total attempt count — and a ceiling,
+      // so no fourth request goes out.
+      expect(attempts).toBe(3);
+      expect(error).toBeDefined();
+      expect(response.status).toBe(503);
+    }, 10_000);
+
+    it("should honor a per-operation maxAttempts below the default", async () => {
+      // UpdateAccountName declares maxAttempts: 2 in behavior-model metadata,
+      // so the loop must stop below the default of 3.
+      let attempts = 0;
+
+      server.use(
+        http.put(`${BASE_URL}/account/name.json`, () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      const { error, response } = await client.PUT("/account/name.json", {
+        body: { name: "Renamed" },
+      } as never);
+
+      expect(attempts).toBe(2);
+      expect(error).toBeDefined();
+      expect(response.status).toBe(503);
+    }, 10_000);
+
     it("should resolve retry config for timesheet_entries paths", () => {
       // Regression test: normalizeUrlPath must map timesheet_entries/{id} → {entryId}
       // so PATH_TO_OPERATION lookup finds GetTimesheetEntry/UpdateTimesheetEntry.

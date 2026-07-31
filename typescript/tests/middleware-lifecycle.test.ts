@@ -472,6 +472,96 @@ describe("middleware request lifecycle", () => {
     expect(cancelSpy).toHaveBeenCalled();
   });
 
+  // Waiver 2B.1's kill shot. The retry loop lives beneath the middleware chain
+  // as the client's custom fetch, so a second 503 no longer exhausts the
+  // architecture — attempts run to the operation's declared maxAttempts (3 by
+  // default), each with balanced hooks and an onRetry announcing the next.
+  it("chains status retries to the operation's full maxAttempts", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts <= 2) {
+          return new HttpResponse(null, { status: 503 });
+        }
+        return HttpResponse.json([{ id: 1 }]);
+      })
+    );
+
+    const events: Array<{
+      kind: "start" | "end" | "retry";
+      attempt: number;
+      statusCode?: number;
+      upcoming?: number;
+    }> = [];
+    const hooks: BasecampHooks = {
+      onRequestStart(info: RequestInfo) {
+        events.push({ kind: "start", attempt: info.attempt });
+      },
+      onRequestEnd(info: RequestInfo, result: RequestResult) {
+        events.push({ kind: "end", attempt: info.attempt, statusCode: result.statusCode });
+      },
+      onRetry(info: RequestInfo, upcoming: number) {
+        events.push({ kind: "retry", attempt: info.attempt, upcoming });
+      },
+    };
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const { data } = await client.GET("/projects.json");
+
+    expect(attempts).toBe(3);
+    expect(data).toEqual([{ id: 1 }]);
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([503, 503, 200]);
+    // SPEC section 7 pairs: (failed attempt, upcoming attempt).
+    const retries = events.filter((e) => e.kind === "retry");
+    expect(retries.map((r) => [r.attempt, r.upcoming])).toEqual([
+      [1, 2],
+      [2, 3],
+    ]);
+  }, 10_000);
+
+  // Body replay across MULTIPLE retries: the buffer captured before attempt 1
+  // must feed every subsequent attempt, byte-identical. The concurrency test
+  // above only exercises one retry per request.
+  it("replays the same body bytes on every retry attempt", async () => {
+    const bodies: string[] = [];
+    let attempts = 0;
+    server.use(
+      http.put(`${BASE_URL}/buckets/1/todos/2.json`, async ({ request }) => {
+        attempts++;
+        bodies.push(await request.text());
+        if (attempts <= 2) {
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        return HttpResponse.json({ ok: true });
+      })
+    );
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+
+    await client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
+      params: { path: { bucketId: 1, todoId: 2 } },
+      body: { content: "same-bytes" },
+    } as never);
+
+    expect(attempts).toBe(3);
+    expect(bodies).toHaveLength(3);
+    expect(new Set(bodies).size).toBe(1);
+    expect(bodies[0]).toContain("same-bytes");
+  });
+
   // Repeated retried requests each report their own two attempts, in order, with
   // no cross-talk between logical requests. This says nothing about state being
   // released — that is not observable from here — only that attempt attribution
