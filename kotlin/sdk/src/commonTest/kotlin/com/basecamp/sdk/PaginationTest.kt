@@ -2,6 +2,7 @@ package com.basecamp.sdk
 
 import com.basecamp.sdk.generated.projects
 import com.basecamp.sdk.generated.reports
+import com.basecamp.sdk.generated.services.ListProjectsOptions
 import com.basecamp.sdk.generated.services.PersonProgressResult
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
@@ -424,6 +425,94 @@ class PaginationTest {
         client.close()
     }
 
+    @Test
+    fun maxItemsExactBoundaryOnFollowedPageIsNotTruncated() = runTest {
+        val client = mockClient { request ->
+            val page = request.url.parameters["page"]?.toIntOrNull() ?: 1
+            when (page) {
+                1 -> respond(
+                    content = """[${projectJson(1, "Project 1")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/projects.json?page=2>; rel="next""""),
+                        "X-Total-Count" to listOf("3"),
+                    ),
+                )
+                else -> respond(  // 2 items, NO Link — collection ends exactly at maxItems
+                    content = """[${projectJson(2, "Project 2")},${projectJson(3, "Project 3")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString())),
+                )
+            }
+        }
+        val projects = client.forAccount("12345").projects.list(ListProjectsOptions(maxItems = 3))
+        assertEquals(3, projects.size)
+        assertFalse(projects.meta.truncated)
+        client.close()
+    }
+
+    @Test
+    fun maxItemsDropOnFollowedPageIsTruncated() = runTest {
+        // Keep-true companion: same fixture, maxItems=2 — page 2 overshoots the
+        // cap (3 collected > 2), so an item is dropped and truncated must stay true.
+        val client = mockClient { request ->
+            val page = request.url.parameters["page"]?.toIntOrNull() ?: 1
+            when (page) {
+                1 -> respond(
+                    content = """[${projectJson(1, "Project 1")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/projects.json?page=2>; rel="next""""),
+                        "X-Total-Count" to listOf("3"),
+                    ),
+                )
+                else -> respond(
+                    content = """[${projectJson(2, "Project 2")},${projectJson(3, "Project 3")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString())),
+                )
+            }
+        }
+        val projects = client.forAccount("12345").projects.list(ListProjectsOptions(maxItems = 2))
+        assertEquals(2, projects.size)
+        assertTrue(projects.meta.truncated)
+        client.close()
+    }
+
+    @Test
+    fun maxItemsExactBoundaryWithNextLinkIsTruncated() = runTest {
+        // Keep-true companion: collection ends exactly at maxItems but page 2
+        // still advertises a next page — more items remain, so truncated is true.
+        val client = mockClient { request ->
+            val page = request.url.parameters["page"]?.toIntOrNull() ?: 1
+            when (page) {
+                1 -> respond(
+                    content = """[${projectJson(1, "Project 1")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/projects.json?page=2>; rel="next""""),
+                        "X-Total-Count" to listOf("5"),
+                    ),
+                )
+                else -> respond(
+                    content = """[${projectJson(2, "Project 2")},${projectJson(3, "Project 3")}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/projects.json?page=3>; rel="next""""),
+                    ),
+                )
+            }
+        }
+        val projects = client.forAccount("12345").projects.list(ListProjectsOptions(maxItems = 3))
+        assertEquals(3, projects.size)
+        assertTrue(projects.meta.truncated)
+        client.close()
+    }
+
     // =========================================================================
     // Wrapped pagination (PersonProgress)
     // =========================================================================
@@ -475,6 +564,33 @@ class PaginationTest {
         assertEquals("completed", result.events[1].action)
         assertEquals("updated", result.events[2].action)
         assertEquals(3L, result.events.meta.totalCount)
+        assertFalse(result.events.meta.truncated)
+        client.close()
+    }
+
+    @Test
+    fun wrappedMaxItemsExactBoundaryOnFollowedPageIsNotTruncated() = runTest {
+        val client = mockClient { request ->
+            val page = request.url.parameters["page"]?.toIntOrNull() ?: 1
+            when (page) {
+                1 -> respond(
+                    content = wrappedPageJson(listOf(1L to "created", 2L to "completed")),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(
+                        HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString()),
+                        "Link" to listOf("""<https://3.basecampapi.com/12345/reports/users/progress/456.json?page=2>; rel="next""""),
+                        "X-Total-Count" to listOf("3"),
+                    ),
+                )
+                else -> respond(  // 1 event, NO Link — collection ends exactly at maxItems
+                    content = wrappedPageJson(listOf(3L to "updated")),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType to listOf(ContentType.Application.Json.toString())),
+                )
+            }
+        }
+        val result = client.forAccount("12345").reports.personProgress(456, PaginationOptions(maxItems = 3))
+        assertEquals(3, result.events.size)
         assertFalse(result.events.meta.truncated)
         client.close()
     }
