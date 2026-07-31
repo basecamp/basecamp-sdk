@@ -99,6 +99,14 @@ jobs:
       - name: Check service layer drift
         run: ../scripts/check-service-drift.sh
 
+      - name: Check wrapper field-level drift
+        # Pure-Go AST check (stdlib-only module in go.work) comparing wrapper
+        # structs in go/pkg/basecamp/ against generated structs in
+        # go/pkg/generated/client.gen.go; writes nothing to the tree. Runs
+        # from repo root regardless of this job's `working-directory: go`.
+        working-directory: .
+        run: make go-check-wrapper-drift
+
       - name: Check generated client drift
         run: ../scripts/check-go-generated-drift.sh
 
