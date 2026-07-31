@@ -269,13 +269,16 @@ func TestCheckResponse_FieldKeyed422TruncatesAfterFlattening(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected *Error, got %T", err)
 	}
-	// The composed message is capped after flattening: 500 runes plus the
-	// appended ellipsis (see truncate).
-	if got := len([]rune(e.Message)); got != maxErrorMessageLen+1 {
-		t.Errorf("len(Message) = %d runes, want %d", got, maxErrorMessageLen+1)
+	// The composed message is capped after flattening: at most 500 bytes with
+	// the last 3 replaced by "..." (SPEC §9).
+	if got := len(e.Message); got != maxErrorMessageLen {
+		t.Errorf("len(Message) = %d bytes, want %d", got, maxErrorMessageLen)
 	}
 	if !strings.HasPrefix(e.Message, "color: xxx") {
 		t.Errorf("Message = %q, want flattened prefix", e.Message[:20])
+	}
+	if !strings.HasSuffix(e.Message, "...") {
+		t.Errorf("Message = %q, want %q suffix", e.Message, "...")
 	}
 	// The structured slot keeps the raw server-sent messages.
 	if got := e.FieldErrors["color"][0]; got != long {

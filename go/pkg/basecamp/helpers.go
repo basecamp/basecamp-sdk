@@ -183,17 +183,15 @@ func msgOrDefault(msg, fallback string) string {
 	return fallback
 }
 
-// truncate returns s capped at maxErrorMessageLen runes. If truncated, the
-// result is maxErrorMessageLen runes plus an appended "…".
+// truncate caps s at maxErrorMessageLen bytes. If s exceeds the limit, the
+// last 3 bytes are replaced with "..." so the result is at most
+// maxErrorMessageLen long (SPEC §9; byte-level truncation may split a
+// multi-byte codepoint, which §9 documents as accepted behavior).
 func truncate(s string) string {
 	if len(s) <= maxErrorMessageLen {
 		return s
 	}
-	runes := []rune(s)
-	if len(runes) <= maxErrorMessageLen {
-		return s
-	}
-	return string(runes[:maxErrorMessageLen]) + "…"
+	return s[:maxErrorMessageLen-3] + "..."
 }
 
 // Pointer dereference helpers for converting generated types (which use pointers)
