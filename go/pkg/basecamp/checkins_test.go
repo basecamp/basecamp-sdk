@@ -1099,3 +1099,336 @@ func TestCheckinsService_CreateQuestionVisibleToClients(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckinsService_PauseQuestion(t *testing.T) {
+	var requestedMethod, requestedPath string
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"paused":true}`))
+	})
+
+	if err := svc.PauseQuestion(context.Background(), 1069479410); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != http.MethodPost {
+		t.Errorf("expected POST, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/questions/1069479410/pause.json" {
+		t.Errorf("expected path /99999/questions/1069479410/pause.json, got %q", requestedPath)
+	}
+}
+
+func TestCheckinsService_ResumeQuestion(t *testing.T) {
+	var requestedMethod, requestedPath string
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"paused":false}`))
+	})
+
+	if err := svc.ResumeQuestion(context.Background(), 1069479410); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != http.MethodDelete {
+		t.Errorf("expected DELETE, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/questions/1069479410/pause.json" {
+		t.Errorf("expected path /99999/questions/1069479410/pause.json, got %q", requestedPath)
+	}
+}
+
+func TestCheckinsService_PauseQuestionError(t *testing.T) {
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error":"not found"}`))
+	})
+
+	err := svc.PauseQuestion(context.Background(), 1069479410)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	apiErr, ok := err.(*Error)
+	if !ok || apiErr.Code != CodeNotFound {
+		t.Fatalf("expected not-found error, got %v", err)
+	}
+}
+
+// TestCheckinsService_UpdateQuestionNotificationSettings verifies the wire
+// shape (PUT to notification_settings.json) and the tri-state request fields:
+// nil omits a key, and an explicit false is sent (not dropped).
+func TestCheckinsService_UpdateQuestionNotificationSettings(t *testing.T) {
+	fls := false
+
+	var requestedMethod, requestedPath string
+	var receivedBody map[string]any
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		receivedBody = decodeRequestBody(t, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`{"responding":true,"subscribed":false}`))
+	})
+
+	settings, err := svc.UpdateQuestionNotificationSettings(context.Background(), 1069479410, &UpdateQuestionNotificationSettingsRequest{
+		NotifyOnAnswer: &fls,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != http.MethodPut {
+		t.Errorf("expected PUT, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/questions/1069479410/notification_settings.json" {
+		t.Errorf("expected path /99999/questions/1069479410/notification_settings.json, got %q", requestedPath)
+	}
+
+	if got, ok := receivedBody["notify_on_answer"]; !ok || got != false {
+		t.Errorf("expected notify_on_answer false to reach the wire, got %v (present=%v)", got, ok)
+	}
+	if _, ok := receivedBody["digest_include_unanswered"]; ok {
+		t.Errorf("expected digest_include_unanswered to be omitted when nil, but it was present: %v", receivedBody["digest_include_unanswered"])
+	}
+
+	if !settings.Responding {
+		t.Error("expected Responding true")
+	}
+	if settings.Subscribed {
+		t.Error("expected Subscribed false")
+	}
+}
+
+func TestCheckinsService_UpdateQuestionNotificationSettingsRequiresRequest(t *testing.T) {
+	var requestCount int
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+	})
+
+	_, err := svc.UpdateQuestionNotificationSettings(context.Background(), 1069479410, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	apiErr, ok := err.(*Error)
+	if !ok || apiErr.Code != CodeUsage {
+		t.Fatalf("expected usage error, got %v", err)
+	}
+	if requestCount != 0 {
+		t.Fatalf("expected 0 requests, got %d", requestCount)
+	}
+}
+
+func TestCheckinsService_ListAnswerers(t *testing.T) {
+	var requestedMethod, requestedPath string
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Total-Count", "2")
+		w.WriteHeader(200)
+		w.Write([]byte(`[
+			{"id":1049715914,"name":"Victor Cooper","email_address":"victor@honchodesign.com"},
+			{"id":1049715915,"name":"Annie Bryan","email_address":"annie@honchodesign.com"}
+		]`))
+	})
+
+	result, err := svc.ListAnswerers(context.Background(), 1069479410, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != http.MethodGet {
+		t.Errorf("expected GET, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/questions/1069479410/answers/by.json" {
+		t.Errorf("expected path /99999/questions/1069479410/answers/by.json, got %q", requestedPath)
+	}
+
+	if len(result.People) != 2 {
+		t.Fatalf("expected 2 people, got %d", len(result.People))
+	}
+	if result.People[0].ID != 1049715914 || result.People[0].Name != "Victor Cooper" {
+		t.Errorf("unexpected first person: %+v", result.People[0])
+	}
+	if result.People[1].EmailAddress != "annie@honchodesign.com" {
+		t.Errorf("unexpected second person email: %q", result.People[1].EmailAddress)
+	}
+	if result.Meta.TotalCount != 2 {
+		t.Errorf("expected TotalCount 2, got %d", result.Meta.TotalCount)
+	}
+}
+
+func TestCheckinsService_ListAnswerers_Pagination(t *testing.T) {
+	page1Body := `[{"id":1,"name":"A"},{"id":2,"name":"B"}]`
+	page2Body := `[{"id":3,"name":"C"},{"id":4,"name":"D"}]`
+
+	cases := []struct {
+		name          string
+		opts          *PeopleListOptions
+		wantPeople    int
+		wantRequests  int
+		wantTruncated bool
+	}{
+		{"collects across pages when no limit", nil, 4, 2, false},
+		{"Page option returns first page and skips Link follow", &PeopleListOptions{Page: 1}, 2, 1, false},
+		{"Limit smaller than first page truncates without follow", &PeopleListOptions{Limit: 1}, 1, 1, true},
+		{"Limit straddling page boundary trims second page", &PeopleListOptions{Limit: 3}, 3, 2, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requestCount int
+			svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				w.Header().Set("Content-Type", "application/json")
+				if requestCount == 1 {
+					w.Header().Set("Link", fmt.Sprintf(`<http://%s/99999/questions/1069479410/answers/by.json?page=2>; rel="next"`, r.Host))
+					w.WriteHeader(200)
+					w.Write([]byte(page1Body))
+					return
+				}
+				w.WriteHeader(200)
+				w.Write([]byte(page2Body))
+			})
+
+			result, err := svc.ListAnswerers(context.Background(), 1069479410, tc.opts)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(result.People) != tc.wantPeople {
+				t.Errorf("expected %d people, got %d", tc.wantPeople, len(result.People))
+			}
+			if requestCount != tc.wantRequests {
+				t.Errorf("expected %d HTTP requests, got %d", tc.wantRequests, requestCount)
+			}
+			if result.Meta.Truncated != tc.wantTruncated {
+				t.Errorf("expected Truncated=%v, got %v", tc.wantTruncated, result.Meta.Truncated)
+			}
+		})
+	}
+}
+
+func TestCheckinsService_ListQuestionReminders(t *testing.T) {
+	var requestedMethod, requestedPath string
+	svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write([]byte(`[
+			{
+				"group_on": "2022-10-28",
+				"remind_at": "2022-10-28T09:00:00.000Z",
+				"reminder_id": 123,
+				"question": {"id": 1069479410, "title": "What did you work on today?", "type": "Question", "paused": false}
+			},
+			{
+				"remind_at": "2022-10-29T09:00:00.000Z",
+				"question": {"id": 1069479411, "title": "Any blockers?", "type": "Question", "paused": false}
+			}
+		]`))
+	})
+
+	result, err := svc.ListQuestionReminders(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != http.MethodGet {
+		t.Errorf("expected GET, got %s", requestedMethod)
+	}
+	if requestedPath != "/99999/my/question_reminders.json" {
+		t.Errorf("expected path /99999/my/question_reminders.json, got %q", requestedPath)
+	}
+
+	if len(result.Reminders) != 2 {
+		t.Fatalf("expected 2 reminders, got %d", len(result.Reminders))
+	}
+
+	r1 := result.Reminders[0]
+	if r1.GroupOn != "2022-10-28" {
+		t.Errorf("expected GroupOn '2022-10-28', got %q", r1.GroupOn)
+	}
+	if r1.RemindAt.IsZero() {
+		t.Error("expected RemindAt to be non-zero")
+	}
+	if r1.ReminderID == nil || *r1.ReminderID != 123 {
+		t.Errorf("expected ReminderID 123, got %v", r1.ReminderID)
+	}
+	if r1.Question.ID != 1069479410 {
+		t.Errorf("expected Question.ID 1069479410, got %d", r1.Question.ID)
+	}
+	if r1.Question.Title != "What did you work on today?" {
+		t.Errorf("unexpected Question.Title: %q", r1.Question.Title)
+	}
+
+	r2 := result.Reminders[1]
+	if r2.GroupOn != "" {
+		t.Errorf("expected empty GroupOn when absent, got %q", r2.GroupOn)
+	}
+	if r2.ReminderID != nil {
+		t.Errorf("expected nil ReminderID when absent, got %v", r2.ReminderID)
+	}
+	if r2.Question.ID != 1069479411 {
+		t.Errorf("expected Question.ID 1069479411, got %d", r2.Question.ID)
+	}
+}
+
+func TestCheckinsService_ListQuestionReminders_Pagination(t *testing.T) {
+	page1Body := `[{"remind_at":"2022-10-28T09:00:00.000Z","question":{"id":1}},{"remind_at":"2022-10-28T09:00:00.000Z","question":{"id":2}}]`
+	page2Body := `[{"remind_at":"2022-10-28T09:00:00.000Z","question":{"id":3}},{"remind_at":"2022-10-28T09:00:00.000Z","question":{"id":4}}]`
+
+	cases := []struct {
+		name          string
+		opts          *QuestionReminderListOptions
+		wantReminders int
+		wantRequests  int
+		wantTruncated bool
+	}{
+		{"collects across pages when no limit", nil, 4, 2, false},
+		{"Page option returns first page and skips Link follow", &QuestionReminderListOptions{Page: 1}, 2, 1, false},
+		{"Limit smaller than first page truncates without follow", &QuestionReminderListOptions{Limit: 1}, 1, 1, true},
+		{"Limit straddling page boundary trims second page", &QuestionReminderListOptions{Limit: 3}, 3, 2, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var requestCount int
+			svc := testCheckinsServer(t, func(w http.ResponseWriter, r *http.Request) {
+				requestCount++
+				w.Header().Set("Content-Type", "application/json")
+				if requestCount == 1 {
+					w.Header().Set("Link", fmt.Sprintf(`<http://%s/99999/my/question_reminders.json?page=2>; rel="next"`, r.Host))
+					w.WriteHeader(200)
+					w.Write([]byte(page1Body))
+					return
+				}
+				w.WriteHeader(200)
+				w.Write([]byte(page2Body))
+			})
+
+			result, err := svc.ListQuestionReminders(context.Background(), tc.opts)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(result.Reminders) != tc.wantReminders {
+				t.Errorf("expected %d reminders, got %d", tc.wantReminders, len(result.Reminders))
+			}
+			if requestCount != tc.wantRequests {
+				t.Errorf("expected %d HTTP requests, got %d", tc.wantRequests, requestCount)
+			}
+			if result.Meta.Truncated != tc.wantTruncated {
+				t.Errorf("expected Truncated=%v, got %v", tc.wantTruncated, result.Meta.Truncated)
+			}
+		})
+	}
+}

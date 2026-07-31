@@ -1163,3 +1163,64 @@ func TestCardsService_UpdateSendsExplicitEmptyAssignees(t *testing.T) {
 		t.Errorf("assignee_ids = %v, want []", ids)
 	}
 }
+
+func TestCardColumnsService_Subscribe(t *testing.T) {
+	wantPath := "/99999/card_tables/lists/1069479347/subscription.json"
+
+	var requestedMethod, requestedPath string
+	svc := testCardColumnsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.WriteHeader(204)
+	})
+
+	if err := svc.Subscribe(context.Background(), cardColumnsTestColumnID); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != "POST" {
+		t.Errorf("expected POST, got %s", requestedMethod)
+	}
+	if requestedPath != wantPath {
+		t.Errorf("path = %q, want %q", requestedPath, wantPath)
+	}
+}
+
+func TestCardColumnsService_Unsubscribe(t *testing.T) {
+	wantPath := "/99999/card_tables/lists/1069479347/subscription.json"
+
+	var requestedMethod, requestedPath string
+	svc := testCardColumnsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requestedMethod = r.Method
+		requestedPath = r.URL.Path
+		w.WriteHeader(204)
+	})
+
+	if err := svc.Unsubscribe(context.Background(), cardColumnsTestColumnID); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if requestedMethod != "DELETE" {
+		t.Errorf("expected DELETE, got %s", requestedMethod)
+	}
+	if requestedPath != wantPath {
+		t.Errorf("path = %q, want %q", requestedPath, wantPath)
+	}
+}
+
+func TestCardColumnsService_SubscribeError(t *testing.T) {
+	svc := testCardColumnsServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte(`{"error":"not found"}`))
+	})
+
+	err := svc.Subscribe(context.Background(), cardColumnsTestColumnID)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	apiErr, ok := err.(*Error)
+	if !ok || apiErr.Code != CodeNotFound {
+		t.Fatalf("expected not-found error, got %v", err)
+	}
+}

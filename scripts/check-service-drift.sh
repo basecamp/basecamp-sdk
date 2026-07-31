@@ -17,16 +17,9 @@ SDK_DIR="$(dirname "$SCRIPT_DIR")/go"
 GENERATED_FILE="$SDK_DIR/pkg/generated/client.gen.go"
 SERVICE_DIR="$SDK_DIR/pkg/basecamp"
 
-# Operations intentionally not yet wrapped (tracked for Go service generator work)
-EXCLUDED_OPS=(
-  GetQuestionReminders
-  ListQuestionAnswerers
-  PauseQuestion
-  ResumeQuestion
-  SubscribeToCardColumn
-  UnsubscribeFromCardColumn
-  UpdateQuestionNotificationSettings
-)
+# Operations intentionally not yet wrapped. Keep this empty: every generated
+# operation must have an ergonomic wrapper in go/pkg/basecamp/.
+EXCLUDED_OPS=()
 
 # Temporary files
 GEN_OPS=$(mktemp)

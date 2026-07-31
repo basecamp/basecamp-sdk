@@ -34,6 +34,18 @@ type AnswerListOptions struct {
 	Page int
 }
 
+// QuestionReminderListOptions specifies options for listing question reminders.
+type QuestionReminderListOptions struct {
+	// Limit is the maximum number of reminders to return.
+	// If 0 (default), returns all reminders. Use a positive value to cap results.
+	Limit int
+
+	// Page, if non-zero, disables pagination and returns only the first page.
+	// NOTE: The page number itself is not yet honored due to OpenAPI client
+	// limitations. Use 0 to paginate through all results up to Limit.
+	Page int
+}
+
 // Questionnaire represents a Basecamp automatic check-in questionnaire.
 type Questionnaire struct {
 	ID               int64     `json:"id"`
@@ -127,6 +139,21 @@ type QuestionAnswer struct {
 	Creator            *Person              `json:"creator,omitempty"`
 }
 
+// QuestionReminder represents a pending check-in reminder for the current user.
+type QuestionReminder struct {
+	GroupOn    string    `json:"group_on,omitempty"`
+	Question   Question  `json:"question"`
+	RemindAt   time.Time `json:"remind_at"`
+	ReminderID *int64    `json:"reminder_id,omitempty"`
+}
+
+// QuestionNotificationSettings represents the current user's notification
+// settings for a check-in question.
+type QuestionNotificationSettings struct {
+	Responding bool `json:"responding"`
+	Subscribed bool `json:"subscribed"`
+}
+
 // CreateQuestionRequest specifies the parameters for creating a question.
 type CreateQuestionRequest struct {
 	// Title is the question text (required).
@@ -167,6 +194,20 @@ type UpdateAnswerRequest struct {
 	GroupOn string `json:"group_on,omitempty"`
 }
 
+// UpdateQuestionNotificationSettingsRequest specifies the parameters for
+// updating the current user's notification settings for a question.
+//
+// Both fields are optional and tri-state: nil omits the field so the server
+// leaves that setting unchanged; a non-nil value is sent verbatim, and an
+// explicit false reaches the wire (the pointer distinguishes unset from false).
+type UpdateQuestionNotificationSettingsRequest struct {
+	// NotifyOnAnswer controls whether the user is notified when someone answers.
+	NotifyOnAnswer *bool `json:"notify_on_answer,omitempty"`
+	// DigestIncludeUnanswered controls whether unanswered questions are
+	// included in the digest.
+	DigestIncludeUnanswered *bool `json:"digest_include_unanswered,omitempty"`
+}
+
 // QuestionListResult contains the results from listing questions.
 type QuestionListResult struct {
 	// Questions is the list of questions returned.
@@ -179,6 +220,14 @@ type QuestionListResult struct {
 type AnswerListResult struct {
 	// Answers is the list of answers returned.
 	Answers []QuestionAnswer
+	// Meta contains pagination metadata (total count, etc.).
+	Meta ListMeta
+}
+
+// QuestionReminderListResult contains the results from listing question reminders.
+type QuestionReminderListResult struct {
+	// Reminders is the list of question reminders returned.
+	Reminders []QuestionReminder
 	// Meta contains pagination metadata (total count, etc.).
 	Meta ListMeta
 }
@@ -446,6 +495,98 @@ func (s *CheckinsService) UpdateQuestion(ctx context.Context, questionID int64, 
 	return &question, nil
 }
 
+// PauseQuestion pauses a check-in question, stopping its reminders.
+// Returns nil on success.
+func (s *CheckinsService) PauseQuestion(ctx context.Context, questionID int64) (err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "PauseQuestion",
+		ResourceType: "question", IsMutation: true,
+		ResourceID: questionID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.PauseQuestionWithResponse(ctx, s.client.accountID, questionID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// ResumeQuestion resumes a paused check-in question, restarting its reminders.
+// Returns nil on success.
+func (s *CheckinsService) ResumeQuestion(ctx context.Context, questionID int64) (err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "ResumeQuestion",
+		ResourceType: "question", IsMutation: true,
+		ResourceID: questionID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.ResumeQuestionWithResponse(ctx, s.client.accountID, questionID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// UpdateQuestionNotificationSettings updates the current user's notification
+// settings for a question.
+// Returns the updated settings.
+func (s *CheckinsService) UpdateQuestionNotificationSettings(ctx context.Context, questionID int64, req *UpdateQuestionNotificationSettingsRequest) (result *QuestionNotificationSettings, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "UpdateQuestionNotificationSettings",
+		ResourceType: "question", IsMutation: true,
+		ResourceID: questionID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req == nil {
+		err = ErrUsage("update request is required")
+		return nil, err
+	}
+
+	body := generated.UpdateQuestionNotificationSettingsJSONRequestBody{
+		NotifyOnAnswer:          req.NotifyOnAnswer,
+		DigestIncludeUnanswered: req.DigestIncludeUnanswered,
+	}
+
+	resp, err := s.client.parent.gen.UpdateQuestionNotificationSettingsWithResponse(ctx, s.client.accountID, questionID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	settings := questionNotificationSettingsFromGenerated(*resp.JSON200)
+	return &settings, nil
+}
+
 // ListAnswers returns all answers for a question.
 //
 // By default, returns all answers (no limit). Use Limit to cap results.
@@ -597,6 +738,79 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 	return &AnswerListResult{Answers: answers, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
+// ListAnswerers returns all people who have answered a question.
+//
+// By default, returns all answerers (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of people to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only.
+//     NOTE: The page number itself is not yet honored due to OpenAPI client
+//     limitations. Use 0 to paginate through all results up to Limit.
+//
+// The returned PeopleListResult includes pagination metadata (TotalCount from
+// X-Total-Count header) when available.
+func (s *CheckinsService) ListAnswerers(ctx context.Context, questionID int64, opts *PeopleListOptions) (result *PeopleListResult, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "ListAnswerers",
+		ResourceType: "person", IsMutation: false,
+		ResourceID: questionID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.ListQuestionAnswerersWithResponse(ctx, s.client.accountID, questionID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	var people []Person
+	if resp.JSON200 != nil {
+		for _, gp := range *resp.JSON200 {
+			people = append(people, personFromGenerated(gp))
+		}
+	}
+
+	if opts != nil && opts.Page > 0 {
+		return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	limit := 0
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	if limit > 0 && len(people) >= limit {
+		return &PeopleListResult{People: people[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(people), limit)}}, nil
+	}
+
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(people), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, raw := range rawMore {
+		var gp generated.Person
+		if err := json.Unmarshal(raw, &gp); err != nil {
+			return nil, fmt.Errorf("failed to parse person: %w", err)
+		}
+		people = append(people, personFromGenerated(gp))
+	}
+
+	return &PeopleListResult{People: people, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
+}
+
 // GetAnswer returns a question answer by ID.
 func (s *CheckinsService) GetAnswer(ctx context.Context, answerID int64) (result *QuestionAnswer, err error) {
 	op := OperationInfo{
@@ -730,6 +944,81 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req 
 		return err
 	}
 	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// ListQuestionReminders returns pending check-in reminders for the current user.
+//
+// Reminders cover questions that are awaiting a response from the
+// authenticated user, across all projects in the account.
+//
+// By default, returns all reminders (no limit). Use Limit to cap results.
+//
+// Pagination options:
+//   - Limit: maximum number of reminders to return (0 = all)
+//   - Page: if non-zero, disables pagination and returns first page only.
+//     NOTE: The page number itself is not yet honored due to OpenAPI client
+//     limitations. Use 0 to paginate through all results up to Limit.
+//
+// The returned QuestionReminderListResult includes pagination metadata
+// (TotalCount from X-Total-Count header) when available.
+func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *QuestionReminderListOptions) (result *QuestionReminderListResult, err error) {
+	op := OperationInfo{
+		Service: "Checkins", Operation: "ListQuestionReminders",
+		ResourceType: "question_reminder", IsMutation: false,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.GetQuestionRemindersWithResponse(ctx, s.client.accountID)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	totalCount := parseTotalCount(resp.HTTPResponse)
+
+	var reminders []QuestionReminder
+	if resp.JSON200 != nil {
+		for _, gr := range *resp.JSON200 {
+			reminders = append(reminders, questionReminderFromGenerated(gr))
+		}
+	}
+
+	if opts != nil && opts.Page > 0 {
+		return &QuestionReminderListResult{Reminders: reminders, Meta: ListMeta{TotalCount: totalCount}}, nil
+	}
+
+	limit := 0
+	if opts != nil && opts.Limit > 0 {
+		limit = opts.Limit
+	}
+
+	if limit > 0 && len(reminders) >= limit {
+		return &QuestionReminderListResult{Reminders: reminders[:limit], Meta: ListMeta{TotalCount: totalCount, Truncated: isFirstPageTruncated(resp.HTTPResponse, len(reminders), limit)}}, nil
+	}
+
+	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(reminders), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, raw := range rawMore {
+		var gr generated.QuestionReminder
+		if err := json.Unmarshal(raw, &gr); err != nil {
+			return nil, fmt.Errorf("failed to parse question reminder: %w", err)
+		}
+		reminders = append(reminders, questionReminderFromGenerated(gr))
+	}
+
+	return &QuestionReminderListResult{Reminders: reminders, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
 }
 
 // questionnaireFromGenerated converts a generated Questionnaire to our clean type.
@@ -904,6 +1193,31 @@ func questionAnswerFromGenerated(ga generated.QuestionAnswer) QuestionAnswer {
 	a.ContentAttachments = richTextAttachmentsFromGenerated(ga.ContentAttachments)
 
 	return a
+}
+
+// questionReminderFromGenerated converts a generated QuestionReminder to our clean type.
+func questionReminderFromGenerated(gr generated.QuestionReminder) QuestionReminder {
+	r := QuestionReminder{
+		Question:   questionFromGenerated(gr.Question),
+		RemindAt:   gr.RemindAt,
+		ReminderID: gr.ReminderId,
+	}
+
+	// Convert date fields to strings
+	if !gr.GroupOn.IsZero() {
+		r.GroupOn = gr.GroupOn.String()
+	}
+
+	return r
+}
+
+// questionNotificationSettingsFromGenerated converts a generated
+// UpdateQuestionNotificationSettingsResponseContent to our clean type.
+func questionNotificationSettingsFromGenerated(gs generated.UpdateQuestionNotificationSettingsResponseContent) QuestionNotificationSettings {
+	return QuestionNotificationSettings{
+		Responding: gs.Responding,
+		Subscribed: gs.Subscribed,
+	}
 }
 
 // questionScheduleToMap converts a QuestionSchedule to a map for JSON marshaling.
