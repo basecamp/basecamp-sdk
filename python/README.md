@@ -513,7 +513,7 @@ sliced = projects[:5]
 
 Pagination is automatic. The SDK follows Link headers and collects all pages up to `config.max_pages` (default: 10,000).
 
-Every paginated method also accepts a `max_items` keyword to cap how many items are collected. Collection stops as soon as the cap is met, without fetching further pages:
+Every paginated method also accepts a `max_items` keyword to cap how many items are collected. Collection stops as soon as the cap is met, without fetching further pages. Zero or negative values disable the cap, as in the other SDKs:
 
 ```python
 recent = account.projects.list(max_items=50)

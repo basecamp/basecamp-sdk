@@ -111,6 +111,51 @@ class TestAsyncPlainListMaxItems:
         assert result.meta.truncated is False
 
 
+class TestNonPositiveMaxItems:
+    """Non-positive caps disable the cap, matching the other SDKs.
+
+    TypeScript guards ``maxItems && maxItems > 0`` and Swift ``ln > 0``: zero
+    and negative values mean "no cap", never a negative slice or an early stop.
+    """
+
+    @respx.mock
+    def test_zero_collects_everything(self):
+        page1, page2 = _mount_two_pages(_PROJECTS_URL, _items(1, 2), _items(3))
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.projects.list(max_items=0)
+
+        assert page1.call_count == 1
+        assert page2.call_count == 1
+        assert [p["id"] for p in result] == [1, 2, 3]
+        assert result.meta.truncated is False
+
+    @respx.mock
+    def test_negative_collects_everything(self):
+        page1, page2 = _mount_two_pages(_PROJECTS_URL, _items(1, 2), _items(3))
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.projects.list(max_items=-1)
+
+        assert page1.call_count == 1
+        assert page2.call_count == 1
+        assert [p["id"] for p in result] == [1, 2, 3]
+        assert result.meta.truncated is False
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_negative_collects_everything_async(self):
+        page1, page2 = _mount_two_pages(_PROJECTS_URL, _items(1, 2), _items(3))
+
+        account = AsyncClient(access_token="test-token").for_account("12345")
+        result = await account.projects.list(max_items=-1)
+
+        assert page1.call_count == 1
+        assert page2.call_count == 1
+        assert [p["id"] for p in result] == [1, 2, 3]
+        assert result.meta.truncated is False
+
+
 class TestKeyPaginateMaxItems:
     @respx.mock
     def test_cap_drops_items_and_stops_before_next_page(self):

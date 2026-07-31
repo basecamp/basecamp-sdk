@@ -273,6 +273,8 @@ class AsyncBaseService:
         max_items: int | None = None,
         operation: str | None = None,
     ) -> ListResult:
+        if max_items is not None and max_items <= 0:
+            max_items = None  # Non-positive caps disable the cap, matching the other SDKs.
         base_url = self._client.http._build_url(self._client.account_path(path))
         url = base_url
         all_items: list = []
@@ -323,6 +325,8 @@ class AsyncBaseService:
         max_items: int | None = None,
         operation: str | None = None,
     ) -> ListResult:
+        if max_items is not None and max_items <= 0:
+            max_items = None  # Non-positive caps disable the cap, matching the other SDKs.
         base_url = self._client.http._build_url(self._client.account_path(path))
         url = base_url
         all_items: list = []
@@ -374,6 +378,8 @@ class AsyncBaseService:
         max_items: int | None = None,
         operation: str | None = None,
     ) -> dict:
+        if max_items is not None and max_items <= 0:
+            max_items = None  # Non-positive caps disable the cap, matching the other SDKs.
         base_url = self._client.http._build_url(self._client.account_path(path))
 
         safe_hook(self._hooks.on_paginate, base_url, 1)
