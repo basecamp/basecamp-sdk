@@ -1,9 +1,18 @@
 ---
 gap: everything-todo-card-filters
-status: addressed-in-bc3-pr-12442
+status: absorbed-in-sdk
 detected: 2026-07-30
 sdk_demand: medium
 bc3_pr: 12442
+smithy_refs:
+  - "EverythingTodosFilterInput.assignee_ids member"
+  - "EverythingTodosFilterInput.due member"
+  - "EverythingCardsFilterInput.assignee_ids member"
+  - "EverythingCardsFilterInput.due member"
+  - "GetEverythingOverdueTodosInput.assignee_ids member"
+  - "GetEverythingOverdueTodosInput.due member"
+  - "GetEverythingOverdueCardsInput.assignee_ids member"
+  - "GetEverythingOverdueCardsInput.due member"
 bc3_refs:
   introduced_in: master
   routes:
@@ -45,8 +54,12 @@ family and the flat overdue lists alike. Per
   ignored.
 
 The SDK models the 11 affected operations (see
-[everything-aggregates.md](everything-aggregates.md)) but none of them carry
-these query parameters yet.
+[everything-aggregates.md](everything-aggregates.md)); **absorbed** — all 11
+now carry both query parameters (the nine grouped operations share the two
+`Everything*FilterInput` structures, the two overdue lists have their own
+inputs), regenerated across all six SDKs with Go options threading
+(`EverythingTaskFilters`) and per-SDK bracketed-serialization tests
+mirroring the `people_ids[]` precedent.
 
 ## Why it matters
 

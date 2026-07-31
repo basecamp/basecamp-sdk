@@ -3560,6 +3560,31 @@
         "operationId": "GetEverythingCompletedCards",
         "parameters": [
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -3646,6 +3671,31 @@
         "description": "Open cards with no due date across all accessible projects, grouped by project (paginated).",
         "operationId": "GetEverythingNoDueDateCards",
         "parameters": [
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -3734,6 +3784,31 @@
         "operationId": "GetEverythingNotNowCards",
         "parameters": [
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -3821,6 +3896,31 @@
         "operationId": "GetEverythingOpenCards",
         "parameters": [
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -3906,7 +4006,33 @@
       "get": {
         "description": "Get every overdue card across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
         "operationId": "GetEverythingOverdueCards",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetEverythingOverdueCards 200 response",
@@ -3978,6 +4104,31 @@
         "description": "Open, unassigned cards across all accessible projects, grouped by project (paginated).",
         "operationId": "GetEverythingUnassignedCards",
         "parameters": [
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -17812,6 +17963,31 @@
         "operationId": "GetEverythingCompletedTodos",
         "parameters": [
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -17898,6 +18074,31 @@
         "description": "Open to-dos with no due date across all accessible projects, grouped by project (paginated).",
         "operationId": "GetEverythingNoDueDateTodos",
         "parameters": [
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
           {
             "name": "page",
             "in": "query",
@@ -17986,6 +18187,31 @@
         "operationId": "GetEverythingOpenTodos",
         "parameters": [
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -18071,7 +18297,33 @@
       "get": {
         "description": "Get every overdue to-do across all accessible projects, oldest-due-date-first.\nA complete, unpaginated array; each item embeds its `bucket`.",
         "operationId": "GetEverythingOverdueTodos",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "GetEverythingOverdueTodos 200 response",
@@ -18143,6 +18395,31 @@
         "description": "Open, unassigned to-dos across all accessible projects, grouped by project (paginated).",
         "operationId": "GetEverythingUnassignedTodos",
         "parameters": [
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
           {
             "name": "page",
             "in": "query",

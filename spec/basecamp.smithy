@@ -9050,6 +9050,15 @@ structure GetEverythingOverdueTodosInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Restrict to tasks assigned to at least one of the given people (repeatable).
+  /// Assignees on nested steps are not considered.
+  @httpQuery("assignee_ids[]")
+  assignee_ids: PersonIdList
+
+  /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+  @httpQuery("due")
+  due: String
 }
 
 structure GetEverythingOverdueTodosOutput {
@@ -9071,6 +9080,15 @@ structure GetEverythingOverdueCardsInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Restrict to tasks assigned to at least one of the given people (repeatable).
+  /// Assignees on nested steps are not considered.
+  @httpQuery("assignee_ids[]")
+  assignee_ids: PersonIdList
+
+  /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+  @httpQuery("due")
+  due: String
 }
 
 structure GetEverythingOverdueCardsOutput {
@@ -9254,6 +9272,15 @@ structure EverythingTodosFilterInput {
   @httpLabel
   accountId: AccountId
 
+  /// Restrict to tasks assigned to at least one of the given people (repeatable).
+  /// Assignees on nested steps are not considered.
+  @httpQuery("assignee_ids[]")
+  assignee_ids: PersonIdList
+
+  /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+  @httpQuery("due")
+  due: String
+
   /// Page number for paginating through results. Defaults to 1.
   @httpQuery("page")
   page: Integer
@@ -9267,6 +9294,15 @@ structure EverythingCardsFilterInput {
   @required
   @httpLabel
   accountId: AccountId
+
+  /// Restrict to tasks assigned to at least one of the given people (repeatable).
+  /// Assignees on nested steps are not considered.
+  @httpQuery("assignee_ids[]")
+  assignee_ids: PersonIdList
+
+  /// Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+  @httpQuery("due")
+  due: String
 
   /// Page number for paginating through results. Defaults to 1.
   @httpQuery("page")

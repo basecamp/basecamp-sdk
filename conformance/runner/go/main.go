@@ -777,47 +777,47 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		return operationResult{err: err}
 
 	case "GetEverythingOverdueTodos":
-		_, err := account.Everything().OverdueTodos(ctx)
+		_, err := account.Everything().OverdueTodos(ctx, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingOverdueCards":
-		_, err := account.Everything().OverdueCards(ctx)
+		_, err := account.Everything().OverdueCards(ctx, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingOpenTodos":
-		_, err := account.Everything().OpenTodos(ctx, 0)
+		_, err := account.Everything().OpenTodos(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingCompletedTodos":
-		_, err := account.Everything().CompletedTodos(ctx, 0)
+		_, err := account.Everything().CompletedTodos(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingUnassignedTodos":
-		_, err := account.Everything().UnassignedTodos(ctx, 0)
+		_, err := account.Everything().UnassignedTodos(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingNoDueDateTodos":
-		_, err := account.Everything().NoDueDateTodos(ctx, 0)
+		_, err := account.Everything().NoDueDateTodos(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingOpenCards":
-		_, err := account.Everything().OpenCards(ctx, 0)
+		_, err := account.Everything().OpenCards(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingCompletedCards":
-		_, err := account.Everything().CompletedCards(ctx, 0)
+		_, err := account.Everything().CompletedCards(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingUnassignedCards":
-		_, err := account.Everything().UnassignedCards(ctx, 0)
+		_, err := account.Everything().UnassignedCards(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingNoDueDateCards":
-		_, err := account.Everything().NoDueDateCards(ctx, 0)
+		_, err := account.Everything().NoDueDateCards(ctx, 0, nil)
 		return operationResult{err: err}
 
 	case "GetEverythingNotNowCards":
-		_, err := account.Everything().NotNowCards(ctx, 0)
+		_, err := account.Everything().NotNowCards(ctx, 0, nil)
 		return operationResult{err: err}
 
 	default:

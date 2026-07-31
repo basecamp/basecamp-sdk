@@ -8103,6 +8103,13 @@ export interface operations {
     GetEverythingCompletedCards: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -8162,6 +8169,13 @@ export interface operations {
     GetEverythingNoDueDateCards: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -8221,6 +8235,13 @@ export interface operations {
     GetEverythingNotNowCards: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -8280,6 +8301,13 @@ export interface operations {
     GetEverythingOpenCards: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -8338,7 +8366,15 @@ export interface operations {
     };
     GetEverythingOverdueCards: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8395,6 +8431,13 @@ export interface operations {
     GetEverythingUnassignedCards: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -17888,6 +17931,13 @@ export interface operations {
     GetEverythingCompletedTodos: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -17947,6 +17997,13 @@ export interface operations {
     GetEverythingNoDueDateTodos: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -18006,6 +18063,13 @@ export interface operations {
     GetEverythingOpenTodos: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };
@@ -18064,7 +18128,15 @@ export interface operations {
     };
     GetEverythingOverdueTodos: {
         parameters: {
-            query?: never;
+            query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -18121,6 +18193,13 @@ export interface operations {
     GetEverythingUnassignedTodos: {
         parameters: {
             query?: {
+                /**
+                 * @description Restrict to tasks assigned to at least one of the given people (repeatable).
+                 *     Assignees on nested steps are not considered.
+                 */
+                "assignee_ids[]"?: number[];
+                /** @description Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+                due?: string;
                 /** @description Page number for paginating through results. Defaults to 1. */
                 page?: number;
             };

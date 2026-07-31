@@ -3993,6 +3993,31 @@
             "required": true
           },
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -4089,6 +4114,31 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
           },
           {
             "name": "page",
@@ -4189,6 +4239,31 @@
             "required": true
           },
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -4287,6 +4362,31 @@
             "required": true
           },
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -4383,6 +4483,31 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
           }
         ],
         "responses": {
@@ -4466,6 +4591,31 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
           },
           {
             "name": "page",
@@ -20046,6 +20196,31 @@
             "required": true
           },
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -20142,6 +20317,31 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
           },
           {
             "name": "page",
@@ -20242,6 +20442,31 @@
             "required": true
           },
           {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "Page number for paginating through results. Defaults to 1.",
@@ -20338,6 +20563,31 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
           }
         ],
         "responses": {
@@ -20421,6 +20671,31 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "assignee_ids[]",
+            "in": "query",
+            "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+            "style": "form",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "description": "Restrict to tasks assigned to at least one of the given people (repeatable).\nAssignees on nested steps are not considered.",
+              "x-go-type-skip-optional-pointer": false
+            },
+            "explode": true
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored.",
+            "schema": {
+              "type": "string",
+              "description": "Filter by due date: with, without, or overdue. Unrecognized values are ignored."
+            }
           },
           {
             "name": "page",

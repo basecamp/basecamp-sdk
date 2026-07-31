@@ -97,7 +97,7 @@ func TestEverythingService_OverdueTodos_Unpaginated(t *testing.T) {
 		]`))
 	})
 
-	todos, err := svc.OverdueTodos(context.Background())
+	todos, err := svc.OverdueTodos(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -202,6 +202,61 @@ func TestEverythingService_Files_Filters(t *testing.T) {
 	ids := q["people_ids[]"]
 	if len(ids) != 2 || ids[0] != "101" || ids[1] != "202" {
 		t.Errorf("expected people_ids[]=101,202, got %v (query %q)", ids, captured)
+	}
+}
+
+// TestEverythingService_TaskFilters verifies the assignee_ids[] and due query
+// parameters reach the wire on a grouped listing (#12442).
+func TestEverythingService_TaskFilters(t *testing.T) {
+	var captured string
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[]`))
+	})
+
+	filters := &EverythingTaskFilters{AssigneeIDs: []int64{101, 202}, Due: "overdue"}
+	if _, err := svc.OpenTodos(context.Background(), 1, filters); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	q, _ := url.ParseQuery(captured)
+	if q.Get("due") != "overdue" {
+		t.Errorf("expected due=overdue, got query %q", captured)
+	}
+	ids := q["assignee_ids[]"]
+	if len(ids) != 2 || ids[0] != "101" || ids[1] != "202" {
+		t.Errorf("expected assignee_ids[]=101,202, got %v (query %q)", ids, captured)
+	}
+}
+
+// TestEverythingService_TaskFilters_Overdue verifies the filters also reach the
+// wire on the unpaginated overdue family, and that nil filters add no query.
+func TestEverythingService_TaskFilters_Overdue(t *testing.T) {
+	var captured string
+	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		captured = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`[]`))
+	})
+
+	if _, err := svc.OverdueCards(context.Background(), &EverythingTaskFilters{AssigneeIDs: []int64{7}}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	q, _ := url.ParseQuery(captured)
+	if ids := q["assignee_ids[]"]; len(ids) != 1 || ids[0] != "7" {
+		t.Errorf("expected assignee_ids[]=7, got %v (query %q)", ids, captured)
+	}
+	if q.Has("due") {
+		t.Errorf("expected no due param when unset, got query %q", captured)
+	}
+
+	if _, err := svc.OverdueTodos(context.Background(), nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if captured != "" {
+		t.Errorf("expected no query params with nil filters, got %q", captured)
 	}
 }
 
@@ -351,7 +406,7 @@ func TestEverythingService_OpenTodos_BucketGrouped_MultiPage(t *testing.T) {
 	})
 	serverURL = url
 
-	result, err := svc.OpenTodos(context.Background(), 0)
+	result, err := svc.OpenTodos(context.Background(), 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -391,7 +446,7 @@ func TestEverythingService_NotNowCards_BucketGrouped(t *testing.T) {
 		_, _ = w.Write([]byte(`[{"bucket":{"id":30,"name":"Kanban Project","type":"Project"},"cards":[{"id":7,"title":"Parked card","completed":false,"steps":[{"id":200,"title":"Do later","completed":false}]}]}]`))
 	})
 
-	result, err := svc.NotNowCards(context.Background(), 1)
+	result, err := svc.NotNowCards(context.Background(), 1, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -420,7 +475,7 @@ func TestEverythingService_OpenTodos_PassesPageParam(t *testing.T) {
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte(`[]`))
 	})
-	if _, err := svc.OpenTodos(context.Background(), 4); err != nil {
+	if _, err := svc.OpenTodos(context.Background(), 4, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if q, _ := url.ParseQuery(captured); q.Get("page") != "4" {
@@ -438,7 +493,7 @@ func TestEverythingService_BucketGroup_RequiredFieldsRoundTrip(t *testing.T) {
 		w.WriteHeader(200)
 		_, _ = w.Write([]byte(`[{"bucket":{"id":40,"name":"Empty Project","type":"Project"},"todos":[]}]`))
 	})
-	result, err := svc.OpenTodos(context.Background(), 1)
+	result, err := svc.OpenTodos(context.Background(), 1, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

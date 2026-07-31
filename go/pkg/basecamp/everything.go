@@ -349,7 +349,7 @@ func decodeEverythingFiles(body []byte) ([]EverythingFile, error) {
 
 // OverdueTodos returns every overdue to-do across all accessible projects — a
 // complete, oldest-due-date-first array (unpaginated, no Link-following).
-func (s *EverythingService) OverdueTodos(ctx context.Context) (result []Todo, err error) {
+func (s *EverythingService) OverdueTodos(ctx context.Context, filters *EverythingTaskFilters) (result []Todo, err error) {
 	op := OperationInfo{Service: "Everything", Operation: "OverdueTodos", ResourceType: "todo", IsMutation: false}
 	ctx, done, err := s.begin(ctx, op)
 	if err != nil {
@@ -357,7 +357,11 @@ func (s *EverythingService) OverdueTodos(ctx context.Context) (result []Todo, er
 	}
 	defer done(&err)
 
-	resp, err := s.client.parent.gen.GetEverythingOverdueTodosWithResponse(ctx, s.client.accountID)
+	params := (*generated.GetEverythingOverdueTodosParams)(nil)
+	if !filters.empty() {
+		params = &generated.GetEverythingOverdueTodosParams{Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+	}
+	resp, err := s.client.parent.gen.GetEverythingOverdueTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +379,7 @@ func (s *EverythingService) OverdueTodos(ctx context.Context) (result []Todo, er
 
 // OverdueCards returns every overdue card across all accessible projects — a
 // complete, oldest-due-date-first array (unpaginated, no Link-following).
-func (s *EverythingService) OverdueCards(ctx context.Context) (result []Card, err error) {
+func (s *EverythingService) OverdueCards(ctx context.Context, filters *EverythingTaskFilters) (result []Card, err error) {
 	op := OperationInfo{Service: "Everything", Operation: "OverdueCards", ResourceType: "card", IsMutation: false}
 	ctx, done, err := s.begin(ctx, op)
 	if err != nil {
@@ -383,7 +387,11 @@ func (s *EverythingService) OverdueCards(ctx context.Context) (result []Card, er
 	}
 	defer done(&err)
 
-	resp, err := s.client.parent.gen.GetEverythingOverdueCardsWithResponse(ctx, s.client.accountID)
+	params := (*generated.GetEverythingOverdueCardsParams)(nil)
+	if !filters.empty() {
+		params = &generated.GetEverythingOverdueCardsParams{Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
+	}
+	resp, err := s.client.parent.gen.GetEverythingOverdueCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -397,6 +405,35 @@ func (s *EverythingService) OverdueCards(ctx context.Context) (result []Card, er
 		}
 	}
 	return cards, nil
+}
+
+// EverythingTaskFilters narrows the everything to-do/card listings (BC3 #12442).
+// Both filters apply to every method in the family and compose.
+type EverythingTaskFilters struct {
+	// AssigneeIDs restricts to tasks assigned to at least one of these people.
+	// Assignees on nested steps are not considered.
+	AssigneeIDs []int64
+	// Due filters by due date: "with", "without", or "overdue".
+	Due string
+}
+
+func (f *EverythingTaskFilters) empty() bool {
+	return f == nil || (len(f.AssigneeIDs) == 0 && f.Due == "")
+}
+
+func (f *EverythingTaskFilters) due() string {
+	if f == nil {
+		return ""
+	}
+	return f.Due
+}
+
+func (f *EverythingTaskFilters) assigneeIDs() *[]int64 {
+	if f == nil || len(f.AssigneeIDs) == 0 {
+		return nil
+	}
+	ids := append([]int64(nil), f.AssigneeIDs...)
+	return &ids
 }
 
 // ---- bucket-grouped todo/card filter family ----
@@ -451,15 +488,15 @@ func bucketCardsGroupFromGenerated(g generated.BucketCardsGroup) BucketCardsGrou
 // OpenTodos returns active, incomplete to-dos across all accessible projects,
 // grouped by project (paginated). Pass a positive page to return only that page;
 // page 0 follows the Link header across all pages.
-func (s *EverythingService) OpenTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+func (s *EverythingService) OpenTodos(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketTodosGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "OpenTodos", ResourceType: "todo"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingOpenTodosParams
-	if page > 0 {
-		params = &generated.GetEverythingOpenTodosParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingOpenTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingOpenTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -469,15 +506,15 @@ func (s *EverythingService) OpenTodos(ctx context.Context, page int32) (result *
 }
 
 // CompletedTodos returns completed to-dos, grouped by project (paginated).
-func (s *EverythingService) CompletedTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+func (s *EverythingService) CompletedTodos(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketTodosGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "CompletedTodos", ResourceType: "todo"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingCompletedTodosParams
-	if page > 0 {
-		params = &generated.GetEverythingCompletedTodosParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingCompletedTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingCompletedTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -487,15 +524,15 @@ func (s *EverythingService) CompletedTodos(ctx context.Context, page int32) (res
 }
 
 // UnassignedTodos returns open, unassigned to-dos, grouped by project (paginated).
-func (s *EverythingService) UnassignedTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+func (s *EverythingService) UnassignedTodos(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketTodosGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "UnassignedTodos", ResourceType: "todo"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingUnassignedTodosParams
-	if page > 0 {
-		params = &generated.GetEverythingUnassignedTodosParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingUnassignedTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingUnassignedTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -505,15 +542,15 @@ func (s *EverythingService) UnassignedTodos(ctx context.Context, page int32) (re
 }
 
 // NoDueDateTodos returns open to-dos with no due date, grouped by project (paginated).
-func (s *EverythingService) NoDueDateTodos(ctx context.Context, page int32) (result *BucketTodosGroupsPage, err error) {
+func (s *EverythingService) NoDueDateTodos(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketTodosGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "NoDueDateTodos", ResourceType: "todo"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingNoDueDateTodosParams
-	if page > 0 {
-		params = &generated.GetEverythingNoDueDateTodosParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingNoDueDateTodosParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingNoDueDateTodosWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -523,15 +560,15 @@ func (s *EverythingService) NoDueDateTodos(ctx context.Context, page int32) (res
 }
 
 // OpenCards returns incomplete cards in active columns, grouped by project (paginated).
-func (s *EverythingService) OpenCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+func (s *EverythingService) OpenCards(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketCardsGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "OpenCards", ResourceType: "card"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingOpenCardsParams
-	if page > 0 {
-		params = &generated.GetEverythingOpenCardsParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingOpenCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingOpenCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -541,15 +578,15 @@ func (s *EverythingService) OpenCards(ctx context.Context, page int32) (result *
 }
 
 // CompletedCards returns completed cards, grouped by project (paginated).
-func (s *EverythingService) CompletedCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+func (s *EverythingService) CompletedCards(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketCardsGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "CompletedCards", ResourceType: "card"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingCompletedCardsParams
-	if page > 0 {
-		params = &generated.GetEverythingCompletedCardsParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingCompletedCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingCompletedCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -559,15 +596,15 @@ func (s *EverythingService) CompletedCards(ctx context.Context, page int32) (res
 }
 
 // UnassignedCards returns open, unassigned cards, grouped by project (paginated).
-func (s *EverythingService) UnassignedCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+func (s *EverythingService) UnassignedCards(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketCardsGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "UnassignedCards", ResourceType: "card"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingUnassignedCardsParams
-	if page > 0 {
-		params = &generated.GetEverythingUnassignedCardsParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingUnassignedCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingUnassignedCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -577,15 +614,15 @@ func (s *EverythingService) UnassignedCards(ctx context.Context, page int32) (re
 }
 
 // NoDueDateCards returns open cards with no due date, grouped by project (paginated).
-func (s *EverythingService) NoDueDateCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+func (s *EverythingService) NoDueDateCards(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketCardsGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "NoDueDateCards", ResourceType: "card"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingNoDueDateCardsParams
-	if page > 0 {
-		params = &generated.GetEverythingNoDueDateCardsParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingNoDueDateCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingNoDueDateCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
@@ -596,15 +633,15 @@ func (s *EverythingService) NoDueDateCards(ctx context.Context, page int32) (res
 
 // NotNowCards returns cards parked in a project's "Not now" column, grouped by
 // project (paginated).
-func (s *EverythingService) NotNowCards(ctx context.Context, page int32) (result *BucketCardsGroupsPage, err error) {
+func (s *EverythingService) NotNowCards(ctx context.Context, page int32, filters *EverythingTaskFilters) (result *BucketCardsGroupsPage, err error) {
 	ctx, done, err := s.begin(ctx, OperationInfo{Service: "Everything", Operation: "NotNowCards", ResourceType: "card"})
 	if err != nil {
 		return nil, err
 	}
 	defer done(&err)
 	var params *generated.GetEverythingNotNowCardsParams
-	if page > 0 {
-		params = &generated.GetEverythingNotNowCardsParams{Page: page}
+	if page > 0 || !filters.empty() {
+		params = &generated.GetEverythingNotNowCardsParams{Page: page, Due: filters.due(), AssigneeIds: filters.assigneeIDs()}
 	}
 	r, err := s.client.parent.gen.GetEverythingNotNowCardsWithResponse(ctx, s.client.accountID, params)
 	if err != nil {

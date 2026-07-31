@@ -22,20 +22,38 @@ public struct EverythingCommentsEverythingOptions: Sendable {
 }
 
 public struct EverythingCompletedCardsEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct EverythingCompletedTodosEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
@@ -81,70 +99,153 @@ public struct EverythingMessagesEverythingOptions: Sendable {
 }
 
 public struct EverythingNoDueDateCardsEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct EverythingNoDueDateTodosEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct EverythingNotNowCardsEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct EverythingOpenCardsEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct EverythingOpenTodosEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
+public struct EverythingOverdueCardsEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
+
+    public init(assigneeIds: [Int]? = nil, due: String? = nil) {
+        self.assigneeIds = assigneeIds
+        self.due = due
+    }
+}
+
+public struct EverythingOverdueTodosEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
+
+    public init(assigneeIds: [Int]? = nil, due: String? = nil) {
+        self.assigneeIds = assigneeIds
+        self.due = due
+    }
+}
+
 public struct EverythingUnassignedCardsEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct EverythingUnassignedTodosEverythingOptions: Sendable {
+    public var assigneeIds: [Int]?
+    public var due: String?
     public var page: Int?
     public var maxItems: Int?
 
-    public init(page: Int? = nil, maxItems: Int? = nil) {
+    public init(
+        assigneeIds: [Int]? = nil,
+        due: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
+        self.assigneeIds = assigneeIds
+        self.due = due
         self.page = page
         self.maxItems = maxItems
     }
@@ -182,6 +283,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingCompletedCards(options: EverythingCompletedCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -196,6 +305,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingCompletedTodos(options: EverythingCompletedTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -260,6 +377,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingNoDueDateCards(options: EverythingNoDueDateCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -274,6 +399,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingNoDueDateTodos(options: EverythingNoDueDateTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -288,6 +421,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingNotNowCards(options: EverythingNotNowCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -302,6 +443,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingOpenCards(options: EverythingOpenCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -316,6 +465,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingOpenTodos(options: EverythingOpenTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -328,26 +485,52 @@ public final class EverythingService: BaseService, @unchecked Sendable {
         )
     }
 
-    public func everythingOverdueCards() async throws -> [Card] {
+    public func everythingOverdueCards(options: EverythingOverdueCardsEverythingOptions? = nil) async throws -> [Card] {
+        var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         return try await request(
             OperationInfo(service: "Everything", operation: "GetEverythingOverdueCards", resourceType: "everything_overdue_card", isMutation: false),
             method: "GET",
-            path: "/cards/overdue.json",
+            path: "/cards/overdue.json" + queryString(queryItems),
             retryConfig: Metadata.retryConfig(for: "GetEverythingOverdueCards")
         )
     }
 
-    public func everythingOverdueTodos() async throws -> [Todo] {
+    public func everythingOverdueTodos(options: EverythingOverdueTodosEverythingOptions? = nil) async throws -> [Todo] {
+        var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         return try await request(
             OperationInfo(service: "Everything", operation: "GetEverythingOverdueTodos", resourceType: "everything_overdue_todo", isMutation: false),
             method: "GET",
-            path: "/todos/overdue.json",
+            path: "/todos/overdue.json" + queryString(queryItems),
             retryConfig: Metadata.retryConfig(for: "GetEverythingOverdueTodos")
         )
     }
 
     public func everythingUnassignedCards(options: EverythingUnassignedCardsEverythingOptions? = nil) async throws -> ListResult<BucketCardsGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
@@ -362,6 +545,14 @@ public final class EverythingService: BaseService, @unchecked Sendable {
 
     public func everythingUnassignedTodos(options: EverythingUnassignedTodosEverythingOptions? = nil) async throws -> ListResult<BucketTodosGroup> {
         var queryItems: [URLQueryItem] = []
+        if let assigneeIds = options?.assigneeIds {
+            for item in assigneeIds {
+                queryItems.append(URLQueryItem(name: "assignee_ids[]", value: String(item)))
+            }
+        }
+        if let due = options?.due {
+            queryItems.append(URLQueryItem(name: "due", value: due))
+        }
         if let page = options?.page {
             queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }

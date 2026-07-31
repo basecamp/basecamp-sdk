@@ -87,6 +87,30 @@ class EverythingServiceTest < Minitest::Test
     assert_nil result[2]["width"]
   end
 
+  # Faraday's NestedParamsEncoder serializes the assignee_ids array kwarg into
+  # the bracketed repeated form (assignee_ids[]=11&assignee_ids[]=22), the only
+  # form Rails' permit(assignee_ids: []) accepts. Exact query match proves no
+  # bare key leaks through and the due filter rides alongside (#12442).
+  def test_everything_todo_filters_encode_bracketed_assignee_ids_and_due
+    stub_request(:get, "https://3.basecampapi.com/12345/todos/open.json")
+      .with(query: { "assignee_ids" => %w[11 22], "due" => "overdue" })
+      .to_return(status: 200, body: [].to_json)
+
+    result = @account.everything.get_everything_open_todos(assignee_ids: [ 11, 22 ], due: "overdue").to_a
+
+    assert_equal 0, result.length
+  end
+
+  def test_everything_overdue_cards_accept_the_filters
+    stub_request(:get, "https://3.basecampapi.com/12345/cards/overdue.json")
+      .with(query: { "assignee_ids" => %w[7], "due" => "with" })
+      .to_return(status: 200, body: [].to_json)
+
+    result = @account.everything.get_everything_overdue_cards(assignee_ids: [ 7 ], due: "with")
+
+    assert_equal 0, result.length
+  end
+
   def test_get_everything_messages_decodes_recording_feed
     messages = [
       {

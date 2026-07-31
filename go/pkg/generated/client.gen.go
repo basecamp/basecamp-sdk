@@ -3267,30 +3267,75 @@ type CreateAttachmentParams struct {
 
 // GetEverythingCompletedCardsParams defines parameters for GetEverythingCompletedCards.
 type GetEverythingCompletedCardsParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingNoDueDateCardsParams defines parameters for GetEverythingNoDueDateCards.
 type GetEverythingNoDueDateCardsParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingNotNowCardsParams defines parameters for GetEverythingNotNowCards.
 type GetEverythingNotNowCardsParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingOpenCardsParams defines parameters for GetEverythingOpenCards.
 type GetEverythingOpenCardsParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// GetEverythingOverdueCardsParams defines parameters for GetEverythingOverdueCards.
+type GetEverythingOverdueCardsParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+}
+
 // GetEverythingUnassignedCardsParams defines parameters for GetEverythingUnassignedCards.
 type GetEverythingUnassignedCardsParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
@@ -3542,24 +3587,62 @@ type ListTodosParams struct {
 
 // GetEverythingCompletedTodosParams defines parameters for GetEverythingCompletedTodos.
 type GetEverythingCompletedTodosParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingNoDueDateTodosParams defines parameters for GetEverythingNoDueDateTodos.
 type GetEverythingNoDueDateTodosParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
 // GetEverythingOpenTodosParams defines parameters for GetEverythingOpenTodos.
 type GetEverythingOpenTodosParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// GetEverythingOverdueTodosParams defines parameters for GetEverythingOverdueTodos.
+type GetEverythingOverdueTodosParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+}
+
 // GetEverythingUnassignedTodosParams defines parameters for GetEverythingUnassignedTodos.
 type GetEverythingUnassignedTodosParams struct {
+	// AssigneeIds Restrict to tasks assigned to at least one of the given people (repeatable).
+	// Assignees on nested steps are not considered.
+	AssigneeIds *[]int64 `form:"assignee_ids[],omitempty" json:"assignee_ids[],omitempty"`
+
+	// Due Filter by due date: with, without, or overdue. Unrecognized values are ignored.
+	Due string `form:"due,omitempty" json:"due,omitempty"`
+
 	// Page Page number for paginating through results. Defaults to 1.
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
@@ -4498,7 +4581,7 @@ type ClientInterface interface {
 	GetEverythingOpenCards(ctx context.Context, accountId string, params *GetEverythingOpenCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEverythingOverdueCards request
-	GetEverythingOverdueCards(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetEverythingOverdueCards(ctx context.Context, accountId string, params *GetEverythingOverdueCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEverythingUnassignedCards request
 	GetEverythingUnassignedCards(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5053,7 +5136,7 @@ type ClientInterface interface {
 	GetEverythingOpenTodos(ctx context.Context, accountId string, params *GetEverythingOpenTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEverythingOverdueTodos request
-	GetEverythingOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetEverythingOverdueTodos(ctx context.Context, accountId string, params *GetEverythingOverdueTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEverythingUnassignedTodos request
 	GetEverythingUnassignedTodos(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5851,10 +5934,10 @@ func (c *Client) GetEverythingOpenCards(ctx context.Context, accountId string, p
 
 // GetEverythingOverdueCards is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetEverythingOverdueCards(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetEverythingOverdueCards(ctx context.Context, accountId string, params *GetEverythingOverdueCardsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetEverythingOverdueCardsRequest(c.Server, accountId)
+		return NewGetEverythingOverdueCardsRequest(c.Server, accountId, params)
 	}, true, "GetEverythingOverdueCards", reqEditors...)
 
 }
@@ -8007,10 +8090,10 @@ func (c *Client) GetEverythingOpenTodos(ctx context.Context, accountId string, p
 
 // GetEverythingOverdueTodos is marked as idempotent and will be retried on transient failures.
 
-func (c *Client) GetEverythingOverdueTodos(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) GetEverythingOverdueTodos(ctx context.Context, accountId string, params *GetEverythingOverdueTodosParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetEverythingOverdueTodosRequest(c.Server, accountId)
+		return NewGetEverythingOverdueTodosRequest(c.Server, accountId, params)
 	}, true, "GetEverythingOverdueTodos", reqEditors...)
 
 }
@@ -10292,6 +10375,38 @@ func NewGetEverythingCompletedCardsRequest(server string, accountId string, para
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Page != 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
@@ -10347,6 +10462,38 @@ func NewGetEverythingNoDueDateCardsRequest(server string, accountId string, para
 
 	if params != nil {
 		queryValues := queryURL.Query()
+
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
 
 		if params.Page != 0 {
 
@@ -10404,6 +10551,38 @@ func NewGetEverythingNotNowCardsRequest(server string, accountId string, params 
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Page != 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
@@ -10460,6 +10639,38 @@ func NewGetEverythingOpenCardsRequest(server string, accountId string, params *G
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Page != 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
@@ -10488,7 +10699,7 @@ func NewGetEverythingOpenCardsRequest(server string, accountId string, params *G
 }
 
 // NewGetEverythingOverdueCardsRequest generates requests for GetEverythingOverdueCards
-func NewGetEverythingOverdueCardsRequest(server string, accountId string) (*http.Request, error) {
+func NewGetEverythingOverdueCardsRequest(server string, accountId string, params *GetEverythingOverdueCardsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -10511,6 +10722,44 @@ func NewGetEverythingOverdueCardsRequest(server string, accountId string) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -10549,6 +10798,38 @@ func NewGetEverythingUnassignedCardsRequest(server string, accountId string, par
 
 	if params != nil {
 		queryValues := queryURL.Query()
+
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
 
 		if params.Page != 0 {
 
@@ -18260,6 +18541,38 @@ func NewGetEverythingCompletedTodosRequest(server string, accountId string, para
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Page != 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
@@ -18315,6 +18628,38 @@ func NewGetEverythingNoDueDateTodosRequest(server string, accountId string, para
 
 	if params != nil {
 		queryValues := queryURL.Query()
+
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
 
 		if params.Page != 0 {
 
@@ -18372,6 +18717,38 @@ func NewGetEverythingOpenTodosRequest(server string, accountId string, params *G
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.Page != 0 {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
@@ -18400,7 +18777,7 @@ func NewGetEverythingOpenTodosRequest(server string, accountId string, params *G
 }
 
 // NewGetEverythingOverdueTodosRequest generates requests for GetEverythingOverdueTodos
-func NewGetEverythingOverdueTodosRequest(server string, accountId string) (*http.Request, error) {
+func NewGetEverythingOverdueTodosRequest(server string, accountId string, params *GetEverythingOverdueTodosParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -18423,6 +18800,44 @@ func NewGetEverythingOverdueTodosRequest(server string, accountId string) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -18461,6 +18876,38 @@ func NewGetEverythingUnassignedTodosRequest(server string, accountId string, par
 
 	if params != nil {
 		queryValues := queryURL.Query()
+
+		if params.AssigneeIds != nil && len(*params.AssigneeIds) > 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "assignee_ids[]", runtime.ParamLocationQuery, *params.AssigneeIds); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Due != "" {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "due", runtime.ParamLocationQuery, params.Due); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
 
 		if params.Page != 0 {
 
@@ -21560,7 +22007,7 @@ type ClientWithResponsesInterface interface {
 	GetEverythingOpenCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingOpenCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingOpenCardsResponse, error)
 
 	// GetEverythingOverdueCardsWithResponse request
-	GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error)
+	GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingOverdueCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error)
 
 	// GetEverythingUnassignedCardsWithResponse request
 	GetEverythingUnassignedCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedCardsResponse, error)
@@ -22115,7 +22562,7 @@ type ClientWithResponsesInterface interface {
 	GetEverythingOpenTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingOpenTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingOpenTodosResponse, error)
 
 	// GetEverythingOverdueTodosWithResponse request
-	GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error)
+	GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingOverdueTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error)
 
 	// GetEverythingUnassignedTodosWithResponse request
 	GetEverythingUnassignedTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingUnassignedTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingUnassignedTodosResponse, error)
@@ -30447,8 +30894,8 @@ func (c *ClientWithResponses) GetEverythingOpenCardsWithResponse(ctx context.Con
 }
 
 // GetEverythingOverdueCardsWithResponse request returning *GetEverythingOverdueCardsResponse
-func (c *ClientWithResponses) GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error) {
-	rsp, err := c.GetEverythingOverdueCards(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetEverythingOverdueCardsWithResponse(ctx context.Context, accountId string, params *GetEverythingOverdueCardsParams, reqEditors ...RequestEditorFn) (*GetEverythingOverdueCardsResponse, error) {
+	rsp, err := c.GetEverythingOverdueCards(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -32202,8 +32649,8 @@ func (c *ClientWithResponses) GetEverythingOpenTodosWithResponse(ctx context.Con
 }
 
 // GetEverythingOverdueTodosWithResponse request returning *GetEverythingOverdueTodosResponse
-func (c *ClientWithResponses) GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error) {
-	rsp, err := c.GetEverythingOverdueTodos(ctx, accountId, reqEditors...)
+func (c *ClientWithResponses) GetEverythingOverdueTodosWithResponse(ctx context.Context, accountId string, params *GetEverythingOverdueTodosParams, reqEditors ...RequestEditorFn) (*GetEverythingOverdueTodosResponse, error) {
+	rsp, err := c.GetEverythingOverdueTodos(ctx, accountId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
