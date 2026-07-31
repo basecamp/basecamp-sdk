@@ -1,0 +1,78 @@
+spec/basecamp.smithy
+  s_289a344fc8a3ac::t_9714c31e9df6af 740-775
+  s_289a344fc8a3ac::t_f10e0e4d07ceea 67
+behavior-model.json
+  s_289a344fc8a3ac::t_3384eba344eb4b 316-326
+go/pkg/generated/client.gen.go
+  s_289a344fc8a3ac::t_7af6dc7ae21ac6 725-738,3694-3696,4509-4513,5555-5584,9479-9539,20328,20563,20796,22034-22038,23445-23479,30757-30773,34229-34289
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_289a344fc8a3ac::t_f3d9fed03be5ef 772-779
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_289a344fc8a3ac::t_eee9a28dbc7e84 96
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_289a344fc8a3ac::t_2d28a174c7966b 51
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_289a344fc8a3ac::t_b6ec87e4e868c1 731-741
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todos.kt
+  s_289a344fc8a3ac::t_72c825579c0068 15-44
+openapi.json
+  s_289a344fc8a3ac::t_0d2fba8cc2e314 2019-2139,25641-25691
+python/src/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_563a41ed99eb2b 312-322
+python/src/basecamp/generated/services/todos.py
+  s_289a344fc8a3ac::t_7a05d77b6f0290 14-48,156-190
+python/src/basecamp/generated/types.py
+  s_289a344fc8a3ac::t_4da24419d31bd2 534-543
+ruby/lib/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_292409ddfa22f1 4,253-263
+ruby/lib/basecamp/generated/services/todos_service.rb
+  s_289a344fc8a3ac::t_c0032e94482330 10-26
+ruby/lib/basecamp/generated/types.rb
+  s_289a344fc8a3ac::t_fa3dbedff4a847 4
+ruby/scripts/generate-services.rb
+  s_289a344fc8a3ac::t_46fd5432c99430 119
+spec/overlays/tags.smithy
+  s_289a344fc8a3ac::t_753b2f74c9afc4 17
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_289a344fc8a3ac::t_2dc16c9f30ce56 34
+swift/Sources/Basecamp/Generated/Models/CreateTodosetTodoRequest.swift
+  s_289a344fc8a3ac::t_dea1b79215c08e 1-30
+swift/Sources/Basecamp/Generated/Services/TodosService.swift
+  s_289a344fc8a3ac::t_23786dff11a065 37-46
+swift/Sources/BasecampGenerator/ServiceGrouper.swift
+  s_289a344fc8a3ac::t_889440ac4224e7 95
+typescript/scripts/generate-services.ts
+  s_289a344fc8a3ac::t_3f6c7e5423fcf1 255
+typescript/src/generated/metadata.ts
+  s_289a344fc8a3ac::t_8a898fa79d14ff 40,282-292
+typescript/src/generated/openapi-stripped.json
+  s_289a344fc8a3ac::t_b10b9e8dbb6912 1806-1915,23067-23117
+typescript/src/generated/path-mapping.ts
+  s_289a344fc8a3ac::t_74a5be30c1d3b4 28
+typescript/src/generated/schema.d.ts
+  s_289a344fc8a3ac::t_e776bab814268b 233-254,3509-3518,6849-6920
+typescript/src/generated/services/index.ts
+  s_289a344fc8a3ac::t_2f0619caf005ca 8
+typescript/src/generated/services/todos.ts
+  s_289a344fc8a3ac::t_7e43f9d093511d 20-39,110-160
+go/pkg/basecamp/todos.go
+  s_289a344fc8a3ac::t_48173dd95f4b73 552-611
+  s_289a344fc8a3ac::t_eb7702be20f091 549-551
+  s_289a344fc8a3ac::t_b5270c97cf58e6 548
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a7edebea78a1c0f5bae4de18836c7e1df44586d7",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

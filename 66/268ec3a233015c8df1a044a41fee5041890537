@@ -1,0 +1,30 @@
+spec/api-gaps/todoset-direct-todo-create.md
+  s_289a344fc8a3ac::t_27a201074ffc95 3,7-9,62-64
+SPEC.md
+  s_289a344fc8a3ac::t_4f13b9252b739e 111,568,1875,1877
+SECURITY.md
+  s_289a344fc8a3ac::t_555e604b73952f 187,189
+AGENTS.md
+  s_289a344fc8a3ac::t_52bdb38f8e5ecf 27,88
+spec/api-gaps/README.md
+  s_289a344fc8a3ac::t_242f173cd948c3 52
+go/pkg/basecamp/url-routes.json
+  s_289a344fc8a3ac::t_ba1797ba9175ee 222-241
+  s_289a344fc8a3ac::t_267e7492c12dfa 221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "66268ec3a233015c8df1a044a41fee5041890537",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
