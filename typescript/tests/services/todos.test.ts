@@ -164,6 +164,39 @@ describe("TodosService", () => {
     });
   });
 
+  describe("createTodosetTodo", () => {
+    it("creates a loose to-do directly under the project's to-do set", async () => {
+      server.use(
+        http.post(`${BASE_URL}/buckets/2/todosets/9/todos.json`, async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>;
+          expect(body.content).toBe("Loose task");
+          expect(body.assignee_ids).toEqual([1, 2]);
+          return HttpResponse.json(sampleTodo(1000), { status: 201 });
+        })
+      );
+
+      const todo = await client.todos.createTodosetTodo(2, 9, {
+        content: "Loose task",
+        assigneeIds: [1, 2],
+      });
+      expect(todo.id).toBe(1000);
+    });
+
+    it("surfaces 422 as BasecampError", async () => {
+      server.use(
+        http.post(`${BASE_URL}/buckets/2/todosets/9/todos.json`, () => {
+          return HttpResponse.json({ error: "Content can't be blank" }, { status: 422 });
+        })
+      );
+
+      const error = await client.todos
+        .createTodosetTodo(2, 9, { content: "x" })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).httpStatus).toBe(422);
+    });
+  });
+
   describe("update", () => {
     const fullTodo = (id = 42) => ({
       ...sampleTodo(id),
