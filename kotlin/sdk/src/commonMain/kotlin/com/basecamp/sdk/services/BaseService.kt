@@ -263,7 +263,7 @@ abstract class BaseService(
                     )
                 }
 
-                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl)
+                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl, operationName = info.operation)
 
                 if (!currentResponse.status.isSuccess()) {
                     throw errorFromResponse(currentResponse)
@@ -359,7 +359,7 @@ abstract class BaseService(
                     )
                 }
 
-                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl)
+                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl, operationName = info.operation)
 
                 if (!currentResponse.status.isSuccess()) {
                     throw errorFromResponse(currentResponse)
@@ -441,7 +441,7 @@ abstract class BaseService(
                     )
                 }
 
-                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl)
+                currentResponse = http.requestWithRetry(HttpMethod.Get, nextUrl, operationName = info.operation)
 
                 if (!currentResponse.status.isSuccess()) {
                     throw errorFromResponse(currentResponse)
