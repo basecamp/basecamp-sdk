@@ -239,6 +239,22 @@ async function executeOperation(
         await client.subscriptions.subscribe(Number(params.recordingId));
         break;
 
+      case "ListMyBookmarks":
+        await client.bookmarks.listMyBookmarks();
+        break;
+
+      case "GetBookmark":
+        await client.bookmarks.getBookmark(Number(params.recordingId));
+        break;
+
+      case "CreateBookmark":
+        await client.bookmarks.createBookmark(Number(params.recordingId));
+        break;
+
+      case "DeleteBookmark":
+        await client.bookmarks.deleteBookmark(Number(params.recordingId));
+        break;
+
       case "UpdateTodo":
         // Merge-safe update: GET then full PUT; only fixture-present keys are passed.
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));

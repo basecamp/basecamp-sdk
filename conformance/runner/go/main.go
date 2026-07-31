@@ -535,6 +535,25 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Subscriptions().Subscribe(ctx, recordingID)
 		return operationResult{err: err}
 
+	case "ListMyBookmarks":
+		_, err := account.Bookmarks().List(ctx, 0)
+		return operationResult{err: err}
+
+	case "GetBookmark":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		_, err := account.Bookmarks().Get(ctx, recordingID)
+		return operationResult{err: err}
+
+	case "CreateBookmark":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		_, err := account.Bookmarks().Create(ctx, recordingID)
+		return operationResult{err: err}
+
+	case "DeleteBookmark":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		err := account.Bookmarks().Delete(ctx, recordingID)
+		return operationResult{err: err}
+
 	case "UpdateTodo":
 		todoID := getInt64Param(tc.PathParams, "todoId")
 		req := &basecamp.UpdateTodoRequest{

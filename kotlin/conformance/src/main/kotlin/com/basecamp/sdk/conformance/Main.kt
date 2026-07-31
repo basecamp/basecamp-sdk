@@ -789,6 +789,26 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "ListMyBookmarks" -> {
+            account.bookmarks.listMyBookmarks()
+            DispatchResult()
+        }
+
+        "GetBookmark" -> {
+            account.bookmarks.getBookmark(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
+        "CreateBookmark" -> {
+            account.bookmarks.createBookmark(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
+        "DeleteBookmark" -> {
+            account.bookmarks.deleteBookmark(tc.pathParams.longParam("recordingId"))
+            DispatchResult()
+        }
+
         "GetTimesheetEntry" -> {
             val entryId = tc.pathParams.longParam("timesheetEntryId")
                 .let { if (it != 0L) it else tc.pathParams.longParam("entryId") }
