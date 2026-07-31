@@ -59,7 +59,7 @@ making the absorption journey publicly auditable.
 | [external-links-doors](external-links-doors.md) | partial-coverage | post-train | low |
 | [my-bookmarks](my-bookmarks.md) | absorbed-in-sdk | master | medium |
 | [my-drafts](my-drafts.md) | absorbed-in-sdk | master | medium |
-| [my-assignments-priorities](my-assignments-priorities.md) | addressed-in-bc3-pr-12380 | master | medium |
+| [my-assignments-priorities](my-assignments-priorities.md) | absorbed-in-sdk | master | medium |
 | [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | absorbed-in-sdk | post-train | low |
 | [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 | [bubble-ups-surface](bubble-ups-surface.md) | absorbed-in-sdk | launch | high |

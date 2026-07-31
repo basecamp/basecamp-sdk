@@ -1,9 +1,13 @@
 ---
 gap: my-assignments-priorities
-status: addressed-in-bc3-pr-12380
+status: absorbed-in-sdk
 detected: 2026-07-26
 sdk_demand: medium
 bc3_pr: 12380
+smithy_refs:
+  - "PrioritizeAssignment operation"
+  - "DeprioritizeAssignment operation"
+  - "ReorderUpNext operation"
 bc3_refs:
   introduced_in: master
   routes:
@@ -82,18 +86,24 @@ reorder (`create`, `POST /my/priority_moves.json`). #12380 hardened the reorder
 path (strict integer parsing → 400; range/unprioritized checks under
 `person.with_lock` → 422; inaccessible → bare 404).
 
-On idempotency for absorption: `POST /my/priorities.json` is naturally
-idempotent (re-prioritizing is a no-op reorder-to-same); `DELETE
-/my/priorities/{id}.json` is idempotent (delete-of-absent still `204`). `POST
-/my/priority_moves.json` is a positional move — **not** retry-safe (the target
-position's meaning shifts as the list changes), so it should NOT carry
-`@basecampIdempotent`. Confirm prioritize/deprioritize idempotency against the
-controller before gating per SPEC §7.
+On idempotency for absorption — **corrected against the controller**:
+`POST /my/priorities.json` is idempotent (`Assignment#prioritize` is
+`priority || create_priority!` — a repeat is a pure no-op, no reposition).
+**The original claim that `DELETE /my/priorities/{id}.json` was idempotent
+as-shipped was WRONG**: the JSON path inherited the web UI's card->step
+fallback, so a retried DELETE whose first attempt committed cascaded to the
+highest prioritized child step and deleted a second, different priority. That
+was fixed upstream in **BC3 #12483** (exact-target + no-op-on-absent, with the
+card+child-step repeat-DELETE regression test), and only with that fix merged
+is the DELETE honestly idempotent. `POST /my/priority_moves.json` is a
+positional move — **not** retry-safe — and carries no idempotency flag.
 
 ## SDK absorption plan when this lands
 
-Track as a dedicated absorption PR on top of this provenance sync: add the three
-Up Next write operations onto `MyAssignmentsService`, model the `204` responses
-and the reorder error body as typed errors, Go wrappers, and per-op happy-path +
-4xx tests in TS/Ruby/Python plus conformance `paths.json` entries. This entry
-flips to `absorbed-in-sdk` with `smithy_refs` when that PR lands.
+**Absorbed** (post-#504 program C4, the sprint-closing PR): the three Up Next
+writes live on `MyAssignmentsService`; `PrioritizeAssignment` and
+`DeprioritizeAssignment` are flagged idempotent (the latter valid only past
+BC3 #12483 — this PR repins provenance to `d0edc128`, the merge of that fix),
+`ReorderUpNext` carries the typed 400/`{error}`-422/bare-404 contract and no
+retry gating, pinned by a no-retry conformance case. Python's sync and async
+clients gained the previously missing `my_assignments` accessor.

@@ -110,8 +110,8 @@ jq -r '.operations | to_entries[] | select(.value.idempotent == true or .value.r
 # absorption adds readonly/idempotent operations (e.g. this stack's Bubble Ups
 # and Everything GET families). the naturally-idempotent count (expected_idempotent) stays put (new GETs are not flagged
 # idempotent:true).
-expected_idempotent=75
-expected_union=197
+expected_idempotent=77
+expected_union=199
 nIdempotent=$(wc -l < "$WORK/idempotentSet" | tr -d ' ')
 nUnion=$(wc -l < "$WORK/unionSet" | tr -d ' ')
 echo "    source of truth: $nIdempotent idempotent, $nUnion idempotent∪readonly"
