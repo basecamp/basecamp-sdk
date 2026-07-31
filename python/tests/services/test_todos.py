@@ -10,7 +10,7 @@ import pytest
 import respx
 
 from basecamp import AsyncClient, Client, Config
-from basecamp.errors import UsageError
+from basecamp.errors import UsageError, ValidationError
 from basecamp.hooks import BasecampHooks, OperationInfo
 
 BASE = "https://3.basecampapi.com/12345"
@@ -58,6 +58,33 @@ def _sync_todos(hooks: BasecampHooks | None = None):
 
 def _async_todos(hooks: BasecampHooks | None = None):
     return AsyncClient(access_token="test-token", hooks=hooks).for_account("12345").todos
+
+
+class TestCreateTodosetTodo:
+    """Loose to-dos: create directly under the project's to-do set (#12359)."""
+
+    @respx.mock
+    def test_creates_directly_under_the_todoset(self):
+        route = respx.post(f"{BASE}/buckets/2/todosets/9/todos.json").mock(
+            return_value=httpx.Response(201, json=_todo(1000, content="Loose task"))
+        )
+
+        todo = _sync_todos().create_todoset_todo(bucket_id=2, todoset_id=9, content="Loose task", assignee_ids=[1, 2])
+
+        assert route.called
+        body = json.loads(route.calls[-1].request.content)
+        assert body["content"] == "Loose task"
+        assert body["assignee_ids"] == [1, 2]
+        assert todo["id"] == 1000
+
+    @respx.mock
+    def test_validation_error_surfaces(self):
+        respx.post(f"{BASE}/buckets/2/todosets/9/todos.json").mock(
+            return_value=httpx.Response(422, json={"error": "Content can't be blank"})
+        )
+
+        with pytest.raises(ValidationError):
+            _sync_todos().create_todoset_todo(bucket_id=2, todoset_id=9, content="x")
 
 
 class TestSyncUpdate:

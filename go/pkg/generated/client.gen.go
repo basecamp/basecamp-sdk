@@ -722,6 +722,20 @@ type CreateTodolistRequestContent struct {
 // CreateTodolistResponseContent defines model for CreateTodolistResponseContent.
 type CreateTodolistResponseContent = Todolist
 
+// CreateTodosetTodoRequestContent defines model for CreateTodosetTodoRequestContent.
+type CreateTodosetTodoRequestContent struct {
+	AssigneeIds             []int64    `json:"assignee_ids,omitempty"`
+	CompletionSubscriberIds []int64    `json:"completion_subscriber_ids,omitempty"`
+	Content                 string     `json:"content"`
+	Description             string     `json:"description,omitempty"`
+	DueOn                   types.Date `json:"due_on,omitempty"`
+	Notify                  *bool      `json:"notify,omitempty"`
+	StartsOn                types.Date `json:"starts_on,omitempty"`
+}
+
+// CreateTodosetTodoResponseContent defines model for CreateTodosetTodoResponseContent.
+type CreateTodosetTodoResponseContent = Todo
+
 // CreateToolRequestContent defines model for CreateToolRequestContent.
 type CreateToolRequestContent struct {
 	// Title Title for the new tool. When omitted, Basecamp assigns the next available default title for the tool type.
@@ -3677,6 +3691,9 @@ type UpdateMessageTypeJSONRequestBody = UpdateMessageTypeRequestContent
 // CreateToolJSONRequestBody defines body for CreateTool for application/json ContentType.
 type CreateToolJSONRequestBody = CreateToolRequestContent
 
+// CreateTodosetTodoJSONRequestBody defines body for CreateTodosetTodo for application/json ContentType.
+type CreateTodosetTodoJSONRequestBody = CreateTodosetTodoRequestContent
+
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
@@ -4488,6 +4505,11 @@ type ClientInterface interface {
 	CreateToolWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateTool(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTodosetTodoWithBody request with any body
+	CreateTodosetTodoWithBody(ctx context.Context, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTodosetTodo(ctx context.Context, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListWebhooks request
 	ListWebhooks(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5519,6 +5541,36 @@ func (c *Client) CreateToolWithBody(ctx context.Context, accountId string, bucke
 func (c *Client) CreateTool(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
 	req, err := NewCreateToolRequest(c.Server, accountId, bucketId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+// CreateTodosetTodoWithBody executes the CreateTodosetTodo operation.
+
+func (c *Client) CreateTodosetTodoWithBody(ctx context.Context, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTodosetTodoRequestWithBody(c.Server, accountId, bucketId, todosetId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+
+}
+
+func (c *Client) CreateTodosetTodo(ctx context.Context, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	req, err := NewCreateTodosetTodoRequest(c.Server, accountId, bucketId, todosetId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -9405,6 +9457,67 @@ func NewCreateToolRequestWithBody(server string, accountId string, bucketId int6
 	}
 
 	operationPath := fmt.Sprintf("/%s/buckets/%s/dock/tools.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateTodosetTodoRequest calls the generic CreateTodosetTodo builder with application/json body
+func NewCreateTodosetTodoRequest(server string, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTodosetTodoRequestWithBody(server, accountId, bucketId, todosetId, "application/json", bodyReader)
+}
+
+// NewCreateTodosetTodoRequestWithBody generates requests for CreateTodosetTodo with any type of body
+func NewCreateTodosetTodoRequestWithBody(server string, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "bucketId", runtime.ParamLocationPath, bucketId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithLocation("simple", false, "todosetId", runtime.ParamLocationPath, todosetId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/buckets/%s/todosets/%s/todos.json", pathParam0, pathParam1, pathParam2)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -20212,6 +20325,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMessageType":                     {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMessageType":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateTool":                         {Idempotent: false, HasSensitiveParams: false},
+	"CreateTodosetTodo":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
@@ -20446,6 +20560,7 @@ var operationRetryMax = map[string]int{
 	"GetMessageType":                     3,
 	"UpdateMessageType":                  3,
 	"CreateTool":                         2,
+	"CreateTodosetTodo":                  3,
 	"ListWebhooks":                       3,
 	"CreateWebhook":                      2,
 	"GetCard":                            3,
@@ -20678,6 +20793,7 @@ var operationRetryOn = map[string][]int{
 	"GetMessageType":                     {429, 503},
 	"UpdateMessageType":                  {429, 503},
 	"CreateTool":                         {429, 503},
+	"CreateTodosetTodo":                  {429, 503},
 	"ListWebhooks":                       {429, 503},
 	"CreateWebhook":                      {429, 503},
 	"GetCard":                            {429, 503},
@@ -21914,6 +22030,11 @@ type ClientWithResponsesInterface interface {
 	CreateToolWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
 
 	CreateToolWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateToolJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateToolResponse, error)
+
+	// CreateTodosetTodoWithBodyWithResponse request with any body
+	CreateTodosetTodoWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodosetTodoResponse, error)
+
+	CreateTodosetTodoWithResponse(ctx context.Context, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodosetTodoResponse, error)
 
 	// ListWebhooksWithResponse request
 	ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error)
@@ -23315,6 +23436,41 @@ func (r CreateToolResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateToolResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateTodosetTodoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateTodosetTodoResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTodosetTodoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTodosetTodoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTodosetTodoResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -30598,6 +30754,23 @@ func (c *ClientWithResponses) CreateToolWithResponse(ctx context.Context, accoun
 	return ParseCreateToolResponse(rsp)
 }
 
+// CreateTodosetTodoWithBodyWithResponse request with arbitrary body returning *CreateTodosetTodoResponse
+func (c *ClientWithResponses) CreateTodosetTodoWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, todosetId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodosetTodoResponse, error) {
+	rsp, err := c.CreateTodosetTodoWithBody(ctx, accountId, bucketId, todosetId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTodosetTodoResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTodosetTodoWithResponse(ctx context.Context, accountId string, bucketId int64, todosetId int64, body CreateTodosetTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodosetTodoResponse, error) {
+	rsp, err := c.CreateTodosetTodo(ctx, accountId, bucketId, todosetId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTodosetTodoResponse(rsp)
+}
+
 // ListWebhooksWithResponse request returning *ListWebhooksResponse
 func (c *ClientWithResponses) ListWebhooksWithResponse(ctx context.Context, accountId string, bucketId int64, reqEditors ...RequestEditorFn) (*ListWebhooksResponse, error) {
 	rsp, err := c.ListWebhooks(ctx, accountId, bucketId, reqEditors...)
@@ -34033,6 +34206,67 @@ func ParseCreateToolResponse(rsp *http.Response) (*CreateToolResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
 		var dest CreateToolResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTodosetTodoResponse parses an HTTP response from a CreateTodosetTodoWithResponse call
+func ParseCreateTodosetTodoResponse(rsp *http.Response) (*CreateTodosetTodoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTodosetTodoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateTodosetTodoResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

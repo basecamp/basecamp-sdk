@@ -252,7 +252,7 @@ const SERVICE_SPLITS: Record<string, Record<string, string[]>> = {
     ClientVisibility: ["SetClientVisibility"],
   },
   Todos: {
-    Todos: ["ListTodos", "CreateTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
+    Todos: ["ListTodos", "CreateTodo", "CreateTodosetTodo", "GetTodo", "ReplaceTodo", "CompleteTodo", "UncompleteTodo", "TrashTodo"],
     Todolists: ["GetTodolistOrGroup", "UpdateTodolistOrGroup", "ListTodolists", "CreateTodolist", "RepositionTodolist"],
     Todosets: ["GetTodoset"],
     HillCharts: ["GetHillChart", "UpdateHillChartSettings"],
@@ -306,6 +306,9 @@ const VERB_PATTERNS = [
  */
 const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   UpdateHillChartSettings: "hill_chart",
+  // Creates and returns a Todo; the inferred "todoset_todo" would split
+  // loose-to-do operations into their own telemetry category.
+  CreateTodosetTodo: "todo",
 };
 
 const METHOD_NAME_OVERRIDES: Record<string, string> = {

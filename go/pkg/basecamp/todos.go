@@ -549,6 +549,70 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 	return &todo, nil
 }
 
+// CreateInTodoset creates a to-do directly under a project's to-do set,
+// outside any to-do list (a BC5 "loose to-do"). This form exists only
+// project-scoped; find the to-do set id via Todosets().Get.
+// Returns the created todo.
+func (s *TodosService) CreateInTodoset(ctx context.Context, projectID, todosetID int64, req *CreateTodoRequest) (result *Todo, err error) {
+	op := OperationInfo{
+		Service: "Todos", Operation: "CreateInTodoset",
+		ResourceType: "todo", IsMutation: true, ProjectID: projectID, ResourceID: todosetID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	if req.Content == "" {
+		err = ErrUsage("todo content is required")
+		return nil, err
+	}
+
+	body := generated.CreateTodosetTodoJSONRequestBody{
+		Content:                 req.Content,
+		Description:             req.Description,
+		AssigneeIds:             req.AssigneeIDs,
+		CompletionSubscriberIds: req.CompletionSubscriberIDs,
+		Notify:                  &req.Notify,
+	}
+	if req.DueOn != "" {
+		d, parseErr := types.ParseDate(req.DueOn)
+		if parseErr != nil {
+			err = ErrUsage("todo due_on must be in YYYY-MM-DD format")
+			return nil, err
+		}
+		body.DueOn = d
+	}
+	if req.StartsOn != "" {
+		d, parseErr := types.ParseDate(req.StartsOn)
+		if parseErr != nil {
+			err = ErrUsage("todo starts_on must be in YYYY-MM-DD format")
+			return nil, err
+		}
+		body.StartsOn = d
+	}
+
+	resp, err := s.client.parent.gen.CreateTodosetTodoWithResponse(ctx, s.client.accountID, projectID, todosetID, body)
+	if err != nil {
+		return nil, err
+	}
+	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
+		return nil, err
+	}
+
+	if resp.JSON201 == nil {
+		err = fmt.Errorf("unexpected empty response")
+		return nil, err
+	}
+
+	todo := todoFromGenerated(*resp.JSON201)
+	return &todo, nil
+}
+
 // Update sets the given fields on a todo and preserves everything else:
 // it GETs the current todo, overlays the explicitly-set request fields,
 // and PUTs the full representation back. A zero-value field is untouched,

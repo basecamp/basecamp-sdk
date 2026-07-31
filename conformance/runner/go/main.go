@@ -515,6 +515,16 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Todos().Create(ctx, todolistID, &basecamp.CreateTodoRequest{Content: content})
 		return operationResult{err: err}
 
+	case "CreateTodosetTodo":
+		bucketID := getInt64Param(tc.PathParams, "bucketId")
+		todosetID := getInt64Param(tc.PathParams, "todosetId")
+		content := getStringParam(tc.RequestBody, "content")
+		if content == "" {
+			content = "Conformance Test"
+		}
+		_, err := account.Todos().CreateInTodoset(ctx, bucketID, todosetID, &basecamp.CreateTodoRequest{Content: content})
+		return operationResult{err: err}
+
 	case "CompleteTodo":
 		todoID := getInt64Param(tc.PathParams, "todoId")
 		err := account.Todos().Complete(ctx, todoID)

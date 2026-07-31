@@ -48,6 +48,7 @@ object Metadata {
         "CreateTodo" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateTodolist" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateTodolistGroup" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
+        "CreateTodosetTodo" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "CreateTool" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateUpload" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),
         "CreateVault" to OperationConfig(false, RetryConfig(2, 1000L, "exponential", setOf(429, 503))),

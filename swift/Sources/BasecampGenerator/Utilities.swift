@@ -148,6 +148,9 @@ func convertPath(_ path: String) -> String {
 
 private let resourceTypeOverrides: [String: String] = [
     "UpdateHillChartSettings": "hill_chart",
+    // Creates and returns a Todo; the inferred "todoset_todo" would split
+    // loose-to-do operations into their own telemetry category.
+    "CreateTodosetTodo": "todo",
 ]
 
 /// Extracts the resource type from an operationId using verb patterns.

@@ -49,7 +49,7 @@ making the absorption journey publicly auditable.
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |
 | [memories-emptied-regression](memories-emptied-regression.md) | absorbed-in-sdk | launch | high |
 | [campfire-line-edit](campfire-line-edit.md) | absorbed-in-sdk | post-train | medium |
-| [todoset-direct-todo-create](todoset-direct-todo-create.md) | addressed-in-bc3-pr-12359 | post-train | medium |
+| [todoset-direct-todo-create](todoset-direct-todo-create.md) | absorbed-in-sdk | post-train | medium |
 | [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [dock-tool-create-contract](dock-tool-create-contract.md) | absorbed-in-sdk | launch | medium |
 | [upload-new-version](upload-new-version.md) | no-json-contract | post-train | medium |

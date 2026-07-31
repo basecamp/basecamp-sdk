@@ -13,6 +13,36 @@ import kotlinx.serialization.json.JsonElement
 open class TodosService(client: AccountClient) : BaseService(client) {
 
     /**
+     * Create a to-do directly under a project's to-do set, outside any to-do list.
+     * @param bucketId The bucket ID
+     * @param todosetId The todoset ID
+     * @param body Request body
+     */
+    suspend fun createTodosetTodo(bucketId: Long, todosetId: Long, body: CreateTodosetTodoBody): Todo {
+        val info = OperationInfo(
+            service = "Todos",
+            operation = "CreateTodosetTodo",
+            resourceType = "todo",
+            isMutation = true,
+            projectId = bucketId,
+            resourceId = todosetId,
+        )
+        return request(info, {
+            httpPost("/buckets/${bucketId}/todosets/${todosetId}/todos.json", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
+                put("content", kotlinx.serialization.json.JsonPrimitive(body.content))
+                body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.assigneeIds?.let { put("assignee_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.completionSubscriberIds?.let { put("completion_subscriber_ids", kotlinx.serialization.json.JsonArray(it.map { kotlinx.serialization.json.JsonPrimitive(it) })) }
+                body.notify?.let { put("notify", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.dueOn?.let { put("due_on", kotlinx.serialization.json.JsonPrimitive(it)) }
+                body.startsOn?.let { put("starts_on", kotlinx.serialization.json.JsonPrimitive(it)) }
+            }), operationName = info.operation)
+        }) { body ->
+            json.decodeFromString<Todo>(body)
+        }
+    }
+
+    /**
      * List todos in a todolist
      * @param todolistId The todolist ID
      * @param options Optional query parameters and pagination control

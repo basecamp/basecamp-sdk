@@ -1,9 +1,12 @@
 ---
 gap: todoset-direct-todo-create
-status: addressed-in-bc3-pr-12359
+status: absorbed-in-sdk
 detected: 2026-07-22
 sdk_demand: medium
 bc3_pr: 12359
+smithy_refs:
+  - "CreateTodosetTodo operation"
+  - "CreateTodosetTodoInput structure"
 bc3_refs:
   introduced_in: five
   routes:
@@ -56,8 +59,9 @@ Shipped — nothing pending. Routed via `resources :todosets do resources
 
 ## SDK absorption plan when this lands
 
-- Vehicle: the §Q absorption queue's **PR-2 build-ahead pair**
-  (`UpdateCampfireLine` + `CreateTodosetTodo`), pre-approved.
+- Vehicle: absorbed by the post-#504 absorption program (C3), which
+  supersedes the §Q absorption queue — §Q's PR-2 pairing half-shipped when
+  `UpdateCampfireLine` landed separately (#295), and the queue is retired.
 - New Smithy operation `CreateTodosetTodo` sharing payload/output shapes
   with `CreateTodo`; registers on the existing Todos (or Todosets) service.
 - Status flips to `absorbed-in-sdk` with the absorption PR (which adds the

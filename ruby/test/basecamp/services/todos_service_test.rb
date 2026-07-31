@@ -59,6 +59,38 @@ class TodosServiceTest < Minitest::Test
     assert_equal "New task", todo["content"]
   end
 
+  def test_create_todoset_todo_creates_a_loose_todo
+    new_todo = sample_todo(id: 1000, content: "Loose task")
+    stub_post("/12345/buckets/2/todosets/9/todos.json", response_body: new_todo)
+
+    todo = @account.todos.create_todoset_todo(
+      bucket_id: 2,
+      todoset_id: 9,
+      content: "Loose task",
+      assignee_ids: [ 1, 2 ]
+    )
+
+    assert_equal 1000, todo["id"]
+    assert_equal "Loose task", todo["content"]
+    assert_requested(:post, "https://3.basecampapi.com/12345/buckets/2/todosets/9/todos.json") do |req|
+      body = JSON.parse(req.body)
+      body["content"] == "Loose task" && body["assignee_ids"] == [ 1, 2 ]
+    end
+  end
+
+  def test_create_todoset_todo_raises_validation_error_on_422
+    stub_request(:post, "https://3.basecampapi.com/12345/buckets/2/todosets/9/todos.json")
+      .to_return(
+        status: 422,
+        body: { "error" => "Content can't be blank" }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+
+    assert_raises(Basecamp::ValidationError) do
+      @account.todos.create_todoset_todo(bucket_id: 2, todoset_id: 9, content: "x")
+    end
+  end
+
   def full_todo(id: 456, **overrides)
     sample_todo(id: id).merge(
       "description" => "<p>From the store</p>",
