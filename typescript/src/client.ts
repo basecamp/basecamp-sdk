@@ -1073,9 +1073,16 @@ function createRetryingFetch(
         // would instantly re-reject. Terminal errors are rethrown as-is so
         // their identity survives to the lifecycle middleware's onError (and
         // to the caller).
+        //
+        // The signal is the authoritative abort test: a caller can abort with
+        // a CUSTOM reason — AbortController.abort(reason) — and fetch then
+        // rejects with that reason, not a DOMException named AbortError. The
+        // DOMException check remains for abort-shaped rejections that arrive
+        // without an aborted request signal.
         const isAbort =
-          error instanceof DOMException &&
-          (error.name === "AbortError" || error.name === "TimeoutError");
+          request.signal?.aborted === true ||
+          (error instanceof DOMException &&
+            (error.name === "AbortError" || error.name === "TimeoutError"));
         if (isAbort || attempt >= maxAttempts) {
           throw error;
         }

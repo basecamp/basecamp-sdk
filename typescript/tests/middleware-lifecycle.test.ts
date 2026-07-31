@@ -219,6 +219,48 @@ describe("middleware request lifecycle", () => {
     expect(end.error).toBeInstanceOf(Error);
   });
 
+  // Review follow-up (Codex). A caller can abort with a CUSTOM reason —
+  // AbortController.abort(reason) — and fetch then rejects with that reason,
+  // not a DOMException named AbortError. Cancellation must stay terminal on
+  // that path too: no retry, no backoff, and the caller's reason surfaces
+  // untouched.
+  it("treats a caller abort with a custom reason as terminal", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, async () => {
+        await new Promise((r) => setTimeout(r, 1000));
+        return HttpResponse.json([]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const reason = new Error("caller cancelled");
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(reason), 50);
+
+    try {
+      const err = await client
+        .GET("/projects.json", { signal: controller.signal } as never)
+        .then(
+          () => undefined,
+          (e: unknown) => e
+        );
+
+      expect(err).toBe(reason);
+      // Terminal on attempt 1: no retry started, no onRetry announced.
+      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+      expect(events.filter((e) => e.kind === "retry")).toHaveLength(0);
+    } finally {
+      clearTimeout(abortTimer);
+    }
+  }, 10_000);
+
   // Defect 4, updated for network-error retry. A 503 followed by fetch
   // rejections keeps retrying to maxAttempts, with balanced hooks per attempt
   // and nothing dangling.
