@@ -1,0 +1,129 @@
+ruby/lib/basecamp/generated/services/todos_service.rb
+  s_289a344fc8a3ac::t_eccfb9c854ea4e 18,43
+ruby/lib/basecamp/generated/services/timeline_service.rb
+  s_289a344fc8a3ac::t_db03d3990a73a7 15
+ruby/lib/basecamp/generated/services/schedules_service.rb
+  s_289a344fc8a3ac::t_926079df83247a 15,49,58,79
+ruby/lib/basecamp/generated/services/search_service.rb
+  s_289a344fc8a3ac::t_6dc3394328f741 28,36
+ruby/lib/basecamp/generated/services/projects_service.rb
+  s_289a344fc8a3ac::t_4f3de29134e300 16,35
+ruby/lib/basecamp/generated/services/my_notifications_service.rb
+  s_289a344fc8a3ac::t_55d8321e17d66e 19,29
+ruby/lib/basecamp/generated/services/tools_service.rb
+  s_289a344fc8a3ac::t_57845b24b0e591 27
+ruby/lib/basecamp/generated/services/boosts_service.rb
+  s_289a344fc8a3ac::t_0ddf26b4616677 15,34,54
+ruby/lib/basecamp/generated/services/card_columns_service.rb
+  s_289a344fc8a3ac::t_3ac76acd8c3f0a 46
+ruby/lib/basecamp/generated/services/reports_service.rb
+  s_289a344fc8a3ac::t_0eaa706db64f1e 14,24,34,42,51
+ruby/lib/basecamp/generated/services/comments_service.rb
+  s_289a344fc8a3ac::t_cd718c7b116444 15,34
+ruby/lib/basecamp/generated/services/account_service.rb
+  s_289a344fc8a3ac::t_f4c6263e66bce2 14
+ruby/lib/basecamp/generated/services/subscriptions_service.rb
+  s_289a344fc8a3ac::t_8ecda8397aa5de 15
+ruby/lib/basecamp/generated/services/timesheets_service.rb
+  s_289a344fc8a3ac::t_0ec0c7ca1bd6f1 19,32,56,65
+ruby/lib/basecamp/generated/services/forwards_service.rb
+  s_289a344fc8a3ac::t_44d7b8a375ea95 15,24,44,53,65
+ruby/lib/basecamp/generated/services/client_correspondences_service.rb
+  s_289a344fc8a3ac::t_7428548359b9ed 17,26
+ruby/scripts/generate-services.rb
+  s_a6b3fa1894f15c::t_efcdec537b93a2 821,823,835,837
+  s_289a344fc8a3ac::t_62e91eda6ae11f 846-848,869,871
+ruby/lib/basecamp/generated/services/gauges_service.rb
+  s_289a344fc8a3ac::t_e5ee3fa57ee07e 15,55,78
+ruby/test/basecamp/http_test.rb
+  s_289a344fc8a3ac::t_83f6d82aebcd24 325-413
+ruby/lib/basecamp/generated/services/todosets_service.rb
+  s_289a344fc8a3ac::t_d079dbac5c8c8a 15
+ruby/lib/basecamp/http.rb
+  s_289a344fc8a3ac::t_b6d94344f7fd75 346,351,357-358,366,371,376,386-409
+  s_289a344fc8a3ac::t_7c28be164d4d8d 58-60,62-63
+  s_289a344fc8a3ac::t_4a9f575df7b84c 359-360
+  s_5b9fe3c20c58a4::t_f2c70b34d6d62c 177-178,189,223-224,235,272,276,310
+ruby/lib/basecamp/generated/services/campfires_service.rb
+  s_289a344fc8a3ac::t_df21d7966825f8 16,25,34,55,90,111,146
+ruby/lib/basecamp/generated/services/todolist_groups_service.rb
+  s_289a344fc8a3ac::t_2bedcf86b758a6 26
+ruby/lib/basecamp/generated/services/people_service.rb
+  s_289a344fc8a3ac::t_034c84205e708b 14,22,39,64,73,82,111,131
+ruby/lib/basecamp/generated/services/hill_charts_service.rb
+  s_289a344fc8a3ac::t_e6549c2c15ab98 15
+ruby/lib/basecamp/generated/services/events_service.rb
+  s_289a344fc8a3ac::t_9446090312a6f8 15
+ruby/lib/basecamp/generated/services/messages_service.rb
+  s_289a344fc8a3ac::t_3c0c3fdc954216 18,42
+ruby/lib/basecamp/generated/services/my_assignments_service.rb
+  s_289a344fc8a3ac::t_e7df545a072dbb 14,22,32
+ruby/lib/basecamp/generated/services/webhooks_service.rb
+  s_289a344fc8a3ac::t_6267c83024e2b1 15,36
+ruby/lib/basecamp/generated/services/message_types_service.rb
+  s_289a344fc8a3ac::t_453bc8f9057298 15,36
+ruby/lib/basecamp/generated/services/uploads_service.rb
+  s_289a344fc8a3ac::t_915dccf21669a8 15,35,44
+ruby/lib/basecamp/generated/services/documents_service.rb
+  s_289a344fc8a3ac::t_59ba7f27e402cc 15,35
+ruby/lib/basecamp/generated/services/vaults_service.rb
+  s_289a344fc8a3ac::t_0d50fc3b24f37b 15,34
+ruby/lib/basecamp/generated/services/client_approvals_service.rb
+  s_289a344fc8a3ac::t_b4d266128ddab5 17,26
+ruby/lib/basecamp/generated/services/cards_service.rb
+  s_289a344fc8a3ac::t_5a52faa961332b 15,49
+ruby/lib/basecamp/generated/services/everything_service.rb
+  s_289a344fc8a3ac::t_14e715aba30664 16,26,36,46,54,64,74,84,96,106,116,126,136,146,154,164
+ruby/lib/basecamp/generated/services/recordings_service.rb
+  s_289a344fc8a3ac::t_90b8282e52de5d 20,29
+ruby/lib/basecamp/generated/services/automation_service.rb
+  s_289a344fc8a3ac::t_6e59f9bbffb0aa 14
+ruby/lib/basecamp/client.rb
+  s_289a344fc8a3ac::t_6414c42f94d2ff 155-156,207-208,218-219,227-228
+ruby/lib/basecamp/generated/services/card_tables_service.rb
+  s_289a344fc8a3ac::t_93f57eef90174b 15
+ruby/lib/basecamp/generated/services/client_replies_service.rb
+  s_289a344fc8a3ac::t_c1a38c177d84fb 15,25
+ruby/lib/basecamp/generated/services/checkins_service.rb
+  s_289a344fc8a3ac::t_ec2f7780fb19d7 14,23,44,53,74,95,115,125
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_289a344fc8a3ac::t_9499008a903547 15,48
+ruby/lib/basecamp/generated/services/templates_service.rb
+  s_289a344fc8a3ac::t_8692bb415679ea 16,35,76
+ruby/lib/basecamp/generated/services/message_boards_service.rb
+  s_289a344fc8a3ac::t_29c83a419047e1 15
+ruby/lib/basecamp/generated/services/card_steps_service.rb
+  s_289a344fc8a3ac::t_5d53a4150ca994 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "8bf45ee1ddeef8a14e8fb84117dd2208b7e8719a",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_5b9fe3c20c58a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2635ee6f-2679-455c-9180-2cc86588b9e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_a6b3fa1894f15c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0dd8665c-d24f-4875-ac56-2558a00ee99f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}

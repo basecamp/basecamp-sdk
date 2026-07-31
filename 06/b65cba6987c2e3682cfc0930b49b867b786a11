@@ -1,0 +1,65 @@
+spec/basecamp.smithy
+  s_289a344fc8a3ac::t_c38b2d2a8f7c27 4559
+  s_289a344fc8a3ac::t_b1a478f8d336ce 5405
+behavior-model.json
+  s_289a344fc8a3ac::t_540f112fde33e4 528,2394
+go/pkg/generated/client.gen.go
+  s_289a344fc8a3ac::t_9aab74bef5d990 5274,5278-5280,7388,7392-7394,19758,19903
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_289a344fc8a3ac::t_40877dc7958b85 69,205
+openapi.json
+  s_289a344fc8a3ac::t_d35798a77d7d3f 1019-1021,15798-15800
+python/src/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_69fafda69ac8dc 524,2033
+ruby/lib/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_fcb6cb003b31c6 4,118-120,2044-2046
+scripts/check-idempotency-parity
+  s_289a344fc8a3ac::t_4c5785adad8271 113-114
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_289a344fc8a3ac::t_cc354c0ba5c345 253,266
+typescript/src/generated/metadata.ts
+  s_289a344fc8a3ac::t_31e5db90b7d153 40,154-156,2080-2082
+typescript/src/generated/openapi-stripped.json
+  s_289a344fc8a3ac::t_c69cf86b8bf3d3 905-907,14033-14035
+SECURITY.md
+  s_289a344fc8a3ac::t_cd8ef641f2d38d 187-189,193
+SPEC.md
+  s_289a344fc8a3ac::t_8d5e3e8531ee2d 111,113-114,476,1875-1876
+conformance/runner/ruby/runner.rb
+  s_289a344fc8a3ac::t_0cbdc1b5652eca 257
+  s_289a344fc8a3ac::t_e60894fa5d1e03 272
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_289a344fc8a3ac::t_15ddbbafd43c31 779-783
+conformance/runner/python/runner.py
+  s_289a344fc8a3ac::t_0936993dfb1bc9 101-102
+conformance/runner/go/main.go
+  s_289a344fc8a3ac::t_1ddd1a3a7cd2a5 523-527
+conformance/tests/idempotency.json
+  s_289a344fc8a3ac::t_56c3f348ee4429 70-79,81-86
+  s_289a344fc8a3ac::t_b1687c8d75579a 80
+conformance/runner/typescript/runner.test.ts
+  s_289a344fc8a3ac::t_39362932ede1a5 232-235
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/RetryTest.kt
+  s_289a344fc8a3ac::t_826911043a7ac0 257-343
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
+  s_289a344fc8a3ac::t_a804c873586dc0 120-127
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampClient.kt
+  s_289a344fc8a3ac::t_8994ecb2b9f5f7 42-48
+  s_289a344fc8a3ac::t_9b7a35c0488d28 96-99,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "06b65cba6987c2e3682cfc0930b49b867b786a11",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
