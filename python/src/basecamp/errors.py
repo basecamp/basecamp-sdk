@@ -203,9 +203,7 @@ def error_from_response(status: int, body: str | bytes | None, headers: dict[str
             # Appended in parentheses after a top-level message, standing alone
             # otherwise; truncated after flattening so the tail is capped too.
             message = f"{message} ({flat})" if message else flat
-        err = ValidationError(
-            _truncate(message or "Validation failed"), http_status=status, field_errors=field_errors
-        )
+        err = ValidationError(_truncate(message or "Validation failed"), http_status=status, field_errors=field_errors)
     elif status == 500:
         err = ApiError("Server error (500)", retryable=True, http_status=500)
     elif status in (502, 503, 504):

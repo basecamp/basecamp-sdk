@@ -152,14 +152,15 @@ class TestFieldKeyed422:
         assert str(err) == "Access denied"
 
     def test_skips_malformed_entries(self):
-        body = b'{"errors": {"color": "not an array", "name": ["can\'t be blank"], "empty": [], "mixed": [42, "is invalid"]}}'
+        body = (
+            b'{"errors": {"color": "not an array", "name": ["can\'t be blank"],'
+            b' "empty": [], "mixed": [42, "is invalid"]}}'
+        )
         err = error_from_response(422, body)
         assert str(err) == "mixed: is invalid, name: can't be blank"
         assert err.field_errors == {"mixed": ["is invalid"], "name": ["can't be blank"]}
 
-    @pytest.mark.parametrize(
-        "errors", ['{"color": "not an array"}', "[]", '"nope"', "{}"]
-    )
+    @pytest.mark.parametrize("errors", ['{"color": "not an array"}', "[]", '"nope"', "{}"])
     def test_unusable_errors_shape_falls_back(self, errors):
         err = error_from_response(422, f'{{"errors": {errors}}}'.encode())
         assert err.field_errors is None
