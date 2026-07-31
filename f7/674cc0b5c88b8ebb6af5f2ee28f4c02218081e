@@ -1,0 +1,40 @@
+spec/basecamp.smithy
+  s_289a344fc8a3ac::t_c38b2d2a8f7c27 4559
+  s_289a344fc8a3ac::t_b1a478f8d336ce 5405
+behavior-model.json
+  s_289a344fc8a3ac::t_540f112fde33e4 528,2394
+go/pkg/generated/client.gen.go
+  s_289a344fc8a3ac::t_9aab74bef5d990 5274,5278-5280,7388,7392-7394,19758,19903
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_289a344fc8a3ac::t_40877dc7958b85 69,205
+openapi.json
+  s_289a344fc8a3ac::t_d35798a77d7d3f 1019-1021,15798-15800
+python/src/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_69fafda69ac8dc 524,2033
+ruby/lib/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_fcb6cb003b31c6 4,118-120,2044-2046
+scripts/check-idempotency-parity
+  s_289a344fc8a3ac::t_4c5785adad8271 113-114
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_289a344fc8a3ac::t_cc354c0ba5c345 253,266
+typescript/src/generated/metadata.ts
+  s_289a344fc8a3ac::t_31e5db90b7d153 40,154-156,2080-2082
+typescript/src/generated/openapi-stripped.json
+  s_289a344fc8a3ac::t_c69cf86b8bf3d3 905-907,14033-14035
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "f7674cc0b5c88b8ebb6af5f2ee28f4c02218081e",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
