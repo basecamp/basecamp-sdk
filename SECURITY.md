@@ -184,7 +184,7 @@ print(f"Headers: {safe}")
 ## Retry Behavior
 
 Retry eligibility is decided per *operation*, not per HTTP method. `behavior-model.json` classifies
-all 230 operations: the 119 GETs are retryable by method, and 73 mutations are flagged
+all 231 operations: the 120 GETs are retryable by method, and 73 mutations are flagged
 `idempotent: true` — all 45 PUTs, all 22 DELETEs, and 6 POSTs (`CompleteTodo`, `PauseQuestion`,
 `SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`, `CreateBookmark`). The other 38 POSTs are attempted exactly once. SPEC.md §7 specifies the
 three-gate algorithm and the per-SDK divergences.
