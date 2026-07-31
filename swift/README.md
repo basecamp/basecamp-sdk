@@ -9,7 +9,7 @@ Official Swift SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 ## Features
 
 - Full Swift 6 concurrency support (strict `Sendable` throughout)
-- 45 services covering the complete Basecamp API
+- 46 services covering the complete Basecamp API
 - Async/await API with structured concurrency
 - ETag-based HTTP caching (opt-in)
 - Automatic retry with exponential backoff
@@ -123,7 +123,7 @@ let client = BasecampClient(
 
 ## Services
 
-The SDK exposes 45 account-scoped services. The tables below group the common ones; see `Sources/Basecamp/Generated/Services/` for the full set.
+The SDK exposes 46 account-scoped services. The tables below group the common ones; see `Sources/Basecamp/Generated/Services/` for the full set.
 
 ### Projects & Organization
 
@@ -283,7 +283,7 @@ The SDK uses a `BasecampError` enum with associated values for exhaustive `switc
 
 ```swift
 do {
-    let todo = try await account.todos.get(projectId: 123, todoId: 456)
+    let todo = try await account.todos.get(todoId: 456)
 } catch let error as BasecampError {
     switch error {
     case .auth(let message, let hint, _):
@@ -294,7 +294,7 @@ do {
         print("Not found: \(message)")
     case .rateLimit(_, let retryAfter, _, _):
         if let seconds = retryAfter {
-            try await Task.sleep(for: .seconds(seconds))
+            try await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
         }
     case .network(let message, _):
         print("Network error: \(message)")

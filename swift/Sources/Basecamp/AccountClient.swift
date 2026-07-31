@@ -8,7 +8,7 @@ import Foundation
 /// ```swift
 /// let account = client.forAccount("12345")
 /// let projects = try await account.projects.list()
-/// let todo = try await account.todos.get(projectId: 123, todoId: 456)
+/// let todo = try await account.todos.get(todoId: 456)
 /// ```
 ///
 /// ## Extensibility
