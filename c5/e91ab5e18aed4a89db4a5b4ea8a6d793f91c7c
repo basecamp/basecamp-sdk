@@ -1,0 +1,31 @@
+conformance/runner/ruby/runner.rb
+  s_289a344fc8a3ac::t_0cbdc1b5652eca 257
+  s_289a344fc8a3ac::t_e60894fa5d1e03 272
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_289a344fc8a3ac::t_15ddbbafd43c31 779-783
+conformance/runner/python/runner.py
+  s_289a344fc8a3ac::t_0936993dfb1bc9 101-102
+conformance/runner/go/main.go
+  s_289a344fc8a3ac::t_1ddd1a3a7cd2a5 523-527
+conformance/tests/idempotency.json
+  s_289a344fc8a3ac::t_56c3f348ee4429 70-79,81-86
+  s_289a344fc8a3ac::t_b1687c8d75579a 80
+conformance/runner/typescript/runner.test.ts
+  s_289a344fc8a3ac::t_39362932ede1a5 232-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c5e91ab5e18aed4a89db4a5b4ea8a6d793f91c7c",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
