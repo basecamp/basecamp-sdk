@@ -1096,7 +1096,7 @@ function createRetryingFetch(
         lifecycle.finalize(request, method, url, { statusCode: 0, error: cause });
         lifecycle.retrying(method, url, attempt, cause, delay);
 
-        await sleep(delay);
+        await sleep(delay, request.signal);
 
         // Same placement rationale as the status path below.
         attempt += 1;
@@ -1138,7 +1138,7 @@ function createRetryingFetch(
       // Errors are ignored: the body may already be consumed or closed.
       void response.body?.cancel().catch(() => {});
 
-      await sleep(delay);
+      await sleep(delay, request.signal);
 
       // Begun after the backoff but before any work that can throw. After, so
       // the attempt's duration measures the request rather than the sleep;
@@ -1173,8 +1173,29 @@ function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
   return delay + jitter;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Signal-aware sleep for backoff waits: resolves after `ms`, or rejects with
+ * the signal's abort reason the moment it fires. Without this, a caller abort
+ * or the request-timeout budget expiring during a backoff would leave the
+ * request pending for the full delay and then start another attempt — begin,
+ * auth refresh, fetch — against an already-aborted signal.
+ */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason as Error);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal!.reason as Error);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 // =============================================================================

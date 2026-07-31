@@ -261,6 +261,54 @@ describe("middleware request lifecycle", () => {
     }
   }, 10_000);
 
+  // Review follow-up (Codex, round 2). An abort that fires DURING the backoff
+  // sleep must be terminal immediately: without a signal-aware sleep the
+  // request stays pending for the full delay, then begins another attempt
+  // (start + auth refresh) against an already-aborted signal. The same seam
+  // guards the request-timeout budget, which shares this signal.
+  it("rejects promptly when the caller aborts during a retry backoff", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () =>
+        // Retry-After: 2 puts the loop into a 2s backoff we can abort inside.
+        new HttpResponse(null, { status: 429, headers: { "Retry-After": "2" } })
+      )
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const reason = new Error("caller cancelled during backoff");
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(reason), 100);
+
+    try {
+      const startedAt = Date.now();
+      const err = await client
+        .GET("/projects.json", { signal: controller.signal } as never)
+        .then(
+          () => undefined,
+          (e: unknown) => e
+        );
+
+      expect(err).toBe(reason);
+      // Prompt: nowhere near the 2s Retry-After backoff.
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+      // Attempt 1 was started and ended (429) before the backoff; attempt 2
+      // must never start. onRetry had already announced it — that is the
+      // inherent race of cancelling between announce and begin — but starts
+      // and ends stay balanced.
+      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+      expect(ends(events)[0]!.statusCode).toBe(429);
+    } finally {
+      clearTimeout(abortTimer);
+    }
+  }, 10_000);
+
   // Defect 4, updated for network-error retry. A 503 followed by fetch
   // rejections keeps retrying to maxAttempts, with balanced hooks per attempt
   // and nothing dangling.
