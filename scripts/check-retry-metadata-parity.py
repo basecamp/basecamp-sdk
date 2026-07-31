@@ -238,8 +238,8 @@ RUNTIME_CONSUMPTION = [
      ["retryOn.contains", "< maxAttempts", "baseDelayMs"], [],
      "HTTPClient.swift: retryOn.contains(status), attempt < maxAttempts, baseDelayMs"),
     ("Kotlin", "full tuple", "kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt",
-     ["opRetry.retryOn", "opRetry?.maxRetries", "opRetry?.baseDelayMs"], [],
-     "BasecampHttpClient.kt: status in opRetry.retryOn, opRetry.maxRetries/baseDelayMs"),
+     ["opRetry.retryOn", "opRetry?.maxRetries", "opRetry?.baseDelayMs", "minOf(", "coerceAtLeast(1)"], [],
+     "BasecampHttpClient.kt: status in opRetry.retryOn, min(caller cap, opRetry.maxRetries), baseDelayMs"),
     ("Go", "max + retry_on", "go/templates/client.tmpl",
      ["opMax < maxAttempts", "operationRetryMax[operationId]",
       "operationRetryOn[operationId]", "isRetryableStatus(resp.StatusCode, operationId)"],
@@ -248,9 +248,9 @@ RUNTIME_CONSUMPTION = [
     ("Python", "max + retry_on", "python/src/basecamp/_http.py",
      ['.get("retry", {}).get("max")', 'retry.get("retry_on")', "_is_retryable_error"], [],
      "_request_with_retry applies min(client cap, retry.max) and gates status retry on the declared retry_on; other fields emitted-but-inert"),
-    ("Ruby", "none", "ruby/lib/basecamp/http.rb",
-     [], ["maxAttempts", "maxRetries"],
-     "http.rb retries GET only; every emitted per-op retry field is inert"),
+    ("Ruby", "max + retry_on", "ruby/lib/basecamp/http.rb",
+     ['fetch("maxAttempts")', 'fetch("retryOn").include?', "operation_retry"], [],
+     "http.rb retries governed GETs with min(caller cap, maxAttempts) and gates status retry on the declared retryOn; base_delay/backoff emitted-but-inert"),
 ]
 
 

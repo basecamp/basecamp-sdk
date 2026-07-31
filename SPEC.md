@@ -108,11 +108,11 @@ END
 
 **Naming note:** `max_retries` means total attempts (including the initial request), not the number of retries after the first attempt. With `max_retries = 3`, the transport makes at most 3 attempts total (1 initial + 2 retries). This name is inherited from the shipping Ruby SDK; the behavior-model.json uses `retry.max` with identical semantics.
 
-**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (182 ops at `3`, 43 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). **Kotlin does expose one** (`BasecampConfig.maxRetries`), but resolves the two as `opRetry?.maxRetries ?: config.maxRetries`, so the per-op value *overrides* the client's rather than bounding it: a Kotlin caller who lowers `maxRetries` to `1` still gets the operation's count. That is a divergence from this section, not a sanctioned variation — tracked in #485. Generated Go and Python expose a numeric client cap (`RetryConfig.MaxRetries` / `config.max_retries`) *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `0`/`1` to disable/restrict retries) is still honored. Because every op's `max` is ≤ the default cap of `3`, a default or raised Go/Python client makes exactly the per-op number of attempts — matching TS/Swift/Kotlin. Observable changes from the former client-wide behavior, by client configuration:
+**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (182 ops at `3`, 43 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `0`/`1` to disable/restrict retries) is still honored. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
 
 - **Default client (`max_retries = 3`):** only the **11 idempotent `max:2` operations** (account/gauge/preference writes plus two subscription-style POSTs: `UpdateAccountName`, `UpdateAccountLogo`, `RemoveAccountLogo`, `UpdateMyPreferences`, `DisableOutOfOffice`, `MarkAsRead`, `ToggleGauge`, `UpdateGaugeNeedle`, `DestroyGaugeNeedle`, `Subscribe`, `EnableCardColumnOnHold`) change — they now retry at most twice instead of three times. The other 177 retry-eligible ops are unaffected (`min(3, 3) = 3`).
-- **Client that raised its cap above 3:** **all 188 retry-eligible operations** are now clamped to their per-op `max` (177 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. (Go and Python are, however, the only two that also honor a caller who wants *fewer* attempts than the operation declares — see the Kotlin note above.)
-- **Client that lowered its cap to `0`/`1`:** unchanged — the cap still wins (`min(cap, op_max) = cap`). Go and Python consume `max` **and** `retry_on` (the declared status gate); only the emitted `base_delay_ms`/`backoff` remain inert per-op metadata for them (retained for parity — see `scripts/check-retry-metadata-parity.py`). Ruby retries GET only and bounds its loop by `config.max_retries` alone, so the per-op `max` is not enforced there at all — the opposite gap from Kotlin's. All per-op retry fields are inert in Ruby.
+- **Client that raised its cap above 3:** **all 188 retry-eligible operations** are now clamped to their per-op `max` (177 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. Go, Python, Kotlin, and Ruby's governed path all equally honor a caller who wants *fewer* attempts than the operation declares.
+- **Client that lowered its cap to `0`/`1`:** unchanged — the cap still wins (`min(cap, op_max) = cap`). Go, Python, and Ruby's governed GET path consume `max` **and** `retry_on` (the declared status gate); only the emitted `base_delay_ms`/`backoff` remain inert per-op metadata for them (retained for parity — see `scripts/check-retry-metadata-parity.py`). Ruby remains GET-only: mutations never retry there, so per-op metadata governs only its reads.
 
 **Recommended default:** A connect timeout of 10 seconds is recommended but not a required config field. Only Ruby exposes this (Faraday `open_timeout = 10`); other SDKs use their HTTP library's default.
 
@@ -448,12 +448,11 @@ are consumed unevenly:
 | Python | yes | yes — `min(caller_cap, operation_max)` |
 | TypeScript | yes | n/a — exposes no numeric cap (only `enableRetry`), so the operation value is the only input. Additionally caps at one retry (waiver 2B.1) |
 | Swift | yes | n/a — exposes no numeric cap (only `enableRetry`) |
-| **Kotlin** | yes | **no** — `BasecampConfig.maxRetries` *is* numeric, but `opRetry?.maxRetries ?: config.maxRetries` lets the operation value override it, so a caller who lowers the cap is ignored |
-| **Ruby** | **no** — the loop keys off `retryable?`, which `errors.rb` sets for 500/502/503/504, so a 500 is retried on GET | n/a for the ceiling — bounded by `config.max_retries` alone, so the operation's `max` is never enforced at all |
+| Kotlin | yes | yes — `min(caller cap, operation max)`, with the cap coerced to at least one attempt |
+| Ruby | yes for governed GETs — a status-bearing error retries exactly when the declared `retryOn` says so; the error taxonomy's 500/502/504 classification neither widens nor vetoes the declared set. Status-less network errors keep the taxonomy's judgment | yes — governed GETs are bounded by `min(caller cap, operation max)`; Ruby's transport is GET-only, so mutations never reach the retry loop |
 
-Only **Kotlin** turns the ceiling into a floor: it is the one SDK with both a numeric caller cap and
-a resolution order that discards it. TypeScript and Swift have no cap to discard, and Ruby's gap is
-the mirror image — it honors the caller and ignores the operation. Tracked in #485.
+TypeScript and Swift expose no numeric cap, so the operation value is the only attempts input there;
+every SDK with a cap now resolves it as a ceiling (#485).
 
 **Ungoverned traffic.** A transport may carry requests that are not Smithy operations — today the
 Launchpad authorization request. Those carry no behavior-model metadata, and the declared policy
@@ -466,13 +465,13 @@ policy ever reaches OAuth traffic.
 retry metadata equals `behavior-model.json`, and records which fields each SDK actually consumes at
 runtime. It deliberately does not assert *effective behavior* parity, since TypeScript's one-retry
 cap and Ruby's GET-only transport are intentional. Effective Gate 3 behavior is pinned by tests in
-Go and Python.
+Go, Python, Kotlin, and Ruby.
 
 ### Cross-SDK Divergence `[CONFLICT]`
 
 - **TypeScript** implements the three-gate algorithm but chains at most 1 retry — on a retryable status, TS returns `fetch(retryRequest)` which bypasses middleware after the first retry (waiver 2B.1 in `rubric-audit.json`). **Kotlin** implements the three-gate algorithm for HTTP status retries (POST retries only when `idempotent: true`, full exponential backoff) but does not retry on network errors — transport exceptions are returned immediately as `BasecampException.Network`.
 - **Go** implements the three-gate on its generated operation path: it retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (the naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and the flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh.
-- **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Ruby is acceptably conservative.
+- **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Governed GETs (those carrying their canonical operation ID) are bounded by the per-op ceiling and status-gated on the declared `retryOn`; ungoverned GETs (`get_absolute`, OAuth discovery) keep the taxonomy-driven pre-metadata contract. Ruby is acceptably conservative.
 - **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the five idempotent POSTs (`CompleteTodo`, `PauseQuestion`, `SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors (unlike Kotlin/TS) but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
 - The spec prescribes the three-gate algorithm. **TS note:** TS retry returns `fetch(retryRequest)` which bypasses middleware after the first retry, so TS effectively caps at 1 retry per request regardless of `max_attempts`. This is a known limitation (waiver 2B.1).
 
@@ -1887,15 +1886,15 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 | TypeScript | Three-gate: POST retries only when `idempotent: true`. Retries on `retry_on` set from metadata. Chains at most 1 retry via `fetch(retryRequest)` which bypasses middleware (waiver 2B.1). |
 | Kotlin | Three-gate for HTTP status retries: POST retries only when `idempotent: true`, full exponential backoff. Does not retry network errors (transport exceptions returned immediately). |
 | Go | Generated operation path retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh. |
-| Ruby | Simplified: only GET retries. All non-GET methods never retry. Ruby retries on any error with `retryable? == true`, so it does not gate on the declared `retryOn` — a 500 is retried on GET. |
+| Ruby | Simplified: only GET retries. All non-GET methods never retry. Governed GETs gate status retries on the declared `retryOn` and bound attempts by `min(config.max_retries, operation max)`; ungoverned traffic (no operation ID: `get_absolute`, OAuth) keeps the taxonomy-driven contract. |
 | Python | Three-gate, sync and async: `_mutation()` retries only when `behavior-model` metadata classifies the operation retryable, so non-idempotent POSTs are single-attempt; GETs always retry. Gate 3 uses the operation's declared `retry_on` and `max`. Non-Smithy traffic (`get_absolute()`, Launchpad authorization) passes no operation id and keeps the pre-Smithy contract. |
 | Swift | Three-gate: retries when the method is naturally idempotent (GET/HEAD/PUT/DELETE) or the operation is marked `idempotent: true`; non-idempotent POSTs make a single attempt. Gate covers both HTTP status and network-error retries, so Swift *does* retry network errors (unlike Kotlin/TS), gated by idempotency. |
 
 The table above describes **Gate 1 and Gate 2** — *whether* an operation retries. Gate 3's parameters
-are tracked separately: five SDKs gate status retry on the declared `retryOn` (Ruby does not), and
-only Go and Python honor a caller asking for *fewer* attempts than an operation declares — Kotlin
-lets the operation value override its numeric cap, TypeScript and Swift expose no such cap, and Ruby
-never consults the operation's `max`. See the Gate 3 consumption table in §7 above.
+are tracked separately: all six SDKs gate status retry on the declared `retryOn` (Ruby for governed
+GETs), and every SDK with a numeric caller cap — Go, Python, Kotlin, and Ruby — honors a caller
+asking for *fewer* attempts than an operation declares; TypeScript and Swift expose no such cap.
+See the Gate 3 consumption table in §7 above.
 
 ### Integer Precision (§10)
 
