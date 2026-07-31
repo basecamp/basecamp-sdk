@@ -1,0 +1,21 @@
+.github/labeler.yml
+  s_555508c40a7b3b::t_48e2ac8f6e9302 40-44
+CONTRIBUTING.md
+  s_555508c40a7b3b::t_498080883f3225 251-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "052100816f96246b142813777a9581ce42ae9e45",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
