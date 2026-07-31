@@ -520,6 +520,11 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		err := account.Todos().Complete(ctx, todoID)
 		return operationResult{err: err}
 
+	case "Subscribe":
+		recordingID := getInt64Param(tc.PathParams, "recordingId")
+		_, err := account.Subscriptions().Subscribe(ctx, recordingID)
+		return operationResult{err: err}
+
 	case "UpdateTodo":
 		todoID := getInt64Param(tc.PathParams, "todoId")
 		req := &basecamp.UpdateTodoRequest{

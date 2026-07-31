@@ -67,5 +67,22 @@
       {"type": "noError"}
     ],
     "tags": ["idempotent", "post"]
+  },
+  {
+    "name": "Subscribe POST retries when marked idempotent",
+    "description": "Subscribe is a set-membership POST (subscribing twice is a no-op), flagged idempotent in #480. Like CompleteTodo, it must retry on 503 in the metadata-driven SDKs.",
+    "operation": "Subscribe",
+    "method": "POST",
+    "path": "/recordings/{recordingId}/subscription.json",
+    "pathParams": {"recordingId": 456},
+    "mockResponses": [
+      {"status": 503},
+      {"status": 200, "body": {"subscribed": true, "count": 1, "url": "https://3.basecampapi.com/999/recordings/456/subscription.json", "subscribers": []}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"}
+    ],
+    "tags": ["idempotent", "post"]
   }
 ]

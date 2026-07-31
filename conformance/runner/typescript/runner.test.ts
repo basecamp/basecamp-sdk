@@ -229,6 +229,10 @@ async function executeOperation(
         await client.todos.complete(Number(params.todoId));
         break;
 
+      case "Subscribe":
+        await client.subscriptions.subscribe(Number(params.recordingId));
+        break;
+
       case "UpdateTodo":
         // Merge-safe update: GET then full PUT; only fixture-present keys are passed.
         await client.todos.update(Number(params.todoId), mapTodoWireFields(body));
