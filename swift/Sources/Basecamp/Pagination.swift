@@ -4,7 +4,9 @@ import Foundation
 public struct ListMeta: Sendable, Equatable {
     /// Total number of items across all pages (from `X-Total-Count` header).
     public let totalCount: Int
-    /// True when results were truncated (by `maxItems` or page safety cap).
+    /// True when results are incomplete: items beyond `maxItems` were dropped,
+    /// or the last fetched page still advertised a next `Link` (e.g. because
+    /// `maxItems` or the page safety cap stopped pagination early).
     public let truncated: Bool
 
     public init(totalCount: Int = 0, truncated: Bool = false) {

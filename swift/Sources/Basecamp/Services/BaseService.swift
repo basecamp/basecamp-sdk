@@ -329,9 +329,12 @@ open class BaseService: @unchecked Sendable {
             let pageItems = try Self.decoder.decode([T].self, from: Self.normalizePersonIds(in: data))
             allItems.append(contentsOf: pageItems)
 
-            // Check maxItems cap
+            // Check maxItems cap: truncated only when items were dropped or the
+            // just-fetched page (nextResponse, not the stale loop variable) has a next Link
             if let maxItems, maxItems > 0, allItems.count >= maxItems {
-                return (Array(allItems.prefix(maxItems)), true)
+                let hasMore = allItems.count > maxItems
+                    || parseNextLink(nextResponse.value(forHTTPHeaderField: "Link")) != nil
+                return (Array(allItems.prefix(maxItems)), hasMore)
             }
 
             response = nextResponse
@@ -381,9 +384,12 @@ open class BaseService: @unchecked Sendable {
             let pageItems: [T] = try Self.decodeWrappedItems(data: data, key: itemsKey)
             allItems.append(contentsOf: pageItems)
 
-            // Check maxItems cap
+            // Check maxItems cap: truncated only when items were dropped or the
+            // just-fetched page (nextResponse, not the stale loop variable) has a next Link
             if let maxItems, maxItems > 0, allItems.count >= maxItems {
-                return (Array(allItems.prefix(maxItems)), true)
+                let hasMore = allItems.count > maxItems
+                    || parseNextLink(nextResponse.value(forHTTPHeaderField: "Link")) != nil
+                return (Array(allItems.prefix(maxItems)), hasMore)
             }
 
             response = nextResponse

@@ -275,8 +275,10 @@ abstract class BaseService(
 
                 // Check maxItems cap
                 if (maxItems != null && maxItems > 0 && allItems.size >= maxItems) {
+                    val hasMore = allItems.size > maxItems
+                        || parseNextLink(currentResponse.headers["Link"]) != null
                     val duration = (currentTimeMillis() - startTime).millisToDuration()
-                    val result = ListResult(allItems.take(maxItems), ListMeta(totalCount, truncated = true))
+                    val result = ListResult(allItems.take(maxItems), ListMeta(totalCount, hasMore))
                     hooks.safeOnOperationEnd(info, OperationResult(duration))
                     return result
                 }
@@ -370,8 +372,10 @@ abstract class BaseService(
                 allItems.addAll(pageItems)
 
                 if (maxItems != null && maxItems > 0 && allItems.size >= maxItems) {
+                    val hasMore = allItems.size > maxItems
+                        || parseNextLink(currentResponse.headers["Link"]) != null
                     val duration = (currentTimeMillis() - startTime).millisToDuration()
-                    val result = ListResult(allItems.take(maxItems), ListMeta(totalCount, truncated = true))
+                    val result = ListResult(allItems.take(maxItems), ListMeta(totalCount, hasMore))
                     hooks.safeOnOperationEnd(info, OperationResult(duration))
                     return Pair(firstPageBody, result)
                 }

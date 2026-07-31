@@ -518,6 +518,8 @@ println("Truncated: ${allProjects.meta.truncated}")
 allProjects.forEach { println(it.name) }
 ```
 
+`meta.truncated` is `true` only when items beyond those returned were available — items were dropped by `maxItems`, or the last-fetched page still advertised a next page when collection stopped; when it is `false`, the result is definitely complete.
+
 ## Retry Behavior
 
 The SDK automatically retries requests on transient failures:

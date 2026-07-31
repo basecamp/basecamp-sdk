@@ -398,12 +398,6 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 				return nil, fmt.Errorf("pagination Link header points to different origin: %s", nextURL)
 			}
 
-			// Check limit before fetching
-			if limit > 0 && len(events) >= limit {
-				truncated = true
-				break
-			}
-
 			pageResp, fetchErr := s.client.parent.doRequestURL(ctx, "GET", nextURL, nil)
 			if fetchErr != nil {
 				return nil, fetchErr

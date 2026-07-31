@@ -998,6 +998,14 @@ func TestCheckinsService_ListAnswersByPerson_Pagination(t *testing.T) {
 			wantRequests:  2,
 			wantTruncated: true,
 		},
+		{
+			name:          "Limit equal to total across pages is not truncated",
+			emitNextLink:  true,
+			opts:          &AnswerListOptions{Limit: 4},
+			wantAnswers:   4,
+			wantRequests:  2,
+			wantTruncated: false,
+		},
 	}
 
 	for _, tc := range cases {

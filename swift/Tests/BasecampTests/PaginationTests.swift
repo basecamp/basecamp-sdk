@@ -325,6 +325,151 @@ final class PaginationTests: XCTestCase {
         XCTAssertTrue(result.meta.truncated, "Should be truncated when hitting maxPages cap")
     }
 
+    // MARK: - maxItems Cap Boundary (#513)
+
+    func testMaxItemsExactBoundaryOnLaterPageNotTruncated() async throws {
+        // Page 1: 2 items + next Link; page 2: 1 item, NO Link.
+        // maxItems = 3 lands exactly on the final item of the last page —
+        // nothing was dropped and no next page exists, so truncated is false.
+        let page1Data = projectPageData(ids: [1, 2])
+        let page2Data = projectPageData(ids: [3])
+
+        let transport = MockTransport { request in
+            let urlString = request.url!.absoluteString
+            if urlString.contains("page=2") {
+                return (page2Data, pageResponse(url: request.url!))
+            }
+            return (page1Data, pageResponse(url: request.url!, link: nextProjectsLink(page: 2)))
+        }
+
+        let account = makeTestAccountClient(transport: transport)
+        let result = try await account.projects.list(options: ListProjectOptions(maxItems: 3))
+
+        XCTAssertEqual(result.count, 3)
+        XCTAssertFalse(result.meta.truncated,
+                       "Cap met exactly with no next Link — nothing was truncated")
+    }
+
+    func testMaxItemsDropOnFollowedPageIsTruncated() async throws {
+        // Page 1: 1 item + next Link; page 2: 2 items, NO Link.
+        // maxItems = 2 drops one collected item mid-page — truncated must be
+        // true via the excess-items clause even though no next Link exists.
+        let page1Data = projectPageData(ids: [1])
+        let page2Data = projectPageData(ids: [2, 3])
+
+        let transport = MockTransport { request in
+            let urlString = request.url!.absoluteString
+            if urlString.contains("page=2") {
+                return (page2Data, pageResponse(url: request.url!))
+            }
+            return (page1Data, pageResponse(url: request.url!, link: nextProjectsLink(page: 2)))
+        }
+
+        let account = makeTestAccountClient(transport: transport)
+        let result = try await account.projects.list(options: ListProjectOptions(maxItems: 2))
+
+        XCTAssertEqual(result.count, 2)
+        XCTAssertTrue(result.meta.truncated,
+                      "An item was dropped by the cap — truncated even with no next Link")
+    }
+
+    func testMaxItemsExactBoundaryOnLaterPageWithNextLinkTruncated() async throws {
+        // Control: same shape, but page 2 still advertises a next Link —
+        // more results exist beyond the cap, so truncated is true.
+        let page1Data = projectPageData(ids: [1, 2])
+        let page2Data = projectPageData(ids: [3])
+        let emptyData = try JSONSerialization.data(withJSONObject: [] as [Any])
+
+        let transport = MockTransport { request in
+            let urlString = request.url!.absoluteString
+            if urlString.contains("page=3") {
+                return (emptyData, pageResponse(url: request.url!))
+            }
+            if urlString.contains("page=2") {
+                return (page2Data, pageResponse(url: request.url!, link: nextProjectsLink(page: 3)))
+            }
+            return (page1Data, pageResponse(url: request.url!, link: nextProjectsLink(page: 2)))
+        }
+
+        let account = makeTestAccountClient(transport: transport)
+        let result = try await account.projects.list(options: ListProjectOptions(maxItems: 3))
+
+        XCTAssertEqual(result.count, 3)
+        XCTAssertTrue(result.meta.truncated,
+                      "Next Link on the capping page means more results exist")
+        XCTAssertEqual(transport.requests.count, 2,
+                       "Page 3 must not be fetched once the cap is satisfied")
+    }
+
+    func testWrappedMaxItemsExactBoundaryOnLaterPageNotTruncated() async throws {
+        // Wrapped twin (PersonProgress): page 1 has 2 events + next Link,
+        // page 2 has the final event and no Link. maxItems = 3 -> not truncated.
+        let page1: [String: Any] = [
+            "person": ["id": 456, "name": "Jane Doe", "email_address": "jane@example.com"],
+            "events": [
+                ["id": 1, "action": "created", "target": "todo", "title": "Event 1",
+                 "created_at": "2026-01-01T00:00:00Z"],
+                ["id": 2, "action": "completed", "target": "todo", "title": "Event 2",
+                 "created_at": "2026-01-02T00:00:00Z"],
+            ],
+        ]
+        let page2: [String: Any] = [
+            "person": ["id": 456, "name": "Jane Doe", "email_address": "jane@example.com"],
+            "events": [
+                ["id": 3, "action": "updated", "target": "message", "title": "Event 3",
+                 "created_at": "2026-01-03T00:00:00Z"],
+            ],
+        ]
+        let page1Data = try JSONSerialization.data(withJSONObject: page1)
+        let page2Data = try JSONSerialization.data(withJSONObject: page2)
+
+        let transport = MockTransport { request in
+            let urlString = request.url!.absoluteString
+            if urlString.contains("page=2") {
+                return (page2Data, pageResponse(url: request.url!))
+            }
+            let link = "<https://3.basecampapi.com/999999999/reports/users/progress/456.json?page=2>; rel=\"next\""
+            return (page1Data, pageResponse(url: request.url!, link: link))
+        }
+
+        let account = makeTestAccountClient(transport: transport)
+        let result = try await account.reports.personProgress(
+            personId: 456, options: PersonProgressReportOptions(maxItems: 3)
+        )
+
+        XCTAssertEqual(result.events.count, 3)
+        XCTAssertFalse(result.events.meta.truncated,
+                       "Cap met exactly with no next Link — nothing was truncated")
+    }
+
+    func testMaxItemsExactBoundaryOnFirstPage() async throws {
+        // Pins the already-precise first-page early return: exactly maxItems
+        // items with a next Link -> truncated true; without one -> false.
+        // Either way the next page must never be fetched.
+        let pageData = projectPageData(ids: [1, 2, 3])
+
+        let linkedTransport = MockTransport { request in
+            (pageData, pageResponse(url: request.url!, link: nextProjectsLink(page: 2)))
+        }
+        let linked = try await makeTestAccountClient(transport: linkedTransport)
+            .projects.list(options: ListProjectOptions(maxItems: 3))
+        XCTAssertEqual(linked.count, 3)
+        XCTAssertTrue(linked.meta.truncated,
+                      "Next Link on the first page means more results exist")
+        XCTAssertEqual(linkedTransport.requests.count, 1,
+                       "Page 2 must not be fetched once the cap is satisfied")
+
+        let unlinkedTransport = MockTransport { request in
+            (pageData, pageResponse(url: request.url!))
+        }
+        let unlinked = try await makeTestAccountClient(transport: unlinkedTransport)
+            .projects.list(options: ListProjectOptions(maxItems: 3))
+        XCTAssertEqual(unlinked.count, 3)
+        XCTAssertFalse(unlinked.meta.truncated,
+                       "Cap met exactly with no next Link — nothing was truncated")
+        XCTAssertEqual(unlinkedTransport.requests.count, 1)
+    }
+
     // MARK: - Empty First Page with Link Header
 
     func testEmptyFirstPageWithLinkHeader() async throws {
@@ -350,4 +495,31 @@ final class PaginationTests: XCTestCase {
         // Key thing: it shouldn't crash
         XCTAssertEqual(result.meta.totalCount, 0)
     }
+}
+
+// MARK: - Page-building helpers (free functions: safe to use in @Sendable transport closures)
+
+/// Builds a JSON array of minimal Project payloads with the given ids.
+private func projectPageData(ids: [Int]) -> Data {
+    let items = ids.map { id in
+        ["id": id, "name": "Project \(id)", "status": "active",
+         "app_url": "https://3.basecamp.com/1/projects/\(id)",
+         "url": "https://3.basecampapi.com/1/projects/\(id).json",
+         "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"] as [String: Any]
+    }
+    return try! JSONSerialization.data(withJSONObject: items)
+}
+
+/// Builds a 200 response, optionally carrying a next `Link` header.
+private func pageResponse(url: URL, link: String? = nil, totalCount: Int = 3) -> HTTPURLResponse {
+    var headers = ["X-Total-Count": String(totalCount)]
+    if let link {
+        headers["Link"] = link
+    }
+    return HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: headers)!
+}
+
+/// A `rel="next"` Link header pointing at the given projects page.
+private func nextProjectsLink(page: Int) -> String {
+    "<https://3.basecampapi.com/999999999/projects.json?page=\(page)>; rel=\"next\""
 }

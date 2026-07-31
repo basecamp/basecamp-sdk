@@ -6,7 +6,12 @@ package com.basecamp.sdk
 data class ListMeta(
     /** Total number of items across all pages (from X-Total-Count header). */
     val totalCount: Long,
-    /** True when results were truncated (by maxItems or page safety cap). */
+    /**
+     * True only when the result is incomplete: items were dropped by the
+     * maxItems cap, or more pages remained (a next Link) when collection
+     * stopped — at maxItems or at the page safety cap. False means the
+     * result is definitely complete.
+     */
     val truncated: Boolean,
 )
 
