@@ -473,7 +473,7 @@ Go, Python, Kotlin, and Ruby.
 - **TypeScript** implements the three-gate algorithm but chains at most 1 retry — on a retryable status, TS returns `fetch(retryRequest)` which bypasses middleware after the first retry (waiver 2B.1 in `rubric-audit.json`). **Kotlin** implements the three-gate algorithm for HTTP status retries (POST retries only when `idempotent: true`, full exponential backoff) but does not retry on network errors — transport exceptions are returned immediately as `BasecampException.Network`.
 - **Go** implements the three-gate on its generated operation path: it retries operations classified idempotent at generation time — GET/HEAD by method, plus any operation carrying `x-basecamp-idempotent` (the naturally-idempotent PUT/DELETE mutations like `UpdateProject`/`TrashProject`, and the flagged-idempotent POSTs like `CompleteTodo`) — with exponential backoff; non-idempotent operations (e.g. `CreateTodo`) are single-attempt. The separate hand-written `doRequestURL` helper remains GET-only for ordinary retries, with a mutation-specific single re-attempt after successful 401 token refresh.
 - **Ruby** is stricter: only GET retries; all non-GET methods do not retry. Governed GETs (those carrying their canonical operation ID) are bounded by the per-op ceiling and status-gated on the declared `retryOn`; ungoverned GETs (`get_absolute`, OAuth discovery) keep the taxonomy-driven pre-metadata contract. Ruby is acceptably conservative.
-- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the five idempotent POSTs (`CompleteTodo`, `PauseQuestion`, `SubscribeToCardColumn`, `Subscribe`, `EnableCardColumnOnHold`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors (unlike Kotlin/TS) but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
+- **Swift** implements the three-gate algorithm: the transport retries only when the method is naturally idempotent (GET/HEAD/PUT/DELETE) **or** the operation is marked `idempotent: true`, so non-idempotent POSTs like `CreateProject` are attempted exactly once while the seven idempotent POSTs (`CompleteTodo`, `CreateBookmark`, `EnableCardColumnOnHold`, `PauseQuestion`, `PrioritizeAssignment`, `Subscribe`, `SubscribeToCardColumn`) keep retrying. The gate covers both retry paths — HTTP status (`429`/`503`) and network errors — so Swift retries network errors (unlike Kotlin/TS) but only for retry-eligible operations. `BaseService` threads the per-operation flag from generated `Metadata` into the transport; the naturally-idempotent method set is allowlisted so PATCH/OPTIONS and future methods stay fail-closed.
 - The spec prescribes the three-gate algorithm. **TS note:** TS retry returns `fetch(retryRequest)` which bypasses middleware after the first retry, so TS effectively caps at 1 retry per request regardless of `max_attempts`. This is a known limitation (waiver 2B.1).
 
 ### Retry Algorithm
@@ -524,7 +524,7 @@ FUNCTION executeWithRetry(request, retry_config) → Response
         --   (1 = initial request failed, 2 = first retry failed, etc.)
         -- Standalone attempt = attempt+2: the 1-based attempt about to happen
         --   (2 = about to do first retry, 3 = about to do second retry, etc.)
-        -- This matches shipped SDKs: Go/Ruby/Kotlin pass the failed attempt in
+        -- This matches shipped SDKs: all six pass the failed attempt in
         -- RequestInfo and the next attempt number as the standalone parameter.
      k. Sleep delay ms.
      l. Refresh auth headers (token may have been refreshed during sleep).
@@ -1605,14 +1605,21 @@ Enumerated from `conformance/schema.json`:
 | Category | Files | Owning Spec Section(s) |
 |----------|-------|----------------------|
 | auth | `auth.json` | §4 Authentication, §13 HTTP Transport |
+| cards-write | `cards_write.json` | §5 Merge-Safe Write Surface (Cards), §18 Hand-Written Composite Methods |
+| downloads | `downloads.json` | §14 Download |
 | error-mapping | `error-mapping.json` | §6 Error Taxonomy |
 | idempotency | `idempotency.json` | §7 Retry (Gate 2) |
 | integer-precision | `integer-precision.json` | §10 Type Fidelity |
+| live-my-surface | `live-my-surface.json` | External governance (CONTRIBUTING.md, live canary — opt-in via `BASECAMP_LIVE`) |
+| network-retry | `network-retry.json` | §7 Retry (network errors, Gate 2) |
 | pagination | `pagination.json` | §8 Pagination |
 | paths | `paths.json` | §3 Client Architecture (account path construction) |
 | retry | `retry.json` | §7 Retry |
+| schedule-entries-write | `schedule_entries_write.json` | §10 Type Fidelity (explicit-empty vs. omitted wire semantics) |
 | security | `security.json` | §9 Security |
 | status-codes | `status-codes.json` | §11 Response Semantics |
+| todos-write | `todos_write.json` | §5 Merge-Safe Write Surface (Todos), §18 Hand-Written Composite Methods |
+| uploads-download | `uploads_download.json` | §14 Download, §18 Hand-Written Composite Methods |
 
 ### Runner Pattern
 
@@ -1628,7 +1635,68 @@ Enumerated from `conformance/schema.json`:
 
 ### Zero-Skip Target `[manual]`
 
-All conformance tests should pass. Runners currently pass with documented waivers covering: retry depth (TS single-chained retry, waiver 2B.1), integer precision (TS Number, waiver 1B.6), retry scope (Ruby only-GET retry), and pagination metadata (Ruby Enumerator lacks totalCount/truncated/maxItems, waivers 2C.2/2C.4/2C.6). Waivers are documented in each runner's skip list and in `rubric-audit.json` with language-specific rationale.
+All conformance tests should pass. The roster below enumerates every skip a
+default (mock-mode) conformance run reports, one line per runner × test,
+verbatim from the runners' skip mechanisms. A skip is
+either **waiver-backed** (a `rubric-audit.json` waiver ID), **architectural**
+(runner mechanics, compensated by native tests), or **unwaivered** (a known gap
+with no rubric record — tracked work, not an accepted divergence). A PR that
+closes a gap deletes exactly its own lines.
+
+**Go** (`conformance/runner/go/main.go` `goSDKSkips`) — architectural; same-origin
+logic is covered by `TestIsSameOrigin` unit tests:
+- "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
+- "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
+
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — unwaivered:
+- "maxItems caps results across pages" — list methods don't expose a public `max_items` parameter.
+- "maxItems landing exactly on the final item is not truncated" — same as above.
+- "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented.
+- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above.
+
+**Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
+- "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
+- "DELETE operation is naturally idempotent" — GET-only retry (waiver 2B.3).
+- "POST operation retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "Subscribe POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "CreateBookmark POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "DeleteBookmark DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "UpdateMyNote PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "UpdateCalendar PUT retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "DeprioritizeAssignment DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
+- "Network error on an idempotent POST is retried then succeeds" — GET-only network retry (waiver 2B.3).
+- "Total count header is accessible" — Enumerator exposes no totalCount metadata (waiver 2C.2).
+- "Missing X-Total-Count returns zero" — Enumerator exposes no totalCount metadata (waiver 2C.2).
+- "Pagination stops at maxPages safety cap" — cap is enforced, but truncation metadata is inexpressible (waiver 2C.6).
+- "maxItems caps results across pages" — no `max_items` support (waiver 2C.4).
+- "maxItems landing exactly on the final item is not truncated" — no `max_items` support (waiver 2C.4).
+- "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented (unwaivered).
+- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
+
+**TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
+- "GET operation retries on 503" — retry middleware chains at most 1 retry (waiver 2B.1).
+- "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
+- "DownloadURL retries on 503 at the auth'd first hop" — `downloadURL` uses raw fetch bypassing retry (unwaivered).
+- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
+- "Network error on an idempotent POST is retried then succeeds" — only HTTP-status retries are implemented (unwaivered).
+
+**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` plus one tag-based
+branch ahead of it):
+- "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `KOTLIN_SKIPS`: Kotlin auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural).
+- "DownloadURL auth'd first hop 302s to signed URL" — runner does not yet dispatch DownloadURL (unwaivered).
+- "DownloadURL direct 2xx body" — same as above (unwaivered).
+- "DownloadURL retries on 503 at the auth'd first hop" — same as above (unwaivered).
+- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
+- "DownloadURL surfaces redirect with no Location" — same as above (unwaivered).
+- "UploadsDownload delegates through DownloadURL primitive" — SDK does not yet expose `uploads.download(id)` (unwaivered).
+- "UploadsDownload errors when upload has no download_url" — same as above (unwaivered).
+- "Network error on an idempotent POST is retried then succeeds" — network errors on mutations are surfaced immediately, not retried (unwaivered).
+
+The TypeScript live canary additionally reports one placeholder skip when
+`BASECAMP_LIVE` is unset (`live-runner.test.ts`) — that is the opt-in gate for
+`live-my-surface.json` documented in the category table above, not a
+conformance gap, and it is deliberately not rostered.
 
 ---
 
@@ -1670,7 +1738,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `rb-check` | Ruby: test + rubocop |
 | `kt-check` | Kotlin: build + test |
 | `swift-check` | Swift: build + test |
-| `conformance` | All conformance test categories pass with documented waivers (go, kotlin, typescript, ruby runners) |
+| `conformance` | All conformance test categories pass with documented waivers (go, kotlin, python, ruby, typescript runners) |
 
 Representative dependency chain (see the Makefile `check:` line for the authoritative, complete list): `check: … sync-api-version-check url-routes-check go-check-drift … kt-check-drift … go-check ts-check rb-check kt-check swift-check py-check conformance …`
 
@@ -1827,6 +1895,19 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `status-codes.json` | Non-retryable not retried | §7, §11 |
 | `integer-precision.json` | Large integer IDs preserved | §10 |
 | `paths.json` | Path construction | §3 |
+| `downloads.json` | DownloadURL auth'd first hop 302s to signed URL | §14 |
+| `downloads.json` | DownloadURL direct 2xx body | §14 |
+| `downloads.json` | DownloadURL retries on 503 at the auth'd first hop | §14, §7 |
+| `downloads.json` | DownloadURL honors Retry-After on 429 at the auth'd first hop | §14, §7 |
+| `downloads.json` | DownloadURL surfaces redirect with no Location | §14 |
+| `network-retry.json` | Network error on a non-idempotent POST is not retried | §7 (Gate 2) |
+| `network-retry.json` | Network error on an idempotent POST is retried then succeeds | §7 (Gate 2) |
+| `uploads_download.json` | UploadsDownload delegates through DownloadURL primitive | §14, §18 |
+| `uploads_download.json` | UploadsDownload errors when upload has no download_url | §14, §18 |
+| `todos_write.json` | update-merge / edit-clear / replace-omission-clears | §5 (Todos), §18 |
+| `cards_write.json` | Merge-safe update composite (5 cases: due-on preservation, verbatim raw path, explicit clears/empties) | §5 (Cards), §18 |
+| `schedule_entries_write.json` | update-omits-participant-ids / update-empty-participant-ids | §10 |
+| `live-my-surface.json` | Live schema validation, 30 read-surface cases (opt-in via `BASECAMP_LIVE`) | External governance (CONTRIBUTING.md, live canary) |
 
 ---
 
