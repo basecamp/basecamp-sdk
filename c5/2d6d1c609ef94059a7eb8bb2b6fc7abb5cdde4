@@ -1,0 +1,65 @@
+behavior-model.json
+  s_289a344fc8a3ac::t_3518ae82d28591 514-525,2357-2368,2381-2391
+go/pkg/basecamp/url-routes.json
+  s_289a344fc8a3ac::t_0d708a70bdd80a 1213-1255
+go/pkg/generated/client.gen.go
+  s_289a344fc8a3ac::t_dd2cc60703e026 1941-1946,2223-2231,3968-3973,5031-5043,7067-7124,14506-14640,21372-21374,21619-21621,21864-21866,23346-23358,27493-27596,33225-33267,40766-40950
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/Metadata.kt
+  s_289a344fc8a3ac::t_c1fd61ea2d9b12 68,202,204
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_289a344fc8a3ac::t_b30d8308be2f07 489-499
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/my-assignments.kt
+  s_289a344fc8a3ac::t_59b74c729de044 75-133
+openapi.json
+  s_289a344fc8a3ac::t_7a140bd410b6fb 5,11037-11349,29983-29996,30775-30794
+python/src/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_f334b1b9f80cc8 510-521,1992-2003,2016-2026
+python/src/basecamp/generated/services/my_assignments.py
+  s_289a344fc8a3ac::t_6b3fb9bdb13448 37-64,89-116
+python/src/basecamp/generated/types.py
+  s_289a344fc8a3ac::t_c269d9702dbfaf 1168-1171,1371-1375
+ruby/lib/basecamp/generated/metadata.json
+  s_289a344fc8a3ac::t_762a93e2d59f11 4,1412-1450
+ruby/lib/basecamp/generated/services/my_assignments_service.rb
+  s_289a344fc8a3ac::t_66a7388f011781 35-65
+ruby/lib/basecamp/generated/types.rb
+  s_289a344fc8a3ac::t_82ea83ff1574ee 4
+spec/basecamp.smithy
+  s_289a344fc8a3ac::t_3ae9e3137cad43 54,290-292,8911-8994
+spec/overlays/tags.smithy
+  s_289a344fc8a3ac::t_2825964c48f8ad 220-222
+swift/Sources/Basecamp/Generated/Metadata.swift
+  s_289a344fc8a3ac::t_9f3a3eb46303dc 51,185,187,264,272
+swift/Sources/Basecamp/Generated/Models/PrioritizeAssignmentRequest.swift
+  s_289a344fc8a3ac::t_d920f28ef4426b 1-10
+swift/Sources/Basecamp/Generated/Models/ReorderUpNextRequest.swift
+  s_289a344fc8a3ac::t_72591c99089a7d 1-12
+swift/Sources/Basecamp/Generated/Services/MyAssignmentsService.swift
+  s_289a344fc8a3ac::t_381bb15c5c7b5a 14-22,53-72
+typescript/src/generated/metadata.ts
+  s_289a344fc8a3ac::t_afd63fe411fddc 40,1448-1486
+typescript/src/generated/openapi-stripped.json
+  s_289a344fc8a3ac::t_4fc8c041613be4 5,9846-10123,27273-27286,28065-28084
+typescript/src/generated/path-mapping.ts
+  s_289a344fc8a3ac::t_5ede4dd8ae66b8 220-222
+typescript/src/generated/schema.d.ts
+  s_289a344fc8a3ac::t_48cb7f792c8f3f 1437-1507,4651-4657,4925-4936,12778-12994
+typescript/src/generated/services/my-assignments.ts
+  s_289a344fc8a3ac::t_2f6613999abb1f 24-41,127-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c52d6d1c609ef94059a7eb8bb2b6fc7abb5cdde4",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
