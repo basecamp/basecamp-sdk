@@ -37,7 +37,7 @@ export interface MetadataOutput {
 const metadata: MetadataOutput = {
   "$schema": "https://basecamp.com/schemas/sdk-metadata.json",
   "version": "1.0.0",
-  "generated": "2026-07-30T23:13:57.100Z",
+  "generated": "2026-07-31T06:58:28.046Z",
   "operations": {
     "GetAccount": {
       "retry": {
@@ -151,6 +151,9 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "DisableCardColumnOnHold": {
@@ -2074,6 +2077,9 @@ const metadata: MetadataOutput = {
           429,
           503
         ]
+      },
+      "idempotent": {
+        "natural": true
       }
     },
     "UpdateSubscription": {
