@@ -243,6 +243,10 @@ async function executeOperation(
         await client.bookmarks.listMyBookmarks();
         break;
 
+      case "ListMyDrafts":
+        await client.drafts.listMyDrafts();
+        break;
+
       case "GetBookmark":
         await client.bookmarks.getBookmark(Number(params.recordingId));
         break;

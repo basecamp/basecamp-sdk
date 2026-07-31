@@ -64,6 +64,18 @@ def schema_to_type(schema: dict, schemas: dict, *, optional: bool = False) -> st
         t = f"{base} | None"
         return f"NotRequired[{t}]" if optional else t
 
+    # Required-and-nullable object member: `anyOf: [$ref, {type: "null"}]` —
+    # the OpenAPI 3.1 spelling of a present-but-nullable reference. Resolve the
+    # referenced model and union it with None.
+    any_of = schema.get("anyOf")
+    if isinstance(any_of, list) and len(any_of) == 2:
+        ref_member = next((m for m in any_of if "$ref" in m), None)
+        null_member = next((m for m in any_of if m.get("type") == "null"), None)
+        if ref_member and null_member:
+            base = schema_to_type(ref_member, schemas)
+            t = f"{base} | None"
+            return f"NotRequired[{t}]" if optional else t
+
     # types.FlexInt dimensions (rich-text attachment / upload width & height)
     # arrive float-spelled (1024.0) and Python's raw response.json() preserves
     # the float — there is no int-coercion layer — so the honest static type is

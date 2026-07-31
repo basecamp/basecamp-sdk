@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-31T10:49:28Z
+# Generated: 2026-07-31T11:47:01Z
 
 require "json"
 require "time"
@@ -1399,6 +1399,107 @@ module Basecamp
           "name" => @name,
           "supporting_text" => @supporting_text,
           "valid_patterns" => @valid_patterns,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Draft
+    class Draft
+      include TypeHelpers
+      attr_accessor :app_url, :bucket, :created_at, :excerpt, :id, :parent, :scheduled_posting_at, :title, :type, :updated_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url bucket created_at excerpt id parent scheduled_posting_at title type updated_at].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @bucket = parse_type(data["bucket"], "DraftBucket")
+        @created_at = parse_datetime(data["created_at"])
+        @excerpt = data["excerpt"]
+        @id = parse_integer(data["id"])
+        @parent = data["parent"]
+        @scheduled_posting_at = data["scheduled_posting_at"]
+        @title = data["title"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "bucket" => @bucket,
+          "created_at" => @created_at,
+          "excerpt" => @excerpt,
+          "id" => @id,
+          "parent" => @parent,
+          "scheduled_posting_at" => @scheduled_posting_at,
+          "title" => @title,
+          "type" => @type,
+          "updated_at" => @updated_at,
+        }.reject { |k, v| v.nil? && !["scheduled_posting_at"].include?(k) }
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # DraftBucket
+    class DraftBucket
+      include TypeHelpers
+      attr_accessor :app_url, :id, :name
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id name].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "id" => @id,
+          "name" => @name,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # DraftParent
+    class DraftParent
+      include TypeHelpers
+      attr_accessor :app_url, :id, :title
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url id title].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @id = parse_integer(data["id"])
+        @title = data["title"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "id" => @id,
+          "title" => @title,
         }.compact
       end
 

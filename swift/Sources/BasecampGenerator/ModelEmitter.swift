@@ -102,6 +102,17 @@ private func collectEntitySchemas(from schemaRef: String, schemas: [String: Any]
                 if !collected.contains(refName) {
                     collectEntitySchemas(from: refName, schemas: schemas, into: &collected)
                 }
+            } else if let anyOf = propSchema["anyOf"] as? [[String: Any]] {
+                // Required-and-nullable references (anyOf: [$ref, {type: "null"}])
+                // hide their $ref inside the union — traverse it too.
+                for member in anyOf {
+                    if let ref = member["$ref"] as? String {
+                        let refName = resolveRef(ref)
+                        if !collected.contains(refName) {
+                            collectEntitySchemas(from: refName, schemas: schemas, into: &collected)
+                        }
+                    }
+                }
             }
         }
     }

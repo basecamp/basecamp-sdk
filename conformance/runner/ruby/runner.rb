@@ -93,6 +93,8 @@ class OperationMapper
       )
     when "ListMyBookmarks"
       @account.bookmarks.list_my_bookmarks.to_a
+    when "ListMyDrafts"
+      @account.drafts.list_my_drafts.to_a
     when "GetBookmark"
       @account.bookmarks.get_bookmark(recording_id: path_params["recordingId"])
     when "CreateBookmark"

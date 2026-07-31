@@ -623,6 +623,31 @@ class DoorService(TypedDict):
     valid_patterns: NotRequired[list[str]]
 
 
+class Draft(TypedDict):
+    app_url: str
+    bucket: DraftBucket
+    created_at: str
+    excerpt: str
+    id: int
+    parent: DraftParent | None
+    scheduled_posting_at: str | None
+    title: str
+    type: str
+    updated_at: str
+
+
+class DraftBucket(TypedDict):
+    app_url: str
+    id: int
+    name: str
+
+
+class DraftParent(TypedDict):
+    app_url: str
+    id: int
+    title: str
+
+
 class EnableOutOfOfficeRequestContent(TypedDict):
     out_of_office: OutOfOfficePayload
 

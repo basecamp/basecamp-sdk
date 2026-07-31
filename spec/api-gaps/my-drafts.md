@@ -1,9 +1,14 @@
 ---
 gap: my-drafts
-status: addressed-in-bc3-pr-12381
+status: absorbed-in-sdk
 detected: 2026-07-26
 sdk_demand: medium
 bc3_pr: 12381
+smithy_refs:
+  - "ListMyDrafts operation"
+  - "Draft structure"
+  - "DraftBucket structure"
+  - "DraftParent structure"
 bc3_refs:
   introduced_in: master
   routes:
@@ -87,8 +92,12 @@ already-modeled operations, not new surface.
 
 ## SDK absorption plan when this lands
 
-Track as a dedicated absorption PR on top of this provenance sync: add the
-`DraftsService` + `ListMyDrafts` operation, the `Draft` envelope shape, a Go
-wrapper, and per-op happy-path + 4xx tests in TS/Ruby/Python plus a conformance
-`paths.json` entry. This entry flips to `absorbed-in-sdk` with `smithy_refs` when
-that PR lands.
+**Absorbed** (post-#504 program C6): `DraftsService` models `ListMyDrafts`
+with the flat `Draft` envelope. `parent` and `scheduled_posting_at` are modeled
+**required-and-nullable** (present on every element, null when bucket-rooted /
+unscheduled): the scalar uses the established `["string","null"]` jsonAdd, and
+the nullable `parent` object uses `anyOf: [$ref, {type: "null"}]` — a new
+treatment this PR taught the Kotlin, Swift, and Python generators (TS and Go
+already handled it), so all six SDKs type `parent` as nullable-required. Go
+wrapper + accessor, per-SDK tests incl. present-null fixtures, and a
+`paths.json` case whose mock is bucket-rooted to pin the null decode.

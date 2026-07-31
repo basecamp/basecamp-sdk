@@ -314,6 +314,7 @@ service Basecamp {
     GetMyNotifications,
     GetBubbleUps,
     MarkAsRead,
+    ListMyDrafts,
     ListMyBookmarks,
     GetBookmark,
     CreateBookmark,
@@ -9551,6 +9552,96 @@ structure GetBubbleUpsInput {
 
 structure GetBubbleUpsOutput {
   bubble_ups: NotificationList
+}
+
+// ===== My Drafts Operations =====
+
+/// List the current user's drafts across their active projects, most recently
+/// updated first (paginated, capped at 250 like /my/assignments). Five draft
+/// kinds are returned: messages, documents, uploads, client approvals, and
+/// client correspondences. Drafts under archived or trashed projects are
+/// excluded.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/my/drafts.json")
+operation ListMyDrafts {
+  input: ListMyDraftsInput
+  output: ListMyDraftsOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListMyDraftsInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure ListMyDraftsOutput {
+  drafts: DraftList
+}
+
+list DraftList {
+  member: Draft
+}
+
+/// A draft envelope: a message, document, upload, or client approval/
+/// correspondence saved but not yet published. Flat and purpose-built —
+/// NOT the shared recording projection.
+structure Draft {
+  @required
+  id: Long
+  @required
+  app_url: String
+  @required
+  title: String
+  /// Short recordable name: message, document, upload, client_approval,
+  /// or client_correspondence.
+  @required
+  type: String
+  @required
+  bucket: DraftBucket
+  /// Parent recording the draft is filed under. Always present on the wire,
+  /// `null` for drafts filed directly under their bucket. `@required` models
+  /// the presence; value nullability is layered in the OpenAPI
+  /// (smithy-build.json jsonAdd) — the Wormhole.destination_url treatment.
+  @required
+  parent: DraftParent
+  /// Up to 300 characters of plain text; empty string when the draft has no body.
+  @required
+  excerpt: String
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  /// Always present; `null` unless the draft is scheduled to publish later.
+  /// Required-presence with nullable value, like `parent`.
+  @required
+  scheduled_posting_at: ISO8601Timestamp
+}
+
+/// The project a draft lives in (drafts-specific projection: id, name, app_url).
+structure DraftBucket {
+  @required
+  id: Long
+  @required
+  name: String
+  @required
+  app_url: String
+}
+
+/// The parent recording a draft is filed under (id, title, app_url).
+structure DraftParent {
+  @required
+  id: Long
+  @required
+  title: String
+  @required
+  app_url: String
 }
 
 // ===== My Bookmarks Operations =====

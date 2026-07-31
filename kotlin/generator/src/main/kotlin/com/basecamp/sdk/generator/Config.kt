@@ -315,6 +315,10 @@ val TYPE_ALIASES = mapOf(
     "Subscription" to "Subscription",
     "Bookmark" to "Bookmark",
     "BookmarkStatus" to "BookmarkStatus",
+    "Draft" to "Draft",
+    // DraftParent is referenced only through the nullable anyOf union, which the
+    // supporting-type scanner does not traverse — list it explicitly.
+    "DraftParent" to "DraftParent",
     "Forward" to "Forward",
     "ForwardReply" to "ForwardReply",
     "Inbox" to "Inbox",

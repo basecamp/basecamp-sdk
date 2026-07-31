@@ -486,6 +486,11 @@ module Basecamp
       service(:bookmarks) { Services::BookmarksService.new(self) }
     end
 
+    # @return [Services::DraftsService]
+    def drafts
+      service(:drafts) { Services::DraftsService.new(self) }
+    end
+
     # @return [Services::SubscriptionsService]
     def subscriptions
       service(:subscriptions) { Services::SubscriptionsService.new(self) }

@@ -462,6 +462,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Subscription: ["Subscription", "entity"],
   Bookmark: ["Bookmark", "entity"],
   BookmarkStatus: ["BookmarkStatus", "entity"],
+  Draft: ["Draft", "entity"],
   Forward: ["Forward", "entity"],
   ForwardReply: ["ForwardReply", "entity"],
   Inbox: ["Inbox", "entity"],

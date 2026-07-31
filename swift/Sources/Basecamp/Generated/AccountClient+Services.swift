@@ -19,6 +19,7 @@ extension AccountClient {
     public var clientVisibility: ClientVisibilityService { service("clientVisibility") { ClientVisibilityService(accountClient: self) } }
     public var comments: CommentsService { service("comments") { CommentsService(accountClient: self) } }
     public var documents: DocumentsService { service("documents") { DocumentsService(accountClient: self) } }
+    public var drafts: DraftsService { service("drafts") { DraftsService(accountClient: self) } }
     public var events: EventsService { service("events") { EventsService(accountClient: self) } }
     public var everything: EverythingService { service("everything") { EverythingService(accountClient: self) } }
     public var forwards: ForwardsService { service("forwards") { ForwardsService(accountClient: self) } }

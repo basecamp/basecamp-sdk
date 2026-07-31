@@ -89,11 +89,27 @@ func schemaIsNullable(_ schema: [String: Any]) -> Bool {
     if let types = schema["type"] as? [Any] {
         return types.contains { ($0 as? String) == "null" }
     }
+    // Required-and-nullable object member: anyOf: [$ref, {type: "null"}] — the
+    // OpenAPI 3.1 spelling of a present-but-nullable reference.
+    if let anyOf = schema["anyOf"] as? [[String: Any]], anyOf.count == 2 {
+        let hasNull = anyOf.contains { ($0["type"] as? String) == "null" }
+        let hasRef = anyOf.contains { $0["$ref"] != nil }
+        return hasNull && hasRef
+    }
     return false
 }
 
 func schemaToSwiftType(_ schema: [String: Any]) -> String {
     if let ref = schema["$ref"] as? String {
+        return resolveRef(ref)
+    }
+    // Nullable reference union (anyOf: [$ref, {type: "null"}]): map to the
+    // referenced model; nullability is layered on by the emitter via
+    // schemaIsNullable.
+    if let anyOf = schema["anyOf"] as? [[String: Any]], anyOf.count == 2,
+       anyOf.contains(where: { ($0["type"] as? String) == "null" }),
+       let refMember = anyOf.first(where: { $0["$ref"] != nil }),
+       let ref = refMember["$ref"] as? String {
         return resolveRef(ref)
     }
     // OpenAPI 3.1 nullable union (type: [..., "null"]): map the non-null member

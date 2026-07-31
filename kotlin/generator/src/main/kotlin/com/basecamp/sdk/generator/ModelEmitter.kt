@@ -148,6 +148,25 @@ class ModelEmitter(private val api: OpenApiParser) {
             return if (isRequired) typeName else "$typeName?"
         }
 
+        // Required-and-nullable object member: `anyOf: [$ref, {type: "null"}]` —
+        // the OpenAPI 3.1 spelling of a present-but-nullable reference (the
+        // object counterpart of the ["string","null"] union above). Resolve to
+        // the referenced model, nullable regardless of requiredness.
+        val anyOf = schema["anyOf"]
+        if (anyOf is JsonArray && anyOf.size == 2) {
+            val members = anyOf.mapNotNull { it as? JsonObject }
+            val refMember = members.firstOrNull { it.containsKey("\$ref") }
+            val nullMember = members.firstOrNull { it["type"]?.jsonPrimitive?.contentOrNull == "null" }
+            if (refMember != null && nullMember != null) {
+                val nullableRef = refMember["\$ref"]?.jsonPrimitive?.content
+                if (nullableRef != null) {
+                    val refName = api.resolveRef(nullableRef)
+                    val typeName = TYPE_ALIASES[refName] ?: refName
+                    return "$typeName?"
+                }
+            }
+        }
+
         // Flexible integer fields (string-or-number on the wire)
         val goType = schema["x-go-type"]?.jsonPrimitive?.content
         if (goType?.contains("FlexibleInt64") == true) {

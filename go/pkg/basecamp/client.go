@@ -84,6 +84,7 @@ type AccountClient struct {
 	lineup                *LineupService
 	subscriptions         *SubscriptionsService
 	bookmarks             *BookmarksService
+	drafts                *DraftsService
 	boosts                *BoostsService
 	campfires             *CampfiresService
 	timesheet             *TimesheetService
@@ -1137,6 +1138,16 @@ func (ac *AccountClient) Lineup() *LineupService {
 		ac.lineup = NewLineupService(ac)
 	}
 	return ac.lineup
+}
+
+// Drafts returns the DraftsService for the current user's unpublished drafts.
+func (ac *AccountClient) Drafts() *DraftsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.drafts == nil {
+		ac.drafts = NewDraftsService(ac)
+	}
+	return ac.drafts
 }
 
 // Bookmarks returns the BookmarksService for the current user's bookmarks.

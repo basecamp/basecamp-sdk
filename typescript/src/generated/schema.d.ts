@@ -1340,6 +1340,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/drafts.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List the current user's drafts across their active projects, most recently
+         *     updated first (paginated, capped at 250 like /my/assignments). Five draft
+         *     kinds are returned: messages, documents, uploads, client approvals, and
+         *     client correspondences. Drafts under archived or trashed projects are
+         *     excluded.
+         */
+        get: operations["ListMyDrafts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my/preferences.json": {
         parameters: {
             query?: never;
@@ -3667,6 +3690,47 @@ export interface components {
             valid_patterns?: string[];
             supporting_text?: string;
         };
+        /**
+         * @description A draft envelope: a message, document, upload, or client approval/
+         *     correspondence saved but not yet published. Flat and purpose-built —
+         *     NOT the shared recording projection.
+         */
+        Draft: {
+            /** Format: int64 */
+            id: number;
+            app_url: string;
+            title: string;
+            /**
+             * @description Short recordable name: message, document, upload, client_approval,
+             *     or client_correspondence.
+             */
+            type: string;
+            bucket: components["schemas"]["DraftBucket"];
+            parent: components["schemas"]["DraftParent"] | null;
+            /** @description Up to 300 characters of plain text; empty string when the draft has no body. */
+            excerpt: string;
+            created_at: string;
+            updated_at: string;
+            /**
+             * @description Always present; `null` unless the draft is scheduled to publish later.
+             *     Required-presence with nullable value, like `parent`.
+             */
+            scheduled_posting_at: string | null;
+        };
+        /** @description The project a draft lives in (drafts-specific projection: id, name, app_url). */
+        DraftBucket: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            app_url: string;
+        };
+        /** @description The parent recording a draft is filed under (id, title, app_url). */
+        DraftParent: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            app_url: string;
+        };
         EnableCardColumnOnHoldResponseContent: components["schemas"]["CardColumn"];
         EnableOutOfOfficeRequestContent: {
             out_of_office: components["schemas"]["OutOfOfficePayload"];
@@ -4091,6 +4155,7 @@ export interface components {
         ListMessageTypesResponseContent: components["schemas"]["MessageType"][];
         ListMessagesResponseContent: components["schemas"]["Message"][];
         ListMyBookmarksResponseContent: components["schemas"]["Bookmark"][];
+        ListMyDraftsResponseContent: components["schemas"]["Draft"][];
         ListPeopleResponseContent: components["schemas"]["Person"][];
         ListPingablePeopleResponseContent: components["schemas"]["Person"][];
         ListProjectPeopleResponseContent: components["schemas"]["Person"][];
@@ -12027,6 +12092,65 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ListMyBookmarksResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    ListMyDrafts: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListMyDrafts 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMyDraftsResponseContent"];
                 };
             };
             /** @description UnauthorizedError 401 response */

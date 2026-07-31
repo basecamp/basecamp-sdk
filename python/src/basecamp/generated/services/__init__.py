@@ -20,6 +20,7 @@ from basecamp.generated.services.client_replies import ClientRepliesService, Asy
 from basecamp.generated.services.client_visibility import ClientVisibilityService, AsyncClientVisibilityService
 from basecamp.generated.services.comments import CommentsService, AsyncCommentsService
 from basecamp.generated.services.documents import DocumentsService, AsyncDocumentsService
+from basecamp.generated.services.drafts import DraftsService, AsyncDraftsService
 from basecamp.generated.services.events import EventsService, AsyncEventsService
 from basecamp.generated.services.everything import EverythingService, AsyncEverythingService
 from basecamp.generated.services.forwards import ForwardsService, AsyncForwardsService
@@ -86,6 +87,8 @@ __all__ = [
     "AsyncCommentsService",
     "DocumentsService",
     "AsyncDocumentsService",
+    "DraftsService",
+    "AsyncDraftsService",
     "EventsService",
     "AsyncEventsService",
     "EverythingService",

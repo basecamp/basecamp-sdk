@@ -241,6 +241,7 @@ apply GetEverythingNotNowCards @tags(["Everything"])
 // My Notifications
 apply GetMyNotifications @tags(["MyNotifications"])
 apply GetBubbleUps @tags(["MyNotifications"])
+apply ListMyDrafts @tags(["Drafts"])
 apply ListMyBookmarks @tags(["Bookmarks"])
 apply GetBookmark @tags(["Bookmarks"])
 apply CreateBookmark @tags(["Bookmarks"])

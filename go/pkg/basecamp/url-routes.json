@@ -1152,6 +1152,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/drafts",
+      "resource": "Drafts",
+      "operations": {
+        "GET": "ListMyDrafts"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/preferences",
       "resource": "People",
       "operations": {

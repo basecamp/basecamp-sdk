@@ -539,6 +539,10 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Bookmarks().List(ctx, 0)
 		return operationResult{err: err}
 
+	case "ListMyDrafts":
+		_, err := account.Drafts().List(ctx, 0)
+		return operationResult{err: err}
+
 	case "GetBookmark":
 		recordingID := getInt64Param(tc.PathParams, "recordingId")
 		_, err := account.Bookmarks().Get(ctx, recordingID)
