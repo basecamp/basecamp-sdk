@@ -221,6 +221,44 @@ _OVERDUE_CARDS_FEED = [
 ]
 
 
+class TestEverythingTaskFilters:
+    """assignee_ids[]/due filters on the everything to-do/card family (#12442)."""
+
+    @respx.mock
+    def test_grouped_listing_serializes_bracketed_assignee_ids_and_due(self):
+        def respond(request: httpx.Request) -> httpx.Response:
+            params = request.url.params
+            # Bracketed repeated keys — the only form Rails' permit accepts.
+            assert params.get_list("assignee_ids[]") == ["11", "22"]
+            assert "assignee_ids" not in params
+            assert params.get("due") == "overdue"
+            return httpx.Response(200, json=[])
+
+        route = respx.get("https://3.basecampapi.com/12345/todos/open.json").mock(side_effect=respond)
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_open_todos(assignee_ids=[11, 22], due="overdue")
+
+        assert route.called
+        assert len(result) == 0
+
+    @respx.mock
+    def test_overdue_feed_accepts_the_filters(self):
+        def respond(request: httpx.Request) -> httpx.Response:
+            params = request.url.params
+            assert params.get_list("assignee_ids[]") == ["7"]
+            assert params.get("due") == "with"
+            return httpx.Response(200, json=[])
+
+        route = respx.get("https://3.basecampapi.com/12345/cards/overdue.json").mock(side_effect=respond)
+
+        account = Client(access_token="test-token").for_account("12345")
+        result = account.everything.get_everything_overdue_cards(assignee_ids=[7], due="with")
+
+        assert route.called
+        assert len(result) == 0
+
+
 class TestEverythingRecordingFeeds:
     @respx.mock
     def test_messages_feed_embeds_bucket_roots(self):

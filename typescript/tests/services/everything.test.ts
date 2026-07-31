@@ -346,6 +346,40 @@ describe("EverythingService", () => {
   });
 
   describe("everythingOpenTodos", () => {
+    it("encodes the due filter and repeatable assignee_ids[] in the query string", async () => {
+      let captured = "";
+      server.use(
+        http.get(`${BASE_URL}/todos/open.json`, ({ request }) => {
+          captured = new URL(request.url).search;
+          return HttpResponse.json([]);
+        })
+      );
+
+      await client.everything.everythingOpenTodos({ assigneeIds: [11, 22], due: "overdue" });
+
+      const params = new URLSearchParams(captured);
+      expect(params.get("due")).toBe("overdue");
+      // assignee_ids[] is a repeatable array param: both ids must appear under
+      // the bracketed key, not a single comma-joined value.
+      expect(params.getAll("assignee_ids[]")).toEqual(["11", "22"]);
+    });
+
+    it("encodes the filters on the unpaginated overdue feed too", async () => {
+      let captured = "";
+      server.use(
+        http.get(`${BASE_URL}/todos/overdue.json`, ({ request }) => {
+          captured = new URL(request.url).search;
+          return HttpResponse.json([]);
+        })
+      );
+
+      await client.everything.everythingOverdueTodos({ assigneeIds: [7], due: "with" });
+
+      const params = new URLSearchParams(captured);
+      expect(params.getAll("assignee_ids[]")).toEqual(["7"]);
+      expect(params.get("due")).toBe("with");
+    });
+
     it("should decode the /todos/open.json feed grouped by bucket, each to-do carrying its steps", async () => {
       const fixture = [
         {
