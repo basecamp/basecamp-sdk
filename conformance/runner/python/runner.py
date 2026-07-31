@@ -37,8 +37,8 @@ _MISSING = object()
 class TestTracker:
     requests: list[dict] = field(default_factory=list)
 
-    def record_request(self, *, time: float, method: str, url: str, headers: dict, body: Any = None) -> None:
-        self.requests.append({"time": time, "method": method, "url": url, "headers": headers, "body": body})
+    def record_request(self, *, monotonic_time: float, method: str, url: str, headers: dict, body: Any = None) -> None:
+        self.requests.append({"monotonic_time": monotonic_time, "method": method, "url": url, "headers": headers, "body": body})
 
     def reset(self) -> None:
         self.requests.clear()
@@ -49,10 +49,14 @@ class TestTracker:
 
     @property
     def delays_between_requests(self) -> list[int]:
+        # Elapsed ms between consecutive requests, from monotonic captures.
+        # Wall-clock (time.time) can step or slew mid-test and read a sleep
+        # as shorter than it was — the delay-flake class from #496. Monotonic
+        # deltas mirror the Go runner's time.Time subtraction.
         if len(self.requests) < 2:
             return []
         return [
-            int((b["time"] - a["time"]) * 1000)
+            int((b["monotonic_time"] - a["monotonic_time"]) * 1000)
             for a, b in zip(self.requests, self.requests[1:])
         ]
 
@@ -306,7 +310,7 @@ class TestRunner:
             except ValueError:
                 request_body = None
             self._tracker.record_request(
-                time=time.time(),
+                monotonic_time=time.monotonic(),
                 method=str(request.method),
                 url=str(request.url),
                 headers=dict(request.headers),

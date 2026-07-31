@@ -11,7 +11,6 @@ require "basecamp"
 require "webmock"
 require "json"
 require "set"
-require "time"
 
 WebMock.enable!
 WebMock.disable_net_connect!
@@ -25,9 +24,9 @@ class TestTracker
     @mutex = Mutex.new
   end
 
-  def record_request(time:, method:, uri:, headers: {}, body: nil)
+  def record_request(monotonic_time:, method:, uri:, headers: {}, body: nil)
     @mutex.synchronize do
-      @requests << { time: time, method: method, uri: uri.to_s, headers: headers, body: body }
+      @requests << { monotonic_time: monotonic_time, method: method, uri: uri.to_s, headers: headers, body: body }
     end
   end
 
@@ -39,11 +38,15 @@ class TestTracker
     @requests.size
   end
 
+  # Elapsed ms between consecutive requests, from monotonic captures.
+  # Wall-clock (Time.now) can step or slew mid-test and read a sleep as
+  # shorter than it was — the delay-flake class from #496. Monotonic
+  # deltas mirror the Go runner's time.Time subtraction.
   def delays_between_requests
     return [] if @requests.size < 2
 
     @requests.each_cons(2).map do |a, b|
-      ((b[:time] - a[:time]) * 1000).to_i # milliseconds
+      ((b[:monotonic_time] - a[:monotonic_time]) * 1000).to_i # milliseconds
     end
   end
 end
@@ -395,7 +398,7 @@ class TestRunner
     call_count = 0
     stub.to_return do |request|
       @tracker.record_request(
-        time: Time.now,
+        monotonic_time: Process.clock_gettime(Process::CLOCK_MONOTONIC),
         method: request.method,
         uri: request.uri,
         headers: request.headers,
