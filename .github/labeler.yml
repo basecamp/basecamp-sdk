@@ -37,21 +37,8 @@ github-actions:
   - changed-files:
       - any-glob-to-any-file: ".github/**"
 
-documentation:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "*.md"
-          - "docs/**"
-
-dependencies:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "**/package.json"
-          - "**/package-lock.json"
-          - "**/go.mod"
-          - "**/go.sum"
-          - "**/Gemfile"
-          - "**/Gemfile.lock"
-          - "**/build.gradle.kts"
-          - "**/gradle.lockfile"
-          - "**/gradle/libs.versions.toml"
+# Deliberately absent: `documentation` and `dependencies`. Both are release-notes
+# categories in .github/release.yml, so auto-applying them by path misfiles any
+# feature or fix PR that happens to touch docs or a package manifest. Apply them
+# by hand when a PR really is docs-only or a dependency bump (Dependabot labels
+# its own PRs `dependencies`).
