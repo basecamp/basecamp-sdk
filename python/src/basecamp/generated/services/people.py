@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class PeopleService(BaseService):
-    def list_pingable(self) -> ListResult:
+    def list_pingable(self, *, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="people", operation="list_pingable", is_mutation=False),
             "/circles/people.json",
+            max_items=max_items,
             operation="ListPingablePeople",
         )
 
@@ -72,9 +73,12 @@ class PeopleService(BaseService):
             operation="UpdateMyProfile",
         )
 
-    def list(self) -> ListResult:
+    def list(self, *, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
-            OperationInfo(service="people", operation="list", is_mutation=False), "/people.json", operation="ListPeople"
+            OperationInfo(service="people", operation="list", is_mutation=False),
+            "/people.json",
+            max_items=max_items,
+            operation="ListPeople",
         )
 
     def get(self, *, person_id: int) -> dict[str, Any]:
@@ -110,10 +114,11 @@ class PeopleService(BaseService):
             operation="DisableOutOfOffice",
         )
 
-    def list_for_project(self, *, project_id: int) -> ListResult:
+    def list_for_project(self, *, project_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
+            max_items=max_items,
             operation="ListProjectPeople",
         )
 
@@ -142,10 +147,11 @@ class PeopleService(BaseService):
 
 
 class AsyncPeopleService(AsyncBaseService):
-    async def list_pingable(self) -> ListResult:
+    async def list_pingable(self, *, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_pingable", is_mutation=False),
             "/circles/people.json",
+            max_items=max_items,
             operation="ListPingablePeople",
         )
 
@@ -203,9 +209,12 @@ class AsyncPeopleService(AsyncBaseService):
             operation="UpdateMyProfile",
         )
 
-    async def list(self) -> ListResult:
+    async def list(self, *, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
-            OperationInfo(service="people", operation="list", is_mutation=False), "/people.json", operation="ListPeople"
+            OperationInfo(service="people", operation="list", is_mutation=False),
+            "/people.json",
+            max_items=max_items,
+            operation="ListPeople",
         )
 
     async def get(self, *, person_id: int) -> dict[str, Any]:
@@ -241,10 +250,11 @@ class AsyncPeopleService(AsyncBaseService):
             operation="DisableOutOfOffice",
         )
 
-    async def list_for_project(self, *, project_id: int) -> ListResult:
+    async def list_for_project(self, *, project_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
+            max_items=max_items,
             operation="ListProjectPeople",
         )
 

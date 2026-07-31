@@ -45,10 +45,11 @@ class CardsService(BaseService):
             operation="MoveCard",
         )
 
-    def list(self, *, column_id: int) -> ListResult:
+    def list(self, *, column_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="cards", operation="list", is_mutation=False, resource_id=column_id),
             f"/card_tables/lists/{column_id}/cards.json",
+            max_items=max_items,
             operation="ListCards",
         )
 
@@ -105,10 +106,11 @@ class AsyncCardsService(AsyncBaseService):
             operation="MoveCard",
         )
 
-    async def list(self, *, column_id: int) -> ListResult:
+    async def list(self, *, column_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="cards", operation="list", is_mutation=False, resource_id=column_id),
             f"/card_tables/lists/{column_id}/cards.json",
+            max_items=max_items,
             operation="ListCards",
         )
 

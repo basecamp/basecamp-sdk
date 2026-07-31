@@ -11,11 +11,14 @@ from basecamp.hooks import OperationInfo
 
 
 class MessagesService(BaseService):
-    def list(self, *, board_id: int, sort: str | None = None, direction: str | None = None) -> ListResult:
+    def list(
+        self, *, board_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
             params=self._compact(sort=sort, direction=direction),
+            max_items=max_items,
             operation="ListMessages",
         )
 
@@ -88,11 +91,14 @@ class MessagesService(BaseService):
 
 
 class AsyncMessagesService(AsyncBaseService):
-    async def list(self, *, board_id: int, sort: str | None = None, direction: str | None = None) -> ListResult:
+    async def list(
+        self, *, board_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="messages", operation="list", is_mutation=False, resource_id=board_id),
             f"/message_boards/{board_id}/messages.json",
             params=self._compact(sort=sort, direction=direction),
+            max_items=max_items,
             operation="ListMessages",
         )
 

@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class ClientRepliesService(BaseService):
-    def list(self, *, recording_id: int) -> ListResult:
+    def list(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="clientreplies", operation="list", is_mutation=False, resource_id=recording_id),
             f"/client/recordings/{recording_id}/replies.json",
+            max_items=max_items,
             operation="ListClientReplies",
         )
 
@@ -28,10 +29,11 @@ class ClientRepliesService(BaseService):
 
 
 class AsyncClientRepliesService(AsyncBaseService):
-    async def list(self, *, recording_id: int) -> ListResult:
+    async def list(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="clientreplies", operation="list", is_mutation=False, resource_id=recording_id),
             f"/client/recordings/{recording_id}/replies.json",
+            max_items=max_items,
             operation="ListClientReplies",
         )
 

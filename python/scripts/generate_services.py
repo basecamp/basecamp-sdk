@@ -583,6 +583,11 @@ def build_params(op: dict) -> list[str]:
         hint = python_type_hint(q["type"])
         params.append(f"{q['python_name']}: {hint} | None = None")
 
+    # Paginated operations take a client-side cap on collected items,
+    # matching the maxItems pagination option in the other SDKs.
+    if op["has_pagination"]:
+        params.append("max_items: int | None = None")
+
     return params
 
 
@@ -702,18 +707,18 @@ def generate_method_body(op: dict, service_name: str, *, is_async: bool) -> list
         if op["query_params"]:
             lines.append(f"        return {_await(is_async)}self._request_paginated_wrapped(")
             lines.append(f'            OperationInfo({info_kwargs}), {path_expr}, "{key}",')
-            lines.append(f"            params={build_query_params_expr(op)}{operation_kwarg(op)},")
+            lines.append(f"            params={build_query_params_expr(op)}, max_items=max_items{operation_kwarg(op)},")
             lines.append("        )")
         else:
-            lines.append(f'        return {_await(is_async)}self._request_paginated_wrapped(OperationInfo({info_kwargs}), {path_expr}, "{key}"{operation_kwarg(op)})')
+            lines.append(f'        return {_await(is_async)}self._request_paginated_wrapped(OperationInfo({info_kwargs}), {path_expr}, "{key}", max_items=max_items{operation_kwarg(op)})')
     elif is_paginated_list(op):
         if op["query_params"]:
             lines.append(f"        return {_await(is_async)}self._request_paginated(")
             lines.append(f"            OperationInfo({info_kwargs}), {path_expr},")
-            lines.append(f"            params={build_query_params_expr(op)}{operation_kwarg(op)},")
+            lines.append(f"            params={build_query_params_expr(op)}, max_items=max_items{operation_kwarg(op)},")
             lines.append("        )")
         else:
-            lines.append(f"        return {_await(is_async)}self._request_paginated(OperationInfo({info_kwargs}), {path_expr}{operation_kwarg(op)})")
+            lines.append(f"        return {_await(is_async)}self._request_paginated(OperationInfo({info_kwargs}), {path_expr}, max_items=max_items{operation_kwarg(op)})")
     elif is_unpaginated_array(op):
         if op["query_params"]:
             lines.append(f"        return {_await(is_async)}self._request_list(")

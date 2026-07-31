@@ -11,11 +11,12 @@ from basecamp.hooks import OperationInfo
 
 
 class BookmarksService(BaseService):
-    def list_my_bookmarks(self, *, page: int | None = None) -> ListResult:
+    def list_my_bookmarks(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="bookmarks", operation="list_my_bookmarks", is_mutation=False),
             "/my/bookmarks.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="ListMyBookmarks",
         )
 
@@ -45,11 +46,12 @@ class BookmarksService(BaseService):
 
 
 class AsyncBookmarksService(AsyncBaseService):
-    async def list_my_bookmarks(self, *, page: int | None = None) -> ListResult:
+    async def list_my_bookmarks(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="bookmarks", operation="list_my_bookmarks", is_mutation=False),
             "/my/bookmarks.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="ListMyBookmarks",
         )
 

@@ -12,7 +12,12 @@ from basecamp.hooks import OperationInfo
 
 class EverythingService(BaseService):
     def get_everything_completed_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
@@ -20,11 +25,17 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingCompletedCards",
         )
 
     def get_everything_no_due_date_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_cards", is_mutation=False),
@@ -32,11 +43,17 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingNoDueDateCards",
         )
 
     def get_everything_not_now_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_not_now_cards", is_mutation=False),
@@ -44,11 +61,17 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingNotNowCards",
         )
 
     def get_everything_open_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_cards", is_mutation=False),
@@ -56,6 +79,7 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingOpenCards",
         )
 
@@ -70,7 +94,12 @@ class EverythingService(BaseService):
         )
 
     def get_everything_unassigned_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_cards", is_mutation=False),
@@ -78,53 +107,69 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingUnassignedCards",
         )
 
-    def get_everything_checkins(self, *, page: int | None = None) -> ListResult:
+    def get_everything_checkins(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_checkins", is_mutation=False),
             "/checkins.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingCheckins",
         )
 
-    def get_everything_comments(self, *, page: int | None = None) -> ListResult:
+    def get_everything_comments(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_comments", is_mutation=False),
             "/comments.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingComments",
         )
 
     def get_everything_files(
-        self, *, kind: str | None = None, people_ids: list[int] | None = None, page: int | None = None
+        self,
+        *,
+        kind: str | None = None,
+        people_ids: list[int] | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_files", is_mutation=False),
             "/files.json",
             params={k: v for k, v in {"kind": kind, "people_ids[]": people_ids, "page": page}.items() if v is not None},
+            max_items=max_items,
             operation="GetEverythingFiles",
         )
 
-    def get_everything_forwards(self, *, page: int | None = None) -> ListResult:
+    def get_everything_forwards(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_forwards", is_mutation=False),
             "/forwards.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingForwards",
         )
 
-    def get_everything_messages(self, *, page: int | None = None) -> ListResult:
+    def get_everything_messages(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_messages", is_mutation=False),
             "/messages.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingMessages",
         )
 
     def get_everything_completed_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_todos", is_mutation=False),
@@ -132,11 +177,17 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingCompletedTodos",
         )
 
     def get_everything_no_due_date_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_todos", is_mutation=False),
@@ -144,11 +195,17 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingNoDueDateTodos",
         )
 
     def get_everything_open_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_todos", is_mutation=False),
@@ -156,6 +213,7 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingOpenTodos",
         )
 
@@ -170,7 +228,12 @@ class EverythingService(BaseService):
         )
 
     def get_everything_unassigned_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_todos", is_mutation=False),
@@ -178,13 +241,19 @@ class EverythingService(BaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingUnassignedTodos",
         )
 
 
 class AsyncEverythingService(AsyncBaseService):
     async def get_everything_completed_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_cards", is_mutation=False),
@@ -192,11 +261,17 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingCompletedCards",
         )
 
     async def get_everything_no_due_date_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_cards", is_mutation=False),
@@ -204,11 +279,17 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingNoDueDateCards",
         )
 
     async def get_everything_not_now_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_not_now_cards", is_mutation=False),
@@ -216,11 +297,17 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingNotNowCards",
         )
 
     async def get_everything_open_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_cards", is_mutation=False),
@@ -228,6 +315,7 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingOpenCards",
         )
 
@@ -242,7 +330,12 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_unassigned_cards(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_cards", is_mutation=False),
@@ -250,53 +343,69 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingUnassignedCards",
         )
 
-    async def get_everything_checkins(self, *, page: int | None = None) -> ListResult:
+    async def get_everything_checkins(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_checkins", is_mutation=False),
             "/checkins.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingCheckins",
         )
 
-    async def get_everything_comments(self, *, page: int | None = None) -> ListResult:
+    async def get_everything_comments(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_comments", is_mutation=False),
             "/comments.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingComments",
         )
 
     async def get_everything_files(
-        self, *, kind: str | None = None, people_ids: list[int] | None = None, page: int | None = None
+        self,
+        *,
+        kind: str | None = None,
+        people_ids: list[int] | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_files", is_mutation=False),
             "/files.json",
             params={k: v for k, v in {"kind": kind, "people_ids[]": people_ids, "page": page}.items() if v is not None},
+            max_items=max_items,
             operation="GetEverythingFiles",
         )
 
-    async def get_everything_forwards(self, *, page: int | None = None) -> ListResult:
+    async def get_everything_forwards(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_forwards", is_mutation=False),
             "/forwards.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingForwards",
         )
 
-    async def get_everything_messages(self, *, page: int | None = None) -> ListResult:
+    async def get_everything_messages(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_messages", is_mutation=False),
             "/messages.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetEverythingMessages",
         )
 
     async def get_everything_completed_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_completed_todos", is_mutation=False),
@@ -304,11 +413,17 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingCompletedTodos",
         )
 
     async def get_everything_no_due_date_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_no_due_date_todos", is_mutation=False),
@@ -316,11 +431,17 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingNoDueDateTodos",
         )
 
     async def get_everything_open_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_open_todos", is_mutation=False),
@@ -328,6 +449,7 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingOpenTodos",
         )
 
@@ -342,7 +464,12 @@ class AsyncEverythingService(AsyncBaseService):
         )
 
     async def get_everything_unassigned_todos(
-        self, *, assignee_ids: list[int] | None = None, due: str | None = None, page: int | None = None
+        self,
+        *,
+        assignee_ids: list[int] | None = None,
+        due: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="everything", operation="get_everything_unassigned_todos", is_mutation=False),
@@ -350,5 +477,6 @@ class AsyncEverythingService(AsyncBaseService):
             params={
                 k: v for k, v in {"assignee_ids[]": assignee_ids, "due": due, "page": page}.items() if v is not None
             },
+            max_items=max_items,
             operation="GetEverythingUnassignedTodos",
         )

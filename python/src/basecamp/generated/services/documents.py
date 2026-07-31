@@ -28,10 +28,11 @@ class DocumentsService(BaseService):
             operation="UpdateDocument",
         )
 
-    def list(self, *, vault_id: int) -> ListResult:
+    def list(self, *, vault_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/documents.json",
+            max_items=max_items,
             operation="ListDocuments",
         )
 
@@ -78,10 +79,11 @@ class AsyncDocumentsService(AsyncBaseService):
             operation="UpdateDocument",
         )
 
-    async def list(self, *, vault_id: int) -> ListResult:
+    async def list(self, *, vault_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="documents", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/documents.json",
+            max_items=max_items,
             operation="ListDocuments",
         )
 

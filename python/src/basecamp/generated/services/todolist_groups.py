@@ -20,10 +20,11 @@ class TodolistGroupsService(BaseService):
             operation="RepositionTodolistGroup",
         )
 
-    def list(self, *, todolist_id: int) -> ListResult:
+    def list(self, *, todolist_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todolistgroups", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/groups.json",
+            max_items=max_items,
             operation="ListTodolistGroups",
         )
 
@@ -47,10 +48,11 @@ class AsyncTodolistGroupsService(AsyncBaseService):
             operation="RepositionTodolistGroup",
         )
 
-    async def list(self, *, todolist_id: int) -> ListResult:
+    async def list(self, *, todolist_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todolistgroups", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/groups.json",
+            max_items=max_items,
             operation="ListTodolistGroups",
         )
 

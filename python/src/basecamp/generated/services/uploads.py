@@ -28,17 +28,19 @@ class UploadsService(BaseService):
             operation="UpdateUpload",
         )
 
-    def list_versions(self, *, upload_id: int) -> ListResult:
+    def list_versions(self, *, upload_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
+            max_items=max_items,
             operation="ListUploadVersions",
         )
 
-    def list(self, *, vault_id: int) -> ListResult:
+    def list(self, *, vault_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
+            max_items=max_items,
             operation="ListUploads",
         )
 
@@ -87,17 +89,19 @@ class AsyncUploadsService(AsyncBaseService):
             operation="UpdateUpload",
         )
 
-    async def list_versions(self, *, upload_id: int) -> ListResult:
+    async def list_versions(self, *, upload_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list_versions", is_mutation=False, resource_id=upload_id),
             f"/uploads/{upload_id}/versions.json",
+            max_items=max_items,
             operation="ListUploadVersions",
         )
 
-    async def list(self, *, vault_id: int) -> ListResult:
+    async def list(self, *, vault_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
+            max_items=max_items,
             operation="ListUploads",
         )
 

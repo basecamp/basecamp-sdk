@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class CheckinsService(BaseService):
-    def reminders(self) -> ListResult:
+    def reminders(self, *, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
             "/my/question_reminders.json",
+            max_items=max_items,
             operation="GetQuestionReminders",
         )
 
@@ -45,12 +46,13 @@ class CheckinsService(BaseService):
             operation="GetQuestionnaire",
         )
 
-    def list_questions(self, *, questionnaire_id: int) -> ListResult:
+    def list_questions(self, *, questionnaire_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
             ),
             f"/questionnaires/{questionnaire_id}/questions.json",
+            max_items=max_items,
             operation="ListQuestions",
         )
 
@@ -86,10 +88,11 @@ class CheckinsService(BaseService):
             operation="UpdateQuestion",
         )
 
-    def list_answers(self, *, question_id: int) -> ListResult:
+    def list_answers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
+            max_items=max_items,
             operation="ListAnswers",
         )
 
@@ -102,17 +105,19 @@ class CheckinsService(BaseService):
             operation="CreateAnswer",
         )
 
-    def answerers(self, *, question_id: int) -> ListResult:
+    def answerers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
+            max_items=max_items,
             operation="ListQuestionAnswerers",
         )
 
-    def by_person(self, *, question_id: int, person_id: int) -> ListResult:
+    def by_person(self, *, question_id: int, person_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
+            max_items=max_items,
             operation="GetAnswersByPerson",
         )
 
@@ -149,10 +154,11 @@ class CheckinsService(BaseService):
 
 
 class AsyncCheckinsService(AsyncBaseService):
-    async def reminders(self) -> ListResult:
+    async def reminders(self, *, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
             "/my/question_reminders.json",
+            max_items=max_items,
             operation="GetQuestionReminders",
         )
 
@@ -183,12 +189,13 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="GetQuestionnaire",
         )
 
-    async def list_questions(self, *, questionnaire_id: int) -> ListResult:
+    async def list_questions(self, *, questionnaire_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
             ),
             f"/questionnaires/{questionnaire_id}/questions.json",
+            max_items=max_items,
             operation="ListQuestions",
         )
 
@@ -224,10 +231,11 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="UpdateQuestion",
         )
 
-    async def list_answers(self, *, question_id: int) -> ListResult:
+    async def list_answers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
+            max_items=max_items,
             operation="ListAnswers",
         )
 
@@ -240,17 +248,19 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="CreateAnswer",
         )
 
-    async def answerers(self, *, question_id: int) -> ListResult:
+    async def answerers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="answerers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers/by.json",
+            max_items=max_items,
             operation="ListQuestionAnswerers",
         )
 
-    async def by_person(self, *, question_id: int, person_id: int) -> ListResult:
+    async def by_person(self, *, question_id: int, person_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
+            max_items=max_items,
             operation="GetAnswersByPerson",
         )
 

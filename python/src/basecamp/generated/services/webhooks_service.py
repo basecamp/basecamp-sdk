@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class WebhooksService(BaseService):
-    def list(self, *, bucket_id: int) -> ListResult:
+    def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
+            max_items=max_items,
             operation="ListWebhooks",
         )
 
@@ -63,10 +64,11 @@ class WebhooksService(BaseService):
 
 
 class AsyncWebhooksService(AsyncBaseService):
-    async def list(self, *, bucket_id: int) -> ListResult:
+    async def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="webhooks", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/webhooks.json",
+            max_items=max_items,
             operation="ListWebhooks",
         )
 
