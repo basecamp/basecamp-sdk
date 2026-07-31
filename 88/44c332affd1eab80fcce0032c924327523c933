@@ -1,0 +1,21 @@
+SPEC.md
+  s_34dec3eb0265b2::t_bbd1876b7962f6 407
+  s_34dec3eb0265b2::t_5d681aed2614b6 409
+  s_34dec3eb0265b2::t_229e58dabc34b4 417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "8844c332affd1eab80fcce0032c924327523c933",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
