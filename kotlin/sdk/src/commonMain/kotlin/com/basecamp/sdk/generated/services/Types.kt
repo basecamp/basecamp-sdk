@@ -486,6 +486,17 @@ data class GetMyDueAssignmentsOptions(
 ) {
 }
 
+/** Request body for PrioritizeAssignment. */
+data class PrioritizeAssignmentBody(
+    val id: Long
+)
+
+/** Request body for ReorderUpNext. */
+data class ReorderUpNextBody(
+    val sourceId: Long,
+    val position: Int
+)
+
 /** Request body for UpdateMyNote. */
 data class UpdateMyNoteBody(
     val note: JsonObject

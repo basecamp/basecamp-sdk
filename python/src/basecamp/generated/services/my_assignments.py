@@ -34,6 +34,34 @@ class MyAssignmentsService(BaseService):
             operation="GetMyDueAssignments",
         )
 
+    def prioritize_assignment(self, *, id: int) -> None:
+        self._request_void(
+            OperationInfo(service="myassignments", operation="prioritize_assignment", is_mutation=True),
+            "POST",
+            "/my/priorities.json",
+            json_body=self._compact(id=id),
+            operation="PrioritizeAssignment",
+        )
+
+    def deprioritize_assignment(self, *, recording_id: int) -> None:
+        self._request_void(
+            OperationInfo(
+                service="myassignments", operation="deprioritize_assignment", is_mutation=True, resource_id=recording_id
+            ),
+            "DELETE",
+            f"/my/priorities/{recording_id}",
+            operation="DeprioritizeAssignment",
+        )
+
+    def reorder_up_next(self, *, source_id: int, position: int) -> None:
+        self._request_void(
+            OperationInfo(service="myassignments", operation="reorder_up_next", is_mutation=True),
+            "POST",
+            "/my/priority_moves.json",
+            json_body=self._compact(source_id=source_id, position=position),
+            operation="ReorderUpNext",
+        )
+
 
 class AsyncMyAssignmentsService(AsyncBaseService):
     async def get_my_assignments(self) -> dict[str, Any]:
@@ -57,4 +85,32 @@ class AsyncMyAssignmentsService(AsyncBaseService):
             "/my/assignments/due.json",
             params=self._compact(scope=scope),
             operation="GetMyDueAssignments",
+        )
+
+    async def prioritize_assignment(self, *, id: int) -> None:
+        await self._request_void(
+            OperationInfo(service="myassignments", operation="prioritize_assignment", is_mutation=True),
+            "POST",
+            "/my/priorities.json",
+            json_body=self._compact(id=id),
+            operation="PrioritizeAssignment",
+        )
+
+    async def deprioritize_assignment(self, *, recording_id: int) -> None:
+        await self._request_void(
+            OperationInfo(
+                service="myassignments", operation="deprioritize_assignment", is_mutation=True, resource_id=recording_id
+            ),
+            "DELETE",
+            f"/my/priorities/{recording_id}",
+            operation="DeprioritizeAssignment",
+        )
+
+    async def reorder_up_next(self, *, source_id: int, position: int) -> None:
+        await self._request_void(
+            OperationInfo(service="myassignments", operation="reorder_up_next", is_mutation=True),
+            "POST",
+            "/my/priority_moves.json",
+            json_body=self._compact(source_id=source_id, position=position),
+            operation="ReorderUpNext",
         )

@@ -1211,6 +1211,49 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/priorities",
+      "resource": "MyAssignments",
+      "operations": {
+        "POST": "PrioritizeAssignment"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/my/priorities/{recordingId}",
+      "resource": "MyAssignments",
+      "operations": {
+        "DELETE": "DeprioritizeAssignment"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/my/priority_moves",
+      "resource": "MyAssignments",
+      "operations": {
+        "POST": "ReorderUpNext"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/profile",
       "resource": "People",
       "operations": {

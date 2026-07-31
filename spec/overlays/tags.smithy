@@ -217,6 +217,9 @@ apply ToggleGauge @tags(["Gauges"])
 
 // My Assignments
 apply GetMyAssignments @tags(["MyAssignments"])
+apply PrioritizeAssignment @tags(["MyAssignments"])
+apply DeprioritizeAssignment @tags(["MyAssignments"])
+apply ReorderUpNext @tags(["MyAssignments"])
 apply GetMyCompletedAssignments @tags(["MyAssignments"])
 apply GetMyDueAssignments @tags(["MyAssignments"])
 

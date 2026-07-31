@@ -51,7 +51,7 @@ use basecamp.traits#basecampAuthRoutableUrl
 /// Basecamp API
 @restJson1
 service Basecamp {
-  version: "2026-07-30"
+  version: "2026-07-31"
   rename: {
     "smithy.api#Document": "JsonDocument"
   }
@@ -287,6 +287,9 @@ service Basecamp {
 
     // Batch 15 - My Assignments
     GetMyAssignments,
+    PrioritizeAssignment,
+    DeprioritizeAssignment,
+    ReorderUpNext,
     GetMyCompletedAssignments,
     GetMyDueAssignments,
 
@@ -8904,6 +8907,90 @@ structure GetMyAssignmentsOutput {
   priorities: MyAssignmentList
   non_priorities: MyAssignmentList
 }
+
+/// Add a recording to Up Next — the current user's ordered list of prioritized
+/// assignments (the priorities returned by GetMyAssignments). Identify the item
+/// by the recording id that carries the priority; for a card table step
+/// surfaced under its parent card, that is the entry's priority_recording_id.
+/// Idempotent: re-prioritizing an already-prioritized recording is a no-op.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/my/priorities.json", code: 204)
+operation PrioritizeAssignment {
+  input: PrioritizeAssignmentInput
+  output: PrioritizeAssignmentOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure PrioritizeAssignmentInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// The recording id to prioritize.
+  @required
+  id: RecordingId
+}
+
+structure PrioritizeAssignmentOutput {}
+
+/// Remove a recording from Up Next (returns 204 No Content). Exact-target:
+/// only the priority carried by the identified recording is cleared, and
+/// deleting an absent priority is a no-op 204 — so the DELETE is idempotent
+/// and safe to retry (BC3 #12483). Address a surfaced card table step by its
+/// priority_recording_id, not its parent card's id.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/my/priorities/{recordingId}", code: 204)
+operation DeprioritizeAssignment {
+  input: DeprioritizeAssignmentInput
+  output: DeprioritizeAssignmentOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DeprioritizeAssignmentInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure DeprioritizeAssignmentOutput {}
+
+/// Move an already-prioritized recording to a new 1-based position in Up Next
+/// (returns 204 No Content). NOT idempotent: a positional move's meaning
+/// shifts as the list changes, so a retry can land the item somewhere else —
+/// no retry gating is declared. Errors: 400 for a missing or non-integer
+/// position, 422 (flat {error} body) for an out-of-range position or an
+/// unprioritized recording, and a bare bodyless 404 for an inaccessible
+/// recording.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "POST", uri: "/{accountId}/my/priority_moves.json", code: 204)
+operation ReorderUpNext {
+  input: ReorderUpNextInput
+  output: ReorderUpNextOutput
+  errors: [NotFoundError, BadRequestError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ReorderUpNextInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// The recording id to move, chosen the same way as when prioritizing.
+  @required
+  source_id: RecordingId
+
+  /// The 1-based position to move it to.
+  @required
+  position: Integer
+}
+
+structure ReorderUpNextOutput {}
 
 /// Get the current user's completed assignments.
 /// Archived and trashed recordings are excluded. This endpoint is not paginated.
