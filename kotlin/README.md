@@ -10,7 +10,7 @@ Official Kotlin SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 
 - Kotlin Multiplatform (JVM target)
 - Builder DSL for client configuration
-- 45 services covering the complete Basecamp API
+- 46 services covering the complete Basecamp API
 - OAuth 2.0 with PKCE support
 - Webhook signature verification (HMAC-SHA256)
 - ETag-based HTTP caching (opt-in)
@@ -190,9 +190,9 @@ val client = BasecampClient {
 | `enableRetry` | `true` | Automatic retry on 429/503 |
 | `enableCache` | `false` | ETag-based HTTP caching |
 | `timeout` | `30s` | Request timeout |
-| `maxRetries` | `3` | Maximum retry attempts |
+| `maxRetries` | `3` | Maximum retry attempts (fixed; not settable via the builder) |
 | `maxPages` | `10_000` | Maximum pages to follow during pagination |
-| `baseRetryDelay` | `1s` | Base delay for exponential backoff |
+| `baseRetryDelay` | `1s` | Base delay for exponential backoff (fixed; not settable via the builder) |
 
 ## OAuth 2.0
 
@@ -415,7 +415,7 @@ if (!isValid) {
 
 ## Services
 
-The SDK exposes 45 account-scoped services. The tables below group the common ones; see `com/basecamp/sdk/generated/services/` for the full set.
+The SDK exposes 46 account-scoped services. The tables below group the common ones; see `com/basecamp/sdk/generated/services/` for the full set.
 
 ### Projects & Organization
 
@@ -561,7 +561,7 @@ The SDK uses a `BasecampException` sealed class for exhaustive `when` matching:
 import com.basecamp.sdk.BasecampException
 
 try {
-    val todo = account.todos.get(projectId = 123, todoId = 456)
+    val todo = account.todos.get(todoId = 456)
 } catch (e: BasecampException) {
     when (e) {
         is BasecampException.Auth -> println("Token expired: ${e.message}")
@@ -573,6 +573,8 @@ try {
         is BasecampException.Network -> println("Network error: ${e.message}")
         is BasecampException.Api -> println("Server error (${e.httpStatus}): ${e.message}")
         is BasecampException.Usage -> println("Bad arguments: ${e.message}")
+        is BasecampException.DiscoverySelection -> println("OAuth discovery: ${e.reason}")
+        is BasecampException.DeviceFlow -> println("Device flow: ${e.reason}")
     }
 
     // Common properties available on all subclasses
@@ -597,6 +599,8 @@ try {
 | `Ambiguous` | - | 8 | Multiple matches found |
 | `Validation` | 400, 422 | 9 | Invalid request data |
 | `Usage` | - | 1 | Configuration or argument error |
+| `DiscoverySelection` | - | 7 or 9 | OAuth discovery selection failed (code derived from `reason`) |
+| `DeviceFlow` | - | 1, 3, 6, or 9 | Device authorization grant failed (code derived from `reason`) |
 
 ## Observability
 
@@ -617,8 +621,8 @@ val client = BasecampClient {
 
 Output:
 ```
-[Basecamp] Projects.List
-[Basecamp] Projects.List completed (147ms)
+[Basecamp] Projects.ListProjects
+[Basecamp] Projects.ListProjects completed (147ms)
 ```
 
 ### Custom Hooks

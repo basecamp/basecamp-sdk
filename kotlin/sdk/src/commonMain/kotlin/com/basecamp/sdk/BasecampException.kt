@@ -6,7 +6,7 @@ package com.basecamp.sdk
  * Enables exhaustive `when` matching for error handling:
  * ```kotlin
  * try {
- *     account.todos.get(projectId, todoId)
+ *     account.todos.get(todoId)
  * } catch (e: BasecampException) {
  *     when (e) {
  *         is BasecampException.Auth -> println("Token expired")
