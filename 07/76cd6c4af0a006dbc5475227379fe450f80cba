@@ -1,0 +1,39 @@
+SPEC.md
+  s_555508c40a7b3b::t_e63a90e6dcb113 439
+  s_555508c40a7b3b::t_8740cba9bc0f75 467-469
+  s_555508c40a7b3b::t_129a8a05beead1 473
+  s_555508c40a7b3b::t_e504981f0b475b 476
+  s_555508c40a7b3b::t_c939be3e0ad857 1972
+  s_555508c40a7b3b::t_1e68187c0b2662 450
+  s_555508c40a7b3b::t_4ebb3ff8f58999 477
+  s_555508c40a7b3b::t_3a87701e3ce2be 1967
+typescript/tests/integration.test.ts
+  s_555508c40a7b3b::t_e43c655d555d47 2-3
+  s_555508c40a7b3b::t_61d20fc0461d91 48-50,60
+  s_555508c40a7b3b::t_83295b953d7f3c 98-99
+  s_555508c40a7b3b::t_4f5ff1c01739dd 114
+scripts/check-retry-metadata-parity.py
+  s_555508c40a7b3b::t_57053799a88031 238-240
+  s_555508c40a7b3b::t_71c92dd3786569 232-233
+rubric-audit.json
+  s_555508c40a7b3b::t_21ddf8a2987945 77
+typescript/tests/middleware-lifecycle.test.ts
+  s_555508c40a7b3b::t_c1caec98a1417c 4-5
+  s_555508c40a7b3b::t_da8b3fd5da8a75 25-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "0776cd6c4af0a006dbc5475227379fe450f80cba",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
