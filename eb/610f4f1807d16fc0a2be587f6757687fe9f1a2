@@ -1,0 +1,25 @@
+python/src/basecamp/async_client.py
+  s_289a344fc8a3ac::t_bdf5e1f07ad5be 395-399
+  s_289a344fc8a3ac::t_abee816dbb0f0b 394
+go/pkg/basecamp/my_assignments.go
+  s_289a344fc8a3ac::t_ae86dbec69c0ce 167-251
+python/src/basecamp/client.py
+  s_289a344fc8a3ac::t_a3bebdb9d46bac 396-400
+  s_289a344fc8a3ac::t_a40ee7d21df049 395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "eb610f4f1807d16fc0a2be587f6757687fe9f1a2",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
