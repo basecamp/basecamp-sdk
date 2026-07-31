@@ -225,6 +225,12 @@ async function executeOperation(
         });
         break;
 
+      case "CreateTodosetTodo":
+        await client.todos.createTodosetTodo(Number(params.bucketId), Number(params.todosetId), {
+          content: String(body.content || "Conformance Test"),
+        });
+        break;
+
       case "CompleteTodo":
         await client.todos.complete(Number(params.todoId));
         break;

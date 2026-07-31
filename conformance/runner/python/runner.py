@@ -96,6 +96,10 @@ class OperationMapper:
                 return self._account.todos.get(todo_id=path_params["todoId"])
             case "CreateTodo":
                 return self._account.todos.create(todolist_id=path_params["todolistId"], content=body["content"])
+            case "CreateTodosetTodo":
+                return self._account.todos.create_todoset_todo(
+                    bucket_id=path_params["bucketId"], todoset_id=path_params["todosetId"], content=body["content"]
+                )
             case "CompleteTodo":
                 return self._account.todos.complete(todo_id=path_params["todoId"])
             case "Subscribe":

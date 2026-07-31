@@ -91,6 +91,12 @@ class OperationMapper
         todolist_id: path_params["todolistId"],
         content: body["content"]
       )
+    when "CreateTodosetTodo"
+      @account.todos.create_todoset_todo(
+        bucket_id: path_params["bucketId"],
+        todoset_id: path_params["todosetId"],
+        content: body["content"]
+      )
     when "GetTimesheetEntry"
       @account.timesheets.get(
         entry_id: path_params["entryId"]
