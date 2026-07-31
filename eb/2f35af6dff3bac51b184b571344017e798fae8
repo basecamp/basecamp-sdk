@@ -1,0 +1,26 @@
+ruby/test/basecamp/services/bookmarks_service_test.rb
+  s_289a344fc8a3ac::t_5d6d896f7d26cc 1-108
+  s_289a344fc8a3ac::t_99e05a904864b6 109
+typescript/tests/services/bookmarks.test.ts
+  s_289a344fc8a3ac::t_0037ce951bf0a1 35-40
+  s_289a344fc8a3ac::t_48ab28495bdcaa 2-34,41-147
+  s_289a344fc8a3ac::t_fc9748a1162c82 1
+python/tests/services/test_bookmarks_service.py
+  s_289a344fc8a3ac::t_4697413eca2f19 1-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "eb2f35af6dff3bac51b184b571344017e798fae8",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
