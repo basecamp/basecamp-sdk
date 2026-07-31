@@ -1,0 +1,28 @@
+ruby/README.md
+  s_fb0636163f77d1::t_2db14c7db5cef6 358-361,363
+  s_fb0636163f77d1::t_8e6bd1dd9fa832 432-433
+  s_fb0636163f77d1::t_ba5fe11de1d9df 362
+  s_fb0636163f77d1::t_e0989215f0830e 74
+  s_fb0636163f77d1::t_eeeba592f74574 355,357
+  s_fb0636163f77d1::t_76e56586df5993 59
+ruby/lib/basecamp/config.rb
+  s_fb0636163f77d1::t_2e858026a953b0 82
+  s_fb0636163f77d1::t_7eee643a72b33e 52
+  s_fb0636163f77d1::t_8adb6a60f5a399 27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "c889f61ce1c7b0819ed4ca86d1b6499806a8219b",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
