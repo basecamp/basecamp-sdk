@@ -1,0 +1,41 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ErrorBodyParserTest.kt
+  s_34dec3eb0265b2::t_31e659c3177603 1-240
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_34dec3eb0265b2::t_bae2b2d933845c 490-494,496-498
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  s_34dec3eb0265b2::t_a07c446f2c372e 213-214,218-219,223,225-227,229-231
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/WebhooksServiceTest.kt
+  s_34dec3eb0265b2::t_2bab6dcb6188c2 244-277
+  s_34dec3eb0265b2::t_341e0d6e0a84ba 243
+kotlin/README.md
+  s_34dec3eb0265b2::t_41106b1c48c9f4 591-607
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/CalendarsServiceTest.kt
+  s_34dec3eb0265b2::t_99a96b7c787669 1-86
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DownloadTest.kt
+  s_34dec3eb0265b2::t_532601bc24d20c 251-268
+  s_34dec3eb0265b2::t_9b55fd4a1a8f50 250
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/ErrorBodyParser.kt
+  s_34dec3eb0265b2::t_5f665f8c69ea6c 3,5-8,23-128
+  s_34dec3eb0265b2::t_eaaaea5fd87ef3 1-2,4,9-22
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/ErrorTest.kt
+  s_34dec3eb0265b2::t_0a5e55d932ec35 123-144
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampException.kt
+  s_34dec3eb0265b2::t_b524042e79c087 264,272
+  s_34dec3eb0265b2::t_ed8d2211b0d320 102-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d7237f81cd404bf650f7d78dfa3411b5395a747e",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
