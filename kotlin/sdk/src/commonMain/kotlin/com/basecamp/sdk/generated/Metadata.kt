@@ -173,6 +173,7 @@ object Metadata {
         "ListMessageTypes" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListMessages" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListMyBookmarks" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
+        "ListMyDrafts" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListPeople" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListPingablePeople" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),
         "ListProjectPeople" to OperationConfig(false, RetryConfig(3, 1000L, "exponential", setOf(429, 503))),

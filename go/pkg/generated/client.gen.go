@@ -866,6 +866,46 @@ type DoorService struct {
 	ValidPatterns  []string `json:"valid_patterns,omitempty"`
 }
 
+// Draft A draft envelope: a message, document, upload, or client approval/
+// correspondence saved but not yet published. Flat and purpose-built —
+// NOT the shared recording projection.
+type Draft struct {
+	AppUrl string `json:"app_url"`
+
+	// Bucket The project a draft lives in (drafts-specific projection: id, name, app_url).
+	Bucket    DraftBucket `json:"bucket"`
+	CreatedAt time.Time   `json:"created_at"`
+
+	// Excerpt Up to 300 characters of plain text; empty string when the draft has no body.
+	Excerpt string       `json:"excerpt"`
+	Id      int64        `json:"id"`
+	Parent  *DraftParent `json:"parent"`
+
+	// ScheduledPostingAt Always present; `null` unless the draft is scheduled to publish later.
+	// Required-presence with nullable value, like `parent`.
+	ScheduledPostingAt *time.Time `json:"scheduled_posting_at"`
+	Title              string     `json:"title"`
+
+	// Type Short recordable name: message, document, upload, client_approval,
+	// or client_correspondence.
+	Type      string    `json:"type"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// DraftBucket The project a draft lives in (drafts-specific projection: id, name, app_url).
+type DraftBucket struct {
+	AppUrl string `json:"app_url"`
+	Id     int64  `json:"id"`
+	Name   string `json:"name"`
+}
+
+// DraftParent The parent recording a draft is filed under (id, title, app_url).
+type DraftParent struct {
+	AppUrl string `json:"app_url"`
+	Id     int64  `json:"id"`
+	Title  string `json:"title"`
+}
+
 // EnableCardColumnOnHoldResponseContent defines model for EnableCardColumnOnHoldResponseContent.
 type EnableCardColumnOnHoldResponseContent = CardColumn
 
@@ -1493,6 +1533,9 @@ type ListMessagesResponseContent = []Message
 
 // ListMyBookmarksResponseContent defines model for ListMyBookmarksResponseContent.
 type ListMyBookmarksResponseContent = []Bookmark
+
+// ListMyDraftsResponseContent defines model for ListMyDraftsResponseContent.
+type ListMyDraftsResponseContent = []Draft
 
 // ListPeopleResponseContent defines model for ListPeopleResponseContent.
 type ListPeopleResponseContent = []Person
@@ -3489,6 +3532,12 @@ type ListMyBookmarksParams struct {
 	Page int32 `form:"page,omitempty" json:"page,omitempty"`
 }
 
+// ListMyDraftsParams defines parameters for ListMyDrafts.
+type ListMyDraftsParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // GetMyNotificationsParams defines parameters for GetMyNotifications.
 type GetMyNotificationsParams struct {
 	// Page Page number for paginating through read items. Defaults to 1.
@@ -4830,6 +4879,9 @@ type ClientInterface interface {
 
 	// ListMyBookmarks request
 	ListMyBookmarks(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMyDrafts request
+	ListMyDrafts(ctx context.Context, accountId string, params *ListMyDraftsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMyPreferences request
 	GetMyPreferences(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6765,6 +6817,16 @@ func (c *Client) ListMyBookmarks(ctx context.Context, accountId string, params *
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewListMyBookmarksRequest(c.Server, accountId, params)
 	}, true, "ListMyBookmarks", reqEditors...)
+
+}
+
+// ListMyDrafts is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListMyDrafts(ctx context.Context, accountId string, params *ListMyDraftsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListMyDraftsRequest(c.Server, accountId, params)
+	}, true, "ListMyDrafts", reqEditors...)
 
 }
 
@@ -13864,6 +13926,62 @@ func NewListMyBookmarksRequest(server string, accountId string, params *ListMyBo
 	return req, nil
 }
 
+// NewListMyDraftsRequest generates requests for ListMyDrafts
+func NewListMyDraftsRequest(server string, accountId string, params *ListMyDraftsParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/drafts.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetMyPreferencesRequest generates requests for GetMyPreferences
 func NewGetMyPreferencesRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -20669,6 +20787,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMyCompletedAssignments":          {Idempotent: true, HasSensitiveParams: false},
 	"GetMyDueAssignments":                {Idempotent: true, HasSensitiveParams: false},
 	"ListMyBookmarks":                    {Idempotent: true, HasSensitiveParams: false},
+	"ListMyDrafts":                       {Idempotent: true, HasSensitiveParams: false},
 	"GetMyPreferences":                   {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMyPreferences":                {Idempotent: true, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
@@ -20908,6 +21027,7 @@ var operationRetryMax = map[string]int{
 	"GetMyCompletedAssignments":          3,
 	"GetMyDueAssignments":                3,
 	"ListMyBookmarks":                    3,
+	"ListMyDrafts":                       3,
 	"GetMyPreferences":                   3,
 	"UpdateMyPreferences":                2,
 	"GetMyProfile":                       3,
@@ -21145,6 +21265,7 @@ var operationRetryOn = map[string][]int{
 	"GetMyCompletedAssignments":          {429, 503},
 	"GetMyDueAssignments":                {429, 503},
 	"ListMyBookmarks":                    {429, 503},
+	"ListMyDrafts":                       {429, 503},
 	"GetMyPreferences":                   {429, 503},
 	"UpdateMyPreferences":                {429, 503},
 	"GetMyProfile":                       {429, 503},
@@ -22598,6 +22719,9 @@ type ClientWithResponsesInterface interface {
 
 	// ListMyBookmarksWithResponse request
 	ListMyBookmarksWithResponse(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*ListMyBookmarksResponse, error)
+
+	// ListMyDraftsWithResponse request
+	ListMyDraftsWithResponse(ctx context.Context, accountId string, params *ListMyDraftsParams, reqEditors ...RequestEditorFn) (*ListMyDraftsResponse, error)
 
 	// GetMyPreferencesWithResponse request
 	GetMyPreferencesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyPreferencesResponse, error)
@@ -26493,6 +26617,40 @@ func (r ListMyBookmarksResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListMyBookmarksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListMyDraftsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListMyDraftsResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMyDraftsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMyDraftsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMyDraftsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -32106,6 +32264,15 @@ func (c *ClientWithResponses) ListMyBookmarksWithResponse(ctx context.Context, a
 		return nil, err
 	}
 	return ParseListMyBookmarksResponse(rsp)
+}
+
+// ListMyDraftsWithResponse request returning *ListMyDraftsResponse
+func (c *ClientWithResponses) ListMyDraftsWithResponse(ctx context.Context, accountId string, params *ListMyDraftsParams, reqEditors ...RequestEditorFn) (*ListMyDraftsResponse, error) {
+	rsp, err := c.ListMyDrafts(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMyDraftsResponse(rsp)
 }
 
 // GetMyPreferencesWithResponse request returning *GetMyPreferencesResponse
@@ -39199,6 +39366,60 @@ func ParseListMyBookmarksResponse(rsp *http.Response) (*ListMyBookmarksResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest ListMyBookmarksResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMyDraftsResponse parses an HTTP response from a ListMyDraftsWithResponse call
+func ParseListMyDraftsResponse(rsp *http.Response) (*ListMyDraftsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMyDraftsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListMyDraftsResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

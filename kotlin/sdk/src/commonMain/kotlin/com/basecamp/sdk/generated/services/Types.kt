@@ -225,6 +225,14 @@ data class CreateDocumentBody(
     val visibleToClients: Boolean? = null
 )
 
+/** Options for ListMyDrafts. */
+data class ListMyDraftsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Options for GetEverythingCompletedCards. */
 data class GetEverythingCompletedCardsOptions(
     val assigneeIds: List<Long>? = null,

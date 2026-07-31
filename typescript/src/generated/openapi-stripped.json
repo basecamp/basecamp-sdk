@@ -9237,6 +9237,93 @@
         }
       }
     },
+    "/my/drafts.json": {
+      "get": {
+        "description": "List the current user's drafts across their active projects, most recently\nupdated first (paginated, capped at 250 like /my/assignments). Five draft\nkinds are returned: messages, documents, uploads, client approvals, and\nclient correspondences. Drafts under archived or trashed projects are\nexcluded.",
+        "operationId": "ListMyDrafts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ListMyDrafts 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMyDraftsResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Drafts"
+        ],
+        "x-basecamp-pagination": {
+          "style": "link",
+          "totalCountHeader": "X-Total-Count",
+          "maxPageSize": 50
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/my/preferences.json": {
       "get": {
         "description": "Get the current user's preferences",
@@ -23802,6 +23889,125 @@
           }
         }
       },
+      "Draft": {
+        "type": "object",
+        "description": "A draft envelope: a message, document, upload, or client approval/\ncorrespondence saved but not yet published. Flat and purpose-built —\nNOT the shared recording projection.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "Short recordable name: message, document, upload, client_approval,\nor client_correspondence."
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/DraftBucket"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftParent"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "x-go-type": "*DraftParent"
+          },
+          "excerpt": {
+            "type": "string",
+            "description": "Up to 300 characters of plain text; empty string when the draft has no body."
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "scheduled_posting_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Always present; `null` unless the draft is scheduled to publish later.\nRequired-presence with nullable value, like `parent`.",
+            "x-go-type": "*time.Time"
+          }
+        },
+        "required": [
+          "app_url",
+          "bucket",
+          "created_at",
+          "excerpt",
+          "id",
+          "parent",
+          "scheduled_posting_at",
+          "title",
+          "type",
+          "updated_at"
+        ]
+      },
+      "DraftBucket": {
+        "type": "object",
+        "description": "The project a draft lives in (drafts-specific projection: id, name, app_url).",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "name": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "name"
+        ]
+      },
+      "DraftParent": {
+        "type": "object",
+        "description": "The parent recording a draft is filed under (id, title, app_url).",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "title": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "app_url",
+          "id",
+          "title"
+        ]
+      },
       "EnableCardColumnOnHoldResponseContent": {
         "$ref": "#/components/schemas/CardColumn"
       },
@@ -25282,6 +25488,12 @@
         "type": "array",
         "items": {
           "$ref": "#/components/schemas/Bookmark"
+        }
+      },
+      "ListMyDraftsResponseContent": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Draft"
         }
       },
       "ListPeopleResponseContent": {

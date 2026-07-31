@@ -79,6 +79,10 @@ val AccountClient.comments: CommentsService
 val AccountClient.documents: DocumentsService
     get() = service("Documents") { DocumentsService(this) }
 
+/** Drafts operations. */
+val AccountClient.drafts: DraftsService
+    get() = service("Drafts") { DraftsService(this) }
+
 /** Events operations. */
 val AccountClient.events: EventsService
     get() = service("Events") { EventsService(this) }
