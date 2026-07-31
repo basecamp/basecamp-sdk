@@ -1,0 +1,25 @@
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ModelEmitter.kt
+  s_289a344fc8a3ac::t_8b64b67a4c098d 151-169
+python/scripts/generate_types.py
+  s_289a344fc8a3ac::t_f2da2c39c7d459 67-78
+swift/Sources/BasecampGenerator/TypeMapping.swift
+  s_289a344fc8a3ac::t_7748f1552549e0 92-98,106-114
+typescript/scripts/generate-services.ts
+  s_289a344fc8a3ac::t_39ff1b2a131af8 465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "48c64b5a1e526d9ef7da25420f8ca5c523a1552d",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
