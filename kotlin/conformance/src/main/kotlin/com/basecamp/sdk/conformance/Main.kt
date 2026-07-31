@@ -794,6 +794,11 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "ListMyDrafts" -> {
+            account.drafts.listMyDrafts()
+            DispatchResult()
+        }
+
         "GetBookmark" -> {
             account.bookmarks.getBookmark(tc.pathParams.longParam("recordingId"))
             DispatchResult()

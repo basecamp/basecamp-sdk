@@ -106,6 +106,8 @@ class OperationMapper:
                 return self._account.subscriptions.subscribe(recording_id=path_params["recordingId"])
             case "ListMyBookmarks":
                 return self._account.bookmarks.list_my_bookmarks()
+            case "ListMyDrafts":
+                return self._account.drafts.list_my_drafts()
             case "GetBookmark":
                 return self._account.bookmarks.get_bookmark(recording_id=path_params["recordingId"])
             case "CreateBookmark":

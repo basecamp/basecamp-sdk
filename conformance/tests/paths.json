@@ -1227,5 +1227,48 @@
       "path",
       "bookmarks"
     ]
+  },
+  {
+    "name": "ListMyDrafts constructs /my/drafts.json",
+    "description": "Verifies ListMyDrafts constructs the personal /my/drafts.json path (BC3 #12381). The mock draft is bucket-rooted: parent and scheduled_posting_at are present-but-null, pinning the required-nullable decode in every SDK.",
+    "operation": "ListMyDrafts",
+    "method": "GET",
+    "path": "/my/drafts.json",
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "app_url": "https://3.basecamp.com/999/buckets/2/documents/1",
+            "title": "Quarterly plan",
+            "type": "document",
+            "bucket": {
+              "id": 2,
+              "name": "The Leto Laptop",
+              "app_url": "https://3.basecamp.com/999/projects/2"
+            },
+            "parent": null,
+            "excerpt": "First 300 chars of the body",
+            "created_at": "2026-07-01T00:00:00Z",
+            "updated_at": "2026-07-02T00:00:00Z",
+            "scheduled_posting_at": null
+          }
+        ]
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/my/drafts.json"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "drafts"
+    ]
   }
 ]
