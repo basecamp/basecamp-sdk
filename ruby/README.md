@@ -42,7 +42,6 @@ project = account.projects.get(project_id: 12345)
 
 # Create a todo
 todo = account.todos.create(
-  project_id: 12345,
   todolist_id: 67890,
   content: "Review PR",
   due_on: "2024-12-31"
@@ -272,7 +271,7 @@ aborts before an oversized body is buffered.
 
 ## Services
 
-The SDK provides 45 account-scoped services. The table below covers the common ones; see `lib/basecamp/generated/services/` for the authoritative, complete set:
+The SDK provides 46 account-scoped services. The table below covers the common ones; see `lib/basecamp/generated/services/` for the authoritative, complete set:
 
 | Service | Description |
 |---------|-------------|

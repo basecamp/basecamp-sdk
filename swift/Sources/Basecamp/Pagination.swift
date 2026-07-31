@@ -31,7 +31,7 @@ public struct PaginationOptions: Sendable {
 /// property provides pagination metadata.
 ///
 /// ```swift
-/// let todos = try await account.todos.list(projectId: 123, todolistId: 456)
+/// let todos = try await account.todos.list(todolistId: 456)
 /// print("Showing \(todos.count) of \(todos.meta.totalCount) todos")
 /// for todo in todos { print(todo.content) }
 /// let titles = todos.map(\.content) // returns [String]

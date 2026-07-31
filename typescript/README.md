@@ -462,32 +462,43 @@ const result = await client.downloadURL(url);
 
 ## Pagination
 
-List methods return a single page of results by default. Use the pagination helpers with low-level API calls to fetch all pages:
+Service `list()` methods auto-paginate: they follow the API's `Link: rel="next"` headers and return every item across all pages (up to a 10,000-page safety cap).
+
+The result is a `ListResult<T>` — an `Array<T>` subclass that works with `for...of`, `.map()`, `.filter()`, spread, `.length`, indexing, and `Array.isArray()` — plus a `.meta` property with pagination metadata:
+
+```ts
+const projects = await client.projects.list();
+
+console.log(`${projects.length} of ${projects.meta.totalCount} projects`);
+if (projects.meta.truncated) console.warn("results may have been capped");
+projects.forEach(p => console.log(p.name));
+```
+
+`meta.totalCount` is parsed from the `X-Total-Count` response header (0 when the header is absent). `meta.truncated` is `true` when the result may have been cut short — by `maxItems` or by the page safety cap; when it is `false`, the result is definitely complete.
+
+To bound the work, pass `maxItems` — every list options type extends `PaginationOptions`. When `maxItems` is omitted or `0`, all pages are fetched:
+
+```ts
+const firstFifty = await client.projects.list({ maxItems: 50 });
+```
+
+For endpoints not covered by a service, drive pagination yourself over a raw `client.GET` response with `fetchAllPages` (collects all pages into one array) or `paginateAll` (async generator that yields one page at a time):
 
 ```ts
 import { fetchAllPages, paginateAll } from "@37signals/basecamp";
 
-// First, fetch the initial page using the low-level client
-const initialResponse = await client.GET("/projects.json");
+const initial = await client.GET("/projects.json");
 
 // Option 1: fetchAllPages - returns all results as an array
-const allProjects = await fetchAllPages(
-  initialResponse.response,
-  (response) => response.json()
-);
+const all = await fetchAllPages(initial.response, (r) => r.json() as Promise<any[]>);
 
 // Option 2: paginateAll - async generator for streaming large result sets
-for await (const page of paginateAll(
-  initialResponse.response,
-  (response) => response.json()
-)) {
+for await (const page of paginateAll(initial.response, (r) => r.json() as Promise<any[]>)) {
   for (const project of page) {
     console.log(project.name);
   }
 }
 ```
-
-Paginated endpoints include an `X-Total-Count` HTTP header when available. You can access this header via the `response.headers` field on low-level `client.GET`/`client.POST` calls.
 
 ## Low-Level API Access
 

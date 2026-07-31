@@ -7,14 +7,14 @@ import Foundation
 ///
 /// ```swift
 /// do {
-///     let todo = try await account.todos.get(projectId: 123, todoId: 456)
+///     let todo = try await account.todos.get(todoId: 456)
 /// } catch let error as BasecampError {
 ///     switch error {
 ///     case .notFound(let message, _, _):
 ///         print("Not found: \(message)")
 ///     case .rateLimit(_, let retryAfter, _, _):
 ///         if let seconds = retryAfter {
-///             try await Task.sleep(for: .seconds(seconds))
+///             try await Task.sleep(nanoseconds: UInt64(seconds) * 1_000_000_000)
 ///         }
 ///     default:
 ///         print(error.localizedDescription)

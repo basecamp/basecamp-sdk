@@ -205,7 +205,7 @@ class BasecampClient internal constructor(
  * ```kotlin
  * val account = client.forAccount("12345")
  * val projects = account.projects.list()
- * val todo = account.todos.get(projectId = 123, todoId = 456)
+ * val todo = account.todos.get(todoId = 456)
  * ```
  *
  * **Extensibility**: External modules can add services via Kotlin extension

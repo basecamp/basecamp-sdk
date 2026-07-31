@@ -23,7 +23,7 @@ Official Go SDK for the [Basecamp API](https://github.com/basecamp/bc3-api).
 go get github.com/basecamp/basecamp-sdk/go
 ```
 
-Requires Go 1.25 or later.
+Requires Go 1.26 or later.
 
 ## Quick Start
 
@@ -60,12 +60,12 @@ func main() {
     account := client.ForAccount(accountID)
 
     // List all projects
-    projects, err := account.Projects().List(context.Background(), nil)
+    result, err := account.Projects().List(context.Background(), nil)
     if err != nil {
         log.Fatal(err)
     }
 
-    for _, p := range projects {
+    for _, p := range result.Projects {
         fmt.Printf("%d: %s\n", p.ID, p.Name)
     }
 }
@@ -102,14 +102,14 @@ func main() {
     account := client.ForAccount(fmt.Sprint(info.Accounts[0].ID))
 
     // List active projects
-    projects, err := account.Projects().List(context.Background(), &basecamp.ProjectListOptions{
+    result, err := account.Projects().List(context.Background(), &basecamp.ProjectListOptions{
         Status: basecamp.ProjectStatusActive,
     })
     if err != nil {
         log.Fatal(err)
     }
 
-    for _, p := range projects {
+    for _, p := range result.Projects {
         fmt.Printf("%s (%d)\n", p.Name, p.ID)
     }
 }
@@ -471,13 +471,13 @@ msg, err := account.Messages().Create(ctx, board.ID, &basecamp.CreateMessageRequ
 ctx := context.Background()
 
 // List all campfires
-campfires, err := account.Campfires().List(ctx)
+campfires, err := account.Campfires().List(ctx, nil)
 
 // Send a message
 line, err := account.Campfires().CreateLine(ctx, campfireID, "Hello, team!")
 
 // List recent messages
-lines, err := account.Campfires().ListLines(ctx, campfireID)
+lines, err := account.Campfires().ListLines(ctx, campfireID, nil)
 ```
 
 ## Working with Webhooks
@@ -493,7 +493,7 @@ webhook, err := account.Webhooks().Create(ctx, bucketID, &basecamp.CreateWebhook
 })
 
 // List webhooks
-webhooks, err := account.Webhooks().List(ctx, bucketID)
+webhooks, err := account.Webhooks().List(ctx, bucketID, nil)
 
 // Delete a webhook
 err = account.Webhooks().Delete(ctx, webhookID)
@@ -628,13 +628,14 @@ import (
 
 // Uses global TracerProvider/MeterProvider by default
 hooks := basecampotel.NewHooks()
-client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
 
 // Or with custom providers
-hooks := basecampotel.NewHooks(
+hooks = basecampotel.NewHooks(
     basecampotel.WithTracerProvider(tp),
     basecampotel.WithMeterProvider(mp),
 )
+
+client := basecamp.NewClient(cfg, token, basecamp.WithHooks(hooks))
 ```
 
 Creates spans like:
@@ -675,6 +676,7 @@ import (
     "github.com/basecamp/basecamp-sdk/go/pkg/basecamp"
     basecampotel "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/otel"
     basecampprom "github.com/basecamp/basecamp-sdk/go/pkg/basecamp/prometheus"
+    "github.com/prometheus/client_golang/prometheus"
 )
 
 otelHooks := basecampotel.NewHooks()
