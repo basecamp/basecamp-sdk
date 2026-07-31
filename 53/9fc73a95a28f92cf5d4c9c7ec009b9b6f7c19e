@@ -1,0 +1,21 @@
+spec/fixtures/manifest.yaml
+  s_289a344fc8a3ac::t_b75ef80bdcfce2 85-88,204
+spec/fixtures/my_notes/get.json
+  s_289a344fc8a3ac::t_a037ee0cb6a60a 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "539fc73a95a28f92cf5d4c9c7ec009b9b6f7c19e",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
