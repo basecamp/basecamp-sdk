@@ -1,0 +1,37 @@
+typescript/tests/services/my-notes.test.ts
+  s_289a344fc8a3ac::t_cc978768a90825 1-100
+ruby/test/basecamp/services/my_notes_service_test.rb
+  s_289a344fc8a3ac::t_f293adb8bca787 1-66
+python/tests/services/test_my_notes_service.py
+  s_289a344fc8a3ac::t_4c02f6a286aced 1-82
+conformance/runner/go/main.go
+  s_289a344fc8a3ac::t_cc7e90d0cc3469 546-559
+conformance/runner/python/runner.py
+  s_289a344fc8a3ac::t_673d2d1398101e 111-114
+conformance/runner/ruby/runner.rb
+  s_289a344fc8a3ac::t_6711c78ed4bcee 98-101,280,299
+conformance/runner/typescript/runner.test.ts
+  s_289a344fc8a3ac::t_cb0f1f2efcd107 250-257
+conformance/tests/idempotency.json
+  s_289a344fc8a3ac::t_9134d65e421b49 175-217
+conformance/tests/paths.json
+  s_289a344fc8a3ac::t_c7364d47e53d17 1273-1347
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_289a344fc8a3ac::t_be45b92d836b56 802-812
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "955b89b967f2148c2d79bd45bf125e3c6107a9eb",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
