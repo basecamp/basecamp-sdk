@@ -1,0 +1,22 @@
+python/tests/test_errors.py
+  s_555508c40a7b3b::t_bff9d2369df9f9 155-158
+  s_555508c40a7b3b::t_878d820c4fde1b 163
+python/src/basecamp/errors.py
+  s_555508c40a7b3b::t_ed37b4012f443f 206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "39055fa3cf70a11de4baf2fd339699c577df7934",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
