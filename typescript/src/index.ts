@@ -113,6 +113,7 @@ export {
   type Todo,
   type ListTodoOptions,
   type CreateTodoRequest,
+  type CreateTodosetTodoTodoRequest,
   type ReplaceTodoRequest,
   type RepositionTodoRequest,
 } from "./generated/services/todos.js";

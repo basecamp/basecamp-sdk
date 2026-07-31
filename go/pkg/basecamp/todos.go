@@ -556,7 +556,7 @@ func (s *TodosService) Create(ctx context.Context, todolistID int64, req *Create
 func (s *TodosService) CreateInTodoset(ctx context.Context, projectID, todosetID int64, req *CreateTodoRequest) (result *Todo, err error) {
 	op := OperationInfo{
 		Service: "Todos", Operation: "CreateInTodoset",
-		ResourceType: "todo", IsMutation: true, ProjectID: projectID,
+		ResourceType: "todo", IsMutation: true, ProjectID: projectID, ResourceID: todosetID,
 	}
 	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
 		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
