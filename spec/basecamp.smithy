@@ -314,6 +314,8 @@ service Basecamp {
     GetMyNotifications,
     GetBubbleUps,
     MarkAsRead,
+    GetCalendar,
+    UpdateCalendar,
     GetMyNote,
     UpdateMyNote,
     ListMyDrafts,
@@ -9554,6 +9556,94 @@ structure GetBubbleUpsInput {
 
 structure GetBubbleUpsOutput {
   bubble_ups: NotificationList
+}
+
+// ===== Calendar Operations =====
+
+/// Get a calendar by its bucket id. A Calendar is a top-level BC5 bucketable
+/// (distinct from a project) exposing display metadata and a link to its
+/// underlying schedule resource. Shipped scope is show + update only.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/calendars/{calendarId}")
+operation GetCalendar {
+  input: GetCalendarInput
+  output: CalendarOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetCalendarInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  calendarId: Long
+}
+
+/// Update a calendar's display color. An unknown color returns 422 with a JSON
+/// errors payload keyed by field ({"errors": {"color": ["is not a valid
+/// color"]}}) — the controller rejects invalid enum values up front.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "PUT", uri: "/{accountId}/calendars/{calendarId}")
+operation UpdateCalendar {
+  input: UpdateCalendarInput
+  output: CalendarOutput
+  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure UpdateCalendarInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  calendarId: Long
+
+  @required
+  calendar: CalendarAttributes
+}
+
+/// The writable calendar payload — the wire body is the nested
+/// {calendar: {color}} envelope.
+structure CalendarAttributes {
+  /// One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
+  /// pink, brown.
+  @required
+  color: String
+}
+
+structure CalendarOutput {
+  calendar: Calendar
+}
+
+/// A per-account calendar (wire type Calendar), keyed by its own bucket id.
+structure Calendar {
+  @required
+  id: Long
+  @required
+  type: String
+  @required
+  name: String
+  /// One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
+  /// pink, brown.
+  @required
+  color: String
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  url: String
+  @required
+  app_url: String
+  /// API URL of the calendar's underlying schedule resource.
+  @required
+  schedule_url: String
 }
 
 // ===== My Notes (Scratchpad) Operations =====

@@ -31,6 +31,10 @@ val AccountClient.bookmarks: BookmarksService
 val AccountClient.boosts: BoostsService
     get() = service("Boosts") { BoostsService(this) }
 
+/** Calendars operations. */
+val AccountClient.calendars: CalendarsService
+    get() = service("Calendars") { CalendarsService(this) }
+
 /** Campfires operations. */
 val AccountClient.campfires: CampfiresService
     get() = service("Campfires") { CampfiresService(this) }

@@ -169,6 +169,8 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetBookmark" to "getBookmark",
     // "myNote()" reads oddly; keep the getter explicit.
     "GetMyNote" to "getMyNote",
+    // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
+    "GetCalendar" to "getCalendar",
     "GetTodolistOrGroup" to "get",
     "UpdateTodolistOrGroup" to "update",
     "SetCardColumnColor" to "setColor",
@@ -319,6 +321,7 @@ val TYPE_ALIASES = mapOf(
     "BookmarkStatus" to "BookmarkStatus",
     "Draft" to "Draft",
     "MyNote" to "MyNote",
+    "Calendar" to "Calendar",
     // DraftParent is referenced only through the nullable anyOf union, which the
     // supporting-type scanner does not traverse — list it explicitly.
     "DraftParent" to "DraftParent",

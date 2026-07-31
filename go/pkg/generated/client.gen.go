@@ -166,6 +166,32 @@ type BucketTodosGroup struct {
 	Todos  []Todo          `json:"todos"`
 }
 
+// Calendar A per-account calendar (wire type Calendar), keyed by its own bucket id.
+type Calendar struct {
+	AppUrl string `json:"app_url"`
+
+	// Color One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
+	// pink, brown.
+	Color     string    `json:"color"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	Name      string    `json:"name"`
+
+	// ScheduleUrl API URL of the calendar's underlying schedule resource.
+	ScheduleUrl string    `json:"schedule_url"`
+	Type        string    `json:"type"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Url         string    `json:"url"`
+}
+
+// CalendarAttributes The writable calendar payload — the wire body is the nested
+// {calendar: {color}} envelope.
+type CalendarAttributes struct {
+	// Color One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
+	// pink, brown.
+	Color string `json:"color"`
+}
+
 // Campfire defines model for Campfire.
 type Campfire struct {
 	AppUrl           string     `json:"app_url"`
@@ -1152,6 +1178,9 @@ type GetBoostResponseContent = Boost
 
 // GetBubbleUpsResponseContent defines model for GetBubbleUpsResponseContent.
 type GetBubbleUpsResponseContent = []Notification
+
+// GetCalendarResponseContent A per-account calendar (wire type Calendar), keyed by its own bucket id.
+type GetCalendarResponseContent = Calendar
 
 // GetCampfireLineResponseContent defines model for GetCampfireLineResponseContent.
 type GetCampfireLineResponseContent = CampfireLine
@@ -2874,6 +2903,16 @@ type UpdateAccountNameRequestContent struct {
 // UpdateAccountNameResponseContent defines model for UpdateAccountNameResponseContent.
 type UpdateAccountNameResponseContent = Account
 
+// UpdateCalendarRequestContent defines model for UpdateCalendarRequestContent.
+type UpdateCalendarRequestContent struct {
+	// Calendar The writable calendar payload — the wire body is the nested
+	// {calendar: {color}} envelope.
+	Calendar CalendarAttributes `json:"calendar"`
+}
+
+// UpdateCalendarResponseContent A per-account calendar (wire type Calendar), keyed by its own bucket id.
+type UpdateCalendarResponseContent = Calendar
+
 // UpdateCampfireLineRequestContent defines model for UpdateCampfireLineRequestContent.
 type UpdateCampfireLineRequestContent struct {
 	// Content The new line content, interpreted as rich text (HTML)
@@ -3822,6 +3861,9 @@ type CreateTodosetTodoJSONRequestBody = CreateTodosetTodoRequestContent
 // CreateWebhookJSONRequestBody defines body for CreateWebhook for application/json ContentType.
 type CreateWebhookJSONRequestBody = CreateWebhookRequestContent
 
+// UpdateCalendarJSONRequestBody defines body for UpdateCalendar for application/json ContentType.
+type UpdateCalendarJSONRequestBody = UpdateCalendarRequestContent
+
 // UpdateCardJSONRequestBody defines body for UpdateCard for application/json ContentType.
 type UpdateCardJSONRequestBody = UpdateCardRequestContent
 
@@ -4646,6 +4688,14 @@ type ClientInterface interface {
 	CreateWebhookWithBody(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateWebhook(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetCalendar request
+	GetCalendar(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateCalendarWithBody request with any body
+	UpdateCalendarWithBody(ctx context.Context, accountId string, calendarId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	UpdateCalendar(ctx context.Context, accountId string, calendarId int64, body UpdateCalendarJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCard request
 	GetCard(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -5770,6 +5820,34 @@ func (c *Client) CreateWebhook(ctx context.Context, accountId string, bucketId i
 		return nil, err
 	}
 	return c.Client.Do(req)
+
+}
+
+// GetCalendar is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetCalendar(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetCalendarRequest(c.Server, accountId, calendarId)
+	}, true, "GetCalendar", reqEditors...)
+
+}
+
+// UpdateCalendarWithBody is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) UpdateCalendarWithBody(ctx context.Context, accountId string, calendarId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateCalendarRequestWithBody(c.Server, accountId, calendarId, contentType, body)
+	}, true, "UpdateCalendar", reqEditors...)
+
+}
+
+func (c *Client) UpdateCalendar(ctx context.Context, accountId string, calendarId int64, body UpdateCalendarJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewUpdateCalendarRequest(c.Server, accountId, calendarId, body)
+	}, true, "UpdateCalendar", reqEditors...)
 
 }
 
@@ -9852,6 +9930,101 @@ func NewCreateWebhookRequestWithBody(server string, accountId string, bucketId i
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetCalendarRequest generates requests for GetCalendar
+func NewGetCalendarRequest(server string, accountId string, calendarId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "calendarId", runtime.ParamLocationPath, calendarId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/calendars/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateCalendarRequest calls the generic UpdateCalendar builder with application/json body
+func NewUpdateCalendarRequest(server string, accountId string, calendarId int64, body UpdateCalendarJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewUpdateCalendarRequestWithBody(server, accountId, calendarId, "application/json", bodyReader)
+}
+
+// NewUpdateCalendarRequestWithBody generates requests for UpdateCalendar with any type of body
+func NewUpdateCalendarRequestWithBody(server string, accountId string, calendarId int64, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "calendarId", runtime.ParamLocationPath, calendarId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/calendars/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -20873,6 +21046,8 @@ var operationMetadata = map[string]OperationMetadata{
 	"CreateTodosetTodo":                  {Idempotent: false, HasSensitiveParams: false},
 	"ListWebhooks":                       {Idempotent: true, HasSensitiveParams: false},
 	"CreateWebhook":                      {Idempotent: false, HasSensitiveParams: false},
+	"GetCalendar":                        {Idempotent: true, HasSensitiveParams: false},
+	"UpdateCalendar":                     {Idempotent: true, HasSensitiveParams: false},
 	"GetCard":                            {Idempotent: true, HasSensitiveParams: false},
 	"UpdateCard":                         {Idempotent: true, HasSensitiveParams: false},
 	"MoveCard":                           {Idempotent: false, HasSensitiveParams: false},
@@ -21115,6 +21290,8 @@ var operationRetryMax = map[string]int{
 	"CreateTodosetTodo":                  3,
 	"ListWebhooks":                       3,
 	"CreateWebhook":                      2,
+	"GetCalendar":                        3,
+	"UpdateCalendar":                     3,
 	"GetCard":                            3,
 	"UpdateCard":                         3,
 	"MoveCard":                           2,
@@ -21355,6 +21532,8 @@ var operationRetryOn = map[string][]int{
 	"CreateTodosetTodo":                  {429, 503},
 	"ListWebhooks":                       {429, 503},
 	"CreateWebhook":                      {429, 503},
+	"GetCalendar":                        {429, 503},
+	"UpdateCalendar":                     {429, 503},
 	"GetCard":                            {429, 503},
 	"UpdateCard":                         {429, 503},
 	"MoveCard":                           {429, 503},
@@ -22609,6 +22788,14 @@ type ClientWithResponsesInterface interface {
 	CreateWebhookWithBodyWithResponse(ctx context.Context, accountId string, bucketId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
 
 	CreateWebhookWithResponse(ctx context.Context, accountId string, bucketId int64, body CreateWebhookJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWebhookResponse, error)
+
+	// GetCalendarWithResponse request
+	GetCalendarWithResponse(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*GetCalendarResponse, error)
+
+	// UpdateCalendarWithBodyWithResponse request with any body
+	UpdateCalendarWithBodyWithResponse(ctx context.Context, accountId string, calendarId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCalendarResponse, error)
+
+	UpdateCalendarWithResponse(ctx context.Context, accountId string, calendarId int64, body UpdateCalendarJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCalendarResponse, error)
 
 	// GetCardWithResponse request
 	GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error)
@@ -24130,6 +24317,77 @@ func (r CreateWebhookResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateWebhookResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetCalendarResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetCalendarResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetCalendarResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetCalendarResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetCalendarResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateCalendarResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UpdateCalendarResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON422      *ValidationErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateCalendarResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateCalendarResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateCalendarResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31627,6 +31885,32 @@ func (c *ClientWithResponses) CreateWebhookWithResponse(ctx context.Context, acc
 	return ParseCreateWebhookResponse(rsp)
 }
 
+// GetCalendarWithResponse request returning *GetCalendarResponse
+func (c *ClientWithResponses) GetCalendarWithResponse(ctx context.Context, accountId string, calendarId int64, reqEditors ...RequestEditorFn) (*GetCalendarResponse, error) {
+	rsp, err := c.GetCalendar(ctx, accountId, calendarId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetCalendarResponse(rsp)
+}
+
+// UpdateCalendarWithBodyWithResponse request with arbitrary body returning *UpdateCalendarResponse
+func (c *ClientWithResponses) UpdateCalendarWithBodyWithResponse(ctx context.Context, accountId string, calendarId int64, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateCalendarResponse, error) {
+	rsp, err := c.UpdateCalendarWithBody(ctx, accountId, calendarId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCalendarResponse(rsp)
+}
+
+func (c *ClientWithResponses) UpdateCalendarWithResponse(ctx context.Context, accountId string, calendarId int64, body UpdateCalendarJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateCalendarResponse, error) {
+	rsp, err := c.UpdateCalendar(ctx, accountId, calendarId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateCalendarResponse(rsp)
+}
+
 // GetCardWithResponse request returning *GetCardResponse
 func (c *ClientWithResponses) GetCardWithResponse(ctx context.Context, accountId string, cardId int64, reqEditors ...RequestEditorFn) (*GetCardResponse, error) {
 	rsp, err := c.GetCard(ctx, accountId, cardId, reqEditors...)
@@ -35329,6 +35613,135 @@ func ParseCreateWebhookResponse(rsp *http.Response) (*CreateWebhookResponse, err
 			return nil, err
 		}
 		response.JSON507 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetCalendarResponse parses an HTTP response from a GetCalendarWithResponse call
+func ParseGetCalendarResponse(rsp *http.Response) (*GetCalendarResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetCalendarResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetCalendarResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateCalendarResponse parses an HTTP response from a UpdateCalendarWithResponse call
+func ParseUpdateCalendarResponse(rsp *http.Response) (*UpdateCalendarResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateCalendarResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UpdateCalendarResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ValidationErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 

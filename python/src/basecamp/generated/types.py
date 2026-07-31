@@ -99,6 +99,22 @@ class BucketTodosGroup(TypedDict):
     todos: list[Todo]
 
 
+class Calendar(TypedDict):
+    app_url: str
+    color: str
+    created_at: str
+    id: int
+    name: str
+    schedule_url: str
+    type: str
+    updated_at: str
+    url: str
+
+
+class CalendarAttributes(TypedDict):
+    color: str
+
+
 class Campfire(TypedDict):
     app_url: str
     bookmark_url: NotRequired[str]
@@ -1760,6 +1776,10 @@ class UnauthorizedErrorResponseContent(TypedDict):
 
 class UpdateAccountNameRequestContent(TypedDict):
     name: str
+
+
+class UpdateCalendarRequestContent(TypedDict):
+    calendar: CalendarAttributes
 
 
 class UpdateCampfireLineRequestContent(TypedDict):

@@ -258,6 +258,24 @@
       }
     },
     {
+      "pattern": "/{accountId}/calendars/{calendarId}",
+      "resource": "Calendars",
+      "operations": {
+        "GET": "GetCalendar",
+        "PUT": "UpdateCalendar"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "calendarId": {
+          "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/card_tables/cards/{cardId}",
       "resource": "Card Tables",
       "operations": {

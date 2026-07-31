@@ -320,6 +320,8 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetBookmark: "getBookmark",
   // "myNote()" reads oddly; keep the getter explicit.
   GetMyNote: "getMyNote",
+  // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
+  GetCalendar: "getCalendar",
   GetTodolistOrGroup: "get",
   UpdateTodolistOrGroup: "update",
   SetCardColumnColor: "setColor",
@@ -466,6 +468,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   BookmarkStatus: ["BookmarkStatus", "entity"],
   Draft: ["Draft", "entity"],
   MyNote: ["MyNote", "entity"],
+  Calendar: ["Calendar", "entity"],
   Forward: ["Forward", "entity"],
   ForwardReply: ["ForwardReply", "entity"],
   Inbox: ["Inbox", "entity"],
