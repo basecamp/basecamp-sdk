@@ -11,20 +11,22 @@ from basecamp.hooks import OperationInfo
 
 
 class DraftsService(BaseService):
-    def list_my_drafts(self, *, page: int | None = None) -> ListResult:
+    def list_my_drafts(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="drafts", operation="list_my_drafts", is_mutation=False),
             "/my/drafts.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="ListMyDrafts",
         )
 
 
 class AsyncDraftsService(AsyncBaseService):
-    async def list_my_drafts(self, *, page: int | None = None) -> ListResult:
+    async def list_my_drafts(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="drafts", operation="list_my_drafts", is_mutation=False),
             "/my/drafts.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="ListMyDrafts",
         )

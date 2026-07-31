@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class MessageTypesService(BaseService):
-    def list(self, *, bucket_id: int) -> ListResult:
+    def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/categories.json",
+            max_items=max_items,
             operation="ListMessageTypes",
         )
 
@@ -62,10 +63,11 @@ class MessageTypesService(BaseService):
 
 
 class AsyncMessageTypesService(AsyncBaseService):
-    async def list(self, *, bucket_id: int) -> ListResult:
+    async def list(self, *, bucket_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="messagetypes", operation="list", is_mutation=False, project_id=bucket_id),
             f"/buckets/{bucket_id}/categories.json",
+            max_items=max_items,
             operation="ListMessageTypes",
         )
 

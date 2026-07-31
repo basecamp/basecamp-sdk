@@ -11,11 +11,12 @@ from basecamp.hooks import OperationInfo
 
 
 class ProjectsService(BaseService):
-    def list(self, *, status: str | None = None) -> ListResult:
+    def list(self, *, status: str | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="projects", operation="list", is_mutation=False),
             "/projects.json",
             params=self._compact(status=status),
+            max_items=max_items,
             operation="ListProjects",
         )
 
@@ -65,11 +66,12 @@ class ProjectsService(BaseService):
 
 
 class AsyncProjectsService(AsyncBaseService):
-    async def list(self, *, status: str | None = None) -> ListResult:
+    async def list(self, *, status: str | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="projects", operation="list", is_mutation=False),
             "/projects.json",
             params=self._compact(status=status),
+            max_items=max_items,
             operation="ListProjects",
         )
 

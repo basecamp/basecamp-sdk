@@ -11,18 +11,20 @@ from basecamp.hooks import OperationInfo
 
 
 class EventsService(BaseService):
-    def list(self, *, recording_id: int) -> ListResult:
+    def list(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="events", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/events.json",
+            max_items=max_items,
             operation="ListEvents",
         )
 
 
 class AsyncEventsService(AsyncBaseService):
-    async def list(self, *, recording_id: int) -> ListResult:
+    async def list(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="events", operation="list", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/events.json",
+            max_items=max_items,
             operation="ListEvents",
         )

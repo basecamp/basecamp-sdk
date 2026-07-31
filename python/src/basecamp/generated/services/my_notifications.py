@@ -20,11 +20,12 @@ class MyNotificationsService(BaseService):
             operation="GetMyNotifications",
         )
 
-    def get_bubble_ups(self, *, page: int | None = None) -> ListResult:
+    def get_bubble_ups(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
             "/my/readings/bubble_ups.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetBubbleUps",
         )
 
@@ -50,11 +51,12 @@ class AsyncMyNotificationsService(AsyncBaseService):
             operation="GetMyNotifications",
         )
 
-    async def get_bubble_ups(self, *, page: int | None = None) -> ListResult:
+    async def get_bubble_ups(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="mynotifications", operation="get_bubble_ups", is_mutation=False),
             "/my/readings/bubble_ups.json",
             params=self._compact(page=page),
+            max_items=max_items,
             operation="GetBubbleUps",
         )
 

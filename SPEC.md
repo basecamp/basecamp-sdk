@@ -1649,8 +1649,6 @@ logic is covered by `TestIsSameOrigin` unit tests:
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
 **Python** (`conformance/runner/python/runner.py` `SKIPS`) — unwaivered:
-- "maxItems caps results across pages" — list methods don't expose a public `max_items` parameter.
-- "maxItems landing exactly on the final item is not truncated" — same as above.
 - "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented.
 - "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above.
 

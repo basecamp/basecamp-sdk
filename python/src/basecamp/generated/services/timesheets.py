@@ -12,22 +12,36 @@ from basecamp.hooks import OperationInfo
 
 class TimesheetsService(BaseService):
     def for_project(
-        self, *, project_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self,
+        *,
+        project_id: int,
+        from_: str | None = None,
+        to: str | None = None,
+        person_id: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            max_items=max_items,
             operation="GetProjectTimesheet",
         )
 
     def for_recording(
-        self, *, recording_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self,
+        *,
+        recording_id: int,
+        from_: str | None = None,
+        to: str | None = None,
+        person_id: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            max_items=max_items,
             operation="GetRecordingTimesheet",
         )
 
@@ -78,22 +92,36 @@ class TimesheetsService(BaseService):
 
 class AsyncTimesheetsService(AsyncBaseService):
     async def for_project(
-        self, *, project_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self,
+        *,
+        project_id: int,
+        from_: str | None = None,
+        to: str | None = None,
+        person_id: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="timesheets", operation="for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            max_items=max_items,
             operation="GetProjectTimesheet",
         )
 
     async def for_recording(
-        self, *, recording_id: int, from_: str | None = None, to: str | None = None, person_id: int | None = None
+        self,
+        *,
+        recording_id: int,
+        from_: str | None = None,
+        to: str | None = None,
+        person_id: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="timesheets", operation="for_recording", is_mutation=False, resource_id=recording_id),
             f"/recordings/{recording_id}/timesheet.json",
             params={k: v for k, v in {"from": from_, "to": to, "person_id": person_id}.items() if v is not None},
+            max_items=max_items,
             operation="GetRecordingTimesheet",
         )
 

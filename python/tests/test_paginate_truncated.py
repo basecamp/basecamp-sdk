@@ -13,8 +13,9 @@ Two defects pinned here (SPEC.md steps 4a/6g mandate the precise form
    a live next Link on the final fetched page still reported
    ``truncated=False``.
 
-No public list method exposes ``max_items`` today, so the boundary cases
-exercise the private helpers directly on a concrete service.
+These regression pins exercise the private helpers directly on a concrete
+service; the public ``max_items`` surface across all three paginator families
+is covered in test_max_items_public.py.
 """
 
 from __future__ import annotations

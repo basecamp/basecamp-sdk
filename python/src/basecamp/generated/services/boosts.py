@@ -27,12 +27,13 @@ class BoostsService(BaseService):
             operation="DeleteBoost",
         )
 
-    def list_recording_boosts(self, *, recording_id: int) -> ListResult:
+    def list_recording_boosts(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(
                 service="boosts", operation="list_recording_boosts", is_mutation=False, resource_id=recording_id
             ),
             f"/recordings/{recording_id}/boosts.json",
+            max_items=max_items,
             operation="ListRecordingBoosts",
         )
 
@@ -47,10 +48,11 @@ class BoostsService(BaseService):
             operation="CreateRecordingBoost",
         )
 
-    def list_event_boosts(self, *, recording_id: int, event_id: int) -> ListResult:
+    def list_event_boosts(self, *, recording_id: int, event_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="boosts", operation="list_event_boosts", is_mutation=False, resource_id=event_id),
             f"/recordings/{recording_id}/events/{event_id}/boosts.json",
+            max_items=max_items,
             operation="ListEventBoosts",
         )
 
@@ -81,12 +83,13 @@ class AsyncBoostsService(AsyncBaseService):
             operation="DeleteBoost",
         )
 
-    async def list_recording_boosts(self, *, recording_id: int) -> ListResult:
+    async def list_recording_boosts(self, *, recording_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(
                 service="boosts", operation="list_recording_boosts", is_mutation=False, resource_id=recording_id
             ),
             f"/recordings/{recording_id}/boosts.json",
+            max_items=max_items,
             operation="ListRecordingBoosts",
         )
 
@@ -101,10 +104,11 @@ class AsyncBoostsService(AsyncBaseService):
             operation="CreateRecordingBoost",
         )
 
-    async def list_event_boosts(self, *, recording_id: int, event_id: int) -> ListResult:
+    async def list_event_boosts(self, *, recording_id: int, event_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="boosts", operation="list_event_boosts", is_mutation=False, resource_id=event_id),
             f"/recordings/{recording_id}/events/{event_id}/boosts.json",
+            max_items=max_items,
             operation="ListEventBoosts",
         )
 

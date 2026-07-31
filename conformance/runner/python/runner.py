@@ -77,7 +77,7 @@ class OperationMapper:
     def __init__(self, account_client):
         self._account = account_client
 
-    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None, path: str = "") -> Any:
+    def __call__(self, operation: str, *, path_params: dict, query_params: dict, body: dict | None, path: str = "", max_items: int | None = None) -> Any:
         match operation:
             case "DownloadURL":
                 if not path:
@@ -85,6 +85,8 @@ class OperationMapper:
                 raw_url = "https://storage.3.basecamp.com" + path
                 return self._account.download_url(raw_url)
             case "ListProjects":
+                if max_items:
+                    return self._account.projects.list(max_items=max_items)
                 return self._account.projects.list()
             case "GetProject":
                 return self._account.projects.get(project_id=path_params["projectId"])
@@ -290,6 +292,7 @@ class TestRunner:
                     query_params=self._test.get("queryParams", {}),
                     body=self._test.get("requestBody"),
                     path=self._test.get("path", ""),
+                    max_items=(self._test.get("configOverrides") or {}).get("maxItems"),
                 )
                 return self._verify_assertions(result=result, error=None)
             except Exception as e:
@@ -672,14 +675,10 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 class ConformanceRunner:
     _DOWNLOAD_RETRY_SKIP = "Python SDK download path uses get_no_retry; retry on 5xx / Retry-After is not implemented"
     SKIPS: set[str] = {
-        "maxItems caps results across pages",
-        "maxItems landing exactly on the final item is not truncated",
         "DownloadURL retries on 503 at the auth'd first hop",
         "DownloadURL honors Retry-After on 429 at the auth'd first hop",
     }
     SKIP_REASONS: dict[str, str] = {
-        "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
-        "maxItems landing exactly on the final item is not truncated": "Python SDK list methods don't expose a public max_items parameter",
         "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
         "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
     }

@@ -228,12 +228,13 @@ class AsyncBaseService:
         key: str,
         *,
         params: dict | None = None,
+        max_items: int | None = None,
         operation: str | None = None,
     ) -> ListResult:
         start = time.monotonic()
         safe_hook(self._hooks.on_operation_start, info)
         try:
-            result = await self._paginate_key(path, key, params=params, operation=operation)
+            result = await self._paginate_key(path, key, params=params, max_items=max_items, operation=operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -249,12 +250,13 @@ class AsyncBaseService:
         key: str,
         *,
         params: dict | None = None,
+        max_items: int | None = None,
         operation: str | None = None,
     ) -> dict:
         start = time.monotonic()
         safe_hook(self._hooks.on_operation_start, info)
         try:
-            result = await self._paginate_wrapped(path, key, params=params, operation=operation)
+            result = await self._paginate_wrapped(path, key, params=params, max_items=max_items, operation=operation)
             duration_ms = int((time.monotonic() - start) * 1000)
             safe_hook(self._hooks.on_operation_end, info, OperationResult(duration_ms=duration_ms))
             return result
@@ -271,6 +273,8 @@ class AsyncBaseService:
         max_items: int | None = None,
         operation: str | None = None,
     ) -> ListResult:
+        if max_items is not None and max_items <= 0:
+            max_items = None  # Non-positive caps disable the cap, matching the other SDKs.
         base_url = self._client.http._build_url(self._client.account_path(path))
         url = base_url
         all_items: list = []
@@ -313,8 +317,16 @@ class AsyncBaseService:
         return ListResult(all_items, ListMeta(total_count=total_count, truncated=truncated))
 
     async def _paginate_key(
-        self, path: str, key: str, *, params: dict | None = None, operation: str | None = None
+        self,
+        path: str,
+        key: str,
+        *,
+        params: dict | None = None,
+        max_items: int | None = None,
+        operation: str | None = None,
     ) -> ListResult:
+        if max_items is not None and max_items <= 0:
+            max_items = None  # Non-positive caps disable the cap, matching the other SDKs.
         base_url = self._client.http._build_url(self._client.account_path(path))
         url = base_url
         all_items: list = []
@@ -338,6 +350,11 @@ class AsyncBaseService:
             items = data.get(key, [])
             all_items.extend(items)
 
+            if max_items and len(all_items) >= max_items:
+                truncated = len(all_items) > max_items or parse_next_link(response.headers.get("link")) is not None
+                all_items = all_items[:max_items]
+                break
+
             next_url = parse_next_link(response.headers.get("link"))
             if not next_url:
                 break
@@ -353,8 +370,16 @@ class AsyncBaseService:
         return ListResult(all_items, ListMeta(total_count=total_count, truncated=truncated))
 
     async def _paginate_wrapped(
-        self, path: str, key: str, *, params: dict | None = None, operation: str | None = None
+        self,
+        path: str,
+        key: str,
+        *,
+        params: dict | None = None,
+        max_items: int | None = None,
+        operation: str | None = None,
     ) -> dict:
+        if max_items is not None and max_items <= 0:
+            max_items = None  # Non-positive caps disable the cap, matching the other SDKs.
         base_url = self._client.http._build_url(self._client.account_path(path))
 
         safe_hook(self._hooks.on_paginate, base_url, 1)
@@ -377,6 +402,9 @@ class AsyncBaseService:
         page = 1
 
         while next_link and page < self._client.config.max_pages:
+            if max_items and len(all_items) >= max_items:
+                break
+
             page += 1
             next_url = _security.resolve_url(url, next_link)
             if not _security.same_origin(next_url, base_url):
@@ -396,7 +424,12 @@ class AsyncBaseService:
             next_link = parse_next_link(response.headers.get("link"))
             url = next_url
 
-        wrapper[key] = ListResult(all_items, ListMeta(total_count=total_count, truncated=next_link is not None))
+        truncated = next_link is not None
+        if max_items and len(all_items) >= max_items:
+            truncated = len(all_items) > max_items or next_link is not None
+            all_items = all_items[:max_items]
+
+        wrapper[key] = ListResult(all_items, ListMeta(total_count=total_count, truncated=truncated))
         return wrapper
 
     def _compact(self, **kwargs: Any) -> dict:

@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class CampfiresService(BaseService):
-    def list(self) -> ListResult:
+    def list(self, *, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list", is_mutation=False),
             "/chats.json",
+            max_items=max_items,
             operation="ListCampfires",
         )
 
@@ -26,10 +27,11 @@ class CampfiresService(BaseService):
             operation="GetCampfire",
         )
 
-    def list_chatbots(self, *, campfire_id: int) -> ListResult:
+    def list_chatbots(self, *, campfire_id: int, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list_chatbots", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/integrations.json",
+            max_items=max_items,
             operation="ListChatbots",
         )
 
@@ -69,11 +71,14 @@ class CampfiresService(BaseService):
             operation="DeleteChatbot",
         )
 
-    def list_lines(self, *, campfire_id: int, sort: str | None = None, direction: str | None = None) -> ListResult:
+    def list_lines(
+        self, *, campfire_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list_lines", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/lines.json",
             params=self._compact(sort=sort, direction=direction),
+            max_items=max_items,
             operation="ListCampfireLines",
         )
 
@@ -111,11 +116,14 @@ class CampfiresService(BaseService):
             operation="DeleteCampfireLine",
         )
 
-    def list_uploads(self, *, campfire_id: int, sort: str | None = None, direction: str | None = None) -> ListResult:
+    def list_uploads(
+        self, *, campfire_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="campfires", operation="list_uploads", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/uploads.json",
             params=self._compact(sort=sort, direction=direction),
+            max_items=max_items,
             operation="ListCampfireUploads",
         )
 
@@ -131,10 +139,11 @@ class CampfiresService(BaseService):
 
 
 class AsyncCampfiresService(AsyncBaseService):
-    async def list(self) -> ListResult:
+    async def list(self, *, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list", is_mutation=False),
             "/chats.json",
+            max_items=max_items,
             operation="ListCampfires",
         )
 
@@ -146,10 +155,11 @@ class AsyncCampfiresService(AsyncBaseService):
             operation="GetCampfire",
         )
 
-    async def list_chatbots(self, *, campfire_id: int) -> ListResult:
+    async def list_chatbots(self, *, campfire_id: int, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list_chatbots", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/integrations.json",
+            max_items=max_items,
             operation="ListChatbots",
         )
 
@@ -192,12 +202,13 @@ class AsyncCampfiresService(AsyncBaseService):
         )
 
     async def list_lines(
-        self, *, campfire_id: int, sort: str | None = None, direction: str | None = None
+        self, *, campfire_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list_lines", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/lines.json",
             params=self._compact(sort=sort, direction=direction),
+            max_items=max_items,
             operation="ListCampfireLines",
         )
 
@@ -236,12 +247,13 @@ class AsyncCampfiresService(AsyncBaseService):
         )
 
     async def list_uploads(
-        self, *, campfire_id: int, sort: str | None = None, direction: str | None = None
+        self, *, campfire_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="campfires", operation="list_uploads", is_mutation=False, resource_id=campfire_id),
             f"/chats/{campfire_id}/uploads.json",
             params=self._compact(sort=sort, direction=direction),
+            max_items=max_items,
             operation="ListCampfireUploads",
         )
 

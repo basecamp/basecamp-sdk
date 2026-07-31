@@ -74,11 +74,12 @@ class SchedulesService(BaseService):
             operation="UpdateScheduleSettings",
         )
 
-    def list_entries(self, *, schedule_id: int, status: str | None = None) -> ListResult:
+    def list_entries(self, *, schedule_id: int, status: str | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
             f"/schedules/{schedule_id}/entries.json",
             params=self._compact(status=status),
+            max_items=max_items,
             operation="ListScheduleEntries",
         )
 
@@ -179,11 +180,14 @@ class AsyncSchedulesService(AsyncBaseService):
             operation="UpdateScheduleSettings",
         )
 
-    async def list_entries(self, *, schedule_id: int, status: str | None = None) -> ListResult:
+    async def list_entries(
+        self, *, schedule_id: int, status: str | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="schedules", operation="list_entries", is_mutation=False, resource_id=schedule_id),
             f"/schedules/{schedule_id}/entries.json",
             params=self._compact(status=status),
+            max_items=max_items,
             operation="ListScheduleEntries",
         )
 
