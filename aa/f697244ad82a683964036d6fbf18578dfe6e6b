@@ -1,0 +1,23 @@
+swift/Sources/Basecamp/BasecampError.swift
+  s_fb0636163f77d1::t_fceb3020792a44 17
+typescript/README.md
+  s_fb0636163f77d1::t_b87a1a17192712 477
+  s_fb0636163f77d1::t_388affb00dc5c1 465-472,474-476,478-485,490,493,496
+  s_fb0636163f77d1::t_648f6217df3787 473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "aaf697244ad82a683964036d6fbf18578dfe6e6b",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
