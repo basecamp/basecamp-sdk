@@ -110,6 +110,12 @@ class OperationMapper:
                 return self._account.drafts.list_my_drafts()
             case "GetMyNote":
                 return self._account.my_notes.get_my_note()
+            case "GetCalendar":
+                return self._account.calendars.get_calendar(calendar_id=path_params["calendarId"])
+            case "UpdateCalendar":
+                return self._account.calendars.update_calendar(
+                    calendar_id=path_params["calendarId"], calendar=body["calendar"]
+                )
             case "UpdateMyNote":
                 return self._account.my_notes.update_my_note(note=body["note"])
             case "GetBookmark":

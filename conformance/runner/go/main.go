@@ -547,6 +547,22 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.MyNotes().Get(ctx)
 		return operationResult{err: err}
 
+	case "GetCalendar":
+		calendarID := getInt64Param(tc.PathParams, "calendarId")
+		_, err := account.Calendars().Get(ctx, calendarID)
+		return operationResult{err: err}
+
+	case "UpdateCalendar":
+		calendarID := getInt64Param(tc.PathParams, "calendarId")
+		color := ""
+		if cal, ok := tc.RequestBody["calendar"].(map[string]interface{}); ok {
+			if c, ok := cal["color"].(string); ok {
+				color = c
+			}
+		}
+		_, err := account.Calendars().Update(ctx, calendarID, color)
+		return operationResult{err: err}
+
 	case "UpdateMyNote":
 		content := ""
 		if note, ok := tc.RequestBody["note"].(map[string]interface{}); ok {

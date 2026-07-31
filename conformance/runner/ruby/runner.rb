@@ -97,6 +97,10 @@ class OperationMapper
       @account.drafts.list_my_drafts.to_a
     when "GetMyNote"
       @account.my_notes.get_my_note
+    when "GetCalendar"
+      @account.calendars.get_calendar(calendar_id: path_params["calendarId"])
+    when "UpdateCalendar"
+      @account.calendars.update_calendar(calendar_id: path_params["calendarId"], calendar: body["calendar"])
     when "UpdateMyNote"
       @account.my_notes.update_my_note(note: body["note"])
     when "GetBookmark"
@@ -278,6 +282,7 @@ RUBY_SKIPS = Set.new([
   "CreateBookmark POST retries when marked idempotent",
   "DeleteBookmark DELETE retries when marked idempotent",
   "UpdateMyNote PUT retries when marked idempotent",
+  "UpdateCalendar PUT retries when marked idempotent",
   "Total count header is accessible",
   "Missing X-Total-Count returns zero",
   "Pagination stops at maxPages safety cap",
@@ -297,6 +302,7 @@ RUBY_SKIP_REASONS = {
   "CreateBookmark POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "DeleteBookmark DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "UpdateMyNote PUT retries when marked idempotent" => "Ruby SDK only retries GET",
+  "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",

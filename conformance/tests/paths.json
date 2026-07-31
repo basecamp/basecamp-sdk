@@ -1345,5 +1345,88 @@
       "path",
       "my-notes"
     ]
+  },
+  {
+    "name": "GetCalendar constructs the top-level calendar path",
+    "description": "Verifies GetCalendar constructs /calendars/{calendarId} \u2014 a top-level BC5 bucketable, not project-scoped (BC3 #12321).",
+    "operation": "GetCalendar",
+    "method": "GET",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "id": 2085958497,
+          "type": "Calendar",
+          "name": "Honcho Design Calendar",
+          "color": "blue",
+          "created_at": "2026-05-28T17:22:22.133Z",
+          "updated_at": "2026-07-20T04:05:52.374Z",
+          "url": "https://3.basecampapi.com/999/calendars/2085958497.json",
+          "app_url": "https://3.basecamp.com/999/calendars/2085958497",
+          "schedule_url": "https://3.basecampapi.com/999/schedules/1069478892.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/calendars/2085958497"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "calendars"
+    ]
+  },
+  {
+    "name": "UpdateCalendar PUTs the nested calendar envelope",
+    "description": "Verifies UpdateCalendar constructs /calendars/{calendarId} with the nested {calendar: {color}} body (BC3 #12321).",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "green"
+      }
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "body": {
+          "id": 2085958497,
+          "type": "Calendar",
+          "name": "Honcho Design Calendar",
+          "color": "green",
+          "created_at": "2026-05-28T17:22:22.133Z",
+          "updated_at": "2026-07-20T04:05:52.374Z",
+          "url": "https://3.basecampapi.com/999/calendars/2085958497.json",
+          "app_url": "https://3.basecamp.com/999/calendars/2085958497",
+          "schedule_url": "https://3.basecampapi.com/999/schedules/1069478892.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestPath",
+        "expected": "/999/calendars/2085958497"
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "path",
+      "calendars"
+    ]
   }
 ]
