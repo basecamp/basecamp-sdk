@@ -64,7 +64,7 @@ making the absorption journey publicly auditable.
 | [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 | [bubble-ups-surface](bubble-ups-surface.md) | absorbed-in-sdk | launch | high |
 | [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | no-json-contract | post-train | medium |
-| [everything-todo-card-filters](everything-todo-card-filters.md) | addressed-in-bc3-pr-12442 | post-train | medium |
+| [everything-todo-card-filters](everything-todo-card-filters.md) | absorbed-in-sdk | post-train | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
