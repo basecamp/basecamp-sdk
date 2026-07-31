@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -128,6 +130,172 @@ func TestCheckResponse_InvalidJSON(t *testing.T) {
 	}
 	if e.Message != "access denied" {
 		t.Errorf("Message = %q, want default fallback for invalid JSON", e.Message)
+	}
+}
+
+func TestCheckResponse_FieldKeyed422(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"errors":{"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "color: is not a valid color" {
+		t.Errorf("Message = %q, want flattened field errors standing alone", e.Message)
+	}
+	want := map[string][]string{"color": {"is not a valid color"}}
+	if !reflect.DeepEqual(e.FieldErrors, want) {
+		t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, want)
+	}
+}
+
+func TestCheckResponse_FieldKeyed422SortedMultiField(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"errors":{"name":["can't be blank","is too short"],"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	wantMsg := "color: is not a valid color, name: can't be blank; is too short"
+	if e.Message != wantMsg {
+		t.Errorf("Message = %q, want %q", e.Message, wantMsg)
+	}
+	want := map[string][]string{
+		"color": {"is not a valid color"},
+		"name":  {"can't be blank", "is too short"},
+	}
+	if !reflect.DeepEqual(e.FieldErrors, want) {
+		t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, want)
+	}
+}
+
+func TestCheckResponse_FieldKeyed422AppendsToTopLevelError(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"error":"Validation failed","errors":{"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	wantMsg := "Validation failed (color: is not a valid color)"
+	if e.Message != wantMsg {
+		t.Errorf("Message = %q, want %q", e.Message, wantMsg)
+	}
+}
+
+func TestCheckResponse_FieldKeyed400(t *testing.T) {
+	resp := &http.Response{StatusCode: 400, Header: http.Header{}}
+	body := []byte(`{"errors":{"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "color: is not a valid color" {
+		t.Errorf("Message = %q, want flattened field errors", e.Message)
+	}
+	if e.FieldErrors == nil {
+		t.Errorf("FieldErrors = nil, want populated map on 400")
+	}
+}
+
+func TestCheckResponse_FieldKeyedNotExtractedOutsideValidation(t *testing.T) {
+	resp := &http.Response{StatusCode: 403, Header: http.Header{}}
+	body := []byte(`{"errors":{"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.FieldErrors != nil {
+		t.Errorf("FieldErrors = %v, want nil outside 400/422", e.FieldErrors)
+	}
+	if e.Message != "access denied" {
+		t.Errorf("Message = %q, want default fallback", e.Message)
+	}
+}
+
+func TestCheckResponse_FieldKeyed422SkipsMalformedEntries(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"errors":{"color":"not an array","name":["can't be blank"],"empty":[],"mixed":[42,"is invalid"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	want := map[string][]string{
+		"mixed": {"is invalid"},
+		"name":  {"can't be blank"},
+	}
+	if !reflect.DeepEqual(e.FieldErrors, want) {
+		t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, want)
+	}
+	wantMsg := "mixed: is invalid, name: can't be blank"
+	if e.Message != wantMsg {
+		t.Errorf("Message = %q, want %q", e.Message, wantMsg)
+	}
+}
+
+func TestCheckResponse_FieldKeyed422MalformedShapeFallsBack(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	for _, body := range []string{
+		`{"errors":{"color":"not an array"}}`,
+		`{"errors":[]}`,
+		`{"errors":"nope"}`,
+		`{"errors":{}}`,
+	} {
+		err := checkResponse(resp, []byte(body))
+		e, ok := err.(*Error)
+		if !ok {
+			t.Fatalf("body %s: expected *Error, got %T", body, err)
+		}
+		if e.FieldErrors != nil {
+			t.Errorf("body %s: FieldErrors = %v, want nil", body, e.FieldErrors)
+		}
+		if e.Message != "validation error" {
+			t.Errorf("body %s: Message = %q, want default fallback", body, e.Message)
+		}
+	}
+}
+
+func TestCheckResponse_FieldKeyed422TruncatesAfterFlattening(t *testing.T) {
+	long := strings.Repeat("x", 600)
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"errors":{"color":["` + long + `"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	// The composed message is capped after flattening: 500 runes plus the
+	// appended ellipsis (see truncate).
+	if got := len([]rune(e.Message)); got != maxErrorMessageLen+1 {
+		t.Errorf("len(Message) = %d runes, want %d", got, maxErrorMessageLen+1)
+	}
+	if !strings.HasPrefix(e.Message, "color: xxx") {
+		t.Errorf("Message = %q, want flattened prefix", e.Message[:20])
+	}
+	// The structured slot keeps the raw server-sent messages.
+	if got := e.FieldErrors["color"][0]; got != long {
+		t.Errorf("FieldErrors[color][0] length = %d, want raw %d-char message", len(got), len(long))
+	}
+}
+
+func TestCheckResponse_Plain422UnchangedByFieldErrorSupport(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"error":"Name can't be blank"}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "Name can't be blank" {
+		t.Errorf("Message = %q, want plain server error message", e.Message)
+	}
+	if e.FieldErrors != nil {
+		t.Errorf("FieldErrors = %v, want nil for a flat error body", e.FieldErrors)
 	}
 }
 

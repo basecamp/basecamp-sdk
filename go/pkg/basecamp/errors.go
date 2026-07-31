@@ -48,13 +48,19 @@ const requestIDHeader = "X-Request-Id"
 
 // Error is a structured error with code, message, and optional hint.
 type Error struct {
-	Code       string
-	Message    string
-	Hint       string
-	HTTPStatus int
-	Retryable  bool
-	RequestID  string
-	Cause      error
+	Code    string
+	Message string
+	Hint    string
+	// FieldErrors carries the field-keyed messages from a validation (422)
+	// body of the form {"errors": {"field": ["msg", ...]}} — the Rails
+	// RecordInvalid rendering. Nil for every other error shape. The flattened
+	// form is also folded into Message; this slot preserves the raw,
+	// untruncated per-field messages.
+	FieldErrors map[string][]string
+	HTTPStatus  int
+	Retryable   bool
+	RequestID   string
+	Cause       error
 }
 
 // Error implements the error interface.

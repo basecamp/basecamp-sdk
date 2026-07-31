@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import {
   BasecampError,
   Errors,
+  errorFromParsedBody,
   errorFromResponse,
   isBasecampError,
   isErrorCode,
@@ -332,6 +333,181 @@ describe("errorFromResponse", () => {
 
     expect(error.code).toBe("api_error");
     expect(error.retryable).toBe(true);
+  });
+
+  describe("field-keyed 422 bodies", () => {
+    it("flattens field errors into the message and exposes the structured slot", async () => {
+      const response = new Response(
+        JSON.stringify({ errors: { color: ["is not a valid color"] } }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.code).toBe("validation");
+      expect(error.message).toBe("color: is not a valid color");
+      expect(error.fieldErrors).toEqual({ color: ["is not a valid color"] });
+    });
+
+    it("sorts fields lexicographically and joins multi-message fields", async () => {
+      const response = new Response(
+        JSON.stringify({
+          errors: {
+            name: ["can't be blank", "is too short"],
+            color: ["is not a valid color"],
+          },
+        }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe(
+        "color: is not a valid color, name: can't be blank; is too short"
+      );
+      expect(error.fieldErrors).toEqual({
+        color: ["is not a valid color"],
+        name: ["can't be blank", "is too short"],
+      });
+    });
+
+    it("appends flattened field errors after a top-level error message", async () => {
+      const response = new Response(
+        JSON.stringify({
+          error: "Validation failed",
+          errors: { color: ["is not a valid color"] },
+        }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("Validation failed (color: is not a valid color)");
+    });
+
+    it("extracts field errors on 400 responses too", async () => {
+      const response = new Response(
+        JSON.stringify({ errors: { color: ["is not a valid color"] } }),
+        { status: 400 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.code).toBe("validation");
+      expect(error.message).toBe("color: is not a valid color");
+      expect(error.fieldErrors).toEqual({ color: ["is not a valid color"] });
+    });
+
+    it("does not extract field errors outside validation statuses", async () => {
+      const response = new Response(
+        JSON.stringify({ errors: { color: ["is not a valid color"] } }),
+        { status: 403, statusText: "Forbidden" }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.fieldErrors).toBeUndefined();
+      expect(error.message).toBe("Forbidden");
+    });
+
+    it("skips malformed entries and keeps only string messages", async () => {
+      const response = new Response(
+        JSON.stringify({
+          errors: {
+            color: "not an array",
+            name: ["can't be blank"],
+            empty: [],
+            mixed: [42, "is invalid"],
+          },
+        }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("mixed: is invalid, name: can't be blank");
+      expect(error.fieldErrors).toEqual({
+        mixed: ["is invalid"],
+        name: ["can't be blank"],
+      });
+    });
+
+    it("falls back to the default message when errors is not a usable map", async () => {
+      for (const errors of [{ color: "not an array" }, [], "nope", {}]) {
+        const response = new Response(JSON.stringify({ errors }), {
+          status: 422,
+          statusText: "Unprocessable Entity",
+        });
+
+        const error = await errorFromResponse(response);
+
+        expect(error.fieldErrors).toBeUndefined();
+        expect(error.message).toBe("Unprocessable Entity");
+      }
+    });
+
+    it("truncates the composed message after flattening but keeps the raw slot", async () => {
+      const long = "x".repeat(600);
+      const response = new Response(
+        JSON.stringify({ errors: { color: [long] } }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message.length).toBe(500);
+      expect(error.message.startsWith("color: xxx")).toBe(true);
+      expect(error.message.endsWith("...")).toBe(true);
+      expect(error.fieldErrors).toEqual({ color: [long] });
+    });
+
+    it("leaves plain 422 error bodies unchanged", async () => {
+      const response = new Response(
+        JSON.stringify({ error: "Name can't be blank" }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("Name can't be blank");
+      expect(error.fieldErrors).toBeUndefined();
+    });
+
+    it("includes fieldErrors in toJSON", async () => {
+      const response = new Response(
+        JSON.stringify({ errors: { color: ["is not a valid color"] } }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.toJSON().fieldErrors).toEqual({ color: ["is not a valid color"] });
+    });
+  });
+
+  describe("errorFromParsedBody (consumed-body path)", () => {
+    // openapi-fetch consumes and parses the error body before the service
+    // layer sees the response; the SDK must build the error from that parsed
+    // value instead of re-reading the consumed stream.
+    it("extracts the server message from an already-parsed body", () => {
+      const response = new Response(null, { status: 422, statusText: "Unprocessable Entity" });
+
+      const error = errorFromParsedBody(response, { error: "Name can't be blank" });
+
+      expect(error.code).toBe("validation");
+      expect(error.message).toBe("Name can't be blank");
+    });
+
+    it("flattens field-keyed 422 errors from an already-parsed body", () => {
+      const response = new Response(null, { status: 422, statusText: "Unprocessable Entity" });
+
+      const error = errorFromParsedBody(response, {
+        errors: { color: ["is not a valid color"] },
+      });
+
+      expect(error.message).toBe("color: is not a valid color");
+      expect(error.fieldErrors).toEqual({ color: ["is not a valid color"] });
+    });
   });
 
   it("should parse Retry-After as HTTP-date", async () => {

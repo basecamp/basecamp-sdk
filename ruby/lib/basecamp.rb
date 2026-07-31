@@ -105,7 +105,9 @@ module Basecamp
 
     case status
     when 400, 422
-      ValidationError.new(message, http_status: status)
+      field_errors = parse_field_errors(body)
+      message = Security.truncate(compose_validation_message(parse_error_message(body), field_errors) || "Request failed")
+      ValidationError.new(message, http_status: status, field_errors: field_errors)
     when 401
       AuthError.new(message)
     when 403
@@ -154,5 +156,51 @@ module Basecamp
     msg ? Security.truncate(msg) : nil
   rescue JSON::ParserError, ApiError
     nil
+  end
+
+  # Extracts the field-keyed validation errors map from a response body — the
+  # Rails RecordInvalid rendering {"errors" => {"field" => ["msg", ...]}}.
+  # Entries whose value is not an array are skipped, non-string elements are
+  # dropped, and a map with no usable entries is treated as absent (nil).
+  # @param body [String, nil]
+  # @return [Hash{String => Array<String>}, nil]
+  def self.parse_field_errors(body)
+    return nil if body.nil? || body.empty?
+
+    Security.check_body_size!(body, Security::MAX_ERROR_BODY_BYTES, "Error")
+
+    data = JSON.parse(body)
+    errors = data.is_a?(Hash) ? data["errors"] : nil
+    return nil unless errors.is_a?(Hash)
+
+    field_errors = errors.each_with_object({}) do |(field, values), result|
+      next unless values.is_a?(Array)
+
+      messages = values.grep(String)
+      result[field.to_s] = messages unless messages.empty?
+    end
+    field_errors.empty? ? nil : field_errors
+  rescue JSON::ParserError, ApiError
+    nil
+  end
+
+  # Merges the top-level error message with the flattened field-keyed errors:
+  # appended in parentheses when both are present, standing alone when only the
+  # field errors are. The flattened shape — fields sorted lexicographically, a
+  # field's messages joined with "; ", fields joined with ", " — is shared by
+  # all six SDKs; change it everywhere or nowhere. Callers truncate the
+  # composed result so the appended tail is capped too.
+  # @param message [String, nil]
+  # @param field_errors [Hash{String => Array<String>}, nil]
+  # @return [String, nil]
+  def self.compose_validation_message(message, field_errors)
+    if field_errors.nil?
+      message
+    else
+      flat = field_errors.keys.sort \
+        .map { |field| "#{field}: #{field_errors[field].join("; ")}" } \
+        .join(", ")
+      message ? "#{message} (#{flat})" : flat
+    end
   end
 end

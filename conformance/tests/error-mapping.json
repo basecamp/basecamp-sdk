@@ -84,6 +84,58 @@
     "tags": ["error-mapping", "validation", "structured-error"]
   },
   {
+    "name": "422 field-keyed errors flatten into the validation message",
+    "description": "Verifies that a field-keyed 422 body ({\"errors\": {field: [messages]}} — the Rails RecordInvalid rendering, e.g. UpdateCalendar rejecting an unknown color) is flattened into the error message",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorField", "path": "httpStatus", "expected": 422},
+      {"type": "errorMessage", "expected": "color: is not a valid color"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors flatten sorted with multi-message fields",
+    "description": "Verifies the shared flattening shape: fields sorted lexicographically, a field's messages joined with '; ', fields joined with ', '",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"errors": {"name": ["can't be blank", "is too short"], "color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "color: is not a valid color, name: can't be blank; is too short"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
+    "name": "422 field-keyed errors append to a top-level error message",
+    "description": "Verifies that when both error and errors are present, the flattened field errors are appended in parentheses after the top-level message",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"error": "Validation failed", "errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "Validation failed (color: is not a valid color)"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
     "name": "429 maps to rate_limit error code",
     "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
     "operation": "ListProjects",

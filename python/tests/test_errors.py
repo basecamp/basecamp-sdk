@@ -119,6 +119,69 @@ class TestErrorFromResponse:
         assert "Name is required" in str(err)
 
 
+class TestFieldKeyed422:
+    def test_flattens_field_errors_into_message(self):
+        err = error_from_response(422, b'{"errors": {"color": ["is not a valid color"]}}')
+        assert isinstance(err, ValidationError)
+        assert str(err) == "color: is not a valid color"
+        assert err.field_errors == {"color": ["is not a valid color"]}
+
+    def test_sorts_fields_and_joins_multi_message_fields(self):
+        body = b'{"errors": {"name": ["can\'t be blank", "is too short"], "color": ["is not a valid color"]}}'
+        err = error_from_response(422, body)
+        assert str(err) == "color: is not a valid color, name: can't be blank; is too short"
+        assert err.field_errors == {
+            "color": ["is not a valid color"],
+            "name": ["can't be blank", "is too short"],
+        }
+
+    def test_appends_after_top_level_error_message(self):
+        body = b'{"error": "Validation failed", "errors": {"color": ["is not a valid color"]}}'
+        err = error_from_response(422, body)
+        assert str(err) == "Validation failed (color: is not a valid color)"
+
+    def test_extracts_on_400_too(self):
+        err = error_from_response(400, b'{"errors": {"color": ["is not a valid color"]}}')
+        assert isinstance(err, ValidationError)
+        assert str(err) == "color: is not a valid color"
+        assert err.field_errors == {"color": ["is not a valid color"]}
+
+    def test_not_extracted_outside_validation_statuses(self):
+        err = error_from_response(403, b'{"errors": {"color": ["is not a valid color"]}}')
+        assert not hasattr(err, "field_errors")
+        assert str(err) == "Access denied"
+
+    def test_skips_malformed_entries(self):
+        body = b'{"errors": {"color": "not an array", "name": ["can\'t be blank"], "empty": [], "mixed": [42, "is invalid"]}}'
+        err = error_from_response(422, body)
+        assert str(err) == "mixed: is invalid, name: can't be blank"
+        assert err.field_errors == {"mixed": ["is invalid"], "name": ["can't be blank"]}
+
+    @pytest.mark.parametrize(
+        "errors", ['{"color": "not an array"}', "[]", '"nope"', "{}"]
+    )
+    def test_unusable_errors_shape_falls_back(self, errors):
+        err = error_from_response(422, f'{{"errors": {errors}}}'.encode())
+        assert err.field_errors is None
+        assert str(err) == "Validation failed"
+
+    def test_truncates_after_flattening_but_keeps_raw_slot(self):
+        long = "x" * 600
+        err = error_from_response(422, f'{{"errors": {{"color": ["{long}"]}}}}'.encode())
+        assert len(str(err).encode()) == 500
+        assert str(err).startswith("color: xxx")
+        assert str(err).endswith("...")
+        assert err.field_errors == {"color": [long]}
+
+    def test_plain_422_unchanged(self):
+        err = error_from_response(422, b'{"error": "Name can\'t be blank"}')
+        assert str(err) == "Name can't be blank"
+        assert err.field_errors is None
+
+    def test_validation_error_field_errors_default_none(self):
+        assert ValidationError("nope").field_errors is None
+
+
 class TestParseErrorMessage:
     def test_json_error_field(self):
         assert parse_error_message(b'{"error": "bad"}') == "bad"

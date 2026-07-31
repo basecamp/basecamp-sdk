@@ -125,6 +125,107 @@ final class ErrorTests: XCTestCase {
         }
     }
 
+    // MARK: - Field-keyed 422 bodies
+    //
+    // Native mirrors of the conformance error-mapping "field-errors" cases:
+    // Swift has no conformance runner, so these tests replay the same fixture
+    // bodies and assert the same flattened-message substrings. The structured
+    // fieldErrors slot is deliberately absent here — extending the .validation
+    // associated values is source-breaking and awaits a deliberate break.
+
+    func testFromHTTPResponse422FieldKeyedFlattensIntoMessage() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: ["errors": ["color": ["is not a valid color"]]]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        if case .validation(let message, let status, _, _) = error {
+            XCTAssertEqual(message, "color: is not a valid color")
+            XCTAssertEqual(status, 422)
+        } else {
+            XCTFail("Expected .validation")
+        }
+    }
+
+    func testFromHTTPResponse422FieldKeyedSortsAndJoins() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "errors": [
+                    "name": ["can't be blank", "is too short"],
+                    "color": ["is not a valid color"],
+                ]
+            ]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "color: is not a valid color, name: can't be blank; is too short")
+    }
+
+    func testFromHTTPResponse422FieldKeyedAppendsToTopLevelError() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "error": "Validation failed",
+                "errors": ["color": ["is not a valid color"]],
+            ]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "Validation failed (color: is not a valid color)")
+    }
+
+    func testFromHTTPResponse400FieldKeyedExtractsToo() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: ["errors": ["color": ["is not a valid color"]]]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 400, data: body, headers: [:], requestId: nil)
+        if case .validation(let message, let status, _, _) = error {
+            XCTAssertEqual(message, "color: is not a valid color")
+            XCTAssertEqual(status, 400)
+        } else {
+            XCTFail("Expected .validation")
+        }
+    }
+
+    func testFromHTTPResponse403DoesNotFlattenFieldErrors() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: ["errors": ["color": ["is not a valid color"]]]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 403, data: body, headers: [:], requestId: nil)
+        XCTAssertFalse(error.message.contains("is not a valid color"))
+    }
+
+    func testFromHTTPResponse422FieldKeyedSkipsMalformedEntries() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "errors": [
+                    "color": "not an array",
+                    "name": ["can't be blank"],
+                    "empty": [],
+                    "mixed": [42, "is invalid"],
+                ] as [String: Any]
+            ]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "mixed: is invalid, name: can't be blank")
+    }
+
+    func testFromHTTPResponse422UnusableErrorsShapeFallsBack() {
+        let shapes: [Any] = [["color": "not an array"], [Any](), "nope", [String: Any]()]
+        for shape in shapes {
+            let body = try! JSONSerialization.data(withJSONObject: ["errors": shape])
+            let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+            XCTAssertFalse(error.message.contains(":"), "unexpected flattening for \(shape)")
+        }
+    }
+
+    func testFromHTTPResponse422FieldKeyedTruncatesAfterFlattening() {
+        let longMessage = String(repeating: "x", count: 600)
+        let body = try! JSONSerialization.data(
+            withJSONObject: ["errors": ["color": [longMessage]]]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message.count, 500)
+        XCTAssertTrue(error.message.hasPrefix("color: xxx"))
+        XCTAssertTrue(error.message.hasSuffix("..."))
+    }
+
     func testFromHTTPResponse500() {
         let error = BasecampError.fromHTTPResponse(status: 500, data: nil, headers: [:], requestId: nil)
         if case .api(_, let status, _, _) = error {

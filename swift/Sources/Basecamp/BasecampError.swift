@@ -41,6 +41,12 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     case api(message: String, httpStatus: Int?, hint: String?, requestId: String?)
 
     /// Validation error (HTTP 400, 422).
+    ///
+    /// Field-keyed 422 bodies (`{"errors": {"field": ["msg", ...]}}` — the
+    /// Rails RecordInvalid rendering) are flattened into `message` as
+    /// "field: msg1; msg2, other: msg". A structured fieldErrors slot is
+    /// deliberately absent: extending the associated values is source-breaking
+    /// for every `case .validation` match, so it awaits a deliberate break.
     case validation(message: String, httpStatus: Int, hint: String?, requestId: String?)
 
     /// Multiple matches found for a name or identifier.
@@ -156,9 +162,8 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         requestId: String?
     ) -> BasecampError {
         let body = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-        let message = truncate(
-            (body?["error"] as? String) ?? HTTPURLResponse.localizedString(forStatusCode: status)
-        )
+        let serverMessage = (body?["error"] as? String).map { truncate($0) }
+        let message = serverMessage ?? truncate(HTTPURLResponse.localizedString(forStatusCode: status))
         let hint = truncate(body?["error_description"] as? String)
 
         switch status {
@@ -176,8 +181,16 @@ public enum BasecampError: Error, Sendable, LocalizedError {
                 hint: retryHint, requestId: requestId
             )
         case 400, 422:
+            var validationMessage = message
+            if let fieldErrors = parseFieldErrors(body) {
+                let flat = flattenFieldErrors(fieldErrors)
+                // Appended in parentheses after a top-level message, standing
+                // alone otherwise; truncated after flattening so the appended
+                // tail is capped too.
+                validationMessage = truncate(serverMessage.map { "\($0) (\(flat))" } ?? flat)
+            }
             return .validation(
-                message: message, httpStatus: status,
+                message: validationMessage, httpStatus: status,
                 hint: hint, requestId: requestId
             )
         default:
@@ -204,6 +217,34 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     static func truncate(_ s: String) -> String {
         if s.count <= maxMessageLength { return s }
         return String(s.prefix(maxMessageLength - 3)) + "..."
+    }
+
+    /// Extracts the field-keyed validation errors map from a parsed error
+    /// body — the Rails RecordInvalid rendering
+    /// `{"errors": {"field": ["msg", ...]}}`. Entries whose value is not an
+    /// array are skipped, non-string elements are dropped, and a map with no
+    /// usable entries is treated as absent (nil).
+    private static func parseFieldErrors(_ body: [String: Any]?) -> [String: [String]]? {
+        guard let errors = body?["errors"] as? [String: Any] else { return nil }
+        var fieldErrors: [String: [String]] = [:]
+        for (field, value) in errors {
+            guard let values = value as? [Any] else { continue }
+            let messages = values.compactMap { $0 as? String }
+            if !messages.isEmpty {
+                fieldErrors[field] = messages
+            }
+        }
+        return fieldErrors.isEmpty ? nil : fieldErrors
+    }
+
+    /// Flattens a field-keyed errors map as "field: msg1; msg2, other: msg" —
+    /// fields sorted lexicographically, a field's messages joined with "; ",
+    /// fields joined with ", ". This shape is shared by all six SDKs; change
+    /// it everywhere or nowhere.
+    private static func flattenFieldErrors(_ fieldErrors: [String: [String]]) -> String {
+        fieldErrors.keys.sorted()
+            .map { "\($0): \(fieldErrors[$0, default: []].joined(separator: "; "))" }
+            .joined(separator: ", ")
     }
 
     /// Parses a Retry-After header value (seconds or HTTP-date).

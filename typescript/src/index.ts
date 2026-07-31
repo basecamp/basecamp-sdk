@@ -58,6 +58,7 @@ export { type DownloadResult, filenameFromURL } from "./download.js";
 export {
   BasecampError,
   Errors,
+  errorFromParsedBody,
   errorFromResponse,
   isBasecampError,
   isErrorCode,

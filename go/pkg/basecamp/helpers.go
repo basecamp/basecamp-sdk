@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 // marshalBody encodes a map as JSON and returns an io.Reader suitable for the
@@ -60,19 +62,18 @@ func checkResponse(resp *http.Response, body []byte) error {
 	}
 
 	requestID := resp.Header.Get(requestIDHeader)
-	serverMsg, serverHint := parseErrorBody(body)
+	serverMsg, serverHint, fieldErrors := parseErrorBody(body)
 
 	switch resp.StatusCode {
-	case http.StatusBadRequest:
-		return &Error{Code: CodeValidation, Message: msgOrDefault(serverMsg, "validation error"), Hint: serverHint, HTTPStatus: 400, RequestID: requestID}
+	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		msg := msgOrDefault(composeValidationMessage(serverMsg, fieldErrors), "validation error")
+		return &Error{Code: CodeValidation, Message: msg, Hint: serverHint, FieldErrors: fieldErrors, HTTPStatus: resp.StatusCode, RequestID: requestID}
 	case http.StatusUnauthorized:
 		return &Error{Code: CodeAuth, Message: msgOrDefault(serverMsg, "authentication required"), Hint: serverHint, HTTPStatus: 401, RequestID: requestID}
 	case http.StatusForbidden:
 		return &Error{Code: CodeForbidden, Message: msgOrDefault(serverMsg, "access denied"), Hint: serverHint, HTTPStatus: 403, RequestID: requestID}
 	case http.StatusNotFound:
 		return &Error{Code: CodeNotFound, Message: msgOrDefault(serverMsg, "resource not found"), Hint: serverHint, HTTPStatus: 404, RequestID: requestID}
-	case http.StatusUnprocessableEntity:
-		return &Error{Code: CodeValidation, Message: msgOrDefault(serverMsg, "validation error"), Hint: serverHint, HTTPStatus: 422, RequestID: requestID}
 	case http.StatusTooManyRequests:
 		return &Error{Code: CodeRateLimit, Message: msgOrDefault(serverMsg, "rate limited - try again later"), Hint: serverHint, HTTPStatus: 429, Retryable: true, RequestID: requestID}
 	default:
@@ -84,22 +85,94 @@ func checkResponse(resp *http.Response, body []byte) error {
 // maxErrorMessageLen caps server error messages to prevent unbounded memory growth.
 const maxErrorMessageLen = 500
 
-// parseErrorBody tries to extract "error" and "error_description" from a JSON
-// response body. Returns empty strings if the body is not JSON or missing those keys.
-func parseErrorBody(body []byte) (message, hint string) {
+// parseErrorBody tries to extract "error", "error_description", and the
+// field-keyed "errors" map from a JSON response body. Returns empty values if
+// the body is not JSON or missing those keys.
+func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][]string) {
 	if len(body) == 0 {
-		return "", ""
+		return "", "", nil
 	}
 	var parsed struct {
-		Error       string `json:"error"`
-		Description string `json:"error_description"`
+		Error       string          `json:"error"`
+		Description string          `json:"error_description"`
+		Errors      json.RawMessage `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		return "", ""
+		return "", "", nil
 	}
-	message = truncate(parsed.Error, maxErrorMessageLen)
-	hint = truncate(parsed.Description, maxErrorMessageLen)
-	return message, hint
+	message = truncate(parsed.Error)
+	hint = truncate(parsed.Description)
+	return message, hint, parseFieldErrors(parsed.Errors)
+}
+
+// parseFieldErrors decodes the field-keyed validation errors map — the Rails
+// RecordInvalid rendering {"errors": {"field": ["msg", ...]}}. Entries whose
+// value is not an array are skipped, non-string elements are dropped, and a map
+// with no usable entries is treated as absent (nil).
+func parseFieldErrors(raw json.RawMessage) map[string][]string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var entries map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &entries); err != nil {
+		return nil
+	}
+	fieldErrors := make(map[string][]string, len(entries))
+	for field, value := range entries {
+		var values []any
+		if err := json.Unmarshal(value, &values); err != nil {
+			continue
+		}
+		messages := make([]string, 0, len(values))
+		for _, v := range values {
+			if s, ok := v.(string); ok {
+				messages = append(messages, s)
+			}
+		}
+		if len(messages) > 0 {
+			fieldErrors[field] = messages
+		}
+	}
+	if len(fieldErrors) == 0 {
+		return nil
+	}
+	return fieldErrors
+}
+
+// flattenFieldErrors renders a field-keyed errors map as
+// "field: msg1; msg2, other: msg" — fields sorted lexicographically, a field's
+// messages joined with "; ", fields joined with ", ". This shape is shared by
+// all six SDKs; change it everywhere or nowhere.
+func flattenFieldErrors(fieldErrors map[string][]string) string {
+	if len(fieldErrors) == 0 {
+		return ""
+	}
+	fields := make([]string, 0, len(fieldErrors))
+	for field := range fieldErrors {
+		fields = append(fields, field)
+	}
+	sort.Strings(fields)
+	parts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		parts = append(parts, field+": "+strings.Join(fieldErrors[field], "; "))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// composeValidationMessage merges the top-level server message with the
+// flattened field-keyed errors: appended in parentheses when both are present,
+// standing alone when only the field errors are. The composed result is
+// truncated after flattening so the appended tail is capped too.
+func composeValidationMessage(serverMsg string, fieldErrors map[string][]string) string {
+	flat := flattenFieldErrors(fieldErrors)
+	switch {
+	case flat == "":
+		return serverMsg
+	case serverMsg == "":
+		return truncate(flat)
+	default:
+		return truncate(serverMsg + " (" + flat + ")")
+	}
 }
 
 // msgOrDefault returns msg if non-empty, otherwise fallback.
@@ -110,17 +183,17 @@ func msgOrDefault(msg, fallback string) string {
 	return fallback
 }
 
-// truncate returns s capped at maxLen runes. If truncated, the result is
-// maxLen runes plus an appended "…" (so up to maxLen+1 runes total).
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
+// truncate returns s capped at maxErrorMessageLen runes. If truncated, the
+// result is maxErrorMessageLen runes plus an appended "…".
+func truncate(s string) string {
+	if len(s) <= maxErrorMessageLen {
 		return s
 	}
 	runes := []rune(s)
-	if len(runes) <= maxLen {
+	if len(runes) <= maxErrorMessageLen {
 		return s
 	}
-	return string(runes[:maxLen]) + "…"
+	return string(runes[:maxErrorMessageLen]) + "…"
 }
 
 // Pointer dereference helpers for converting generated types (which use pointers)

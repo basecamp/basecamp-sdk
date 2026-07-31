@@ -401,6 +401,23 @@ In all cases, extract `request_id` from `X-Request-Id` response header if presen
 
 Note: `"error"` takes precedence over `"message"` — step 4 is a fallback for APIs that use `"message"` instead of `"error"`.
 
+### Field-Keyed Validation Bodies (400/422) `[conformance]`
+
+BC5 controllers that render Rails `RecordInvalid` emit a field-keyed 422 body instead of the flat `{"error": ...}` shape (e.g. `UpdateCalendar` rejecting an unknown color):
+
+```json
+{"errors": {"color": ["is not a valid color"]}}
+```
+
+For `status == 400` or `status == 422` only:
+
+1. If the parsed JSON body has an `"errors"` key whose value is an object, build `field_errors`: for each entry whose value is an array, keep its string elements; skip entries whose value is not an array and entries with no usable messages. If no entries remain, treat the map as absent.
+2. Flatten `field_errors` into a single string: fields sorted lexicographically, each rendered as `{field}: {msg1}; {msg2}` (a field's messages joined with `"; "`), fields joined with `", "`. This shape is shared by all six SDKs — change it everywhere or nowhere.
+3. Compose the error message: appended in parentheses after the top-level message when both are present (`{message} ({flattened})`), standing alone when only `errors` is present. Truncation to `MAX_ERROR_MESSAGE_LENGTH` (§9) applies to the composed result — after flattening — so the appended tail is capped too.
+4. Expose the raw map as a structured slot on the validation error (idiomatic spelling per language: `FieldErrors` / `fieldErrors` / `field_errors`), preserving the raw, untruncated per-field messages. The slot is `nil`/`null`/`None`/`undefined` for every other error shape, including non-validation statuses whose bodies happen to carry an `errors` key.
+
+Swift deviation `[static]`: Swift flattens into `message` only. Extending the `.validation` associated values is source-breaking for every `case .validation` match, so the structured slot awaits a deliberate break.
+
 ### Retry-After Parsing Algorithm
 
 Given header value `value`:

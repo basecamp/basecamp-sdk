@@ -69,6 +69,8 @@ export interface BasecampErrorOptions {
   retryAfter?: number;
   /** Request ID from the server for debugging */
   requestId?: string;
+  /** Field-keyed validation messages from a 422 body ({"errors": {field: [messages]}}) */
+  fieldErrors?: Record<string, string[]>;
 }
 
 /**
@@ -112,6 +114,14 @@ export class BasecampError extends Error {
   /** Request ID from the server for debugging */
   readonly requestId?: string;
 
+  /**
+   * Field-keyed validation messages from a 422 body of the form
+   * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid rendering.
+   * Undefined for every other error shape. The flattened form is also folded
+   * into `message`; this slot preserves the raw, untruncated per-field messages.
+   */
+  readonly fieldErrors?: Record<string, string[]>;
+
   /** Original error that caused this error (ES2022+) */
   declare readonly cause?: Error;
 
@@ -124,6 +134,7 @@ export class BasecampError extends Error {
     this.retryable = options?.retryable ?? false;
     this.retryAfter = options?.retryAfter;
     this.requestId = options?.requestId;
+    this.fieldErrors = options?.fieldErrors;
 
     // Set cause if provided (ES2022+)
     if (options?.cause) {
@@ -157,6 +168,7 @@ export class BasecampError extends Error {
       retryable: this.retryable,
       retryAfter: this.retryAfter,
       requestId: this.requestId,
+      fieldErrors: this.fieldErrors,
     };
   }
 }
@@ -276,26 +288,54 @@ export async function errorFromResponse(
   response: Response,
   requestId?: string
 ): Promise<BasecampError> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    // Body is not JSON or empty, use status text
+    body = undefined;
+  }
+  return errorFromParsedBody(response, body, requestId);
+}
+
+/**
+ * Creates a BasecampError from an HTTP response whose body has already been
+ * read and parsed (e.g. by openapi-fetch, which consumes the error body before
+ * the service layer sees the response — re-reading it would throw and lose the
+ * server's message).
+ */
+export function errorFromParsedBody(
+  response: Response,
+  body: unknown,
+  requestId?: string
+): BasecampError {
   const httpStatus = response.status;
   const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
 
-  // Try to extract error message from response body
+  // Try to extract error message from the parsed body
   let message = response.statusText || "Request failed";
+  let serverMessage: string | undefined;
   let hint: string | undefined;
+  let fieldErrors: Record<string, string[]> | undefined;
 
-  try {
-    const body = await response.json();
-    if (typeof body === "object" && body !== null) {
-      if ("error" in body && typeof body.error === "string") {
-        // Truncate error messages to prevent information leakage and unbounded memory growth
-        message = truncateErrorMessage(body.error);
-      }
-      if ("error_description" in body && typeof body.error_description === "string") {
-        hint = truncateErrorMessage(body.error_description);
+  if (typeof body === "object" && body !== null) {
+    if ("error" in body && typeof body.error === "string") {
+      // Truncate error messages to prevent information leakage and unbounded memory growth
+      serverMessage = truncateErrorMessage(body.error);
+      message = serverMessage;
+    }
+    if ("error_description" in body && typeof body.error_description === "string") {
+      hint = truncateErrorMessage(body.error_description);
+    }
+    if (httpStatus === 400 || httpStatus === 422) {
+      fieldErrors = parseFieldErrors(body);
+      if (fieldErrors) {
+        const flat = flattenFieldErrors(fieldErrors);
+        // Appended in parentheses after a top-level message, standing alone
+        // otherwise; truncated after flattening so the tail is capped too.
+        message = truncateErrorMessage(serverMessage ? `${serverMessage} (${flat})` : flat);
       }
     }
-  } catch {
-    // Body is not JSON or empty, use status text
   }
 
   switch (httpStatus) {
@@ -315,7 +355,7 @@ export async function errorFromResponse(
       });
     case 400:
     case 422:
-      return new BasecampError("validation", message, { httpStatus, hint, requestId });
+      return new BasecampError("validation", message, { httpStatus, hint, requestId, fieldErrors });
     default:
       // 5xx errors are retryable
       const retryable = httpStatus >= 500 && httpStatus < 600;
@@ -326,6 +366,42 @@ export async function errorFromResponse(
         requestId,
       });
   }
+}
+
+/**
+ * Extracts the field-keyed validation errors map from a parsed error body —
+ * the Rails RecordInvalid rendering `{"errors": {"field": ["msg", ...]}}`.
+ * Entries whose value is not an array are skipped, non-string elements are
+ * dropped, and a map with no usable entries is treated as absent (undefined).
+ */
+function parseFieldErrors(body: object): Record<string, string[]> | undefined {
+  const errors = (body as { errors?: unknown }).errors;
+  if (typeof errors !== "object" || errors === null || Array.isArray(errors)) {
+    return undefined;
+  }
+  const fieldErrors: Record<string, string[]> = {};
+  let found = false;
+  for (const [field, value] of Object.entries(errors)) {
+    if (!Array.isArray(value)) continue;
+    const messages = value.filter((m): m is string => typeof m === "string");
+    if (messages.length === 0) continue;
+    fieldErrors[field] = messages;
+    found = true;
+  }
+  return found ? fieldErrors : undefined;
+}
+
+/**
+ * Flattens a field-keyed errors map as "field: msg1; msg2, other: msg" —
+ * fields sorted lexicographically, a field's messages joined with "; ",
+ * fields joined with ", ". This shape is shared by all six SDKs; change it
+ * everywhere or nowhere.
+ */
+function flattenFieldErrors(fieldErrors: Record<string, string[]>): string {
+  return Object.entries(fieldErrors)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([field, messages]) => `${field}: ${messages.join("; ")}`)
+    .join(", ");
 }
 
 /**
