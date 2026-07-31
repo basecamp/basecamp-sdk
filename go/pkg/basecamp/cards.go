@@ -988,6 +988,64 @@ func (s *CardColumnsService) Unwatch(ctx context.Context, columnID int64) (err e
 	return checkResponse(resp.HTTPResponse, resp.Body)
 }
 
+// Subscribe subscribes the current user to the column, watching it for changes.
+//
+// Subscribe uses the card-table-specific subscription endpoint
+// (card_tables/lists/{columnID}/subscription), which returns no content.
+// Watch is the same action through the generic recording subscription
+// endpoint and returns the resulting subscription details.
+// Returns nil on success (204 No Content).
+func (s *CardColumnsService) Subscribe(ctx context.Context, columnID int64) (err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Subscribe",
+		ResourceType: "card_column", IsMutation: true,
+		ResourceID: columnID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.SubscribeToCardColumnWithResponse(ctx, s.client.accountID, columnID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
+// Unsubscribe unsubscribes the current user from the column, no longer
+// watching it for changes.
+//
+// Unsubscribe uses the card-table-specific subscription endpoint
+// (card_tables/lists/{columnID}/subscription); Unwatch is the same action
+// through the generic recording subscription endpoint.
+// Returns nil on success (204 No Content).
+func (s *CardColumnsService) Unsubscribe(ctx context.Context, columnID int64) (err error) {
+	op := OperationInfo{
+		Service: "CardColumns", Operation: "Unsubscribe",
+		ResourceType: "card_column", IsMutation: true,
+		ResourceID: columnID,
+	}
+	if gater, ok := s.client.parent.hooks.(GatingHooks); ok {
+		if ctx, err = gater.OnOperationGate(ctx, op); err != nil {
+			return
+		}
+	}
+	start := time.Now()
+	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
+	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
+
+	resp, err := s.client.parent.gen.UnsubscribeFromCardColumnWithResponse(ctx, s.client.accountID, columnID)
+	if err != nil {
+		return err
+	}
+	return checkResponse(resp.HTTPResponse, resp.Body)
+}
+
 // CardStepsService handles card step operations.
 type CardStepsService struct {
 	client *AccountClient
