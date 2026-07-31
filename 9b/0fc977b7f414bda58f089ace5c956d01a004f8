@@ -1,0 +1,29 @@
+AGENTS.md
+  s_289a344fc8a3ac::t_344f0f3e941c92 27,88
+SECURITY.md
+  s_289a344fc8a3ac::t_271c24582fe21b 187
+SPEC.md
+  s_289a344fc8a3ac::t_2ae8165a5296f7 111,113-114,568,1875,1877
+scripts/check-idempotency-parity
+  s_289a344fc8a3ac::t_da1e8fda9c6e43 114
+spec/api-gaps/README.md
+  s_289a344fc8a3ac::t_e6ffca891cf344 61
+spec/api-gaps/my-drafts.md
+  s_289a344fc8a3ac::t_f73afef63ebbbd 3,7-11,95-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "9b0fc977b7f414bda58f089ace5c956d01a004f8",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
