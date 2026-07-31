@@ -590,10 +590,11 @@ class RetryTest {
             this.engine = engine
         }
 
-        // The whole-request time budget (HttpTimeout requestTimeoutMillis) is
-        // already spent when HttpRequestTimeoutException surfaces — retrying
-        // would extend total latency past the caller's configured budget, so
-        // it is the deliberate carve-out from network-error retry.
+        // The request-time budget (HttpTimeout requestTimeoutMillis) applies
+        // per attempt: an attempt that consumed its entire budget is a
+        // slowness shape a retry tends to repeat, and each retry would burn
+        // another full budget — the deliberate carve-out from network-error
+        // retry.
         val account = client.forAccount("12345")
         val url = "${client.config.baseUrl}/12345/projects.json"
         try {

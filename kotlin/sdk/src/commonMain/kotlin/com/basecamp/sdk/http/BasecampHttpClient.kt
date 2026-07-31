@@ -63,11 +63,13 @@ internal class BasecampHttpClient(
      * One eligibility gate covers both failure shapes (SPEC §7 Gate 3):
      * retryable HTTP statuses AND transport-level network errors, so an
      * idempotent operation survives a connection blip while a non-idempotent
-     * POST is still attempted exactly once. The whole-request time budget
-     * (Ktor's [HttpRequestTimeoutException]) is the deliberate carve-out —
-     * once the caller's configured timeout has elapsed, retrying would extend
-     * total latency past what they asked for. Auth headers are attached per
-     * attempt inside [request], so every retry re-authenticates naturally.
+     * POST is still attempted exactly once. The deliberate carve-out is
+     * Ktor's [HttpRequestTimeoutException]: an attempt that consumed the
+     * caller's entire request-time budget is a slowness shape a retry tends
+     * to repeat — and the timeout is installed per attempt, so each retry
+     * would burn another full budget, multiplying worst-case wall-clock time
+     * by the attempt count. Auth headers are attached per attempt inside
+     * [request], so every retry re-authenticates naturally.
      */
     suspend fun requestWithRetry(
         method: HttpMethod,
@@ -134,13 +136,15 @@ internal class BasecampHttpClient(
                     message = "Network error: ${outcome.cause.message}",
                     cause = outcome.cause,
                 )
-                // Total-budget carve-out: HttpRequestTimeoutException means the
-                // caller's whole-request time allowance is already spent, so it
-                // never retries. Everything else the transport throws —
-                // connect/socket timeouts, connection resets, DNS failures
-                // (including CIO's UnresolvedAddressException, which is not an
-                // IOException) — stays retryable, matching Swift's broad
-                // classification.
+                // Total-budget carve-out: HttpRequestTimeoutException means an
+                // attempt consumed the caller's entire configured request-time
+                // budget (HttpTimeout requestTimeoutMillis) — not a transient
+                // blip but a slowness shape a retry tends to repeat, and the
+                // timeout is per attempt, so each retry burns another full
+                // budget. Everything else the transport throws — connect/socket
+                // timeouts, connection resets, DNS failures (including CIO's
+                // UnresolvedAddressException, which is not an IOException) —
+                // stays retryable, matching Swift's broad classification.
                 val retryableFailure = outcome.cause !is HttpRequestTimeoutException
                 if (config.enableRetry && isRetryable && retryableFailure && attempt < maxAttempts) {
                     val delayMs = calculateBackoffDelay(baseDelayMs, attempt)
