@@ -36,7 +36,7 @@ making the absorption journey publicly auditable.
 
 | Gap | Status | BC3 plan phase | SDK demand |
 |---|---|---|---|
-| [calendar](calendar.md) | addressed-in-bc3-pr-12321 | 3b | medium |
+| [calendar](calendar.md) | absorbed-in-sdk | 3b | medium |
 | [scratchpad](scratchpad.md) | absorbed-in-sdk | 3b | medium |
 | [step-top-level](step-top-level.md) | absorbed-in-sdk | 3b | low |
 | [everything-aggregates](everything-aggregates.md) | absorbed-in-sdk | 3c | high |

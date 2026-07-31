@@ -28,6 +28,8 @@ export const PATH_TO_OPERATION: Record<string, string> = {
   "POST:/{accountId}/buckets/{bucketId}/todosets/{todosetId}/todos.json": "CreateTodosetTodo",
   "GET:/{accountId}/buckets/{bucketId}/webhooks.json": "ListWebhooks",
   "POST:/{accountId}/buckets/{bucketId}/webhooks.json": "CreateWebhook",
+  "GET:/{accountId}/calendars/{calendarId}": "GetCalendar",
+  "PUT:/{accountId}/calendars/{calendarId}": "UpdateCalendar",
   "GET:/{accountId}/card_tables/{cardTableId}": "GetCardTable",
   "POST:/{accountId}/card_tables/{cardTableId}/columns.json": "CreateCardColumn",
   "POST:/{accountId}/card_tables/{cardTableId}/moves.json": "MoveCardColumn",

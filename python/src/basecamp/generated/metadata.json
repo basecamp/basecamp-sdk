@@ -666,6 +666,17 @@
       ]
     }
   },
+  "GetCalendar": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "GetCampfire": {
     "retry": {
       "backoff": "exponential",
@@ -2265,6 +2276,18 @@
     }
   },
   "UpdateAnswer": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "UpdateCalendar": {
     "idempotent": true,
     "retry": {
       "backoff": "exponential",

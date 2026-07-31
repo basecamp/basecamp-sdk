@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, NotRequired, Optional, TypedDict
 
+FieldErrorMap = dict[str, list[str]]
+
 WebhookHeadersMap = dict[str, str]
 
 
@@ -97,6 +99,22 @@ class BucketCardsGroup(TypedDict):
 class BucketTodosGroup(TypedDict):
     bucket: RecordingBucket
     todos: list[Todo]
+
+
+class Calendar(TypedDict):
+    app_url: str
+    color: str
+    created_at: str
+    id: int
+    name: str
+    schedule_url: str
+    type: str
+    updated_at: str
+    url: str
+
+
+class CalendarAttributes(TypedDict):
+    color: str
 
 
 class Campfire(TypedDict):
@@ -702,6 +720,10 @@ class EverythingFile(TypedDict):
     url: NotRequired[str]
     visible_to_clients: NotRequired[bool]
     width: NotRequired[Optional[int | float]]
+
+
+class FieldKeyedErrors(TypedDict):
+    errors: FieldErrorMap
 
 
 class ForbiddenErrorResponseContent(TypedDict):
@@ -1760,6 +1782,10 @@ class UnauthorizedErrorResponseContent(TypedDict):
 
 class UpdateAccountNameRequestContent(TypedDict):
     name: str
+
+
+class UpdateCalendarRequestContent(TypedDict):
+    calendar: CalendarAttributes
 
 
 class UpdateCampfireLineRequestContent(TypedDict):

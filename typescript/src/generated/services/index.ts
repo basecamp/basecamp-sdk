@@ -7,6 +7,7 @@ export { MessageTypesService } from "./message-types.js";
 export { ToolsService } from "./tools.js";
 export { TodosService } from "./todos.js";
 export { WebhooksService } from "./webhooks.js";
+export { CalendarsService } from "./calendars.js";
 export { CardsService } from "./cards.js";
 export { CardStepsService } from "./card-steps.js";
 export { CardTablesService } from "./card-tables.js";

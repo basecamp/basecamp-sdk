@@ -1,9 +1,14 @@
 ---
 gap: calendar
-status: addressed-in-bc3-pr-12321
+status: absorbed-in-sdk
 detected: 2026-05-01
 sdk_demand: medium
 bc3_pr: 12321
+smithy_refs:
+  - "GetCalendar operation"
+  - "UpdateCalendar operation"
+  - "Calendar structure"
+  - "CalendarAttributes structure"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3b
@@ -52,13 +57,13 @@ is intentionally small.
 
 ## SDK absorption plan when this lands
 
-- New Smithy operations: `GetCalendar`, `UpdateCalendar`, with shapes derived
-  from the merged doc's examples.
-- New service registration: `CalendarsService` with `get(id)` and
-  `update(id, input)`.
-- Status flips to `absorbed-in-sdk` with the absorption PR (which adds the
-  Smithy refs).
-- Canary fixture: add `GetCalendar` to `live-my-surface.json` once a stable
-  fixture-id resolution path exists (e.g., dock walk → calendar tool).
-- Pairwise check: BC4 absent → BC5 present is fine; the assertion is structural
-  conformance against the response schema, not pairwise equality.
+**Absorbed** (post-#504 program C8): `CalendarsService` models the show +
+update pair with the shape taken from `doc/api/sections/calendars.md` **at the
+pinned revision** (verified: no doc/controller drift since `e83b2733`): id,
+type, name, color, created_at, updated_at, url, app_url, schedule_url — all
+required non-nullable. The update body is the nested `{calendar: {color}}`
+envelope; the pinned controller's 422 contract (`{"errors": {"color": ["is not
+a valid color"]}}`, rejected up front for unknown enum values) is documented on
+the operation and pinned in per-SDK 422 tests. `UpdateCalendar` is a flagged
+idempotent PUT with an idempotency conformance case. Live-canary fixture for
+`GetCalendar` remains a follow-up (needs a stable dock-walk fixture-id path).

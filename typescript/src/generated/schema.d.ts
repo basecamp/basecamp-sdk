@@ -275,6 +275,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/calendars/{calendarId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Get a calendar by its bucket id. A Calendar is a top-level BC5 bucketable
+         *     (distinct from a project) exposing display metadata and a link to its
+         *     underlying schedule resource. Shipped scope is show + update only.
+         */
+        get: operations["GetCalendar"];
+        /**
+         * @description Update a calendar's display color. An unknown color returns 422 with a JSON
+         *     errors payload keyed by field ({"errors": {"color": ["is not a valid
+         *     color"]}}) — the controller rejects invalid enum values up front.
+         */
+        put: operations["UpdateCalendar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/card_tables/cards/{cardId}": {
         parameters: {
             query?: never;
@@ -3146,6 +3172,35 @@ export interface components {
             bucket: components["schemas"]["RecordingBucket"];
             todos: components["schemas"]["Todo"][];
         };
+        /** @description A per-account calendar (wire type Calendar), keyed by its own bucket id. */
+        Calendar: {
+            /** Format: int64 */
+            id: number;
+            type: string;
+            name: string;
+            /**
+             * @description One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
+             *     pink, brown.
+             */
+            color: string;
+            created_at: string;
+            updated_at: string;
+            url: string;
+            app_url: string;
+            /** @description API URL of the calendar's underlying schedule resource. */
+            schedule_url: string;
+        };
+        /**
+         * @description The writable calendar payload — the wire body is the nested
+         *     {calendar: {color}} envelope.
+         */
+        CalendarAttributes: {
+            /**
+             * @description One of: white, red, orange, yellow, green, blue, aqua, purple, gray,
+             *     pink, brown.
+             */
+            color: string;
+        };
         Campfire: {
             /** Format: int64 */
             id: number;
@@ -3847,6 +3902,14 @@ export interface components {
             content?: string;
             content_attachments?: components["schemas"]["RichTextAttachment"][];
         };
+        FieldErrorMap: {
+            [key: string]: string[];
+        };
+        /** @description The field-keyed 422 body: {"errors": {"color": ["is not a valid color"]}}. */
+        FieldKeyedErrors: {
+            errors: components["schemas"]["FieldErrorMap"];
+        };
+        FieldValidationErrorResponseContent: components["schemas"]["FieldKeyedErrors"];
         /** @enum {string} */
         FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         ForbiddenErrorResponseContent: {
@@ -3988,6 +4051,7 @@ export interface components {
         GetBookmarkResponseContent: components["schemas"]["BookmarkStatus"];
         GetBoostResponseContent: components["schemas"]["Boost"];
         GetBubbleUpsResponseContent: components["schemas"]["Notification"][];
+        GetCalendarResponseContent: components["schemas"]["Calendar"];
         GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
         GetCampfireResponseContent: components["schemas"]["Campfire"];
         GetCardColumnResponseContent: components["schemas"]["CardColumn"];
@@ -5447,6 +5511,10 @@ export interface components {
             name: string;
         };
         UpdateAccountNameResponseContent: components["schemas"]["Account"];
+        UpdateCalendarRequestContent: {
+            calendar: components["schemas"]["CalendarAttributes"];
+        };
+        UpdateCalendarResponseContent: components["schemas"]["Calendar"];
         UpdateCampfireLineRequestContent: {
             /** @description The new line content, interpreted as rich text (HTML) */
             content: string;
@@ -7276,6 +7344,153 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookLimitErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetCalendar 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetCalendarResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    UpdateCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                calendarId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCalendarRequestContent"];
+            };
+        };
+        responses: {
+            /** @description UpdateCalendar 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpdateCalendarResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description FieldValidationError 422 response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
                 };
             };
         };

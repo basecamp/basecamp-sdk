@@ -215,5 +215,52 @@
       "idempotent",
       "put"
     ]
+  },
+  {
+    "name": "UpdateCalendar PUT retries when marked idempotent",
+    "description": "Setting the calendar color is a naturally idempotent PUT; it must retry on 503 like the other flagged PUTs.",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {
+      "calendarId": 2085958497
+    },
+    "requestBody": {
+      "calendar": {
+        "color": "green"
+      }
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 200,
+        "body": {
+          "id": 2085958497,
+          "type": "Calendar",
+          "name": "Honcho Design Calendar",
+          "color": "green",
+          "created_at": "2026-05-28T17:22:22.133Z",
+          "updated_at": "2026-07-20T04:05:52.374Z",
+          "url": "https://3.basecampapi.com/999/calendars/2085958497.json",
+          "app_url": "https://3.basecamp.com/999/calendars/2085958497",
+          "schedule_url": "https://3.basecampapi.com/999/schedules/1069478892.json"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "put"
+    ]
   }
 ]

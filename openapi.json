@@ -2354,6 +2354,231 @@
         }
       }
     },
+    "/{accountId}/calendars/{calendarId}": {
+      "get": {
+        "description": "Get a calendar by its bucket id. A Calendar is a top-level BC5 bucketable\n(distinct from a project) exposing display metadata and a link to its\nunderlying schedule resource. Shipped scope is show + update only.",
+        "operationId": "GetCalendar",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "calendarId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GetCalendar 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetCalendarResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Calendars"
+        ],
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      },
+      "put": {
+        "description": "Update a calendar's display color. An unknown color returns 422 with a JSON\nerrors payload keyed by field ({\"errors\": {\"color\": [\"is not a valid\ncolor\"]}}) — the controller rejects invalid enum values up front.",
+        "operationId": "UpdateCalendar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCalendarRequestContent"
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "Basecamp account ID (numeric string)",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$",
+              "description": "Basecamp account ID (numeric string)"
+            },
+            "required": true
+          },
+          {
+            "name": "calendarId",
+            "in": "path",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UpdateCalendar 200 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateCalendarResponseContent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError 401 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorResponseContent"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "ForbiddenError 403 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenErrorResponseContent"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NotFoundError 404 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "FieldValidationError 422 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "RateLimitError 429 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitErrorResponseContent"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError 500 response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponseContent"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Calendars"
+        ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
+        "x-basecamp-retry": {
+          "maxAttempts": 3,
+          "baseDelayMs": 1000,
+          "backoff": "exponential",
+          "retryOn": [
+            429,
+            503
+          ]
+        }
+      }
+    },
     "/{accountId}/card_tables/cards/{cardId}": {
       "get": {
         "description": "Get a card by ID",
@@ -24539,6 +24764,77 @@
           "todos"
         ]
       },
+      "Calendar": {
+        "type": "object",
+        "description": "A per-account calendar (wire type Calendar), keyed by its own bucket id.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "x-go-type-skip-optional-pointer": false
+          },
+          "type": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string",
+            "description": "One of: white, red, orange, yellow, green, blue, aqua, purple, gray,\npink, brown."
+          },
+          "created_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "updated_at": {
+            "type": "string",
+            "x-go-type": "time.Time",
+            "x-go-type-import": {
+              "path": "time"
+            },
+            "x-go-type-skip-optional-pointer": true
+          },
+          "url": {
+            "type": "string"
+          },
+          "app_url": {
+            "type": "string"
+          },
+          "schedule_url": {
+            "type": "string",
+            "description": "API URL of the calendar's underlying schedule resource."
+          }
+        },
+        "required": [
+          "app_url",
+          "color",
+          "created_at",
+          "id",
+          "name",
+          "schedule_url",
+          "type",
+          "updated_at",
+          "url"
+        ]
+      },
+      "CalendarAttributes": {
+        "type": "object",
+        "description": "The writable calendar payload — the wire body is the nested\n{calendar: {color}} envelope.",
+        "properties": {
+          "color": {
+            "type": "string",
+            "description": "One of: white, red, orange, yellow, green, blue, aqua, purple, gray,\npink, brown."
+          }
+        },
+        "required": [
+          "color"
+        ]
+      },
       "Campfire": {
         "type": "object",
         "properties": {
@@ -27081,6 +27377,33 @@
           }
         }
       },
+      "FieldErrorMap": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "propertyNames": {
+          "type": "string"
+        }
+      },
+      "FieldKeyedErrors": {
+        "type": "object",
+        "description": "The field-keyed 422 body: {\"errors\": {\"color\": [\"is not a valid color\"]}}.",
+        "properties": {
+          "errors": {
+            "$ref": "#/components/schemas/FieldErrorMap"
+          }
+        },
+        "required": [
+          "errors"
+        ]
+      },
+      "FieldValidationErrorResponseContent": {
+        "$ref": "#/components/schemas/FieldKeyedErrors"
+      },
       "FirstWeekDay": {
         "type": "string",
         "enum": [
@@ -27564,6 +27887,9 @@
         "items": {
           "$ref": "#/components/schemas/Notification"
         }
+      },
+      "GetCalendarResponseContent": {
+        "$ref": "#/components/schemas/Calendar"
       },
       "GetCampfireLineResponseContent": {
         "$ref": "#/components/schemas/CampfireLine"
@@ -31944,6 +32270,20 @@
       },
       "UpdateAccountNameResponseContent": {
         "$ref": "#/components/schemas/Account"
+      },
+      "UpdateCalendarRequestContent": {
+        "type": "object",
+        "properties": {
+          "calendar": {
+            "$ref": "#/components/schemas/CalendarAttributes"
+          }
+        },
+        "required": [
+          "calendar"
+        ]
+      },
+      "UpdateCalendarResponseContent": {
+        "$ref": "#/components/schemas/Calendar"
       },
       "UpdateCampfireLineRequestContent": {
         "type": "object",

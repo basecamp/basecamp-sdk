@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-31T12:31:21Z
+# Generated: 2026-07-31T13:35:02Z
 
 require "json"
 require "time"
@@ -390,6 +390,72 @@ module Basecamp
         {
           "bucket" => @bucket,
           "todos" => @todos,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Calendar
+    class Calendar
+      include TypeHelpers
+      attr_accessor :app_url, :color, :created_at, :id, :name, :schedule_url, :type, :updated_at, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url color created_at id name schedule_url type updated_at url].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @color = data["color"]
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @name = data["name"]
+        @schedule_url = data["schedule_url"]
+        @type = data["type"]
+        @updated_at = parse_datetime(data["updated_at"])
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "color" => @color,
+          "created_at" => @created_at,
+          "id" => @id,
+          "name" => @name,
+          "schedule_url" => @schedule_url,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # CalendarAttributes
+    class CalendarAttributes
+      include TypeHelpers
+      attr_accessor :color
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[color].freeze
+      end
+
+      def initialize(data = {})
+        @color = data["color"]
+      end
+
+      def to_h
+        {
+          "color" => @color,
         }.compact
       end
 
@@ -1645,6 +1711,31 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # FieldKeyedErrors
+    class FieldKeyedErrors
+      include TypeHelpers
+      attr_accessor :errors
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[errors].freeze
+      end
+
+      def initialize(data = {})
+        @errors = parse_type(data["errors"], "FieldErrorMap")
+      end
+
+      def to_h
+        {
+          "errors" => @errors,
         }.compact
       end
 

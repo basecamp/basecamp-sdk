@@ -804,6 +804,17 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "GetCalendar" -> {
+            account.calendars.getCalendar(tc.pathParams.longParam("calendarId"))
+            DispatchResult()
+        }
+
+        "UpdateCalendar" -> {
+            val cal = tc.requestBody?.get("calendar")?.jsonObject ?: JsonObject(emptyMap())
+            account.calendars.updateCalendar(tc.pathParams.longParam("calendarId"), UpdateCalendarBody(calendar = cal))
+            DispatchResult()
+        }
+
         "UpdateMyNote" -> {
             val note = tc.requestBody?.get("note")?.jsonObject ?: JsonObject(emptyMap())
             account.myNotes.updateMyNote(UpdateMyNoteBody(note = note))

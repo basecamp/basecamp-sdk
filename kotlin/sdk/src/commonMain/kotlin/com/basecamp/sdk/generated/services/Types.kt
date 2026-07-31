@@ -33,6 +33,11 @@ data class CreateEventBoostBody(
     val content: String
 )
 
+/** Request body for UpdateCalendar. */
+data class UpdateCalendarBody(
+    val calendar: JsonObject
+)
+
 /** Request body for CreateChatbot. */
 data class CreateChatbotBody(
     val serviceName: String,

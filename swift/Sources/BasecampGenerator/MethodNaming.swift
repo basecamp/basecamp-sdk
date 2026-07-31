@@ -38,6 +38,8 @@ let methodNameOverrides: [String: String] = [
     "GetBookmark": "getBookmark",
     // "myNote()" reads oddly; keep the getter explicit.
     "GetMyNote": "getMyNote",
+    // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
+    "GetCalendar": "getCalendar",
     "GetMyProfile": "me",
     "GetTodolistOrGroup": "get",
     "UpdateTodolistOrGroup": "update",

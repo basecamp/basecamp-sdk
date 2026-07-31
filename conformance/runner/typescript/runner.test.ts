@@ -251,6 +251,16 @@ async function executeOperation(
         await client.myNotes.getMyNote();
         break;
 
+      case "GetCalendar":
+        await client.calendars.getCalendar(Number(params.calendarId));
+        break;
+
+      case "UpdateCalendar":
+        await client.calendars.updateCalendar(Number(params.calendarId), {
+          calendar: body.calendar as { color: string },
+        });
+        break;
+
       case "UpdateMyNote":
         await client.myNotes.updateMyNote({ note: body.note as { content: string } });
         break;
