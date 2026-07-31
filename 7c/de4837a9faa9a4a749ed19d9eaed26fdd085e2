@@ -1,0 +1,69 @@
+conformance/runner/typescript/package-lock.json
+  s_bed25e9efe7247::t_d4012306471b5d 23
+go/pkg/basecamp/version.go
+  s_dd849d8f70f973::t_94ef4bb65c205c 4
+kotlin/sdk/build.gradle.kts
+  s_dd849d8f70f973::t_440af43ed4d545 8
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/BasecampConfig.kt
+  s_dd849d8f70f973::t_b024cecf42fdb4 31
+package.json
+  s_dd849d8f70f973::t_ea736897cd2e33 3
+python/pyproject.toml
+  s_dd849d8f70f973::t_8c114e64135d36 7
+python/src/basecamp/_version.py
+  s_dd849d8f70f973::t_d235c26f245d37 1
+python/uv.lock
+  s_bed25e9efe7247::t_32e9312a274f52 20
+ruby/Gemfile.lock
+  s_fb0636163f77d1::t_851ff2c2c445c4 4,156
+ruby/lib/basecamp/version.rb
+  s_dd849d8f70f973::t_297f6417ca7361 4
+swift/Sources/Basecamp/BasecampConfig.swift
+  s_dd849d8f70f973::t_e3dd58b4a2d3cf 27
+typescript/package-lock.json
+  s_289a344fc8a3ac::t_3fc00e3d1707c6 3,9
+typescript/package.json
+  s_dd849d8f70f973::t_3f073f4bf72bb5 3
+typescript/src/client.ts
+  s_dd849d8f70f973::t_6f409a5a604263 235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "7cde4837a9faa9a4a749ed19d9eaed26fdd085e2",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_bed25e9efe7247": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8ee519f-e357-41ec-a393-104a907543b7",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_dd849d8f70f973": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46ce4da4-962c-4963-a24e-e1579decc6ce",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
