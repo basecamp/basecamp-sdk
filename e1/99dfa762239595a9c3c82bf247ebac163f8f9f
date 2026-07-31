@@ -1,0 +1,31 @@
+go/pkg/basecamp/bookmarks.go
+  s_289a344fc8a3ac::t_905a6f8bfd870e 1-186
+go/pkg/basecamp/client.go
+  s_289a344fc8a3ac::t_3d89c4c9116633 86,1142-1151
+python/src/basecamp/async_client.py
+  s_289a344fc8a3ac::t_ba6f6a9509e647 376-381
+python/src/basecamp/client.py
+  s_289a344fc8a3ac::t_c2cbb4d4d6047f 377-382
+ruby/lib/basecamp/client.rb
+  s_289a344fc8a3ac::t_a3a8d0cab23bd2 484-488
+typescript/src/client.ts
+  s_289a344fc8a3ac::t_da6b389c9e8925 45,152-154,435
+typescript/src/index.ts
+  s_289a344fc8a3ac::t_122087d9e9c738 299-303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "e199dfa762239595a9c3c82bf247ebac163f8f9f",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
