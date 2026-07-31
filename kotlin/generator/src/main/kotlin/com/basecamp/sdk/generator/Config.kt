@@ -165,6 +165,8 @@ val VERB_PATTERNS = listOf(
  */
 val METHOD_NAME_OVERRIDES = mapOf(
     "GetMyProfile" to "me",
+    // "bookmark(id)" reads as the action; keep the getter explicit.
+    "GetBookmark" to "getBookmark",
     "GetTodolistOrGroup" to "get",
     "UpdateTodolistOrGroup" to "update",
     "SetCardColumnColor" to "setColor",
@@ -271,6 +273,9 @@ val METHOD_NAME_OVERRIDES = mapOf(
 
 val RESOURCE_TYPE_OVERRIDES = mapOf(
     "UpdateHillChartSettings" to "hill_chart",
+    // The whole family reports "bookmark"; the inferred "my_bookmark" would
+    // split the list operation into its own telemetry category.
+    "ListMyBookmarks" to "bookmark",
     // Creates and returns a Todo; the inferred "todoset_todo" would split
     // loose-to-do operations into their own telemetry category.
     "CreateTodosetTodo" to "todo",
@@ -308,6 +313,8 @@ val TYPE_ALIASES = mapOf(
     "Question" to "Question",
     "QuestionAnswer" to "Answer",
     "Subscription" to "Subscription",
+    "Bookmark" to "Bookmark",
+    "BookmarkStatus" to "BookmarkStatus",
     "Forward" to "Forward",
     "ForwardReply" to "ForwardReply",
     "Inbox" to "Inbox",

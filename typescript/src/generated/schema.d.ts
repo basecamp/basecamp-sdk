@@ -1319,6 +1319,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/my/bookmarks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description List the current user's bookmarks, most recently bookmarked first (paginated).
+         *     A bookmark is a personal link between the current user and a single recording,
+         *     visible only to its creator; each entry wraps the shared recording projection.
+         */
+        get: operations["ListMyBookmarks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/my/preferences.json": {
         parameters: {
             query?: never;
@@ -1885,6 +1906,31 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/recordings/{recordingId}/bookmark.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Report whether the current user has bookmarked the recording. */
+        get: operations["GetBookmark"];
+        put?: never;
+        /**
+         * @description Bookmark a recording for the current user.
+         *     Idempotent: re-bookmarking returns the existing bookmark, never a duplicate.
+         */
+        post: operations["CreateBookmark"];
+        /**
+         * @description Remove the current user's bookmark from a recording (returns 204 No Content).
+         *     Idempotent: deleting an absent bookmark also returns 204.
+         */
+        delete: operations["DeleteBookmark"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3010,6 +3056,22 @@ export interface components {
             error: string;
             message?: string;
         };
+        /**
+         * @description A personal bookmark: the current user's link to a single recording.
+         *     The wrapped recording is the shared recording projection, whose `parent`
+         *     is optional (docked recordings and doors omit it).
+         */
+        Bookmark: {
+            /** Format: int64 */
+            id: number;
+            created_at: string;
+            updated_at: string;
+            recording: components["schemas"]["Recording"];
+        };
+        /** @description The current user's bookmark state for one recording. */
+        BookmarkStatus: {
+            bookmarked: boolean;
+        };
         Boost: {
             /** Format: int64 */
             id: number;
@@ -3349,6 +3411,7 @@ export interface components {
         CreateAttachmentResponseContent: {
             attachable_sgid?: string;
         };
+        CreateBookmarkResponseContent: components["schemas"]["Bookmark"];
         CreateCampfireLineRequestContent: {
             content: string;
             content_type?: string;
@@ -3831,6 +3894,7 @@ export interface components {
             grouped_by?: string;
             todos?: components["schemas"]["Todo"][];
         };
+        GetBookmarkResponseContent: components["schemas"]["BookmarkStatus"];
         GetBoostResponseContent: components["schemas"]["Boost"];
         GetBubbleUpsResponseContent: components["schemas"]["Notification"][];
         GetCampfireLineResponseContent: components["schemas"]["CampfireLine"];
@@ -4026,6 +4090,7 @@ export interface components {
         ListLineupMarkersResponseContent: components["schemas"]["LineupMarker"][];
         ListMessageTypesResponseContent: components["schemas"]["MessageType"][];
         ListMessagesResponseContent: components["schemas"]["Message"][];
+        ListMyBookmarksResponseContent: components["schemas"]["Bookmark"][];
         ListPeopleResponseContent: components["schemas"]["Person"][];
         ListPingablePeopleResponseContent: components["schemas"]["Person"][];
         ListProjectPeopleResponseContent: components["schemas"]["Person"][];
@@ -11943,6 +12008,65 @@ export interface operations {
             };
         };
     };
+    ListMyBookmarks: {
+        parameters: {
+            query?: {
+                /** @description Page number for paginating through results. Defaults to 1. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ListMyBookmarks 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListMyBookmarksResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
     GetMyPreferences: {
         parameters: {
             query?: never;
@@ -14615,6 +14739,205 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    GetBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description GetBookmark 200 response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetBookmarkResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    CreateBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CreateBookmark 201 response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateBookmarkResponseContent"];
+                };
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
+                };
+            };
+            /** @description InternalServerError 500 response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
+                };
+            };
+        };
+    };
+    DeleteBookmark: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordingId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description DeleteBookmark 204 response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UnauthorizedError 401 response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
+                };
+            };
+            /** @description ForbiddenError 403 response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
+                };
+            };
+            /** @description NotFoundError 404 response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
+                };
+            };
+            /** @description RateLimitError 429 response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
                 };
             };
             /** @description InternalServerError 500 response */

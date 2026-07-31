@@ -45,6 +45,18 @@
       ]
     }
   },
+  "CreateBookmark": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "CreateCampfireLine": {
     "retry": {
       "backoff": "exponential",
@@ -375,6 +387,18 @@
       ]
     }
   },
+  "DeleteBookmark": {
+    "idempotent": true,
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
   "DeleteBoost": {
     "idempotent": true,
     "retry": {
@@ -599,6 +623,17 @@
     }
   },
   "GetAssignedTodos": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "GetBookmark": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,
@@ -1644,6 +1679,17 @@
     }
   },
   "ListMessages": {
+    "retry": {
+      "backoff": "exponential",
+      "base_delay_ms": 1000,
+      "max": 3,
+      "retry_on": [
+        429,
+        503
+      ]
+    }
+  },
+  "ListMyBookmarks": {
     "retry": {
       "backoff": "exponential",
       "base_delay_ms": 1000,

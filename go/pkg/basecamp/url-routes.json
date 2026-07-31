@@ -1139,6 +1139,19 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/bookmarks",
+      "resource": "Bookmarks",
+      "operations": {
+        "GET": "ListMyBookmarks"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/preferences",
       "resource": "People",
       "operations": {
@@ -1609,6 +1622,25 @@
         },
         "recordingId": {
           "role": "recording",
+          "type": "int64"
+        }
+      }
+    },
+    {
+      "pattern": "/{accountId}/recordings/{recordingId}/bookmark",
+      "resource": "Bookmarks",
+      "operations": {
+        "DELETE": "DeleteBookmark",
+        "GET": "GetBookmark",
+        "POST": "CreateBookmark"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        },
+        "recordingId": {
+          "role": "parent",
           "type": "int64"
         }
       }

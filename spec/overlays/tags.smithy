@@ -241,6 +241,10 @@ apply GetEverythingNotNowCards @tags(["Everything"])
 // My Notifications
 apply GetMyNotifications @tags(["MyNotifications"])
 apply GetBubbleUps @tags(["MyNotifications"])
+apply ListMyBookmarks @tags(["Bookmarks"])
+apply GetBookmark @tags(["Bookmarks"])
+apply CreateBookmark @tags(["Bookmarks"])
+apply DeleteBookmark @tags(["Bookmarks"])
 apply MarkAsRead @tags(["MyNotifications"])
 
 // Out of Office

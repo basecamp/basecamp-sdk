@@ -3,6 +3,7 @@
 from basecamp.generated.services.account import AccountService, AsyncAccountService
 from basecamp.generated.services.attachments import AttachmentsService, AsyncAttachmentsService
 from basecamp.generated.services.automation import AutomationService, AsyncAutomationService
+from basecamp.generated.services.bookmarks import BookmarksService, AsyncBookmarksService
 from basecamp.generated.services.boosts import BoostsService, AsyncBoostsService
 from basecamp.generated.services.campfires import CampfiresService, AsyncCampfiresService
 from basecamp.generated.services.card_columns import CardColumnsService, AsyncCardColumnsService
@@ -57,6 +58,8 @@ __all__ = [
     "AsyncAttachmentsService",
     "AutomationService",
     "AsyncAutomationService",
+    "BookmarksService",
+    "AsyncBookmarksService",
     "BoostsService",
     "AsyncBoostsService",
     "CampfiresService",

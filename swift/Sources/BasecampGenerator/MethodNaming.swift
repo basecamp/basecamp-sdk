@@ -34,6 +34,8 @@ let verbPatterns: [(prefix: String, method: String)] = [
 
 /// Explicit overrides for method name generation.
 let methodNameOverrides: [String: String] = [
+    // "bookmark(id)" reads as the action; keep the getter explicit.
+    "GetBookmark": "getBookmark",
     "GetMyProfile": "me",
     "GetTodolistOrGroup": "get",
     "UpdateTodolistOrGroup": "update",
