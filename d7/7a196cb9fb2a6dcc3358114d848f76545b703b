@@ -1,0 +1,23 @@
+ruby/test/basecamp/services/todos_service_test.rb
+  s_289a344fc8a3ac::t_ae28d692061c26 62-93
+typescript/tests/services/todos.test.ts
+  s_289a344fc8a3ac::t_b3b06f7835ff40 167-199
+python/tests/services/test_todos.py
+  s_289a344fc8a3ac::t_bfc25e09668c0e 13,63-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d77a196cb9fb2a6dcc3358114d848f76545b703b",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
