@@ -21,12 +21,12 @@ import kotlinx.serialization.json.jsonPrimitive
  *
  * ```kotlin
  * class TodosService(client: AccountClient) : BaseService(client) {
- *     suspend fun list(projectId: Long, todolistId: Long): ListResult<Todo> =
+ *     suspend fun list(todolistId: Long): ListResult<Todo> =
  *         requestPaginated(
- *             OperationInfo("Todos", "ListTodos", "todo", false, projectId),
- *         ) {
- *             httpGet("/buckets/$projectId/todolists/$todolistId/todos.json")
- *         }
+ *             OperationInfo("Todos", "ListTodos", "todo", false, resourceId = todolistId),
+ *             null,
+ *             { httpGet("/todolists/$todolistId/todos.json") },
+ *         ) { body -> json.decodeFromString<List<Todo>>(body) }
  * }
  * ```
  */
@@ -405,8 +405,15 @@ abstract class BaseService(
      * Useful for processing large datasets without loading everything into memory.
      *
      * ```kotlin
-     * account.todos.listAsFlow(projectId, todolistId)
-     *     .collect { todo -> println(todo.content) }
+     * // In a service subclass:
+     * fun listAsFlow(todolistId: Long): Flow<Todo> =
+     *     requestPaginatedAsFlow(
+     *         OperationInfo("Todos", "ListTodos", "todo", false, resourceId = todolistId),
+     *         { httpGet("/todolists/$todolistId/todos.json") },
+     *     ) { body -> json.decodeFromString<List<Todo>>(body) }
+     *
+     * // Collectors then consume pages lazily:
+     * service.listAsFlow(todolistId).collect { todo -> println(todo.content) }
      * ```
      *
      * @param info Operation metadata for hooks.

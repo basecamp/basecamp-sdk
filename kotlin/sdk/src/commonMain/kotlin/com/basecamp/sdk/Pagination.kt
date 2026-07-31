@@ -34,7 +34,7 @@ data class PaginationOptions(
  * accessible via the [meta] property.
  *
  * ```kotlin
- * val todos = account.todos.list(projectId, todolistId)
+ * val todos = account.todos.list(todolistId)
  * println("Showing ${todos.size} of ${todos.meta.totalCount} todos")
  * todos.forEach { println(it.content) }
  * ```

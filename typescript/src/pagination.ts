@@ -39,7 +39,7 @@ export interface PaginationOptions {
  *
  * @example
  * ```ts
- * const todos = await client.todos.list(projectId, todolistId);
+ * const todos = await client.todos.list(todolistId);
  * console.log(`Showing ${todos.length} of ${todos.meta.totalCount} todos`);
  * todos.forEach(todo => console.log(todo.content));
  * ```

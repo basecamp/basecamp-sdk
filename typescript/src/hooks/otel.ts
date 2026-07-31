@@ -178,7 +178,7 @@ function requestKey(): string {
  * });
  *
  * // Operations will create spans and record metrics
- * const todos = await client.todos.list(projectId, todolistId);
+ * const todos = await client.todos.list(todolistId);
  * ```
  */
 export function otelHooks(options: OtelHooksOptions = {}): BasecampHooks {
