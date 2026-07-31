@@ -1,0 +1,37 @@
+python/tests/test_errors.py
+  s_34dec3eb0265b2::t_3f97ff6e8573fd 3,23
+  s_34dec3eb0265b2::t_f8c423b446aab8 139-262
+  s_34dec3eb0265b2::t_9e97a69b5064b4 263-264
+python/src/basecamp/errors.py
+  s_34dec3eb0265b2::t_00e6d7829a8005 118-124,126-159,161-164,166-170,172-175,177-183,189-214
+  s_34dec3eb0265b2::t_931a7989706e35 6
+  s_34dec3eb0265b2::t_80b9489946c31e 160
+  s_34dec3eb0265b2::t_09a691e6a54ec9 165
+  s_34dec3eb0265b2::t_6db81cccbbc36e 234
+  s_34dec3eb0265b2::t_7ef4cc9c35fc5e 222,226,228,230,232,236,238,240
+python/tests/services/test_calendars_service.py
+  s_34dec3eb0265b2::t_d89ec0208e5d64 69,71-73
+python/tests/services/test_my_assignments_service.py
+  s_34dec3eb0265b2::t_35d3cb8896c802 78,81-82
+  s_34dec3eb0265b2::t_65ee5cc4741503 83
+python/tests/services/test_my_notes_service.py
+  s_34dec3eb0265b2::t_1246e78b4f72f7 79-81,83,85-87
+python/README.md
+  s_34dec3eb0265b2::t_55ca38ed2ec10b 563-579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "58aea128424789c8f38c863a209e0ec126acd618",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
