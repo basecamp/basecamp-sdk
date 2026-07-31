@@ -375,6 +375,12 @@ class AccountClient:
         return self._service("automation", lambda: AutomationService(self))
 
     @property
+    def bookmarks(self):
+        from basecamp.generated.services.bookmarks import BookmarksService
+
+        return self._service("bookmarks", lambda: BookmarksService(self))
+
+    @property
     def subscriptions(self):
         from basecamp.generated.services.subscriptions import SubscriptionsService
 
