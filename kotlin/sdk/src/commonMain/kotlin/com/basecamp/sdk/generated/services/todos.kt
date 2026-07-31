@@ -22,7 +22,7 @@ open class TodosService(client: AccountClient) : BaseService(client) {
         val info = OperationInfo(
             service = "Todos",
             operation = "CreateTodosetTodo",
-            resourceType = "todoset_todo",
+            resourceType = "todo",
             isMutation = true,
             projectId = bucketId,
             resourceId = todosetId,

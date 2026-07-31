@@ -111,7 +111,7 @@ export class TodosService extends BaseService {
    * Create a to-do directly under a project's to-do set, outside any to-do list.
    * @param bucketId - The bucket ID
    * @param todosetId - The todoset ID
-   * @param req - Todoset_todo creation parameters
+   * @param req - Todo creation parameters
    * @returns The Todo
    * @throws {BasecampError} If required fields are missing or invalid
    *
@@ -134,7 +134,7 @@ export class TodosService extends BaseService {
       {
         service: "Todos",
         operation: "CreateTodosetTodo",
-        resourceType: "todoset_todo",
+        resourceType: "todo",
         isMutation: true,
         projectId: bucketId,
         resourceId: todosetId,

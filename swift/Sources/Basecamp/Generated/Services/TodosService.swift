@@ -36,7 +36,7 @@ public final class TodosService: BaseService, @unchecked Sendable {
 
     public func createTodosetTodo(bucketId: Int, todosetId: Int, req: CreateTodosetTodoRequest) async throws -> Todo {
         return try await request(
-            OperationInfo(service: "Todos", operation: "CreateTodosetTodo", resourceType: "todoset_todo", isMutation: true, projectId: bucketId, resourceId: todosetId),
+            OperationInfo(service: "Todos", operation: "CreateTodosetTodo", resourceType: "todo", isMutation: true, projectId: bucketId, resourceId: todosetId),
             method: "POST",
             path: "/buckets/\(bucketId)/todosets/\(todosetId)/todos.json",
             body: req,
