@@ -91,6 +91,14 @@ class OperationMapper
         todolist_id: path_params["todolistId"],
         content: body["content"]
       )
+    when "ListMyBookmarks"
+      @account.bookmarks.list_my_bookmarks.to_a
+    when "GetBookmark"
+      @account.bookmarks.get_bookmark(recording_id: path_params["recordingId"])
+    when "CreateBookmark"
+      @account.bookmarks.create_bookmark(recording_id: path_params["recordingId"])
+    when "DeleteBookmark"
+      @account.bookmarks.delete_bookmark(recording_id: path_params["recordingId"])
     when "CreateTodosetTodo"
       @account.todos.create_todoset_todo(
         bucket_id: path_params["bucketId"],
@@ -261,6 +269,8 @@ RUBY_SKIPS = Set.new([
   "DELETE operation is naturally idempotent",
   "POST operation retries when marked idempotent",
   "Subscribe POST retries when marked idempotent",
+  "CreateBookmark POST retries when marked idempotent",
+  "DeleteBookmark DELETE retries when marked idempotent",
   "Total count header is accessible",
   "Missing X-Total-Count returns zero",
   "Pagination stops at maxPages safety cap",
@@ -277,6 +287,8 @@ RUBY_SKIP_REASONS = {
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
   "POST operation retries when marked idempotent" => "Ruby SDK only retries GET",
   "Subscribe POST retries when marked idempotent" => "Ruby SDK only retries GET",
+  "CreateBookmark POST retries when marked idempotent" => "Ruby SDK only retries GET",
+  "DeleteBookmark DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
   "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
   "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",

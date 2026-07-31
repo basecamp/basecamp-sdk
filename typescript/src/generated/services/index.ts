@@ -25,6 +25,7 @@ export { LineupService } from "./lineup.js";
 export { MessageBoardsService } from "./message-boards.js";
 export { MessagesService } from "./messages.js";
 export { MyAssignmentsService } from "./my-assignments.js";
+export { BookmarksService } from "./bookmarks.js";
 export { CheckinsService } from "./checkins.js";
 export { MyNotificationsService } from "./my-notifications.js";
 export { ProjectsService } from "./projects.js";

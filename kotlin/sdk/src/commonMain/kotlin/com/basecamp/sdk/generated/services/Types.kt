@@ -15,6 +15,14 @@ data class UpdateAccountNameBody(
     val name: String
 )
 
+/** Options for ListMyBookmarks. */
+data class ListMyBookmarksOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateRecordingBoost. */
 data class CreateRecordingBoostBody(
     val content: String

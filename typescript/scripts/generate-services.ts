@@ -306,6 +306,9 @@ const VERB_PATTERNS = [
  */
 const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
   UpdateHillChartSettings: "hill_chart",
+  // The whole family reports "bookmark"; the inferred "my_bookmark" would
+  // split the list operation into its own telemetry category.
+  ListMyBookmarks: "bookmark",
   // Creates and returns a Todo; the inferred "todoset_todo" would split
   // loose-to-do operations into their own telemetry category.
   CreateTodosetTodo: "todo",
@@ -313,6 +316,8 @@ const RESOURCE_TYPE_OVERRIDES: Record<string, string> = {
 
 const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetMyProfile: "me",
+  // "bookmark(id)" reads as the action; keep the getter explicit.
+  GetBookmark: "getBookmark",
   GetTodolistOrGroup: "get",
   UpdateTodolistOrGroup: "update",
   SetCardColumnColor: "setColor",
@@ -455,6 +460,8 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Question: ["Question", "entity"],
   QuestionAnswer: ["Answer", "entity"], // Schema is QuestionAnswer, type alias is Answer
   Subscription: ["Subscription", "entity"],
+  Bookmark: ["Bookmark", "entity"],
+  BookmarkStatus: ["BookmarkStatus", "entity"],
   Forward: ["Forward", "entity"],
   ForwardReply: ["ForwardReply", "entity"],
   Inbox: ["Inbox", "entity"],

@@ -128,6 +128,21 @@ type BadRequestErrorResponseContent struct {
 	Message string `json:"message,omitempty"`
 }
 
+// Bookmark A personal bookmark: the current user's link to a single recording.
+// The wrapped recording is the shared recording projection, whose `parent`
+// is optional (docked recordings and doors omit it).
+type Bookmark struct {
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	Recording Recording `json:"recording"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// BookmarkStatus The current user's bookmark state for one recording.
+type BookmarkStatus struct {
+	Bookmarked bool `json:"bookmarked"`
+}
+
 // Boost defines model for Boost.
 type Boost struct {
 	Booster   Person          `json:"booster,omitempty"`
@@ -473,6 +488,11 @@ type CreateAttachmentInputPayload = string
 type CreateAttachmentResponseContent struct {
 	AttachableSgid string `json:"attachable_sgid,omitempty"`
 }
+
+// CreateBookmarkResponseContent A personal bookmark: the current user's link to a single recording.
+// The wrapped recording is the shared recording projection, whose `parent`
+// is optional (docked recordings and doors omit it).
+type CreateBookmarkResponseContent = Bookmark
 
 // CreateCampfireLineRequestContent defines model for CreateCampfireLineRequestContent.
 type CreateCampfireLineRequestContent struct {
@@ -1084,6 +1104,9 @@ type GetAssignedTodosResponseContent struct {
 	Todos     []Todo `json:"todos,omitempty"`
 }
 
+// GetBookmarkResponseContent The current user's bookmark state for one recording.
+type GetBookmarkResponseContent = BookmarkStatus
+
 // GetBoostResponseContent defines model for GetBoostResponseContent.
 type GetBoostResponseContent = Boost
 
@@ -1467,6 +1490,9 @@ type ListMessageTypesResponseContent = []MessageType
 
 // ListMessagesResponseContent defines model for ListMessagesResponseContent.
 type ListMessagesResponseContent = []Message
+
+// ListMyBookmarksResponseContent defines model for ListMyBookmarksResponseContent.
+type ListMyBookmarksResponseContent = []Bookmark
 
 // ListPeopleResponseContent defines model for ListPeopleResponseContent.
 type ListPeopleResponseContent = []Person
@@ -3457,6 +3483,12 @@ type GetMyDueAssignmentsParams struct {
 	Scope string `form:"scope,omitempty" json:"scope,omitempty"`
 }
 
+// ListMyBookmarksParams defines parameters for ListMyBookmarks.
+type ListMyBookmarksParams struct {
+	// Page Page number for paginating through results. Defaults to 1.
+	Page int32 `form:"page,omitempty" json:"page,omitempty"`
+}
+
 // GetMyNotificationsParams defines parameters for GetMyNotifications.
 type GetMyNotificationsParams struct {
 	// Page Page number for paginating through read items. Defaults to 1.
@@ -4796,6 +4828,9 @@ type ClientInterface interface {
 	// GetMyDueAssignments request
 	GetMyDueAssignments(ctx context.Context, accountId string, params *GetMyDueAssignmentsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListMyBookmarks request
+	ListMyBookmarks(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetMyPreferences request
 	GetMyPreferences(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -4952,6 +4987,15 @@ type ClientInterface interface {
 
 	// GetRecording request
 	GetRecording(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteBookmark request
+	DeleteBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBookmark request
+	GetBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateBookmark request
+	CreateBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRecordingBoosts request
 	ListRecordingBoosts(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -6714,6 +6758,16 @@ func (c *Client) GetMyDueAssignments(ctx context.Context, accountId string, para
 
 }
 
+// ListMyBookmarks is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) ListMyBookmarks(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewListMyBookmarksRequest(c.Server, accountId, params)
+	}, true, "ListMyBookmarks", reqEditors...)
+
+}
+
 // GetMyPreferences is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) GetMyPreferences(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -7319,6 +7373,36 @@ func (c *Client) GetRecording(ctx context.Context, accountId string, recordingId
 	return c.doWithRetry(ctx, func() (*http.Request, error) {
 		return NewGetRecordingRequest(c.Server, accountId, recordingId)
 	}, true, "GetRecording", reqEditors...)
+
+}
+
+// DeleteBookmark is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) DeleteBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewDeleteBookmarkRequest(c.Server, accountId, recordingId)
+	}, true, "DeleteBookmark", reqEditors...)
+
+}
+
+// GetBookmark is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) GetBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewGetBookmarkRequest(c.Server, accountId, recordingId)
+	}, true, "GetBookmark", reqEditors...)
+
+}
+
+// CreateBookmark is marked as idempotent and will be retried on transient failures.
+
+func (c *Client) CreateBookmark(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
+
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewCreateBookmarkRequest(c.Server, accountId, recordingId)
+	}, true, "CreateBookmark", reqEditors...)
 
 }
 
@@ -13724,6 +13808,62 @@ func NewGetMyDueAssignmentsRequest(server string, accountId string, params *GetM
 	return req, nil
 }
 
+// NewListMyBookmarksRequest generates requests for ListMyBookmarks
+func NewListMyBookmarksRequest(server string, accountId string, params *ListMyBookmarksParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/my/bookmarks.json", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Page != 0 {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetMyPreferencesRequest generates requests for GetMyPreferences
 func NewGetMyPreferencesRequest(server string, accountId string) (*http.Request, error) {
 	var err error
@@ -15803,6 +15943,129 @@ func NewGetRecordingRequest(server string, accountId string, recordingId int64) 
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteBookmarkRequest generates requests for DeleteBookmark
+func NewDeleteBookmarkRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/bookmark.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetBookmarkRequest generates requests for GetBookmark
+func NewGetBookmarkRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/bookmark.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateBookmarkRequest generates requests for CreateBookmark
+func NewCreateBookmarkRequest(server string, accountId string, recordingId int64) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "recordingId", runtime.ParamLocationPath, recordingId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/%s/recordings/%s/bookmark.json", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -20405,6 +20668,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetMyAssignments":                   {Idempotent: true, HasSensitiveParams: false},
 	"GetMyCompletedAssignments":          {Idempotent: true, HasSensitiveParams: false},
 	"GetMyDueAssignments":                {Idempotent: true, HasSensitiveParams: false},
+	"ListMyBookmarks":                    {Idempotent: true, HasSensitiveParams: false},
 	"GetMyPreferences":                   {Idempotent: true, HasSensitiveParams: false},
 	"UpdateMyPreferences":                {Idempotent: true, HasSensitiveParams: false},
 	"GetMyProfile":                       {Idempotent: true, HasSensitiveParams: false},
@@ -20448,6 +20712,9 @@ var operationMetadata = map[string]OperationMetadata{
 	"UnpinMessage":                       {Idempotent: true, HasSensitiveParams: false},
 	"PinMessage":                         {Idempotent: false, HasSensitiveParams: false},
 	"GetRecording":                       {Idempotent: true, HasSensitiveParams: false},
+	"DeleteBookmark":                     {Idempotent: true, HasSensitiveParams: false},
+	"GetBookmark":                        {Idempotent: true, HasSensitiveParams: false},
+	"CreateBookmark":                     {Idempotent: true, HasSensitiveParams: false},
 	"ListRecordingBoosts":                {Idempotent: true, HasSensitiveParams: false},
 	"CreateRecordingBoost":               {Idempotent: false, HasSensitiveParams: false},
 	"SetClientVisibility":                {Idempotent: true, HasSensitiveParams: false},
@@ -20640,6 +20907,7 @@ var operationRetryMax = map[string]int{
 	"GetMyAssignments":                   3,
 	"GetMyCompletedAssignments":          3,
 	"GetMyDueAssignments":                3,
+	"ListMyBookmarks":                    3,
 	"GetMyPreferences":                   3,
 	"UpdateMyPreferences":                2,
 	"GetMyProfile":                       3,
@@ -20683,6 +20951,9 @@ var operationRetryMax = map[string]int{
 	"UnpinMessage":                       3,
 	"PinMessage":                         2,
 	"GetRecording":                       3,
+	"DeleteBookmark":                     3,
+	"GetBookmark":                        3,
+	"CreateBookmark":                     3,
 	"ListRecordingBoosts":                3,
 	"CreateRecordingBoost":               2,
 	"SetClientVisibility":                3,
@@ -20873,6 +21144,7 @@ var operationRetryOn = map[string][]int{
 	"GetMyAssignments":                   {429, 503},
 	"GetMyCompletedAssignments":          {429, 503},
 	"GetMyDueAssignments":                {429, 503},
+	"ListMyBookmarks":                    {429, 503},
 	"GetMyPreferences":                   {429, 503},
 	"UpdateMyPreferences":                {429, 503},
 	"GetMyProfile":                       {429, 503},
@@ -20916,6 +21188,9 @@ var operationRetryOn = map[string][]int{
 	"UnpinMessage":                       {429, 503},
 	"PinMessage":                         {429, 503},
 	"GetRecording":                       {429, 503},
+	"DeleteBookmark":                     {429, 503},
+	"GetBookmark":                        {429, 503},
+	"CreateBookmark":                     {429, 503},
 	"ListRecordingBoosts":                {429, 503},
 	"CreateRecordingBoost":               {429, 503},
 	"SetClientVisibility":                {429, 503},
@@ -22321,6 +22596,9 @@ type ClientWithResponsesInterface interface {
 	// GetMyDueAssignmentsWithResponse request
 	GetMyDueAssignmentsWithResponse(ctx context.Context, accountId string, params *GetMyDueAssignmentsParams, reqEditors ...RequestEditorFn) (*GetMyDueAssignmentsResponse, error)
 
+	// ListMyBookmarksWithResponse request
+	ListMyBookmarksWithResponse(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*ListMyBookmarksResponse, error)
+
 	// GetMyPreferencesWithResponse request
 	GetMyPreferencesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyPreferencesResponse, error)
 
@@ -22477,6 +22755,15 @@ type ClientWithResponsesInterface interface {
 
 	// GetRecordingWithResponse request
 	GetRecordingWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*GetRecordingResponse, error)
+
+	// DeleteBookmarkWithResponse request
+	DeleteBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeleteBookmarkResponse, error)
+
+	// GetBookmarkWithResponse request
+	GetBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*GetBookmarkResponse, error)
+
+	// CreateBookmarkWithResponse request
+	CreateBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*CreateBookmarkResponse, error)
 
 	// ListRecordingBoostsWithResponse request
 	ListRecordingBoostsWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*ListRecordingBoostsResponse, error)
@@ -26178,6 +26465,40 @@ func (r GetMyDueAssignmentsResponse) ContentType() string {
 	return ""
 }
 
+type ListMyBookmarksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ListMyBookmarksResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMyBookmarksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMyBookmarksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMyBookmarksResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMyPreferencesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -27642,6 +27963,110 @@ func (r GetRecordingResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r GetRecordingResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type DeleteBookmarkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteBookmarkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteBookmarkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteBookmarkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetBookmarkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *GetBookmarkResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBookmarkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBookmarkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetBookmarkResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateBookmarkResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *CreateBookmarkResponseContent
+	JSON401      *UnauthorizedErrorResponseContent
+	JSON403      *ForbiddenErrorResponseContent
+	JSON404      *NotFoundErrorResponseContent
+	JSON429      *RateLimitErrorResponseContent
+	JSON500      *InternalServerErrorResponseContent
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateBookmarkResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateBookmarkResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateBookmarkResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -31674,6 +32099,15 @@ func (c *ClientWithResponses) GetMyDueAssignmentsWithResponse(ctx context.Contex
 	return ParseGetMyDueAssignmentsResponse(rsp)
 }
 
+// ListMyBookmarksWithResponse request returning *ListMyBookmarksResponse
+func (c *ClientWithResponses) ListMyBookmarksWithResponse(ctx context.Context, accountId string, params *ListMyBookmarksParams, reqEditors ...RequestEditorFn) (*ListMyBookmarksResponse, error) {
+	rsp, err := c.ListMyBookmarks(ctx, accountId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMyBookmarksResponse(rsp)
+}
+
 // GetMyPreferencesWithResponse request returning *GetMyPreferencesResponse
 func (c *ClientWithResponses) GetMyPreferencesWithResponse(ctx context.Context, accountId string, reqEditors ...RequestEditorFn) (*GetMyPreferencesResponse, error) {
 	rsp, err := c.GetMyPreferences(ctx, accountId, reqEditors...)
@@ -32171,6 +32605,33 @@ func (c *ClientWithResponses) GetRecordingWithResponse(ctx context.Context, acco
 		return nil, err
 	}
 	return ParseGetRecordingResponse(rsp)
+}
+
+// DeleteBookmarkWithResponse request returning *DeleteBookmarkResponse
+func (c *ClientWithResponses) DeleteBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*DeleteBookmarkResponse, error) {
+	rsp, err := c.DeleteBookmark(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteBookmarkResponse(rsp)
+}
+
+// GetBookmarkWithResponse request returning *GetBookmarkResponse
+func (c *ClientWithResponses) GetBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*GetBookmarkResponse, error) {
+	rsp, err := c.GetBookmark(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBookmarkResponse(rsp)
+}
+
+// CreateBookmarkWithResponse request returning *CreateBookmarkResponse
+func (c *ClientWithResponses) CreateBookmarkWithResponse(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*CreateBookmarkResponse, error) {
+	rsp, err := c.CreateBookmark(ctx, accountId, recordingId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBookmarkResponse(rsp)
 }
 
 // ListRecordingBoostsWithResponse request returning *ListRecordingBoostsResponse
@@ -38722,6 +39183,60 @@ func ParseGetMyDueAssignmentsResponse(rsp *http.Response) (*GetMyDueAssignmentsR
 	return response, nil
 }
 
+// ParseListMyBookmarksResponse parses an HTTP response from a ListMyBookmarksWithResponse call
+func ParseListMyBookmarksResponse(rsp *http.Response) (*ListMyBookmarksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMyBookmarksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ListMyBookmarksResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetMyPreferencesResponse parses an HTTP response from a GetMyPreferencesWithResponse call
 func ParseGetMyPreferencesResponse(rsp *http.Response) (*GetMyPreferencesResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -41111,6 +41626,185 @@ func ParseGetRecordingResponse(rsp *http.Response) (*GetRecordingResponse, error
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteBookmarkResponse parses an HTTP response from a DeleteBookmarkWithResponse call
+func ParseDeleteBookmarkResponse(rsp *http.Response) (*DeleteBookmarkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteBookmarkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case rsp.StatusCode == 204:
+		break // No content-type
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBookmarkResponse parses an HTTP response from a GetBookmarkWithResponse call
+func ParseGetBookmarkResponse(rsp *http.Response) (*GetBookmarkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBookmarkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest GetBookmarkResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalServerErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateBookmarkResponse parses an HTTP response from a CreateBookmarkWithResponse call
+func ParseCreateBookmarkResponse(rsp *http.Response) (*CreateBookmarkResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateBookmarkResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest CreateBookmarkResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest UnauthorizedErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ForbiddenErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFoundErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest RateLimitErrorResponseContent
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest InternalServerErrorResponseContent

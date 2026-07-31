@@ -148,6 +148,9 @@ func convertPath(_ path: String) -> String {
 
 private let resourceTypeOverrides: [String: String] = [
     "UpdateHillChartSettings": "hill_chart",
+    // The whole family reports "bookmark"; the inferred "my_bookmark" would
+    // split the list operation into its own telemetry category.
+    "ListMyBookmarks": "bookmark",
     // Creates and returns a Todo; the inferred "todoset_todo" would split
     // loose-to-do operations into their own telemetry category.
     "CreateTodosetTodo": "todo",

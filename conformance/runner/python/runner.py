@@ -104,6 +104,14 @@ class OperationMapper:
                 return self._account.todos.complete(todo_id=path_params["todoId"])
             case "Subscribe":
                 return self._account.subscriptions.subscribe(recording_id=path_params["recordingId"])
+            case "ListMyBookmarks":
+                return self._account.bookmarks.list_my_bookmarks()
+            case "GetBookmark":
+                return self._account.bookmarks.get_bookmark(recording_id=path_params["recordingId"])
+            case "CreateBookmark":
+                return self._account.bookmarks.create_bookmark(recording_id=path_params["recordingId"])
+            case "DeleteBookmark":
+                return self._account.bookmarks.delete_bookmark(recording_id=path_params["recordingId"])
             case "UpdateTodo":
                 return self._account.todos.update(
                     todo_id=path_params["todoId"],

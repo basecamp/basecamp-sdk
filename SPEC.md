@@ -108,10 +108,10 @@ END
 
 **Naming note:** `max_retries` means total attempts (including the initial request), not the number of retries after the first attempt. With `max_retries = 3`, the transport makes at most 3 attempts total (1 initial + 2 retries). This name is inherited from the shipping Ruby SDK; the behavior-model.json uses `retry.max` with identical semantics.
 
-**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (183 ops at `3`, 43 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `1` to disable retries) is still honored; governed paths coerce the cap to at least one attempt (`min(max(1, cap), op_max)`), so `0` yields a single attempt rather than none. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
+**Per-operation retry ceiling.** Each operation carries a per-op `retry.max` in behavior-model.json (187 ops at `3`, 43 at `2`). **TypeScript and Swift** drive their retry loops directly from this per-op value, which is unambiguous there because neither exposes a numeric client-wide cap — only an on/off (`enableRetry`). Generated Go, Python, Kotlin (`BasecampConfig.maxRetries`), and Ruby's governed GET path (`config.max_retries`) expose a numeric client cap *and* honor the per-op value as a **ceiling**: `effective_attempts = min(client_cap, op_max)`. The ceiling can only reduce attempts below the client cap, never raise them, so a client that lowered its cap (e.g. to `1` to disable retries) is still honored; governed paths coerce the cap to at least one attempt (`min(max(1, cap), op_max)`), so `0` yields a single attempt rather than none. Because every op's `max` is ≤ the default cap of `3`, a default or raised client makes exactly the per-op number of attempts in every capped SDK — matching TS/Swift. Observable changes from the former client-wide behavior, by client configuration:
 
-- **Default client (`max_retries = 3`):** only the **11 idempotent `max:2` operations** (account/gauge/preference writes plus two subscription-style POSTs: `UpdateAccountName`, `UpdateAccountLogo`, `RemoveAccountLogo`, `UpdateMyPreferences`, `DisableOutOfOffice`, `MarkAsRead`, `ToggleGauge`, `UpdateGaugeNeedle`, `DestroyGaugeNeedle`, `Subscribe`, `EnableCardColumnOnHold`) change — they now retry at most twice instead of three times. The other 177 retry-eligible ops are unaffected (`min(3, 3) = 3`).
-- **Client that raised its cap above 3:** **all 188 retry-eligible operations** are now clamped to their per-op `max` (177 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. Go, Python, Kotlin, and Ruby's governed path all equally honor a caller who wants *fewer* attempts than the operation declares.
+- **Default client (`max_retries = 3`):** only the **11 idempotent `max:2` operations** (account/gauge/preference writes plus two subscription-style POSTs: `UpdateAccountName`, `UpdateAccountLogo`, `RemoveAccountLogo`, `UpdateMyPreferences`, `DisableOutOfOffice`, `MarkAsRead`, `ToggleGauge`, `UpdateGaugeNeedle`, `DestroyGaugeNeedle`, `Subscribe`, `EnableCardColumnOnHold`) change — they now retry at most twice instead of three times. The other 181 retry-eligible ops are unaffected (`min(3, 3) = 3`).
+- **Client that raised its cap above 3:** **all 192 retry-eligible operations** are now clamped to their per-op `max` (181 to `3`, 11 to `2`) instead of retrying up to the raised cap. This is the intended meaning of a per-op ceiling and brings Go/Python into line with TS/Swift/Kotlin, which never retry beyond the per-op `max`. Go, Python, Kotlin, and Ruby's governed path all equally honor a caller who wants *fewer* attempts than the operation declares.
 - **Client that lowered its cap to `1`:** unchanged — the cap still wins (`min(cap, op_max) = cap`). A cap of `0` is coerced to one attempt on governed paths (see the `max_retries = 0` divergence note in §2). Go, Python, and Ruby's governed GET path consume `max` **and** `retry_on` (the declared status gate); only the emitted `base_delay_ms`/`backoff` remain inert per-op metadata for them (retained for parity — see `scripts/check-retry-metadata-parity.py`). Ruby remains GET-only: mutations never retry there, so per-op metadata governs only its reads.
 
 **Recommended default:** A connect timeout of 10 seconds is recommended but not a required config field. Only Ruby exposes this (Faraday `open_timeout = 10`); other SDKs use their HTTP library's default.
@@ -565,7 +565,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All 226 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
+All 230 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1872,9 +1872,9 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: 226
-- Idempotent: 71 (flagged with `idempotent: true`)
-- Non-idempotent: 155 (no `idempotent` field, or not present)
+- Total operations: 230
+- Idempotent: 73 (flagged with `idempotent: true`)
+- Non-idempotent: 157 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---

@@ -297,6 +297,13 @@ export {
 export { createNodeHandler, type NodeHandlerOptions } from "./webhooks/adapters/node-http.js";
 
 export {
+  BookmarksService,
+  type Bookmark,
+  type BookmarkStatus,
+  type ListMyBookmarksBookmarkOptions,
+} from "./generated/services/bookmarks.js";
+
+export {
   SubscriptionsService,
   type Subscription,
   type UpdateSubscriptionRequest,

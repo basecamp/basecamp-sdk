@@ -49,6 +49,18 @@
         ]
       }
     },
+    "CreateBookmark": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "CreateCampfireLine": {
       "retry": {
         "max": 2,
@@ -379,6 +391,18 @@
         ]
       }
     },
+    "DeleteBookmark": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "DeleteBoost": {
       "idempotent": true,
       "retry": {
@@ -610,6 +634,18 @@
       }
     },
     "GetAssignedTodos": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "GetBookmark": {
       "readonly": true,
       "retry": {
         "max": 3,
@@ -1906,6 +1942,22 @@
       }
     },
     "ListMessages": {
+      "readonly": true,
+      "pagination": {
+        "style": "link",
+        "maxPageSize": 50
+      },
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "ListMyBookmarks": {
       "readonly": true,
       "pagination": {
         "style": "link",

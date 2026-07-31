@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-31T09:42:14Z
+# Generated: 2026-07-31T10:49:28Z
 
 require "json"
 require "time"
@@ -247,6 +247,62 @@ module Basecamp
           "title" => @title,
           "type" => @type,
           "url" => @url,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # Bookmark
+    class Bookmark
+      include TypeHelpers
+      attr_accessor :created_at, :id, :recording, :updated_at
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[created_at id recording updated_at].freeze
+      end
+
+      def initialize(data = {})
+        @created_at = parse_datetime(data["created_at"])
+        @id = parse_integer(data["id"])
+        @recording = parse_type(data["recording"], "Recording")
+        @updated_at = parse_datetime(data["updated_at"])
+      end
+
+      def to_h
+        {
+          "created_at" => @created_at,
+          "id" => @id,
+          "recording" => @recording,
+          "updated_at" => @updated_at,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # BookmarkStatus
+    class BookmarkStatus
+      include TypeHelpers
+      attr_accessor :bookmarked
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[bookmarked].freeze
+      end
+
+      def initialize(data = {})
+        @bookmarked = parse_boolean(data["bookmarked"])
+      end
+
+      def to_h
+        {
+          "bookmarked" => @bookmarked,
         }.compact
       end
 

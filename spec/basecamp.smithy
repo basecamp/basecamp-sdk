@@ -314,6 +314,10 @@ service Basecamp {
     GetMyNotifications,
     GetBubbleUps,
     MarkAsRead,
+    ListMyBookmarks,
+    GetBookmark,
+    CreateBookmark,
+    DeleteBookmark,
 
     // Batch 17 - Out of Office
     GetOutOfOffice,
@@ -9548,6 +9552,132 @@ structure GetBubbleUpsInput {
 structure GetBubbleUpsOutput {
   bubble_ups: NotificationList
 }
+
+// ===== My Bookmarks Operations =====
+
+/// List the current user's bookmarks, most recently bookmarked first (paginated).
+/// A bookmark is a personal link between the current user and a single recording,
+/// visible only to its creator; each entry wraps the shared recording projection.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampPagination(style: "link", totalCountHeader: "X-Total-Count", maxPageSize: 50)
+@http(method: "GET", uri: "/{accountId}/my/bookmarks.json")
+operation ListMyBookmarks {
+  input: ListMyBookmarksInput
+  output: ListMyBookmarksOutput
+  errors: [UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure ListMyBookmarksInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  /// Page number for paginating through results. Defaults to 1.
+  @httpQuery("page")
+  page: Integer
+}
+
+structure ListMyBookmarksOutput {
+  bookmarks: BookmarkList
+}
+
+list BookmarkList {
+  member: Bookmark
+}
+
+/// A personal bookmark: the current user's link to a single recording.
+/// The wrapped recording is the shared recording projection, whose `parent`
+/// is optional (docked recordings and doors omit it).
+structure Bookmark {
+  @required
+  id: Long
+  @required
+  created_at: ISO8601Timestamp
+  @required
+  updated_at: ISO8601Timestamp
+  @required
+  recording: Recording
+}
+
+/// Report whether the current user has bookmarked the recording.
+@readonly
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@http(method: "GET", uri: "/{accountId}/recordings/{recordingId}/bookmark.json")
+operation GetBookmark {
+  input: GetBookmarkInput
+  output: GetBookmarkOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure GetBookmarkInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure GetBookmarkOutput {
+  bookmark_status: BookmarkStatus
+}
+
+/// The current user's bookmark state for one recording.
+structure BookmarkStatus {
+  @required
+  bookmarked: Boolean
+}
+
+/// Bookmark a recording for the current user.
+/// Idempotent: re-bookmarking returns the existing bookmark, never a duplicate.
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/bookmark.json", code: 201)
+operation CreateBookmark {
+  input: CreateBookmarkInput
+  output: CreateBookmarkOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure CreateBookmarkInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure CreateBookmarkOutput {
+  bookmark: Bookmark
+}
+
+/// Remove the current user's bookmark from a recording (returns 204 No Content).
+/// Idempotent: deleting an absent bookmark also returns 204.
+@idempotent
+@basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
+@http(method: "DELETE", uri: "/{accountId}/recordings/{recordingId}/bookmark.json", code: 204)
+operation DeleteBookmark {
+  input: DeleteBookmarkInput
+  output: DeleteBookmarkOutput
+  errors: [NotFoundError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+}
+
+structure DeleteBookmarkInput {
+  @required
+  @httpLabel
+  accountId: AccountId
+
+  @required
+  @httpLabel
+  recordingId: RecordingId
+}
+
+structure DeleteBookmarkOutput {}
 
 // ===== Notification Shapes =====
 

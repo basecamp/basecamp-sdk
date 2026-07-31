@@ -70,6 +70,17 @@ class BadRequestErrorResponseContent(TypedDict):
     message: NotRequired[str]
 
 
+class Bookmark(TypedDict):
+    created_at: str
+    id: int
+    recording: Recording
+    updated_at: str
+
+
+class BookmarkStatus(TypedDict):
+    bookmarked: bool
+
+
 class Boost(TypedDict):
     booster: NotRequired[Person]
     content: NotRequired[str]
