@@ -82,6 +82,10 @@
 
 targets:
   # 15 concrete resource GETs — pointer "" -> component schema.
+  - id: my-note-get
+    fixture: my_notes/get.json
+    pointer: ""
+    schema: MyNote
   - id: comment-get
     fixture: comments/get.json
     pointer: ""
@@ -197,6 +201,7 @@ targets:
     schema: GaugeNeedle
 
 covered_schemas:
+  MyNote: [my-note-get]
   Comment: [comment-get]
   Message: [message-get]
   Document: [document-get]
