@@ -1,0 +1,30 @@
+kotlin/README.md
+  s_fb0636163f77d1::t_9e1a5ae911e6df 522
+  s_fb0636163f77d1::t_9763921888dedc 521
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_fb0636163f77d1::t_74c8ed8cf020e8 5
+  s_fb0636163f77d1::t_b7c43e5d830dcb 570-593
+  s_fb0636163f77d1::t_070932d96fa943 428-515,595-596
+  s_fb0636163f77d1::t_c73e38be3cd2d7 594
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_fb0636163f77d1::t_2a33b46e645e21 278-279,281
+  s_fb0636163f77d1::t_23915cb404041e 375-376,378
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Pagination.kt
+  s_fb0636163f77d1::t_d0fbf5412c9dd0 9-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4fcd7e7f7020322ea87fa5f5bb880d3b769b8eb2",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
