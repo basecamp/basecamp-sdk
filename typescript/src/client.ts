@@ -506,9 +506,17 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
  * Per-attempt observability state for one logical request.
  *
  * `attempt` is the 1-based attempt currently in flight. `finalized` makes
- * onRequestEnd idempotent: the retry middleware ends an attempt as soon as it
- * knows its outcome, and the lifecycle middleware's onResponse then runs later
- * for the same logical request and must not emit a second end.
+ * onRequestEnd idempotent per attempt: two terminal paths can reach the same
+ * attempt, and only the first may emit an end.
+ *
+ * Each attempt gets fresh state — begin() replaces this record — so the flag
+ * guards one attempt against a double end, not the request. The retry middleware
+ * ends the attempt it is abandoning before it backs off, and separately ends its
+ * own raw fetch when that throws; the lifecycle middleware's onResponse ends
+ * whichever attempt is in flight when a response comes back. On a successful
+ * retry those are different attempts, which is why the retry deliberately does
+ * not finalize a successful fetch: onResponse must be free to record the outcome
+ * the cache middleware has since transformed.
  */
 interface AttemptState {
   startTime: number;

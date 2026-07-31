@@ -302,8 +302,19 @@ describe("middleware request lifecycle", () => {
   // Reporting it as a cache hit overstates the cache's effectiveness in anyone's
   // metrics. The test below covers the opposite path, where the cache does serve.
   it("does not report a bare 304 as served from cache", async () => {
+    // Reproduce the real path rather than just the status: the CALLER owns the
+    // conditional request. The server only answers 304 because it received their
+    // If-None-Match, which is what makes this a genuine round trip and not a
+    // cache hit.
+    let sawConditional = false;
     server.use(
-      http.get(`${BASE_URL}/projects.json`, () => new HttpResponse(null, { status: 304 }))
+      http.get(`${BASE_URL}/projects.json`, ({ request }) => {
+        if (request.headers.get("If-None-Match") === 'W/"caller-etag"') {
+          sawConditional = true;
+          return new HttpResponse(null, { status: 304 });
+        }
+        return HttpResponse.json([{ id: 1 }]);
+      })
     );
 
     const { hooks, events } = recordingHooks();
@@ -315,7 +326,12 @@ describe("middleware request lifecycle", () => {
       enableCache: false,
     });
 
-    await client.GET("/projects.json");
+    await client.GET("/projects.json", {
+      headers: { "If-None-Match": 'W/"caller-etag"' },
+    } as never);
+
+    // The 304 was earned by the caller's own conditional request.
+    expect(sawConditional).toBe(true);
 
     const last = ends(events).at(-1)!;
     expect({ statusCode: last.statusCode, fromCache: last.fromCache }).toEqual({
