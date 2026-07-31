@@ -10067,14 +10067,7 @@
             }
           },
           "404": {
-            "description": "NotFoundError 404 response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotFoundErrorResponseContent"
-                }
-              }
-            }
+            "description": "BareNotFoundError 404 response"
           },
           "422": {
             "description": "ValidationError 422 response",

@@ -360,6 +360,13 @@ structure ValidationError {
 /// 422 whose body is keyed by field ({"errors": {"color": ["is not a valid
 /// color"]}}) — the Rails RecordInvalid rendering. Used by operations whose
 /// controllers emit the field-keyed shape instead of the flat {error} body.
+/// 404 with no response body — the bare `head :not_found` rendering. Used by
+/// operations whose controllers emit no JSON payload on 404, so the generated
+/// OpenAPI does not advertise a decodable body that the server never sends.
+@error("client")
+@httpError(404)
+structure BareNotFoundError {}
+
 @error("client")
 @httpError(422)
 structure FieldValidationError {
@@ -8973,7 +8980,7 @@ structure DeprioritizeAssignmentOutput {}
 operation ReorderUpNext {
   input: ReorderUpNextInput
   output: ReorderUpNextOutput
-  errors: [NotFoundError, BadRequestError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [BareNotFoundError, BadRequestError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure ReorderUpNextInput {

@@ -27564,7 +27564,6 @@ type ReorderUpNextResponse struct {
 	JSON400      *BadRequestErrorResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
-	JSON404      *NotFoundErrorResponseContent
 	JSON422      *ValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
@@ -40926,12 +40925,8 @@ func ParseReorderUpNextResponse(rsp *http.Response) (*ReorderUpNextResponse, err
 		}
 		response.JSON403 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest NotFoundErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
+	case rsp.StatusCode == 404:
+		break // No content-type
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest ValidationErrorResponseContent

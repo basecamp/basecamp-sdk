@@ -12977,14 +12977,12 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
-            /** @description NotFoundError 404 response */
+            /** @description BareNotFoundError 404 response */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["NotFoundErrorResponseContent"];
-                };
+                content?: never;
             };
             /** @description ValidationError 422 response */
             422: {
