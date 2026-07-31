@@ -1,0 +1,20 @@
+go/pkg/basecamp/url-routes.json
+  s_289a344fc8a3ac::t_ba1797ba9175ee 222-241
+  s_289a344fc8a3ac::t_267e7492c12dfa 221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "fe3a37ccacbb5767c3f52a0e8746d700ea954fce",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
