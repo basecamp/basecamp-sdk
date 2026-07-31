@@ -249,7 +249,7 @@ export interface BasecampClientOptions {
 }
 
 export const VERSION = "0.11.0";
-export const API_VERSION = "2026-07-30";
+export const API_VERSION = "2026-07-31";
 const DEFAULT_USER_AGENT = `basecamp-sdk-ts/${VERSION} (api:${API_VERSION})`;
 
 /**
