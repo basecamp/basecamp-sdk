@@ -1,0 +1,26 @@
+swift/Sources/Basecamp/Services/BaseService.swift
+  s_fb0636163f77d1::t_de923f6be95525 332-333,335-337
+  s_fb0636163f77d1::t_bc6ddfef81fd6c 387-388,390-392
+swift/Tests/BasecampTests/PaginationTests.swift
+  s_fb0636163f77d1::t_4e543f089ec1c5 328-352,376-472
+  s_fb0636163f77d1::t_51bebbf6235efc 499-525
+  s_fb0636163f77d1::t_0be67b6a5246ad 353-375
+swift/Sources/Basecamp/Pagination.swift
+  s_fb0636163f77d1::t_afb67958ae53f2 7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "9f97cb7ca69c54e3701beae8fbb1367d46d70e6d",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
