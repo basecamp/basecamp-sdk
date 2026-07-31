@@ -63,6 +63,8 @@ making the absorption journey publicly auditable.
 | [dock-tool-visible-to-clients](dock-tool-visible-to-clients.md) | absorbed-in-sdk | post-train | low |
 | [card-table-wormholes](card-table-wormholes.md) | absorbed-in-sdk | post-train | medium |
 | [bubble-ups-surface](bubble-ups-surface.md) | absorbed-in-sdk | launch | high |
+| [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | no-json-contract | post-train | medium |
+| [everything-todo-card-filters](everything-todo-card-filters.md) | addressed-in-bc3-pr-12442 | post-train | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -74,8 +76,25 @@ making the absorption journey publicly auditable.
 > `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
 > classification record (Stacks — renamed Folders in the product — are
 > web-only on both `four` and `master`).
+> `everything-boosts-withdrawn` is likewise *subtractive*: it records BC5
+> withdrawing the account-wide `/boosts.json` feed (BC3 #12464, reintroduction
+> tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
+> its `no-json-contract` is literal — the feed has no JSON API today.
 >
-> Provenance pin advanced to `c3086931` (2026-07-26). The earlier
+> The provenance pin is `e83b2733` (2026-07-30). The `dffa7e11..e83b2733`
+> range (96 commits) contains exactly two API-contract changes, both handled:
+> BC3 **#12464** (`b06acfac1`, boosts-feed withdrawal — absorbed by the SDK's
+> removal, recorded in `everything-boosts-withdrawn.md`) and BC3 **#12442**
+> (`b238a0743`, `assignee_ids[]`/`due` filters on the everything to-do/card
+> API — registered in `everything-todo-card-filters.md`). The only other
+> route changes are BC3 #12339's removal of the bare `/todos` and `/cards`
+> flat routes (HTML shells, never API contract — see
+> `everything-aggregates.md`'s standing exclusions) and two non-API engine
+> mounts; the remainder of the range is UI/CSS/mobile/infra with no
+> `doc/api` impact.
+>
+> The note below records the triage that accompanied the earlier `c3086931`
+> (2026-07-26) repin. The earlier
 > `ca1d34bc..d7bc88da` sub-range — 30 commits — is a reviewed no-op for the SDK:
 > **26** UI/CSS/JS/lexxy commits (including their PR merge commits
 > #12208/#12399/#12400/#12401); the **3** duplicate-cookie migration code commits

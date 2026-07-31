@@ -119,7 +119,7 @@ type Parent struct {
 	AppURL string `json:"app_url"`
 	// Bucket is optional project context: nil for a recording's parent reference
 	// (same bucket as the recording), populated when a boost feed embeds the
-	// boosted recording (my/boosts, everything/boosts).
+	// boosted recording (my/boosts).
 	Bucket *Bucket `json:"bucket,omitempty"`
 }
 

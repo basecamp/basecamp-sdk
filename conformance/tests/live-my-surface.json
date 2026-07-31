@@ -422,27 +422,6 @@
   },
   {
     "mode": "live",
-    "name": "GetEverythingBoosts validates against the everything-aggregates schema",
-    "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises every boost across all projects and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
-    "operation": "GetEverythingBoosts",
-    "method": "GET",
-    "path": "/boosts.json",
-    "tags": [
-      "live",
-      "read-only",
-      "bc5-additive"
-    ],
-    "liveAssertions": [
-      {
-        "type": "liveCallSucceeds"
-      },
-      {
-        "type": "liveSchemaValidate"
-      }
-    ]
-  },
-  {
-    "mode": "live",
     "name": "GetEverythingFiles validates against the everything-aggregates schema",
     "description": "DECODING coverage for the everything-aggregates flat family (spec/api-gaps/everything-aggregates.md, bc3 #11627). Exercises the heterogeneous files feed (uploads/documents/attachments) and validates each item against its schema. Live-dormant: validates statically until credentials are provisioned.",
     "operation": "GetEverythingFiles",

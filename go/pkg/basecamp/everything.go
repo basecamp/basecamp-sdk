@@ -12,8 +12,8 @@ import (
 
 // EverythingService exposes the account-wide "everything" aggregate listings:
 // recency-ordered, paginated roots (messages, comments, checkins, forwards,
-// files, boosts) and the unpaginated oldest-first overdue todo/card lists. Each
-// item embeds its bucket for project context. See
+// files) and the unpaginated oldest-first overdue todo/card lists. Each item
+// embeds its bucket for project context. See
 // spec/api-gaps/everything-aggregates.md.
 type EverythingService struct {
 	client *AccountClient
@@ -28,27 +28,6 @@ func NewEverythingService(client *AccountClient) *EverythingService {
 type RecordingsPage struct {
 	Recordings []Recording
 	Meta       ListMeta
-}
-
-// EverythingBoost is a single item in the account-wide /boosts.json feed. Unlike
-// the shared Boost (whose Recording is the reduced Parent projection, kept
-// source-compatible for existing callers), this feed renders each boost's
-// recording through the full recording projection, so it carries a complete
-// *Recording.
-type EverythingBoost struct {
-	// Content, CreatedAt, Booster, and Recording are always present on the
-	// /boosts.json feed (BC3 renders them unconditionally), so they are required.
-	ID        int64      `json:"id"`
-	Content   string     `json:"content"`
-	CreatedAt time.Time  `json:"created_at"`
-	Booster   *Person    `json:"booster,omitempty"`
-	Recording *Recording `json:"recording,omitempty"`
-}
-
-// EverythingBoostsPage is a page-followed list of boosts with pagination metadata.
-type EverythingBoostsPage struct {
-	Boosts []EverythingBoost
-	Meta   ListMeta
 }
 
 // EverythingFilesPage is a page-followed list of files with pagination metadata.
@@ -296,71 +275,6 @@ func (s *EverythingService) finishRecordingsPage(ctx context.Context, httpResp *
 		recordings = append(recordings, recordingFromGenerated(gr))
 	}
 	return &RecordingsPage{Recordings: recordings, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
-}
-
-// Boosts returns every boost across all accessible projects, newest-first. Each
-// boost carries its booster and the recording it boosts.
-func (s *EverythingService) Boosts(ctx context.Context, page int32) (result *EverythingBoostsPage, err error) {
-	op := OperationInfo{Service: "Everything", Operation: "Boosts", ResourceType: "boost", IsMutation: false}
-	ctx, done, err := s.begin(ctx, op)
-	if err != nil {
-		return nil, err
-	}
-	defer done(&err)
-
-	var params *generated.GetEverythingBoostsParams
-	if page > 0 {
-		params = &generated.GetEverythingBoostsParams{Page: page}
-	}
-	resp, err := s.client.parent.gen.GetEverythingBoostsWithResponse(ctx, s.client.accountID, params)
-	if err != nil {
-		return nil, err
-	}
-	if err = checkResponse(resp.HTTPResponse, resp.Body); err != nil {
-		return nil, err
-	}
-
-	var boosts []EverythingBoost
-	if resp.JSON200 != nil {
-		for _, gb := range *resp.JSON200 {
-			boosts = append(boosts, everythingBoostFromGenerated(gb))
-		}
-	}
-	totalCount := parseTotalCount(resp.HTTPResponse)
-	if page > 0 {
-		return &EverythingBoostsPage{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount}}, nil
-	}
-	rawMore, truncated, err := s.client.parent.followPagination(ctx, resp.HTTPResponse, len(boosts), 0)
-	if err != nil {
-		return nil, err
-	}
-	for _, raw := range rawMore {
-		var gb generated.EverythingBoost
-		if err := json.Unmarshal(raw, &gb); err != nil {
-			return nil, fmt.Errorf("failed to parse boost: %w", err)
-		}
-		boosts = append(boosts, everythingBoostFromGenerated(gb))
-	}
-	return &EverythingBoostsPage{Boosts: boosts, Meta: ListMeta{TotalCount: totalCount, Truncated: truncated}}, nil
-}
-
-// everythingBoostFromGenerated converts a generated EverythingBoost (whose
-// recording is the full projection) to the public type.
-func everythingBoostFromGenerated(gb generated.EverythingBoost) EverythingBoost {
-	b := EverythingBoost{
-		ID:        gb.Id,
-		Content:   gb.Content,
-		CreatedAt: gb.CreatedAt,
-	}
-	if gb.Booster.Id != 0 || gb.Booster.Name != "" {
-		booster := personFromGenerated(gb.Booster)
-		b.Booster = &booster
-	}
-	if gb.Recording.Id != 0 || gb.Recording.Title != "" {
-		rec := recordingFromGenerated(gb.Recording)
-		b.Recording = &rec
-	}
-	return b
 }
 
 // Files returns every file recording across all accessible projects,

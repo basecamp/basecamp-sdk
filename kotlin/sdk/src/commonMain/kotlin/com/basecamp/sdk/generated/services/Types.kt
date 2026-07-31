@@ -217,14 +217,6 @@ data class CreateDocumentBody(
     val visibleToClients: Boolean? = null
 )
 
-/** Options for GetEverythingBoosts. */
-data class GetEverythingBoostsOptions(
-    val page: Long? = null,
-    val maxItems: Int? = null
-) {
-    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
-}
-
 /** Options for GetEverythingCompletedCards. */
 data class GetEverythingCompletedCardsOptions(
     val page: Long? = null,

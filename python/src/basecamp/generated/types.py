@@ -623,14 +623,6 @@ class EventDetails(TypedDict):
     removed_person_ids: NotRequired[list[int]]
 
 
-class EverythingBoost(TypedDict):
-    booster: Person
-    content: str
-    created_at: str
-    id: int
-    recording: Recording
-
-
 class EverythingFile(TypedDict):
     app_download_url: NotRequired[str]
     app_url: NotRequired[str]

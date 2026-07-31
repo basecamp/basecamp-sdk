@@ -863,21 +863,6 @@ type EventDetails struct {
 	RemovedPersonIds     []int64 `json:"removed_person_ids,omitempty"`
 }
 
-// EverythingBoost A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
-// shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
-// kept source-compatible for existing callers), this feed renders each boost's
-// `recording` through the FULL recording projection, so it gets a dedicated
-// element type carrying the complete `Recording`.
-type EverythingBoost struct {
-	Booster Person `json:"booster"`
-
-	// Content The boost's content (the reaction/emoji). BC3 renders it unconditionally.
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	Id        int64     `json:"id"`
-	Recording Recording `json:"recording"`
-}
-
 // EverythingFile A single item in the /files.json feed. An optional-field superset over three
 // wire variants — a full Upload recording, a Basecamp Document recording, and a
 // rich-text attachment wrapped in a recording envelope (distinguished by
@@ -1126,9 +1111,6 @@ type GetCommentResponseContent = Comment
 
 // GetDocumentResponseContent defines model for GetDocumentResponseContent.
 type GetDocumentResponseContent = Document
-
-// GetEverythingBoostsResponseContent defines model for GetEverythingBoostsResponseContent.
-type GetEverythingBoostsResponseContent = []EverythingBoost
 
 // GetEverythingCheckinsResponseContent defines model for GetEverythingCheckinsResponseContent.
 type GetEverythingCheckinsResponseContent = []Recording
@@ -3283,12 +3265,6 @@ type CreateAttachmentParams struct {
 	Name string `form:"name" json:"name"`
 }
 
-// GetEverythingBoostsParams defines parameters for GetEverythingBoosts.
-type GetEverythingBoostsParams struct {
-	// Page Page number for paginating through results. Defaults to 1.
-	Page int32 `form:"page,omitempty" json:"page,omitempty"`
-}
-
 // GetEverythingCompletedCardsParams defines parameters for GetEverythingCompletedCards.
 type GetEverythingCompletedCardsParams struct {
 	// Page Page number for paginating through results. Defaults to 1.
@@ -4376,9 +4352,6 @@ type ClientInterface interface {
 	// CreateAttachmentWithBody request with any body
 	CreateAttachmentWithBody(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetEverythingBoosts request
-	GetEverythingBoosts(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// DeleteBoost request
 	DeleteBoost(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -5247,16 +5220,6 @@ func (c *Client) CreateAttachmentWithBody(ctx context.Context, accountId string,
 		return nil, err
 	}
 	return c.Client.Do(req)
-
-}
-
-// GetEverythingBoosts is marked as idempotent and will be retried on transient failures.
-
-func (c *Client) GetEverythingBoosts(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-
-	return c.doWithRetry(ctx, func() (*http.Request, error) {
-		return NewGetEverythingBoostsRequest(c.Server, accountId, params)
-	}, true, "GetEverythingBoosts", reqEditors...)
 
 }
 
@@ -8671,62 +8634,6 @@ func NewCreateAttachmentRequestWithBody(server string, accountId string, params 
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetEverythingBoostsRequest generates requests for GetEverythingBoosts
-func NewGetEverythingBoostsRequest(server string, accountId string, params *GetEverythingBoostsParams) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "accountId", runtime.ParamLocationPath, accountId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/%s/boosts.json", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Page != 0 {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, params.Page); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -19856,7 +19763,6 @@ var operationMetadata = map[string]OperationMetadata{
 	"UpdateAccountLogo":                  {Idempotent: true, HasSensitiveParams: false},
 	"UpdateAccountName":                  {Idempotent: true, HasSensitiveParams: false},
 	"CreateAttachment":                   {Idempotent: false, HasSensitiveParams: false},
-	"GetEverythingBoosts":                {Idempotent: true, HasSensitiveParams: false},
 	"DeleteBoost":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
@@ -20091,7 +19997,6 @@ var operationRetryMax = map[string]int{
 	"UpdateAccountLogo":                  2,
 	"UpdateAccountName":                  2,
 	"CreateAttachment":                   3,
-	"GetEverythingBoosts":                3,
 	"DeleteBoost":                        3,
 	"GetBoost":                           3,
 	"SetCardColumnColor":                 3,
@@ -20324,7 +20229,6 @@ var operationRetryOn = map[string][]int{
 	"UpdateAccountLogo":                  {429, 503},
 	"UpdateAccountName":                  {429, 503},
 	"CreateAttachment":                   {429, 503},
-	"GetEverythingBoosts":                {429, 503},
 	"DeleteBoost":                        {429, 503},
 	"GetBoost":                           {429, 503},
 	"SetCardColumnColor":                 {429, 503},
@@ -21522,9 +21426,6 @@ type ClientWithResponsesInterface interface {
 	// CreateAttachmentWithBodyWithResponse request with any body
 	CreateAttachmentWithBodyWithResponse(ctx context.Context, accountId string, params *CreateAttachmentParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateAttachmentResponse, error)
 
-	// GetEverythingBoostsWithResponse request
-	GetEverythingBoostsWithResponse(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*GetEverythingBoostsResponse, error)
-
 	// DeleteBoostWithResponse request
 	DeleteBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*DeleteBoostResponse, error)
 
@@ -22496,40 +22397,6 @@ func (r CreateAttachmentResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateAttachmentResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetEverythingBoostsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *GetEverythingBoostsResponseContent
-	JSON401      *UnauthorizedErrorResponseContent
-	JSON403      *ForbiddenErrorResponseContent
-	JSON429      *RateLimitErrorResponseContent
-	JSON500      *InternalServerErrorResponseContent
-}
-
-// Status returns HTTPResponse.Status
-func (r GetEverythingBoostsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetEverythingBoostsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetEverythingBoostsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -30122,15 +29989,6 @@ func (c *ClientWithResponses) CreateAttachmentWithBodyWithResponse(ctx context.C
 	return ParseCreateAttachmentResponse(rsp)
 }
 
-// GetEverythingBoostsWithResponse request returning *GetEverythingBoostsResponse
-func (c *ClientWithResponses) GetEverythingBoostsWithResponse(ctx context.Context, accountId string, params *GetEverythingBoostsParams, reqEditors ...RequestEditorFn) (*GetEverythingBoostsResponse, error) {
-	rsp, err := c.GetEverythingBoosts(ctx, accountId, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetEverythingBoostsResponse(rsp)
-}
-
 // DeleteBoostWithResponse request returning *DeleteBoostResponse
 func (c *ClientWithResponses) DeleteBoostWithResponse(ctx context.Context, accountId string, boostId int64, reqEditors ...RequestEditorFn) (*DeleteBoostResponse, error) {
 	rsp, err := c.DeleteBoost(ctx, accountId, boostId, reqEditors...)
@@ -32951,60 +32809,6 @@ func ParseCreateAttachmentResponse(rsp *http.Response) (*CreateAttachmentRespons
 			return nil, err
 		}
 		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest RateLimitErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalServerErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetEverythingBoostsResponse parses an HTTP response from a GetEverythingBoostsWithResponse call
-func ParseGetEverythingBoostsResponse(rsp *http.Response) (*GetEverythingBoostsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetEverythingBoostsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest GetEverythingBoostsResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest UnauthorizedErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ForbiddenErrorResponseContent
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest RateLimitErrorResponseContent

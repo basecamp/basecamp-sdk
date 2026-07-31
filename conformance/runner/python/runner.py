@@ -181,8 +181,6 @@ class OperationMapper:
                 return self._account.everything.get_everything_checkins()
             case "GetEverythingForwards":
                 return self._account.everything.get_everything_forwards()
-            case "GetEverythingBoosts":
-                return self._account.everything.get_everything_boosts()
             case "GetEverythingFiles":
                 return self._account.everything.get_everything_files()
             case "GetEverythingOverdueTodos":

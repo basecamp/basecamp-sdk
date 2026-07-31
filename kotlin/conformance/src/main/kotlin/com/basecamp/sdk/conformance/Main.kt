@@ -882,11 +882,6 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
-        "GetEverythingBoosts" -> {
-            account.everything.everythingBoosts()
-            DispatchResult()
-        }
-
         "GetEverythingFiles" -> {
             account.everything.everythingFiles()
             DispatchResult()

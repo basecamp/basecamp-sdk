@@ -183,8 +183,6 @@ class OperationMapper
       @account.everything.get_everything_checkins.to_a
     when "GetEverythingForwards"
       @account.everything.get_everything_forwards.to_a
-    when "GetEverythingBoosts"
-      @account.everything.get_everything_boosts.to_a
     when "GetEverythingFiles"
       @account.everything.get_everything_files.to_a
     when "GetEverythingOverdueTodos"

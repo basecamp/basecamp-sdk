@@ -77,26 +77,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/boosts.json": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * @description Get every boost across all accessible projects, newest-first (paginated).
-         *     Each boost carries its `booster` and the `recording` it boosts.
-         */
-        get: operations["GetEverythingBoosts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/boosts/{boostId}": {
         parameters: {
             query?: never;
@@ -3616,22 +3596,6 @@ export interface components {
             notified_recipient_ids?: number[];
         };
         /**
-         * @description A single item in the account-wide `/boosts.json` aggregate feed. Unlike the
-         *     shared `Boost` (whose `recording` is the reduced `RecordingParent` projection,
-         *     kept source-compatible for existing callers), this feed renders each boost's
-         *     `recording` through the FULL recording projection, so it gets a dedicated
-         *     element type carrying the complete `Recording`.
-         */
-        EverythingBoost: {
-            /** Format: int64 */
-            id: number;
-            /** @description The boost's content (the reaction/emoji). BC3 renders it unconditionally. */
-            content: string;
-            created_at: string;
-            booster: components["schemas"]["Person"];
-            recording: components["schemas"]["Recording"];
-        };
-        /**
          * @description A single item in the /files.json feed. An optional-field superset over three
          *     wire variants — a full Upload recording, a Basecamp Document recording, and a
          *     rich-text attachment wrapped in a recording envelope (distinguished by
@@ -3849,7 +3813,6 @@ export interface components {
         GetClientReplyResponseContent: components["schemas"]["ClientReply"];
         GetCommentResponseContent: components["schemas"]["Comment"];
         GetDocumentResponseContent: components["schemas"]["Document"];
-        GetEverythingBoostsResponseContent: components["schemas"]["EverythingBoost"][];
         GetEverythingCheckinsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCommentsResponseContent: components["schemas"]["Recording"][];
         GetEverythingCompletedCardsResponseContent: components["schemas"]["BucketCardsGroup"][];
@@ -5933,65 +5896,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValidationErrorResponseContent"];
-                };
-            };
-            /** @description RateLimitError 429 response */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RateLimitErrorResponseContent"];
-                };
-            };
-            /** @description InternalServerError 500 response */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InternalServerErrorResponseContent"];
-                };
-            };
-        };
-    };
-    GetEverythingBoosts: {
-        parameters: {
-            query?: {
-                /** @description Page number for paginating through results. Defaults to 1. */
-                page?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GetEverythingBoosts 200 response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GetEverythingBoostsResponseContent"];
-                };
-            };
-            /** @description UnauthorizedError 401 response */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UnauthorizedErrorResponseContent"];
-                };
-            };
-            /** @description ForbiddenError 403 response */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

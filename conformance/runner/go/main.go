@@ -767,10 +767,6 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Everything().Forwards(ctx, 0)
 		return operationResult{err: err}
 
-	case "GetEverythingBoosts":
-		_, err := account.Everything().Boosts(ctx, 0)
-		return operationResult{err: err}
-
 	case "GetEverythingFiles":
 		_, err := account.Everything().Files(ctx, 0, nil)
 		return operationResult{err: err}

@@ -1090,47 +1090,6 @@ final class GeneratedServiceTests: XCTestCase {
         let sentURL = transport.lastRequest!.request.url!.absoluteString
         XCTAssertTrue(sentURL.hasSuffix("/files.json"), "Got \(sentURL)")
     }
-
-    func testEverythingBoostsRecordingCarriesBucket() async throws {
-        let fixture = """
-        [
-          {
-            "id": 5001,
-            "content": "👏",
-            "created_at": "2024-01-15T10:00:00Z",
-            "booster": { "id": 1, "name": "Victor Cooper" },
-            "recording": {
-              "id": 800,
-              "type": "Message",
-              "status": "active",
-              "visible_to_clients": false,
-              "created_at": "2024-01-15T10:00:00Z",
-              "updated_at": "2024-01-15T10:00:00Z",
-              "inherits_status": true,
-              "title": "A message",
-              "subject": "A message",
-              "url": "https://3.basecampapi.com/1/buckets/9/messages/800.json",
-              "app_url": "https://3.basecamp.com/1/buckets/9/messages/800",
-              "bucket": { "id": 9, "name": "The Leto Laptop", "type": "Project" },
-              "creator": { "id": 7, "name": "Ann Perkins" }
-            }
-          }
-        ]
-        """
-        let transport = MockTransport(statusCode: 200, data: Data(fixture.utf8))
-        let account = makeTestAccountClient(transport: transport)
-
-        let boosts = try await account.everything.everythingBoosts()
-
-        XCTAssertEqual(boosts.count, 1)
-        let recording = try XCTUnwrap(boosts[0].recording)
-        // The boosted recording is the full projection: bucket (required), creator,
-        // and the type-specific message subject all decode.
-        XCTAssertEqual(recording.bucket.id, 9)
-        XCTAssertEqual(recording.bucket.name, "The Leto Laptop")
-        XCTAssertEqual(recording.creator.name, "Ann Perkins")
-        XCTAssertEqual(recording.subject, "A message")
-    }
 }
 
 /// Records operation-start callbacks so tests can assert emitted metadata.

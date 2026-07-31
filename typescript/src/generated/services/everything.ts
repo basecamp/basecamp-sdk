@@ -13,8 +13,6 @@ import type { PaginationOptions } from "../../pagination.js";
 // Types
 // =============================================================================
 
-/** EverythingBoost entity from the Basecamp API. */
-export type EverythingBoost = components["schemas"]["EverythingBoost"];
 /** BucketCardsGroup entity from the Basecamp API. */
 export type BucketCardsGroup = components["schemas"]["BucketCardsGroup"];
 /** Card entity from the Basecamp API. */
@@ -27,14 +25,6 @@ export type EverythingFile = components["schemas"]["EverythingFile"];
 export type BucketTodosGroup = components["schemas"]["BucketTodosGroup"];
 /** Todo entity from the Basecamp API. */
 export type Todo = components["schemas"]["Todo"];
-
-/**
- * Options for everythingBoosts.
- */
-export interface EverythingBoostsEverythingOptions extends PaginationOptions {
-  /** Page number for paginating through results. Defaults to 1. */
-  page?: number;
-}
 
 /**
  * Options for everythingCompletedCards.
@@ -161,34 +151,6 @@ export interface EverythingUnassignedTodosEverythingOptions extends PaginationOp
  * Service for Everything operations.
  */
 export class EverythingService extends BaseService {
-
-  /**
-   * Get every boost across all accessible projects, newest-first (paginated).
-   * @param options - Optional query parameters
-   * @returns All EverythingBoost across all pages, with .meta.totalCount
-   *
-   * @example
-   * ```ts
-   * const result = await client.everything.everythingBoosts();
-   * ```
-   */
-  async everythingBoosts(options?: EverythingBoostsEverythingOptions): Promise<ListResult<EverythingBoost>> {
-    return this.requestPaginated(
-      {
-        service: "Everything",
-        operation: "GetEverythingBoosts",
-        resourceType: "everything_boost",
-        isMutation: false,
-      },
-      () =>
-        this.client.GET("/boosts.json", {
-          params: {
-            query: { page: options?.page },
-          },
-        })
-      , options
-    );
-  }
 
   /**
    * Completed cards across all accessible projects, grouped by project (paginated).

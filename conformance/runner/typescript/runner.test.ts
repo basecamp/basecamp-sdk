@@ -343,10 +343,6 @@ async function executeOperation(
         await client.everything.everythingForwards();
         break;
 
-      case "GetEverythingBoosts":
-        await client.everything.everythingBoosts();
-        break;
-
       case "GetEverythingFiles":
         await client.everything.everythingFiles();
         break;

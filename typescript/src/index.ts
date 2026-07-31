@@ -357,7 +357,6 @@ export {
 // Everything aggregates service - generated
 export {
   EverythingService,
-  type EverythingBoost,
   type EverythingFile,
   type BucketTodosGroup,
   type BucketCardsGroup,
@@ -365,7 +364,6 @@ export {
   type EverythingCommentsEverythingOptions,
   type EverythingCheckinsEverythingOptions,
   type EverythingForwardsEverythingOptions,
-  type EverythingBoostsEverythingOptions,
   type EverythingFilesEverythingOptions,
   type EverythingOpenTodosEverythingOptions,
   type EverythingCompletedTodosEverythingOptions,

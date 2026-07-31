@@ -326,48 +326,6 @@ func TestEverythingService_TypeSpecificFeedFields(t *testing.T) {
 	}
 }
 
-// TestEverythingService_Boosts_RecordingCarriesBucket proves the everything
-// /boosts.json feed renders each boost's recording through the FULL recording
-// projection. EverythingBoost.Recording is a *Recording (not the reduced Parent
-// shape the shared Boost keeps for source compatibility), so it must carry the
-// bucket, creator, and type-specific fields — routed through the real Boosts()
-// -> everythingBoostFromGenerated pipeline.
-func TestEverythingService_Boosts_RecordingCarriesBucket(t *testing.T) {
-	svc, _ := everythingTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/99999/boosts.json" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
-		_, _ = w.Write([]byte(`[
-			{"id":5001,"content":"👏","created_at":"2024-01-15T10:00:00Z","booster":{"id":1,"name":"Victor Cooper"},"recording":{"id":800,"type":"Message","status":"active","title":"A message","subject":"A message","url":"https://3.basecampapi.com/99999/buckets/9/messages/800.json","creator":{"id":7,"name":"Ann Perkins"},"bucket":{"id":9,"name":"The Leto Laptop","type":"Project"}}}
-		]`))
-	})
-
-	result, err := svc.Boosts(context.Background(), 1)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(result.Boosts) != 1 {
-		t.Fatalf("expected 1 boost, got %d", len(result.Boosts))
-	}
-	b := result.Boosts[0]
-	if b.Recording == nil {
-		t.Fatal("expected the boosted recording to decode")
-	}
-	if b.Recording.Bucket == nil || b.Recording.Bucket.Name != "The Leto Laptop" {
-		t.Errorf("expected the boosted recording to carry its bucket, got %+v", b.Recording.Bucket)
-	}
-	// Full projection (not reduced parent): creator, url, and the type-specific
-	// message subject must all decode.
-	if b.Recording.Creator == nil || b.Recording.Creator.Name != "Ann Perkins" {
-		t.Errorf("expected full projection creator, got %+v", b.Recording.Creator)
-	}
-	if b.Recording.URL == "" || strv(b.Recording.Subject) != "A message" {
-		t.Errorf("expected full projection url+subject, got url=%q subject=%v", b.Recording.URL, b.Recording.Subject)
-	}
-}
-
 // TestEverythingService_OpenTodos_BucketGrouped_MultiPage exercises the
 // bucket-grouped todo filter family: Link-header following across two pages, the
 // {bucket, todos} grouping, and embedded steps on a todo.

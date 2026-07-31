@@ -565,7 +565,7 @@ END
 
 ### behavior-model.json Retry Patterns
 
-All 226 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
+All 225 operations in `behavior-model.json` use `retry_on: [429, 503]`. Three `(max, base_delay_ms)` patterns exist:
 - `(2, 1000)` — most create operations
 - `(3, 1000)` — most read/update/delete operations
 - `(3, 2000)` — `CreateAttachment`, `CreateCampfireUpload` (file uploads)
@@ -1871,9 +1871,9 @@ Every operation has a `retry` block, including non-idempotent POSTs. For non-ide
 
 ### Operation Counts
 
-- Total operations: 226
+- Total operations: 225
 - Idempotent: 69 (flagged with `idempotent: true`)
-- Non-idempotent: 157 (no `idempotent` field, or not present)
+- Non-idempotent: 156 (no `idempotent` field, or not present)
 - All operations use `retry_on: [429, 503]`
 
 ---

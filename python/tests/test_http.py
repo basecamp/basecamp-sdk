@@ -531,7 +531,7 @@ class TestPerOperationRetryMaxIntegration:
         await client.close()
 
 
-# behavior-model.json declares retry_on: [429, 503] for all 226 operations.
+# behavior-model.json declares retry_on: [429, 503] for all 225 operations.
 # These fixtures mirror that so the tests do not depend on any single real op.
 STATUS_GATE_METADATA = {
     "GovernedOp": {"idempotent": True, "retry": {"max": 3, "retry_on": [429, 503]}},

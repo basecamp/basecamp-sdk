@@ -1,16 +1,6 @@
 // @generated from OpenAPI spec — do not edit directly
 import Foundation
 
-public struct EverythingBoostsEverythingOptions: Sendable {
-    public var page: Int?
-    public var maxItems: Int?
-
-    public init(page: Int? = nil, maxItems: Int? = nil) {
-        self.page = page
-        self.maxItems = maxItems
-    }
-}
-
 public struct EverythingCheckinsEverythingOptions: Sendable {
     public var page: Int?
     public var maxItems: Int?
@@ -162,20 +152,6 @@ public struct EverythingUnassignedTodosEverythingOptions: Sendable {
 
 
 public final class EverythingService: BaseService, @unchecked Sendable {
-    public func everythingBoosts(options: EverythingBoostsEverythingOptions? = nil) async throws -> ListResult<EverythingBoost> {
-        var queryItems: [URLQueryItem] = []
-        if let page = options?.page {
-            queryItems.append(URLQueryItem(name: "page", value: String(page)))
-        }
-        return try await requestPaginated(
-            OperationInfo(service: "Everything", operation: "GetEverythingBoosts", resourceType: "everything_boost", isMutation: false),
-            path: "/boosts.json",
-            queryItems: queryItems.isEmpty ? nil : queryItems,
-            paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
-            retryConfig: Metadata.retryConfig(for: "GetEverythingBoosts")
-        )
-    }
-
     public func everythingCheckins(options: EverythingCheckinsEverythingOptions? = nil) async throws -> ListResult<Recording> {
         var queryItems: [URLQueryItem] = []
         if let page = options?.page {

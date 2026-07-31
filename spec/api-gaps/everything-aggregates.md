@@ -5,7 +5,7 @@ detected: 2026-05-01
 sdk_demand: high
 bc3_pr: 11627
 smithy_refs:
-  - "EverythingService flat family: GetEverythingMessages/Comments/Checkins/Forwards/Boosts/Files + GetEverythingOverdueTodos/OverdueCards (spec/basecamp.smithy)"
+  - "EverythingService flat family: GetEverythingMessages/Comments/Checkins/Forwards/Files + GetEverythingOverdueTodos/OverdueCards (spec/basecamp.smithy)"
   - "EverythingFile superset (spec/basecamp.smithy)"
   - "EverythingService bucket-grouped family: GetEverythingOpen/Completed/Unassigned/NoDueDate Todos + Open/Completed/Unassigned/NoDueDate/NotNow Cards (spec/basecamp.smithy)"
   - "BucketTodosGroup / BucketCardsGroup (spec/basecamp.smithy)"
@@ -29,13 +29,11 @@ bc3_refs:
     - "GET /:account_id/checkins.json"
     - "GET /:account_id/forwards.json"
     - "GET /:account_id/files.json"
-    - "GET /:account_id/boosts.json"
   controllers:
     - app/controllers/everything/todos_controller.rb
     - app/controllers/everything/cards_controller.rb
     - app/controllers/everything/messages_controller.rb
     - app/controllers/everything/comments_controller.rb
-    - app/controllers/everything/boosts_controller.rb
     - app/controllers/everything/checkins_controller.rb
     - app/controllers/everything/forwards_controller.rb
     - app/controllers/everything/files_controller.rb
@@ -54,13 +52,14 @@ namespace**, not part of the URL). The contract merged to `master` via BC3
 **#11627** as part of the BC5 API train (2026-07-18..21);
 `doc/api/sections/everything.md` on `master` is the contract of record.
 
-**Shipped scope: exactly 17 documented GET operations across 8 groups**
-(re-derived from the merged doc's example markers):
+**Current scope: 16 documented GET operations across 7 groups** (originally 17
+across 8 — the account-wide `/boosts.json` feed was later withdrawn, see
+[everything-boosts-withdrawn.md](everything-boosts-withdrawn.md)):
 
 - **todos ×5** — `/todos/{open,completed,overdue,unassigned,no_due_date}.json`
 - **cards ×6** — `/cards/{open,completed,overdue,unassigned,no_due_date,not_now}.json`
-- **flat roots ×6** — `/messages.json`, `/comments.json`, `/checkins.json`,
-  `/forwards.json`, `/files.json`, `/boosts.json`
+- **flat roots ×5** — `/messages.json`, `/comments.json`, `/checkins.json`,
+  `/forwards.json`, `/files.json`
 
 There is **no `/documents.json` root** — earlier drafts of this entry (working
 from pre-merge #10947 heads) listed one, for an 18-op count. In the merged
@@ -97,10 +96,10 @@ The merged `doc/api/sections/everything.md` documents two contract families:
   steps — under their parent project.
 - **Flat recording lists** — `/todos/overdue.json` and `/cards/overdue.json`
   return a flat array of overdue recordings sorted oldest-first by due date;
-  the 6 roots (`/messages.json`, `/comments.json`, `/checkins.json`,
-  `/forwards.json`, `/files.json`, `/boosts.json`) return flat,
-  recency-ordered (newest-first), paginated recording arrays, each item
-  embedding its `bucket` for project context.
+  the 5 roots (`/messages.json`, `/comments.json`, `/checkins.json`,
+  `/forwards.json`, `/files.json`) return flat, recency-ordered
+  (newest-first), paginated recording arrays, each item embedding its
+  `bucket` for project context.
 
 `GET /files.json` additionally takes `kind`
 (`all` | `images` | `pdfs` | `documents` | `videos`) and repeatable
@@ -110,16 +109,19 @@ rich-text attachments (attachments wrapped in a recording envelope plus
 
 ## Implementation notes for BC3
 
-Shipped — nothing pending. 8 controllers under `app/controllers/everything/`
-serve the 17 operations. The bare `/todos.json` and `/cards.json` roots stay
+Shipped — nothing pending. 7 controllers under `app/controllers/everything/`
+serve the 16 operations. The bare `/todos.json` and `/cards.json` roots stay
 HTML shells, and `/<resource>/recent.json` stays internal web surface, per the
 merged doc.
 
 ## SDK absorption plan when this lands
 
-Absorbed in **two phases** across a stacked PR pair. All 17 routes are now
-modeled, generated across the six SDKs, Go-wrapped, and decode-tested — the
-entry is `absorbed-in-sdk`.
+Absorbed in **two phases** across a stacked PR pair; all 17 then-shipped
+routes were modeled, generated across the six SDKs, Go-wrapped, and
+decode-tested — the entry is `absorbed-in-sdk`. (`GetEverythingBoosts` was
+later removed when BC5 withdrew the `/boosts.json` feed; see
+[everything-boosts-withdrawn.md](everything-boosts-withdrawn.md). The
+historical PR-5 narrative below describes the original 8-op flat family.)
 
 **PR-5 (flat family) — DONE.** A new `EverythingService` with the 8 flat-family
 operations:
@@ -128,7 +130,8 @@ operations:
   `GetEverythingComments`, `GetEverythingCheckins`, `GetEverythingForwards`
   (element = the generic `Recording` projection the wire actually returns, which
   embeds `bucket`), `GetEverythingBoosts` (element = `Boost`, carrying its
-  `booster` and nested `recording`), and `GetEverythingFiles`.
+  `booster` and nested `recording`; since removed with the feed's withdrawal —
+  see above), and `GetEverythingFiles`.
 - Two unpaginated, oldest-due-date-first arrays — `GetEverythingOverdueTodos`
   (`Todo`) and `GetEverythingOverdueCards` (`Card`) — modeled as plain full
   arrays (single-member output, no pagination → bare array via the
@@ -179,8 +182,8 @@ per-op tests in TS/Ruby/Python for all 9 ops, `paths.json` path-assertion
 entries + mock-runner dispatch (Go/TS/Kotlin/Ruby/Python) for all 9, and a
 live-canary entry per group with matching `live-dispatch` cases.
 
-With both families landed, all 17 routes are modeled, generated, wrapped, and
-covered — the entry is `absorbed-in-sdk`.
+With both families landed, all 16 current routes are modeled, generated,
+wrapped, and covered — the entry is `absorbed-in-sdk`.
 
 Exclusions honored: never model the `/<resource>/recent.json` aliases (internal
 web feeds) or the bare `/todos.json` / `/cards.json` roots (HTML shells).
