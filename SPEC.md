@@ -586,7 +586,7 @@ END
 
 RECORD ListMeta
   total_count : Integer   -- from X-Total-Count header; 0 if absent
-  truncated   : Boolean   -- true if results were capped by max_pages or max_items
+  truncated   : Boolean   -- true only when items beyond those returned were available: a next Link was present or excess items were discarded. Landing exactly on the final item is not truncation.
   next_url    : String?   -- URL of the next page when truncated; not populated by all SDKs (optional field)
 END
 ```
@@ -1818,6 +1818,7 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `pagination.json` | maxPages safety cap | §8 |
 | `pagination.json` | Missing X-Total-Count → 0 | §8 |
 | `pagination.json` | maxItems caps results | §8 |
+| `pagination.json` | maxItems exact landing not truncated | §8 |
 | `status-codes.json` | GET → 200 | §11 |
 | `status-codes.json` | PUT → 200 | §11 |
 | `status-codes.json` | POST create → 201 | §11 |
@@ -1915,6 +1916,7 @@ never consults the operation's `max`. See the Gate 3 consumption table in §7 ab
 | Kotlin | `ListResult<T>` | yes | yes |
 | Swift | `ListResult<T>` | yes | yes |
 | Go | Typed `*XxxListResult` with `Meta ListMeta` | yes | yes |
+| Python | `ListResult(list)` with `meta ListMeta` | yes | yes |
 | Ruby | Lazy `Enumerator` yielding items | no (waiver 2C.2) | no (waiver 2C.6) |
 
 ### Error Message Truncation Unit (§9)

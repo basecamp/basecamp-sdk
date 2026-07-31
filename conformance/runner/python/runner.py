@@ -635,11 +635,13 @@ class ConformanceRunner:
     _DOWNLOAD_RETRY_SKIP = "Python SDK download path uses get_no_retry; retry on 5xx / Retry-After is not implemented"
     SKIPS: set[str] = {
         "maxItems caps results across pages",
+        "maxItems landing exactly on the final item is not truncated",
         "DownloadURL retries on 503 at the auth'd first hop",
         "DownloadURL honors Retry-After on 429 at the auth'd first hop",
     }
     SKIP_REASONS: dict[str, str] = {
         "maxItems caps results across pages": "Python SDK list methods don't expose a public max_items parameter",
+        "maxItems landing exactly on the final item is not truncated": "Python SDK list methods don't expose a public max_items parameter",
         "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
         "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
     }

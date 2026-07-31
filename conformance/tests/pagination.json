@@ -194,5 +194,40 @@
       {"type": "responseMeta", "path": "truncated", "expected": true}
     ],
     "tags": ["pagination", "max-items"]
+  },
+  {
+    "name": "maxItems landing exactly on the final item is not truncated",
+    "description": "Verifies that when maxItems is met exactly by the last item of the final page (no next Link, no items dropped), truncated is false (2C.4, 2C.6)",
+    "operation": "ListProjects",
+    "method": "GET",
+    "path": "/projects.json",
+    "configOverrides": {
+      "maxItems": 4
+    },
+    "mockResponses": [
+      {
+        "status": 200,
+        "headers": {
+          "Link": "</projects.json?page=2>; rel=\"next\""
+        },
+        "body": [
+          {"id": 1, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 1", "url": "https://3.basecampapi.com/999/projects/1.json", "app_url": "https://3.basecamp.com/999/projects/1"},
+          {"id": 2, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 2", "url": "https://3.basecampapi.com/999/projects/2.json", "app_url": "https://3.basecamp.com/999/projects/2"}
+        ]
+      },
+      {
+        "status": 200,
+        "body": [
+          {"id": 3, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 3", "url": "https://3.basecampapi.com/999/projects/3.json", "app_url": "https://3.basecamp.com/999/projects/3"},
+          {"id": 4, "status": "active", "created_at": "2025-01-01T00:00:00Z", "updated_at": "2025-01-01T00:00:00Z", "name": "Project 4", "url": "https://3.basecampapi.com/999/projects/4.json", "app_url": "https://3.basecamp.com/999/projects/4"}
+        ]
+      }
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 2},
+      {"type": "noError"},
+      {"type": "responseMeta", "path": "truncated", "expected": false}
+    ],
+    "tags": ["pagination", "max-items"]
   }
 ]
