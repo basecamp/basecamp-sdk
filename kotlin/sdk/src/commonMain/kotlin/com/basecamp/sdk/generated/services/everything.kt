@@ -26,6 +26,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -49,6 +51,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -72,6 +76,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -95,6 +101,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -106,8 +114,9 @@ class EverythingService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get every overdue card across all accessible projects, oldest-due-date-first.
+     * @param options Optional query parameters and pagination control
      */
-    suspend fun everythingOverdueCards(): List<Card> {
+    suspend fun everythingOverdueCards(options: GetEverythingOverdueCardsOptions? = null): List<Card> {
         val info = OperationInfo(
             service = "Everything",
             operation = "GetEverythingOverdueCards",
@@ -116,8 +125,12 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
+        val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
+        )
         return request(info, {
-            httpGet("/cards/overdue.json", operationName = info.operation)
+            httpGet("/cards/overdue.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Card>>(body)
         }
@@ -137,6 +150,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -277,6 +292,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -300,6 +317,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -323,6 +342,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
@@ -334,8 +355,9 @@ class EverythingService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get every overdue to-do across all accessible projects, oldest-due-date-first.
+     * @param options Optional query parameters and pagination control
      */
-    suspend fun everythingOverdueTodos(): List<Todo> {
+    suspend fun everythingOverdueTodos(options: GetEverythingOverdueTodosOptions? = null): List<Todo> {
         val info = OperationInfo(
             service = "Everything",
             operation = "GetEverythingOverdueTodos",
@@ -344,8 +366,12 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
+        val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
+        )
         return request(info, {
-            httpGet("/todos/overdue.json", operationName = info.operation)
+            httpGet("/todos/overdue.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Todo>>(body)
         }
@@ -365,6 +391,8 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
+            "assignee_ids[]" to options?.assigneeIds,
+            "due" to options?.due,
             "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {

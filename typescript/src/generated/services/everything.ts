@@ -30,6 +30,11 @@ export type Todo = components["schemas"]["Todo"];
  * Options for everythingCompletedCards.
  */
 export interface EverythingCompletedCardsEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -38,6 +43,11 @@ export interface EverythingCompletedCardsEverythingOptions extends PaginationOpt
  * Options for everythingNoDueDateCards.
  */
 export interface EverythingNoDueDateCardsEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -46,6 +56,11 @@ export interface EverythingNoDueDateCardsEverythingOptions extends PaginationOpt
  * Options for everythingNotNowCards.
  */
 export interface EverythingNotNowCardsEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -54,14 +69,35 @@ export interface EverythingNotNowCardsEverythingOptions extends PaginationOption
  * Options for everythingOpenCards.
  */
 export interface EverythingOpenCardsEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
+}
+
+/**
+ * Options for everythingOverdueCards.
+ */
+export interface EverythingOverdueCardsEverythingOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
 }
 
 /**
  * Options for everythingUnassignedCards.
  */
 export interface EverythingUnassignedCardsEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -114,6 +150,11 @@ export interface EverythingMessagesEverythingOptions extends PaginationOptions {
  * Options for everythingCompletedTodos.
  */
 export interface EverythingCompletedTodosEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -122,6 +163,11 @@ export interface EverythingCompletedTodosEverythingOptions extends PaginationOpt
  * Options for everythingNoDueDateTodos.
  */
 export interface EverythingNoDueDateTodosEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -130,14 +176,35 @@ export interface EverythingNoDueDateTodosEverythingOptions extends PaginationOpt
  * Options for everythingOpenTodos.
  */
 export interface EverythingOpenTodosEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
+}
+
+/**
+ * Options for everythingOverdueTodos.
+ */
+export interface EverythingOverdueTodosEverythingOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
 }
 
 /**
  * Options for everythingUnassignedTodos.
  */
 export interface EverythingUnassignedTodosEverythingOptions extends PaginationOptions {
+  /** Restrict to tasks assigned to at least one of the given people (repeatable).
+Assignees on nested steps are not considered. */
+  assigneeIds?: number[];
+  /** Filter by due date: with, without, or overdue. Unrecognized values are ignored. */
+  due?: string;
   /** Page number for paginating through results. Defaults to 1. */
   page?: number;
 }
@@ -173,7 +240,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/cards/completed.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -201,7 +268,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/cards/no_due_date.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -229,7 +296,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/cards/not_now.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -257,7 +324,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/cards/open.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -266,6 +333,7 @@ export class EverythingService extends BaseService {
 
   /**
    * Get every overdue card across all accessible projects, oldest-due-date-first.
+   * @param options - Optional query parameters
    * @returns Array of Card
    *
    * @example
@@ -273,7 +341,7 @@ export class EverythingService extends BaseService {
    * const result = await client.everything.everythingOverdueCards();
    * ```
    */
-  async everythingOverdueCards(): Promise<Card[]> {
+  async everythingOverdueCards(options?: EverythingOverdueCardsEverythingOptions): Promise<Card[]> {
     const response = await this.request(
       {
         service: "Everything",
@@ -283,6 +351,9 @@ export class EverythingService extends BaseService {
       },
       () =>
         this.client.GET("/cards/overdue.json", {
+          params: {
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due },
+          },
         })
     );
     return response ?? [];
@@ -309,7 +380,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/cards/unassigned.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -477,7 +548,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/todos/completed.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -505,7 +576,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/todos/no_due_date.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -533,7 +604,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/todos/open.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options
@@ -542,6 +613,7 @@ export class EverythingService extends BaseService {
 
   /**
    * Get every overdue to-do across all accessible projects, oldest-due-date-first.
+   * @param options - Optional query parameters
    * @returns Array of Todo
    *
    * @example
@@ -549,7 +621,7 @@ export class EverythingService extends BaseService {
    * const result = await client.everything.everythingOverdueTodos();
    * ```
    */
-  async everythingOverdueTodos(): Promise<Todo[]> {
+  async everythingOverdueTodos(options?: EverythingOverdueTodosEverythingOptions): Promise<Todo[]> {
     const response = await this.request(
       {
         service: "Everything",
@@ -559,6 +631,9 @@ export class EverythingService extends BaseService {
       },
       () =>
         this.client.GET("/todos/overdue.json", {
+          params: {
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due },
+          },
         })
     );
     return response ?? [];
@@ -585,7 +660,7 @@ export class EverythingService extends BaseService {
       () =>
         this.client.GET("/todos/unassigned.json", {
           params: {
-            query: { page: options?.page },
+            query: { "assignee_ids[]": options?.assigneeIds, due: options?.due, page: options?.page },
           },
         })
       , options

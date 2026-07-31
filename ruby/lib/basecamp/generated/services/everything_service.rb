@@ -8,59 +8,77 @@ module Basecamp
     class EverythingService < BaseService
 
       # Completed cards across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_completed_cards(page: nil)
+      def get_everything_completed_cards(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_completed_cards", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/cards/completed.json", params: params, operation: "GetEverythingCompletedCards")
         end
       end
 
       # Open cards with no due date across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_no_due_date_cards(page: nil)
+      def get_everything_no_due_date_cards(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_no_due_date_cards", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/cards/no_due_date.json", params: params, operation: "GetEverythingNoDueDateCards")
         end
       end
 
       # Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_not_now_cards(page: nil)
+      def get_everything_not_now_cards(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_not_now_cards", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/cards/not_now.json", params: params, operation: "GetEverythingNotNowCards")
         end
       end
 
       # Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_open_cards(page: nil)
+      def get_everything_open_cards(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_open_cards", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/cards/open.json", params: params, operation: "GetEverythingOpenCards")
         end
       end
 
       # Get every overdue card across all accessible projects, oldest-due-date-first.
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @return [Array<Hash>] response data
-      def get_everything_overdue_cards()
+      def get_everything_overdue_cards(assignee_ids: nil, due: nil)
         with_operation(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
-          http_get("/cards/overdue.json", operation: "GetEverythingOverdueCards").json
+          http_get("/cards/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueCards").json
         end
       end
 
       # Open, unassigned cards across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_unassigned_cards(page: nil)
+      def get_everything_unassigned_cards(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_unassigned_cards", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/cards/unassigned.json", params: params, operation: "GetEverythingUnassignedCards")
         end
       end
@@ -118,49 +136,64 @@ module Basecamp
       end
 
       # Completed to-dos across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_completed_todos(page: nil)
+      def get_everything_completed_todos(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_completed_todos", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/todos/completed.json", params: params, operation: "GetEverythingCompletedTodos")
         end
       end
 
       # Open to-dos with no due date across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_no_due_date_todos(page: nil)
+      def get_everything_no_due_date_todos(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_no_due_date_todos", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/todos/no_due_date.json", params: params, operation: "GetEverythingNoDueDateTodos")
         end
       end
 
       # Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_open_todos(page: nil)
+      def get_everything_open_todos(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_open_todos", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/todos/open.json", params: params, operation: "GetEverythingOpenTodos")
         end
       end
 
       # Get every overdue to-do across all accessible projects, oldest-due-date-first.
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @return [Array<Hash>] response data
-      def get_everything_overdue_todos()
+      def get_everything_overdue_todos(assignee_ids: nil, due: nil)
         with_operation(service: "everything", operation: "get_everything_overdue_todos", is_mutation: false) do
-          http_get("/todos/overdue.json", operation: "GetEverythingOverdueTodos").json
+          http_get("/todos/overdue.json", params: compact_query_params(assignee_ids: assignee_ids, due: due), operation: "GetEverythingOverdueTodos").json
         end
       end
 
       # Open, unassigned to-dos across all accessible projects, grouped by project (paginated).
+      # @param assignee_ids [Array, nil] Restrict to tasks assigned to at least one of the given people (repeatable).
+      #   Assignees on nested steps are not considered.
+      # @param due [String, nil] Filter by due date: with, without, or overdue. Unrecognized values are ignored.
       # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @return [Enumerator<Hash>] paginated results
-      def get_everything_unassigned_todos(page: nil)
+      def get_everything_unassigned_todos(assignee_ids: nil, due: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_unassigned_todos", is_mutation: false) do
-          params = compact_query_params(page: page)
+          params = compact_query_params(assignee_ids: assignee_ids, due: due, page: page)
           paginate("/todos/unassigned.json", params: params, operation: "GetEverythingUnassignedTodos")
         end
       end

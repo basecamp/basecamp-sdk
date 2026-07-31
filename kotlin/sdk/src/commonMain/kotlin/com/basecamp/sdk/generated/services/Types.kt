@@ -219,6 +219,8 @@ data class CreateDocumentBody(
 
 /** Options for GetEverythingCompletedCards. */
 data class GetEverythingCompletedCardsOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -227,6 +229,8 @@ data class GetEverythingCompletedCardsOptions(
 
 /** Options for GetEverythingNoDueDateCards. */
 data class GetEverythingNoDueDateCardsOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -235,6 +239,8 @@ data class GetEverythingNoDueDateCardsOptions(
 
 /** Options for GetEverythingNotNowCards. */
 data class GetEverythingNotNowCardsOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -243,14 +249,25 @@ data class GetEverythingNotNowCardsOptions(
 
 /** Options for GetEverythingOpenCards. */
 data class GetEverythingOpenCardsOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Options for GetEverythingOverdueCards. */
+data class GetEverythingOverdueCardsOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null
+) {
+}
+
 /** Options for GetEverythingUnassignedCards. */
 data class GetEverythingUnassignedCardsOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -301,6 +318,8 @@ data class GetEverythingMessagesOptions(
 
 /** Options for GetEverythingCompletedTodos. */
 data class GetEverythingCompletedTodosOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -309,6 +328,8 @@ data class GetEverythingCompletedTodosOptions(
 
 /** Options for GetEverythingNoDueDateTodos. */
 data class GetEverythingNoDueDateTodosOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -317,14 +338,25 @@ data class GetEverythingNoDueDateTodosOptions(
 
 /** Options for GetEverythingOpenTodos. */
 data class GetEverythingOpenTodosOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Options for GetEverythingOverdueTodos. */
+data class GetEverythingOverdueTodosOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null
+) {
+}
+
 /** Options for GetEverythingUnassignedTodos. */
 data class GetEverythingUnassignedTodosOptions(
+    val assigneeIds: List<Long>? = null,
+    val due: String? = null,
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
