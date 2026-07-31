@@ -1,0 +1,22 @@
+scripts/check-retry-metadata-parity.py
+  s_289a344fc8a3ac::t_0ef76d9add0264 241-242
+  s_289a344fc8a3ac::t_6731ab3892ebef 251-253
+SPEC.md
+  s_289a344fc8a3ac::t_774c4aa1578434 111,114-115,451-452,454-455,468,474,1889,1894-1897
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "b39faacd435bc6ebb347581c5e5ad13720180146",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
