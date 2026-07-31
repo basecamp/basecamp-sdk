@@ -1,0 +1,25 @@
+conformance/runner/ruby/runner.rb
+  s_555508c40a7b3b::t_56d9cce1836595 27,29
+  s_555508c40a7b3b::t_babcf72db54cdd 41-44,49
+  s_555508c40a7b3b::t_361fa1fee6c514 401
+conformance/runner/python/runner.py
+  s_555508c40a7b3b::t_2821ed5f80e66f 40-41
+  s_555508c40a7b3b::t_932b6dfb340e48 313
+  s_555508c40a7b3b::t_638eded8eca6a3 52-55,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "22b1241450982b9fe206a9f1bc3f7587393a40cf",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
