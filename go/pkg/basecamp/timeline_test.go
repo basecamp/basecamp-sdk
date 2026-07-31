@@ -451,6 +451,36 @@ func TestPersonProgress_MultiPageWithLimit(t *testing.T) {
 	}
 }
 
+// TestPersonProgress_LimitExactBoundaryNotTruncated pins the exact-boundary
+// contract: when the limit equals the total and the final page carries no
+// Link header, nothing was dropped and no pages remain — Truncated is false.
+func TestPersonProgress_LimitExactBoundaryNotTruncated(t *testing.T) {
+	h := &wrappedPaginationHandler{pageSize: 3, total: 6}
+	srv := httptest.NewServer(h)
+	defer srv.Close()
+	h.serverURL = srv.URL
+
+	cfg := &Config{BaseURL: srv.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	account := client.ForAccount("999")
+	ts := NewTimelineService(account)
+
+	result, err := ts.PersonProgress(context.Background(), 456, &TimelineListOptions{Limit: 6})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result.Events) != 6 {
+		t.Fatalf("expected 6 events, got %d", len(result.Events))
+	}
+	if result.Meta.Truncated {
+		t.Error("expected Truncated=false when limit exactly equals total and no next Link remains")
+	}
+	if pages := int(atomic.LoadInt32(&h.pageCount)); pages != 2 {
+		t.Errorf("expected 2 page requests, got %d", pages)
+	}
+}
+
 func TestPersonProgressResult_Unmarshal(t *testing.T) {
 	data := `{
 		"person": {
