@@ -1,0 +1,21 @@
+SECURITY.md
+  s_289a344fc8a3ac::t_cd8ef641f2d38d 187-189,193
+SPEC.md
+  s_289a344fc8a3ac::t_8d5e3e8531ee2d 111,113-114,476,1875-1876
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "29dba9d22ab62ea1c44244b0de26963b69f74477",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
