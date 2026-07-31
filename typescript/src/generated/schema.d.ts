@@ -3902,6 +3902,14 @@ export interface components {
             content?: string;
             content_attachments?: components["schemas"]["RichTextAttachment"][];
         };
+        FieldErrorMap: {
+            [key: string]: string[];
+        };
+        /** @description The field-keyed 422 body: {"errors": {"color": ["is not a valid color"]}}. */
+        FieldKeyedErrors: {
+            errors: components["schemas"]["FieldErrorMap"];
+        };
+        FieldValidationErrorResponseContent: components["schemas"]["FieldKeyedErrors"];
         /** @enum {string} */
         FirstWeekDay: "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday";
         ForbiddenErrorResponseContent: {
@@ -7458,13 +7466,13 @@ export interface operations {
                     "application/json": components["schemas"]["NotFoundErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description FieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

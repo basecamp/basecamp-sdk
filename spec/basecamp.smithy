@@ -354,6 +354,34 @@ structure ValidationError {
   message: String
 }
 
+/// 422 whose body is keyed by field ({"errors": {"color": ["is not a valid
+/// color"]}}) — the Rails RecordInvalid rendering. Used by operations whose
+/// controllers emit the field-keyed shape instead of the flat {error} body.
+@error("client")
+@httpError(422)
+structure FieldValidationError {
+  /// Single member so the OpenAPI unwrap resolves to FieldKeyedErrors — the
+  /// {"errors": {...}} wire shape (the BookmarkStatus treatment; a direct map
+  /// member would unwrap to the bare map and lose the errors key).
+  @required
+  field_errors: FieldKeyedErrors
+}
+
+/// The field-keyed 422 body: {"errors": {"color": ["is not a valid color"]}}.
+structure FieldKeyedErrors {
+  @required
+  errors: FieldErrorMap
+}
+
+map FieldErrorMap {
+  key: String
+  value: FieldErrorMessages
+}
+
+list FieldErrorMessages {
+  member: String
+}
+
 @error("client")
 @retryable(throttling: true)
 @httpError(429)
@@ -9592,7 +9620,7 @@ structure GetCalendarInput {
 operation UpdateCalendar {
   input: UpdateCalendarInput
   output: CalendarOutput
-  errors: [NotFoundError, ValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
+  errors: [NotFoundError, FieldValidationError, UnauthorizedError, ForbiddenError, RateLimitError, InternalServerError]
 }
 
 structure UpdateCalendarInput {

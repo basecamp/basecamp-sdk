@@ -2264,11 +2264,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "FieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
                 }
               }
             }
@@ -24701,6 +24701,33 @@
             }
           }
         }
+      },
+      "FieldErrorMap": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "propertyNames": {
+          "type": "string"
+        }
+      },
+      "FieldKeyedErrors": {
+        "type": "object",
+        "description": "The field-keyed 422 body: {\"errors\": {\"color\": [\"is not a valid color\"]}}.",
+        "properties": {
+          "errors": {
+            "$ref": "#/components/schemas/FieldErrorMap"
+          }
+        },
+        "required": [
+          "errors"
+        ]
+      },
+      "FieldValidationErrorResponseContent": {
+        "$ref": "#/components/schemas/FieldKeyedErrors"
       },
       "FirstWeekDay": {
         "type": "string",

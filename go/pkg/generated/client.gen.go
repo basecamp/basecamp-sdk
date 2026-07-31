@@ -1020,6 +1020,17 @@ type EverythingFile struct {
 	Width *types.FlexInt `json:"width,omitempty"`
 }
 
+// FieldErrorMap defines model for FieldErrorMap.
+type FieldErrorMap map[string][]string
+
+// FieldKeyedErrors The field-keyed 422 body: {"errors": {"color": ["is not a valid color"]}}.
+type FieldKeyedErrors struct {
+	Errors FieldErrorMap `json:"errors"`
+}
+
+// FieldValidationErrorResponseContent The field-keyed 422 body: {"errors": {"color": ["is not a valid color"]}}.
+type FieldValidationErrorResponseContent = FieldKeyedErrors
+
 // FirstWeekDay defines model for FirstWeekDay.
 type FirstWeekDay string
 
@@ -24365,7 +24376,7 @@ type UpdateCalendarResponse struct {
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
 	JSON404      *NotFoundErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -35723,7 +35734,7 @@ func ParseUpdateCalendarResponse(rsp *http.Response) (*UpdateCalendarResponse, e
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

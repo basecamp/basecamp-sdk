@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-31T13:02:55Z
+# Generated: 2026-07-31T13:35:02Z
 
 require "json"
 require "time"
@@ -1711,6 +1711,31 @@ module Basecamp
           "url" => @url,
           "visible_to_clients" => @visible_to_clients,
           "width" => @width,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # FieldKeyedErrors
+    class FieldKeyedErrors
+      include TypeHelpers
+      attr_accessor :errors
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[errors].freeze
+      end
+
+      def initialize(data = {})
+        @errors = parse_type(data["errors"], "FieldErrorMap")
+      end
+
+      def to_h
+        {
+          "errors" => @errors,
         }.compact
       end
 

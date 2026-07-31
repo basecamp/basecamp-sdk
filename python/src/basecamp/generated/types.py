@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, NotRequired, Optional, TypedDict
 
+FieldErrorMap = dict[str, list[str]]
+
 WebhookHeadersMap = dict[str, str]
 
 
@@ -718,6 +720,10 @@ class EverythingFile(TypedDict):
     url: NotRequired[str]
     visible_to_clients: NotRequired[bool]
     width: NotRequired[Optional[int | float]]
+
+
+class FieldKeyedErrors(TypedDict):
+    errors: FieldErrorMap
 
 
 class ForbiddenErrorResponseContent(TypedDict):
