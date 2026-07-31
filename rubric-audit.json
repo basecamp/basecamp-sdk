@@ -93,7 +93,7 @@
     "1B.6": {
       "pass": true,
       "waiver": true,
-      "note": "JavaScript Number loses precision on integers > 2^53; no clean fix without breaking SDK API surface",
+      "note": "Lossless decode is feasible on Node >=22.12 via JSON.parse reviver source access, but emitting bigint would break the SDK's number-typed API surface",
       "language": "typescript"
     },
     "2C.4": {
