@@ -1,7 +1,8 @@
 /**
  * Request lifecycle regressions for the client middleware.
  *
- * Four defects motivated these, all in createRetryMiddleware/createHooksMiddleware:
+ * Four defects motivated these, all in the since-replaced retry/hooks middleware
+ * (the retry loop now lives in createRetryingFetch, beneath the chain):
  *
  *   1. bodyCache was keyed on `${method}:${url}:${Date.now()}`, so two concurrent
  *      mutations to the same URL in the same millisecond shared one cache slot —
@@ -21,8 +22,11 @@
  *   - onRetry's 2nd arg    — the UPCOMING attempt, so 2 on the first retry
  * Go, Python, Ruby and Kotlin all pass (1, 2); TypeScript passed (1, 1).
  *
- * Note TypeScript caps at one retry by design (SPEC waiver 2B.1), so attempt 2 is
- * terminal here. These tests assert the two-attempt lifecycle, not three.
+ * The retry loop now runs beneath the middleware chain as the client's custom
+ * fetch (closing SPEC waiver 2B.1), so attempts run to each operation's
+ * declared maxAttempts and network errors retry under the idempotency gate.
+ * The multi-attempt tests below pin that; the two-attempt tests remain as the
+ * minimal shape of each original defect.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
@@ -135,9 +139,10 @@ describe("middleware request lifecycle", () => {
     expect(retryBodies).toEqual(firstBodies);
   });
 
-  // Defect 2. A rejected initial fetch must still produce a balanced
-  // start/end pair, with statusCode 0 and the original error preserved.
-  it("fires a balanced start/end with statusCode 0 when the initial fetch fails", async () => {
+  // Defect 2, updated for network-error retry. A GET whose fetch keeps
+  // rejecting is retried to the operation's maxAttempts, and every attempt gets
+  // a balanced start/end pair with statusCode 0 and the error preserved.
+  it("retries a GET whose fetch fails, with balanced hooks for every attempt", async () => {
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => HttpResponse.error())
     );
@@ -151,13 +156,41 @@ describe("middleware request lifecycle", () => {
 
     await expect(client.GET("/projects.json")).rejects.toBeTruthy();
 
-    expect(starts(events)).toHaveLength(1);
-    expect(ends(events)).toHaveLength(1);
-    const end = ends(events)[0]!;
-    expect(end.attempt).toBe(1);
-    expect(end.statusCode).toBe(0);
-    expect(end.error).toBeInstanceOf(Error);
-  });
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    for (const end of ends(events)) {
+      expect(end.statusCode).toBe(0);
+      expect(end.error).toBeInstanceOf(Error);
+    }
+  }, 10_000);
+
+  // Network-error retry's success path: two fetch rejections, then a 200.
+  it("recovers when a retried GET's network error clears", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts <= 2) {
+          return HttpResponse.error();
+        }
+        return HttpResponse.json([{ id: 1 }]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const { data } = await client.GET("/projects.json");
+
+    expect(attempts).toBe(3);
+    expect(data).toEqual([{ id: 1 }]);
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([0, 0, 200]);
+  }, 10_000);
 
   // Defect 2, timeout variant. The auth middleware installs
   // AbortSignal.timeout, so a stalled request rejects the same way.
@@ -186,9 +219,100 @@ describe("middleware request lifecycle", () => {
     expect(end.error).toBeInstanceOf(Error);
   });
 
-  // Defect 4. Both attempts get balanced hooks even when the RETRY fetch
-  // itself fails at the network level, and all state is finalized.
-  it("fires balanced lifecycle hooks for both attempts when the retry fetch fails", async () => {
+  // Review follow-up (Codex). A caller can abort with a CUSTOM reason —
+  // AbortController.abort(reason) — and fetch then rejects with that reason,
+  // not a DOMException named AbortError. Cancellation must stay terminal on
+  // that path too: no retry, no backoff, and the caller's reason surfaces
+  // untouched.
+  it("treats a caller abort with a custom reason as terminal", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, async () => {
+        await new Promise((r) => setTimeout(r, 1000));
+        return HttpResponse.json([]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const reason = new Error("caller cancelled");
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(reason), 50);
+
+    try {
+      const err = await client
+        .GET("/projects.json", { signal: controller.signal } as never)
+        .then(
+          () => undefined,
+          (e: unknown) => e
+        );
+
+      expect(err).toBe(reason);
+      // Terminal on attempt 1: no retry started, no onRetry announced.
+      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+      expect(events.filter((e) => e.kind === "retry")).toHaveLength(0);
+    } finally {
+      clearTimeout(abortTimer);
+    }
+  }, 10_000);
+
+  // Review follow-up (Codex, round 2). An abort that fires DURING the backoff
+  // sleep must be terminal immediately: without a signal-aware sleep the
+  // request stays pending for the full delay, then begins another attempt
+  // (start + auth refresh) against an already-aborted signal. The same seam
+  // guards the request-timeout budget, which shares this signal.
+  it("rejects promptly when the caller aborts during a retry backoff", async () => {
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () =>
+        // Retry-After: 2 puts the loop into a 2s backoff we can abort inside.
+        new HttpResponse(null, { status: 429, headers: { "Retry-After": "2" } })
+      )
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const reason = new Error("caller cancelled during backoff");
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(reason), 100);
+
+    try {
+      const startedAt = Date.now();
+      const err = await client
+        .GET("/projects.json", { signal: controller.signal } as never)
+        .then(
+          () => undefined,
+          (e: unknown) => e
+        );
+
+      expect(err).toBe(reason);
+      // Prompt: nowhere near the 2s Retry-After backoff.
+      expect(Date.now() - startedAt).toBeLessThan(1000);
+      // Attempt 1 was started and ended (429) before the backoff; attempt 2
+      // must never start. onRetry had already announced it — that is the
+      // inherent race of cancelling between announce and begin — but starts
+      // and ends stay balanced.
+      expect(starts(events).map((e) => e.attempt)).toEqual([1]);
+      expect(ends(events).map((e) => e.attempt)).toEqual([1]);
+      expect(ends(events)[0]!.statusCode).toBe(429);
+    } finally {
+      clearTimeout(abortTimer);
+    }
+  }, 10_000);
+
+  // Defect 4, updated for network-error retry. A 503 followed by fetch
+  // rejections keeps retrying to maxAttempts, with balanced hooks per attempt
+  // and nothing dangling.
+  it("fires balanced lifecycle hooks for every attempt when retry fetches fail", async () => {
     let attempts = 0;
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => {
@@ -212,14 +336,13 @@ describe("middleware request lifecycle", () => {
 
     await expect(client.GET("/projects.json")).rejects.toBeTruthy();
 
-    expect(attempts).toBe(2);
+    expect(attempts).toBe(3);
     // One start and one end per attempt — nothing dangling.
-    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2]);
-    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2]);
-    expect(ends(events)[0]!.statusCode).toBe(503);
-    expect(ends(events)[1]!.statusCode).toBe(0);
-    expect(ends(events)[1]!.error).toBeInstanceOf(Error);
-  });
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([503, 0, 0]);
+    expect(ends(events)[2]!.error).toBeInstanceOf(Error);
+  }, 10_000);
 
   // Defect 4, attempt numbering. SPEC section 7: RequestInfo.attempt is the
   // attempt that just failed (1); onRetry's second argument is the UPCOMING
@@ -470,6 +593,96 @@ describe("middleware request lifecycle", () => {
     expect(ends(events).map((e) => e.statusCode)).toEqual([429, 200]);
     // The point of the test: the discarded body's stream was actually cancelled.
     expect(cancelSpy).toHaveBeenCalled();
+  });
+
+  // Waiver 2B.1's kill shot. The retry loop lives beneath the middleware chain
+  // as the client's custom fetch, so a second 503 no longer exhausts the
+  // architecture — attempts run to the operation's declared maxAttempts (3 by
+  // default), each with balanced hooks and an onRetry announcing the next.
+  it("chains status retries to the operation's full maxAttempts", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts <= 2) {
+          return new HttpResponse(null, { status: 503 });
+        }
+        return HttpResponse.json([{ id: 1 }]);
+      })
+    );
+
+    const events: Array<{
+      kind: "start" | "end" | "retry";
+      attempt: number;
+      statusCode?: number;
+      upcoming?: number;
+    }> = [];
+    const hooks: BasecampHooks = {
+      onRequestStart(info: RequestInfo) {
+        events.push({ kind: "start", attempt: info.attempt });
+      },
+      onRequestEnd(info: RequestInfo, result: RequestResult) {
+        events.push({ kind: "end", attempt: info.attempt, statusCode: result.statusCode });
+      },
+      onRetry(info: RequestInfo, upcoming: number) {
+        events.push({ kind: "retry", attempt: info.attempt, upcoming });
+      },
+    };
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const { data } = await client.GET("/projects.json");
+
+    expect(attempts).toBe(3);
+    expect(data).toEqual([{ id: 1 }]);
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([503, 503, 200]);
+    // SPEC section 7 pairs: (failed attempt, upcoming attempt).
+    const retries = events.filter((e) => e.kind === "retry");
+    expect(retries.map((r) => [r.attempt, r.upcoming])).toEqual([
+      [1, 2],
+      [2, 3],
+    ]);
+  }, 10_000);
+
+  // Body replay across MULTIPLE retries: the buffer captured before attempt 1
+  // must feed every subsequent attempt, byte-identical. The concurrency test
+  // above only exercises one retry per request.
+  it("replays the same body bytes on every retry attempt", async () => {
+    const bodies: string[] = [];
+    let attempts = 0;
+    server.use(
+      http.put(`${BASE_URL}/buckets/1/todos/2.json`, async ({ request }) => {
+        attempts++;
+        bodies.push(await request.text());
+        if (attempts <= 2) {
+          return new HttpResponse(null, {
+            status: 429,
+            headers: { "Retry-After": "0" },
+          });
+        }
+        return HttpResponse.json({ ok: true });
+      })
+    );
+
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+    });
+
+    await client.PUT("/buckets/{bucketId}/todos/{todoId}.json", {
+      params: { path: { bucketId: 1, todoId: 2 } },
+      body: { content: "same-bytes" },
+    } as never);
+
+    expect(attempts).toBe(3);
+    expect(bodies).toHaveLength(3);
+    expect(new Set(bodies).size).toBe(1);
+    expect(bodies[0]).toContain("same-bytes");
   });
 
   // Repeated retried requests each report their own two attempts, in order, with

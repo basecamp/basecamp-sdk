@@ -73,24 +73,16 @@ const TIMER_SLACK_MS = 2;
 const TEST_ACCOUNT_ID = "999";
 
 /**
- * Tests where the TS SDK's retry middleware architecture limits chained retries.
- *
- * The TS SDK retry middleware uses native fetch() for retry requests, which
- * bypasses the middleware stack. This means each middleware pass yields at most
- * 1 retry. A test expecting 3 total requests (initial + 2 retries) will only
- * see 2 (initial + 1 retry).
+ * Tests the TS SDK cannot pass, each with its reason. Kept per-line in sync
+ * with SPEC §19's zero-skip roster.
  */
 const TS_SDK_SKIPS: Record<string, string> = {
-  "GET operation retries on 503":
-    "TS SDK retry middleware yields at most 1 retry per middleware pass",
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
   "DownloadURL retries on 503 at the auth'd first hop":
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
-  "Network error on an idempotent POST is retried then succeeds":
-    "TS SDK retry middleware does not retry fetch rejections (network errors); only HTTP-status retries are implemented",
 };
 
 /**
