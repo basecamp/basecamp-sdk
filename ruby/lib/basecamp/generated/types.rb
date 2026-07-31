@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Auto-generated from OpenAPI spec. Do not edit manually.
-# Generated: 2026-07-31T11:47:01Z
+# Generated: 2026-07-31T12:31:21Z
 
 require "json"
 require "time"
@@ -2428,6 +2428,70 @@ module Basecamp
           "id" => @id,
           "app_url" => @app_url,
           "title" => @title,
+        }.compact
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # MyNote
+    class MyNote
+      include TypeHelpers
+      attr_accessor :app_url, :content, :content_attachments, :created_at, :id, :type, :updated_at, :url
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[app_url content content_attachments created_at id type updated_at url].freeze
+      end
+
+      def initialize(data = {})
+        @app_url = data["app_url"]
+        @content = data["content"]
+        @content_attachments = parse_array(data["content_attachments"], "RichTextAttachment")
+        @created_at = data["created_at"]
+        @id = data["id"]
+        @type = data["type"]
+        @updated_at = data["updated_at"]
+        @url = data["url"]
+      end
+
+      def to_h
+        {
+          "app_url" => @app_url,
+          "content" => @content,
+          "content_attachments" => @content_attachments,
+          "created_at" => @created_at,
+          "id" => @id,
+          "type" => @type,
+          "updated_at" => @updated_at,
+          "url" => @url,
+        }.reject { |k, v| v.nil? && !["created_at", "id", "updated_at"].include?(k) }
+      end
+
+      def to_json(*args)
+        to_h.to_json(*args)
+      end
+    end
+
+    # MyNoteAttributes
+    class MyNoteAttributes
+      include TypeHelpers
+      attr_accessor :content
+
+      # @return [Array<Symbol>]
+      def self.required_fields
+        %i[content].freeze
+      end
+
+      def initialize(data = {})
+        @content = data["content"]
+      end
+
+      def to_h
+        {
+          "content" => @content,
         }.compact
       end
 

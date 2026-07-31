@@ -31,6 +31,7 @@ from basecamp.generated.services.message_boards import MessageBoardsService, Asy
 from basecamp.generated.services.message_types import MessageTypesService, AsyncMessageTypesService
 from basecamp.generated.services.messages import MessagesService, AsyncMessagesService
 from basecamp.generated.services.my_assignments import MyAssignmentsService, AsyncMyAssignmentsService
+from basecamp.generated.services.my_notes import MyNotesService, AsyncMyNotesService
 from basecamp.generated.services.my_notifications import MyNotificationsService, AsyncMyNotificationsService
 from basecamp.generated.services.people import PeopleService, AsyncPeopleService
 from basecamp.generated.services.projects import ProjectsService, AsyncProjectsService
@@ -109,6 +110,8 @@ __all__ = [
     "AsyncMessagesService",
     "MyAssignmentsService",
     "AsyncMyAssignmentsService",
+    "MyNotesService",
+    "AsyncMyNotesService",
     "MyNotificationsService",
     "AsyncMyNotificationsService",
     "PeopleService",

@@ -799,6 +799,17 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
             DispatchResult()
         }
 
+        "GetMyNote" -> {
+            account.myNotes.getMyNote()
+            DispatchResult()
+        }
+
+        "UpdateMyNote" -> {
+            val note = tc.requestBody?.get("note")?.jsonObject ?: JsonObject(emptyMap())
+            account.myNotes.updateMyNote(UpdateMyNoteBody(note = note))
+            DispatchResult()
+        }
+
         "GetBookmark" -> {
             account.bookmarks.getBookmark(tc.pathParams.longParam("recordingId"))
             DispatchResult()

@@ -386,6 +386,12 @@ class AsyncAccountClient:
         return self._service("drafts", lambda: AsyncDraftsService(self))
 
     @property
+    def my_notes(self):
+        from basecamp.generated.services.my_notes import AsyncMyNotesService
+
+        return self._service("my_notes", lambda: AsyncMyNotesService(self))
+
+    @property
     def subscriptions(self):
         from basecamp.generated.services.subscriptions import AsyncSubscriptionsService
 

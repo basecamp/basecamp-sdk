@@ -318,6 +318,8 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   GetMyProfile: "me",
   // "bookmark(id)" reads as the action; keep the getter explicit.
   GetBookmark: "getBookmark",
+  // "myNote()" reads oddly; keep the getter explicit.
+  GetMyNote: "getMyNote",
   GetTodolistOrGroup: "get",
   UpdateTodolistOrGroup: "update",
   SetCardColumnColor: "setColor",
@@ -463,6 +465,7 @@ const TYPE_ALIASES: Record<string, [string, "response" | "request" | "entity"]> 
   Bookmark: ["Bookmark", "entity"],
   BookmarkStatus: ["BookmarkStatus", "entity"],
   Draft: ["Draft", "entity"],
+  MyNote: ["MyNote", "entity"],
   Forward: ["Forward", "entity"],
   ForwardReply: ["ForwardReply", "entity"],
   Inbox: ["Inbox", "entity"],

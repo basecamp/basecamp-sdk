@@ -1165,6 +1165,20 @@
       }
     },
     {
+      "pattern": "/{accountId}/my/notes",
+      "resource": "MyNotes",
+      "operations": {
+        "GET": "GetMyNote",
+        "PUT": "UpdateMyNote"
+      },
+      "params": {
+        "accountId": {
+          "role": "account",
+          "type": "string"
+        }
+      }
+    },
+    {
       "pattern": "/{accountId}/my/preferences",
       "resource": "People",
       "operations": {

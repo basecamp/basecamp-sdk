@@ -310,6 +310,12 @@ export {
 } from "./generated/services/drafts.js";
 
 export {
+  MyNotesService,
+  type MyNote,
+  type UpdateMyNoteMyNoteRequest,
+} from "./generated/services/my-notes.js";
+
+export {
   SubscriptionsService,
   type Subscription,
   type UpdateSubscriptionRequest,

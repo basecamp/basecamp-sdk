@@ -167,6 +167,8 @@ val METHOD_NAME_OVERRIDES = mapOf(
     "GetMyProfile" to "me",
     // "bookmark(id)" reads as the action; keep the getter explicit.
     "GetBookmark" to "getBookmark",
+    // "myNote()" reads oddly; keep the getter explicit.
+    "GetMyNote" to "getMyNote",
     "GetTodolistOrGroup" to "get",
     "UpdateTodolistOrGroup" to "update",
     "SetCardColumnColor" to "setColor",
@@ -316,6 +318,7 @@ val TYPE_ALIASES = mapOf(
     "Bookmark" to "Bookmark",
     "BookmarkStatus" to "BookmarkStatus",
     "Draft" to "Draft",
+    "MyNote" to "MyNote",
     // DraftParent is referenced only through the nullable anyOf union, which the
     // supporting-type scanner does not traverse — list it explicitly.
     "DraftParent" to "DraftParent",

@@ -481,6 +481,11 @@ data class GetMyDueAssignmentsOptions(
 ) {
 }
 
+/** Request body for UpdateMyNote. */
+data class UpdateMyNoteBody(
+    val note: JsonObject
+)
+
 /** Options for GetMyNotifications. */
 data class GetMyNotificationsOptions(
     val page: Long? = null,

@@ -27,6 +27,7 @@ export { MessagesService } from "./messages.js";
 export { MyAssignmentsService } from "./my-assignments.js";
 export { BookmarksService } from "./bookmarks.js";
 export { DraftsService } from "./drafts.js";
+export { MyNotesService } from "./my-notes.js";
 export { CheckinsService } from "./checkins.js";
 export { MyNotificationsService } from "./my-notifications.js";
 export { ProjectsService } from "./projects.js";

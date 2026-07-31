@@ -1209,6 +1209,18 @@
         ]
       }
     },
+    "GetMyNote": {
+      "readonly": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
     "GetMyNotifications": {
       "readonly": true,
       "retry": {
@@ -2770,6 +2782,18 @@
       }
     },
     "UpdateMessageType": {
+      "idempotent": true,
+      "retry": {
+        "max": 3,
+        "base_delay_ms": 1000,
+        "backoff": "exponential",
+        "retry_on": [
+          429,
+          503
+        ]
+      }
+    },
+    "UpdateMyNote": {
       "idempotent": true,
       "retry": {
         "max": 3,

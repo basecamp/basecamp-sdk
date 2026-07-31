@@ -491,6 +491,11 @@ module Basecamp
       service(:drafts) { Services::DraftsService.new(self) }
     end
 
+    # @return [Services::MyNotesService]
+    def my_notes
+      service(:my_notes) { Services::MyNotesService.new(self) }
+    end
+
     # @return [Services::SubscriptionsService]
     def subscriptions
       service(:subscriptions) { Services::SubscriptionsService.new(self) }

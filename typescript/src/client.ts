@@ -44,6 +44,7 @@ import { ClientRepliesService } from "./generated/services/client-replies.js";
 import { WebhooksService } from "./generated/services/webhooks.js";
 import { BookmarksService } from "./generated/services/bookmarks.js";
 import { DraftsService } from "./generated/services/drafts.js";
+import { MyNotesService } from "./generated/services/my-notes.js";
 import { SubscriptionsService } from "./generated/services/subscriptions.js";
 import { AttachmentsService } from "./generated/services/attachments.js";
 import { VaultsService } from "./generated/services/vaults.js";
@@ -155,6 +156,9 @@ export interface BasecampClient extends RawClient {
 
   /** Drafts service - the current user's unpublished drafts */
   readonly drafts: DraftsService;
+
+  /** MyNotes service - the current user's scratchpad note */
+  readonly myNotes: MyNotesService;
 
   /** Subscriptions service - manage notification subscriptions */
   readonly subscriptions: SubscriptionsService;
@@ -438,6 +442,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   defineService("webhooks", () => new WebhooksService(client, hooks, fetchPage, maxPages));
   defineService("bookmarks", () => new BookmarksService(client, hooks, fetchPage, maxPages));
   defineService("drafts", () => new DraftsService(client, hooks, fetchPage, maxPages));
+  defineService("myNotes", () => new MyNotesService(client, hooks, fetchPage, maxPages));
   defineService("subscriptions", () => new SubscriptionsService(client, hooks, fetchPage, maxPages));
   defineService("attachments", () => new AttachmentsService(client, hooks, fetchPage, maxPages));
   defineService("vaults", () => new VaultsService(client, hooks, fetchPage, maxPages));
