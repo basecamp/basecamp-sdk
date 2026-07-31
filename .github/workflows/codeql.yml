@@ -39,6 +39,8 @@ jobs:
               - 'ruby/**'
             swift:
               - 'swift/**'
+            kotlin:
+              - 'kotlin/**'
             actions:
               - '.github/**'
             config:
@@ -53,6 +55,7 @@ jobs:
           TS: ${{ steps.filter.outputs.typescript }}
           RUBY: ${{ steps.filter.outputs.ruby }}
           SWIFT: ${{ steps.filter.outputs.swift }}
+          KOTLIN: ${{ steps.filter.outputs.kotlin }}
           ACTIONS: ${{ steps.filter.outputs.actions }}
           CONFIG: ${{ steps.filter.outputs.config }}
         run: |
@@ -64,12 +67,14 @@ jobs:
             add go manual
             add javascript none
             add ruby none
+            add java-kotlin manual
             swift=true
           else
             if [ "$ACTIONS" = "true" ]; then add actions none; fi
             if [ "$GO" = "true" ]; then add go manual; fi
             if [ "$TS" = "true" ]; then add javascript none; fi
             if [ "$RUBY" = "true" ]; then add ruby none; fi
+            if [ "$KOTLIN" = "true" ]; then add java-kotlin manual; fi
             swift=$SWIFT
           fi
 
@@ -107,6 +112,19 @@ jobs:
           go-version-file: 'go/go.mod'
           cache-dependency-path: 'go/go.sum'
 
+      - name: Set up Java
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        if: matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        with:
+          cache-provider: basic
+
       # --- CodeQL init ---
 
       - name: Initialize CodeQL
@@ -124,6 +142,16 @@ jobs:
         env:
           CODEQL_EXTRACTOR_GO_BUILD_TRACING: 'on'
         run: go build ./...
+
+      # CodeQL extracts Kotlin by tracing the compiler, so the compile task must
+      # actually run: gradle.properties enables the build cache and setup-gradle
+      # restores it, and an UP-TO-DATE compile emits nothing (empty database).
+      # Scoped to :basecamp-sdk — :generator is in neither codeql-config.yml's
+      # paths-ignore nor the SARIF filter, so building it would leak alerts.
+      - name: Build (Kotlin)
+        if: matrix.language == 'java-kotlin'
+        working-directory: kotlin
+        run: ./gradlew --no-build-cache clean :basecamp-sdk:compileKotlinJvm
 
       # --- Analysis (fails build on real errors) ---
 
