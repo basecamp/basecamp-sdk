@@ -86,6 +86,7 @@ type AccountClient struct {
 	bookmarks             *BookmarksService
 	drafts                *DraftsService
 	myNotes               *MyNotesService
+	calendars             *CalendarsService
 	boosts                *BoostsService
 	campfires             *CampfiresService
 	timesheet             *TimesheetService
@@ -1139,6 +1140,16 @@ func (ac *AccountClient) Lineup() *LineupService {
 		ac.lineup = NewLineupService(ac)
 	}
 	return ac.lineup
+}
+
+// Calendars returns the CalendarsService for per-account calendars.
+func (ac *AccountClient) Calendars() *CalendarsService {
+	ac.mu.Lock()
+	defer ac.mu.Unlock()
+	if ac.calendars == nil {
+		ac.calendars = NewCalendarsService(ac)
+	}
+	return ac.calendars
 }
 
 // MyNotes returns the MyNotesService for the current user's scratchpad note.

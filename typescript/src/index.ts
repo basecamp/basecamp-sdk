@@ -310,6 +310,12 @@ export {
 } from "./generated/services/drafts.js";
 
 export {
+  CalendarsService,
+  type Calendar,
+  type UpdateCalendarCalendarRequest,
+} from "./generated/services/calendars.js";
+
+export {
   MyNotesService,
   type MyNote,
   type UpdateMyNoteMyNoteRequest,
