@@ -1,5 +1,6 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.generated.myAssignments
 import com.basecamp.sdk.generated.projects
 import com.basecamp.sdk.generated.todos
 import com.basecamp.sdk.http.BasecampHttpClient
@@ -470,8 +471,33 @@ class RetryTest {
             this.engine = engine
         }
 
-        // Network errors should be wrapped as BasecampException.Network
-        // For GET (idempotent), the requestWithRetry catches the exception and throws Network
+        // GET is naturally idempotent, so a transport-level failure is retried
+        // through the same gate as an HTTP-status retry (SPEC §7 Gate 3).
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        val response = account.httpClient.requestWithRetry(HttpMethod.Get, url)
+
+        assertEquals(200, response.status.value)
+        assertEquals(2, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun networkErrorRetriesExhaustAttempts() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            throw java.io.IOException("Connection refused")
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+        }
+
+        // A persistent transport failure consumes the same attempt budget as a
+        // persistent 503 (default maxRetries = 3), then surfaces as Network.
         val account = client.forAccount("12345")
         val url = "${client.config.baseUrl}/12345/projects.json"
         try {
@@ -480,9 +506,176 @@ class RetryTest {
         } catch (e: BasecampException.Network) {
             assertTrue(e.message!!.contains("Network error"))
         }
-        // Network error is thrown immediately (not retried at the requestWithRetry level,
-        // it throws rather than returning a response)
+        assertEquals(3, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun retriesIdempotentPostNetworkErrorWithFullBodyThroughGeneratedService() = runTest {
+        var requestCount = 0
+        val bodies = mutableListOf<String>()
+        val engine = MockEngine { request ->
+            requestCount++
+            bodies.add((request.body as io.ktor.http.content.TextContent).text)
+            if (requestCount == 1) {
+                throw java.io.IOException("Connection reset by peer")
+            } else {
+                respond(content = "", status = HttpStatusCode.NoContent)
+            }
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        // PrioritizeAssignment is a POST flagged idempotent in metadata that
+        // carries a JSON body. A transport failure on attempt 1 must be retried
+        // AND the retry must carry the complete body — the body is a String
+        // re-set on every attempt, so replay is structural, and this pins it.
+        account.myAssignments.prioritizeAssignment(
+            com.basecamp.sdk.generated.services.PrioritizeAssignmentBody(id = 123),
+        )
+
+        assertEquals(2, requestCount)
+        assertEquals(2, bodies.size)
+        assertEquals("""{"id":123}""", bodies[0])
+        assertEquals(bodies[0], bodies[1], "retry must replay the full request body")
+        client.close()
+    }
+
+    @Test
+    fun nonIdempotentPostNetworkErrorIsSingleAttempt() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            throw java.io.IOException("Connection refused")
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        // CreateProject is a non-idempotent POST: a network blip must surface
+        // immediately with no re-send, exactly one attempt.
+        try {
+            account.httpClient.requestWithRetry(
+                HttpMethod.Post, url, """{"name":"test"}""",
+                operationName = "CreateProject",
+            )
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Network) {
+            assertTrue(e.message!!.contains("Network error"))
+        }
         assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun requestTimeoutExceptionIsNotRetried() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            throw io.ktor.client.plugins.HttpRequestTimeoutException("http://localhost:3000", 1000L)
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+        }
+
+        // The whole-request time budget (HttpTimeout requestTimeoutMillis) is
+        // already spent when HttpRequestTimeoutException surfaces — retrying
+        // would extend total latency past the caller's configured budget, so
+        // it is the deliberate carve-out from network-error retry.
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        try {
+            account.httpClient.requestWithRetry(HttpMethod.Get, url)
+            assertTrue(false, "Should have thrown")
+        } catch (e: BasecampException.Network) {
+            assertTrue(e.message!!.contains("Network error"))
+        }
+        assertEquals(1, requestCount)
+        client.close()
+    }
+
+    @Test
+    fun enableRetryFalseDisablesNetworkRetry() = runTest {
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            throw java.io.IOException("Connection refused")
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            enableRetry = false
+            this.engine = engine
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        try {
+            account.httpClient.requestWithRetry(HttpMethod.Get, url)
+            assertTrue(false, "Should have thrown")
+        } catch (_: BasecampException.Network) {
+            // expected
+        }
+        assertEquals(1, requestCount, "Should not retry network errors when enableRetry=false")
+        client.close()
+    }
+
+    @Test
+    fun onRetryPairForNetworkError() = runTest {
+        val failedAttempts = mutableListOf<Int>()
+        val upcomingAttempts = mutableListOf<Int>()
+        val retryErrors = mutableListOf<Throwable>()
+
+        var requestCount = 0
+        val engine = MockEngine { _ ->
+            requestCount++
+            if (requestCount == 1) {
+                throw java.io.IOException("Connection refused")
+            } else {
+                respondOk("""{"id": 1}""")
+            }
+        }
+
+        val hooks = object : BasecampHooks {
+            override fun onRetry(info: RequestInfo, attempt: Int, error: Throwable, delayMs: Long) {
+                failedAttempts.add(info.attempt)
+                upcomingAttempts.add(attempt)
+                retryErrors.add(error)
+            }
+        }
+
+        val client = testBasecampClient {
+            accessToken("test-token")
+            baseUrl = "http://localhost:3000"
+            this.engine = engine
+            this.hooks = hooks
+        }
+
+        val account = client.forAccount("12345")
+        val url = "${client.config.baseUrl}/12345/projects.json"
+        val response = account.httpClient.requestWithRetry(HttpMethod.Get, url)
+
+        assertEquals(200, response.status.value)
+        // onRetry carries the (failed, upcoming) attempt pair: info names the
+        // attempt that failed, the attempt argument names the one about to run.
+        assertEquals(listOf(1), failedAttempts)
+        assertEquals(listOf(2), upcomingAttempts)
+        assertEquals(1, retryErrors.size)
+        assertTrue(retryErrors[0] is BasecampException.Network, "onRetry error should be Network, got ${retryErrors[0]::class.simpleName}")
+        assertTrue(retryErrors[0].cause is java.io.IOException, "Network error should carry the transport cause")
         client.close()
     }
 

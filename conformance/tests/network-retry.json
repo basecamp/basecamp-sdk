@@ -18,7 +18,7 @@
   },
   {
     "name": "Network error on an idempotent POST is retried then succeeds",
-    "description": "A transport-level failure on CompleteTodo (an idempotent-flagged POST) is retried and then succeeds on 204 — the network-error analog of the idempotency.json 503 liveness case. Go and Python retry network errors for idempotent operations; TS/Kotlin/Ruby do not retry network errors on mutations and carry explicit capability skips.",
+    "description": "A transport-level failure on CompleteTodo (an idempotent-flagged POST) is retried and then succeeds on 204 — the network-error analog of the idempotency.json 503 liveness case. Go, Python, and Kotlin retry network errors for idempotent operations; TS/Ruby do not retry network errors on mutations and carry explicit capability skips.",
     "operation": "CompleteTodo",
     "method": "POST",
     "path": "/todos/{todoId}/completion.json",

@@ -525,6 +525,7 @@ allProjects.forEach { println(it.name) }
 The SDK automatically retries requests on transient failures:
 
 - **Retryable errors**: 429 (rate limit) and 503 (service unavailable)
+- **Network errors**: transport-level failures (connection refused/reset, DNS, connect/socket timeouts) retry for retry-eligible operations — GET/PUT/DELETE/HEAD, plus POSTs marked idempotent; non-idempotent POSTs are attempted exactly once. The whole-request timeout is not retried: that budget is already spent.
 - **Backoff**: Exponential with jitter
 - **Rate limits**: Respects `Retry-After` header
 - **Max retries**: 3 attempts by default

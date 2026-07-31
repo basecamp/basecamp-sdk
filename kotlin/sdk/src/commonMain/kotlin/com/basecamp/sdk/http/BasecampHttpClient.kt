@@ -6,6 +6,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.ResponseException
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
@@ -58,6 +59,15 @@ internal class BasecampHttpClient(
      * Safe HTTP methods (GET, PUT, DELETE, HEAD) are always retried.
      * Non-safe methods (POST, PATCH) are retried only when per-operation
      * metadata marks them as idempotent.
+     *
+     * One eligibility gate covers both failure shapes (SPEC §7 Gate 3):
+     * retryable HTTP statuses AND transport-level network errors, so an
+     * idempotent operation survives a connection blip while a non-idempotent
+     * POST is still attempted exactly once. The whole-request time budget
+     * (Ktor's [HttpRequestTimeoutException]) is the deliberate carve-out —
+     * once the caller's configured timeout has elapsed, retrying would extend
+     * total latency past what they asked for. Auth headers are attached per
+     * attempt inside [request], so every retry re-authenticates naturally.
      */
     suspend fun requestWithRetry(
         method: HttpMethod,
@@ -69,10 +79,31 @@ internal class BasecampHttpClient(
         val info = RequestInfo(method = method.value, url = url, attempt = attempt)
         hooks.safeOnRequestStart(info)
 
+        // Retry eligibility (SPEC §7 Gates 1+2), hoisted ahead of the attempt so
+        // the HTTP-status and network-error paths share a single gate: safe HTTP
+        // methods (GET, PUT, DELETE, HEAD) are always retryable, and the
+        // per-operation `idempotent` flag can upgrade others.
+        val opConfig = operationName?.let { Metadata.operations[it] }
+        val opRetry = opConfig?.retry
+        val isRetryable = method in IDEMPOTENT_METHODS || opConfig?.idempotent == true
+        // The operation's declared max is a ceiling on the caller's configured
+        // attempt count, never a replacement for it (SPEC.md §2): a caller who
+        // lowered maxRetries is honored, and a raised cap is still clamped to
+        // the operation's declared max.
+        val maxAttempts = minOf(
+            config.maxRetries.coerceAtLeast(1),
+            opRetry?.maxRetries ?: config.maxRetries,
+        )
+        val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds
+
         val startTime = currentTimeMillis()
-        val response: HttpResponse
-        try {
-            response = request(method, url, body)
+        // Mirror of the Swift directive loop (#517): the catch clauses only
+        // classify the attempt's outcome; retry side effects (on_retry, backoff
+        // sleep, the next attempt) run outside any catch, so a
+        // CancellationException from the sleep propagates raw and no phantom
+        // request events fire for an attempt that already ended.
+        val outcome: AttemptOutcome = try {
+            AttemptOutcome.Completed(request(method, url, body))
         } catch (e: CancellationException) {
             throw e
         } catch (e: BasecampException) {
@@ -93,10 +124,32 @@ internal class BasecampHttpClient(
                 duration = duration.millisToDuration(),
                 error = e,
             ))
-            throw BasecampException.Network(
-                message = "Network error: ${e.message}",
-                cause = e,
-            )
+            AttemptOutcome.NetworkFailure(e)
+        }
+
+        val response: HttpResponse = when (outcome) {
+            is AttemptOutcome.Completed -> outcome.response
+            is AttemptOutcome.NetworkFailure -> {
+                val wrapped = BasecampException.Network(
+                    message = "Network error: ${outcome.cause.message}",
+                    cause = outcome.cause,
+                )
+                // Total-budget carve-out: HttpRequestTimeoutException means the
+                // caller's whole-request time allowance is already spent, so it
+                // never retries. Everything else the transport throws —
+                // connect/socket timeouts, connection resets, DNS failures
+                // (including CIO's UnresolvedAddressException, which is not an
+                // IOException) — stays retryable, matching Swift's broad
+                // classification.
+                val retryableFailure = outcome.cause !is HttpRequestTimeoutException
+                if (config.enableRetry && isRetryable && retryableFailure && attempt < maxAttempts) {
+                    val delayMs = calculateBackoffDelay(baseDelayMs, attempt)
+                    hooks.safeOnRetry(info, attempt + 1, wrapped, delayMs)
+                    kotlinx.coroutines.delay(delayMs)
+                    return requestWithRetry(method, url, body, attempt + 1, operationName)
+                }
+                throw wrapped
+            }
         }
 
         val duration = currentTimeMillis() - startTime
@@ -106,26 +159,11 @@ internal class BasecampHttpClient(
         ))
 
         val status = response.status.value
-
-        // Determine retry eligibility: safe HTTP methods (GET, PUT, DELETE, HEAD) are
-        // always retryable, and the per-operation `idempotent` flag can upgrade others.
-        val opConfig = operationName?.let { Metadata.operations[it] }
-        val opRetry = opConfig?.retry
-        val isRetryable = method in IDEMPOTENT_METHODS || opConfig?.idempotent == true
         val shouldRetry = config.enableRetry && isRetryable && if (opRetry != null) {
             status in opRetry.retryOn
         } else {
             status in RETRYABLE_STATUS_CODES
         }
-        // The operation's declared max is a ceiling on the caller's configured
-        // attempt count, never a replacement for it (SPEC.md §2): a caller who
-        // lowered maxRetries is honored, and a raised cap is still clamped to
-        // the operation's declared max.
-        val maxAttempts = minOf(
-            config.maxRetries.coerceAtLeast(1),
-            opRetry?.maxRetries ?: config.maxRetries,
-        )
-        val baseDelayMs = opRetry?.baseDelayMs ?: config.baseRetryDelay.inWholeMilliseconds
 
         if (shouldRetry && attempt < maxAttempts) {
             val retryAfter = parseRetryAfter(response.headers["Retry-After"])
@@ -255,6 +293,16 @@ internal class BasecampHttpClient(
             return delay + jitter
         }
     }
+}
+
+/**
+ * Outcome of a single transport attempt: a response (any status), or a
+ * transport-level failure the loop tail may retry. The catch clause only
+ * classifies into this type; acting on it happens outside the catch.
+ */
+private sealed interface AttemptOutcome {
+    class Completed(val response: HttpResponse) : AttemptOutcome
+    class NetworkFailure(val cause: Exception) : AttemptOutcome
 }
 
 /** Safely call onRequestStart, catching hook exceptions. */
