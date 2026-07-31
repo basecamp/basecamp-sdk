@@ -1,9 +1,14 @@
 ---
 gap: scratchpad
-status: addressed-in-bc3-pr-12322
+status: absorbed-in-sdk
 detected: 2026-05-01
 sdk_demand: medium
 bc3_pr: 12322
+smithy_refs:
+  - "GetMyNote operation"
+  - "UpdateMyNote operation"
+  - "MyNote structure"
+  - "MyNoteAttributes structure"
 bc3_refs:
   introduced_in: five
   bc3_plan_phase: 3b
@@ -56,12 +61,11 @@ routes and `doc/api/sections/my_notes.md` documents them.
 
 ## SDK absorption plan when this lands
 
-- Smithy: `GetMyNote`, `UpdateMyNote` (singleton — no id path param), grouped
-  with the `My*` services per the shipped `/my/notes.json` path.
-- Model the nullable `id` / `created_at` / `updated_at` on the GET response
-  (pre-first-write state).
-- Status flips to `absorbed-in-sdk` with the absorption PR (which adds the
-  Smithy refs).
-- Canary fixture: a single per-account fixture-id-free GET works well since
-  the resource is implicit-self.
-- Pairwise check: BC4 absent → BC5 present is fine.
+**Absorbed** (post-#504 program C7): `MyNotesService` models the singleton
+pair. `id`/`created_at`/`updated_at` are required-and-nullable (present-but-
+null pre-first-write, via the established jsonAdd unions); the update body is
+the nested `{note: {content}}` envelope (the ProjectConstructionAttributes
+treatment); `UpdateMyNote` is a flagged idempotent PUT with an idempotency
+conformance case. Full shape per `doc/api/sections/my_notes.md`:
+`content_attachments`, `url`, `app_url` included. The `paths.json` GET mock is
+the pre-first-write shape so every runner pins the null decode.
