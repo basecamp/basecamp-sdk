@@ -1,0 +1,39 @@
+ruby/lib/basecamp/validation_error.rb
+  s_34dec3eb0265b2::t_3095f1eff4e76f 6-13
+ruby/lib/basecamp.rb
+  s_34dec3eb0265b2::t_64ee41a8291032 184
+  s_34dec3eb0265b2::t_3fb6af28692129 149-163,168-183,185-202,204-235,237
+  s_34dec3eb0265b2::t_34adc134387570 104-105,109
+ruby/test/basecamp/services/calendars_service_test.rb
+  s_34dec3eb0265b2::t_264651e7df7c63 61,64-67
+ruby/lib/basecamp/http.rb
+  s_34dec3eb0265b2::t_3104a029a80e96 525-526,530-532,538-539
+ruby/test/basecamp/services/my_assignments_service_test.rb
+  s_34dec3eb0265b2::t_6edb7fc38547a2 76,79-81
+ruby/test/basecamp/services/my_notes_service_test.rb
+  s_34dec3eb0265b2::t_ef74e5a436fb46 59,62,65-67
+ruby/test/basecamp/services/webhooks_service_test.rb
+  s_34dec3eb0265b2::t_c97dad138fc788 67-85
+ruby/test/basecamp/errors_test.rb
+  s_34dec3eb0265b2::t_e15fa443030264 272-285
+  s_34dec3eb0265b2::t_1c736ca6ed3f78 160-271,286-310
+ruby/README.md
+  s_34dec3eb0265b2::t_81259c7ebce5a1 381-395
+  s_34dec3eb0265b2::t_3e6c4643fbd990 404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "3f6c53991ea663cfde803cd4b72745070e72ee24",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
