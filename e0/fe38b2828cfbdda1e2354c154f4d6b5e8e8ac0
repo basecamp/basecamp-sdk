@@ -1,0 +1,29 @@
+typescript/src/services/base.ts
+  s_fb0636163f77d1::t_de852c7de8bdb5 517-518,520-522
+  s_fb0636163f77d1::t_f6579ba94d28c4 570-571,573-575
+  s_fb0636163f77d1::t_536f7601191f7f 480-482
+typescript/src/pagination.ts
+  s_fb0636163f77d1::t_35098725379ee7 14-18
+typescript/README.md
+  s_fb0636163f77d1::t_0fa7514bfb0443 477
+  s_fb0636163f77d1::t_80a9a563a60745 473
+typescript/tests/services/base.test.ts
+  s_fb0636163f77d1::t_4c971012cc23b8 459-604
+  s_fb0636163f77d1::t_fa2ce8be0c5429 668-712
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "e0fe38b2828cfbdda1e2354c154f4d6b5e8e8ac0",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
