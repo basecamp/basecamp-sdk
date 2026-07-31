@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(id:)
         with_operation(service: "todolists", operation: "get", is_mutation: false, resource_id: id) do
-          http_get("/todolists/#{id}").json
+          http_get("/todolists/#{id}", operation: "GetTodolistOrGroup").json
         end
       end
 
@@ -45,7 +45,7 @@ module Basecamp
       def list(todoset_id:, status: nil)
         wrap_paginated(service: "todolists", operation: "list", is_mutation: false, resource_id: todoset_id) do
           params = compact_query_params(status: status)
-          paginate("/todosets/#{todoset_id}/todolists.json", params: params)
+          paginate("/todosets/#{todoset_id}/todolists.json", params: params, operation: "ListTodolists")
         end
       end
 

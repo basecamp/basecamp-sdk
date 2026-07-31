@@ -13,7 +13,7 @@ module Basecamp
       def get_everything_completed_cards(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_completed_cards", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/cards/completed.json", params: params)
+          paginate("/cards/completed.json", params: params, operation: "GetEverythingCompletedCards")
         end
       end
 
@@ -23,7 +23,7 @@ module Basecamp
       def get_everything_no_due_date_cards(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_no_due_date_cards", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/cards/no_due_date.json", params: params)
+          paginate("/cards/no_due_date.json", params: params, operation: "GetEverythingNoDueDateCards")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       def get_everything_not_now_cards(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_not_now_cards", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/cards/not_now.json", params: params)
+          paginate("/cards/not_now.json", params: params, operation: "GetEverythingNotNowCards")
         end
       end
 
@@ -43,7 +43,7 @@ module Basecamp
       def get_everything_open_cards(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_open_cards", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/cards/open.json", params: params)
+          paginate("/cards/open.json", params: params, operation: "GetEverythingOpenCards")
         end
       end
 
@@ -51,7 +51,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def get_everything_overdue_cards()
         with_operation(service: "everything", operation: "get_everything_overdue_cards", is_mutation: false) do
-          http_get("/cards/overdue.json").json
+          http_get("/cards/overdue.json", operation: "GetEverythingOverdueCards").json
         end
       end
 
@@ -61,7 +61,7 @@ module Basecamp
       def get_everything_unassigned_cards(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_unassigned_cards", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/cards/unassigned.json", params: params)
+          paginate("/cards/unassigned.json", params: params, operation: "GetEverythingUnassignedCards")
         end
       end
 
@@ -71,7 +71,7 @@ module Basecamp
       def get_everything_checkins(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_checkins", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/checkins.json", params: params)
+          paginate("/checkins.json", params: params, operation: "GetEverythingCheckins")
         end
       end
 
@@ -81,7 +81,7 @@ module Basecamp
       def get_everything_comments(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_comments", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/comments.json", params: params)
+          paginate("/comments.json", params: params, operation: "GetEverythingComments")
         end
       end
 
@@ -93,7 +93,7 @@ module Basecamp
       def get_everything_files(kind: nil, people_ids: nil, page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_files", is_mutation: false) do
           params = compact_query_params(kind: kind, people_ids: people_ids, page: page)
-          paginate("/files.json", params: params)
+          paginate("/files.json", params: params, operation: "GetEverythingFiles")
         end
       end
 
@@ -103,7 +103,7 @@ module Basecamp
       def get_everything_forwards(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_forwards", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/forwards.json", params: params)
+          paginate("/forwards.json", params: params, operation: "GetEverythingForwards")
         end
       end
 
@@ -113,7 +113,7 @@ module Basecamp
       def get_everything_messages(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_messages", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/messages.json", params: params)
+          paginate("/messages.json", params: params, operation: "GetEverythingMessages")
         end
       end
 
@@ -123,7 +123,7 @@ module Basecamp
       def get_everything_completed_todos(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_completed_todos", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/todos/completed.json", params: params)
+          paginate("/todos/completed.json", params: params, operation: "GetEverythingCompletedTodos")
         end
       end
 
@@ -133,7 +133,7 @@ module Basecamp
       def get_everything_no_due_date_todos(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_no_due_date_todos", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/todos/no_due_date.json", params: params)
+          paginate("/todos/no_due_date.json", params: params, operation: "GetEverythingNoDueDateTodos")
         end
       end
 
@@ -143,7 +143,7 @@ module Basecamp
       def get_everything_open_todos(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_open_todos", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/todos/open.json", params: params)
+          paginate("/todos/open.json", params: params, operation: "GetEverythingOpenTodos")
         end
       end
 
@@ -151,7 +151,7 @@ module Basecamp
       # @return [Array<Hash>] response data
       def get_everything_overdue_todos()
         with_operation(service: "everything", operation: "get_everything_overdue_todos", is_mutation: false) do
-          http_get("/todos/overdue.json").json
+          http_get("/todos/overdue.json", operation: "GetEverythingOverdueTodos").json
         end
       end
 
@@ -161,7 +161,7 @@ module Basecamp
       def get_everything_unassigned_todos(page: nil)
         wrap_paginated(service: "everything", operation: "get_everything_unassigned_todos", is_mutation: false) do
           params = compact_query_params(page: page)
-          paginate("/todos/unassigned.json", params: params)
+          paginate("/todos/unassigned.json", params: params, operation: "GetEverythingUnassignedTodos")
         end
       end
     end

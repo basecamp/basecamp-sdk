@@ -43,7 +43,7 @@ module Basecamp
       # @return [Hash] response data
       def get(column_id:)
         with_operation(service: "cardcolumns", operation: "get", is_mutation: false, resource_id: column_id) do
-          http_get("/card_tables/columns/#{column_id}").json
+          http_get("/card_tables/columns/#{column_id}", operation: "GetCardColumn").json
         end
       end
 

@@ -55,9 +55,12 @@ module Basecamp
     # Performs a GET request.
     # @param path [String] URL path
     # @param params [Hash] query parameters
+    # @param operation [String, nil] canonical operation ID; when given, the
+    #   operation's declared retry block governs attempts (max as a ceiling on
+    #   the configured cap) and retryable statuses (the declared retryOn set)
     # @return [Response]
-    def get(path, params: {})
-      request(:get, path, params: params)
+    def get(path, params: {}, operation: nil)
+      request(:get, path, params: params, operation: operation)
     end
 
     # Performs a GET request to an absolute URL.
@@ -171,8 +174,8 @@ module Basecamp
     # @param params [Hash] query parameters
     # @yield [Hash] each item from the response
     # @return [Enumerator] if no block given
-    def paginate(path, params: {}, &block)
-      return to_enum(:paginate, path, params: params) unless block
+    def paginate(path, params: {}, operation: nil, &block)
+      return to_enum(:paginate, path, params: params, operation: operation) unless block
 
       base_url = build_url(path)
       url = base_url
@@ -183,7 +186,7 @@ module Basecamp
         break if page > @config.max_pages
 
         @hooks.on_paginate(url, page)
-        response = get(url, params: page == 1 ? params : {})
+        response = get(url, params: page == 1 ? params : {}, operation: operation)
 
         Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
 
@@ -217,8 +220,8 @@ module Basecamp
     # @param params [Hash] query parameters
     # @yield [Hash] each item from the response
     # @return [Enumerator] if no block given
-    def paginate_key(path, key:, params: {}, &block)
-      return to_enum(:paginate_key, path, key: key, params: params) unless block
+    def paginate_key(path, key:, params: {}, operation: nil, &block)
+      return to_enum(:paginate_key, path, key: key, params: params, operation: operation) unless block
 
       base_url = build_url(path)
       url = base_url
@@ -229,7 +232,7 @@ module Basecamp
         break if page > @config.max_pages
 
         @hooks.on_paginate(url, page)
-        response = get(url, params: page == 1 ? params : {})
+        response = get(url, params: page == 1 ? params : {}, operation: operation)
 
         Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
 
@@ -266,11 +269,11 @@ module Basecamp
     # @param key [String] the key containing the array of paginated items
     # @param params [Hash] query parameters
     # @return [Hash] wrapper fields merged with key => Enumerator of all items
-    def paginate_wrapped(path, key:, params: {})
+    def paginate_wrapped(path, key:, params: {}, operation: nil)
       base_url = build_url(path)
 
       @hooks.on_paginate(base_url, 1)
-      first_response = get(base_url, params: params)
+      first_response = get(base_url, params: params, operation: operation)
       Security.check_body_size!(first_response.body, Security::MAX_RESPONSE_BODY_BYTES)
 
       begin
@@ -304,7 +307,7 @@ module Basecamp
           end
 
           @hooks.on_paginate(next_url, page)
-          response = get(next_url)
+          response = get(next_url, operation: operation)
           Security.check_body_size!(response.body, Security::MAX_RESPONSE_BODY_BYTES)
 
           begin
@@ -340,34 +343,37 @@ module Basecamp
       end
     end
 
-    def request(method, path, params: {}, body: nil, allow_cross_origin: false)
+    def request(method, path, params: {}, body: nil, allow_cross_origin: false, operation: nil)
       url = build_url(path, allow_cross_origin: allow_cross_origin)
 
       # Mutations don't retry on 429/5xx to avoid duplicating data
       if method == :get
-        request_with_retry(method, url, params: params, allow_cross_origin: allow_cross_origin)
+        request_with_retry(method, url, params: params, allow_cross_origin: allow_cross_origin, operation: operation)
       else
         single_request(method, url, params: params, body: body, attempt: 1, allow_cross_origin: allow_cross_origin)
       end
     end
 
-    def request_with_retry(method, url, params: {}, allow_cross_origin: false)
+    def request_with_retry(method, url, params: {}, allow_cross_origin: false, operation: nil)
+      op_retry = operation && Http.operation_retry(operation)
+      caller_cap = [ @config.max_retries, 1 ].max
+      max_attempts = op_retry ? [ caller_cap, op_retry.fetch("maxAttempts") ].min : @config.max_retries
       attempt = 0
       last_error = nil
 
       loop do
         attempt += 1
-        break if attempt > @config.max_retries
+        break if attempt > max_attempts
 
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt, allow_cross_origin: allow_cross_origin)
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
-          raise e unless e.retryable?
+          raise e unless retry_eligible?(e, op_retry)
 
           last_error = e
 
           # Don't sleep if this was the last attempt
-          break if attempt >= @config.max_retries
+          break if attempt >= max_attempts
 
           delay = calculate_delay(attempt, e.retry_after)
 
@@ -377,8 +383,30 @@ module Basecamp
         end
       end
 
-      noun = @config.max_retries == 1 ? "attempt" : "attempts"
-      raise last_error || Basecamp::ApiError.new("Request failed after #{@config.max_retries} #{noun}")
+      noun = max_attempts == 1 ? "attempt" : "attempts"
+      raise last_error || Basecamp::ApiError.new("Request failed after #{max_attempts} #{noun}")
+    end
+
+    # For a governed request (operation given), a status-bearing error retries
+    # exactly when the operation's declared retryOn set says so — the error
+    # taxonomy's retryable flag neither widens the set (500 is retryable in
+    # errors.rb but not declared) nor vetoes it. Status-less errors (network
+    # failures) and all ungoverned traffic keep the taxonomy's judgment.
+    def retry_eligible?(error, op_retry)
+      if op_retry && error.http_status
+        op_retry.fetch("retryOn").include?(error.http_status)
+      else
+        error.retryable?
+      end
+    end
+
+    # Memoized per-operation retry metadata, keyed by canonical operation ID.
+    # Benign-race memoization: concurrent first loads compute identical values.
+    def self.operation_retry(operation)
+      @operation_metadata ||= JSON.parse(
+        File.read(File.join(__dir__, "generated", "metadata.json"))
+      ).fetch("operations").freeze
+      @operation_metadata.dig(operation, "retry")
     end
 
     def single_request(method, url, params:, body:, attempt:, retry_count: 0, allow_cross_origin: false)

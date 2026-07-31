@@ -818,9 +818,9 @@ class ServiceGenerator
     if op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
       lines << "        params = compact_query_params(#{param_names.join(', ')})"
-      lines << "        paginate(#{path_expr}, params: params)"
+      lines << "        paginate(#{path_expr}, params: params, operation: \"#{op[:operation_id]}\")"
     else
-      lines << "        paginate(#{path_expr})"
+      lines << "        paginate(#{path_expr}, operation: \"#{op[:operation_id]}\")"
     end
 
     lines
@@ -832,9 +832,9 @@ class ServiceGenerator
     if op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
       lines << "        params = compact_query_params(#{param_names.join(', ')})"
-      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", params: params)"
+      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", params: params, operation: \"#{op[:operation_id]}\")"
     else
-      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\")"
+      lines << "        paginate_wrapped(#{path_expr}, key: \"#{pagination_key}\", operation: \"#{op[:operation_id]}\")"
     end
 
     lines
@@ -843,6 +843,9 @@ class ServiceGenerator
   def generate_get_method_body(op, path_expr)
     lines = []
     http_method = op[:http_method].downcase
+    # Only GETs are retry-governed in Ruby, and only Http#get accepts the
+    # operation keyword — mutations go through single_request with no retry.
+    operation_arg = http_method == 'get' ? ", operation: \"#{op[:operation_id]}\"" : ''
 
     if op[:has_binary_body]
       # Binary upload - use raw body and set Content-Type header
@@ -863,9 +866,9 @@ class ServiceGenerator
       lines << "        http_#{http_method}(#{path_expr}, body: #{body_expr}).json"
     elsif op[:query_params].any?
       param_names = op[:query_params].map { |q| "#{to_snake_case(q[:name])}: #{to_snake_case(q[:name])}" }
-      lines << "        http_#{http_method}(#{path_expr}, params: compact_query_params(#{param_names.join(', ')})).json"
+      lines << "        http_#{http_method}(#{path_expr}, params: compact_query_params(#{param_names.join(', ')})#{operation_arg}).json"
     else
-      lines << "        http_#{http_method}(#{path_expr}).json"
+      lines << "        http_#{http_method}(#{path_expr}#{operation_arg}).json"
     end
 
     lines

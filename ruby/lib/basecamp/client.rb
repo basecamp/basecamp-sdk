@@ -152,8 +152,8 @@ module Basecamp
     # @param path [String] URL path (without account prefix)
     # @param params [Hash] query parameters
     # @return [Response]
-    def get(path, params: {})
-      @parent.http.get(account_path(path), params: params)
+    def get(path, params: {}, operation: nil)
+      @parent.http.get(account_path(path), params: params, operation: operation)
     end
 
     # Performs a POST request scoped to this account.
@@ -204,8 +204,8 @@ module Basecamp
     # @param params [Hash] query parameters
     # @yield [Hash] each item from the response
     # @return [Enumerator] if no block given
-    def paginate(path, params: {}, &)
-      @parent.http.paginate(account_path(path), params: params, &)
+    def paginate(path, params: {}, operation: nil, &)
+      @parent.http.paginate(account_path(path), params: params, operation: operation, &)
     end
 
     # Fetches all pages of a paginated resource, extracting items from a key.
@@ -215,8 +215,8 @@ module Basecamp
     # @param params [Hash] query parameters
     # @yield [Hash] each item from the response
     # @return [Enumerator] if no block given
-    def paginate_key(path, key:, params: {}, &)
-      @parent.http.paginate_key(account_path(path), key: key, params: params, &)
+    def paginate_key(path, key:, params: {}, operation: nil, &)
+      @parent.http.paginate_key(account_path(path), key: key, params: params, operation: operation, &)
     end
 
     # Fetches a wrapped paginated resource, returning wrapper fields + lazy paginated items.
@@ -224,8 +224,8 @@ module Basecamp
     # @param key [String] the key containing the array of paginated items
     # @param params [Hash] query parameters
     # @return [Hash] wrapper fields merged with key => Enumerator of all items
-    def paginate_wrapped(path, key:, params: {})
-      @parent.http.paginate_wrapped(account_path(path), key: key, params: params)
+    def paginate_wrapped(path, key:, params: {}, operation: nil)
+      @parent.http.paginate_wrapped(account_path(path), key: key, params: params, operation: operation)
     end
 
     # Downloads file content from any API-routable download URL.

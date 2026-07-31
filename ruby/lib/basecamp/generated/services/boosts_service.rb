@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get_boost(boost_id:)
         with_operation(service: "boosts", operation: "get_boost", is_mutation: false, resource_id: boost_id) do
-          http_get("/boosts/#{boost_id}").json
+          http_get("/boosts/#{boost_id}", operation: "GetBoost").json
         end
       end
 
@@ -31,7 +31,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_recording_boosts(recording_id:)
         wrap_paginated(service: "boosts", operation: "list_recording_boosts", is_mutation: false, resource_id: recording_id) do
-          paginate("/recordings/#{recording_id}/boosts.json")
+          paginate("/recordings/#{recording_id}/boosts.json", operation: "ListRecordingBoosts")
         end
       end
 
@@ -51,7 +51,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list_event_boosts(recording_id:, event_id:)
         wrap_paginated(service: "boosts", operation: "list_event_boosts", is_mutation: false, resource_id: event_id) do
-          paginate("/recordings/#{recording_id}/events/#{event_id}/boosts.json")
+          paginate("/recordings/#{recording_id}/events/#{event_id}/boosts.json", operation: "ListEventBoosts")
         end
       end
 

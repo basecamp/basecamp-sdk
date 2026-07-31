@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(card_table_id:)
         with_operation(service: "cardtables", operation: "get", is_mutation: false, resource_id: card_table_id) do
-          http_get("/card_tables/#{card_table_id}").json
+          http_get("/card_tables/#{card_table_id}", operation: "GetCardTable").json
         end
       end
     end

@@ -12,7 +12,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(recording_id:)
         wrap_paginated(service: "clientreplies", operation: "list", is_mutation: false, resource_id: recording_id) do
-          paginate("/client/recordings/#{recording_id}/replies.json")
+          paginate("/client/recordings/#{recording_id}/replies.json", operation: "ListClientReplies")
         end
       end
 
@@ -22,7 +22,7 @@ module Basecamp
       # @return [Hash] response data
       def get(recording_id:, reply_id:)
         with_operation(service: "clientreplies", operation: "get", is_mutation: false, resource_id: reply_id) do
-          http_get("/client/recordings/#{recording_id}/replies/#{reply_id}").json
+          http_get("/client/recordings/#{recording_id}/replies/#{reply_id}", operation: "GetClientReply").json
         end
       end
     end

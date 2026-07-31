@@ -12,7 +12,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def list(bucket_id:)
         wrap_paginated(service: "messagetypes", operation: "list", is_mutation: false, project_id: bucket_id) do
-          paginate("/buckets/#{bucket_id}/categories.json")
+          paginate("/buckets/#{bucket_id}/categories.json", operation: "ListMessageTypes")
         end
       end
 
@@ -33,7 +33,7 @@ module Basecamp
       # @return [Hash] response data
       def get(bucket_id:, type_id:)
         with_operation(service: "messagetypes", operation: "get", is_mutation: false, project_id: bucket_id, resource_id: type_id) do
-          http_get("/buckets/#{bucket_id}/categories/#{type_id}").json
+          http_get("/buckets/#{bucket_id}/categories/#{type_id}", operation: "GetMessageType").json
         end
       end
 

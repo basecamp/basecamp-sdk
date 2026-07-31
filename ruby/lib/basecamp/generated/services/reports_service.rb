@@ -11,7 +11,7 @@ module Basecamp
       # @return [Enumerator<Hash>] paginated results
       def progress()
         wrap_paginated(service: "reports", operation: "progress", is_mutation: false) do
-          paginate("/reports/progress.json")
+          paginate("/reports/progress.json", operation: "GetProgressReport")
         end
       end
 
@@ -21,7 +21,7 @@ module Basecamp
       # @return [Hash] response data
       def upcoming(window_starts_on: nil, window_ends_on: nil)
         with_operation(service: "reports", operation: "upcoming", is_mutation: false) do
-          http_get("/reports/schedules/upcoming.json", params: compact_query_params(window_starts_on: window_starts_on, window_ends_on: window_ends_on)).json
+          http_get("/reports/schedules/upcoming.json", params: compact_query_params(window_starts_on: window_starts_on, window_ends_on: window_ends_on), operation: "GetUpcomingSchedule").json
         end
       end
 
@@ -31,7 +31,7 @@ module Basecamp
       # @return [Hash] response data
       def assigned(person_id:, group_by: nil)
         with_operation(service: "reports", operation: "assigned", is_mutation: false, resource_id: person_id) do
-          http_get("/reports/todos/assigned/#{person_id}", params: compact_query_params(group_by: group_by)).json
+          http_get("/reports/todos/assigned/#{person_id}", params: compact_query_params(group_by: group_by), operation: "GetAssignedTodos").json
         end
       end
 
@@ -39,7 +39,7 @@ module Basecamp
       # @return [Hash] response data
       def overdue()
         with_operation(service: "reports", operation: "overdue", is_mutation: false) do
-          http_get("/reports/todos/overdue.json").json
+          http_get("/reports/todos/overdue.json", operation: "GetOverdueTodos").json
         end
       end
 
@@ -48,7 +48,7 @@ module Basecamp
       # @return [Hash] response data
       def person_progress(person_id:)
         wrap_paginated_wrapped(key: "events", service: "reports", operation: "person_progress", is_mutation: false, resource_id: person_id) do
-          paginate_wrapped("/reports/users/progress/#{person_id}.json", key: "events")
+          paginate_wrapped("/reports/users/progress/#{person_id}.json", key: "events", operation: "GetPersonProgress")
         end
       end
     end

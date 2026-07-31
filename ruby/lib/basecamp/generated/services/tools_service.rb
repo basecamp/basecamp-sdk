@@ -24,7 +24,7 @@ module Basecamp
       # @return [Hash] response data
       def get(tool_id:)
         with_operation(service: "tools", operation: "get", is_mutation: false, resource_id: tool_id) do
-          http_get("/dock/tools/#{tool_id}").json
+          http_get("/dock/tools/#{tool_id}", operation: "GetTool").json
         end
       end
 

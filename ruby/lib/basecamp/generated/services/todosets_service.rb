@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(todoset_id:)
         with_operation(service: "todosets", operation: "get", is_mutation: false, resource_id: todoset_id) do
-          http_get("/todosets/#{todoset_id}").json
+          http_get("/todosets/#{todoset_id}", operation: "GetTodoset").json
         end
       end
     end

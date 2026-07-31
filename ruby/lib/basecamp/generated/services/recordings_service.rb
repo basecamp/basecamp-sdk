@@ -17,7 +17,7 @@ module Basecamp
       def list(type:, bucket: nil, status: nil, sort: nil, direction: nil)
         wrap_paginated(service: "recordings", operation: "list", is_mutation: false) do
           params = compact_query_params(type: type, bucket: bucket, status: status, sort: sort, direction: direction)
-          paginate("/projects/recordings.json", params: params)
+          paginate("/projects/recordings.json", params: params, operation: "ListRecordings")
         end
       end
 
@@ -26,7 +26,7 @@ module Basecamp
       # @return [Hash] response data
       def get(recording_id:)
         with_operation(service: "recordings", operation: "get", is_mutation: false, resource_id: recording_id) do
-          http_get("/recordings/#{recording_id}").json
+          http_get("/recordings/#{recording_id}", operation: "GetRecording").json
         end
       end
 

@@ -12,7 +12,7 @@ module Basecamp
       # @return [Hash] response data
       def get(recording_id:)
         with_operation(service: "subscriptions", operation: "get", is_mutation: false, resource_id: recording_id) do
-          http_get("/recordings/#{recording_id}/subscription.json").json
+          http_get("/recordings/#{recording_id}/subscription.json", operation: "GetSubscription").json
         end
       end
 
