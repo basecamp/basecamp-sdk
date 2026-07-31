@@ -1,0 +1,37 @@
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_289a344fc8a3ac::t_4c0e66d2e97a4f 807-826
+conformance/runner/go/main.go
+  s_289a344fc8a3ac::t_4b696c1dbb066b 550-565
+conformance/runner/python/runner.py
+  s_289a344fc8a3ac::t_1fad9c74ab0239 113-120
+conformance/runner/ruby/runner.rb
+  s_289a344fc8a3ac::t_1113576d57a74b 100-105,292-293,314-315
+conformance/runner/typescript/runner.test.ts
+  s_289a344fc8a3ac::t_49c106fc20d2a3 254-268
+conformance/tests/idempotency.json
+  s_289a344fc8a3ac::t_87a82c8549c39d 265-356
+conformance/tests/paths.json
+  s_289a344fc8a3ac::t_3089170508ae88 1431-1515
+python/tests/services/test_my_assignments_service.py
+  s_289a344fc8a3ac::t_8f7f05665c0355 1-86
+ruby/test/basecamp/services/my_assignments_service_test.rb
+  s_289a344fc8a3ac::t_24dc25ad63b3d0 1-89
+typescript/tests/services/my-assignments.test.ts
+  s_289a344fc8a3ac::t_c1482ac941d2ee 1-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "ffaedf74eeec2e41da7a0f24f83f7ebc2c87b27c",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
