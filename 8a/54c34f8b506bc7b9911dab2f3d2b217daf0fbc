@@ -1,0 +1,26 @@
+go/README.md
+  s_fb0636163f77d1::t_1be852a28e2dec 105,112
+  s_fb0636163f77d1::t_293483b7bf3409 474
+  s_fb0636163f77d1::t_0416eb1c778682 496
+  s_fb0636163f77d1::t_c1a4694fbc5dfc 26
+  s_fb0636163f77d1::t_b08ee1746c92b7 63,68
+  s_fb0636163f77d1::t_8e62e5300b021e 678
+  s_fb0636163f77d1::t_88abf50c593582 480
+  s_fb0636163f77d1::t_1ad5a180196443 634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "8a54c34f8b506bc7b9911dab2f3d2b217daf0fbc",
+  "prompts": {},
+  "sessions": {
+    "s_fb0636163f77d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9422a10d-28bd-4968-89c4-779c9dfd5e0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
