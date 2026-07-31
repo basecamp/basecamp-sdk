@@ -1,0 +1,35 @@
+go/pkg/basecamp/cards.go
+  s_555508c40a7b3b::t_bbf780a4792b56 991-1048
+go/pkg/basecamp/checkins_test.go
+  s_555508c40a7b3b::t_e662443d47deb6 1265-1266
+  s_555508c40a7b3b::t_45c776483963fc 1102-1264,1267-1434
+go/pkg/basecamp/checkins.go
+  s_555508c40a7b3b::t_b940e68412ea1f 197-210
+  s_555508c40a7b3b::t_eae3291098ab95 1198-1222
+  s_555508c40a7b3b::t_c9419deb3003c3 498-589
+  s_555508c40a7b3b::t_6aa6523210bfd4 37-48
+  s_555508c40a7b3b::t_dcd458599548a6 227-234
+  s_555508c40a7b3b::t_9b798d3d2316d4 949-1023
+  s_555508c40a7b3b::t_dd9b28e1cb5290 142-156
+  s_555508c40a7b3b::t_3b20dc24faa060 741-813
+scripts/check-service-drift.sh
+  s_555508c40a7b3b::t_16c58461933cf5 20-22
+go/pkg/basecamp/cards_test.go
+  s_555508c40a7b3b::t_888fa57ee0a3b1 1166-1226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "0f20a97f75958edd273a7af746a21cd8ad675b9b",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
