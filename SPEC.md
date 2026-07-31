@@ -732,7 +732,7 @@ Comparison is case-insensitive.
 
 All integer IDs must use at least 64 bits of precision (e.g., Go `int64`, Kotlin `Long`, Swift `Int` on 64-bit platforms). Note: Kotlin `Int` is 32-bit and must not be used for IDs — use `Long`. IDs up to 2^53 + 1 (`9007199254740993`) must survive JSON round-trip without precision loss.
 
-`[CONFLICT: JavaScript Number.MAX_SAFE_INTEGER is 2^53 - 1. The TypeScript SDK has a documented known gap — JSON.parse truncates integers beyond this value. The spec prescribes 64-bit precision; TypeScript implementations must document the limitation. See waiver 1B.6 in rubric-audit.json.]`
+`[CONFLICT: JavaScript Number.MAX_SAFE_INTEGER is 2^53 - 1. On the supported Node >=22.12 floor, JSON.parse reviver source access makes lossless bigint decoding feasible, but returning bigint would break the TypeScript SDK's number-typed API surface. The spec prescribes 64-bit precision; TypeScript implementations must document the retained limitation. See waiver 1B.6 in rubric-audit.json.]`
 
 ### Nullable Numeric Dimensions (rich-text attachment width/height)
 
@@ -1906,7 +1906,7 @@ See the Gate 3 consumption table in §7 above.
 | Ruby | Full arbitrary precision (Ruby Integer) |
 | Kotlin | Full 64-bit (`Long`) |
 | Swift | Platform-width `Int` (64-bit on all supported platforms). Generated models use `Int`, not `Int64`. |
-| TypeScript | 53-bit (`Number`). IDs > 2^53 - 1 lose precision. Documented known gap with waiver 1B.6. |
+| TypeScript | 53-bit (`Number`). Node >=22.12 can decode larger IDs losslessly as `bigint`, but that would break the number-typed API surface; waiver 1B.6 retains the limitation. |
 
 ### Pagination Metadata (§8)
 
