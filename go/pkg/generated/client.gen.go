@@ -5271,19 +5271,13 @@ func (c *Client) DisableCardColumnOnHold(ctx context.Context, accountId string, 
 
 }
 
-// EnableCardColumnOnHold executes the EnableCardColumnOnHold operation.
+// EnableCardColumnOnHold is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) EnableCardColumnOnHold(ctx context.Context, accountId string, bucketId int64, columnId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewEnableCardColumnOnHoldRequest(c.Server, accountId, bucketId, columnId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewEnableCardColumnOnHoldRequest(c.Server, accountId, bucketId, columnId)
+	}, true, "EnableCardColumnOnHold", reqEditors...)
 
 }
 
@@ -7391,19 +7385,13 @@ func (c *Client) GetSubscription(ctx context.Context, accountId string, recordin
 
 }
 
-// Subscribe executes the Subscribe operation.
+// Subscribe is marked as idempotent and will be retried on transient failures.
 
 func (c *Client) Subscribe(ctx context.Context, accountId string, recordingId int64, reqEditors ...RequestEditorFn) (*http.Response, error) {
 
-	req, err := NewSubscribeRequest(c.Server, accountId, recordingId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
+	return c.doWithRetry(ctx, func() (*http.Request, error) {
+		return NewSubscribeRequest(c.Server, accountId, recordingId)
+	}, true, "Subscribe", reqEditors...)
 
 }
 
@@ -19767,7 +19755,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"GetBoost":                           {Idempotent: true, HasSensitiveParams: false},
 	"SetCardColumnColor":                 {Idempotent: true, HasSensitiveParams: false},
 	"DisableCardColumnOnHold":            {Idempotent: true, HasSensitiveParams: false},
-	"EnableCardColumnOnHold":             {Idempotent: false, HasSensitiveParams: false},
+	"EnableCardColumnOnHold":             {Idempotent: true, HasSensitiveParams: false},
 	"DeleteWormhole":                     {Idempotent: true, HasSensitiveParams: false},
 	"UpdateWormhole":                     {Idempotent: true, HasSensitiveParams: false},
 	"CreateWormhole":                     {Idempotent: false, HasSensitiveParams: false},
@@ -19912,7 +19900,7 @@ var operationMetadata = map[string]OperationMetadata{
 	"TrashRecording":                     {Idempotent: true, HasSensitiveParams: false},
 	"Unsubscribe":                        {Idempotent: true, HasSensitiveParams: false},
 	"GetSubscription":                    {Idempotent: true, HasSensitiveParams: false},
-	"Subscribe":                          {Idempotent: false, HasSensitiveParams: false},
+	"Subscribe":                          {Idempotent: true, HasSensitiveParams: false},
 	"UpdateSubscription":                 {Idempotent: true, HasSensitiveParams: false},
 	"GetRecordingTimesheet":              {Idempotent: true, HasSensitiveParams: false},
 	"CreateTimesheetEntry":               {Idempotent: false, HasSensitiveParams: false},

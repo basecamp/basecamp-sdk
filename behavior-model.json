@@ -525,6 +525,7 @@
       }
     },
     "EnableCardColumnOnHold": {
+      "idempotent": true,
       "retry": {
         "max": 2,
         "base_delay_ms": 1000,
@@ -2390,6 +2391,7 @@
       }
     },
     "Subscribe": {
+      "idempotent": true,
       "retry": {
         "max": 2,
         "base_delay_ms": 1000,

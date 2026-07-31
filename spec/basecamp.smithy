@@ -4556,6 +4556,7 @@ structure SetCardColumnColorOutput {
 
 /// Enable on-hold section in a column
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "POST", uri: "/{accountId}/buckets/{bucketId}/card_tables/columns/{columnId}/on_hold.json")
 operation EnableCardColumnOnHold {
   input: EnableCardColumnOnHoldInput
@@ -5401,6 +5402,7 @@ structure GetSubscriptionOutput {
 
 /// Subscribe the current user to a recording
 @basecampRetry(maxAttempts: 2, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
+@basecampIdempotent(natural: true)
 @http(method: "POST", uri: "/{accountId}/recordings/{recordingId}/subscription.json")
 operation Subscribe {
   input: SubscribeInput

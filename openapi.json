@@ -1016,6 +1016,9 @@
         "tags": [
           "Card Tables"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
@@ -15792,6 +15795,9 @@
         "tags": [
           "People"
         ],
+        "x-basecamp-idempotent": {
+          "natural": true
+        },
         "x-basecamp-retry": {
           "maxAttempts": 2,
           "baseDelayMs": 1000,
