@@ -18,7 +18,7 @@
     },
     "1B.5": {
       "pass": true,
-      "note": "Temporal fields carry ISO 8601 on the wire in all six SDKs: Go decodes to time.Time and Ruby coerces via Time.parse; TypeScript, Python, Kotlin, and Swift preserve the ISO 8601 string verbatim (no lossy coercion)"
+      "note": "Temporal fields carry ISO 8601 on the wire in all six SDKs: Go decodes to time.Time; Ruby coerces via Time.parse for fields the schema marks x-go-type time.Time — nullable timestamps spelled *time.Time (currently MyNote.created_at/updated_at) pass through as strings because the generator's coercion condition matches the exact spelling, tracked in #537; TypeScript, Python, Kotlin, and Swift preserve the ISO 8601 string verbatim (no lossy coercion)"
     },
     "1C.1": {
       "pass": true,
