@@ -39,6 +39,13 @@ class BasecampClientBuilder {
     /** Enable automatic retry on 429/503. */
     var enableRetry: Boolean = true
 
+    /**
+     * Maximum retry attempts (total, including the initial request). Acts as a
+     * caller-side cap: each operation's declared retry max can lower the
+     * effective attempt count below this, never raise it above.
+     */
+    var maxRetries: Int = BasecampConfig.DEFAULT_MAX_RETRIES
+
     /** Maximum pages to follow during pagination (safety cap). */
     var maxPages: Int = BasecampConfig.DEFAULT_MAX_PAGES
 
@@ -86,12 +93,17 @@ class BasecampClientBuilder {
                 "Authentication must be configured. Use accessToken(\"token\") or auth(strategy)."
             )
 
+        require(maxRetries >= 0) {
+            "maxRetries must be >= 0, got: $maxRetries"
+        }
+
         val config = BasecampConfig(
             baseUrl = baseUrl,
             userAgent = userAgent,
             enableCache = enableCache,
             enableRetry = enableRetry,
             timeout = timeout,
+            maxRetries = maxRetries,
             maxPages = maxPages,
         )
 
