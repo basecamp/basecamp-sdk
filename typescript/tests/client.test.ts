@@ -306,6 +306,69 @@ describe("BasecampClient", () => {
       expect(member).toBe("/{accountId}/buckets/{bucketId}/categories/{typeId}");
     });
 
+    it("should not retry a network error on a non-idempotent POST and preserve the error's identity", async () => {
+      // The sentinel must surface unwrapped: the conformance runner (and any
+      // caller) classifies transport failures by the raw error, so wrapping or
+      // rethrowing a copy would break that contract.
+      const sentinel = new TypeError("Failed to fetch");
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(sentinel);
+
+      try {
+        const client = createBasecampClient({
+          accountId: "12345",
+          accessToken: "test-token",
+        });
+
+        const err = await client
+          .POST("/todolists/{todolistId}/todos.json", {
+            params: { path: { todolistId: 456 } },
+            body: { content: "Test todo" },
+          })
+          .then(
+            () => undefined,
+            (e: unknown) => e
+          );
+
+        // CreateTodo is not idempotent, so exactly one attempt goes out.
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        expect(err).toBe(sentinel);
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    });
+
+    it("should retry a network error on an idempotent POST", async () => {
+      // CompleteTodo is flagged idempotent.natural in metadata, so a transport
+      // failure is retried under the same gate as a status retry.
+      let attempts = 0;
+
+      server.use(
+        http.post(`${BASE_URL}/todos/456/completion.json`, () => {
+          attempts++;
+          if (attempts === 1) {
+            return HttpResponse.error();
+          }
+          return new HttpResponse(null, { status: 204 });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+
+      const { error, response } = await client.POST(
+        "/todos/{todoId}/completion.json",
+        { params: { path: { todoId: 456 } } }
+      );
+
+      expect(attempts).toBe(2);
+      expect(error).toBeUndefined();
+      expect(response.status).toBe(204);
+    }, 10_000);
+
     it("should refresh auth token on retry", async () => {
       let attempts = 0;
       const capturedTokens: string[] = [];

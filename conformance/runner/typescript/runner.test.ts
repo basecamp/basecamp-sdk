@@ -83,8 +83,6 @@ const TS_SDK_SKIPS: Record<string, string> = {
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop":
     "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
-  "Network error on an idempotent POST is retried then succeeds":
-    "TS SDK retry middleware does not retry fetch rejections (network errors); only HTTP-status retries are implemented",
 };
 
 /**

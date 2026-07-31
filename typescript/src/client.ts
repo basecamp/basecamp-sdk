@@ -1061,9 +1061,41 @@ function createRetryingFetch(
         await authStrategy.authenticate(attemptRequest.headers);
       }
 
-      // globalThis.fetch resolved per attempt rather than captured at client
-      // creation, so test interceptors that patch it (MSW) are honored.
-      const response = await globalThis.fetch(attemptRequest);
+      let response: Response;
+      try {
+        // globalThis.fetch resolved per attempt rather than captured at client
+        // creation, so test interceptors that patch it (MSW) are honored.
+        response = await globalThis.fetch(attemptRequest);
+      } catch (error) {
+        // An abort is terminal no matter what the budget says: a caller
+        // cancellation must not re-send, and the per-request timeout is one
+        // budget shared by every attempt and backoff — once it fires, a retry
+        // would instantly re-reject. Terminal errors are rethrown as-is so
+        // their identity survives to the lifecycle middleware's onError (and
+        // to the caller).
+        const isAbort =
+          error instanceof DOMException &&
+          (error.name === "AbortError" || error.name === "TimeoutError");
+        if (isAbort || attempt >= maxAttempts) {
+          throw error;
+        }
+
+        // Network-error retry rides the same per-operation gate as status
+        // retry: a non-idempotent POST resolves NO_RETRY_CONFIG (maxAttempts
+        // 1), so it is rethrown above after its single attempt.
+        const cause = error instanceof Error ? error : new Error(String(error));
+        const delay = calculateBackoffDelay(retryConfig, attempt - 1);
+
+        lifecycle.finalize(request, method, url, { statusCode: 0, error: cause });
+        lifecycle.retrying(method, url, attempt, cause, delay);
+
+        await sleep(delay);
+
+        // Same placement rationale as the status path below.
+        attempt += 1;
+        lifecycle.begin(request, method, url, attempt);
+        continue;
+      }
 
       // Terminal: a status outside the operation's declared retryOn set, or a
       // spent budget — maxAttempts is a total attempt count, so attempt N is

@@ -135,9 +135,10 @@ describe("middleware request lifecycle", () => {
     expect(retryBodies).toEqual(firstBodies);
   });
 
-  // Defect 2. A rejected initial fetch must still produce a balanced
-  // start/end pair, with statusCode 0 and the original error preserved.
-  it("fires a balanced start/end with statusCode 0 when the initial fetch fails", async () => {
+  // Defect 2, updated for network-error retry. A GET whose fetch keeps
+  // rejecting is retried to the operation's maxAttempts, and every attempt gets
+  // a balanced start/end pair with statusCode 0 and the error preserved.
+  it("retries a GET whose fetch fails, with balanced hooks for every attempt", async () => {
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => HttpResponse.error())
     );
@@ -151,13 +152,41 @@ describe("middleware request lifecycle", () => {
 
     await expect(client.GET("/projects.json")).rejects.toBeTruthy();
 
-    expect(starts(events)).toHaveLength(1);
-    expect(ends(events)).toHaveLength(1);
-    const end = ends(events)[0]!;
-    expect(end.attempt).toBe(1);
-    expect(end.statusCode).toBe(0);
-    expect(end.error).toBeInstanceOf(Error);
-  });
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    for (const end of ends(events)) {
+      expect(end.statusCode).toBe(0);
+      expect(end.error).toBeInstanceOf(Error);
+    }
+  }, 10_000);
+
+  // Network-error retry's success path: two fetch rejections, then a 200.
+  it("recovers when a retried GET's network error clears", async () => {
+    let attempts = 0;
+    server.use(
+      http.get(`${BASE_URL}/projects.json`, () => {
+        attempts++;
+        if (attempts <= 2) {
+          return HttpResponse.error();
+        }
+        return HttpResponse.json([{ id: 1 }]);
+      })
+    );
+
+    const { hooks, events } = recordingHooks();
+    const client = createBasecampClient({
+      accountId: "12345",
+      accessToken: "test-token",
+      hooks,
+    });
+
+    const { data } = await client.GET("/projects.json");
+
+    expect(attempts).toBe(3);
+    expect(data).toEqual([{ id: 1 }]);
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([0, 0, 200]);
+  }, 10_000);
 
   // Defect 2, timeout variant. The auth middleware installs
   // AbortSignal.timeout, so a stalled request rejects the same way.
@@ -186,9 +215,10 @@ describe("middleware request lifecycle", () => {
     expect(end.error).toBeInstanceOf(Error);
   });
 
-  // Defect 4. Both attempts get balanced hooks even when the RETRY fetch
-  // itself fails at the network level, and all state is finalized.
-  it("fires balanced lifecycle hooks for both attempts when the retry fetch fails", async () => {
+  // Defect 4, updated for network-error retry. A 503 followed by fetch
+  // rejections keeps retrying to maxAttempts, with balanced hooks per attempt
+  // and nothing dangling.
+  it("fires balanced lifecycle hooks for every attempt when retry fetches fail", async () => {
     let attempts = 0;
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => {
@@ -212,14 +242,13 @@ describe("middleware request lifecycle", () => {
 
     await expect(client.GET("/projects.json")).rejects.toBeTruthy();
 
-    expect(attempts).toBe(2);
+    expect(attempts).toBe(3);
     // One start and one end per attempt — nothing dangling.
-    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2]);
-    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2]);
-    expect(ends(events)[0]!.statusCode).toBe(503);
-    expect(ends(events)[1]!.statusCode).toBe(0);
-    expect(ends(events)[1]!.error).toBeInstanceOf(Error);
-  });
+    expect(starts(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.attempt)).toEqual([1, 2, 3]);
+    expect(ends(events).map((e) => e.statusCode)).toEqual([503, 0, 0]);
+    expect(ends(events)[2]!.error).toBeInstanceOf(Error);
+  }, 10_000);
 
   // Defect 4, attempt numbering. SPEC section 7: RequestInfo.attempt is the
   // attempt that just failed (1); onRetry's second argument is the UPCOMING
