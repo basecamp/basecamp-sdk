@@ -150,7 +150,7 @@ package final class HTTPClient: Sendable {
                         headers: httpResponse.allHeaderFields as? [String: String] ?? [:],
                         requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id")
                     )
-                    safeInvokeHooks { $0.onRetry(info, attempt: attempt, error: error, delaySeconds: delaySeconds) }
+                    safeInvokeHooks { $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds) }
 
                     try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
 
@@ -179,7 +179,7 @@ package final class HTTPClient: Sendable {
                         statusCode: nil
                     )
                     safeInvokeHooks {
-                        $0.onRetry(info, attempt: attempt, error: error, delaySeconds: delaySeconds)
+                        $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds)
                     }
                     try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
                     continue

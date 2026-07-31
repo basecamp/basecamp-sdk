@@ -105,8 +105,9 @@ public protocol BasecampHooks: Sendable {
     /// Called before a retry attempt.
     ///
     /// - Parameters:
-    ///   - info: Request information.
-    ///   - attempt: The attempt number (1-based).
+    ///   - info: Request information; `info.attempt` is the attempt that just failed (1-based).
+    ///   - attempt: The upcoming attempt (1-based) — the retry about to be made,
+    ///     so the first retry reports attempt 2.
     ///   - error: The error that triggered the retry.
     ///   - delaySeconds: The delay before the retry, in seconds.
     func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval)
