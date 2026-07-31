@@ -172,5 +172,48 @@
       "idempotent",
       "delete"
     ]
+  },
+  {
+    "name": "UpdateMyNote PUT retries when marked idempotent",
+    "description": "Replacing the scratchpad's content is a full-representation PUT (naturally idempotent); it must retry on 503 like the other flagged PUTs.",
+    "operation": "UpdateMyNote",
+    "method": "PUT",
+    "path": "/my/notes.json",
+    "requestBody": {
+      "note": {
+        "content": "<div>Updated</div>"
+      }
+    },
+    "mockResponses": [
+      {
+        "status": 503
+      },
+      {
+        "status": 200,
+        "body": {
+          "id": 5,
+          "type": "Notebook::Note",
+          "created_at": "2026-07-21T00:02:30.308Z",
+          "updated_at": "2026-07-21T00:02:30.308Z",
+          "content": "<div>Things to remember</div>",
+          "content_attachments": [],
+          "url": "https://3.basecampapi.com/999/my/notes.json",
+          "app_url": "https://3.basecamp.com/999/my/navigation/notes"
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "requestCount",
+        "expected": 2
+      },
+      {
+        "type": "noError"
+      }
+    ],
+    "tags": [
+      "idempotent",
+      "put"
+    ]
   }
 ]

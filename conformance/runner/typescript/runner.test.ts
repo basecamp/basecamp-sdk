@@ -247,6 +247,14 @@ async function executeOperation(
         await client.drafts.listMyDrafts();
         break;
 
+      case "GetMyNote":
+        await client.myNotes.getMyNote();
+        break;
+
+      case "UpdateMyNote":
+        await client.myNotes.updateMyNote({ note: body.note as { content: string } });
+        break;
+
       case "GetBookmark":
         await client.bookmarks.getBookmark(Number(params.recordingId));
         break;

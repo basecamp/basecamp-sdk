@@ -543,6 +543,20 @@ func executeOperation(ctx context.Context, account *basecamp.AccountClient, tc T
 		_, err := account.Drafts().List(ctx, 0)
 		return operationResult{err: err}
 
+	case "GetMyNote":
+		_, err := account.MyNotes().Get(ctx)
+		return operationResult{err: err}
+
+	case "UpdateMyNote":
+		content := ""
+		if note, ok := tc.RequestBody["note"].(map[string]interface{}); ok {
+			if c, ok := note["content"].(string); ok {
+				content = c
+			}
+		}
+		_, err := account.MyNotes().Update(ctx, content)
+		return operationResult{err: err}
+
 	case "GetBookmark":
 		recordingID := getInt64Param(tc.PathParams, "recordingId")
 		_, err := account.Bookmarks().Get(ctx, recordingID)

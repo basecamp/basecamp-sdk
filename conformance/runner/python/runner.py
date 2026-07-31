@@ -108,6 +108,10 @@ class OperationMapper:
                 return self._account.bookmarks.list_my_bookmarks()
             case "ListMyDrafts":
                 return self._account.drafts.list_my_drafts()
+            case "GetMyNote":
+                return self._account.my_notes.get_my_note()
+            case "UpdateMyNote":
+                return self._account.my_notes.update_my_note(note=body["note"])
             case "GetBookmark":
                 return self._account.bookmarks.get_bookmark(recording_id=path_params["recordingId"])
             case "CreateBookmark":
