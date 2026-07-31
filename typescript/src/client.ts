@@ -506,9 +506,17 @@ function createAuthMiddleware(authStrategy: AuthStrategy, userAgent: string, req
  * Per-attempt observability state for one logical request.
  *
  * `attempt` is the 1-based attempt currently in flight. `finalized` makes
- * onRequestEnd idempotent: the retry middleware ends an attempt as soon as it
- * knows its outcome, and the lifecycle middleware's onResponse then runs later
- * for the same logical request and must not emit a second end.
+ * onRequestEnd idempotent per attempt: two terminal paths can reach the same
+ * attempt, and only the first may emit an end.
+ *
+ * Each attempt gets fresh state — begin() replaces this record — so the flag
+ * guards one attempt against a double end, not the request. The retry middleware
+ * ends the attempt it is abandoning before it backs off, and separately ends its
+ * own raw fetch when that throws; the lifecycle middleware's onResponse ends
+ * whichever attempt is in flight when a response comes back. On a successful
+ * retry those are different attempts, which is why the retry deliberately does
+ * not finalize a successful fetch: onResponse must be free to record the outcome
+ * the cache middleware has since transformed.
  */
 interface AttemptState {
   startTime: number;
@@ -624,11 +632,17 @@ function createLifecycleMiddleware(lifecycle: RequestLifecycle): Middleware {
     },
 
     async onResponse({ request, response, id }) {
-      // Runs after the retry middleware, which has already ended the final
-      // attempt whenever it retried — finalize is idempotent, so this is a no-op
-      // in that case and the authoritative end for a single-attempt request.
-      const fromCacheHeader = response.headers.get("X-From-Cache");
-      const fromCache = fromCacheHeader === "1" || response.status === 304;
+      // The authoritative end for whichever attempt is in flight: attempt 1 for a
+      // single-attempt request, or attempt 2 after a retry — the retry middleware
+      // deliberately does not finalize a successful attempt, so that the cache
+      // middleware (which runs between the two) can transform the response first.
+      // finalize stays idempotent as a backstop.
+      //
+      // fromCache means "served out of the ETag cache", and only the header the
+      // cache middleware sets proves that. A bare 304 does NOT: it reaches here
+      // when the cache is disabled, or is enabled but holds no entry for this key,
+      // and in both cases the caller's own conditional request went to the server.
+      const fromCache = response.headers.get("X-From-Cache") === "1";
 
       lifecycle.finalize(id, request.method, request.url, {
         statusCode: response.status,
