@@ -295,15 +295,12 @@ describe("middleware request lifecycle", () => {
     expect(attempts).toBe(6);
   });
 
-  // Review follow-up. A cached conditional GET whose retry returns 304 must be
-  // reported as the cache middleware finally resolved it (200, fromCache), not as
-  // the raw 304 the retry saw — the retry deliberately leaves finalization to the
-  // downstream hooks pass so the cache can transform the response first.
-  // Review follow-up. fromCache means "served out of the ETag cache". A bare 304
-  // does not prove that — it reaches the lifecycle when the cache is disabled, or
-  // is enabled but holds no entry, and in both cases the caller's own conditional
-  // request went to the server and got a real network round trip. Reporting it as
-  // a cache hit overstates the cache's effectiveness in anyone's metrics.
+  // The two 304 paths, as a pair. Here: fromCache means "served out of the ETag
+  // cache", and a bare 304 does not prove that — it reaches the lifecycle when the
+  // cache is disabled, or is enabled but holds no entry, and in both cases the
+  // caller's own conditional request went to the server for a real round trip.
+  // Reporting it as a cache hit overstates the cache's effectiveness in anyone's
+  // metrics. The test below covers the opposite path, where the cache does serve.
   it("does not report a bare 304 as served from cache", async () => {
     server.use(
       http.get(`${BASE_URL}/projects.json`, () => new HttpResponse(null, { status: 304 }))
@@ -327,6 +324,10 @@ describe("middleware request lifecycle", () => {
     });
   });
 
+  // The other 304 path. A cached conditional GET whose retry returns 304 must be
+  // reported as the cache middleware finally resolved it — 200 and fromCache true,
+  // not the raw 304 the retry saw. The retry deliberately leaves finalization to
+  // the downstream lifecycle pass so the cache can transform the response first.
   it("reports the post-cache outcome when a retried conditional GET returns 304", async () => {
     let attempts = 0;
     server.use(
