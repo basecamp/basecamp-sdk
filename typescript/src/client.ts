@@ -10,7 +10,7 @@ import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "./generated/schema.js";
 import metadata from "./generated/metadata.js";
 import { PATH_TO_OPERATION } from "./generated/path-mapping.js";
-import type { BasecampHooks, RequestInfo, RequestResult } from "./hooks.js";
+import type { BasecampHooks, RequestResult } from "./hooks.js";
 import { BasecampError } from "./errors.js";
 import { isLocalhost, requireSameOrigin } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";

@@ -19,14 +19,20 @@ import kotlinx.serialization.json.jsonPrimitive
  * Provides shared functionality for making API requests, handling errors,
  * and integrating with the hooks system. Generated service classes extend this.
  *
+ * The example below shows the shape the GENERATOR emits. Wire methods are never
+ * written by hand (see AGENTS.md — paths and verbs come from the generator; the
+ * only sanctioned hand-written methods are SPEC §18 composites over generated
+ * wire methods):
+ *
  * ```kotlin
+ * // Generator output (illustrative):
  * class TodosService(client: AccountClient) : BaseService(client) {
- *     suspend fun list(projectId: Long, todolistId: Long): ListResult<Todo> =
+ *     suspend fun list(todolistId: Long): ListResult<Todo> =
  *         requestPaginated(
- *             OperationInfo("Todos", "ListTodos", "todo", false, projectId),
- *         ) {
- *             httpGet("/buckets/$projectId/todolists/$todolistId/todos.json")
- *         }
+ *             OperationInfo("Todos", "ListTodos", "todo", false, resourceId = todolistId),
+ *             null,
+ *             { httpGet("/todolists/$todolistId/todos.json") },
+ *         ) { body -> json.decodeFromString<List<Todo>>(body) }
  * }
  * ```
  */
@@ -404,9 +410,21 @@ abstract class BaseService(
      * a cold [Flow] that fetches pages lazily as the collector consumes items.
      * Useful for processing large datasets without loading everything into memory.
      *
+     * No generated service currently emits a method on this primitive; it is
+     * reserved for a future generated streaming surface. If the generator gains
+     * one, its output would take this shape (wire methods are never written by
+     * hand — see AGENTS.md):
+     *
      * ```kotlin
-     * account.todos.listAsFlow(projectId, todolistId)
-     *     .collect { todo -> println(todo.content) }
+     * // Generator output (illustrative):
+     * fun listAsFlow(todolistId: Long): Flow<Todo> =
+     *     requestPaginatedAsFlow(
+     *         OperationInfo("Todos", "ListTodos", "todo", false, resourceId = todolistId),
+     *         { httpGet("/todolists/$todolistId/todos.json") },
+     *     ) { body -> json.decodeFromString<List<Todo>>(body) }
+     *
+     * // Collectors consume pages lazily:
+     * service.listAsFlow(todolistId).collect { todo -> println(todo.content) }
      * ```
      *
      * @param info Operation metadata for hooks.

@@ -14,7 +14,7 @@
  *
  * // High-level service methods
  * const projects = await client.projects.list();
- * const todo = await client.todos.create(projectId, todolistId, {
+ * const todo = await client.todos.create(todolistId, {
  *   content: "Ship the feature",
  *   assigneeIds: [userId],
  * });

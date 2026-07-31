@@ -1,6 +1,6 @@
 {
   "profile": "full-sdk",
-  "date": "2026-03-06",
+  "date": "2026-07-31",
   "reviewer": "agent:conformance-runner",
   "criteria": {
     "1A.6": {
@@ -18,7 +18,7 @@
     },
     "1B.5": {
       "pass": true,
-      "note": "Date fields use time.Time (Go), Date (TS), Time (Ruby) per ISO 8601"
+      "note": "Temporal fields carry ISO 8601 on the wire in all six SDKs: Go decodes to time.Time; Ruby coerces via Time.parse for fields the schema marks x-go-type time.Time — nullable timestamps spelled *time.Time (currently MyNote.created_at/updated_at) pass through as strings because the generator's coercion condition matches the exact spelling, tracked in #537; TypeScript, Python, Kotlin, and Swift preserve the ISO 8601 string verbatim (no lossy coercion)"
     },
     "1C.1": {
       "pass": true,
@@ -34,7 +34,7 @@
     },
     "2D.5": {
       "pass": true,
-      "note": "Resilience patterns scoped per service.operation in Go; Ruby/TS use per-client config"
+      "note": "All six SDKs consume per-operation retry metadata from behavior-model.json (declared retry_on status set and per-op max). The four SDKs with a public numeric caller cap compose the ceiling as min(caller cap, op max): Go and Python (per-op ceiling #483, retry_on gate #486), Ruby and Kotlin (#515). TypeScript and Swift expose only a boolean retry switch and apply the operation's declared parameters directly (TS since its middleware inception). Non-Smithy traffic (absolute-URL fetches, Launchpad authorization) carries no operation id and keeps per-client config."
     },
     "3A.4": {
       "pass": true,
@@ -42,7 +42,7 @@
     },
     "3A.5": {
       "pass": true,
-      "note": "OAuth PKCE code exchange implemented in all three SDKs"
+      "note": "OAuth PKCE code exchange implemented in five SDKs (Go, TypeScript, Python, Ruby, Kotlin); Swift ships token-provider injection only, with no OAuth utility surface"
     },
     "3A.6": {
       "pass": true,
@@ -70,9 +70,7 @@
     },
     "3C.6": {
       "pass": true,
-      "waiver": true,
-      "note": "Go SDK uses consumer-driven pagination; same-origin enforcement is caller responsibility",
-      "language": "go"
+      "note": "All six SDKs auto-paginate with same-origin enforcement before following Link headers. A prior Go waiver ('consumer-driven pagination; same-origin enforcement is caller responsibility') is obsolete: Go auto-paginates and enforces same-origin in client.go before following Link, and the Go runner passes all security.json pagination tests un-skipped (its two origin-normalization skips are runner mechanics — httptest owns its origin — compensated by TestIsSameOrigin unit coverage)."
     },
     "2B.1": {
       "pass": true,

@@ -9,7 +9,7 @@
  * import { BasecampError, Errors } from "@37signals/basecamp";
  *
  * try {
- *   await client.todos.get(projectId, todoId);
+ *   await client.todos.get(todoId);
  * } catch (err) {
  *   if (err instanceof BasecampError) {
  *     if (err.code === 'not_found') {

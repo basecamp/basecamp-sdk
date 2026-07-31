@@ -17,7 +17,6 @@ import { isLocalhost } from "../security.js";
 import type {
   OAuthConfig,
   ProtectedResourceMetadata,
-  FallbackReason,
   DiscoverySelectionErrorReason,
   DiscoverFromResourceResult,
 } from "./types.js";
@@ -142,6 +141,7 @@ export function requireOriginRoot(raw: string, label = "origin"): string {
   // tabs/newlines/surrounding spaces and converts backslashes to forward slashes
   // for special schemes, so a malformed spelling ("https:\\host", "https://host\n")
   // would be cleaned and accepted. None is legitimate in an origin root.
+  // eslint-disable-next-line no-control-regex -- deliberate guard: rejects C0 controls/space/backslash the WHATWG URL parser would silently strip or rewrite
   if (/[\u0000-\u0020\\]/.test(raw)) {
     throw new BasecampError("usage", `${label} contains invalid characters: ${raw}`);
   }
