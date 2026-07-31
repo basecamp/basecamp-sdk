@@ -11,7 +11,11 @@
 export interface ListMeta {
   /** Total number of items across all pages (from X-Total-Count header). */
   readonly totalCount: number;
-  /** True when results were truncated (by maxItems or page safety cap). */
+  /**
+   * True when the result was cut short: items beyond maxItems were dropped,
+   * or a next-page link was left unfetched (maxItems met at a page boundary,
+   * or the page safety cap). False means the result is complete.
+   */
   readonly truncated: boolean;
 }
 

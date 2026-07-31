@@ -470,11 +470,11 @@ The result is a `ListResult<T>` — an `Array<T>` subclass that works with `for.
 const projects = await client.projects.list();
 
 console.log(`${projects.length} of ${projects.meta.totalCount} projects`);
-if (projects.meta.truncated) console.warn("results may have been capped");
+if (projects.meta.truncated) console.warn("more results were available");
 projects.forEach(p => console.log(p.name));
 ```
 
-`meta.totalCount` is parsed from the `X-Total-Count` response header (0 when the header is absent). `meta.truncated` is `true` when the result may have been cut short — by `maxItems` or by the page safety cap; when it is `false`, the result is definitely complete.
+`meta.totalCount` is parsed from the `X-Total-Count` response header (0 when the header is absent). `meta.truncated` is `true` when items beyond those returned were available — more items than `maxItems` arrived, or the last-fetched page still advertised a next page (including when the page safety cap stopped pagination early); when it is `false`, the result is complete.
 
 To bound the work, pass `maxItems` — every list options type extends `PaginationOptions`. When `maxItems` is omitted or `0`, all pages are fetched:
 

@@ -456,6 +456,152 @@ describe("BaseService", () => {
       expect(result.length).toBe(2);
       expect(result.meta.truncated).toBe(true);
     });
+
+    it("should set truncated=false when maxItems is met exactly at a page boundary with no further pages", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-list`, ({ request }) => {
+          const url = new URL(request.url);
+          const page = url.searchParams.get("page");
+
+          if (page === "2") {
+            // Final page — exactly fills maxItems, no Link header
+            return HttpResponse.json([{ id: 3 }]);
+          }
+
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/test-list?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+      const paginatedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      });
+
+      // maxItems=3: page 1 has 2, page 2 has exactly 1 more and no next link —
+      // nothing was dropped, so the result is complete
+      const result = await paginatedService.testPaginatedGet<{ id: number }>(
+        "/test-list", listInfo, { maxItems: 3 }
+      );
+
+      expect(result.length).toBe(3);
+      expect(result.meta.truncated).toBe(false);
+    });
+
+    it("should set truncated=true when maxItems is met exactly at a page boundary and a next link exists", async () => {
+      let pageRequests = 0;
+
+      server.use(
+        http.get(`${BASE_URL}/test-list`, ({ request }) => {
+          pageRequests++;
+          const url = new URL(request.url);
+          const page = url.searchParams.get("page");
+
+          if (page === "3") {
+            return HttpResponse.json([{ id: 5 }, { id: 6 }]);
+          }
+
+          if (page === "2") {
+            return HttpResponse.json([{ id: 3 }, { id: 4 }], {
+              headers: {
+                Link: `<${BASE_URL}/test-list?page=3>; rel="next"`,
+              },
+            });
+          }
+
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: {
+              "X-Total-Count": "6",
+              Link: `<${BASE_URL}/test-list?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+      const paginatedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      });
+
+      // maxItems=4: cap hit exactly after page 2, which advertises page 3
+      const result = await paginatedService.testPaginatedGet<{ id: number }>(
+        "/test-list", listInfo, { maxItems: 4 }
+      );
+
+      expect(result.length).toBe(4);
+      expect(result.meta.truncated).toBe(true);
+      // Page 3 must not be fetched — its Link header alone proves more pages exist
+      expect(pageRequests).toBe(2);
+    });
+
+    it("should set truncated=true when maxItems matches exact first page and a next link exists", async () => {
+      let pageRequests = 0;
+
+      server.use(
+        http.get(`${BASE_URL}/test-list`, () => {
+          pageRequests++;
+          return HttpResponse.json([{ id: 1 }, { id: 2 }], {
+            headers: {
+              "X-Total-Count": "10",
+              Link: `<${BASE_URL}/test-list?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      // maxItems=2 exactly equals the first page, but a Link advertises more
+      const result = await service.testPaginatedGet<{ id: number }>(
+        "/test-list", listInfo, { maxItems: 2 }
+      );
+
+      expect(result.length).toBe(2);
+      expect(result.meta.truncated).toBe(true);
+      expect(pageRequests).toBe(1);
+    });
+
+    it("should set truncated=true when the page safety cap stops pagination", async () => {
+      let pageRequests = 0;
+
+      server.use(
+        http.get(`${BASE_URL}/test-list`, ({ request }) => {
+          pageRequests++;
+          const url = new URL(request.url);
+          const page = Number(url.searchParams.get("page") ?? "1");
+
+          // Every page advertises another one
+          return HttpResponse.json([{ id: page }], {
+            headers: {
+              Link: `<${BASE_URL}/test-list?page=${page + 1}>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+      // maxPages=2: page 1 + one followed page, then the safety cap stops the loop
+      const cappedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      }, 2);
+
+      const result = await cappedService.testPaginatedGet<{ id: number }>("/test-list", listInfo);
+
+      expect(result.length).toBe(2);
+      expect(result.meta.truncated).toBe(true);
+      expect(pageRequests).toBe(2);
+    });
   });
 
   describe("requestPaginatedWrapped", () => {
@@ -517,6 +663,51 @@ describe("BaseService", () => {
       expect(events[1]).toEqual({ id: 2, action: "completed" });
       expect(events[2]).toEqual({ id: 3, action: "updated" });
       expect(events.meta.totalCount).toBe(3);
+      expect(events.meta.truncated).toBe(false);
+    });
+
+    it("should set truncated=false when maxItems is met exactly at a page boundary with no further pages", async () => {
+      server.use(
+        http.get(`${BASE_URL}/test-wrapped`, ({ request }) => {
+          const url = new URL(request.url);
+          const page = url.searchParams.get("page");
+
+          if (page === "2") {
+            // Final page — exactly fills maxItems, no Link header
+            return HttpResponse.json({
+              person: { id: 456, name: "Jane Doe" },
+              events: [{ id: 3, action: "updated" }],
+            });
+          }
+
+          return HttpResponse.json({
+            person: { id: 456, name: "Jane Doe" },
+            events: [{ id: 1, action: "created" }, { id: 2, action: "completed" }],
+          }, {
+            headers: {
+              "X-Total-Count": "3",
+              Link: `<${BASE_URL}/test-wrapped?page=2>; rel="next"`,
+            },
+          });
+        })
+      );
+
+      const client = createBasecampClient({
+        accountId: "12345",
+        accessToken: "test-token",
+      });
+      const wrappedService = new TestService(client.raw, undefined, async (url: string) => {
+        return fetch(url, { headers: { Accept: "application/json" } });
+      });
+
+      // maxItems=3: page 1 has 2 events, page 2 has exactly 1 more and no next
+      // link — nothing was dropped, so the result is complete
+      const result = await wrappedService.testPaginatedWrappedGet<"events", { id: number; action: string }>(
+        "/test-wrapped", listInfo, "events", { maxItems: 3 }
+      );
+
+      const events = result.events;
+      expect(events.length).toBe(3);
       expect(events.meta.truncated).toBe(false);
     });
   });

@@ -477,7 +477,9 @@ export abstract class BaseService {
 
   /**
    * Follows Link header pagination, accumulating items across pages.
-   * Returns items and whether results were truncated (by maxItems or page cap).
+   * Returns items and whether results were truncated: true only when items
+   * beyond maxItems were dropped, or a next-page link was left unfetched
+   * (maxItems met at a page boundary, or the page safety cap).
    */
   private async followPagination<T>(
     initialResponse: Response,
@@ -512,9 +514,12 @@ export abstract class BaseService {
       normalizePersonIds(pageItems);
       allItems.push(...pageItems);
 
-      // Check maxItems cap
+      // Check maxItems cap. Only mark truncated when items were actually
+      // dropped, or the just-fetched page links to a further page.
       if (maxItems && maxItems > 0 && allItems.length >= maxItems) {
-        return { items: allItems.slice(0, maxItems), truncated: true };
+        const hasMore = allItems.length > maxItems
+          || parseNextLink(response.headers.get("Link")) !== null;
+        return { items: allItems.slice(0, maxItems), truncated: hasMore };
       }
     }
 
@@ -562,8 +567,12 @@ export abstract class BaseService {
       const pageItems: T[] = (pageData[key] as T[]) ?? [];
       allItems.push(...pageItems);
 
+      // Check maxItems cap. Only mark truncated when items were actually
+      // dropped, or the just-fetched page links to a further page.
       if (maxItems && maxItems > 0 && allItems.length >= maxItems) {
-        return { items: allItems.slice(0, maxItems), truncated: true };
+        const hasMore = allItems.length > maxItems
+          || parseNextLink(response.headers.get("Link")) !== null;
+        return { items: allItems.slice(0, maxItems), truncated: hasMore };
       }
     }
 
