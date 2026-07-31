@@ -1,0 +1,23 @@
+typescript/src/index.ts
+  s_289a344fc8a3ac::t_d6fc2d5723d7eb 116
+go/pkg/basecamp/todos.go
+  s_289a344fc8a3ac::t_99428314708a08 559
+python/scripts/generate_services.py
+  s_289a344fc8a3ac::t_1f72ac4c2d9e05 123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "a74f10106e536b5c65ad526e325f9cf29cdc0082",
+  "prompts": {},
+  "sessions": {
+    "s_289a344fc8a3ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc3f7cd7-6bd8-46dc-be2d-22b66f8325d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
