@@ -47,7 +47,7 @@ making the absorption journey publicly auditable.
 | [rich-text-project-attachable](rich-text-project-attachable.md) | no-json-contract | 3e | low |
 | [recording-bubbleupable-field](recording-bubbleupable-field.md) | no-json-contract | 3e | low |
 | [todoset-completed-list-visibility](todoset-completed-list-visibility.md) | ambiguous | 3a | low |
-| [memories-emptied-regression](memories-emptied-regression.md) | addressed-in-bc3-pr-11628 | launch | high |
+| [memories-emptied-regression](memories-emptied-regression.md) | absorbed-in-sdk | launch | high |
 | [campfire-line-edit](campfire-line-edit.md) | absorbed-in-sdk | post-train | medium |
 | [todoset-direct-todo-create](todoset-direct-todo-create.md) | addressed-in-bc3-pr-12359 | post-train | medium |
 | [schedule-recurrence-writes](schedule-recurrence-writes.md) | addressed-in-bc3-pr-12359 | post-train | medium |
@@ -71,8 +71,9 @@ making the absorption journey publicly auditable.
 > train. Entries with plan phase `post-train` track contracts documented
 > after the train (BC3 #12359, merged 2026-07-22). `memories-emptied-regression` is a *subtractive* delta (a field BC4
 > populates that BC5 emptied), settled as **permanently empty by documented
-> contract** — its `addressed-in-bc3-pr-11628` records the PR that codified
-> the empty-placeholder contract, not a repopulation; see the entry.
+> contract** (codified by BC3 #11628) and closed out `absorbed-in-sdk` —
+> `GetMyNotificationsOutput.memories` models the settled contract; the flip
+> was docs-only, no repopulation; see the entry.
 > `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
 > classification record (Stacks — renamed Folders in the product — are
 > web-only on both `four` and `master`).

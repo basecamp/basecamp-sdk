@@ -1,9 +1,11 @@
 ---
 gap: memories-emptied-regression
-status: addressed-in-bc3-pr-11628
+status: absorbed-in-sdk
 detected: 2026-05-27
 sdk_demand: high
 bc3_pr: 11628
+smithy_refs:
+  - "GetMyNotificationsOutput.memories member"
 bc3_refs:
   introduced_in: master
   routes:
@@ -17,9 +19,18 @@ bc3_refs:
 > **Not an additive gap.** Every other entry in this registry tracks *new* BC5
 > surface awaiting JSON coverage. This entry tracked a *subtractive* delta —
 > a field BC4 populates that BC5 emptied — and records how it settled:
-> **permanently empty by documented contract**. `addressed-in-bc3-pr-11628`
-> here means BC3 shipped the *documented contract for the empty field*, not a
-> repopulation.
+> **permanently empty by documented contract**. BC3 #11628 shipped the
+> *documented contract for the empty field*, not a repopulation.
+>
+> **Closed out as `absorbed-in-sdk` (docs-only):** everything the settled
+> contract demands of the SDK already exists — `GetMyNotificationsOutput.memories`
+> is modeled in the Smithy spec with a doc comment stating the permanently-empty
+> BC5 contract, and the successor surface shipped separately under
+> [[bubble-ups-surface]] (which keeps this entry's status and explanation
+> deliberately separate). No code changed in the closeout; this flip records
+> that the entry's own obligation — model the field, document the contract —
+> is discharged. The pre-#12442 §Q sequencing queue this narrative once fed is
+> superseded by the post-#504 absorption program.
 
 ## What's missing
 
