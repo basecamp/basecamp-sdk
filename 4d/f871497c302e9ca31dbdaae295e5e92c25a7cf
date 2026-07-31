@@ -1,0 +1,49 @@
+swift/README.md
+  s_34dec3eb0265b2::t_6f20734bcd31e8 303,305-307
+  s_34dec3eb0265b2::t_142765be512461 337-360
+  s_34dec3eb0265b2::t_1f6270619400b6 334
+  s_34dec3eb0265b2::t_938f6149ac21e4 361
+swift/Sources/Basecamp/BasecampError.swift
+  s_34dec3eb0265b2::t_f489b003b30cc4 260-297
+  s_34dec3eb0265b2::t_9d2dfe64ee272e 232,234,236,241,246-248,252
+  s_34dec3eb0265b2::t_370dcd0bfbeb5f 204
+  s_34dec3eb0265b2::t_cce1e0a2b55f11 109
+  s_34dec3eb0265b2::t_731929590e07dd 44-48
+  s_34dec3eb0265b2::t_0b19334a62abd5 144-150
+  s_34dec3eb0265b2::t_96a0c70b406e37 124
+  s_34dec3eb0265b2::t_1309616f78df51 138
+  s_34dec3eb0265b2::t_f2eae5e1e39517 76
+  s_34dec3eb0265b2::t_085d5fb9b1bc78 163-169,176-177,179-203,205-226,228
+  s_2218d00d1182de::t_2d7bd66d4a691f 298
+swift/Tests/BasecampTests/GeneratedServiceTests.swift
+  s_34dec3eb0265b2::t_bc2c31876ff0c7 310,641
+  s_34dec3eb0265b2::t_91e56ebea6597c 319-340
+swift/Tests/BasecampTests/ErrorTests.swift
+  s_34dec3eb0265b2::t_8dc5516dca71e0 120
+  s_34dec3eb0265b2::t_e49b4a544631d7 176-340
+  s_34dec3eb0265b2::t_9073b150c7aec0 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4df871497c302e9ca31dbdaae295e5e92c25a7cf",
+  "prompts": {},
+  "sessions": {
+    "s_2218d00d1182de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd710f98-c872-4170-b8e9-3e1b533f4f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
