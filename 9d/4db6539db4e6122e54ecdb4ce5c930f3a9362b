@@ -1,0 +1,30 @@
+swift/Tests/BasecampTests/TodolistsServiceExtensionsTests.swift
+  s_555508c40a7b3b::t_b9f7f3388da1a4 456-461,474-475,477-479
+  s_555508c40a7b3b::t_b485cb942b38dc 399,401,403-416,420-437
+  s_555508c40a7b3b::t_e2b16e6aee1499 417-419
+  s_555508c40a7b3b::t_7f8443654f7922 488-493,497-501
+  s_555508c40a7b3b::t_2256234b011c7d 371-398,400,402,438-440
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_555508c40a7b3b::t_8f4ef23c84e729 185,190-198
+  s_555508c40a7b3b::t_1e547307bd4279 241-251,255-260,262-268,280-283,287,297-303,305
+  s_555508c40a7b3b::t_43b142a6705d7e 269-279
+  s_555508c40a7b3b::t_84c8e1c5176787 304
+swift/Sources/Basecamp/Generated/Models/TodolistOrGroup.swift
+  s_555508c40a7b3b::t_b66e36402dc380 30-33,35-45,47,57-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "9d4db6539db4e6122e54ecdb4ce5c930f3a9362b",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
