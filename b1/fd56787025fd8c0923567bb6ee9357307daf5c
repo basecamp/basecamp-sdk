@@ -1,0 +1,23 @@
+swift/Tests/BasecampTests/DownloadTests.swift
+  s_555508c40a7b3b::t_becfc4b98525bb 779-781,783-787,789
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  s_555508c40a7b3b::t_218d13280a7f5a 3,256-258,282,288
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/http/BasecampHttpClient.kt
+  s_555508c40a7b3b::t_0bd369f0d1b94a 358-362,364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "b1fd56787025fd8c0923567bb6ee9357307daf5c",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
