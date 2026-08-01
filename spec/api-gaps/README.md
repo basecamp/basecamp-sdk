@@ -65,6 +65,7 @@ making the absorption journey publicly auditable.
 | [bubble-ups-surface](bubble-ups-surface.md) | absorbed-in-sdk | launch | high |
 | [everything-boosts-withdrawn](everything-boosts-withdrawn.md) | no-json-contract | post-train | medium |
 | [everything-todo-card-filters](everything-todo-card-filters.md) | absorbed-in-sdk | post-train | medium |
+| [folders-api](folders-api.md) | addressed-in-bc3-pr-12384 | master | medium |
 
 > Statuses reflect how BC3's **BC5 API train** actually shipped (8 PRs merged
 > to `master`, 2026-07-18..21); BC3 #10947 closed unmerged, superseded by the
@@ -75,8 +76,13 @@ making the absorption journey publicly auditable.
 > `GetMyNotificationsOutput.memories` models the settled contract; the flip
 > was docs-only, no repopulation; see the entry.
 > `stack-doc-and-smithy` is retained as a `confirmed-not-api-resource`
-> classification record (Stacks — renamed Folders in the product — are
-> web-only on both `four` and `master`).
+> classification record of the **launch** decision, and is now **superseded by
+> [`folders-api`](folders-api.md)**: Stacks — renamed Folders in the product,
+> though the wire `type` is still `Stack` — were web-only at launch, but BC3
+> **#12384** (`dc6cd10714`) has since shipped full CRUD JSON on `master`
+> (`GET`/`POST /stacks.json`, `GET`/`PUT`/`DELETE /stacks/{id}.json`), live in
+> production with public docs at `basecamp/bc-api` #420 (`401c8ebcc9`). Read
+> `folders-api.md`, not the superseded entry, for the contract.
 > `everything-boosts-withdrawn` is likewise *subtractive*: it records BC5
 > withdrawing the account-wide `/boosts.json` feed (BC3 #12464, reintroduction
 > tracked in #12463) and the SDK's matching removal of `GetEverythingBoosts`;
