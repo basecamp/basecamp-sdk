@@ -171,9 +171,9 @@ walk(
 # (a required field stays non-null `String`, and a null bound fails decode). Encode
 # the value nullability as a `type: ["string","null"]` union — the required-and-
 # nullable treatment used for Wormhole.destination_url / SearchType.key — so every
-# static SDK models them required-but-nullable (`string | null`). Go keeps its
-# FlexibleTime value type (via x-go-type), which already decodes null to the zero
-# time.
+# static SDK models them required-but-nullable (`string | null`). In Go these
+# generate as *types.FlexibleTime (required-and-nullable takes a pointer), and
+# FlexibleTime itself decodes a JSON null to the zero time.
 .components.schemas.TimelineEventData.properties.starts_at += {
   "type": ["string", "null"],
   "x-go-type": "types.FlexibleTime",

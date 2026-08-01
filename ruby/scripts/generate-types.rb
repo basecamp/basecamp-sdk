@@ -18,6 +18,23 @@ SKIP_PATTERNS = [
   /ErrorResponseContent$/
 ].freeze
 
+# Go type spellings that mean "full timestamp" and therefore get Time coercion
+# in Ruby. Matched after stripping a leading `*`: the Go optional-pointer policy
+# (SPEC.md §10) means a schema may carry either `time.Time` or `*time.Time` for
+# the same wire contract, and an exact-string match silently degrades the
+# pointer spelling to a raw String (#537).
+#
+# types.FlexibleTime is deliberately NOT here: it also accepts date-only values,
+# and Ruby has passed those through as strings since it was introduced. Adding
+# it is a behavior change, not a spelling fix.
+TIMESTAMP_GO_TYPES = ['time.Time'].freeze
+
+def timestamp_go_type?(go_type)
+  return false unless go_type.is_a?(String)
+
+  TIMESTAMP_GO_TYPES.include?(go_type.delete_prefix('*'))
+end
+
 def header
   <<~HEADER
     # frozen_string_literal: true
@@ -207,7 +224,7 @@ if __FILE__ == $PROGRAM_NAME
                     "parse_float(data[\"#{prop_name}\"])"
       elsif prop_schema['type'] == 'boolean'
                     "parse_boolean(data[\"#{prop_name}\"])"
-      elsif prop_schema['x-go-type'] == 'time.Time'
+      elsif timestamp_go_type?(prop_schema['x-go-type'])
                     "parse_datetime(data[\"#{prop_name}\"])"
       else
                     "data[\"#{prop_name}\"]"
