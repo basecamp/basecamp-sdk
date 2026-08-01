@@ -66,7 +66,9 @@ fun main() {
             }
             // Note: MissingFieldException from kotlinx.serialization (when mock
             // bodies lack required model fields) is caught at runtime in runTest()
-            // and reported as SKIP, so no pre-flight filtering is needed.
+            // and reported as FAIL: Kotlin is the strictest fixture consumer, so
+            // an under-specified mock body is a fixture bug to fix, not a reason
+            // to silently shed coverage.
             val result = runTest(tc)
             when {
                 result.skipped -> {
@@ -281,8 +283,12 @@ private fun runTest(tc: TestCase): TestResult {
             caughtException = e
             httpStatusCode = e.httpStatus
         } catch (e: MissingFieldException) {
+            // A mock body that fails the model's required-field validation is a
+            // fixture bug, not a runner limitation: fail loudly so it gets fixed
+            // (canonical bodies live in spec/fixtures/) instead of silently
+            // degrading coverage. Was SKIP until every rider was repaired.
             client.close()
-            return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}", skipped = true)
+            return TestResult(passed = false, message = "Mock body lacks required Kotlin model fields: ${e.message}")
         } catch (e: Exception) {
             client.close()
             return TestResult(false, "Unexpected exception: ${e::class.simpleName}: ${e.message}")
