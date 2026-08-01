@@ -616,8 +616,58 @@
     ]
   },
   {
-    "name": "400 body with a reserved key keeps the flat message",
-    "description": "Verifies that a body carrying \"error\" alongside array-valued members still reports the flat message. Runners assert errorMessage by substring, so this pins the positive half of the reserved-key rule; the negative half (no field map extracted) is pinned exactly by each SDK's own strict-gate matrix",
+    "name": "400 bare field-map body treats __proto__ as an ordinary field name",
+    "description": "Verifies that the unwrapped field map builds its structured slot with an own-property accumulator: a field literally named __proto__ flattens into the message like any other field and does not mutate the map's prototype. Mirrors the wrapped-map case one wire shape over, where field_errors is the body itself",
+    "operation": "CreateWebhook",
+    "method": "POST",
+    "path": "/buckets/{bucketId}/webhooks.json",
+    "pathParams": {
+      "bucketId": 456
+    },
+    "requestBody": {
+      "payload_url": "https://example.com/hook",
+      "types": [
+        "Todo"
+      ]
+    },
+    "mockResponses": [
+      {
+        "status": 400,
+        "body": {
+          "__proto__": [
+            "is reserved"
+          ],
+          "payload_url": [
+            "is invalid"
+          ]
+        }
+      }
+    ],
+    "assertions": [
+      {
+        "type": "errorCode",
+        "expected": "validation"
+      },
+      {
+        "type": "errorField",
+        "path": "httpStatus",
+        "expected": 400
+      },
+      {
+        "type": "errorMessage",
+        "expected": "__proto__: is reserved, payload_url: is invalid"
+      }
+    ],
+    "tags": [
+      "error-mapping",
+      "validation",
+      "field-errors",
+      "structured-error"
+    ]
+  },
+  {
+    "name": "400 body with a string error key keeps the flat message",
+    "description": "Verifies that a body whose \"error\" is a string still reports the flat message even when its other members are string arrays. Only \"errors\" is reserved by name (SPEC \u00a76 step 2); this body stays flat because a string-valued member fails the shape gate. Runners assert errorMessage by substring, so this pins the positive half; each SDK's strict-gate matrix pins the negative half exactly",
     "operation": "CreateWebhook",
     "method": "POST",
     "path": "/buckets/{bucketId}/webhooks.json",

@@ -589,7 +589,7 @@ except ValidationError as e:
 ```
 
 `field_errors` is `None` for every other error shape, and its messages are the
-raw ones — the message is capped at 500 characters, the map is not.
+raw ones — the message is capped at 500 bytes, the map is not.
 
 ## Retry Behavior
 

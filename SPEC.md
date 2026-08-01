@@ -739,7 +739,7 @@ MAX_ERROR_MESSAGE_LENGTH = 500
 
 Error messages extracted from response bodies are truncated to 500 units. If the string exceeds the limit, the last 3 units are replaced with `"..."`, so the result is at most 500 units long.
 
-**Unit semantics:** The unit is language-defined: Go (`len()`) and Ruby (`bytesize`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior.
+**Unit semantics:** The unit is language-defined: Go (`len()`), Ruby (`bytesize`), and Python (`len(s.encode())`) use bytes; TypeScript (`s.length`), Swift (`s.count`), and Kotlin (`s.length`) use character/code-unit length. For ASCII text (which conformance test fixtures use today), these coincide. Unicode truncation semantics are a per-language divergence documented in Appendix F. Note: byte-level truncation (Go/Ruby) can produce invalid UTF-8 mid-codepoint; this is accepted behavior. Python slices bytes too but decodes with `errors="ignore"`, so it drops the partial codepoint instead of emitting it.
 
 ### Sensitive Header Redaction `[static]`
 
@@ -1882,7 +1882,8 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `error-mapping.json` | 422 field-keyed errors keep valid entries beside malformed ones | §6 |
 | `error-mapping.json` | 400 bare field-map body flattens into the message | §6 |
 | `error-mapping.json` | 400 bare field-map body sorts and joins multi-message fields | §6 |
-| `error-mapping.json` | 400 body with a reserved key keeps the flat message | §6 |
+| `error-mapping.json` | 400 bare field-map body treats `__proto__` as an ordinary field name | §6 |
+| `error-mapping.json` | 400 body with a string error key keeps the flat message | §6 |
 | `error-mapping.json` | 429 → rate_limit | §6 |
 | `error-mapping.json` | 500 → api_error | §6 |
 | `error-mapping.json` | 502 → api_error (retryable) | §6 |
