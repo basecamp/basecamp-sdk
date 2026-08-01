@@ -236,6 +236,38 @@ class TestHop1Retry:
         assert "Authorization" not in hop2.calls[0].request.headers
 
     @respx.mock
+    def test_hop1_sends_no_accept_header_on_any_attempt(self):
+        """SPEC section 14: hop 1 carries Authorization and User-Agent only.
+
+        A binary download is not a JSON API call, so the generic path's
+        ``Accept: application/json`` must not ride along — on the first
+        attempt or on a retry.
+        """
+        hop1 = respx.get(self.HOP1).mock(
+            side_effect=[
+                httpx.Response(503),
+                httpx.Response(302, headers={"Location": self.SIGNED}),
+            ]
+        )
+        hop2 = respx.get(self.SIGNED).mock(
+            return_value=httpx.Response(200, content=b"data", headers={"content-type": "application/pdf"})
+        )
+
+        config = make_fast_config()
+        download_sync(self.RAW, http_client=make_fast_http(config), config=config)
+
+        # httpx supplies its own transport-level "*/*" default when no Accept
+        # is set, exactly as it does for the bare hop-2 client. Pin hop 1
+        # against that baseline: identical to hop 2, and never the JSON Accept.
+        hop2_accept = hop2.calls[0].request.headers.get("Accept")
+        assert hop1.call_count == 2
+        for call in hop1.calls:
+            assert call.request.headers.get("Accept") == hop2_accept
+            assert call.request.headers.get("Accept") != "application/json"
+            assert "Content-Type" not in call.request.headers
+            assert call.request.headers.get("User-Agent") is not None
+
+    @respx.mock
     def test_balanced_hooks_across_retries(self):
         respx.get(self.HOP1).mock(
             side_effect=[
@@ -360,3 +392,31 @@ class TestHop1RetryAsync:
             await download_async(self.RAW, http_client=self.make_async_http(config), config=config)
 
         assert len(attempts) == 1
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hop1_sends_no_accept_header_on_any_attempt(self):
+        """SPEC section 14 header scope, async transport (see the sync twin)."""
+        hop1 = respx.get(self.HOP1).mock(
+            side_effect=[
+                httpx.Response(503),
+                httpx.Response(302, headers={"Location": self.SIGNED}),
+            ]
+        )
+        hop2 = respx.get(self.SIGNED).mock(
+            return_value=httpx.Response(200, content=b"data", headers={"content-type": "application/pdf"})
+        )
+
+        config = make_fast_config()
+        await download_async(self.RAW, http_client=self.make_async_http(config), config=config)
+
+        # httpx supplies its own transport-level "*/*" default when no Accept
+        # is set, exactly as it does for the bare hop-2 client. Pin hop 1
+        # against that baseline: identical to hop 2, and never the JSON Accept.
+        hop2_accept = hop2.calls[0].request.headers.get("Accept")
+        assert hop1.call_count == 2
+        for call in hop1.calls:
+            assert call.request.headers.get("Accept") == hop2_accept
+            assert call.request.headers.get("Accept") != "application/json"
+            assert "Content-Type" not in call.request.headers
+            assert call.request.headers.get("User-Agent") is not None

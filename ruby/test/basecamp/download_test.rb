@@ -438,6 +438,31 @@ class DownloadTest < Minitest::Test
     assert_requested(s3_stub)
   end
 
+  # SPEC §14: hop 1 carries Authorization and User-Agent only. A binary
+  # download is not a JSON API call, so the generic request path's
+  # "Accept: application/json" must not ride along — on the first attempt or
+  # on a retry.
+  def test_download_url_hop1_sends_no_json_accept_on_any_attempt
+    hop1_accepts = []
+
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with { |req| hop1_accepts << req.headers["Accept"]; true }
+      .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+      .then.to_return(status: 302, headers: { "Location" => SIGNED_URL })
+
+    stub_request(:get, SIGNED_URL)
+      .to_return(status: 200, body: "data", headers: { "Content-Type" => "application/octet-stream" })
+
+    account = create_account_client(config: fast_download_config)
+    account.download_url(HOP1_URL)
+
+    assert_equal 2, hop1_accepts.length
+    hop1_accepts.each do |accept|
+      refute_equal "application/json", accept,
+        "hop 1 must not send the JSON Accept header (SPEC §14)"
+    end
+  end
+
   def test_download_url_balanced_hooks_across_retries
     starts = []
     ends = []

@@ -128,7 +128,9 @@ class AsyncHttpClient:
         directly rather than looked up by operation.
         """
         url = self._build_url(url)
-        return await self._request_with_retry("GET", url, retry_on=self.DOWNLOAD_RETRY_ON)
+        return await self._request_with_retry(
+            "GET", url, retry_on=self.DOWNLOAD_RETRY_ON, accept=None
+        )
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -155,6 +157,7 @@ class AsyncHttpClient:
         allow_cross_origin: bool = False,
         operation: str | None = None,
         retry_on: frozenset[int] | None = None,
+        accept: str | None = "application/json",
     ) -> httpx.Response:
         # max_retries is a TOTAL attempt count (config validation guarantees it
         # is >= 0). 0 is accepted as a compatibility exception and means a single
@@ -180,6 +183,7 @@ class AsyncHttpClient:
                     files=files,
                     attempt=attempt,
                     allow_cross_origin=allow_cross_origin,
+                    accept=accept,
                 )
             except (RateLimitError, NetworkError, ApiError) as e:
                 if not self._is_retryable_error(e, operation, retry_on=retry_on):
@@ -215,6 +219,7 @@ class AsyncHttpClient:
         attempt: int = 1,
         _retry_count: int = 0,
         allow_cross_origin: bool = False,
+        accept: str | None = "application/json",
     ) -> httpx.Response:
         if not allow_cross_origin and not (
             _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
@@ -227,7 +232,7 @@ class AsyncHttpClient:
         start = time.monotonic()
 
         try:
-            headers = self._request_headers()
+            headers = self._request_headers(accept)
             if content_type:
                 headers["Content-Type"] = content_type
             await self._auth.authenticate(headers)
@@ -259,6 +264,7 @@ class AsyncHttpClient:
                             attempt=attempt,
                             _retry_count=_retry_count + 1,
                             allow_cross_origin=allow_cross_origin,
+                            accept=accept,
                         )
                 raise error
 
@@ -286,11 +292,14 @@ class AsyncHttpClient:
             dict(response.headers),
         )
 
-    def _request_headers(self) -> dict[str, str]:
-        return {
-            "User-Agent": self._user_agent,
-            "Accept": "application/json",
-        }
+    def _request_headers(self, accept: str | None = "application/json") -> dict[str, str]:
+        # accept=None is the binary-download carve-out (SPEC section 14): hop 1
+        # sends Authorization and User-Agent only, because it is not a JSON API
+        # call. Every other caller keeps the JSON Accept.
+        headers = {"User-Agent": self._user_agent}
+        if accept is not None:
+            headers["Accept"] = accept
+        return headers
 
     def _build_url(self, path: str) -> str:
         # Schemes are case-insensitive (RFC 3986): detect absolute URLs on a
