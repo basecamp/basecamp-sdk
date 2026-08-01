@@ -140,6 +140,9 @@ func stringFromRaw(raw json.RawMessage) string {
 // RecordInvalid rendering {"errors": {"field": ["msg", ...]}}. Entries whose
 // value is not an array are skipped, non-string elements are dropped, and a map
 // with no usable entries is treated as absent (nil).
+//
+// Callers reach the unwrapped rendering through parseErrorBody, which falls
+// through to parseBareFieldErrors when there is no "errors" key.
 func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	if len(raw) == 0 {
 		return nil

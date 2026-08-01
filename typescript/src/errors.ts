@@ -69,7 +69,7 @@ export interface BasecampErrorOptions {
   retryAfter?: number;
   /** Request ID from the server for debugging */
   requestId?: string;
-  /** Field-keyed validation messages from a 422 body ({"errors": {field: [messages]}}) */
+  /** Field-keyed validation messages from a 400/422 body, wrapped ({"errors": {field: [messages]}}) or bare ({field: [messages]}) */
   fieldErrors?: Record<string, string[]>;
 }
 
@@ -116,9 +116,11 @@ export class BasecampError extends Error {
 
   /**
    * Field-keyed validation messages from a 422 body of the form
-   * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid rendering.
-   * Undefined for every other error shape. The flattened form is also folded
-   * into `message`; this slot preserves the raw, untruncated per-field messages.
+   * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid rendering —
+   * or the same map with no wrapper at all (`{"field": ["msg", ...]}`), which
+   * some controllers emit. Undefined for every other error shape. The flattened
+   * form is also folded into `message`; this slot preserves the raw, untruncated
+   * per-field messages.
    */
   readonly fieldErrors?: Record<string, string[]>;
 
@@ -378,6 +380,9 @@ export function errorFromParsedBody(
  * the Rails RecordInvalid rendering `{"errors": {"field": ["msg", ...]}}`.
  * Entries whose value is not an array are skipped, non-string elements are
  * dropped, and a map with no usable entries is treated as absent (undefined).
+ *
+ * A body with no `errors` key falls through to `parseBareFieldErrors` for the
+ * unwrapped rendering.
  */
 function parseFieldErrors(body: object): Record<string, string[]> | undefined {
   const errors = (body as { errors?: unknown }).errors;

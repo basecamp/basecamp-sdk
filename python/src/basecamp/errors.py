@@ -123,9 +123,11 @@ class ValidationError(BasecampError):
         **kwargs: Any,
     ):
         super().__init__(message, code=ErrorCode.VALIDATION, **kwargs)
-        #: Field-keyed validation messages from a 422 body of the form
-        #: ``{"errors": {"field": ["msg", ...]}}`` — the Rails RecordInvalid
-        #: rendering. ``None`` for every other error shape. The flattened form
+        #: Field-keyed validation messages from a 400/422 body — either
+        #: ``{"errors": {"field": ["msg", ...]}}``, the Rails RecordInvalid
+        #: rendering, or the same map with no wrapper at all
+        #: (``{"field": ["msg", ...]}``), which some controllers emit. ``None``
+        #: for every other error shape. The flattened form
         #: is also folded into the message; this slot preserves the raw,
         #: untruncated per-field messages.
         self.field_errors = field_errors

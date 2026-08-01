@@ -144,9 +144,11 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         }
     }
 
-    /// Field-keyed validation messages from a 400/422 body, raw and
-    /// untruncated. Nil for every other error shape. The flattened form is also
-    /// folded into `message`.
+    /// Field-keyed validation messages from a 400/422 body — either
+    /// `{"errors": {"field": ["msg", ...]}}`, the Rails RecordInvalid
+    /// rendering, or the same map with no wrapper at all, which some
+    /// controllers emit. Raw and untruncated; nil for every other error shape.
+    /// The flattened form is also folded into `message`.
     public var fieldErrors: [String: [String]]? {
         switch self {
         case .validation(_, _, _, _, let fieldErrors): fieldErrors

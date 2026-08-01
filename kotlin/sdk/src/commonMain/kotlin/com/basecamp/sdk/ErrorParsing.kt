@@ -73,6 +73,9 @@ private fun stringMember(body: JsonObject, key: String): String? =
  * the Rails RecordInvalid rendering `{"errors": {"field": ["msg", ...]}}`.
  * Entries whose value is not an array are skipped, non-string elements are
  * dropped, and a map with no usable entries is treated as absent (null).
+ *
+ * A body with no `errors` object falls through to [parseBareFieldErrors] for
+ * the unwrapped rendering, so this is the entry point for both shapes.
  */
 private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
     val errors = body["errors"] as? JsonObject ?: return parseBareFieldErrors(body)
