@@ -1871,6 +1871,16 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `error-mapping.json` | 404 → not_found | §6 |
 | `error-mapping.json` | 400 → validation | §6 |
 | `error-mapping.json` | 422 → validation | §6 |
+| `error-mapping.json` | 422 field-keyed errors flatten into the message | §6 |
+| `error-mapping.json` | 422 field-keyed errors sort and join multi-message fields | §6 |
+| `error-mapping.json` | 422 field-keyed errors append to a top-level error message | §6 |
+| `error-mapping.json` | 422 field-keyed errors survive a non-string top-level error | §6 |
+| `error-mapping.json` | 422 field-keyed errors append after a message-key fallback | §6 |
+| `error-mapping.json` | 422 field-keyed errors treat `__proto__` as an ordinary field name | §6 |
+| `error-mapping.json` | 422 field-keyed errors keep valid entries beside malformed ones | §6 |
+| `error-mapping.json` | 400 bare field-map body flattens into the message | §6 |
+| `error-mapping.json` | 400 bare field-map body sorts and joins multi-message fields | §6 |
+| `error-mapping.json` | 400 body with a reserved key keeps the flat message | §6 |
 | `error-mapping.json` | 429 → rate_limit | §6 |
 | `error-mapping.json` | 500 → api_error | §6 |
 | `error-mapping.json` | 502 → api_error (retryable) | §6 |
