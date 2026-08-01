@@ -289,7 +289,9 @@ func (s *WebhooksService) Update(ctx context.Context, webhookID int64, req *Upda
 	if req.PayloadURL != "" {
 		body.PayloadUrl = &req.PayloadURL
 	}
-	if len(req.Types) > 0 {
+	// nil means "not addressed" (omitted); a non-nil empty slice is an explicit
+	// empty type list and must reach the wire.
+	if req.Types != nil {
 		body.Types = &req.Types
 	}
 	if req.Active != nil {
@@ -492,10 +494,12 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 		p.ID = int64(gp.Id)
 	}
 	if gp.Bio != nil && *gp.Bio != "" {
-		p.Bio = gp.Bio
+		bio := *gp.Bio
+		p.Bio = &bio
 	}
 	if gp.Location != nil && *gp.Location != "" {
-		p.Location = gp.Location
+		location := *gp.Location
+		p.Location = &location
 	}
 	if gp.CreatedAt != nil && !gp.CreatedAt.IsZero() {
 		p.CreatedAt = gp.CreatedAt.Format(time.RFC3339Nano)

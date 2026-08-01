@@ -305,7 +305,7 @@ func toolFromGenerated(gt generated.Tool) Tool {
 		t.Position = &pos
 	}
 
-	if gt.Bucket.Id != 0 || gt.Bucket.Name != "" {
+	if gt.Bucket != nil {
 		t.Bucket = &Bucket{
 			ID:   gt.Bucket.Id,
 			Name: gt.Bucket.Name,

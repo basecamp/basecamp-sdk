@@ -92,8 +92,14 @@ walk(
 #     match: nested shapes like QuestionSchedule (referenced by
 #     Create/UpdateQuestion bodies) are request-reachable without carrying the
 #     suffix, and a name-only test silently made their arrays unsendable-empty.
-#   * nullable arrays — the pointer distinguishes present-null from absent
-#     (the *[]RichTextAttachment precedent).
+#   * nullable arrays — kept pointer-shaped so an explicit JSON null can be
+#     MARSHALLED (a non-nil pointer to a nil slice emits `null`). Note the
+#     honest limit: on DECODE, encoding/json maps both an omitted key and an
+#     explicit null to a nil pointer, so *[]T cannot tell them apart. No schema
+#     currently pairs optional with nullable on an array — verified empty — so
+#     nothing depends on that distinction today; a future one would need a
+#     different representation (a wrapper type with an explicit presence flag),
+#     not this pass.
 ( .components.schemas ) as $all
 | ( [ $all | keys[] | select(test("RequestContent$")) ] ) as $seeds
 | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }

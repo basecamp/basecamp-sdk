@@ -224,8 +224,10 @@ type MoveColumnRequest struct {
 	SourceID int64 `json:"source_id"`
 	// TargetID is the column ID to move relative to (required).
 	TargetID int64 `json:"target_id"`
-	// Position is the position relative to target (optional).
-	Position int `json:"position,omitempty"`
+	// Position is the zero-indexed position within the destination column.
+	// BC3 documents it as a required parameter and its own example sends 0,
+	// so it is always transmitted — including the zero value.
+	Position int `json:"position"`
 }
 
 // SetColumnColorRequest specifies the parameters for changing a column color.
@@ -809,7 +811,8 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 	body := generated.MoveCardColumnJSONRequestBody{
 		SourceId: req.SourceID,
 		TargetId: req.TargetID,
-		Position: omitzero(int32(req.Position)), // #nosec G115 -- position is validated and bounded by API
+		// Always sent: position 0 is the documented first slot, not "unset".
+		Position: ptr(int32(req.Position)), // #nosec G115 -- position is validated and bounded by API
 	}
 
 	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, cardTableID, body)

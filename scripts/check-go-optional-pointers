@@ -37,8 +37,19 @@ OMITEMPTY = /\b(?:json|form):"[^"]*,omitempty[^"]*"/
 # (LC_ALL=C in a minimal CI container) the default external encoding is
 # US-ASCII, so matching raises ArgumentError and the guard dies on the very
 # file it guards.
+unparsed = []
+
 File.foreach(path, encoding: "UTF-8").with_index(1) do |line, lineno|
-  next unless (m = line.match(FIELD))
+  m = line.match(FIELD)
+  # A line carrying omitempty that the field pattern cannot parse must FAIL,
+  # never be skipped: silently ignoring a shape the generator started emitting
+  # (a deeper-indented field in a nested anonymous struct, a type containing
+  # whitespace) would quietly shrink this guard's coverage to nothing while it
+  # kept reporting success.
+  if m.nil?
+    unparsed << "#{path}:#{lineno}: #{line.strip}" if line.match?(/`[^`]*`/) && line.match?(OMITEMPTY)
+    next
+  end
   next unless m[3].match?(OMITEMPTY)
 
   name, type = m[1], m[2]
@@ -56,6 +67,13 @@ end
 
 total = stats.values.sum
 abort "check-go-optional-pointers: parsed zero omitempty fields from #{path} — pattern drift?" if total.zero?
+
+if unparsed.any?
+  warn "check-go-optional-pointers: #{unparsed.size} omitempty field(s) the field pattern could not parse:"
+  unparsed.each { |u| warn "  #{u}" }
+  warn "Teach FIELD the new shape — an unparsed field is unchecked, not exempt."
+  exit 1
+end
 
 if violations.any?
   warn "check-go-optional-pointers: #{violations.size} optional field(s) cannot represent absence (non-pointer value type with omitempty):"

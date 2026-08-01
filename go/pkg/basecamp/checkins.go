@@ -1082,7 +1082,9 @@ func questionFromGenerated(gq generated.Question) Question {
 		q.ID = gq.Id
 	}
 
-	if gq.Schedule != nil && deref(gq.Schedule.Frequency) != "" {
+	// Presence is the pointer: a schedule present without a frequency still
+	// carries days/hour/dates, and dropping the whole wrapper loses them.
+	if gq.Schedule != nil {
 		var days []int
 		if gq.Schedule.Days != nil {
 			days = make([]int, len(*gq.Schedule.Days))
@@ -1101,18 +1103,9 @@ func questionFromGenerated(gq generated.Question) Question {
 			StartDate: deref(gq.Schedule.StartDate),
 			EndDate:   deref(gq.Schedule.EndDate),
 		}
-		if deref(gq.Schedule.WeekInstance) != 0 {
-			wi := int(deref(gq.Schedule.WeekInstance))
-			q.Schedule.WeekInstance = &wi
-		}
-		if deref(gq.Schedule.WeekInterval) != 0 {
-			wi := int(deref(gq.Schedule.WeekInterval))
-			q.Schedule.WeekInterval = &wi
-		}
-		if deref(gq.Schedule.MonthInterval) != 0 {
-			mi := int(deref(gq.Schedule.MonthInterval))
-			q.Schedule.MonthInterval = &mi
-		}
+		q.Schedule.WeekInstance = intPtrFrom(gq.Schedule.WeekInstance)
+		q.Schedule.WeekInterval = intPtrFrom(gq.Schedule.WeekInterval)
+		q.Schedule.MonthInterval = intPtrFrom(gq.Schedule.MonthInterval)
 	}
 
 	if gq.Parent.Id != 0 || gq.Parent.Title != "" {

@@ -240,7 +240,8 @@ func clientApprovalFromGenerated(ga generated.ClientApproval) ClientApproval {
 		a.ID = ga.Id
 	}
 
-	if ga.DueOn != nil && !ga.DueOn.IsZero() {
+	// Presence is the pointer; a present zero date is a real value.
+	if ga.DueOn != nil {
 		dueOn := ga.DueOn.String()
 		a.DueOn = &dueOn
 	}

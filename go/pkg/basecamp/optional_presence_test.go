@@ -1,6 +1,10 @@
 package basecamp
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -52,5 +56,40 @@ func TestQuestionFromGenerated_AbsentHourMinuteStayNil(t *testing.T) {
 	}
 	if explicit.Schedule.Minute == nil || *explicit.Schedule.Minute != 0 {
 		t.Error("explicit minute 0 must survive as a non-nil zero")
+	}
+}
+
+// Wire-level: an explicit empty participant list must survive to the request
+// body. A `len(x) > 0` guard would silently omit it, leaving the caller unable
+// to express "no participants" on create.
+func TestCreateScheduleEntry_ExplicitEmptyParticipantsReachTheWire(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":1,"type":"Schedule::Entry"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").Schedules()
+
+	if _, err := svc.CreateEntry(context.Background(), 1, &CreateScheduleEntryRequest{
+		Summary:        "s",
+		StartsAt:       "2026-08-01T09:00:00Z",
+		EndsAt:         "2026-08-01T10:00:00Z",
+		ParticipantIDs: []int64{},
+	}); err != nil {
+		t.Fatalf("CreateEntry: %v", err)
+	}
+
+	v, ok := got["participant_ids"]
+	if !ok {
+		t.Fatal("explicit empty ParticipantIDs must reach the wire; key was omitted")
+	}
+	if arr, isArr := v.([]any); !isArr || len(arr) != 0 {
+		t.Errorf("expected an empty array on the wire, got %#v", v)
 	}
 }
