@@ -438,10 +438,12 @@ class DownloadTest < Minitest::Test
     assert_requested(s3_stub)
   end
 
-  # max_retries is a TOTAL attempt count, so a refreshable-401 replay draws
-  # from the same budget: a cap of one means one request on the wire. The
-  # replay used to live inside single_request with its own counter.
-  def test_download_url_refreshable_401_replay_costs_an_attempt
+  # SPEC §4: refresh is attempted at most once PER REQUEST — tracked with a
+  # boolean, not a counter, and not subordinate to the transient-retry budget.
+  # So a refreshable 401 replays once even with retries disabled, deliberately
+  # orthogonal to §14's hop-1 attempt cap. Whether the two should be
+  # reconciled is tracked in #565; this pins what the spec says today.
+  def test_download_url_refreshable_401_replays_once_independent_of_the_retry_cap
     provider = Class.new do
       attr_reader :refreshes
 
@@ -460,7 +462,8 @@ class DownloadTest < Minitest::Test
     account = create_account_client(config: fast_download_config(max_retries: 0), token_provider: provider)
     assert_raises(Basecamp::Error) { account.download_url(HOP1_URL) }
 
-    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 1)
+    # One transient attempt, plus §4's single refresh replay.
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 2)
   end
 
   # SPEC §14: hop 1 carries Authorization and User-Agent only. A binary

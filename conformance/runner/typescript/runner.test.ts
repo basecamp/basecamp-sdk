@@ -800,7 +800,15 @@ function checkAssertions(
       case "delayBetweenRequests": {
         const times = tracker.requestTimes();
         if (times.length >= 2) {
-          const delay = times[1]! - times[0]!;
+          // index selects a single inter-request GAP (gap i is between request
+          // i and i+1), defaulting to the first. A named gap that does not
+          // exist fails rather than passing silently.
+          const gap = assertion.index ?? 0;
+          expect(
+            times.length,
+            `[${tc.name}] expected a delay at gap ${gap}, but only ${times.length} request(s) were made`,
+          ).toBeGreaterThan(gap + 1);
+          const delay = times[gap + 1]! - times[gap]!;
           const minDelay = assertion.min ?? 0;
           // Node's timers may fire marginally BEFORE the requested delay —
           // libuv rounds the deadline down internally, so a 2000ms sleep can
@@ -814,7 +822,7 @@ function checkAssertions(
           // interval (no delay at all).
           expect(
             delay,
-            `[${tc.name}] expected delay >= ${minDelay}ms (allowing ${TIMER_SLACK_MS}ms timer slack), got ${delay}ms`,
+            `[${tc.name}] expected delay >= ${minDelay}ms at gap ${gap} (allowing ${TIMER_SLACK_MS}ms timer slack), got ${delay}ms`,
           ).toBeGreaterThanOrEqual(minDelay - TIMER_SLACK_MS);
         }
         break;

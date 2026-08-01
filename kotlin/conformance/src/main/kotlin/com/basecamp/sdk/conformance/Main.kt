@@ -411,10 +411,18 @@ private fun runTest(tc: TestCase): TestResult {
 
             "delayBetweenRequests" -> {
                 if (requestTimes.size >= 2) {
-                    val delay = requestTimes[1] - requestTimes[0]
+                    // index selects a single inter-request GAP (gap i is
+                    // between request i and i+1), defaulting to the first. A
+                    // named gap that does not exist fails rather than passing
+                    // silently.
+                    val gap = assertion.index
+                    if (gap + 1 >= requestTimes.size) {
+                        return TestResult(false, "Expected a delay at gap $gap, but only ${requestTimes.size} request(s) were made")
+                    }
+                    val delay = requestTimes[gap + 1] - requestTimes[gap]
                     val minDelay = assertion.min.toLong()
                     if (delay < minDelay) {
-                        return TestResult(false, "Expected delay >= ${minDelay}ms, got ${delay}ms")
+                        return TestResult(false, "Expected delay >= ${minDelay}ms at gap $gap, got ${delay}ms")
                     }
                 }
             }

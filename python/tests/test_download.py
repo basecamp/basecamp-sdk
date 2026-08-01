@@ -236,13 +236,15 @@ class TestHop1Retry:
         assert "Authorization" not in hop2.calls[0].request.headers
 
     @respx.mock
-    def test_refreshable_401_replay_costs_an_attempt(self):
-        """max_retries is a TOTAL attempt count — a refresh replay is an attempt.
+    def test_refreshable_401_replays_once_independent_of_the_retry_cap(self):
+        """SPEC §4: refresh is attempted at most once PER REQUEST.
 
-        The 401 token-refresh replay used to live inside ``_single_request``
-        with its own counter, so a cap of one still put two requests on the
-        wire. It is now the retry loop's business and draws from the same
-        budget.
+        §4 tracks it with a boolean, not a counter, and does not subordinate
+        it to the transient-retry budget — so a refreshable 401 replays once
+        even with retries disabled. That is deliberately orthogonal to §14's
+        hop-1 attempt cap, which governs transient-failure retries. Whether
+        the two should be reconciled is tracked in #565; this pins what the
+        spec says today so a future change has to be a decision, not a drift.
         """
 
         class RefreshableProvider(StaticTokenProvider):
@@ -264,18 +266,9 @@ class TestHop1Retry:
         with pytest.raises(BasecampError):
             download_sync(self.RAW, http_client=http, config=config)
 
-        # Cap of one means one request, refresh or no refresh.
-        assert hop1.call_count == 1
-
-        # With budget to spend, the replay happens and is counted: two
-        # attempts total, not two-plus-a-free-replay.
-        hop1.reset()
-        config = make_fast_config(max_retries=2)
-        http = HttpClient(config, BearerAuth(RefreshableProvider()))
-        with pytest.raises(BasecampError):
-            download_sync(self.RAW, http_client=http, config=config)
-
+        # One transient attempt, plus §4's single refresh replay.
         assert hop1.call_count == 2
+        assert provider.refreshes == 1
 
     @respx.mock
     def test_hop1_sends_no_accept_header_on_any_attempt(self):
