@@ -461,34 +461,349 @@ final class DownloadTests: XCTestCase {
         }
     }
 
-    // MARK: - No Retry on 429
+    // MARK: - Hop-1 Retry Policy (SPEC §14)
 
-    func testDownloadURL_noRetryOn429() async throws {
+    private static let hop1URL = "https://3.basecampapi.com/999999999/attachments/abc/download/file.txt"
+
+    /// Records the request lifecycle so the hop-1 loop's hook emission can be
+    /// asserted attempt by attempt.
+    private final class RetryHookSpy: BasecampHooks, @unchecked Sendable {
+        private let lock = NSLock()
+        private var _starts: [Int] = []
+        private var _ends: [Int] = []
+        private var _retries: [Int] = []
+
+        var starts: [Int] { lock.withLock { _starts } }
+        var ends: [Int] { lock.withLock { _ends } }
+        var retries: [Int] { lock.withLock { _retries } }
+
+        func onRequestStart(_ info: RequestInfo) {
+            lock.withLock { _starts.append(info.attempt) }
+        }
+
+        func onRequestEnd(_ info: RequestInfo, result: RequestResult) {
+            lock.withLock { _ends.append(info.attempt) }
+        }
+
+        func onRetry(_ info: RequestInfo, attempt: Int, error: any Error, delaySeconds: TimeInterval) {
+            lock.withLock { _retries.append(attempt) }
+        }
+    }
+
+    /// The COMPLETE declared retry set, pinned status by status (the shared
+    /// conformance fixtures only cover 429 and 503): hop 1 retries
+    /// {429, 502, 503, 504} and then follows the redirect to the signed hop.
+    func testDownloadURL_retriesDeclaredStatusesThenFollowsRedirect() async throws {
+        for status in [429, 502, 503, 504] {
+            let hop1Attempts = Counter()
+            let hop2Requests = Counter()
+            let transport = MockTransport { request in
+                if request.url!.path.hasPrefix("/signed/") {
+                    hop2Requests.increment()
+                    return (
+                        Data("data".utf8),
+                        makeHTTPResponse(
+                            url: request.url!.absoluteString,
+                            statusCode: 200,
+                            headers: ["Content-Type": "application/octet-stream"]
+                        )
+                    )
+                }
+                if hop1Attempts.increment() == 1 {
+                    return (
+                        Data("{}".utf8),
+                        makeHTTPResponse(
+                            url: request.url!.absoluteString,
+                            statusCode: status,
+                            headers: ["Content-Type": "application/json"]
+                        )
+                    )
+                }
+                return (
+                    Data(),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 302,
+                        headers: ["Location": "/signed/file.txt"]
+                    )
+                )
+            }
+            let account = makeTestAccountClient(transport: transport, enableRetry: true)
+
+            let result = try await account.downloadURL(Self.hop1URL)
+
+            XCTAssertEqual(String(data: result.body, encoding: .utf8), "data", "status \(status)")
+            XCTAssertEqual(hop1Attempts.value, 2, "status \(status)")
+            XCTAssertEqual(hop2Requests.value, 1, "status \(status)")
+        }
+    }
+
+    /// 500 is deliberately outside the declared set: the download hop keeps the
+    /// main GET loop's declared-set discipline rather than the error taxonomy's
+    /// broader "all 5xx retryable" flag.
+    func testDownloadURL_neverRetries500() async throws {
         let counter = Counter()
         let transport = MockTransport { request in
             counter.increment()
             return (
-                Data(#"{"error":"Rate limited"}"#.utf8),
+                Data(#"{"error":"Internal server error"}"#.utf8),
                 makeHTTPResponse(
                     url: request.url!.absoluteString,
-                    statusCode: 429,
-                    headers: ["Content-Type": "application/json", "Retry-After": "30"]
+                    statusCode: 500,
+                    headers: ["Content-Type": "application/json"]
                 )
             )
         }
         let account = makeTestAccountClient(transport: transport, enableRetry: true)
 
         do {
-            _ = try await account.downloadURL("https://3.basecampapi.com/999999999/attachments/abc/download/file.txt")
-            XCTFail("Expected rate limit error")
-        } catch let error as BasecampError {
-            guard case .rateLimit = error else {
-                XCTFail("Expected rateLimit, got \(error)")
-                return
-            }
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected api error")
+        } catch is BasecampError {
+            // Expected.
         }
 
-        // Only one request — no retry
         XCTAssertEqual(counter.value, 1)
+    }
+
+    func testDownloadURL_retriesNetworkErrorThenSucceeds() async throws {
+        struct TestError: Error {}
+
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                throw TestError()
+            }
+            return (
+                Data("content".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "text/plain"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true)
+
+        let result = try await account.downloadURL(Self.hop1URL)
+
+        XCTAssertEqual(String(data: result.body, encoding: .utf8), "content")
+        XCTAssertEqual(counter.value, 2)
+    }
+
+    /// The enabled policy is a fixed three attempts — there is no public
+    /// numeric knob for the download hop.
+    func testDownloadURL_exhaustsThreeAttemptsThenSurfaces() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            counter.increment()
+            return (
+                Data("{}".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 503,
+                    headers: ["Content-Type": "application/json"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected error after the attempt budget is spent")
+        } catch is BasecampError {
+            // Expected.
+        }
+
+        XCTAssertEqual(counter.value, 3)
+    }
+
+    func testDownloadURL_enableRetryFalseSendsExactlyOneAttempt() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            counter.increment()
+            return (
+                Data("{}".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 503,
+                    headers: ["Content-Type": "application/json"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: false)
+
+        do {
+            _ = try await account.downloadURL(Self.hop1URL)
+            XCTFail("Expected error")
+        } catch is BasecampError {
+            // Expected.
+        }
+
+        XCTAssertEqual(counter.value, 1)
+    }
+
+    /// Every hop-1 attempt is authenticated — including the retried one — and
+    /// the signed hop never is.
+    func testDownloadURL_authOnEveryHop1AttemptNeverOnHop2() async throws {
+        let hop1Auth = AuthRecorder()
+        let hop2Auth = AuthRecorder()
+        let hop1Attempts = Counter()
+        let transport = MockTransport { request in
+            if request.url!.path.hasPrefix("/signed/") {
+                hop2Auth.record(request.value(forHTTPHeaderField: "Authorization"))
+                return (
+                    Data("data".utf8),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 200,
+                        headers: ["Content-Type": "application/octet-stream"]
+                    )
+                )
+            }
+            hop1Auth.record(request.value(forHTTPHeaderField: "Authorization"))
+            if hop1Attempts.increment() == 1 {
+                return (
+                    Data("{}".utf8),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 503,
+                        headers: ["Content-Type": "application/json"]
+                    )
+                )
+            }
+            return (
+                Data(),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 302,
+                    headers: ["Location": "/signed/file.txt"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true)
+
+        _ = try await account.downloadURL(Self.hop1URL)
+
+        XCTAssertEqual(hop1Auth.values, ["Bearer test-token", "Bearer test-token"])
+        XCTAssertEqual(hop2Auth.values.count, 1)
+        XCTAssertNil(hop2Auth.values[0])
+    }
+
+    func testDownloadURL_balancedHooksAcrossRetries() async throws {
+        let spy = RetryHookSpy()
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() < 3 {
+                return (
+                    Data("{}".utf8),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 503,
+                        headers: ["Content-Type": "application/json"]
+                    )
+                )
+            }
+            return (
+                Data("content".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "text/plain"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
+
+        _ = try await account.downloadURL(Self.hop1URL)
+
+        XCTAssertEqual(spy.starts, [1, 2, 3])
+        XCTAssertEqual(spy.ends, [1, 2, 3])
+        // onRetry names the UPCOMING attempt (SPEC §7 attempt semantics).
+        XCTAssertEqual(spy.retries, [2, 3])
+    }
+
+    func testDownloadURL_honorsRetryAfterOn429() async throws {
+        let counter = Counter()
+        let transport = MockTransport { request in
+            if counter.increment() == 1 {
+                return (
+                    Data("{}".utf8),
+                    makeHTTPResponse(
+                        url: request.url!.absoluteString,
+                        statusCode: 429,
+                        headers: ["Content-Type": "application/json", "Retry-After": "2"]
+                    )
+                )
+            }
+            return (
+                Data("content".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 200,
+                    headers: ["Content-Type": "text/plain"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true)
+
+        let start = CFAbsoluteTimeGetCurrent()
+        _ = try await account.downloadURL(Self.hop1URL)
+        let elapsed = CFAbsoluteTimeGetCurrent() - start
+
+        XCTAssertEqual(counter.value, 2)
+        // Retry-After: 2 wins over the 1-second exponential base.
+        XCTAssertGreaterThanOrEqual(elapsed, 2.0, "Expected the Retry-After pause, got \(elapsed)s")
+    }
+
+    /// Cancelling during the hop-1 backoff propagates CancellationError raw:
+    /// no phantom onRequestEnd for the attempt that already ended, no second
+    /// onRetry, and no further attempt.
+    func testDownloadURL_cancellationDuringBackoffPropagatesRaw() async throws {
+        let spy = RetryHookSpy()
+        let transport = MockTransport { request in
+            (
+                Data("{}".utf8),
+                makeHTTPResponse(
+                    url: request.url!.absoluteString,
+                    statusCode: 503,
+                    headers: ["Content-Type": "application/json"]
+                )
+            )
+        }
+        let account = makeTestAccountClient(transport: transport, enableRetry: true, hooks: spy)
+
+        let url = Self.hop1URL
+        let task = Task { _ = try await account.downloadURL(url) }
+
+        while transport.requests.isEmpty {
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected: cooperative cancellation propagates raw.
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+
+        XCTAssertEqual(transport.requests.count, 1, "A cancelled backoff must not start another attempt")
+        XCTAssertEqual(spy.ends, [1], "A cancelled backoff must not emit a phantom onRequestEnd")
+        XCTAssertEqual(spy.retries, [2], "A cancelled backoff must not emit a second onRetry")
+    }
+}
+
+/// Thread-safe recorder for per-attempt Authorization header values.
+private final class AuthRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _values: [String?] = []
+
+    var values: [String?] { lock.withLock { _values } }
+
+    func record(_ value: String?) {
+        lock.withLock { _values.append(value) }
     }
 }
