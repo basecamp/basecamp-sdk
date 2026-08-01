@@ -69,14 +69,16 @@ class OperationMapper
     @account = account_client
   end
 
-  def call(operation, path_params: {}, query_params: {}, body: nil, path: "")
+  def call(operation, path_params: {}, query_params: {}, body: nil, path: "", max_items: nil)
     case operation
     when "DownloadURL"
       raise "DownloadURL test case requires a non-empty path" if path.nil? || path.empty?
       raw_url = "https://storage.3.basecamp.com" + path
       @account.download_url(raw_url)
     when "ListProjects"
-      @account.projects.list.to_a
+      # Returned unconsumed so the runner can consume then assert on .meta;
+      # the plain arity stays exercised when the fixture carries no maxItems.
+      max_items ? @account.projects.list(max_items: max_items) : @account.projects.list
     when "GetProject"
       @account.projects.get(project_id: path_params["projectId"])
     when "CreateProject"
@@ -84,7 +86,7 @@ class OperationMapper
     when "ListTodos"
       @account.todos.list(
         todolist_id: path_params["todolistId"]
-      ).to_a
+      )
     when "GetTodo"
       @account.todos.get(
         todo_id: path_params["todoId"]
@@ -280,9 +282,6 @@ TestResult = Struct.new(:name, :passed, :message)
 # The Ruby SDK only retries GET requests (see Http#request). PUT and DELETE
 # are sent once even though they're naturally idempotent. Tests asserting
 # mutation-retry behavior are skipped.
-#
-# The Ruby SDK's paginate Enumerator does not expose X-Total-Count metadata,
-# so responseMeta.totalCount assertions are skipped.
 RUBY_SKIPS = Set.new([
   "PUT operation is naturally idempotent",
   "DELETE operation is naturally idempotent",
@@ -294,11 +293,6 @@ RUBY_SKIPS = Set.new([
   "UpdateCalendar PUT retries when marked idempotent",
   "PrioritizeAssignment POST retries when marked idempotent",
   "DeprioritizeAssignment DELETE retries when marked idempotent",
-  "Total count header is accessible",
-  "Missing X-Total-Count returns zero",
-  "Pagination stops at maxPages safety cap",
-  "maxItems caps results across pages",
-  "maxItems landing exactly on the final item is not truncated",
   "DownloadURL retries on 503 at the auth'd first hop",
   "DownloadURL honors Retry-After on 429 at the auth'd first hop",
   "Network error on an idempotent POST is retried then succeeds",
@@ -316,11 +310,6 @@ RUBY_SKIP_REASONS = {
   "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "DeprioritizeAssignment DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
-  "Total count header is accessible" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
-  "Missing X-Total-Count returns zero" => "Ruby SDK paginate doesn't expose X-Total-Count metadata",
-  "Pagination stops at maxPages safety cap" => "Ruby SDK paginate doesn't expose truncation metadata",
-  "maxItems caps results across pages" => "Ruby SDK paginate doesn't support maxItems",
-  "maxItems landing exactly on the final item is not truncated" => "Ruby SDK paginate doesn't support maxItems",
   "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
   "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
   "Network error on an idempotent POST is retried then succeeds" => "Ruby SDK only retries GET network errors; mutations go through single_request with no retry",
@@ -359,8 +348,14 @@ class TestRunner
         path_params: @test["pathParams"] || {},
         query_params: @test["queryParams"] || {},
         body: @test["requestBody"],
-        path: @test["path"] || ""
+        path: @test["path"] || "",
+        max_items: (@test["configOverrides"] || {})["maxItems"]
       )
+      # Consume-then-assert: pagination metadata (truncated in particular) is
+      # final only after the lazy enumeration completes, and consumption is
+      # what drives the follow-up page requests that requestCount observes.
+      # The enumerator itself is kept so responseMeta can reach .meta.
+      result.to_a if result.is_a?(Enumerator)
       verify_assertions(result: result, error: nil)
     rescue StandardError => e
       verify_assertions(result: nil, error: e)
@@ -776,7 +771,12 @@ class TestRunner
       when "responseMeta"
         field_path = assertion["path"]
         expected = assertion["expected"]
-        actual = result.is_a?(Hash) ? result[field_path] || result[field_path.to_sym] : nil
+        snake_field = field_path.gsub(/([A-Z])/) { "_#{Regexp.last_match(1).downcase}" }
+        actual = if result.respond_to?(:meta) && result.meta.respond_to?(snake_field)
+          result.meta.public_send(snake_field)
+        elsif result.is_a?(Hash)
+          result[field_path] || result[field_path.to_sym]
+        end
         unless actual == expected
           failures << "Expected responseMeta.#{field_path} = #{expected.inspect}, got #{actual.inspect}"
         end

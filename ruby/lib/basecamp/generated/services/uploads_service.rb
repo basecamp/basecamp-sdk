@@ -29,19 +29,21 @@ module Basecamp
 
       # List versions of an upload
       # @param upload_id [Integer] upload id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list_versions(upload_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list_versions(upload_id:, max_items: nil)
         wrap_paginated(service: "uploads", operation: "list_versions", is_mutation: false, resource_id: upload_id) do
-          paginate("/uploads/#{upload_id}/versions.json", operation: "ListUploadVersions")
+          paginate("/uploads/#{upload_id}/versions.json", operation: "ListUploadVersions", max_items: max_items)
         end
       end
 
       # List uploads in a vault
       # @param vault_id [Integer] vault id ID
-      # @return [Enumerator<Hash>] paginated results
-      def list(vault_id:)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(vault_id:, max_items: nil)
         wrap_paginated(service: "uploads", operation: "list", is_mutation: false, resource_id: vault_id) do
-          paginate("/vaults/#{vault_id}/uploads.json", operation: "ListUploads")
+          paginate("/vaults/#{vault_id}/uploads.json", operation: "ListUploads", max_items: max_items)
         end
       end
 

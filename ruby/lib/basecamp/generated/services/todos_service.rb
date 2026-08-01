@@ -28,11 +28,12 @@ module Basecamp
       # @param todolist_id [Integer] todolist id ID
       # @param status [String, nil] active|archived|trashed
       # @param completed [Boolean, nil] completed
-      # @return [Enumerator<Hash>] paginated results
-      def list(todolist_id:, status: nil, completed: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(todolist_id:, status: nil, completed: nil, max_items: nil)
         wrap_paginated(service: "todos", operation: "list", is_mutation: false, resource_id: todolist_id) do
           params = compact_query_params(status: status, completed: completed)
-          paginate("/todolists/#{todolist_id}/todos.json", params: params, operation: "ListTodos")
+          paginate("/todolists/#{todolist_id}/todos.json", params: params, operation: "ListTodos", max_items: max_items)
         end
       end
 

@@ -10,11 +10,12 @@ module Basecamp
       # List all client correspondences in a project
       # @param sort [String, nil] created_at|updated_at
       # @param direction [String, nil] asc|desc
-      # @return [Enumerator<Hash>] paginated results
-      def list(sort: nil, direction: nil)
+      # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
+      # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
+      def list(sort: nil, direction: nil, max_items: nil)
         wrap_paginated(service: "clientcorrespondences", operation: "list", is_mutation: false) do
           params = compact_query_params(sort: sort, direction: direction)
-          paginate("/client/correspondences.json", params: params, operation: "ListClientCorrespondences")
+          paginate("/client/correspondences.json", params: params, operation: "ListClientCorrespondences", max_items: max_items)
         end
       end
 

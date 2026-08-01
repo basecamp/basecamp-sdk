@@ -202,10 +202,12 @@ module Basecamp
     # Fetches all pages of a paginated resource.
     # @param path [String] URL path (without account prefix)
     # @param params [Hash] query parameters
+    # @param max_items [Integer, nil] cap on items yielded across pages;
+    #   nil or non-positive means no cap
     # @yield [Hash] each item from the response
-    # @return [Enumerator] if no block given
-    def paginate(path, params: {}, operation: nil, &)
-      @parent.http.paginate(account_path(path), params: params, operation: operation, &)
+    # @return [ListEnumerator] metadata-carrying lazy enumerator
+    def paginate(path, params: {}, operation: nil, max_items: nil, &)
+      @parent.http.paginate(account_path(path), params: params, operation: operation, max_items: max_items, &)
     end
 
     # Fetches all pages of a paginated resource, extracting items from a key.
@@ -213,19 +215,25 @@ module Basecamp
     # @param path [String] URL path (without account prefix)
     # @param key [String] the key containing the array of items
     # @param params [Hash] query parameters
+    # @param max_items [Integer, nil] cap on items yielded across pages;
+    #   nil or non-positive means no cap
     # @yield [Hash] each item from the response
-    # @return [Enumerator] if no block given
-    def paginate_key(path, key:, params: {}, operation: nil, &)
-      @parent.http.paginate_key(account_path(path), key: key, params: params, operation: operation, &)
+    # @return [ListEnumerator] metadata-carrying lazy enumerator
+    def paginate_key(path, key:, params: {}, operation: nil, max_items: nil, &)
+      @parent.http.paginate_key(account_path(path), key: key, params: params, operation: operation, \
+        max_items: max_items, &)
     end
 
     # Fetches a wrapped paginated resource, returning wrapper fields + lazy paginated items.
     # @param path [String] URL path (without account prefix)
     # @param key [String] the key containing the array of paginated items
     # @param params [Hash] query parameters
-    # @return [Hash] wrapper fields merged with key => Enumerator of all items
-    def paginate_wrapped(path, key:, params: {}, operation: nil)
-      @parent.http.paginate_wrapped(account_path(path), key: key, params: params, operation: operation)
+    # @param max_items [Integer, nil] cap on items yielded across pages;
+    #   nil or non-positive means no cap
+    # @return [Hash] wrapper fields merged with key => ListEnumerator of all items
+    def paginate_wrapped(path, key:, params: {}, operation: nil, max_items: nil)
+      @parent.http.paginate_wrapped(account_path(path), key: key, params: params, operation: operation, \
+        max_items: max_items)
     end
 
     # Downloads file content from any API-routable download URL.

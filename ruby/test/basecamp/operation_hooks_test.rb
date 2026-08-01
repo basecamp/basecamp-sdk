@@ -41,7 +41,10 @@ class OperationHooksTest < Minitest::Test
 
   # -- Paginated operations (wrap_paginated) --
 
-  def test_paginated_hooks_do_not_fire_until_iteration
+  def test_paginated_start_hook_fires_eagerly_and_end_after_consumption
+    # Page 1 is fetched eagerly at call time, so on_operation_start must fire
+    # then (before the page-1 request hooks); on_operation_end fires only
+    # once iteration completes.
     events = []
     hooks = TrackingHooks.new(events)
     account = create_account_client(hooks: hooks)
@@ -49,7 +52,10 @@ class OperationHooksTest < Minitest::Test
     stub_get("/12345/projects.json", response_body: [ { "id" => 1 } ])
 
     enum = account.projects.list
-    assert_empty events, "hooks should not fire before iteration starts"
+    op_events = events.select { |e| e[:event].to_s.start_with?("on_operation") }
+    assert_equal [ :on_operation_start ], op_events.map { |e| e[:event] }
+    assert_equal :on_operation_start, events.first[:event],
+      "start hook must precede the eager page-1 request hooks"
 
     enum.to_a
     op_events = events.select { |e| e[:event].to_s.start_with?("on_operation") }
@@ -91,7 +97,9 @@ class OperationHooksTest < Minitest::Test
     assert_nil end_event[:result].error
   end
 
-  def test_paginated_hooks_report_error_during_iteration
+  def test_paginated_hooks_report_page_one_error_at_call_time
+    # The eager page-1 fetch surfaces errors from the list call itself,
+    # before any iteration, with the end hook carrying the error.
     events = []
     hooks = TrackingHooks.new(events)
     account = create_account_client(hooks: hooks)
@@ -99,7 +107,30 @@ class OperationHooksTest < Minitest::Test
     stub_request(:get, "https://3.basecampapi.com/12345/projects.json")
       .to_return(status: 404, body: { "error" => "not found" }.to_json)
 
-    assert_raises(Basecamp::NotFoundError) { account.projects.list.to_a }
+    assert_raises(Basecamp::NotFoundError) { account.projects.list }
+
+    end_event = events.find { |e| e[:event] == :on_operation_end }
+    assert_not_nil end_event
+    assert_kind_of Basecamp::NotFoundError, end_event[:result].error
+  end
+
+  def test_paginated_hooks_report_error_during_iteration
+    events = []
+    hooks = TrackingHooks.new(events)
+    account = create_account_client(hooks: hooks)
+
+    page2_url = "https://3.basecampapi.com/12345/projects.json?page=2"
+    stub_request(:get, "https://3.basecampapi.com/12345/projects.json")
+      .to_return(
+        status: 200,
+        body: [ { "id" => 1 } ].to_json,
+        headers: { "Content-Type" => "application/json", "Link" => "<#{page2_url}>; rel=\"next\"" }
+      )
+    stub_request(:get, page2_url)
+      .to_return(status: 404, body: { "error" => "not found" }.to_json)
+
+    enum = account.projects.list
+    assert_raises(Basecamp::NotFoundError) { enum.to_a }
 
     end_event = events.find { |e| e[:event] == :on_operation_end }
     assert_not_nil end_event
@@ -155,7 +186,9 @@ class OperationHooksTest < Minitest::Test
     assert_nil end_event[:error]
   end
 
-  def test_paginated_duration_reflects_iteration_time
+  def test_paginated_duration_spans_call_to_consumption
+    # Matches wrap_paginated_wrapped: with the first page fetched eagerly at
+    # call time, duration measures from the call through the end of iteration.
     events = []
     hooks = TrackingHooks.new(events)
     account = create_account_client(hooks: hooks)
@@ -163,12 +196,11 @@ class OperationHooksTest < Minitest::Test
     stub_get("/12345/projects.json", response_body: [ { "id" => 1 } ])
 
     enum = account.projects.list
-    sleep 0.01 # time passes before iteration — should NOT count
+    sleep 0.01 # time between call and iteration counts toward the duration
     enum.to_a
 
     end_event = events.find { |e| e[:event] == :on_operation_end }
-    # Duration should reflect iteration time, not time since .list was called
-    assert end_event[:result].duration_ms < 1000, "duration should reflect iteration, not creation"
+    assert end_event[:result].duration_ms >= 10, "duration spans call to consumption"
   end
 
   private
