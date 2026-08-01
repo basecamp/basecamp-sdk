@@ -1,0 +1,27 @@
+ruby/lib/basecamp/http.rb
+  s_555508c40a7b3b::t_f91d821b59539e 390-397,408-409,411,413-435,437,442,444
+python/src/basecamp/_http.py
+  s_555508c40a7b3b::t_4f3f45a72fcc33 174-180,206,208-231,234,239
+python/src/basecamp/_async_http.py
+  s_555508c40a7b3b::t_2690ae4f863d17 174-180,208,210-233,236,241
+python/tests/test_http.py
+  s_555508c40a7b3b::t_219178b3e8086d 760-791
+ruby/test/basecamp/http_test.rb
+  s_555508c40a7b3b::t_734d2492b19e66 212-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "5d44c0f59f7e5fb6bb05fd48827f8a999a40e091",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
