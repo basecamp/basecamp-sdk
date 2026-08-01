@@ -1,0 +1,37 @@
+python/tests/test_download.py
+  s_555508c40a7b3b::t_c07588246b28f6 34,43,265-266,268-270,272-282,284-285,287-289,292-293,295,298-299,303-323,325
+  s_555508c40a7b3b::t_22ce454f154c41 15,19-33,35-42,44,324,534-590
+SPEC.md
+  s_555508c40a7b3b::t_52dc2bba8b756a 258,266-286
+  s_555508c40a7b3b::t_2daa0e5afd26fe 287
+ruby/lib/basecamp/http.rb
+  s_555508c40a7b3b::t_9eb0087488e65b 383,392-406
+  s_555508c40a7b3b::t_8501e95cac35ec 452,475,484-489,492,555-558,569
+python/src/basecamp/_http.py
+  s_555508c40a7b3b::t_847c4271393fed 166,186,188-203
+  s_555508c40a7b3b::t_c02aaf25666a19 239,269-273,288
+python/src/basecamp/_async_http.py
+  s_555508c40a7b3b::t_ce749a91a12638 166,186,188-205,241,271-275,290
+python/tests/test_http.py
+  s_555508c40a7b3b::t_827503917927ae 700-784
+ruby/test/basecamp/download_test.rb
+  s_555508c40a7b3b::t_3f6d2b951e940f 441-442,454,456-464,468-480,482-483,485-503
+ruby/test/basecamp/http_test.rb
+  s_555508c40a7b3b::t_c6b46cc7cf2f6b 157-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "c2a2aed77858741b0fe48f7cc36295c2eb862adf",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
