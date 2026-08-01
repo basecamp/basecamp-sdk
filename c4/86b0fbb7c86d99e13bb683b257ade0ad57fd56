@@ -1,0 +1,23 @@
+go/pkg/basecamp/webhooks.go
+  s_b1b74299ef0baf::t_d041af451cedab 427,450,511
+scripts/enhance-openapi-go-types.sh
+  s_b1b74299ef0baf::t_393ad61f1e8b03 51-56,58-66
+ruby/test/basecamp/generated_types_test.rb
+  s_b1b74299ef0baf::t_be8b2b624a8a93 185-188,192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "c486b0fbb7c86d99e13bb683b257ade0ad57fd56",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
