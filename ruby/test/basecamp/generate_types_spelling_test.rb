@@ -11,11 +11,12 @@ require "test_helper"
 # with the star-stripping removed. This exercises the predicate directly, which
 # is the only thing that actually pins the fix.
 class GenerateTypesSpellingTest < Minitest::Test
-  GENERATOR = File.expand_path("../../scripts/generate-types.rb", __dir__)
+  # Requires only the shared module, not the whole generator: `load`ing the
+  # script defined every one of its helpers (SKIP_PATTERNS, header,
+  # generate_helpers, ...) on the test process.
+  require_relative "../../scripts/go_type_spellings"
 
-  def setup
-    load GENERATOR unless defined?(::TIMESTAMP_GO_TYPES)
-  end
+  def timestamp_go_type?(spelling) = GoTypeSpellings.timestamp_go_type?(spelling)
 
   def test_pointer_spelled_timestamp_is_recognized
     assert timestamp_go_type?("*time.Time"), "*time.Time must coerce (the #537 regression)"

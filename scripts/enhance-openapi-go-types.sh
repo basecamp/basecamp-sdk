@@ -29,6 +29,12 @@ set -euo pipefail
 # error (or, worse, a jq compile error that leaves the output unenhanced).
 # Write comments without apostrophes. `bash -n` catches it; so does running
 # this script and checking its exit status, which is the only reliable signal.
+#
+# SECOND EDITING NOTE: in jq, `index(.)` and friends evaluate their argument
+# against the value being indexed, NOT against the surrounding element. Inside
+# `map(...)` or after `to_entries[]`, always bind first — `. as $x | select($arr
+# | index($x))`. This has silently broken membership tests in this file more
+# than once; the symptom is a filter that quietly matches nothing.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -56,14 +62,26 @@ REQUEST_REACHABLE=$(jq -c '
   | ( .components.requestBodies // {} ) as $bodies
   | ( [ .paths[]?[]? | objects | .requestBody? | objects
         | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
-        | select(type == "string") ] | unique ) as $body_refs
-  | ( [ $body_refs[]
-        | if startswith("#/components/requestBodies/")
-          then ( sub("^#/components/requestBodies/"; "") as $n
-                 | ($bodies[$n] // {})
-                 | [.. | objects | select(has("$ref")) | .["$ref"]] | .[] )
-          else . end
-        | select(type == "string" and startswith("#/components/schemas/"))
+        | select(type == "string") ] | unique ) as $initial_refs
+  # Follow requestBodies refs TRANSITIVELY: a component may alias another
+  # component, and stopping after one hop silently drops the schemas behind the
+  # chain, marking their arrays response-only.
+  | ( { seen: [], frontier: $initial_refs }
+      | until(.frontier | length == 0;
+          . as $s
+          | ( $s.seen + $s.frontier | unique ) as $seen_next
+          | ( [ $s.frontier[] | select(startswith("#/components/requestBodies/"))
+                | sub("^#/components/requestBodies/"; "") as $n
+                | ($bodies[$n] // {})
+                | [.. | objects | select(has("$ref")) | .["$ref"]] | .[]
+                | select(type == "string") ] | unique ) as $discovered
+          # Bind the element: index(.) inside map would evaluate . against the
+          # ARRAY being indexed, not against the element under test.
+          | { seen: $seen_next,
+              frontier: ( $discovered | map(. as $r | select($seen_next | index($r) | not)) ) }
+        )
+      | .seen ) as $all_body_refs
+  | ( [ $all_body_refs[] | select(startswith("#/components/schemas/"))
         | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
   | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
       | until(.frontier | length == 0;

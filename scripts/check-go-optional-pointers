@@ -19,8 +19,16 @@
 #
 # Usage: scripts/check-go-optional-pointers [path-to-client.gen.go]
 
+require "set"
+
 path = ARGV[0] || File.expand_path("../go/pkg/generated/client.gen.go", __dir__)
 abort "check-go-optional-pointers: #{path} not found" unless File.exist?(path)
+
+# Named interface types declared in the file are nil-capable too: `type Foo
+# interface{ ... }` used as an optional field satisfies the invariant exactly
+# as a literal interface{} does, and rejecting it would be a false positive.
+interface_names = File.read(path, encoding: "UTF-8")
+  .scan(/^type (\w+) interface\b/).flatten.to_set
 
 violations = []
 stats = Hash.new(0)
@@ -67,6 +75,7 @@ File.foreach(path, encoding: "UTF-8").with_index(1) do |line, lineno|
     when /\A\[\]/ then :slice
     when /\Amap\[/ then :map
     when "interface{}", "any" then :interface
+    when ->(t) { interface_names.include?(t.delete_prefix("*")) } then :interface
     else :value
     end
   stats[kind] += 1
