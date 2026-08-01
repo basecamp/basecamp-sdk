@@ -1,4 +1,5 @@
 import Basecamp
+import ConformanceSupport
 import Foundation
 
 /// Outcome of a single conformance test.
@@ -38,22 +39,18 @@ func conformanceCode(_ error: BasecampError) -> String {
     }
 }
 
+/// The vocabulary `conformanceCode` can produce. It must stay in sync with that
+/// mapping: a member missing here can never be asserted, so the guard meant to
+/// catch a typo'd error type silently forbids a real one instead.
 private let knownErrorTypes: Set<String> = [
     "not_found", "auth_required", "forbidden", "rate_limit",
-    "validation", "api_error", "usage", "network",
+    "validation", "api_error", "usage", "network", "ambiguous",
 ]
-
-/// Resolves a per-request assertion index (0-based; negative = from the end)
-/// against the number of recorded requests. Nil when out of range.
-private func resolveRequestIndex(_ index: Int, _ count: Int) -> Int? {
-    let resolved = index < 0 ? count + index : index
-    return (0..<count).contains(resolved) ? resolved : nil
-}
 
 /// Compares an expected fixture value against an actual JSON value,
 /// preserving 64-bit integer precision. Nil means equal.
 private func compareJSON(_ label: String, _ expected: JSON?, _ actual: JSON) -> String? {
-    guard let expected else { return "\(label): expected value is null in assertion" }
+    guard let expected else { return "\(label): assertion has no expected value" }
     if let expInt = expected.intValue, let actInt = actual.intValue {
         return expInt == actInt ? nil : "Expected \(label) = \(expInt), got \(actInt)"
     }
@@ -63,8 +60,13 @@ private func compareJSON(_ label: String, _ expected: JSON?, _ actual: JSON) -> 
 /// Compares an expected fixture value against a loosely-typed actual value
 /// (error fields, response meta). Nil means equal.
 private func compareValue(_ label: String, _ expected: JSON?, _ actual: Any?) -> String? {
-    guard let expected else { return "\(label): expected value is null in assertion" }
+    guard let expected else { return "\(label): assertion has no expected value" }
     switch expected {
+    case .null:
+        // An explicit `expected: null` asserts the observed field is absent.
+        // Falling through to the string fallback compared nil against the
+        // literal "null" and always failed.
+        if let actual { return "Expected \(label) = null, got \(actual)" }
     case .bool(let b):
         if (actual as? Bool) != b { return "Expected \(label) = \(b), got \(String(describing: actual))" }
     case .int(let i):
@@ -197,12 +199,17 @@ func evaluateAssertions(
             }
 
         case "delayBetweenRequests":
-            if captured.count >= 2 {
-                let delay = captured[1].monotonicMs - captured[0].monotonicMs
-                let minDelay = UInt64(assertion.minValue)
-                if delay < minDelay {
-                    return .fail("Expected delay >= \(minDelay)ms, got \(delay)ms")
-                }
+            // Delegated to ConformanceSupport so the bounds branches are
+            // unit-testable. This evaluator used to measure gap 0 and ignore
+            // the assertion's index, and skipped the check entirely on a
+            // single-request run — the #563/#568 false-green, which downloads
+            // fixtures (index 0 AND index 1) walk straight into.
+            if let failure = checkDelayGaps(
+                captured.map(\.monotonicMs),
+                minDelayMs: assertion.minDelayMs,
+                index: assertion.gapIndex
+            ) {
+                return .fail(failure)
             }
 
         case "headerValue":
@@ -276,10 +283,13 @@ func evaluateAssertions(
             guard let expected = assertion.expected?.stringValue else {
                 return .fail("headerInjected assertion missing expected value")
             }
-            guard let first = captured.first else {
-                return .fail("Expected header \(headerName)=\"\(expected)\", but no requests were recorded")
+            // Index-aware like headerPresent/headerAbsent and the other
+            // runners: reading captured.first regardless would validate the
+            // initial attempt when the fixture named a retry or a second hop.
+            guard let idx = resolveRequestIndex(assertion.requestIndex, requestCount) else {
+                return .fail("headerInjected \(headerName)[\(assertion.requestIndex)]: no request recorded at that index (\(requestCount) requests)")
             }
-            let actual = first.header(headerName)
+            let actual = captured[idx].header(headerName)
             // Content-Type may include charset (e.g., "application/json; charset=utf-8")
             let matches: Bool = if headerName.lowercased() == "content-type" {
                 actual?.lowercased().hasPrefix(expected.lowercased()) ?? false
@@ -287,7 +297,7 @@ func evaluateAssertions(
                 actual == expected
             }
             if !matches {
-                return .fail("Expected header \(headerName)=\"\(expected)\", got \"\(actual ?? "nil")\"")
+                return .fail("Expected header \(headerName)=\"\(expected)\" on request index \(idx), got \"\(actual ?? "nil")\"")
             }
 
         case "headerPresent":

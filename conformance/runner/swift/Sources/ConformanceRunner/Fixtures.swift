@@ -138,6 +138,11 @@ struct TestCase: Decodable {
     var responses: [MockResponse] { mockResponses ?? [] }
     var allAssertions: [Assertion] { assertions ?? [] }
     var allTags: [String] { tags ?? [] }
+    /// Whether the fixture stated a queue at all. An EMPTY queue is a
+    /// deliberate declaration (the HTTPS-enforcement case makes no request);
+    /// an absent key is a malformed fixture, and collapsing the two lets one
+    /// through as a test that exercises nothing.
+    var declaresMockResponses: Bool { mockResponses != nil }
     /// Live tests are TS-only (canonical wire-capturer); other runners filter
     /// them out at load time.
     var isMock: Bool { (mode ?? "mock") == "mock" }
@@ -151,18 +156,26 @@ struct ConfigOverrides: Decodable {
 
 struct MockResponse: Decodable, Sendable {
     let status: Int?
-    private let networkError: Bool?
+    /// Raw flag, kept rather than folded into `isNetworkError`: the schema pins
+    /// the literal `true`, so `networkError: false` is not legal. Collapsing it
+    /// to "not a network error" lets a `status` + `networkError: false` entry
+    /// slip past the exactly-one-of backstop and be served as a plain success.
+    let networkError: Bool?
     private let headers: [String: String]?
     let body: JSON?
     private let delay: Int?
 
-    var isNetworkError: Bool { networkError ?? false }
+    var isNetworkError: Bool { networkError == true }
     var allHeaders: [String: String] { headers ?? [:] }
     var delayMs: Int { delay ?? 0 }
 }
 
 struct Assertion: Decodable {
     let type: String
+    /// An explicit `expected: null` is a real expectation (the field must be
+    /// absent), distinct from an omitted key (the assertion is malformed). The
+    /// synthesized `decodeIfPresent` collapses both to nil, which turns the
+    /// former into "assertion missing expected value" — a false FAIL.
     let expected: JSON?
     private let min: Double?
     private let max: Double?
@@ -170,8 +183,31 @@ struct Assertion: Decodable {
     /// Request index for per-request assertions (0-based; negative = from end).
     private let index: Int?
 
-    var minValue: Double { min ?? 0 }
+    private enum CodingKeys: String, CodingKey {
+        case type, expected, min, max, path, index
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        type = try container.decode(String.self, forKey: .type)
+        expected = container.contains(.expected)
+            ? try container.decode(JSON.self, forKey: .expected)
+            : nil
+        min = try container.decodeIfPresent(Double.self, forKey: .min)
+        max = try container.decodeIfPresent(Double.self, forKey: .max)
+        path = try container.decodeIfPresent(String.self, forKey: .path)
+        index = try container.decodeIfPresent(Int.self, forKey: .index)
+    }
+
     var maxValue: Double { max ?? 0 }
     var fieldPath: String { path ?? "" }
     var requestIndex: Int { index ?? 0 }
+    /// Raw minimum for `delayBetweenRequests`. `checkDelayGaps` applies the
+    /// default itself so no call site can gate the assertion away — a `min` of
+    /// zero silently disabled the whole check in two other runners.
+    var minDelayMs: Double? { min }
+    /// Raw index for `delayBetweenRequests`, which must tell "gap 0" from
+    /// "every gap". Distinct from `requestIndex`, whose 0 default is correct
+    /// for the per-request assertions.
+    var gapIndex: Int? { index }
 }

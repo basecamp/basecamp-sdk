@@ -117,7 +117,7 @@ final class ScriptedTransport: Transport, @unchecked Sendable {
 
         let body: Data
         if let fixtureBody = mock.body {
-            body = try Self.normalize(fixtureBody).serialized()
+            body = try Self.normalize(fixtureBody, status: mock.status).serialized()
         } else {
             body = Data()
         }
@@ -133,7 +133,14 @@ final class ScriptedTransport: Transport, @unchecked Sendable {
     /// Unwraps `{"key": [...]}` single-key array wrappers: some fixtures wrap
     /// list bodies in an object, but the SDK's list operations decode a raw
     /// JSON array (same normalization as the Kotlin runner).
-    private static func normalize(_ body: JSON) -> JSON {
+    ///
+    /// SUCCESS bodies only. An error body with one array-valued key is the
+    /// unwrapped Rails field map (`{"payload_url": ["is not a valid URL"]}`),
+    /// and unwrapping it rewrites the fixture on the wire — the SDK then sees a
+    /// bare array, finds no field errors, and reports the generic status text.
+    /// Kotlin took the status guard in #549; this port predated it.
+    private static func normalize(_ body: JSON, status: Int?) -> JSON {
+        guard (status ?? 200) < 400 else { return body }
         if let object = body.objectValue, object.count == 1,
            let sole = object.values.first, sole.arrayValue != nil {
             return sole

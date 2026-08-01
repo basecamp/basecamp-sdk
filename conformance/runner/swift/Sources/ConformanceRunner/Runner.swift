@@ -4,21 +4,30 @@ import Foundation
 /// Default account ID for conformance tests.
 private let testAccountID = "999"
 
-/// Tests the Swift runner must skip, with reasons. Keep near-empty: Swift is
-/// three-gate (status, network, and idempotent-POST retry), so capability
-/// skips are rare.
+/// Operations whose dispatch arm passes `configOverrides.maxItems` into the
+/// SDK. Kept beside the backstop that enforces it so the two cannot drift:
+/// widening one without the other is caught the first time a fixture asks.
+private let operationsHonoringMaxItems: Set<String> = ["ListProjects"]
+
+/// Temporary capability skips, keyed by exact test name.
 ///
-/// SWIFT_CONFORMANCE_NO_SKIPS=1 empties the roster so a skip can be proven to
-/// still fail (or shown ready to flip live once the capability lands).
-private let swiftSkips: [String: String] = ProcessInfo.processInfo.environment["SWIFT_CONFORMANCE_NO_SKIPS"] != nil ? [:] : [
-    // TEMPORARY until B4 (Wave 2) threads retry through the download first
-    // hop: performDownloadRequest is one-shot today, so hop-1 retry fixtures
-    // fail against a correct runner. Flip these live when B4 merges.
-    "DownloadURL retries on 503 at the auth'd first hop":
-        "Swift download hop 1 does not retry yet (B4)",
-    "DownloadURL honors Retry-After on 429 at the auth'd first hop":
-        "Swift download hop 1 does not retry yet (B4)",
-]
+/// EMPTY, and meant to stay that way. Swift is three-gate (status, network and
+/// idempotent-POST retry) and since #563 retries the authenticated download hop
+/// too, so no fixture asks for a capability the SDK lacks. The one standing
+/// exclusion is architectural rather than a gap — the `link-header` tag branch
+/// in the run loop, which no name-keyed entry can express.
+private let temporarySkips: [String: String] = [:]
+
+/// The roster the run loop consults. `SWIFT_CONFORMANCE_NO_SKIPS=1` empties it,
+/// so a temporary skip can be proven genuine before it is added and proven
+/// ready to flip once the capability lands. With `temporarySkips` empty the
+/// switch is a no-op — it is the mechanism kept live, not a claim that anything
+/// is being skipped.
+///
+/// The value is compared exactly: an inherited empty or `=0` variable must not
+/// quietly change what the suite covers.
+private let swiftSkips: [String: String] =
+    ProcessInfo.processInfo.environment["SWIFT_CONFORMANCE_NO_SKIPS"] == "1" ? [:] : temporarySkips
 
 @main
 struct Runner {
@@ -113,14 +122,49 @@ struct Runner {
     }
 
     static func runTest(_ tc: TestCase) async -> TestResult {
-        // Defense-in-depth backstop for the operationally-harmful mockResponses
-        // shapes: neither mode set (would be served as `status ?? 200`, a false
-        // positive) or both active. The AUTHORITATIVE oneOf enforcement is
-        // `make conformance-fixtures-check`, which runs before the runners.
+        // Defense-in-depth backstops for fixture shapes that would otherwise
+        // produce a PASS while testing nothing. The AUTHORITATIVE enforcement
+        // is `make conformance-fixtures-check` against conformance/schema.json,
+        // which runs before the runners — but a runner that reports green on a
+        // fixture it cannot honor is the failure mode this whole rock exists to
+        // remove, so it fails loudly here too.
+
+        // A case with no assertions runs an operation and verifies nothing.
+        // An empty `assertions: []` is schema-legal, so the schema gate does
+        // not catch it.
+        if tc.allAssertions.isEmpty {
+            return .fail("test case declares no assertions — it would pass without verifying anything")
+        }
+
+        // An EMPTY response queue is a deliberate declaration (the HTTPS
+        // enforcement case makes no request at all); an ABSENT key is a
+        // malformed fixture, and the two must not collapse.
+        if !tc.declaresMockResponses {
+            return .fail("mock test case is missing mockResponses (an empty queue must be stated explicitly)")
+        }
+
         for (i, mock) in tc.responses.enumerated() {
+            // The schema pins the literal `true`. `networkError: false`
+            // alongside a status otherwise reads as a plain success and slips
+            // past the exactly-one-of check below.
+            if let flag = mock.networkError, !flag {
+                return .fail("mockResponses[\(i)]: networkError must be the literal true when present, got false")
+            }
+            // Neither mode set would be served as `status ?? 200`, a false
+            // positive; both active is ambiguous.
             if (mock.status != nil) == mock.isNetworkError {
                 return .fail("mockResponses[\(i)] must set exactly one of status or networkError (got status=\(mock.status.map(String.init) ?? "nil"), networkError=\(mock.isNetworkError))")
             }
+        }
+
+        // maxItems reaches the SDK only through the per-operation options of
+        // the arms that thread it. Any other operation would run UNBOUNDED
+        // pagination while the fixture believed it had capped the walk, so the
+        // request-count assertion would be measuring something else entirely.
+        // Fail rather than silently ignore; add the operation to the dispatch
+        // arm and to this roster together.
+        if tc.configOverrides?.maxItems != nil, !operationsHonoringMaxItems.contains(tc.operation) {
+            return .fail("configOverrides.maxItems is set but \(tc.operation)'s dispatch does not thread it through — it would paginate unbounded")
         }
 
         // Detect if the fixture uses Link next headers (SDK will auto-paginate).
@@ -169,6 +213,12 @@ struct Runner {
             } catch let error as BasecampError {
                 caughtError = error
                 httpStatus = error.httpStatusCode
+            } catch let error as RunnerError {
+                // A fixture the dispatch table cannot honor as written: an
+                // unknown operation, or a parameter that would have been
+                // coerced into a call against the wrong resource. Both are
+                // fixture bugs to fix, not runner limitations to skip.
+                return .fail(error.description)
             } catch let error as DecodingError {
                 // A mock body that fails the model's required-field validation
                 // is a fixture bug, not a runner limitation: fail loudly so it
@@ -205,10 +255,20 @@ private enum HTTPSProbeOutcome {
 /// in-process; everything else must go through the crash probe. The probe
 /// itself exercises the SDK's real enforcement, so a routing mistake here
 /// surfaces as a loud failure, never a silent pass.
+///
+/// The SDK traps on EVERY parsed non-HTTPS scheme outside the carve-out, not
+/// just `http` — `BasecampClient` tests `scheme != "https"`. Routing only
+/// `http` through the probe meant a fixture with, say, `ftp://` or
+/// `ws://localhost` would trap in-process and take the entire conformance run
+/// down with it, losing every result after it.
 private func requiresHTTPSCrashProbe(_ baseURL: String) -> Bool {
-    guard let url = URL(string: baseURL), url.scheme?.lowercased() == "http" else {
-        return false
-    }
+    // An unparseable URL never reaches the scheme check in the SDK either: the
+    // guard is `if let url = URL(string:)`, so construction survives.
+    guard let url = URL(string: baseURL) else { return false }
+    let scheme = url.scheme?.lowercased()
+    if scheme == "https" { return false }
+    // The carve-out is HTTP(S)-only, matching the SDK's isLocalhost.
+    guard scheme == "http" else { return true }
     guard var host = url.host?.lowercased() else { return true }
     if host.hasPrefix("["), host.hasSuffix("]") {
         host = String(host.dropFirst().dropLast())

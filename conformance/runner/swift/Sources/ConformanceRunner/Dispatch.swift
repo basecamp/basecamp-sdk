@@ -3,35 +3,90 @@ import Foundation
 
 enum RunnerError: Error, CustomStringConvertible {
     case unknownOperation(String)
+    /// A fixture parameter the dispatch table cannot use as written.
+    case badParameter(String)
 
     var description: String {
         switch self {
         case .unknownOperation(let op): "Unknown operation: \(op)"
+        case .badParameter(let detail): "Fixture parameter: \(detail)"
         }
     }
 }
 
 // MARK: - Fixture parameter helpers
 
+/// These throw rather than substituting a default. A missing or non-integral
+/// `projectId` that quietly became `0` still produced a request the scripted
+/// transport answered from the queue — a green test for a call to the wrong
+/// resource, which is the exact false-green class this runner exists to catch.
+/// A wrong-typed optional is the same fault one step quieter: it drops the
+/// field and the requestBody assertion never sees what it was meant to pin.
 extension Optional where Wrapped == [String: JSON] {
-    func longParam(_ key: String) -> Int {
-        (self?[key]?.intValue).map(Int.init) ?? 0
+    func longParam(_ key: String) throws -> Int {
+        guard let value = self?[key] else {
+            throw RunnerError.badParameter("missing integer parameter \"\(key)\"")
+        }
+        guard let int = value.intValue, let narrowed = Int(exactly: int) else {
+            throw RunnerError.badParameter(
+                "parameter \"\(key)\" must be an integer, got \(value.display)")
+        }
+        return narrowed
     }
 
-    func stringParam(_ key: String) -> String {
-        self?[key]?.stringValue ?? ""
+    /// Reads the first key that is present, for the operations whose fixtures
+    /// spell one path parameter two ways. Replaces a `== 0` sentinel that could
+    /// not tell an absent key from an id that legitimately read zero.
+    func longParam(anyOf keys: [String]) throws -> Int {
+        for key in keys where self?[key] != nil {
+            return try longParam(key)
+        }
+        let tried = keys.map { "\"\($0)\"" }.joined(separator: " or ")
+        throw RunnerError.badParameter("missing integer parameter \(tried)")
     }
 
-    func optString(_ key: String) -> String? {
-        self?[key]?.stringValue
+    func stringParam(_ key: String) throws -> String {
+        guard let value = self?[key] else {
+            throw RunnerError.badParameter("missing string parameter \"\(key)\"")
+        }
+        guard let string = value.stringValue else {
+            throw RunnerError.badParameter(
+                "parameter \"\(key)\" must be a string, got \(value.display)")
+        }
+        return string
     }
 
-    func optBool(_ key: String) -> Bool? {
-        self?[key]?.boolValue
+    func optString(_ key: String) throws -> String? {
+        guard let value = self?[key] else { return nil }
+        guard let string = value.stringValue else {
+            throw RunnerError.badParameter(
+                "parameter \"\(key)\" must be a string, got \(value.display)")
+        }
+        return string
     }
 
-    func intArray(_ key: String) -> [Int]? {
-        self?[key]?.arrayValue?.compactMap { $0.intValue.map(Int.init) }
+    func optBool(_ key: String) throws -> Bool? {
+        guard let value = self?[key] else { return nil }
+        guard let bool = value.boolValue else {
+            throw RunnerError.badParameter(
+                "parameter \"\(key)\" must be a boolean, got \(value.display)")
+        }
+        return bool
+    }
+
+    func intArray(_ key: String) throws -> [Int]? {
+        guard let value = self?[key] else { return nil }
+        guard let array = value.arrayValue else {
+            throw RunnerError.badParameter(
+                "parameter \"\(key)\" must be an array, got \(value.display)")
+        }
+        return try array.map { element in
+            guard let int = element.intValue, let narrowed = Int(exactly: int) else {
+                throw RunnerError.badParameter(
+                    "parameter \"\(key)\" must contain only integers, got \(element.display)")
+            }
+            return narrowed
+        }
     }
 }
 
@@ -105,7 +160,7 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     // An explicit empty due_on means clear (single PUT, no GET); an absent
     // key means preserve (GET first).
     case "UpdateCard":
-        let dueOn: CardsService.DueDate = if let raw = rb.optString("due_on") {
+        let dueOn: CardsService.DueDate = if let raw = try rb.optString("due_on") {
             raw.isEmpty ? .clear : .on(raw)
         } else {
             .preserve
@@ -133,14 +188,24 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
     // read-modify-write edit closure by assigning each fixture key
     // onto the corresponding TodoFields member.
     case "EditTodo":
+        // Read every fixture key before the call: the edit closure is
+        // non-throwing, and validating up front means a malformed parameter
+        // fails the test instead of reaching the wire half-applied.
+        let editContent = try rb.optString("content")
+        let editDescription = try rb.optString("description")
+        let editAssigneeIds = try rb.intArray("assignee_ids")
+        let editSubscriberIds = try rb.intArray("completion_subscriber_ids")
+        let editDueOn = try rb.optString("due_on")
+        let editStartsOn = try rb.optString("starts_on")
+        let editNotify = try rb.optBool("notify")
         _ = try await account.todos.edit(todoId: pathParams.longParam("todoId")) { fields in
-            if let content = rb.optString("content") { fields.content = content }
-            if let description = rb.optString("description") { fields.description = description }
-            if let assigneeIds = rb.intArray("assignee_ids") { fields.assigneeIds = assigneeIds }
-            if let subscriberIds = rb.intArray("completion_subscriber_ids") { fields.completionSubscriberIds = subscriberIds }
-            if let dueOn = rb.optString("due_on") { fields.dueOn = dueOn }
-            if let startsOn = rb.optString("starts_on") { fields.startsOn = startsOn }
-            if let notify = rb.optBool("notify") { fields.notify = notify }
+            if let editContent { fields.content = editContent }
+            if let editDescription { fields.description = editDescription }
+            if let editAssigneeIds { fields.assigneeIds = editAssigneeIds }
+            if let editSubscriberIds { fields.completionSubscriberIds = editSubscriberIds }
+            if let editDueOn { fields.dueOn = editDueOn }
+            if let editStartsOn { fields.startsOn = editStartsOn }
+            if let editNotify { fields.notify = editNotify }
         }
         return DispatchResult()
 
@@ -236,9 +301,8 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         return DispatchResult()
 
     case "GetTimesheetEntry":
-        var entryId = pathParams.longParam("timesheetEntryId")
-        if entryId == 0 { entryId = pathParams.longParam("entryId") }
-        _ = try await account.timesheets.get(entryId: entryId)
+        _ = try await account.timesheets.get(
+            entryId: pathParams.longParam(anyOf: ["timesheetEntryId", "entryId"]))
         return DispatchResult()
 
     case "CreateTimesheetEntry":
@@ -251,10 +315,8 @@ func dispatchOperation(_ tc: TestCase, _ account: AccountClient) async throws ->
         return DispatchResult()
 
     case "UpdateTimesheetEntry":
-        var entryId = pathParams.longParam("entryId")
-        if entryId == 0 { entryId = pathParams.longParam("timesheetEntryId") }
         _ = try await account.timesheets.update(
-            entryId: entryId,
+            entryId: pathParams.longParam(anyOf: ["entryId", "timesheetEntryId"]),
             req: UpdateTimesheetEntryRequest(
                 date: rb.optString("date"),
                 description: rb.optString("description"),

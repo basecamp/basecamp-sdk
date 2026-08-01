@@ -459,6 +459,7 @@ conformance-runner-tests:
 	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py
 	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
 	cd kotlin && ./gradlew --quiet :conformance:test
+	@$(MAKE) --no-print-directory conformance-swift-runner-tests
 
 # Build conformance test runner
 conformance-build:
@@ -745,6 +746,19 @@ else
 	@echo "SKIP: conformance-swift (macOS only)"
 endif
 
+# Unit-test the Swift runner's own assertion helpers (macOS only). Same reason
+# as the other five: the bounds branches never execute against a fixture that
+# passes, so a vacuous assertion survives a fully green conformance run.
+# Reached from conformance-runner-tests, which is platform-agnostic and defers
+# the gate to this target.
+conformance-swift-runner-tests:
+ifdef IS_MACOS
+	@echo "==> Running Swift conformance runner unit tests..."
+	cd conformance/runner/swift && swift test
+else
+	@echo "SKIP: conformance-swift-runner-tests (macOS only)"
+endif
+
 # Regenerate Swift SDK services from OpenAPI spec (needs swift on any platform)
 swift-generate:
 ifdef HAS_SWIFT
@@ -1015,6 +1029,7 @@ help:
 	@echo "  conformance-python         Run Python conformance tests"
 	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
 	@echo "  conformance-swift          Run Swift conformance tests (macOS only)"
+	@echo "  conformance-swift-runner-tests  Unit-test the Swift runner's assertion helpers (macOS only)"
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"

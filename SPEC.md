@@ -1635,7 +1635,7 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 1. **No hand-written wire I/O.** Every request flows through public generated wire methods (Go: through the shared generated-client transport). No manual path construction or verb selection. Bodies use the generated request types, with one Go-specific carve-out: where zero-value + `omitempty` request structs cannot express always-send-empty semantics, the composite's private transport MAY marshal an explicit body map and call the operation's generated `*WithBody` variant — the generated wrapper still owns path, verb, content type, and response decoding, and the operation identity still reaches hooks and retry. This is the only sanctioned use of hand-marshaled bodies; sparse public methods keep using the generated request types.
 2. **Composition, not substitution.** It composes existing generated operations (e.g. GET → overlay → full PUT); it never introduces a wire operation the spec lacks — fix the spec and regenerate instead.
 3. **Native hook identities.** Hooks observe the constituent wire operations under their normal per-language identities; composites never mint synthetic operation names.
-4. **Conformance-covered.** The composite's behavior is encoded in `conformance/tests/` fixtures run by every runner (with native test mirrors where a runner does not exist yet, e.g. Swift).
+4. **Conformance-covered.** The composite's behavior is encoded in `conformance/tests/` fixtures run by every runner. All six SDKs now have one, so a native test mirror is no longer a substitute for fixture coverage.
 5. **Declared placement.** The composite lives in the language's designated hand-written extension point (Kotlin generator `EXTENSIBLE_SERVICES`/`HAND_WRITTEN_SERVICES`, TS `src/services/*-extensions.ts` wired in `client.ts`, Ruby zeitwerk `prepend` module, Python service subclass re-exported by the client, Swift same-module extension) so regeneration can never silently drop or fork it.
 6. **The raw operation stays reachable.** When a composite takes over the plain method name, the generated single-request method is renamed (via `METHOD_NAME_OVERRIDES`) rather than hidden, and gets its own conformance case asserting it makes exactly one request with no read-before-write. Without that second case, later generator drift could silently turn both public methods into composite behavior and nothing would notice.
 
@@ -1753,6 +1753,15 @@ logic is covered by `TestIsSameOrigin` unit tests:
 is empty):
 - "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `KOTLIN_SKIPS`: Kotlin auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural).
 
+**Swift** (`conformance/runner/swift/.../Runner.swift` — one tag-based branch;
+`temporarySkips` is empty):
+- "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `temporarySkips`: Swift auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural, identical to Kotlin and TypeScript).
+
+Swift carries no capability skips. It is three-gate on retry (status, network,
+idempotent POST) and, since #563, retries the authenticated download hop, so
+`SWIFT_CONFORMANCE_NO_SKIPS=1` is a no-op today — the mechanism is kept live so
+a future temporary skip must be proven genuine before it is added.
+
 The TypeScript live canary additionally reports one placeholder skip when
 `BASECAMP_LIVE` is unset (`live-runner.test.ts`) — that is the opt-in gate for
 `live-my-surface.json` documented in the category table above, not a
@@ -1798,7 +1807,7 @@ The following are must-pass criteria from the rubric. Each maps to a spec sectio
 | `rb-check` | Ruby: test + rubocop |
 | `kt-check` | Kotlin: build + test |
 | `swift-check` | Swift: build + test |
-| `conformance` | All conformance test categories pass with documented waivers (go, kotlin, python, ruby, typescript runners) |
+| `conformance` | All conformance test categories pass with documented waivers (go, kotlin, python, ruby, swift, typescript runners) |
 
 Representative dependency chain (see the Makefile `check:` line for the authoritative, complete list): `check: … sync-api-version-check url-routes-check go-check-drift … kt-check-drift … go-check ts-check rb-check kt-check swift-check py-check conformance …`
 
