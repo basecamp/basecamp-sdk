@@ -1,5 +1,6 @@
 package com.basecamp.sdk
 
+import com.basecamp.sdk.http.AuthPhaseFailure
 import com.basecamp.sdk.http.BasecampHttpClient
 import com.basecamp.sdk.http.currentTimeMillis
 import com.basecamp.sdk.http.millisToDuration
@@ -252,8 +253,9 @@ suspend fun AccountClient.downloadURL(rawURL: String): DownloadResult {
  *
  * Every attempt re-runs the auth strategy so a rotated token is picked up. A
  * throwing strategy is a configuration or credential-provider fault, not a
- * transport fault: it surfaces raw, spends no retry budget, and matches
- * BasecampHttpClient's auth-phase classification.
+ * transport fault: it is tagged with the shared [AuthPhaseFailure], surfaces
+ * raw, and spends no retry budget — the same classification
+ * [BasecampHttpClient] applies.
  */
 private suspend fun AccountClient.downloadHop1(
     client: HttpClient,
@@ -277,13 +279,13 @@ private suspend fun AccountClient.downloadHop1(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    throw DownloadAuthFailure(e)
+                    throw AuthPhaseFailure(e)
                 }
                 header(HttpHeaders.UserAgent, parent.config.userAgent)
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: DownloadAuthFailure) {
+        } catch (e: AuthPhaseFailure) {
             val duration = currentTimeMillis() - reqStart
             parent.hooks.safeOnRequestEnd(requestInfo, RequestResult(
                 statusCode = 0,
@@ -343,14 +345,6 @@ private suspend fun AccountClient.downloadHop1(
         attempt += 1
     }
 }
-
-/**
- * Internal tag for an exception thrown by the auth strategy while building a
- * hop-1 attempt. Never escapes [downloadHop1]: the loop unwraps it and
- * rethrows the original raw, so auth-phase faults are never classified as
- * transport failures and never consume retry budget.
- */
-private class DownloadAuthFailure(val original: Exception) : Exception(original)
 
 /**
  * Rewrites a URL's origin (scheme + host + port) to match the base URL,

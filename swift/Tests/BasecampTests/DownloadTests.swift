@@ -776,8 +776,17 @@ final class DownloadTests: XCTestCase {
         let url = Self.hop1URL
         let task = Task { _ = try await account.downloadURL(url) }
 
+        // Bounded poll: if the first attempt never fires, fail the test rather
+        // than spinning here forever.
+        var waited = 0
         while transport.requests.isEmpty {
+            guard waited < 5_000 else {
+                task.cancel()
+                XCTFail("First hop-1 attempt never reached the transport")
+                return
+            }
             try await Task.sleep(nanoseconds: 1_000_000)
+            waited += 1
         }
         task.cancel()
 

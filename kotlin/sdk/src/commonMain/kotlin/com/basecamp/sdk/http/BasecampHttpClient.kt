@@ -355,11 +355,13 @@ private sealed interface AttemptOutcome {
 
 /**
  * Internal tag for an exception thrown by the auth strategy while building an
- * attempt. Never escapes [BasecampHttpClient]: the retry entry points unwrap
- * it and rethrow [original] raw, so auth-phase faults are never classified as
- * transport failures and never consume retry budget.
+ * attempt. Never escapes the loop that raised it: every retry entry point —
+ * [BasecampHttpClient]'s and the download hop-1 loop's — unwraps it and
+ * rethrows [original] raw, so auth-phase faults are never classified as
+ * transport failures and never consume retry budget. Module-internal so the
+ * classification lives in one place rather than being re-declared per hop.
  */
-private class AuthPhaseFailure(val original: Exception) : Exception(original)
+internal class AuthPhaseFailure(val original: Exception) : Exception(original)
 
 /** Safely call onRequestStart, catching hook exceptions. */
 private fun BasecampHooks.safeOnRequestStart(info: RequestInfo) {
