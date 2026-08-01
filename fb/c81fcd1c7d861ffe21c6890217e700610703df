@@ -1,0 +1,67 @@
+go/pkg/basecamp/boosts.go
+  s_555508c40a7b3b::t_69aaf2ac537435 84-88,174-178
+go/pkg/basecamp/campfires.go
+  s_555508c40a7b3b::t_7ee1627dff154f 219-223,347-351,594-598
+go/pkg/basecamp/cards.go
+  s_555508c40a7b3b::t_81e2fa47c00196 339-343
+go/pkg/basecamp/checkins.go
+  s_555508c40a7b3b::t_4c0c9da7401f07 302-306,625-629,710-714,1004-1008
+go/pkg/basecamp/client_approvals.go
+  s_555508c40a7b3b::t_8ef8332fdb116e 129-133
+go/pkg/basecamp/client_correspondences.go
+  s_555508c40a7b3b::t_ce8c3a0cf3c812 106-110
+go/pkg/basecamp/client_replies.go
+  s_555508c40a7b3b::t_7c58fedf6769a9 92-96
+go/pkg/basecamp/comments.go
+  s_555508c40a7b3b::t_867731a4a79feb 112-116
+go/pkg/basecamp/events.go
+  s_555508c40a7b3b::t_e5fc49b1d15fbc 95-99
+go/pkg/basecamp/forwards.go
+  s_555508c40a7b3b::t_7f336d01edc203 218-222,338-342
+go/pkg/basecamp/helpers.go
+  s_555508c40a7b3b::t_25a20c883afcfa 8,344-353
+go/pkg/basecamp/messages.go
+  s_555508c40a7b3b::t_84e3f609e6f9d6 151-155
+go/pkg/basecamp/page_param_test.go
+  s_555508c40a7b3b::t_7e8e2a1929cd0c 5-6,138-170
+go/pkg/basecamp/people.go
+  s_555508c40a7b3b::t_ccf16f929f2796 133-137,339-343
+go/pkg/basecamp/projects.go
+  s_555508c40a7b3b::t_0f1b8bde1a164c 157-161
+go/pkg/basecamp/recordings.go
+  s_555508c40a7b3b::t_5645ae490c494d 214-218
+go/pkg/basecamp/schedules.go
+  s_555508c40a7b3b::t_f61e1b49087475 228-232
+go/pkg/basecamp/search.go
+  s_555508c40a7b3b::t_3eb778132c91b3 196-200
+go/pkg/basecamp/templates.go
+  s_555508c40a7b3b::t_d03a8241cbdac5 109-113
+go/pkg/basecamp/timeline.go
+  s_555508c40a7b3b::t_72268e19e4d87d 181-185,264-268,350-354
+go/pkg/basecamp/timesheet.go
+  s_555508c40a7b3b::t_adcc2d9141438a 174-178,267-271
+go/pkg/basecamp/todolist_groups.go
+  s_555508c40a7b3b::t_d8cbe0d9a05699 109-113
+go/pkg/basecamp/todolists.go
+  s_555508c40a7b3b::t_9a00262bc175f4 147-151
+go/pkg/basecamp/todos.go
+  s_555508c40a7b3b::t_ebb5234a6c9fcd 397-401
+go/pkg/basecamp/vaults.go
+  s_555508c40a7b3b::t_3d504c80181547 316-320,531-535,777-781
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "fbc81fcd1c7d861ffe21c6890217e700610703df",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
