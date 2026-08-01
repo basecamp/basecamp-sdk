@@ -1,0 +1,31 @@
+swift/Sources/Basecamp/TodolistsServiceExtensions.swift
+  s_555508c40a7b3b::t_5c94a6be24eb42 112-132
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt
+  s_555508c40a7b3b::t_feb28c23f97326 138
+python/src/basecamp/services/todolists.py
+  s_555508c40a7b3b::t_1f21a1bfbac5e8 25,102,151
+python/tests/services/test_todolists_service.py
+  s_555508c40a7b3b::t_b7998f45813c7f 259-269
+ruby/lib/basecamp/services/todolists_extensions.rb
+  s_555508c40a7b3b::t_468cc496e5050a 126,187
+ruby/test/basecamp/services/todolists_service_test.rb
+  s_555508c40a7b3b::t_251cad172b16df 166-176
+swift/Tests/BasecampTests/TodolistsServiceExtensionsTests.swift
+  s_555508c40a7b3b::t_f098e9d0218f10 471-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "892d6e90b6f73209d768277e3b034c17c0df2d83",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
