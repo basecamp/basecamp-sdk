@@ -166,8 +166,10 @@ def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
         data = json.loads(body)
     except (json.JSONDecodeError, TypeError):
         return None
-    if not isinstance(data, dict) or not isinstance(data.get("errors"), dict):
+    if not isinstance(data, dict):
         return None
+    if not isinstance(data.get("errors"), dict):
+        return _parse_bare_field_errors(data)
     field_errors: dict[str, list[str]] = {}
     for field, values in data["errors"].items():
         if not isinstance(values, list):
@@ -176,6 +178,26 @@ def parse_field_errors(body: str | bytes | None) -> dict[str, list[str]] | None:
         if messages:
             field_errors[str(field)] = messages
     return field_errors or None
+
+
+def _parse_bare_field_errors(data: dict[str, object]) -> dict[str, list[str]] | None:
+    """Extract an unwrapped field map -- the whole body is ``{"field": ["msg"]}``.
+
+    This is the ``render json: @webhook.errors`` rendering. The gate is
+    all-or-nothing by design (SPEC section 6 step 2): with no ``errors`` key to
+    declare intent, only shape distinguishes a field map from any other JSON
+    object, so a single non-conforming member means this is not one.
+    """
+    if not data or data.keys() & {"error", "errors", "message"}:
+        return None
+    field_errors: dict[str, list[str]] = {}
+    for field, values in data.items():
+        if not isinstance(values, list) or not values:
+            return None
+        if not all(isinstance(m, str) and m for m in values):
+            return None
+        field_errors[str(field)] = list(values)  # type: ignore[arg-type]
+    return field_errors
 
 
 def _flatten_field_errors(field_errors: dict[str, list[str]]) -> str:
