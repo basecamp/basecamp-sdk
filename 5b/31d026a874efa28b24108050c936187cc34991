@@ -1,0 +1,60 @@
+SPEC.md
+  s_34dec3eb0265b2::t_2683311bb8173b 421-423,428
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FieldKeyed422Test.kt
+  s_34dec3eb0265b2::t_36968e4f17c04e 36-43,171,178,194,215,223,230,237
+  s_34dec3eb0265b2::t_3ccba39b823bba 244-263
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/ErrorParsing.kt
+  s_34dec3eb0265b2::t_4527ec65a50ad0 102-105
+ruby/README.md
+  s_34dec3eb0265b2::t_6a249f6559dfdd 432
+go/pkg/basecamp/helpers.go
+  s_34dec3eb0265b2::t_6e0d979f0d2ea4 69,247-258
+  s_34dec3eb0265b2::t_4527ec65a50ad0 117-120,180-184
+  s_34dec3eb0265b2::t_35bacf4294a2fe 259-261
+python/src/basecamp/errors.py
+  s_34dec3eb0265b2::t_4527ec65a50ad0 191-194
+swift/Sources/Basecamp/BasecampError.swift
+  s_34dec3eb0265b2::t_4527ec65a50ad0 264-267
+typescript/tests/errors.test.ts
+  s_34dec3eb0265b2::t_36968e4f17c04e 770-774
+  s_34dec3eb0265b2::t_64918328ff4fe7 730-754
+typescript/src/errors.ts
+  s_34dec3eb0265b2::t_4527ec65a50ad0 412-415
+kotlin/README.md
+  s_34dec3eb0265b2::t_36968e4f17c04e 615-617
+  s_34dec3eb0265b2::t_6a249f6559dfdd 619-622
+swift/README.md
+  s_34dec3eb0265b2::t_6a249f6559dfdd 346-348
+python/tests/test_errors.py
+  s_34dec3eb0265b2::t_381606a755c6e7 313-335
+python/README.md
+  s_34dec3eb0265b2::t_6a249f6559dfdd 582
+typescript/README.md
+  s_34dec3eb0265b2::t_6a249f6559dfdd 578
+go/pkg/basecamp/client.go
+  s_34dec3eb0265b2::t_6e0d979f0d2ea4 830
+ruby/lib/basecamp.rb
+  s_34dec3eb0265b2::t_4527ec65a50ad0 200-203
+swift/Tests/BasecampTests/ErrorTests.swift
+  s_34dec3eb0265b2::t_3ccba39b823bba 429-445
+go/pkg/basecamp/helpers_test.go
+  s_34dec3eb0265b2::t_789a7a491bfd90 574-615
+ruby/test/basecamp/errors_test.rb
+  s_34dec3eb0265b2::t_879252ef3445cc 223-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "5b31d026a874efa28b24108050c936187cc34991",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
