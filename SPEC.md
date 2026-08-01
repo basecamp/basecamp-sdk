@@ -984,24 +984,42 @@ Downloads use a two-hop pattern: an authenticated API request that returns a red
 FUNCTION downloadURL(raw_url: String) → DownloadResult
   1. Validate raw_url is an absolute URL with http(s) scheme.
   2. Rewrite URL: replace origin with base_url origin, preserve path+query+fragment.
-  3. Hop 1 — Authenticated API GET:
-     a. Set Authorization and User-Agent headers only (no Accept or Content-Type — this is a binary download, not a JSON API call).
+  3. Hop 1 — Authenticated API GET, wrapped in the hop-1 retry loop (below):
+     a. Set Authorization and User-Agent headers only (no Accept or Content-Type — this is a binary download, not a JSON API call). Every attempt is authenticated — re-run the auth strategy on retry so a rotated token is picked up.
      b. Fetch with redirect: manual (do not follow redirects automatically).
-     c. If response is redirect (301, 302, 303, 307, 308):
+     c. If the attempt fails with a network error, or the response status is in DOWNLOAD_RETRY_ON = {429, 502, 503, 504}: retry with exponential backoff while attempts remain (honor Retry-After on 429), else surface the failure. 500 is DELIBERATELY outside the set — it is never retried.
+     d. If response is redirect (301, 302, 303, 307, 308):
         - Extract Location header. ⊥ if absent.
         - Resolve Location against rewritten URL (handle relative redirects).
         - Proceed to Hop 2.
-     d. If response is 2xx:
+     e. If response is 2xx:
         - Direct download (no second hop needed).
         - → DownloadResult from response body.
-     e. If response is error → ⊥ BasecampError from response.
+     f. If response is any other error → ⊥ BasecampError from response, without retry.
 
   4. Hop 2 — Unauthenticated fetch (signed URL):
-     a. Fetch Location URL with NO auth headers.
+     a. Fetch Location URL with NO auth headers. Hop 2 is NEVER retried and NEVER authenticated — the signed URL is single-purpose and credentials must not leak to the storage host.
      b. If not 2xx → ⊥ BasecampError.
      c. → DownloadResult from response body.
 END
 ```
+
+### Hop-1 Retry `[conformance]`
+
+The authenticated first hop retries on **network errors plus {429, 502, 503, 504}** — never 500 (it stays aligned with the main GET loop's `@retryable` classification, not the error taxonomy's broader "all 5xx retryable" flag). Backoff is exponential from a 1-second base with jitter; `Retry-After` is honored on 429. The second hop is exempt: no retry, no auth.
+
+Attempt budget per SDK — disabling retry (each SDK's spelling of `enable_retry=false` or a zero cap) yields exactly ONE hop-1 attempt:
+
+| SDK | Budget |
+|-----|--------|
+| Go | `MaxRetries` as total attempts (hand-written client rejects < 1) |
+| Python | `max_retries` as total attempts, floored at one (`max_retries: 0` still sends one attempt) |
+| Ruby | `max_retries` as total attempts, floored at one for downloads (`max_retries: 0` still sends one attempt; the general ungoverned GET path's zero-attempt behavior is tracked separately) |
+| Kotlin | `maxRetries` as total attempts, floored at one, gated on `enableRetry`; an accepted `maxRetries = 0` still sends exactly one attempt |
+| TypeScript | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
+| Swift | Fixed three-attempt policy when `enableRetry` is true; one attempt when false. No public numeric knob. |
+
+Python and Ruby carve downloads out of their ungoverned GET taxonomy (which retries 500): the download hop uses the declared `{429, 502, 503, 504}` set, in both directions — the taxonomy neither widens nor vetoes it. `DownloadURL` is deliberately absent from `behavior-model.json`; SDKs pass this policy to their retry primitive directly rather than looking it up by operation.
 
 ### DownloadResult RECORD
 
@@ -1666,9 +1684,7 @@ logic is covered by `TestIsSameOrigin` unit tests:
 - "Mixed-case host and explicit default port stay on the mocked origin" — Go runner dials `configOverrides.baseUrl` directly; its `httptest` mock owns its origin, so origin-interception normalization does not apply.
 - "Bracketed IPv6 loopback origin stays on the mocked origin" — same as above.
 
-**Python** (`conformance/runner/python/runner.py` `SKIPS`) — unwaivered:
-- "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented.
-- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above.
+**Python** (`conformance/runner/python/runner.py` `SKIPS`) — none.
 
 **Ruby** (`conformance/runner/ruby/runner.rb` `RUBY_SKIPS`):
 - "PUT operation is naturally idempotent" — GET-only retry (waiver 2B.3).
@@ -1682,19 +1698,13 @@ logic is covered by `TestIsSameOrigin` unit tests:
 - "PrioritizeAssignment POST retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "DeprioritizeAssignment DELETE retries when marked idempotent" — GET-only retry (waiver 2B.3).
 - "Network error on an idempotent POST is retried then succeeds" — GET-only network retry (waiver 2B.3).
-- "DownloadURL retries on 503 at the auth'd first hop" — download path uses `get_no_retry`; hop-1 retry not implemented (unwaivered).
-- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
 
 **TypeScript** (`conformance/runner/typescript/runner.test.ts` `TS_SDK_SKIPS`):
 - "Large integer IDs preserved without precision loss" — `Number` is 53-bit (waiver 1B.6).
-- "DownloadURL retries on 503 at the auth'd first hop" — `downloadURL` uses raw fetch bypassing retry (unwaivered).
-- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
 
-**Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` plus one tag-based
-branch ahead of it):
+**Kotlin** (`kotlin/conformance/.../Main.kt` — one tag-based branch; `KOTLIN_SKIPS`
+is empty):
 - "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `KOTLIN_SKIPS`: Kotlin auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural).
-- "DownloadURL retries on 503 at the auth'd first hop" — Kotlin download hop 1 does not retry yet (B4) (unwaivered).
-- "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
 
 The TypeScript live canary additionally reports one placeholder skip when
 `BASECAMP_LIVE` is unset (`live-runner.test.ts`) — that is the opt-in gate for
@@ -1901,6 +1911,8 @@ account, attachments, automation, boosts, campfires, cardColumns, cardSteps, car
 | `downloads.json` | DownloadURL auth'd first hop 302s to signed URL | §14 |
 | `downloads.json` | DownloadURL direct 2xx body | §14 |
 | `downloads.json` | DownloadURL retries on 503 at the auth'd first hop | §14, §7 |
+| `downloads.json` | DownloadURL retries hop 1 on a network error | §14, §7 |
+| `downloads.json` | DownloadURL does not retry hop 1 on 500 | §14, §7 |
 | `downloads.json` | DownloadURL honors Retry-After on 429 at the auth'd first hop | §14, §7 |
 | `downloads.json` | DownloadURL surfaces redirect with no Location | §14 |
 | `network-retry.json` | Network error on a non-idempotent POST is not retried | §7 (Gate 2) |

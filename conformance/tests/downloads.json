@@ -35,7 +35,7 @@
   },
   {
     "name": "DownloadURL retries on 503 at the auth'd first hop",
-    "description": "The first hop is a GET and must follow SDK-wide GET retry semantics (spec 2A.2): retry on 5xx with exponential backoff. After two 503s, the third attempt returns 302 and hop 2 completes.",
+    "description": "The authenticated first hop follows the download hop-1 retry policy (SPEC 14): network errors plus {429, 502, 503, 504} with exponential backoff — never 500. After two 503s, the third attempt returns 302 and hop 2 completes. Every hop-1 attempt carries Authorization; the signed hop 2 carries none.",
     "operation": "DownloadURL",
     "method": "GET",
     "path": "/999999999/blobs/abcd1234/download/logo.png",
@@ -50,9 +50,47 @@
       {"type": "delayBetweenRequests", "min": 1000},
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerPresent", "path": "Authorization", "index": 1},
+      {"type": "headerPresent", "path": "Authorization", "index": 2},
       {"type": "headerAbsent", "path": "Authorization", "index": -1}
     ],
     "tags": ["download", "retry", "503"]
+  },
+  {
+    "name": "DownloadURL retries hop 1 on a network error",
+    "description": "A transport-level failure on the authenticated first hop is retried under the download hop-1 retry policy (SPEC 14). The retried attempt still carries Authorization, succeeds with 302, and hop 2 completes unauthenticated.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"networkError": true},
+      {"status": 302, "headers": {"Location": "/signed/logo.png"}},
+      {"status": 200, "headers": {"Content-Type": "image/png"}, "body": "pixels"}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 3},
+      {"type": "delayBetweenRequests", "min": 1000},
+      {"type": "noError"},
+      {"type": "headerPresent", "path": "Authorization", "index": 0},
+      {"type": "headerPresent", "path": "Authorization", "index": 1},
+      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+    ],
+    "tags": ["download", "retry", "network"]
+  },
+  {
+    "name": "DownloadURL does not retry hop 1 on 500",
+    "description": "500 is deliberately outside the download hop-1 retry set {429, 502, 503, 504} (SPEC 14): a single attempt surfaces the API error with no retry.",
+    "operation": "DownloadURL",
+    "method": "GET",
+    "path": "/999999999/blobs/abcd1234/download/logo.png",
+    "mockResponses": [
+      {"status": 500, "body": {"error": "Internal server error"}}
+    ],
+    "assertions": [
+      {"type": "requestCount", "expected": 1},
+      {"type": "statusCode", "expected": 500}
+    ],
+    "tags": ["download", "no-retry", "500"]
   },
   {
     "name": "DownloadURL honors Retry-After on 429 at the auth'd first hop",
