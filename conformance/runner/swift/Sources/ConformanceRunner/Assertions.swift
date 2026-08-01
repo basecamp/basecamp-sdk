@@ -99,14 +99,14 @@ func evaluateAssertions(
     let requestCount = captured.count
 
     // The implicit invariants below defer to an explicit assertion, but only
-    // when that assertion actually covers the FIRST request. "Any assertion of
-    // this type exists" is too coarse: the EditTodo edit-clear fixture pins
-    // requestPath at index 1 only, so a coarse exemption left the composite's
-    // leading GET unchecked — a regression there would keep the method, body,
-    // count and index-1 path assertions all green.
-    func explicitAssertionCoversFirstRequest(_ type: String) -> Bool {
+    // for the exact request that assertion names. "Any assertion of this type
+    // exists" is too coarse: the EditTodo edit-clear fixture pins requestPath
+    // at index 1 only, so a coarse exemption left the composite's leading GET
+    // unchecked — a regression there would keep the method, body, count and
+    // index-1 path assertions all green.
+    func explicitAssertionCovers(_ type: String, request index: Int) -> Bool {
         tc.allAssertions.contains {
-            $0.type == type && resolveRequestIndex($0.requestIndex, requestCount) == 0
+            $0.type == type && resolveRequestIndex($0.requestIndex, requestCount) == index
         }
     }
 
@@ -116,7 +116,7 @@ func evaluateAssertions(
     // explicitly pins the first request's method, it must use that verb.
     let fixtureMethod = tc.fixtureMethod.uppercased()
     if !fixtureMethod.isEmpty,
-       !explicitAssertionCoversFirstRequest("requestMethod"),
+       !explicitAssertionCovers("requestMethod", request: 0),
        let first = captured.first, first.method != fixtureMethod {
         return .fail("Expected first request method \(fixtureMethod), got \(first.method)")
     }
@@ -126,9 +126,15 @@ func evaluateAssertions(
     // responses and passes its retry, status, auth and pagination assertions
     // against a resource the fixture never named. Checking the verb alone left
     // that open.
-    if !tc.fixturePath.isEmpty,
-       !explicitAssertionCoversFirstRequest("requestPath"),
-       let first = captured.first {
+    //
+    // EVERY hop, not just the first. Retries and pagination stay on the
+    // fixture's path, and so do the read-modify-write composites — a card or
+    // todo edit GETs and PUTs the same resource, so a regression in either
+    // hop alone is exactly what this catches. The hops that legitimately go
+    // elsewhere are the download redirect and delegation flows, and those say
+    // so with their own indexed requestPath assertions rather than being
+    // waved through by a rule in here.
+    if !tc.fixturePath.isEmpty, !captured.isEmpty {
         let params = (tc.pathParams ?? [:]).compactMapValues {
             $0.stringValue ?? $0.intValue.map(String.init)
         }
@@ -136,8 +142,11 @@ func evaluateAssertions(
         case .unsubstituted(let name):
             return .fail("fixture path \"\(tc.fixturePath)\" has no pathParams entry for \"\(name)\"")
         case .rendered(let expected):
-            if !requestPathMatches(first.path, fixturePath: expected, accountID: testAccountID) {
-                return .fail("Expected first request path /\(testAccountID)\(expected), got \(first.path)")
+            for (i, request) in captured.enumerated() {
+                if explicitAssertionCovers("requestPath", request: i) { continue }
+                if !requestPathMatches(request.path, fixturePath: expected, accountID: testAccountID) {
+                    return .fail("Expected request \(i) at path /\(testAccountID)\(expected), got \(request.path)")
+                }
             }
         }
     }
