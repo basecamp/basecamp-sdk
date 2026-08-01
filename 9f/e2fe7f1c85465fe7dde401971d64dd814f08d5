@@ -1,0 +1,21 @@
+go/pkg/basecamp/pointer_helpers_test.go
+  s_b1b74299ef0baf::t_394b90c2b15d4f 1-52
+scripts/enhance-openapi-go-types.sh
+  s_b1b74299ef0baf::t_9b4429f4622f83 394-419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "9fe2fe7f1c85465fe7dde401971d64dd814f08d5",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
