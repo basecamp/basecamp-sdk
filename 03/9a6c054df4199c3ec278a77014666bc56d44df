@@ -1,0 +1,19 @@
+SPEC.md
+  s_34dec3eb0265b2::t_879b308b5c566c 1874-1883
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "039a6c054df4199c3ec278a77014666bc56d44df",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
