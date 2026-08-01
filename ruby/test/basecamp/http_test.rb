@@ -243,6 +243,38 @@ class HTTPTest < Minitest::Test
     assert_equal 1, provider.refresh_count
   end
 
+  # SPEC §4 counts refresh ATTEMPTS, not successes. The 401 recurs because the
+  # token never changed, so a flag set only on success would let the same
+  # request call refresh a second time — and if the first call reached the
+  # server and rotated the token before its response was lost, the second
+  # spends a refresh token that is already dead.
+  def test_401_throwing_refresh_still_spends_the_one_allowed_refresh
+    provider = Class.new do
+      attr_reader :refresh_count
+
+      def initialize = @refresh_count = 0
+      def access_token = "old-token"
+      def refreshable? = true
+
+      def refresh
+        @refresh_count += 1
+        raise Basecamp::NetworkError.new("token endpoint timed out")
+      end
+    end.new
+
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 3,
+      base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+
+    assert_raises(Basecamp::AuthError) { http.get("/test.json") }
+
+    assert_equal 1, provider.refresh_count
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+  end
+
   def test_401_no_retry_when_refresh_fails
     provider = RefreshableTokenProvider.new("old-token", refresh_result: false)
     http = Basecamp::Http.new(config: @config, token_provider: provider)

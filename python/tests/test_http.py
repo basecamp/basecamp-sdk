@@ -790,6 +790,40 @@ class TestRefreshReplayAttemptBudget:
         assert provider.refreshes == 1
 
     @respx.mock
+    def test_a_throwing_refresh_still_spends_the_one_allowed_refresh(self):
+        """SPEC §4 counts refresh ATTEMPTS, not successes.
+
+        The 401 recurs because the token never changed, so a flag set only on
+        success would let the same request call refresh() a second time — and
+        if the first call reached the server and rotated the token before its
+        response was lost, the second spends a refresh token already dead.
+        """
+        route = respx.get(self.URL).mock(return_value=httpx.Response(401))
+        config = Config(base_url="https://3.basecampapi.com", max_retries=3, base_delay=0.001, max_jitter=0.0)
+
+        class ExplodingProvider(StaticTokenProvider):
+            refreshable = True
+
+            def __init__(self):
+                super().__init__("test-token")
+                self.refreshes = 0
+
+            def refresh(self):
+                self.refreshes += 1
+                raise NetworkError("token endpoint timed out")
+
+        provider = ExplodingProvider()
+        client = HttpClient(config, BearerAuth(provider), BasecampHooks())
+
+        with pytest.raises(AuthError):
+            client.get("/thing")
+
+        # Attempt 1 401s and burns the one refresh; attempt 2 401s with the same
+        # token and must NOT refresh again, so the stale 401 surfaces.
+        assert provider.refreshes == 1
+        assert route.call_count == 2
+
+    @respx.mock
     def test_mutations_keep_the_in_primitive_replay(self):
         # Mutations bypass the retry loop entirely (no transient budget), so
         # they keep the single-request primitive's own replay. SPEC §4's gate

@@ -414,6 +414,15 @@ module Basecamp
         end
 
         if stale_auth
+          # SPEC §4 tracks refresh with an "attempted" boolean, not a
+          # "succeeded" one, so mark it BEFORE invoking the provider: a refresh
+          # that raises still counts as the one attempt this request gets.
+          # Otherwise a transient token-endpoint failure lets the NEXT 401 in
+          # the same request call refresh again — and if the first call reached
+          # the server and rotated the token before its response was lost, the
+          # second spends a refresh token that is already dead.
+          refreshed_once = true
+
           begin
             refreshed = @token_provider&.refreshable? && @token_provider.refresh
           rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
@@ -426,7 +435,6 @@ module Basecamp
 
             # No backoff: the token is fresh, and the server never asked us to
             # wait. The replay still costs the attempt counted above.
-            refreshed_once = true
             next
           end
         end

@@ -210,6 +210,15 @@ class AsyncHttpClient:
                 error = e
 
             if stale_auth is not None:
+                # SPEC §4 tracks refresh with an "attempted" boolean, not a
+                # "succeeded" one, so mark it BEFORE invoking the provider: a
+                # refresh that throws still counts as the one attempt this
+                # request gets. Otherwise a transient token-endpoint failure
+                # lets the NEXT 401 in the same request call refresh() again —
+                # and if the first call reached the server and rotated the
+                # token before its response was lost, the second spends a
+                # refresh token that is already dead.
+                refreshed_once = True
                 try:
                     tp = getattr(self._auth, "token_provider", None)
                     refreshed = bool(tp and getattr(tp, "refreshable", False) and await tp.refresh())
@@ -224,7 +233,6 @@ class AsyncHttpClient:
                         raise stale_auth
                     # No backoff: the token is fresh, and the server never asked
                     # us to wait. The replay still costs the attempt counted above.
-                    refreshed_once = True
                     continue
 
             if error is not None:
