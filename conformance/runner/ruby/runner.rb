@@ -533,11 +533,15 @@ class TestRunner
         delays = @tracker.delays_between_requests
         min_delay = assertion["min"]
         index = assertion["index"]
-        if min_delay && delays.any?
+        if min_delay
           if index
-            gap = delays[index]
-            if gap && gap < min_delay
-              failures << "Expected minimum delay of #{min_delay}ms at gap #{index}, got #{gap}ms"
+            # A named gap that does not exist fails: a dropped retry must fire
+            # the assertion, not make it vanish. Negative indexes are rejected
+            # rather than wrapping to the end like the per-request assertions.
+            if index.negative? || index >= delays.length
+              failures << "Expected a delay at gap #{index}, but only #{delays.length + 1} request(s) were made"
+            elsif delays[index] < min_delay
+              failures << "Expected minimum delay of #{min_delay}ms at gap #{index}, got #{delays[index]}ms"
             end
           elsif delays.any? { |d| d < min_delay }
             failures << "Expected minimum delay of #{min_delay}ms, got #{delays.min}ms"

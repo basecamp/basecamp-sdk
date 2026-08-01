@@ -40,6 +40,17 @@ package final class HTTPClient: Sendable {
     /// is 9.9e19 ns against a 1.8e19 ceiling. Clamp to a day instead: no SDK
     /// retry is worth sleeping longer, and a crash is never the right answer
     /// to a response header.
+    /// Whether an error represents cooperative cancellation.
+    ///
+    /// Swift concurrency raises `CancellationError`, but `URLSession` reports a
+    /// cancelled task as `URLError(.cancelled)` — so checking only the former
+    /// would treat a real cancelled download as a retryable network blip and
+    /// spend the whole budget on a request the caller already abandoned.
+    private static func isCancellation(_ error: any Error) -> Bool {
+        if error is CancellationError { return true }
+        return (error as? URLError)?.code == .cancelled
+    }
+
     private static func sleepNanoseconds(_ seconds: TimeInterval) -> UInt64 {
         guard seconds.isFinite, seconds > 0 else { return 0 }
         return UInt64(min(seconds, 86_400) * 1_000_000_000)
@@ -198,7 +209,7 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if error is CancellationError {
+                if Self.isCancellation(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
                     // caller has already abandoned. It propagates raw rather
@@ -346,7 +357,7 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if error is CancellationError {
+                if Self.isCancellation(error) {
                     // Cooperative cancellation is terminal, not a transport
                     // blip: retrying would announce and start an attempt the
                     // caller has already abandoned. It propagates raw rather

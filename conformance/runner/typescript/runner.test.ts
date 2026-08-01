@@ -799,17 +799,23 @@ function checkAssertions(
 
       case "delayBetweenRequests": {
         const times = tracker.requestTimes();
-        if (times.length >= 2) {
-          // index selects a single inter-request GAP (gap i is between request
-          // i and i+1), defaulting to the first. A named gap that does not
-          // exist fails rather than passing silently.
-          const gap = assertion.index ?? 0;
+        const minDelay = assertion.min ?? 0;
+        // index selects a single inter-request GAP (gap i is between request i
+        // and i+1). Omitted, every gap must clear the minimum. A NAMED gap is
+        // bounds-checked outside any "did we get two requests" guard: a
+        // dropped retry must fail the assertion, not make it vanish.
+        const gaps: number[] =
+          assertion.index !== undefined
+            ? [assertion.index]
+            : times.slice(0, -1).map((_, i) => i);
+        if (assertion.index !== undefined) {
           expect(
             times.length,
-            `[${tc.name}] expected a delay at gap ${gap}, but only ${times.length} request(s) were made`,
-          ).toBeGreaterThan(gap + 1);
+            `[${tc.name}] expected a delay at gap ${assertion.index}, but only ${times.length} request(s) were made`,
+          ).toBeGreaterThan(assertion.index + 1);
+        }
+        for (const gap of gaps) {
           const delay = times[gap + 1]! - times[gap]!;
-          const minDelay = assertion.min ?? 0;
           // Node's timers may fire marginally BEFORE the requested delay —
           // libuv rounds the deadline down internally, so a 2000ms sleep can
           // legitimately elapse in 1999.87ms. That is a runtime property, not

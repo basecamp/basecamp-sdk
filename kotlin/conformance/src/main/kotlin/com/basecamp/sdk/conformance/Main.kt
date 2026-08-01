@@ -140,7 +140,7 @@ data class Assertion(
     val max: Double = 0.0,
     val path: String = "",
     /** Request index for per-request assertions (0-based; negative = from end). */
-    val index: Int = 0,
+    val index: Int? = null,
 )
 
 data class TestResult(
@@ -370,7 +370,7 @@ private fun runTest(tc: TestCase): TestResult {
             "requestPath" -> {
                 val expected = assertion.expected?.asString()
                     ?: return TestResult(false, "requestPath assertion missing expected value")
-                val idx = resolveRequestIndex(assertion.index, requestPaths.size)
+                val idx = resolveRequestIndex(assertion.index ?: 0, requestPaths.size)
                     ?: return TestResult(false, "requestPath[${assertion.index}]: no request recorded at that index (${requestPaths.size} requests)")
                 if (requestPaths[idx] != expected) {
                     return TestResult(false, "Expected request path \"$expected\" at index ${assertion.index}, got \"${requestPaths[idx]}\"")
@@ -380,7 +380,7 @@ private fun runTest(tc: TestCase): TestResult {
             "requestMethod" -> {
                 val expected = assertion.expected?.asString()?.uppercase()
                     ?: return TestResult(false, "requestMethod assertion missing expected value")
-                val idx = resolveRequestIndex(assertion.index, requestMethods.size)
+                val idx = resolveRequestIndex(assertion.index ?: 0, requestMethods.size)
                     ?: return TestResult(false, "requestMethod[${assertion.index}]: no request recorded at that index (${requestMethods.size} requests)")
                 if (requestMethods[idx] != expected) {
                     return TestResult(false, "Expected request method $expected at index ${assertion.index}, got ${requestMethods[idx]}")
@@ -389,7 +389,7 @@ private fun runTest(tc: TestCase): TestResult {
 
             "requestBody" -> {
                 val key = assertion.path
-                val idx = resolveRequestIndex(assertion.index, requestBodies.size)
+                val idx = resolveRequestIndex(assertion.index ?: 0, requestBodies.size)
                     ?: return TestResult(false, "requestBody.$key[${assertion.index}]: no request recorded at that index (${requestBodies.size} requests)")
                 val body = requestBodies[idx]
                     ?: return TestResult(false, "requestBody.$key[${assertion.index}]: request has no JSON body")
@@ -401,7 +401,7 @@ private fun runTest(tc: TestCase): TestResult {
 
             "requestBodyAbsent" -> {
                 val key = assertion.path
-                val idx = resolveRequestIndex(assertion.index, requestBodies.size)
+                val idx = resolveRequestIndex(assertion.index ?: 0, requestBodies.size)
                     ?: return TestResult(false, "requestBodyAbsent.$key[${assertion.index}]: no request recorded at that index (${requestBodies.size} requests)")
                 val body = requestBodies[idx]
                 if (body != null && navigateJsonPath(body, key) != null) {
@@ -410,19 +410,24 @@ private fun runTest(tc: TestCase): TestResult {
             }
 
             "delayBetweenRequests" -> {
-                if (requestTimes.size >= 2) {
-                    // index selects a single inter-request GAP (gap i is
-                    // between request i and i+1), defaulting to the first. A
-                    // named gap that does not exist fails rather than passing
-                    // silently.
-                    val gap = assertion.index
-                    if (gap + 1 >= requestTimes.size) {
-                        return TestResult(false, "Expected a delay at gap $gap, but only ${requestTimes.size} request(s) were made")
-                    }
-                    val delay = requestTimes[gap + 1] - requestTimes[gap]
+                run {
                     val minDelay = assertion.min.toLong()
-                    if (delay < minDelay) {
-                        return TestResult(false, "Expected delay >= ${minDelay}ms at gap $gap, got ${delay}ms")
+                    val gap = assertion.index
+                    if (gap != null) {
+                        if (gap < 0 || gap + 1 >= requestTimes.size) {
+                            return TestResult(false, "Expected a delay at gap $gap, but only ${requestTimes.size} request(s) were made")
+                        }
+                        val delay = requestTimes[gap + 1] - requestTimes[gap]
+                        if (delay < minDelay) {
+                            return TestResult(false, "Expected delay >= ${minDelay}ms at gap $gap, got ${delay}ms")
+                        }
+                    } else {
+                        for (i in 0 until requestTimes.size - 1) {
+                            val delay = requestTimes[i + 1] - requestTimes[i]
+                            if (delay < minDelay) {
+                                return TestResult(false, "Expected delay >= ${minDelay}ms at gap $i, got ${delay}ms")
+                            }
+                        }
                     }
                 }
             }
@@ -539,7 +544,7 @@ private fun runTest(tc: TestCase): TestResult {
 
             "headerPresent" -> {
                 val headerName = assertion.path
-                val idx = resolveRequestIndex(assertion.index, requestHeadersList.size)
+                val idx = resolveRequestIndex(assertion.index ?: 0, requestHeadersList.size)
                     ?: return TestResult(false, "headerPresent $headerName[${assertion.index}]: no request recorded at that index (${requestHeadersList.size} requests)")
                 val actual = requestHeadersList[idx][headerName]
                 if (actual.isNullOrEmpty()) {
@@ -549,7 +554,7 @@ private fun runTest(tc: TestCase): TestResult {
 
             "headerAbsent" -> {
                 val headerName = assertion.path
-                val idx = resolveRequestIndex(assertion.index, requestHeadersList.size)
+                val idx = resolveRequestIndex(assertion.index ?: 0, requestHeadersList.size)
                     ?: return TestResult(false, "headerAbsent $headerName[${assertion.index}]: no request recorded at that index (${requestHeadersList.size} requests)")
                 // Use getAll (not indexed get): a present-but-empty header must
                 // fail an absence assertion, same as the Go runner's Values check.

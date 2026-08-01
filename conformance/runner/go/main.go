@@ -944,18 +944,23 @@ func checkAssertion(
 
 	case "delayBetweenRequests":
 		// index selects a single inter-request GAP (gap i is between request i
-		// and i+1); it defaults to the first. A named gap that does not exist
-		// is a failure, not a silent pass — otherwise a dropped retry makes the
-		// assertion vanish instead of firing.
-		if len(requestTimes) >= 2 {
-			gap := assertionIndex(assertion)
-			if gap+1 >= len(requestTimes) {
+		// and i+1). Omitted, every gap must clear the minimum. A NAMED gap is
+		// bounds-checked outside the "did we even get two requests" guard: a
+		// dropped retry must fail the assertion, not make it vanish.
+		minDelay := time.Duration(assertion.Min) * time.Millisecond
+		if assertion.Index != nil {
+			gap := *assertion.Index
+			if gap < 0 || gap+1 >= len(requestTimes) {
 				return fail(tc, fmt.Sprintf("Expected a delay at gap %d, but only %d request(s) were made", gap, len(requestTimes)))
 			}
-			delay := requestTimes[gap+1].Sub(requestTimes[gap])
-			minDelay := time.Duration(assertion.Min) * time.Millisecond
-			if delay < minDelay {
+			if delay := requestTimes[gap+1].Sub(requestTimes[gap]); delay < minDelay {
 				return fail(tc, fmt.Sprintf("Expected delay >= %v at gap %d, got %v", minDelay, gap, delay))
+			}
+		} else {
+			for i := 0; i+1 < len(requestTimes); i++ {
+				if delay := requestTimes[i+1].Sub(requestTimes[i]); delay < minDelay {
+					return fail(tc, fmt.Sprintf("Expected delay >= %v at gap %d, got %v", minDelay, i, delay))
+				}
 			}
 		}
 
