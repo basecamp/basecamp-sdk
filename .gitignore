@@ -14,6 +14,9 @@ conformance/runner/typescript/node_modules
 # test run cannot dirty the working tree and trip the release clean-tree guard.
 node_modules/
 .vite/
+conformance/runner/swift/.build/
+conformance/runner/swift/.swiftpm/
+conformance/runner/swift/Package.resolved
 
 # Claude Code session files (except skills, which are committed)
 .claude/*

@@ -13,7 +13,8 @@
       {"type": "requestCount", "expected": 2},
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
-      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
     ],
     "tags": ["download", "redirect"]
   },
@@ -53,7 +54,8 @@
       {"type": "headerPresent", "path": "Authorization", "index": 0},
       {"type": "headerPresent", "path": "Authorization", "index": 1},
       {"type": "headerPresent", "path": "Authorization", "index": 2},
-      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
     ],
     "tags": ["download", "retry", "503"]
   },
@@ -74,7 +76,8 @@
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
       {"type": "headerPresent", "path": "Authorization", "index": 1},
-      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
     ],
     "tags": ["download", "retry", "network"]
   },
@@ -110,7 +113,8 @@
       {"type": "delayBetweenRequests", "min": 1000, "index": 0},
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
-      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
     ],
     "tags": ["download", "retry", "429", "retry-after"]
   },

@@ -381,6 +381,20 @@ jobs:
         # target must run from repo root.
         working-directory: .
         run: make swift-check-drift
+
+      - name: Run Swift conformance runner unit tests
+        # Unit-tests the runner's own assertion helpers. Their bounds
+        # branches never execute against a fixture that passes, so a
+        # vacuous assertion (#563) survives a fully green conformance run.
+        working-directory: .
+        run: make conformance-swift-runner-tests
+
+      - name: Run Swift conformance tests
+        # Same single-source-of-truth pattern as the drift gate: the make
+        # target carries the platform gate (IS_MACOS), and this macos runner
+        # satisfies it. The target must run from repo root.
+        working-directory: .
+        run: make conformance-swift
   test-kotlin:
     name: Kotlin Tests
     runs-on: ubuntu-latest
@@ -446,7 +460,7 @@ jobs:
     # which includes its conformance step — did not succeed.
     name: Conformance Tests
     runs-on: ubuntu-latest
-    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python]
+    needs: [test-go, test-typescript, test-ruby, test-kotlin, test-python, test-swift]
     if: always()
     permissions:
       contents: read

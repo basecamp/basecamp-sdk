@@ -16,7 +16,9 @@
       {"type": "noError"},
       {"type": "headerPresent", "path": "Authorization", "index": 0},
       {"type": "headerPresent", "path": "Authorization", "index": 1},
-      {"type": "headerAbsent", "path": "Authorization", "index": -1}
+      {"type": "headerAbsent", "path": "Authorization", "index": -1},
+      {"type": "requestPath", "expected": "/999999999/blobs/abcd1234/download/logo.png", "index": -2},
+      {"type": "requestPath", "expected": "/signed/logo.png", "index": -1}
     ],
     "tags": ["upload", "download", "redirect"]
   },

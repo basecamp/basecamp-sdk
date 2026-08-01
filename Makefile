@@ -408,7 +408,11 @@ py-clean:
 # Conformance Test targets
 #------------------------------------------------------------------------------
 
-.PHONY: conformance conformance-runner-tests conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
+.PHONY: conformance conformance-runner-tests conformance-go conformance-go-replay conformance-kotlin conformance-kotlin-replay conformance-typescript conformance-typescript-live conformance-ruby conformance-ruby-replay conformance-python conformance-python-replay conformance-swift conformance-swift-runner-tests conformance-build conformance-live conformance-canary oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check
+
+# NOTE: conformance-swift and conformance-swift-runner-tests are defined in the
+# Swift SDK targets section below — their IS_MACOS conditional must parse after
+# that variable is defined.
 
 # Pinned validator for the data-only OAuth discovery fixtures. Run via uvx so the
 # version is reproducible without a global install; the schema is separate from
@@ -455,6 +459,7 @@ conformance-runner-tests:
 	cd conformance/runner/python && uv run python -m pytest -q test_delay_gaps.py
 	cd conformance/runner/ruby && bundle install --quiet && bundle exec ruby delay_gaps_test.rb
 	cd kotlin && ./gradlew --quiet :conformance:test
+	@$(MAKE) --no-print-directory conformance-swift-runner-tests
 
 # Build conformance test runner
 conformance-build:
@@ -530,7 +535,7 @@ conformance-python-replay:
 	cd conformance/runner/python && uv sync && uv run python replay_runner.py
 
 # Run all conformance tests
-conformance: oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python
+conformance: oauth-fixtures-check oauth-token-fixtures-check conformance-fixtures-check conformance-runner-tests conformance-go conformance-kotlin conformance-typescript conformance-ruby conformance-python conformance-swift
 	@echo "==> Conformance tests passed"
 
 # Orchestrate one canary pass against a single backend:
@@ -728,6 +733,30 @@ ifdef IS_MACOS
 	@$(MAKE) -C swift check
 else
 	@echo "SKIP: swift-check (macOS only)"
+endif
+
+# Run Swift conformance tests (macOS only — the SDK requires Apple platforms).
+# Defined here rather than in the conformance section so the IS_MACOS ifdef
+# parses after the variable is defined above.
+conformance-swift:
+ifdef IS_MACOS
+	@echo "==> Running Swift conformance tests..."
+	cd conformance/runner/swift && swift run ConformanceRunner
+else
+	@echo "SKIP: conformance-swift (macOS only)"
+endif
+
+# Unit-test the Swift runner's own assertion helpers (macOS only). Same reason
+# as the other five: the bounds branches never execute against a fixture that
+# passes, so a vacuous assertion survives a fully green conformance run.
+# Reached from conformance-runner-tests, which is platform-agnostic and defers
+# the gate to this target.
+conformance-swift-runner-tests:
+ifdef IS_MACOS
+	@echo "==> Running Swift conformance runner unit tests..."
+	cd conformance/runner/swift && swift test
+else
+	@echo "SKIP: conformance-swift-runner-tests (macOS only)"
 endif
 
 # Regenerate Swift SDK services from OpenAPI spec (needs swift on any platform)
@@ -999,6 +1028,8 @@ help:
 	@echo "  conformance-ruby-replay    Decode TS-captured wire snapshots through Ruby SDK"
 	@echo "  conformance-python         Run Python conformance tests"
 	@echo "  conformance-python-replay  Decode TS-captured wire snapshots through Python SDK"
+	@echo "  conformance-swift          Run Swift conformance tests (macOS only)"
+	@echo "  conformance-swift-runner-tests  Unit-test the Swift runner's assertion helpers (macOS only)"
 	@echo "  conformance-build          Build Go conformance test runner"
 	@echo "  oauth-fixtures-check       Validate OAuth discovery fixtures against their schema"
 	@echo "  oauth-token-fixtures-check Validate OAuth token wire-behavior fixtures against their schema"

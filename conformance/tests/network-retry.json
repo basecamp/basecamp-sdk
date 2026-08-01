@@ -1,7 +1,7 @@
 [
   {
     "name": "Network error on a non-idempotent POST is not retried",
-    "description": "A transport-level failure on CreateTodo (a non-idempotent POST) must surface as a network error with no re-send — no SDK re-sends a non-idempotent POST on a network blip. Exercises the transport-exception path that the 503 safety case cannot reach. Runs and passes in all five runners.",
+    "description": "A transport-level failure on CreateTodo (a non-idempotent POST) must surface as a network error with no re-send — no SDK re-sends a non-idempotent POST on a network blip. Exercises the transport-exception path that the 503 safety case cannot reach. Runs and passes in all six runners.",
     "operation": "CreateTodo",
     "method": "POST",
     "path": "/todolists/{todolistId}/todos.json",
