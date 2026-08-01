@@ -37,7 +37,7 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
      * @param forwardId The forward ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listReplies(forwardId: Long, options: ListForwardRepliesOptions? = null): ListResult<ForwardReply> {
+    suspend fun listReplies(forwardId: Long, options: ListForwardRepliesOptions): ListResult<ForwardReply> {
         val info = OperationInfo(
             service = "Forwards",
             operation = "ListForwardReplies",
@@ -47,9 +47,9 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
             resourceId = forwardId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/inbox_forwards/${forwardId}/replies.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ForwardReply>>(body)
@@ -57,16 +57,17 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [ListForwardRepliesOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [listReplies] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listReplies] needs an expected type to disambiguate.
      */
-    suspend fun listReplies(forwardId: Long, options: PaginationOptions): ListResult<ForwardReply> =
-        listReplies(forwardId, ListForwardRepliesOptions(maxItems = options.maxItems))
+    suspend fun listReplies(forwardId: Long, options: PaginationOptions? = null): ListResult<ForwardReply> =
+        listReplies(forwardId, ListForwardRepliesOptions(maxItems = options?.maxItems))
 
     /**
      * Create a reply to a forward

@@ -16,7 +16,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * Get pending check-in reminders for the current user
      * @param options Optional query parameters and pagination control
      */
-    suspend fun reminders(options: GetQuestionRemindersOptions? = null): ListResult<JsonElement> {
+    suspend fun reminders(options: GetQuestionRemindersOptions): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "GetQuestionReminders",
@@ -26,9 +26,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/my/question_reminders.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<JsonElement>>(body)
@@ -36,16 +36,17 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [GetQuestionRemindersOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [reminders] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [reminders] needs an expected type to disambiguate.
      */
-    suspend fun reminders(options: PaginationOptions): ListResult<JsonElement> =
-        reminders(GetQuestionRemindersOptions(maxItems = options.maxItems))
+    suspend fun reminders(options: PaginationOptions? = null): ListResult<JsonElement> =
+        reminders(GetQuestionRemindersOptions(maxItems = options?.maxItems))
 
     /**
      * Get a single answer by id
@@ -114,7 +115,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * @param questionnaireId The questionnaire ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listQuestions(questionnaireId: Long, options: ListQuestionsOptions? = null): ListResult<Question> {
+    suspend fun listQuestions(questionnaireId: Long, options: ListQuestionsOptions): ListResult<Question> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "ListQuestions",
@@ -124,9 +125,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             resourceId = questionnaireId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/questionnaires/${questionnaireId}/questions.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Question>>(body)
@@ -134,16 +135,17 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [ListQuestionsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [listQuestions] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listQuestions] needs an expected type to disambiguate.
      */
-    suspend fun listQuestions(questionnaireId: Long, options: PaginationOptions): ListResult<Question> =
-        listQuestions(questionnaireId, ListQuestionsOptions(maxItems = options.maxItems))
+    suspend fun listQuestions(questionnaireId: Long, options: PaginationOptions? = null): ListResult<Question> =
+        listQuestions(questionnaireId, ListQuestionsOptions(maxItems = options?.maxItems))
 
     /**
      * Create a new question in a questionnaire
@@ -220,7 +222,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * @param questionId The question ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listAnswers(questionId: Long, options: ListAnswersOptions? = null): ListResult<Answer> {
+    suspend fun listAnswers(questionId: Long, options: ListAnswersOptions): ListResult<Answer> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "ListAnswers",
@@ -230,9 +232,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             resourceId = questionId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/questions/${questionId}/answers.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Answer>>(body)
@@ -240,16 +242,17 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [ListAnswersOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [listAnswers] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listAnswers] needs an expected type to disambiguate.
      */
-    suspend fun listAnswers(questionId: Long, options: PaginationOptions): ListResult<Answer> =
-        listAnswers(questionId, ListAnswersOptions(maxItems = options.maxItems))
+    suspend fun listAnswers(questionId: Long, options: PaginationOptions? = null): ListResult<Answer> =
+        listAnswers(questionId, ListAnswersOptions(maxItems = options?.maxItems))
 
     /**
      * Create a new answer for a question
@@ -302,7 +305,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * @param personId The person ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun byPerson(questionId: Long, personId: Long, options: GetAnswersByPersonOptions? = null): ListResult<Answer> {
+    suspend fun byPerson(questionId: Long, personId: Long, options: GetAnswersByPersonOptions): ListResult<Answer> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "GetAnswersByPerson",
@@ -312,9 +315,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             resourceId = personId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/questions/${questionId}/answers/by/${personId}" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Answer>>(body)
@@ -322,16 +325,17 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [GetAnswersByPersonOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [byPerson] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [byPerson] needs an expected type to disambiguate.
      */
-    suspend fun byPerson(questionId: Long, personId: Long, options: PaginationOptions): ListResult<Answer> =
-        byPerson(questionId, personId, GetAnswersByPersonOptions(maxItems = options.maxItems))
+    suspend fun byPerson(questionId: Long, personId: Long, options: PaginationOptions? = null): ListResult<Answer> =
+        byPerson(questionId, personId, GetAnswersByPersonOptions(maxItems = options?.maxItems))
 
     /**
      * Update notification settings for a check-in question

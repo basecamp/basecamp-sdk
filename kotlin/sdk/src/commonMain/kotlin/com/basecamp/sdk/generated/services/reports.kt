@@ -24,7 +24,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * Get account-wide activity feed (progress report)
      * @param options Optional query parameters and pagination control
      */
-    suspend fun progress(options: GetProgressReportOptions? = null): ListResult<TimelineEvent> {
+    suspend fun progress(options: GetProgressReportOptions): ListResult<TimelineEvent> {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetProgressReport",
@@ -34,9 +34,9 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             resourceId = null,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/reports/progress.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<TimelineEvent>>(body)
@@ -44,16 +44,17 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [GetProgressReportOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [progress] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [progress] needs an expected type to disambiguate.
      */
-    suspend fun progress(options: PaginationOptions): ListResult<TimelineEvent> =
-        progress(GetProgressReportOptions(maxItems = options.maxItems))
+    suspend fun progress(options: PaginationOptions? = null): ListResult<TimelineEvent> =
+        progress(GetProgressReportOptions(maxItems = options?.maxItems))
 
     /**
      * Get upcoming schedule entries and assignable items within a date window.
@@ -127,7 +128,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * @param personId The person ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun personProgress(personId: Long, options: GetPersonProgressOptions? = null): PersonProgressResult {
+    suspend fun personProgress(personId: Long, options: GetPersonProgressOptions): PersonProgressResult {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetPersonProgress",
@@ -137,9 +138,9 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             resourceId = personId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        val (firstPageBody, items) = requestPaginatedWrapped<TimelineEvent>(info, options?.toPaginationOptions(), {
+        val (firstPageBody, items) = requestPaginatedWrapped<TimelineEvent>(info, options.toPaginationOptions(), {
             httpGet("/reports/users/progress/${personId}.json" + qs, operationName = info.operation)
         }) { body ->
             json.parseToJsonElement(body).jsonObject["events"]!!
@@ -153,14 +154,15 @@ class ReportsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [GetPersonProgressOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [personProgress] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [personProgress] needs an expected type to disambiguate.
      */
-    suspend fun personProgress(personId: Long, options: PaginationOptions): PersonProgressResult =
-        personProgress(personId, GetPersonProgressOptions(maxItems = options.maxItems))
+    suspend fun personProgress(personId: Long, options: PaginationOptions? = null): PersonProgressResult =
+        personProgress(personId, GetPersonProgressOptions(maxItems = options?.maxItems))
 }

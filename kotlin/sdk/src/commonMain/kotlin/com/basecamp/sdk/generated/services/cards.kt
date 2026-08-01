@@ -85,7 +85,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
      * @param columnId The column ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(columnId: Long, options: ListCardsOptions? = null): ListResult<Card> {
+    suspend fun list(columnId: Long, options: ListCardsOptions): ListResult<Card> {
         val info = OperationInfo(
             service = "Cards",
             operation = "ListCards",
@@ -95,9 +95,9 @@ open class CardsService(client: AccountClient) : BaseService(client) {
             resourceId = columnId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/card_tables/lists/${columnId}/cards.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Card>>(body)
@@ -105,16 +105,17 @@ open class CardsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [ListCardsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [list] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [list] needs an expected type to disambiguate.
      */
-    suspend fun list(columnId: Long, options: PaginationOptions): ListResult<Card> =
-        list(columnId, ListCardsOptions(maxItems = options.maxItems))
+    suspend fun list(columnId: Long, options: PaginationOptions? = null): ListResult<Card> =
+        list(columnId, ListCardsOptions(maxItems = options?.maxItems))
 
     /**
      * Create a card in a column

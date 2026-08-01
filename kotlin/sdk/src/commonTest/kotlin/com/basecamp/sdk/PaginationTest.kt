@@ -5,6 +5,7 @@ import com.basecamp.sdk.generated.projects
 import com.basecamp.sdk.generated.reports
 import com.basecamp.sdk.generated.services.BookmarksService
 import com.basecamp.sdk.generated.services.CommentsService
+import com.basecamp.sdk.generated.services.ListCommentsOptions
 import com.basecamp.sdk.generated.services.ListProjectsOptions
 import com.basecamp.sdk.generated.services.PersonProgressResult
 import com.basecamp.sdk.generated.services.SearchService
@@ -620,12 +621,41 @@ class PaginationTest {
      */
     @Test
     fun paginationOptionsBridgeReachesOnlyOperationsWhoseOptionsTypeChanged() {
-        val bridged: suspend (CommentsService, Long, PaginationOptions) -> ListResult<Comment> = CommentsService::list
+        val bridged: suspend (CommentsService, Long, PaginationOptions?) -> ListResult<Comment> = CommentsService::list
         val unbridged = BookmarksService::listMyBookmarks
         val alsoUnbridged = SearchService::search
 
         assertNotNull(bridged)
         assertNotNull(unbridged)
         assertNotNull(alsoUnbridged)
+    }
+
+    /**
+     * Every call shape `ListComments` accepted before it gained a `page`
+     * parameter still compiles.
+     *
+     * The bridge keeps the old `options: PaginationOptions? = null` verbatim
+     * rather than a non-null variant, because a caller holding a nullable
+     * `PaginationOptions?` — `savedOptions` below — matches neither the new
+     * options class nor a non-null bridge, and would have been broken by a
+     * bridge that only accepted non-null values.
+     *
+     * The lambda is type-checked but never invoked: these are assertions about
+     * overload resolution, not about the wire.
+     */
+    @Test
+    fun everyPreExistingCallShapeStillResolves() {
+        val savedOptions: PaginationOptions? = PaginationOptions(maxItems = 3)
+
+        val shapes: suspend (CommentsService) -> Unit = { comments ->
+            comments.list(1)                                        // no options
+            comments.list(1, null)                                  // explicit null
+            comments.list(1, PaginationOptions(maxItems = 3))       // non-null value
+            comments.list(1, savedOptions)                          // nullable variable
+            comments.list(1, options = savedOptions)                // named, nullable
+            comments.list(1, ListCommentsOptions(page = 3))         // and the new shape
+        }
+
+        assertNotNull(shapes)
     }
 }

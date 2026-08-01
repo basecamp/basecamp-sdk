@@ -55,7 +55,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listForRecording(recordingId: Long, options: ListRecordingBoostsOptions? = null): ListResult<Boost> {
+    suspend fun listForRecording(recordingId: Long, options: ListRecordingBoostsOptions): ListResult<Boost> {
         val info = OperationInfo(
             service = "Boosts",
             operation = "ListRecordingBoosts",
@@ -65,9 +65,9 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             resourceId = recordingId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/recordings/${recordingId}/boosts.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Boost>>(body)
@@ -75,16 +75,17 @@ class BoostsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [ListRecordingBoostsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [listForRecording] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listForRecording] needs an expected type to disambiguate.
      */
-    suspend fun listForRecording(recordingId: Long, options: PaginationOptions): ListResult<Boost> =
-        listForRecording(recordingId, ListRecordingBoostsOptions(maxItems = options.maxItems))
+    suspend fun listForRecording(recordingId: Long, options: PaginationOptions? = null): ListResult<Boost> =
+        listForRecording(recordingId, ListRecordingBoostsOptions(maxItems = options?.maxItems))
 
     /**
      * Create a boost on a recording
@@ -115,7 +116,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      * @param eventId The event ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listForEvent(recordingId: Long, eventId: Long, options: ListEventBoostsOptions? = null): ListResult<Boost> {
+    suspend fun listForEvent(recordingId: Long, eventId: Long, options: ListEventBoostsOptions): ListResult<Boost> {
         val info = OperationInfo(
             service = "Boosts",
             operation = "ListEventBoosts",
@@ -125,9 +126,9 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             resourceId = eventId,
         )
         val qs = buildQueryString(
-            "page" to options?.page,
+            "page" to options.page,
         )
-        return requestPaginated(info, options?.toPaginationOptions(), {
+        return requestPaginated(info, options.toPaginationOptions(), {
             httpGet("/recordings/${recordingId}/events/${eventId}/boosts.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Boost>>(body)
@@ -135,16 +136,17 @@ class BoostsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
+     * Source-compatibility overload: the signature this operation had before
+     * it gained query parameters of its own.
      *
      * Prefer [ListEventBoostsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
      *
-     * Because two one-argument candidates now apply, an *untyped* callable
-     * reference to [listForEvent] needs an expected type to disambiguate.
+     * Because two candidates now apply, an *untyped* callable reference to
+     * [listForEvent] needs an expected type to disambiguate.
      */
-    suspend fun listForEvent(recordingId: Long, eventId: Long, options: PaginationOptions): ListResult<Boost> =
-        listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options.maxItems))
+    suspend fun listForEvent(recordingId: Long, eventId: Long, options: PaginationOptions? = null): ListResult<Boost> =
+        listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options?.maxItems))
 
     /**
      * Create a boost on a specific event within a recording
