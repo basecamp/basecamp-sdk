@@ -1,0 +1,37 @@
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_555508c40a7b3b::t_c11721818f66c5 10-12
+  s_555508c40a7b3b::t_4e04cacb2483c1 1-3,23-27,30-36,38-39,50,54-55,59,64,67,72,75,92,101,105-108,123-125,130-132,153,165-166,179,181-182,202,256-257
+  s_555508c40a7b3b::t_9292038e2304c8 4-9,14-22,28-29,37,40-49,51-53,56-58,60-63,65-66,68-71,73-74,76-91,93-100,102-104,109-122,126-129,133-152,154-164,167-178,180,183-201,203-255
+  s_555508c40a7b3b::t_e725c83a14b277 13
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_555508c40a7b3b::t_2f18901a14e5cc 1-344
+conformance/runner/swift/Sources/ConformanceRunner/Fixtures.swift
+  s_555508c40a7b3b::t_f5997171390baa 1-177
+.gitignore
+  s_555508c40a7b3b::t_5652bd6f39dc66 17-19
+conformance/runner/swift/Sources/ConformanceRunner/Dispatch.swift
+  s_555508c40a7b3b::t_951525949e3a5c 1-384
+conformance/runner/swift/Package.swift
+  s_555508c40a7b3b::t_5fa7d7bece2e60 25
+  s_555508c40a7b3b::t_14e1f78b05dd47 1-3,13-18,20-24,26-33
+  s_555508c40a7b3b::t_d55d81342694b1 4-12
+  s_555508c40a7b3b::t_602cff72937ab2 19
+conformance/runner/swift/Sources/ConformanceRunner/ScriptedTransport.swift
+  s_555508c40a7b3b::t_9de221a39ca5fe 1-143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "49cdbcddfc140b2f15198721175cab2b32e1f36b",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
