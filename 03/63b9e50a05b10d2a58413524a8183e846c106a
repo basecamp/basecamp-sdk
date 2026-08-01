@@ -1,0 +1,42 @@
+go/pkg/basecamp/cards.go
+  s_b1b74299ef0baf::t_1999992142c288 227-230,814-815
+go/pkg/basecamp/hill_charts.go
+  s_b1b74299ef0baf::t_b7b1865668f5ba 15,121
+go/pkg/basecamp/client_approvals.go
+  s_b1b74299ef0baf::t_7a0110743f3ab5 243-244
+scripts/check-go-optional-pointers
+  s_b1b74299ef0baf::t_44d76081bd1352 71-77
+  s_b1b74299ef0baf::t_94dfa454a327d0 40-41,43-52
+scripts/enhance-openapi-go-types.sh
+  s_b1b74299ef0baf::t_26d714c1b705a3 95-102
+go/pkg/basecamp/tools.go
+  s_b1b74299ef0baf::t_4ccac6dc516a43 308
+go/pkg/basecamp/optional_presence_test.go
+  s_b1b74299ef0baf::t_d6fff59814e0fb 81-82
+  s_b1b74299ef0baf::t_f5a831968a6a29 73,75-79,84,87
+  s_b1b74299ef0baf::t_61c4e58b5cd199 4-7,61-72,74,80,83,85-86,88-94
+  s_b1b74299ef0baf::t_d18b052319b05f 95
+go/pkg/basecamp/webhooks.go
+  s_b1b74299ef0baf::t_7a0110743f3ab5 497-498,501-502
+  s_b1b74299ef0baf::t_7ac1809b5c9b70 292-294
+go/pkg/basecamp/checkins.go
+  s_b1b74299ef0baf::t_8484aee42d8242 1085-1087,1106-1108
+rubric-audit.json
+  s_b1b74299ef0baf::t_fb06057612d286 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "0363b9e50a05b10d2a58413524a8183e846c106a",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
