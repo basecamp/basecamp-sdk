@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -856,6 +857,159 @@ func TestDownloadURL_AuthHopRetriesOnNetworkError(t *testing.T) {
 	body, _ := io.ReadAll(result.Body)
 	if string(body) != fileContent {
 		t.Errorf("expected body %q, got %q", fileContent, string(body))
+	}
+}
+
+// TestDownloadURL_AuthHopDeclaredRetrySet pins the COMPLETE declared hop-1
+// retry set (SPEC §14) status by status. The 503 and 429 cases above assert the
+// timing properties (backoff growth, Retry-After); this table asserts
+// membership, including the carve-out: 500 sits deliberately outside the set,
+// so it is attempted exactly once and surfaces as a non-retryable API error.
+func TestDownloadURL_AuthHopDeclaredRetrySet(t *testing.T) {
+	tests := []struct {
+		name         string
+		status       int
+		wantAttempts int32
+		wantErr      bool
+	}{
+		{"429 is retried", http.StatusTooManyRequests, 2, false},
+		{"502 is retried", http.StatusBadGateway, 2, false},
+		{"503 is retried", http.StatusServiceUnavailable, 2, false},
+		{"504 is retried", http.StatusGatewayTimeout, 2, false},
+		{"500 is outside the set", http.StatusInternalServerError, 1, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileContent := "declared-set-ok"
+			var attempts atomic.Int32
+
+			s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/pdf")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(fileContent))
+			}))
+			defer s3Server.Close()
+
+			apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if attempts.Add(1) == 1 {
+					w.WriteHeader(tt.status)
+					_, _ = w.Write([]byte(`{"error":"transient"}`))
+					return
+				}
+				w.Header().Set("Location", s3Server.URL+"/bucket/file.pdf")
+				w.WriteHeader(http.StatusFound)
+			}))
+			defer apiServer.Close()
+
+			cfg := DefaultConfig()
+			cfg.BaseURL = apiServer.URL
+			token := &StaticTokenProvider{Token: "test-token"}
+			client := NewClient(cfg, token,
+				WithMaxRetries(3),
+				WithBaseDelay(time.Millisecond),
+				WithMaxJitter(time.Millisecond),
+				WithTransport(http.DefaultTransport),
+			)
+			ac := client.ForAccount("12345")
+
+			result, err := ac.DownloadURL(context.Background(),
+				"https://storage.3.basecamp.com/999/blobs/abc/download/doc.pdf")
+
+			if tt.wantErr {
+				if err == nil {
+					result.Body.Close()
+					t.Fatalf("expected an error for %d", tt.status)
+				}
+				var sdkErr *Error
+				if !isSDKError(err, &sdkErr) || sdkErr.Retryable {
+					t.Errorf("expected a non-retryable SDK error, got: %v", err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				defer result.Body.Close()
+				body, _ := io.ReadAll(result.Body)
+				if string(body) != fileContent {
+					t.Errorf("expected body %q, got %q", fileContent, string(body))
+				}
+			}
+
+			if got := attempts.Load(); got != tt.wantAttempts {
+				t.Errorf("expected %d attempts, got %d", tt.wantAttempts, got)
+			}
+		})
+	}
+}
+
+// TestDownloadURL_AuthHopAuthOnEveryAttemptNeverOnHop2 pins the credential
+// boundary across a retry: every authenticated-hop attempt carries
+// Authorization — the retried one included, since each attempt re-runs the auth
+// strategy — and the signed hop never does.
+func TestDownloadURL_AuthHopAuthOnEveryAttemptNeverOnHop2(t *testing.T) {
+	var mu sync.Mutex
+	var hop1Auth []string
+	var hop2Auth []string
+	var attempts atomic.Int32
+
+	s3Server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		hop2Auth = append(hop2Auth, r.Header.Get("Authorization"))
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/pdf")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("data"))
+	}))
+	defer s3Server.Close()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		hop1Auth = append(hop1Auth, r.Header.Get("Authorization"))
+		mu.Unlock()
+		if attempts.Add(1) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Location", s3Server.URL+"/bucket/file.pdf")
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = apiServer.URL
+	token := &StaticTokenProvider{Token: "test-token"}
+	client := NewClient(cfg, token,
+		WithMaxRetries(3),
+		WithBaseDelay(time.Millisecond),
+		WithMaxJitter(time.Millisecond),
+		WithTransport(http.DefaultTransport),
+	)
+	ac := client.ForAccount("12345")
+
+	result, err := ac.DownloadURL(context.Background(),
+		"https://storage.3.basecamp.com/999/blobs/abc/download/doc.pdf")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer result.Body.Close()
+	io.Copy(io.Discard, result.Body)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(hop1Auth) != 2 {
+		t.Fatalf("expected 2 authenticated-hop attempts, got %d", len(hop1Auth))
+	}
+	for i, auth := range hop1Auth {
+		if auth != "Bearer test-token" {
+			t.Errorf("hop-1 attempt %d: expected %q, got %q", i+1, "Bearer test-token", auth)
+		}
+	}
+	if len(hop2Auth) != 1 {
+		t.Fatalf("expected 1 signed-hop request, got %d", len(hop2Auth))
+	}
+	if hop2Auth[0] != "" {
+		t.Errorf("expected no Authorization header on the signed hop, got %q", hop2Auth[0])
 	}
 }
 
