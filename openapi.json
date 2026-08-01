@@ -10753,7 +10753,7 @@
         }
       },
       "put": {
-        "description": "Replace the note's content, recording a new revision server-side. The first\nupdate also creates the underlying notebook if the user did not have one\nyet. Returns the updated note.",
+        "description": "Replace the note's content, recording a new revision server-side.\nThe first update also creates the underlying notebook if the user did not\nhave one yet. Returns the updated note. Rejections arrive as a field-keyed\n422 ({\"errors\": {\"content\": [\"can't be blank\"]}}), not the flat {error}\nbody.",
         "operationId": "UpdateMyNote",
         "requestBody": {
           "content": {
@@ -10810,11 +10810,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "FieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
                 }
               }
             }
@@ -10930,7 +10930,7 @@
         }
       },
       "put": {
-        "description": "Update the current user's preferences",
+        "description": "Update the current user's preferences.\nRejections arrive as a field-keyed 422\n({\"errors\": {\"time_zone_name\": [\"is not included in the list\"]}}), not the\nflat {error} body.",
         "operationId": "UpdateMyPreferences",
         "requestBody": {
           "content": {
@@ -10987,11 +10987,11 @@
             }
           },
           "422": {
-            "description": "ValidationError 422 response",
+            "description": "FieldValidationError 422 response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationErrorResponseContent"
+                  "$ref": "#/components/schemas/FieldValidationErrorResponseContent"
                 }
               }
             }

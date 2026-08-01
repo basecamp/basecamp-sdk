@@ -1404,9 +1404,11 @@ export interface paths {
          */
         get: operations["GetMyNote"];
         /**
-         * @description Replace the note's content, recording a new revision server-side. The first
-         *     update also creates the underlying notebook if the user did not have one
-         *     yet. Returns the updated note.
+         * @description Replace the note's content, recording a new revision server-side.
+         *     The first update also creates the underlying notebook if the user did not
+         *     have one yet. Returns the updated note. Rejections arrive as a field-keyed
+         *     422 ({"errors": {"content": ["can't be blank"]}}), not the flat {error}
+         *     body.
          */
         put: operations["UpdateMyNote"];
         post?: never;
@@ -1425,7 +1427,12 @@ export interface paths {
         };
         /** @description Get the current user's preferences */
         get: operations["GetMyPreferences"];
-        /** @description Update the current user's preferences */
+        /**
+         * @description Update the current user's preferences.
+         *     Rejections arrive as a field-keyed 422
+         *     ({"errors": {"time_zone_name": ["is not included in the list"]}}), not the
+         *     flat {error} body.
+         */
         put: operations["UpdateMyPreferences"];
         post?: never;
         delete?: never;
@@ -12653,13 +12660,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description FieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */
@@ -12769,13 +12776,13 @@ export interface operations {
                     "application/json": components["schemas"]["ForbiddenErrorResponseContent"];
                 };
             };
-            /** @description ValidationError 422 response */
+            /** @description FieldValidationError 422 response */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ValidationErrorResponseContent"];
+                    "application/json": components["schemas"]["FieldValidationErrorResponseContent"];
                 };
             };
             /** @description RateLimitError 429 response */

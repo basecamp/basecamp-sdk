@@ -409,14 +409,21 @@ BC5 controllers that render Rails `RecordInvalid` emit a field-keyed 422 body in
 {"errors": {"color": ["is not a valid color"]}}
 ```
 
+Other controllers render the same `ActiveModel::Errors` payload with no wrapper at all — `render json: @webhook.errors` — so the field map arrives as the whole body (webhooks and chat integrations at 400, message-type categories at 400, lineup markers at 422):
+
+```json
+{"payload_url": ["is not a valid URL"]}
+```
+
 For `status == 400` or `status == 422` only:
 
 1. If the parsed JSON body has an `"errors"` key whose value is an object, build `field_errors`: for each entry whose value is an array, keep its string elements; skip entries whose value is not an array and entries with no usable messages. If no entries remain, treat the map as absent. The map is parsed independently of the scalar members: a non-string `"error"` or `"error_description"` value (ignored per the Error Body Parsing Algorithm's string-value requirement) must not prevent field-error extraction — `{"error": {}, "errors": {...}}` still yields the flattened message and the structured slot.
-2. Flatten `field_errors` into a single string: fields sorted lexicographically, each rendered as `{field}: {msg1}; {msg2}` (a field's messages joined with `"; "`), fields joined with `", "`. This shape is shared by all six SDKs — change it everywhere or nowhere.
-3. Compose the error message: appended in parentheses after the top-level message when both are present (`{message} ({flattened})`), standing alone when only `errors` is present. The top-level message comes from the Error Body Parsing Algorithm above — including its `"message"`-key fallback, so `{"message": "Validation failed", "errors": {...}}` composes just like the `"error"`-keyed shape. Truncation to `MAX_ERROR_MESSAGE_LENGTH` (§9) applies to the composed result — after flattening — so the appended tail is capped too.
-4. Expose the raw map as a structured slot on the validation error (idiomatic spelling per language: `FieldErrors` / `fieldErrors` / `field_errors`), preserving the raw, untruncated per-field messages. The slot is `nil`/`null`/`None`/`undefined` for every other error shape, including non-validation statuses whose bodies happen to carry an `errors` key.
+2. Otherwise, if the body is a non-empty object carrying none of `"error"`, `"errors"`, or `"message"`, and **every** member's value is a non-empty array whose elements are all non-empty strings, the body itself is the field map: `field_errors` is the body. This gate is deliberately stricter than step 1's per-entry filtering, and the asymmetry is the point — an explicit `"errors"` key already declares the body's intent, so a partly malformed map is still unambiguously a field map, whereas an unwrapped body is recognizable by shape alone. One non-conforming member means it is some other JSON object and must not be reinterpreted as validation detail.
+3. Flatten `field_errors` into a single string: fields sorted lexicographically, each rendered as `{field}: {msg1}; {msg2}` (a field's messages joined with `"; "`), fields joined with `", "`. This shape is shared by all six SDKs — change it everywhere or nowhere.
+4. Compose the error message: appended in parentheses after the top-level message when both are present (`{message} ({flattened})`), standing alone when only the field map is present. The top-level message comes from the Error Body Parsing Algorithm above — including its `"message"`-key fallback, so `{"message": "Validation failed", "errors": {...}}` composes just like the `"error"`-keyed shape. A bare field map (step 2) never has a top-level message by construction, so it always stands alone. Truncation to `MAX_ERROR_MESSAGE_LENGTH` (§9) applies to the composed result — after flattening — so the appended tail is capped too.
+5. Expose the raw map as a structured slot on the validation error (idiomatic spelling per language: `FieldErrors` / `fieldErrors` / `field_errors`; Swift carries it as the fifth associated value of `.validation` plus a `fieldErrors` computed property on `BasecampError`), preserving the raw, untruncated per-field messages. The slot is `nil`/`null`/`None`/`undefined` for every other error shape, including non-validation statuses whose bodies happen to carry an `errors` key.
 
-Swift deviation `[static]`: Swift flattens into `message` only. Extending the `.validation` associated values is source-breaking for every `case .validation` match, so the structured slot awaits a deliberate break.
+Field names are data, never structure: `"base"` — Rails' record-level error key — renders as an ordinary field (`base: Can't be undocked`), and no field name receives special treatment.
 
 ### Retry-After Parsing Algorithm
 

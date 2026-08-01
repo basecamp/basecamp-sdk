@@ -27393,7 +27393,7 @@ type UpdateMyNoteResponse struct {
 	JSON200      *UpdateMyNoteResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -27461,7 +27461,7 @@ type UpdateMyPreferencesResponse struct {
 	JSON200      *UpdateMyPreferencesResponseContent
 	JSON401      *UnauthorizedErrorResponseContent
 	JSON403      *ForbiddenErrorResponseContent
-	JSON422      *ValidationErrorResponseContent
+	JSON422      *FieldValidationErrorResponseContent
 	JSON429      *RateLimitErrorResponseContent
 	JSON500      *InternalServerErrorResponseContent
 }
@@ -40178,7 +40178,7 @@ func ParseUpdateMyNoteResponse(rsp *http.Response) (*UpdateMyNoteResponse, error
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}
@@ -40278,7 +40278,7 @@ func ParseUpdateMyPreferencesResponse(rsp *http.Response) (*UpdateMyPreferencesR
 		}
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ValidationErrorResponseContent
+		var dest FieldValidationErrorResponseContent
 		if err := json.Unmarshal(bodyBytes, &dest); err == nil {
 			response.JSON422 = &dest
 		}

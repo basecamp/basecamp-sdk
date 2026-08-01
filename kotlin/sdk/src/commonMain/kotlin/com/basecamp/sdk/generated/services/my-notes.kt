@@ -32,7 +32,7 @@ class MyNotesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Replace the note's content, recording a new revision server-side. The first
+     * Replace the note's content, recording a new revision server-side.
      * @param body Request body
      */
     suspend fun updateMyNote(body: UpdateMyNoteBody): MyNote {
