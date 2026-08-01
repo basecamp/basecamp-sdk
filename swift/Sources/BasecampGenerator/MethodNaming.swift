@@ -42,7 +42,10 @@ let methodNameOverrides: [String: String] = [
     "GetCalendar": "getCalendar",
     "GetMyProfile": "me",
     "GetTodolistOrGroup": "get",
-    "UpdateTodolistOrGroup": "update",
+    // The plain `update` name belongs to the merge-safe composite; the raw
+    // single-PUT path keeps a name that says what it does. BC3 rebuilds the
+    // todolist from the permitted params, so omission clears. See #374.
+    "UpdateTodolistOrGroup": "replace",
     "SetCardColumnColor": "setColor",
     "EnableCardColumnOnHold": "enableOnHold",
     "DisableCardColumnOnHold": "disableOnHold",

@@ -323,7 +323,13 @@ const METHOD_NAME_OVERRIDES: Record<string, string> = {
   // "calendar(id)" is ambiguous with the service noun; keep the getter explicit.
   GetCalendar: "getCalendar",
   GetTodolistOrGroup: "get",
-  UpdateTodolistOrGroup: "update",
+  // The plain `update` name belongs to the merge-safe composite in
+  // services/todolists-extensions.ts. BC3's TodolistsController#update builds a
+  // brand-new Todolist from the permitted params and swaps it in, so a sparse
+  // verbatim PUT clears every field it omits — the public docs say so outright
+  // ("Omitting a parameter will clear its value"). The raw single-PUT path stays
+  // reachable under a name that says what it does.
+  UpdateTodolistOrGroup: "replace",
   SetCardColumnColor: "setColor",
   EnableCardColumnOnHold: "enableOnHold",
   DisableCardColumnOnHold: "disableOnHold",

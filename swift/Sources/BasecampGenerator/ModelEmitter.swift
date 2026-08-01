@@ -180,21 +180,83 @@ func emitEntityModel(schemaName: String, schemas: [String: Any]) -> String {
 
     // Handle oneOf schemas (union types)
     if let oneOf = schema["oneOf"] as? [[String: Any]] {
+        // Collect the arms in declaration order: the decoder tries them in this
+        // order when the body arrives flat.
+        var arms: [(wireName: String, camelName: String, swiftType: String)] = []
+        for variant in oneOf {
+            guard let props = variant["properties"] as? [String: Any] else { continue }
+            for propName in props.keys.sorted() {
+                guard let propSchema = props[propName] as? [String: Any] else { continue }
+                arms.append((propName, toCamelCase(propName), schemaToSwiftType(propSchema)))
+            }
+        }
+
         var lines: [String] = []
         lines.append("// @generated from OpenAPI spec \u{2014} do not edit directly")
         lines.append("import Foundation")
         lines.append("")
         lines.append("public struct \(typeName): Codable, Sendable {")
-        for variant in oneOf {
-            if let props = variant["properties"] as? [String: Any] {
-                for propName in props.keys.sorted() {
-                    guard let propSchema = props[propName] as? [String: Any] else { continue }
-                    let swiftType = schemaToSwiftType(propSchema)
-                    let camelName = toCamelCase(propName)
-                    lines.append("    public var \(camelName): \(swiftType)?")
-                }
+        for arm in arms {
+            lines.append("    public var \(arm.camelName): \(arm.swiftType)?")
+        }
+        lines.append("")
+        lines.append("    public enum CodingKeys: String, CodingKey {")
+        for arm in arms {
+            lines.append("        case \(arm.camelName) = \"\(arm.wireName)\"")
+        }
+        lines.append("    }")
+        lines.append("")
+        for arm in arms {
+            lines.append("    public init(\(arm.camelName): \(arm.swiftType)) {")
+            for other in arms {
+                lines.append("        self.\(other.camelName) = \(other.camelName == arm.camelName ? arm.camelName : "nil")")
+            }
+            lines.append("    }")
+            lines.append("")
+        }
+        // A Smithy union output is emitted as an envelope of optional arms, but
+        // BC3 answers these routes with the recordable's flat JSON — the envelope
+        // is a modelling convention, not the wire shape (AGENTS.md, "Smithy Spec
+        // vs Actual API Responses"; go/pkg/basecamp/todolists.go carries the same
+        // note). Synthesised Codable would decode a flat body into every arm nil
+        // and report success, so decode the envelope when it is genuinely present
+        // and otherwise read the flat body into the first arm that accepts it.
+        lines.append("    public init(from decoder: any Decoder) throws {")
+        lines.append("        if let envelope = try? decoder.container(keyedBy: CodingKeys.self), !envelope.allKeys.isEmpty {")
+        for arm in arms {
+            lines.append("            self.\(arm.camelName) = try? envelope.decodeIfPresent(\(arm.swiftType).self, forKey: .\(arm.camelName))")
+        }
+        let anyArmDecoded = arms.map { "self.\($0.camelName) != nil" }.joined(separator: " || ")
+        lines.append("            if \(anyArmDecoded) { return }")
+        lines.append("        }")
+        lines.append("")
+        lines.append("        let flat = try decoder.singleValueContainer()")
+        for (index, arm) in arms.enumerated() {
+            if index == 0 {
+                lines.append("        self.\(arm.camelName) = try? flat.decode(\(arm.swiftType).self)")
+            } else {
+                let earlier = arms[..<index].map { "self.\($0.camelName) == nil" }.joined(separator: " && ")
+                lines.append("        self.\(arm.camelName) = (\(earlier)) ? try? flat.decode(\(arm.swiftType).self) : nil")
             }
         }
+        lines.append("        guard \(anyArmDecoded) else {")
+        lines.append("            throw DecodingError.dataCorrupted(")
+        lines.append("                DecodingError.Context(")
+        lines.append("                    codingPath: decoder.codingPath,")
+        lines.append("                    debugDescription: \"\(typeName): body matched no variant\"")
+        lines.append("                )")
+        lines.append("            )")
+        lines.append("        }")
+        lines.append("    }")
+        lines.append("")
+        // Encoding stays enveloped: the SDK never PUTs this shape, and an
+        // envelope round-trips through the decoder above.
+        lines.append("    public func encode(to encoder: any Encoder) throws {")
+        lines.append("        var envelope = encoder.container(keyedBy: CodingKeys.self)")
+        for arm in arms {
+            lines.append("        try envelope.encodeIfPresent(\(arm.camelName), forKey: .\(arm.camelName))")
+        }
+        lines.append("    }")
         lines.append("}")
         lines.append("")
         return lines.joined(separator: "\n")

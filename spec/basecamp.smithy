@@ -1199,11 +1199,22 @@ structure CreateTodolistOutput {
   todolist: Todolist
 }
 
-/// Update an existing todolist or todolist group
-/// The endpoint is polymorphic - updates either a Todolist or TodolistGroup
+/// Replace a todolist (or todolist group) with a new complete representation.
+/// The endpoint is polymorphic - it addresses either a Todolist or a TodolistGroup.
+/// The request body is the recordable's full writable state: TodolistsController#update
+/// builds a brand-new Todolist from the permitted params and swaps it in, so any
+/// writable field omitted from the request is cleared server-side (a request that
+/// omits description erases the description). name is required - it is
+/// presence-validated on the model, so a request without it is rejected.
+/// To set some fields while preserving the rest, use the SDK's merge-safe
+/// update or edit methods, which GET the current list and PUT the full
+/// representation back. Those read-modify-write helpers are not atomic:
+/// a concurrent write between the GET and PUT is overwritten (last write
+/// wins for the whole representation; the window is one round-trip).
 @idempotent
 @basecampRetry(maxAttempts: 3, baseDelayMs: 1000, backoff: "exponential", retryOn: [429, 503])
 @basecampIdempotent(natural: true)
+@basecampWriteSemantics(mode: "replace", clearsOmitted: true)
 @http(method: "PUT", uri: "/{accountId}/todolists/{id}")
 operation UpdateTodolistOrGroup {
   input: UpdateTodolistOrGroupInput
@@ -1220,10 +1231,11 @@ structure UpdateTodolistOrGroupInput {
   @httpLabel
   id: Long
 
-  /// Name (required for both Todolist and TodolistGroup)
+  /// Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve
+  @required
   name: TodolistName
 
-  /// Description (Todolist only, ignored for groups)
+  /// Description (Todolist only, ignored for groups). Omitting it clears it.
   description: TodolistDescription
 }
 

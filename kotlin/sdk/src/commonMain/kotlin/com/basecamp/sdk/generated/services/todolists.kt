@@ -33,11 +33,11 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update an existing todolist or todolist group
+     * Replace a todolist (or todolist group) with a new complete representation.
      * @param id The id
      * @param body Request body
      */
-    suspend fun update(id: Long, body: UpdateTodolistOrGroupBody): JsonElement {
+    suspend fun replace(id: Long, body: UpdateTodolistOrGroupBody): JsonElement {
         val info = OperationInfo(
             service = "Todolists",
             operation = "UpdateTodolistOrGroup",
@@ -48,7 +48,7 @@ class TodolistsService(client: AccountClient) : BaseService(client) {
         )
         return request(info, {
             httpPut("/todolists/${id}", json.encodeToString(kotlinx.serialization.json.buildJsonObject {
-                body.name?.let { put("name", kotlinx.serialization.json.JsonPrimitive(it)) }
+                put("name", kotlinx.serialization.json.JsonPrimitive(body.name))
                 body.description?.let { put("description", kotlinx.serialization.json.JsonPrimitive(it)) }
             }), operationName = info.operation)
         }) { body ->

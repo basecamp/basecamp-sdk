@@ -1020,7 +1020,7 @@ data class CreateTodolistGroupBody(
 
 /** Request body for UpdateTodolistOrGroup. */
 data class UpdateTodolistOrGroupBody(
-    val name: String? = null,
+    val name: String,
     val description: String? = null
 )
 

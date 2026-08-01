@@ -1940,7 +1940,7 @@ class UpdateTimesheetEntryRequestContent(TypedDict):
 
 class UpdateTodolistOrGroupRequestContent(TypedDict):
     description: NotRequired[str]
-    name: NotRequired[str]
+    name: str
 
 
 class UpdateToolRequestContent(TypedDict):

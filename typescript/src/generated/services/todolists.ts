@@ -18,12 +18,12 @@ import { Errors } from "../../errors.js";
 export type Todolist = components["schemas"]["Todolist"];
 
 /**
- * Request parameters for update.
+ * Request parameters for replace.
  */
-export interface UpdateTodolistRequest {
-  /** Name (required for both Todolist and TodolistGroup) */
-  name?: string;
-  /** Description (Todolist only, ignored for groups) */
+export interface ReplaceTodolistRequest {
+  /** Name (required for both Todolist and TodolistGroup) - presence-validated server-side, so omitting it is a 422, not a preserve */
+  name: string;
+  /** Description (Todolist only, ignored for groups). Omitting it clears it. */
   description?: string;
 }
 
@@ -98,18 +98,21 @@ export class TodolistsService extends BaseService {
   }
 
   /**
-   * Update an existing todolist or todolist group
+   * Replace a todolist (or todolist group) with a new complete representation.
    * @param id - The id
-   * @param req - Todolist_or_group update parameters
+   * @param req - Todolist_or_group request parameters
    * @returns The todolist_or_group
-   * @throws {BasecampError} If the resource is not found or fields are invalid
+   * @throws {BasecampError} If the request fails
    *
    * @example
    * ```ts
-   * const result = await client.todolists.update(123, { });
+   * const result = await client.todolists.replace(123, { name: "My example" });
    * ```
    */
-  async update(id: number, req: UpdateTodolistRequest): Promise<components["schemas"]["UpdateTodolistOrGroupResponseContent"]> {
+  async replace(id: number, req: ReplaceTodolistRequest): Promise<components["schemas"]["UpdateTodolistOrGroupResponseContent"]> {
+    if (!req.name) {
+      throw Errors.validation("Name is required");
+    }
     const response = await this.request(
       {
         service: "Todolists",
