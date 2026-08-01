@@ -45,6 +45,11 @@ function fromEnv(backend: Backend, name: string): string | undefined {
  *   TODOSET_ID    → walk dock of resolved project, pick first todoset tool
  *   TODOLIST_ID   → ListTodolists for resolved todoset, pick first
  *   TODO_ID       → ListTodos for resolved todolist, pick first
+ *
+ * CALENDAR_ID is env-var-only (BASECAMP_BC5_CALENDAR_ID → BASECAMP_CALENDAR_ID
+ * → skip): no modeled endpoint returns a calendar bucket id — the dock has no
+ * calendar tool and bucket `type` never says "Calendar" — so there is no
+ * discovery branch to write until upstream exposes one.
  */
 export async function resolveFixtureId(
   ctx: FixtureContext,
