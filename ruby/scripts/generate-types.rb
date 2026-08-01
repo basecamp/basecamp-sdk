@@ -27,7 +27,7 @@ SKIP_PATTERNS = [
 # types.FlexibleTime is deliberately NOT here: it also accepts date-only values,
 # and Ruby has passed those through as strings since it was introduced. Adding
 # it is a behavior change, not a spelling fix.
-TIMESTAMP_GO_TYPES = ['time.Time'].freeze
+TIMESTAMP_GO_TYPES = [ 'time.Time' ].freeze
 
 def timestamp_go_type?(go_type)
   return false unless go_type.is_a?(String)
