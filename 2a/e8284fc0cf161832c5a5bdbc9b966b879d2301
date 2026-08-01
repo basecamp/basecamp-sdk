@@ -1,0 +1,28 @@
+scripts/check-go-optional-pointers
+  s_b1b74299ef0baf::t_7f70f7e4347f9b 1-59
+Makefile
+  s_b1b74299ef0baf::t_86c3373e9fd012 901
+  s_b1b74299ef0baf::t_2b5bc37d5191c4 860-866
+  s_b1b74299ef0baf::t_e5687d604bf173 820
+rubric-audit.json
+  s_b1b74299ef0baf::t_b6735eb48d02db 15,17
+SPEC.md
+  s_b1b74299ef0baf::t_6cdd545b4204e4 789
+  s_b1b74299ef0baf::t_015306e2acc3a3 793,795,797-799,801
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "2ae8284fc0cf161832c5a5bdbc9b966b879d2301",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
