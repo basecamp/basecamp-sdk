@@ -34,6 +34,17 @@ if [[ ! -f "$INPUT_FILE" ]]; then
     exit 1
 fi
 
+# Pre-flight: the seed below walks paths[].requestBody for schema $refs. This
+# spec has never used components.requestBodies indirection (the only components
+# namespace smithy emits is `schemas`), and rather than speculatively implement
+# a resolution path that cannot be tested, fail loudly if that ever changes —
+# an under-seeded closure would silently mark request-shaped arrays native.
+if jq -e '.components.requestBodies // empty | length > 0' "$INPUT_FILE" > /dev/null 2>&1; then
+    echo "Error: $INPUT_FILE uses components.requestBodies, which the request-body seed does not resolve." >&2
+    echo "Teach the \$seeds expression to follow that indirection before proceeding." >&2
+    exit 1
+fi
+
 jq '
 # normalize_deprecation_reason strips exactly one leading "Deprecated:"
 # (case-insensitive) plus following whitespace and trims, so oapi-codegen can

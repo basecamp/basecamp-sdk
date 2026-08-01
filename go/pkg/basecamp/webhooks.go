@@ -494,11 +494,11 @@ func webhookPersonFromGenerated(gp generated.Person) WebhookEventPerson {
 	if gp.Id != 0 {
 		p.ID = int64(gp.Id)
 	}
-	if gp.Bio != nil && *gp.Bio != "" {
+	if gp.Bio != nil {
 		bio := *gp.Bio
 		p.Bio = &bio
 	}
-	if gp.Location != nil && *gp.Location != "" {
+	if gp.Location != nil {
 		location := *gp.Location
 		p.Location = &location
 	}

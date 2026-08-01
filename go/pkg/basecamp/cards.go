@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -808,11 +809,18 @@ func (s *CardColumnsService) Move(ctx context.Context, cardTableID int64, req *M
 		return err
 	}
 
+	// Range-checked rather than blind-converted: Position is a plain int, and
+	// a value past int32 would wrap to a negative column index on the wire.
+	if req.Position < 0 || req.Position > math.MaxInt32 {
+		err = ErrUsage("position must be between 0 and 2147483647")
+		return err
+	}
+
 	body := generated.MoveCardColumnJSONRequestBody{
 		SourceId: req.SourceID,
 		TargetId: req.TargetID,
 		// Always sent: position 0 is the documented first slot, not "unset".
-		Position: ptr(int32(req.Position)), // #nosec G115 -- position is validated and bounded by API
+		Position: ptr(int32(req.Position)),
 	}
 
 	resp, err := s.client.parent.gen.MoveCardColumnWithResponse(ctx, s.client.accountID, cardTableID, body)

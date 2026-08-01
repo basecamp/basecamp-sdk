@@ -477,10 +477,10 @@ func (s *PeopleService) UpdateProjectAccess(ctx context.Context, projectID int64
 	}
 
 	body := generated.UpdateProjectAccessJSONRequestBody{}
-	if len(req.Grant) > 0 {
+	if req.Grant != nil {
 		body.Grant = &req.Grant
 	}
-	if len(req.Revoke) > 0 {
+	if req.Revoke != nil {
 		body.Revoke = &req.Revoke
 	}
 	if len(req.Create) > 0 {

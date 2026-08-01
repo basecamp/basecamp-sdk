@@ -3,8 +3,10 @@ package basecamp
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/basecamp/basecamp-sdk/go/pkg/generated"
@@ -173,5 +175,46 @@ func TestUpdateGaugeNeedle_DescriptionIsTriState(t *testing.T) {
 	}
 	if body["description"] != "" {
 		t.Errorf(`expected an explicit empty string, got %#v`, body["description"])
+	}
+}
+
+// Column moves send position unconditionally: BC3's Kanban::MovesController
+// builds the move with params[:position].to_i, so an absent position is
+// nil.to_i == 0 — identical to an explicit 0. Omitting it therefore buys
+// nothing and costs the ability to name the first slot.
+func TestMoveCardColumn_ZeroPositionIsTransmitted(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := DefaultConfig()
+	cfg.BaseURL = srv.URL
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "test-token"}).ForAccount("99999").CardColumns()
+	if err := svc.Move(context.Background(), 1, &MoveColumnRequest{SourceID: 2, TargetID: 3, Position: 0}); err != nil {
+		t.Fatalf("Move: %v", err)
+	}
+	v, ok := got["position"]
+	if !ok {
+		t.Fatal("position 0 must reach the wire; key was omitted")
+	}
+	if f, isNum := v.(float64); !isNum || f != 0 {
+		t.Errorf("expected position 0, got %#v", v)
+	}
+}
+
+// A position past int32 would wrap to a negative column index on the wire.
+func TestMoveCardColumn_RejectsOutOfRangePosition(t *testing.T) {
+	cfg := DefaultConfig()
+	cfg.BaseURL = "http://127.0.0.1:1"
+	svc := NewClient(cfg, &StaticTokenProvider{Token: "t"}).ForAccount("99999").CardColumns()
+	err := svc.Move(context.Background(), 1, &MoveColumnRequest{SourceID: 2, TargetID: 3, Position: math.MaxInt32 + 1})
+	if err == nil {
+		t.Fatal("expected a usage error for an out-of-range position")
+	}
+	if !strings.Contains(err.Error(), "position must be between") {
+		t.Errorf("expected a range error, got %v", err)
 	}
 }

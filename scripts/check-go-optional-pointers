@@ -32,7 +32,10 @@ stats = Hash.new(0)
 FIELD = /\A\t(\w+)\s+(\S+)\s+`([^`]*)`/
 # Any tag key, not just json/form: a future generator emitting e.g.
 # `query:"x,omitempty"` must still be classified, not silently exempted.
-OMITEMPTY = /\w+:"[^"]*,omitempty[^"]*"/
+# Tag keys may contain any character except space, quote, and colon (Go's
+# StructTag grammar), so match that class rather than \w — a key like `url-`
+# would otherwise slip past and take its field out of the guard's scope.
+OMITEMPTY = /[^\s":]+:"[^"]*,omitempty[^"]*"/
 
 # Read with an explicit UTF-8 external encoding: client.gen.go carries
 # multibyte characters in doc comments (e.g. →), and under a non-UTF-8 locale
