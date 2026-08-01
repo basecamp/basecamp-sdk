@@ -1,0 +1,26 @@
+python/README.md
+  s_34dec3eb0265b2::t_e214a5a1fb80f5 592
+.gitignore
+  s_34dec3eb0265b2::t_e214a5a1fb80f5 12-16
+SPEC.md
+  s_34dec3eb0265b2::t_affed161bfd43b 1885-1886
+  s_34dec3eb0265b2::t_e214a5a1fb80f5 742
+conformance/tests/error-mapping.json
+  s_34dec3eb0265b2::t_6b130e83a3bd25 619-670
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "f885d8c1ac4b06448d184ff20366c4ff01e5eb94",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
