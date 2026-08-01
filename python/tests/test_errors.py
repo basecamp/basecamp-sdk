@@ -305,7 +305,11 @@ class TestBareFieldMap:
             (b'{"errors": {}, "payload_url": ["is bad"]}', "Validation failed"),
         ],
     )
-    def test_yields_to_reserved_keys(self, body, message):
+    def test_stays_flat_for_flat_bodies(self, body, message):
+        # Only "errors" is excluded by name; a flat body's "error"/"message" is
+        # a str, and the shape gate rejects a str-valued member — so these
+        # bodies stay flat on shape, not on the key's name. The test above
+        # covers the other half: list-valued keys ARE recognized as fields.
         err = error_from_response(400, body)
         assert err.field_errors is None
         assert str(err) == message

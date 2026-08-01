@@ -406,7 +406,11 @@ final class ErrorTests: XCTestCase {
         }
     }
 
-    func testBareFieldMapYieldsToReservedKeys() {
+    // Only "errors" is excluded by name; a flat body's "error"/"message" is a
+    // string, and the shape gate rejects a string-valued member — so these
+    // bodies stay flat on shape, not on the key's name. The test above covers
+    // the other half: array-valued keys ARE recognized as fields.
+    func testBareFieldMapStaysFlatForFlatBodies() {
         let cases: [(String, String)] = [
             (#"{"error": "Webhook is invalid", "payload_url": ["is bad"]}"#, "Webhook is invalid"),
             (#"{"message": "Webhook is invalid", "payload_url": ["is bad"]}"#, "Webhook is invalid"),

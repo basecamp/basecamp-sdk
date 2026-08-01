@@ -527,10 +527,13 @@ func TestCheckResponse_BareFieldMapStrictGate(t *testing.T) {
 	}
 }
 
-// TestCheckResponse_BareFieldMapYieldsToReservedKeys keeps flat bodies flat: a
-// body carrying "error", "errors", or "message" is never reinterpreted as a
-// bare field map, whatever its other members look like.
-func TestCheckResponse_BareFieldMapYieldsToReservedKeys(t *testing.T) {
+// TestCheckResponse_BareFieldMapStaysFlatForFlatBodies keeps flat bodies flat.
+// Only "errors" is excluded by name; a flat body's "error"/"message" is a
+// string, and the all-members shape gate rejects a string-valued member — so
+// these bodies stay flat on shape, not on the key's name. See
+// TestCheckResponse_BareFieldMapAllowsReservedFieldNames for the other half:
+// array-valued "error"/"message" members ARE recognized as fields.
+func TestCheckResponse_BareFieldMapStaysFlatForFlatBodies(t *testing.T) {
 	tests := []struct {
 		name        string
 		body        string

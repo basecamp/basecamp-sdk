@@ -710,6 +710,10 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
     expect(error.message).toBe("Bad Request");
   });
 
+  // Only "errors" is excluded by name; a flat body's "error"/"message" is a
+  // string, and the shape gate rejects a string-valued member — so these bodies
+  // stay flat on shape, not on the key's name. The next test covers the other
+  // half: array-valued "error"/"message" members ARE recognized as fields.
   it.each([
     { name: "error key", body: { error: "Webhook is invalid", payload_url: ["is bad"] }, message: "Webhook is invalid" },
     {
@@ -718,7 +722,7 @@ describe("bare field-map error bodies (SPEC §6 step 2)", () => {
       message: "Webhook is invalid",
     },
     { name: "empty errors key", body: { errors: {}, payload_url: ["is bad"] }, message: "Bad Request" },
-  ])("yields to a reserved $name", ({ body, message }) => {
+  ])("stays flat for a string $name", ({ body, message }) => {
     const response = new Response(null, { status: 400, statusText: "Bad Request" });
 
     const error = errorFromParsedBody(response, body);

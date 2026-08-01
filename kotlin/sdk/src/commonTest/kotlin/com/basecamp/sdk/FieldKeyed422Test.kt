@@ -218,8 +218,12 @@ class FieldKeyed422Test {
         }
     }
 
+    // Only "errors" is excluded by name; a flat body's "error"/"message" is a
+    // string, and the shape gate rejects a string-valued member — so these
+    // bodies stay flat on shape, not on the key's name. The test above covers
+    // the other half: array-valued keys ARE recognized as fields.
     @Test
-    fun bareFieldMapYieldsToReservedKeys() = runTest {
+    fun bareFieldMapStaysFlatForFlatBodies() = runTest {
         val e = raiseValidation(
             HttpStatusCode.BadRequest,
             """{"error": "Webhook is invalid", "payload_url": ["is bad"]}""",

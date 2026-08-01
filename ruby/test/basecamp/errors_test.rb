@@ -207,7 +207,11 @@ class ErrorsTest < Minitest::Test
     end
   end
 
-  def test_error_from_response_bare_field_map_yields_to_reserved_keys
+  # Only "errors" is excluded by name; a flat body's "error"/"message" is a
+  # String, and the shape gate rejects a String-valued member — so these bodies
+  # stay flat on shape, not on the key's name. The test above covers the other
+  # half: Array-valued "error"/"message" members ARE recognized as fields.
+  def test_error_from_response_bare_field_map_stays_flat_for_flat_bodies
     [
       [ '{"error": "Webhook is invalid", "payload_url": ["is bad"]}', "Webhook is invalid" ],
       [ '{"message": "Webhook is invalid", "payload_url": ["is bad"]}', "Webhook is invalid" ],
