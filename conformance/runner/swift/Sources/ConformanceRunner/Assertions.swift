@@ -124,13 +124,22 @@ func evaluateAssertions(
 
     // Implicit method invariant: the scripted transport answers any verb, so a
     // wrong-verb request (e.g. a PUT regressing to POST) would consume a queued
-    // response silently. When the fixture declares a method and nothing
-    // explicitly pins the first request's method, it must use that verb.
+    // response silently.
+    //
+    // EVERY hop, like the path invariant below. Retries repeat the verb, a
+    // redirect followed after a GET stays a GET, and the read-modify-write
+    // composites — the one place a later hop legitimately differs — pin their
+    // hops with indexed requestMethod assertions already. Checking only the
+    // first left the download flows able to POST their signed final hop and
+    // still satisfy path, authorization, count and noError.
     let fixtureMethod = tc.fixtureMethod.uppercased()
-    if !fixtureMethod.isEmpty,
-       !explicitAssertionCovers("requestMethod", request: 0),
-       let first = captured.first, first.method != fixtureMethod {
-        return .fail("Expected first request method \(fixtureMethod), got \(first.method)")
+    if !fixtureMethod.isEmpty {
+        for (i, request) in captured.enumerated() {
+            if explicitAssertionCovers("requestMethod", request: i) { continue }
+            if request.method != fixtureMethod {
+                return .fail("Expected request \(i) to use method \(fixtureMethod), got \(request.method)")
+            }
+        }
     }
 
     // Requests that follow a rel="next" link are governed by the LINK
