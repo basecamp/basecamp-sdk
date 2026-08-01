@@ -59,10 +59,37 @@ function requireTodolistObject(response: unknown): Record<string, unknown> {
  * raw body instead of the modelled envelope. Both shapes are handled here — an
  * envelope, should one ever arrive, and the flat body that actually does.
  */
+/**
+ * Level 2 of the wire-to-written-value path: a present envelope arm must itself
+ * be a non-null object.
+ *
+ * `requireTodolistObject` checks only the outer body, so `{"todolist": null}`
+ * passes it, and dereferencing the arm then produces a native `TypeError`
+ * instead of the documented statusless `api_error`. The full path is
+ * object → object → scalar and has exactly three levels: the body (row 9), the
+ * arm (here), and each writable field (`writableString`). A string has no
+ * interior, so there is no fourth.
+ */
+function requireArmObject(arm: unknown, armName: string): Record<string, unknown> {
+  if (typeof arm !== "object" || arm === null || Array.isArray(arm)) {
+    throw malformedResponse(
+      `GetTodolistOrGroup returned ${describeValue(arm)} in its ${armName} arm where an object was expected`,
+      "The merge-safe update/edit read this record's fields before rewriting them, so a " +
+        "non-object arm cannot be used. Use replace() to write the record deliberately."
+    );
+  }
+  return arm as Record<string, unknown>;
+}
+
 function unwrapTodolist(rawResponse: TodolistOrGroup): Todolist {
   const response = requireTodolistObject(rawResponse) as TodolistOrGroup;
-  if ("todolist" in response) return response.todolist;
+  if ("todolist" in response) {
+    return requireArmObject(response.todolist, "todolist") as unknown as Todolist;
+  }
   if ("group" in response) {
+    // Validate the arm before refusing it, so a malformed arm is reported as
+    // malformed rather than as a well-formed group projection.
+    requireArmObject(response.group, "group");
     // Refused, not converted. The `group` projection models no `description`
     // at all, so deriving a todolist from it would invent an empty one — and
     // on a full-replace endpoint that empty value is written back, erasing the

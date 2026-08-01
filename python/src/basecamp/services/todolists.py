@@ -62,6 +62,28 @@ def _require_mapping(body: object) -> dict[str, Any]:
     return body
 
 
+def _require_arm(arm: object, arm_name: str) -> dict[str, Any]:
+    """Level 2 of the wire-to-written-value path: a present arm must be an object.
+
+    ``_require_mapping`` checks only the outer body, so ``{"todolist": None}``
+    passes it and the arm is then read as if it were a todolist. The full path is
+    object -> object -> scalar and has exactly three levels: the body, the arm,
+    and each writable field. A string has no interior, so there is no fourth.
+    """
+    if not isinstance(arm, dict):
+        raise ApiError(
+            _truncate_message(
+                f"GetTodolistOrGroup returned {_describe(arm)} in its {arm_name} arm where an object was expected"
+            ),
+            hint=(
+                "The merge-safe update/edit read this record's fields before rewriting them, "
+                "so a non-object arm cannot be used. Use replace() to write the record "
+                "deliberately."
+            ),
+        )
+    return arm
+
+
 def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     """Derive a todolist's full writable state from a GET response.
 
@@ -81,9 +103,8 @@ def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
     body = todolist
     if "name" not in todolist and "description" not in todolist:
         for key in ("todolist", "group"):
-            nested = todolist.get(key)
-            if isinstance(nested, dict):
-                body = nested
+            if key in todolist:
+                body = _require_arm(todolist[key], key)
                 break
     return {
         "name": _writable_string(body, "name", required=True),

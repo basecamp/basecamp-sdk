@@ -273,6 +273,28 @@ class TestMalformedWritableFields:
         assert "where a todolist object was expected" in str(excinfo.value)
         assert put_route.call_count == 0
 
+    @pytest.mark.parametrize(
+        "body",
+        [
+            {"todolist": None},
+            {"todolist": 42},
+            {"todolist": ["a"]},
+            {"group": None},
+            {"group": "nope"},
+        ],
+    )
+    @respx.mock
+    def test_refuses_a_non_object_envelope_arm(self, body):
+        """Level 2: the outer-body guard checks only the envelope."""
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, name="Renamed")
+
+        assert "arm where an object was expected" in str(excinfo.value)
+        assert put_route.call_count == 0
+
     @respx.mock
     def test_reports_an_unrenderable_caller_value_without_losing_the_diagnosis(self):
         """Row 10: the guard's own error path must not throw. repr is user code."""

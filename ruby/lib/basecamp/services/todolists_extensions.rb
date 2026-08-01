@@ -84,7 +84,8 @@ module Basecamp
       # either shape reads correctly — it costs one lookup.
       def fields_from_todolist(todolist)
         todolist = require_hash(todolist)
-        body = todolist["todolist"] || todolist["group"] || todolist
+        arm = %w[todolist group].find { |key| todolist.key?(key) }
+        body = arm ? require_arm(todolist[arm], arm) : todolist
         TodolistFields.new(
           name: writable_string(body, "name", required: true),
           description: writable_string(body, "description")
@@ -122,6 +123,25 @@ module Basecamp
         end
 
         body
+      end
+
+      # Level 2 of the wire-to-written-value path: a present arm must be a Hash.
+      #
+      # +require_hash+ checks only the outer body, so <tt>{"todolist" => nil}</tt>
+      # passes it and the arm is then read as if it were a todolist. The full path
+      # is object -> object -> scalar and has exactly three levels: the body, the
+      # arm, and each writable field. A String has no interior, so there is no
+      # fourth.
+      def require_arm(arm, arm_name)
+        unless arm.is_a?(Hash)
+          raise ApiError.new(
+            Security.truncate("GetTodolistOrGroup returned #{describe(arm)} in its #{arm_name} arm where an object was expected"),
+            hint: "The merge-safe update/edit read this record's fields before rewriting them, " \
+              "so a non-object arm cannot be used. Use replace to write the record deliberately."
+          )
+        end
+
+        arm
       end
 
       # Reads a writable string field, refusing to coerce a malformed one.

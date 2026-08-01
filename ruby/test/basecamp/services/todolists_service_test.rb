@@ -180,6 +180,22 @@ class TodolistsServiceTest < Minitest::Test
     end
   end
 
+  # Level 2: the outer-body guard checks only the envelope.
+  [ { "todolist" => nil }, { "todolist" => 42 }, { "todolist" => [ "a" ] },
+    { "group" => nil }, { "group" => "nope" } ].each_with_index do |body, i|
+    define_method("test_refuses_a_non_object_envelope_arm_#{i}") do
+      stub_get("/12345/todolists/2", response_body: body)
+      capture_put(full_todolist)
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, name: "Renamed")
+      end
+
+      assert_includes error.message, "arm where an object was expected"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
   # Row 10: the guard's own error path must not throw. inspect is user code.
   def test_reports_an_unrenderable_caller_value_without_losing_the_diagnosis
     hostile = Class.new do

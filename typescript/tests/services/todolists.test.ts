@@ -381,6 +381,36 @@ describe("TodolistsService", () => {
       expect(requests).toEqual(["GET"]);
     });
 
+    // Level 2 of the path: the outer-body guard checks only the envelope, so a
+    // present-but-null arm slipped through and was dereferenced into a native
+    // TypeError. The path is object -> object -> scalar; this is the middle rung.
+    it.each([
+      ["null todolist arm", { todolist: null }],
+      ["scalar todolist arm", { todolist: 42 }],
+      ["array todolist arm", { todolist: ["a"] }],
+      ["null group arm", { group: null }],
+      ["scalar group arm", { group: "nope" }],
+    ])("refuses a %s", async (_label, body) => {
+      const id = 42;
+      const requests: string[] = [];
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/arm where an object was expected/);
+      expect(requests).toEqual(["GET"]);
+    });
+
     // Row 10: the guard's own error path must not throw. JSON.stringify raises
     // TypeError on a circular structure, and a value can carry a toJSON that
     // throws — either would replace the clean error with an incidental one.
