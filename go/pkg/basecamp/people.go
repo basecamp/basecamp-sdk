@@ -768,10 +768,10 @@ func personFromGenerated(gp generated.Person) Person {
 	}
 
 	// Convert timestamps to strings (the SDK Person type uses strings for these)
-	if gp.CreatedAt != nil && !gp.CreatedAt.IsZero() {
+	if gp.CreatedAt != nil {
 		p.CreatedAt = gp.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
-	if gp.UpdatedAt != nil && !gp.UpdatedAt.IsZero() {
+	if gp.UpdatedAt != nil {
 		p.UpdatedAt = gp.UpdatedAt.Format("2006-01-02T15:04:05Z07:00")
 	}
 

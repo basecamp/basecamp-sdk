@@ -33417,7 +33417,7 @@
               "string",
               "null"
             ],
-            "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"]); Go types it *string via the optional-pointer policy.",
+            "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"]). Go types it *string because the value is nullable,\nnot because it is optional — the field is @required and carries no omitempty.",
             "x-go-type": "string"
           },
           "linked": {

@@ -248,3 +248,22 @@ func TestCardFromGenerated_PresentZeroCompletedAtSurvives(t *testing.T) {
 		t.Error("an absent completed_at must stay nil")
 	}
 }
+
+// Person timestamps land in string fields, so presence is carried by "" vs a
+// formatted value — an !IsZero() guard collapsed a present zero timestamp into
+// the same empty string an absent one produces.
+func TestPersonFromGenerated_PresentZeroTimestampsPropagate(t *testing.T) {
+	var zero time.Time
+
+	p := personFromGenerated(generated.Person{CreatedAt: &zero, UpdatedAt: &zero})
+	if p.CreatedAt == "" {
+		t.Error("a present zero created_at must propagate, not read as absent")
+	}
+	if p.UpdatedAt == "" {
+		t.Error("a present zero updated_at must propagate, not read as absent")
+	}
+
+	if absent := personFromGenerated(generated.Person{}); absent.CreatedAt != "" || absent.UpdatedAt != "" {
+		t.Error("absent timestamps must stay empty")
+	}
+}

@@ -5071,7 +5071,8 @@ structure Wormhole {
   /// Wormhole color; always emitted on the wire (`json.color recording.color`),
   /// `null` when unset. Like destination_url, `@required` models the presence and
   /// the nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->
-  /// type: ["string","null"]); Go types it *string via the optional-pointer policy.
+  /// type: ["string","null"]). Go types it *string because the value is nullable,
+  /// not because it is optional — the field is @required and carries no omitempty.
   @required
   color: String
   /// True only while the destination column, its board, and its bucket are all
