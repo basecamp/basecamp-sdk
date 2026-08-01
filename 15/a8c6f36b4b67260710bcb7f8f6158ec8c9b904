@@ -1,0 +1,24 @@
+spec/api-gaps/stack-doc-and-smithy.md
+  s_2218d00d1182de::t_f48e5f19c69e9d 19-26
+spec/api-gaps/folders-api.md
+  s_2218d00d1182de::t_78e2b9a3f09f06 1-214
+spec/api-gaps/README.md
+  s_2218d00d1182de::t_5c36f369667309 68
+  s_2218d00d1182de::t_3ce6ff04d68909 79-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "15a8c6f36b4b67260710bcb7f8f6158ec8c9b904",
+  "prompts": {},
+  "sessions": {
+    "s_2218d00d1182de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd710f98-c872-4170-b8e9-3e1b533f4f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
