@@ -1,0 +1,24 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FieldKeyed422Test.kt
+  s_34dec3eb0265b2::t_c8a6dce56b1608 158-259
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/ErrorParsing.kt
+  s_34dec3eb0265b2::t_b0df3105596435 78
+  s_34dec3eb0265b2::t_347de74430713f 91-116
+kotlin/README.md
+  s_34dec3eb0265b2::t_d7c3c54016603a 608-628
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "b77947b54afad0df96324c7750c28d52b939717a",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
