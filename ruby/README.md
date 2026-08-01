@@ -421,6 +421,27 @@ end
 | `RateLimitError` | Rate limit exceeded (429) |
 | `NetworkError` | Connection failures |
 
+### Validation Errors
+
+Basecamp rejects invalid writes with a body keyed by field. The SDK folds those
+messages into the message and keeps the raw map in `field_errors`, so you can
+drive a form without re-parsing the message:
+
+```ruby
+begin
+  account.calendars.update(calendar_id: calendar_id, color: "chartreuse")
+rescue Basecamp::ValidationError => e
+  puts e.message # => "color: is not a valid color"
+
+  e.field_errors&.each do |field, messages|
+    messages.each { |message| puts "  #{field} #{message}" }
+  end
+end
+```
+
+`field_errors` is `nil` for every other error shape, and its messages are the
+raw ones — the message is capped at 500 bytes, the map is not.
+
 ## Observability Hooks
 
 Monitor SDK behavior with hooks:

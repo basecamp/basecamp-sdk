@@ -173,17 +173,38 @@ module Basecamp
 
     data = JSON.parse(body)
     errors = data.is_a?(Hash) ? data["errors"] : nil
-    return nil unless errors.is_a?(Hash)
+    if errors.is_a?(Hash)
+      field_errors = errors.each_with_object({}) do |(field, values), result|
+        next unless values.is_a?(Array)
 
-    field_errors = errors.each_with_object({}) do |(field, values), result|
-      next unless values.is_a?(Array)
-
-      messages = values.grep(String)
-      result[field.to_s] = messages unless messages.empty?
+        messages = values.grep(String)
+        result[field.to_s] = messages unless messages.empty?
+      end
+      field_errors.empty? ? nil : field_errors
+    else
+      parse_bare_field_errors(data)
     end
-    field_errors.empty? ? nil : field_errors
   rescue JSON::ParserError, ApiError
     nil
+  end
+
+  # Extracts an unwrapped field map — the `render json: @webhook.errors`
+  # rendering, where the whole body is {"field" => ["msg", ...]}. The gate is
+  # all-or-nothing by design (SPEC section 6 step 2): with no "errors" key to
+  # declare intent, only shape distinguishes a field map from any other JSON
+  # object, so a single non-conforming member means this is not one.
+  # @param data [Object] the parsed body
+  # @return [Hash{String => Array<String>}, nil]
+  def self.parse_bare_field_errors(data)
+    return nil unless data.is_a?(Hash) && !data.empty?
+    return nil if data.key?("error") || data.key?("errors") || data.key?("message")
+
+    data.each_with_object({}) do |(field, values), result|
+      return nil unless values.is_a?(Array) && !values.empty?
+      return nil unless values.all? { |message| message.is_a?(String) && !message.empty? }
+
+      result[field.to_s] = values
+    end
   end
 
   # Merges the top-level error message with the flattened field-keyed errors:

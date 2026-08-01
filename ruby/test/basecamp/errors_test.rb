@@ -166,6 +166,66 @@ class ErrorsTest < Minitest::Test
     assert_equal({ "color" => [ long ] }, error.field_errors)
   end
 
+  # SPEC section 6 step 2: webhooks_controller and chats/integrations_controller
+  # render `json: @webhook.errors` at 400, and lineup markers at 422 — the field
+  # map arrives as the whole body, with no "errors" wrapper.
+  def test_error_from_response_bare_field_map
+    [
+      [ 400, '{"payload_url": ["is not a valid URL"]}', "payload_url: is not a valid URL",
+        { "payload_url" => [ "is not a valid URL" ] } ],
+      [ 400, '{"types": ["is invalid"], "payload_url": ["is not a valid URL", "is too long"]}',
+        "payload_url: is not a valid URL; is too long, types: is invalid",
+        { "payload_url" => [ "is not a valid URL", "is too long" ], "types" => [ "is invalid" ] } ],
+      [ 422, '{"name": ["can\'t be blank"]}', "name: can't be blank", { "name" => [ "can't be blank" ] } ]
+    ].each do |status, body, message, field_errors|
+      error = Basecamp.error_from_response(status, body)
+
+      assert_instance_of Basecamp::ValidationError, error
+      assert_equal message, error.message, "unexpected message for #{body}"
+      assert_equal field_errors, error.field_errors, "unexpected field_errors for #{body}"
+    end
+  end
+
+  # All-or-nothing by design: with no "errors" key to declare intent, shape is
+  # the only signal that a body is a field map.
+  def test_error_from_response_bare_field_map_strict_gate
+    [
+      '{"id": 1}',
+      '{"color": ["is invalid"], "count": 3}',
+      '{"color": []}',
+      '{"color": ["", "is invalid"]}',
+      '{"color": ["is invalid", 42]}',
+      '{"color": [null]}',
+      "{}",
+      "[1, 2]",
+      '"nope"'
+    ].each do |body|
+      error = Basecamp.error_from_response(400, body)
+
+      assert_nil error.field_errors, "expected nil field_errors for #{body}"
+      assert_equal "Request failed", error.message, "expected fallback message for #{body}"
+    end
+  end
+
+  def test_error_from_response_bare_field_map_yields_to_reserved_keys
+    [
+      [ '{"error": "Webhook is invalid", "payload_url": ["is bad"]}', "Webhook is invalid" ],
+      [ '{"message": "Webhook is invalid", "payload_url": ["is bad"]}', "Webhook is invalid" ],
+      [ '{"errors": {}, "payload_url": ["is bad"]}', "Request failed" ]
+    ].each do |body, message|
+      error = Basecamp.error_from_response(400, body)
+
+      assert_nil error.field_errors, "expected nil field_errors for #{body}"
+      assert_equal message, error.message, "unexpected message for #{body}"
+    end
+  end
+
+  def test_error_from_response_bare_field_map_not_extracted_outside_validation
+    error = Basecamp.error_from_response(500, '{"payload_url": ["is not a valid URL"]}')
+
+    assert_not error.respond_to?(:field_errors)
+  end
+
   def test_error_from_response_422_survives_non_string_error_sibling
     body = '{"error": {"base": 1}, "errors": {"color": ["is not a valid color"]}}'
     error = Basecamp.error_from_response(422, body)
