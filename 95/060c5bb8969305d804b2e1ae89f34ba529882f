@@ -1,0 +1,62 @@
+swift/Sources/BasecampGenerator/ModelEmitter.swift
+  s_555508c40a7b3b::t_76f850978a3941 183-193,199-239,242-259
+python/scripts/generate_services.py
+  s_555508c40a7b3b::t_1ab2df9102df7b 146-149
+typescript/scripts/generate-services.ts
+  s_555508c40a7b3b::t_6e730b7a045dc3 326-332
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_555508c40a7b3b::t_00411dda97a922 176-179
+spec/basecamp.smithy
+  s_555508c40a7b3b::t_89e4ad9e4d74ec 1234
+  s_555508c40a7b3b::t_587e4f7f1af8c1 1202-1213,1217,1235,1238
+swift/Sources/BasecampGenerator/MethodNaming.swift
+  s_555508c40a7b3b::t_23294b30298522 45-48
+ruby/scripts/generate-services.rb
+  s_555508c40a7b3b::t_1592bb97cf2448 142-145
+behavior-model.json
+  s_555508c40a7b3b::t_53dcadb06681d6 3001-3004
+conformance/tests/todolists_write.json
+  s_555508c40a7b3b::t_5d3ad2cfce0ba1 1-425
+go/pkg/generated/client.gen.go
+  s_555508c40a7b3b::t_4484ecfc8484f6 3191,3194-3195
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/Types.kt
+  s_555508c40a7b3b::t_015f68a6cb77f4 1023
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolists.kt
+  s_555508c40a7b3b::t_d4b950fcefca59 36,40,51
+openapi.json
+  s_555508c40a7b3b::t_e672f15108c2bd 21286,21295-21296,21396-21399,33231,33235,33237-33240
+python/src/basecamp/generated/services/todolists.py
+  s_555508c40a7b3b::t_ba6f7928e79247 22,24,72,74
+python/src/basecamp/generated/types.py
+  s_555508c40a7b3b::t_f32b0cd19a0576 1943
+ruby/lib/basecamp/generated/services/todolists_service.rb
+  s_555508c40a7b3b::t_4dac58ebba5875 19,21-22,24-25
+swift/Sources/Basecamp/Generated/Models/TodolistOrGroup.swift
+  s_555508c40a7b3b::t_aaee019824a420 7-47
+swift/Sources/Basecamp/Generated/Models/UpdateTodolistOrGroupRequest.swift
+  s_555508c40a7b3b::t_75ddca03f456cd 6,8
+swift/Sources/Basecamp/Generated/Services/TodolistsService.swift
+  s_555508c40a7b3b::t_cfb73dd5757b48 66
+typescript/src/generated/openapi-stripped.json
+  s_555508c40a7b3b::t_782caf0219b90d 18976,18985-18986,19075-19078,30525,30529,30531-30534
+typescript/src/generated/schema.d.ts
+  s_555508c40a7b3b::t_d2eefdac42600d 2696-2707,5785-5787,18968
+typescript/src/generated/services/todolists.ts
+  s_555508c40a7b3b::t_c5d0081d414897 21,23-26,101,103,105,109,112-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "95060c5bb8969305d804b2e1ae89f34ba529882f",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
