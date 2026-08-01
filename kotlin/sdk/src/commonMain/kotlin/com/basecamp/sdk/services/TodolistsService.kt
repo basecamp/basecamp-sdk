@@ -136,7 +136,6 @@ class TodolistsService(client: AccountClient) :
     private fun malformedField(key: String, value: JsonElement): BasecampException =
         BasecampException.Api(
             "Todolist field '$key' is not a JSON string: $value",
-            httpStatus = 0,
             hint = "The merge-safe update/edit resend this field verbatim, so a coerced or " +
                 "empty value would overwrite the current one. Fix the response, or use " +
                 "replace() to write the record deliberately.",
@@ -145,7 +144,6 @@ class TodolistsService(client: AccountClient) :
     private fun missingField(key: String): BasecampException =
         BasecampException.Api(
             "Todolist field '$key' is missing from the response",
-            httpStatus = 0,
             hint = "$key is required and presence-validated server-side, so a todolist without " +
                 "one is a malformed response, not an empty value to preserve.",
         )
@@ -153,7 +151,6 @@ class TodolistsService(client: AccountClient) :
     private fun emptyField(key: String): BasecampException =
         BasecampException.Api(
             "Todolist field '$key' is empty in the response",
-            httpStatus = 0,
             hint = "$key is presence-validated server-side, so an empty one is a malformed " +
                 "response. The caller did not ask to clear it.",
         )

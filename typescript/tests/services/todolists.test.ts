@@ -294,6 +294,42 @@ describe("TodolistsService", () => {
       expect(requests).toEqual(["GET"]);
     });
 
+    // The mirror of the read step: caller provenance, so `usage`. The
+    // TodolistFields annotation is erased at build time, so a closure assigning
+    // a non-string — trivially reachable from plain JS or via `as any` — would
+    // otherwise walk straight into the full-replace PUT.
+    it.each([
+      ["number", 42],
+      ["boolean", true],
+      ["array", []],
+      ["object", { a: 1 }],
+      ["zero", 0],
+      ["false", false],
+    ])("edit refuses a caller-supplied %s", async (_label, bad) => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          (t as unknown as Record<string, unknown>).description = bad;
+        })
+      );
+      expect((error as BasecampError).code).toBe("usage");
+      expect((error as BasecampError).message).toMatch(/must be a string/);
+      expect(requests).toEqual(["GET"]);
+    });
+
     // The mirror case: same value, caller origin, so `usage` not `api_error`.
     it("a caller-supplied empty name is a usage error", async () => {
       const id = 42;

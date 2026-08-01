@@ -353,7 +353,9 @@ The writable set is exactly `{name, description}`. `track_todolist` is **not** p
 
 Every SDK exposes the same three-method, two-state surface over it:
 
-- **`update`** — merge-safe. GET the current list → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed; an explicitly-passed empty string is a set (clears). Set-detection is language-native: Go zero-value guards, TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`.
+- **`update`** — merge-safe. GET the current list → overlay only *explicitly-set* request fields → PUT the full representation. An omitted field is untouched, guaranteed. Set-detection is language-native: TypeScript `!== undefined`, Python/Ruby `None`/`nil` kwarg defaults, Kotlin `?.let`, Swift `if let`, Go zero-value guards.
+
+  In the five SDKs whose unset marker is distinct from the empty string, an explicitly-passed `""` is a set and therefore clears. **Go is the exception**: its request struct uses zero-value guards (`if req.Description != ""`), so `""` *is* the unset marker and `update` cannot express a clear. Go callers clear through `Edit` — which hands back the full writable state, where assigning `""` is unambiguous — or through `Replace`, which is verbatim by construction. This is a language-adaptation consequence of the absent/empty conflation, not a behavioural divergence in the composite: every SDK preserves unaddressed fields identically.
 - **`edit`** — read-modify-write closure over the full writable state (`TodolistFields`: name, description). Clear = set empty (`""`); a closure error/throw aborts before the PUT. Python's form is a context manager (`with`/`async with`) whose `.result` holds the updated list after clean exit (RuntimeError before completion).
 - **`replace`** — the generated wire method: verbatim sparse PUT, no GET, omission clears, name required. Renamed from the plain `update` via `METHOD_NAME_OVERRIDES` in all five service generators (§18 rule 6), so the raw single-request path stays reachable under a name that says what it does.
 

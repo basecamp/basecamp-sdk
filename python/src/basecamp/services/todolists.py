@@ -126,9 +126,34 @@ def _replace_kwargs(fields: dict[str, Any]) -> dict[str, Any]:
     empty: BC3 presence-validates it, so a full write cannot clear it and an
     empty one is a 422 waiting to happen.
     """
-    if not fields["name"]:
+    name = _caller_string(fields, "name")
+    description = _caller_string(fields, "description")
+    if not name:
         raise UsageError("name must be a non-empty string; BC3 presence-validates it, so a full write cannot clear it")
-    return {"name": fields["name"], "description": fields["description"] or ""}
+    return {"name": name, "description": description}
+
+
+def _caller_string(fields: dict[str, Any], key: str) -> str:
+    """Validate a caller-supplied writable value, the mirror of the read step.
+
+    The read step (:func:`_writable_string`) owns *response* provenance; this
+    owns *caller* provenance, and the two are the same rule seen from opposite
+    ends. ``edit`` hands the caller a mutable view of the full writable state,
+    and Python enforces nothing about what comes back — a closure that assigns
+    ``42`` or ``[]`` would otherwise walk straight into the full-replace PUT and
+    write it. That is caller misuse, hence :class:`UsageError`, where the same
+    wrong type arriving from the server is an :class:`ApiError`.
+    """
+    value = fields[key]
+    if not isinstance(value, str):
+        raise UsageError(
+            f"todolist {key} must be a string, got {type(value).__name__}: {value!r}",
+            hint=(
+                "The full writable state is PUT back verbatim, so a non-string would be "
+                "written to the record. Assign a string; use '' to clear."
+            ),
+        )
+    return value
 
 
 class _TodolistEditBase:

@@ -137,7 +137,15 @@ type TodolistFields struct {
 // a full-replace endpoint.
 func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
 	if tl.Name == "" {
-		return nil, fmt.Errorf("todolist %d came back with an empty name: the name is presence-validated server-side, so this is a malformed response, not a value to preserve", tl.ID)
+		// Structured, and statusless by SPEC §6: the transport succeeded, so no
+		// HTTP status describes this, and re-requesting cannot repair a
+		// malformed body. A bare wrapped error would give callers nothing to
+		// branch on and would not carry the hint.
+		return nil, &Error{
+			Code:    CodeAPI,
+			Message: fmt.Sprintf("todolist %d came back with an empty name", tl.ID),
+			Hint:    "The name is presence-validated server-side, so this is a malformed response, not a value to preserve. Use Replace to write the record deliberately.",
+		}
 	}
 	return &TodolistFields{
 		Name:        tl.Name,

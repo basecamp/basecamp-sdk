@@ -157,11 +157,38 @@ module Basecamp
       # An empty name is refused rather than sent: BC3 presence-validates it,
       # so a blank name is a 422 and never a preserve.
       def put_fields(id, fields)
-        if fields.name.to_s.empty?
+        name = caller_string(fields.name, "name")
+        description = caller_string(fields.description, "description")
+
+        if name.empty?
           raise UsageError, "name must be present; a full write has no nil state and BC3 rejects a blank name with 422"
         end
 
-        replace(id: id, name: fields.name, description: fields.description.to_s)
+        replace(id: id, name: name, description: description)
+      end
+
+      # Validates a caller-supplied writable value, the mirror of the read step.
+      #
+      # +writable_string+ owns *response* provenance; this owns *caller*
+      # provenance, and the two are one rule seen from opposite ends. +edit+
+      # yields a mutable view of the full writable state and Ruby enforces
+      # nothing about what comes back — a block assigning +42+ or +[]+ would
+      # otherwise walk straight into the full-replace PUT and write it. That is
+      # caller misuse, hence UsageError, where the same wrong type arriving from
+      # the server is an ApiError. +nil+ is accepted as the empty string: the
+      # struct starts nil-valued and clearing by assigning nil is idiomatic.
+      def caller_string(value, key)
+        if value.nil?
+          ""
+        elsif value.is_a?(String)
+          value
+        else
+          raise UsageError.new(
+            "todolist #{key} must be a String, got #{value.class}: #{value.inspect}",
+            hint: "The full writable state is PUT back verbatim, so a non-String would be " \
+              "written to the record. Assign a String; use \"\" to clear."
+          )
+        end
       end
     end
   end

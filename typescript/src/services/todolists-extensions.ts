@@ -38,6 +38,31 @@ function unwrapTodolist(response: TodolistOrGroup): Todolist {
   return response as unknown as Todolist;
 }
 
+/**
+ * Validates a caller-supplied writable value, the mirror of the read step.
+ *
+ * `writableString` owns *response* provenance; this owns *caller* provenance,
+ * and the two are one rule seen from opposite ends. `edit` hands the caller a
+ * mutable `TodolistFields` and the annotation is erased at build time, so a
+ * closure assigning `42` or `[]` — trivially reachable from plain JS, or from
+ * TypeScript via `as any` — would otherwise walk straight into the full-replace
+ * PUT and write it. That is caller misuse, hence `usage`, where the same wrong
+ * type arriving from the server is `api_error`.
+ */
+function callerString(fields: TodolistFields, key: "name" | "description"): string {
+  const value: unknown = fields[key];
+  if (typeof value !== "string") {
+    throw Errors.usage(
+      truncateErrorMessage(
+        `todolist ${key} must be a string, got ${typeof value}: ${JSON.stringify(value)}`
+      ),
+      "The full writable state is PUT back verbatim, so a non-string would be written to the " +
+        'record. Assign a string; use "" to clear.'
+    );
+  }
+  return value;
+}
+
 /** Builds the malformed-response error, with the message capped per SPEC §9. */
 function malformedResponse(message: string, hint: string) {
   // api_error, not usage: the value arrived in a successful API response, so
@@ -235,18 +260,15 @@ export class TodolistsService extends GeneratedTodolistsService {
     // composite rather than leaning on the generated `replace()` also aligns
     // this path with the other five SDKs; `replace()` keeps its own
     // `Errors.validation` for direct callers, where the name really is theirs.
-    if (f.name === "") {
+    const name = callerString(f, "name");
+    const description = callerString(f, "description");
+    if (name === "") {
       throw Errors.usage(
         "todolist name must not be empty",
         "BC3 presence-validates the name, so a full write cannot clear it. Pass a non-empty " +
           "name, or use replace() if you mean to write the record verbatim."
       );
     }
-    return unwrapTodolist(
-      await this.replace(id, {
-        name: f.name,
-        description: f.description,
-      })
-    );
+    return unwrapTodolist(await this.replace(id, { name, description }));
   }
 }

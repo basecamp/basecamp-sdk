@@ -256,6 +256,24 @@ class TestMalformedWritableFields:
         assert get_route.call_count == 1
         assert put_route.call_count == 0, "a malformed name must never reach the PUT"
 
+    @pytest.mark.parametrize("bad", [42, True, [], {}, ["x"], {"a": 1}, 0, False])
+    @respx.mock
+    def test_edit_refuses_a_caller_supplied_non_string(self, bad):
+        """The mirror of the read step: caller provenance, so UsageError.
+
+        `edit` hands the caller a mutable view of the full writable state and
+        Python enforces nothing about what comes back, so a closure assigning a
+        non-string would otherwise walk straight into the full-replace PUT.
+        """
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError) as excinfo, _sync_todolists().edit(id=2) as tl:
+            tl.description = bad
+
+        assert "must be a string" in str(excinfo.value)
+        assert put_route.call_count == 0, "a non-string must never reach the PUT"
+
     @respx.mock
     def test_caller_supplied_empty_name_is_a_usage_error(self):
         """The mirror case: same value, caller origin, so UsageError not ApiError."""

@@ -197,6 +197,23 @@ class TodolistsServiceTest < Minitest::Test
     end
   end
 
+  # The mirror of the read step: caller provenance, so UsageError. +edit+ yields
+  # a mutable view of the full writable state and Ruby enforces nothing about
+  # what comes back, so a block assigning a non-String would otherwise walk
+  # straight into the full-replace PUT.
+  [ 42, true, [], {}, [ "x" ], { "a" => 1 }, 0 ].each do |bad|
+    define_method("test_edit_refuses_a_caller_supplied_#{bad.inspect}") do
+      stub_todolist_get_and_put
+
+      error = assert_raises(Basecamp::UsageError) do
+        @account.todolists.edit(id: 2) { |list| list.description = bad }
+      end
+
+      assert_includes error.message, "must be a String"
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
   # The mirror case: same value, caller origin, so UsageError not ApiError.
   def test_caller_supplied_empty_name_is_a_usage_error
     stub_todolist_get_and_put
