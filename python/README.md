@@ -522,6 +522,22 @@ print(recent.meta.truncated)  # True only if more items were available
 
 `meta.truncated` is `True` only when items beyond those returned were available — items were dropped by `max_items`, or the last-fetched page still advertised a next page when collection stopped (at `max_items` or the `max_pages` safety cap). When it is `False`, the result is definitely complete.
 
+### The `page` keyword
+
+`page` sets where the walk *starts*, not which single page you get. Link-following
+continues from there to the end of the collection, so `page=3` against a 10-page
+collection returns pages 3–10 concatenated. Pair it with `max_items` to bound the
+result:
+
+```python
+from_page_3 = account.projects.list(page=3, max_items=50)
+```
+
+This differs from the Go SDK, where a positive `Page` fetches exactly that page
+and turns auto-pagination off. Converging the six SDKs on Go's single-page
+semantics is a breaking change tracked in
+[#566](https://github.com/basecamp/basecamp-sdk/issues/566).
+
 ## Error Handling
 
 ```python
