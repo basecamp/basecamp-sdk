@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 )
 
@@ -136,10 +137,38 @@ func TestPageParamReachesWire(t *testing.T) {
 	}
 }
 
+// TestPageParamAcceptsMaxInt32 pins the inclusive upper bound of the narrowing:
+// the largest page the generated int32 params can carry still reaches the wire.
+// math.MaxInt32 is representable as int on every platform Go supports, so this
+// half of the boundary is meaningful on 32- and 64-bit alike.
+func TestPageParamAcceptsMaxInt32(t *testing.T) {
+	var gotPage string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPage = r.URL.Query().Get("page")
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[]`))
+	}))
+	defer server.Close()
+
+	cfg := &Config{BaseURL: server.URL, CacheEnabled: false}
+	client := NewClient(cfg, &mockTokenProvider{})
+	ac := client.ForAccount("12345")
+
+	if _, err := ac.Projects().List(t.Context(), &ProjectListOptions{Page: math.MaxInt32}); err != nil {
+		t.Fatalf("unexpected error for the largest representable page: %v", err)
+	}
+	if want := strconv.Itoa(math.MaxInt32); gotPage != want {
+		t.Errorf("expected ?page=%s on the wire, got %q", want, gotPage)
+	}
+}
+
 // TestPageParamRejectsOutOfRange asserts that a Page number too large for the
 // int32 the generated params carry is reported as a usage error instead of
 // wrapping around to a negative page on the wire.
 func TestPageParamRejectsOutOfRange(t *testing.T) {
+	if strconv.IntSize < 64 {
+		t.Skip("pages above MaxInt32 are unrepresentable as int on 32-bit platforms")
+	}
 	var reached bool
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reached = true
@@ -152,9 +181,12 @@ func TestPageParamRejectsOutOfRange(t *testing.T) {
 	client := NewClient(cfg, &mockTokenProvider{})
 	ac := client.ForAccount("12345")
 
-	// math.MaxInt32+1, built at runtime so the constant does not overflow int
-	// on 32-bit platforms.
-	overflowing := math.MaxInt32 + 1
+	// Build MaxInt32+1 by incrementing at runtime: the constant expression
+	// math.MaxInt32+1 overflows int on 32-bit and would not compile there, even
+	// though the guard above skips the assertion. Same shape as
+	// TestTodolistsService_Reposition_PositionOutOfRange.
+	overflowing := math.MaxInt32
+	overflowing++
 
 	_, err := ac.Projects().List(t.Context(), &ProjectListOptions{Page: overflowing})
 	if err == nil {
