@@ -438,6 +438,36 @@ final class TodolistsServiceExtensionsTests: XCTestCase {
         }
     }
 
+    /// `name` is presence-validated server-side, so an empty one from the wire
+    /// is a malformed response — not a value to preserve, and emphatically not
+    /// one to write back on a full-replace endpoint. Classification is by
+    /// ORIGIN: this name came off the wire, so it is `.api`; a caller-emptied
+    /// name stays `.usage` (covered by testEdit_emptyNameThrowsUsageError...).
+    /// Swift's Codable already rejects an absent or null name, since
+    /// `Todolist.name` is a non-optional `String`.
+    func testUpdate_refusesAnEmptyNameFromTheResponse() async throws {
+        var body = flatTodolistJSON()
+        body["name"] = ""
+
+        let log = TodolistRequestLog()
+        let account = try makeTodolistsClient(log: log, getBody: body)
+
+        do {
+            _ = try await account.todolists.update(
+                id: 2, req: UpdateTodolistRequest(description: "<p>New</p>"))
+            XCTFail("expected an empty name from the wire to be refused")
+        } catch let error as BasecampError {
+            guard case .api(let message, _, _, _) = error else {
+                return XCTFail("expected .api for a malformed response, got \(error)")
+            }
+            XCTAssertTrue(
+                message.contains("name is empty"),
+                "the error must name the offending field, got: \(message)")
+        }
+
+        XCTAssertEqual(log.methods, ["GET"], "an empty name must never reach the PUT")
+    }
+
     /// The `{"todolist": {...}}` envelope the spec models still decodes, so the
     /// flat-body support is an addition rather than a swap.
     func testUnionDecodesTheEnvelopeShape() throws {

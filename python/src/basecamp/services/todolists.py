@@ -50,21 +50,34 @@ def _fields_from_todolist(todolist: dict[str, Any]) -> dict[str, Any]:
                 body = nested
                 break
     return {
-        "name": _writable_string(body, "name"),
+        "name": _writable_string(body, "name", required=True),
         "description": _writable_string(body, "description"),
     }
 
 
-def _writable_string(body: dict[str, Any], key: str) -> str:
+def _writable_string(body: dict[str, Any], key: str, *, required: bool = False) -> str:
     """Read a writable string field, refusing to coerce a malformed one.
 
-    An absent key or an explicit ``None`` is genuinely empty — there is nothing
-    to preserve, and ``""`` is what the server already holds. Anything else
-    that is not a string is a malformed response and must NOT be coerced: a
-    plain ``or ""`` turns every falsey non-string (``False``, ``0``, ``[]``,
-    ``{}``) into ``""``, and this endpoint is full-replace, so that value would
-    be written straight back over the real one — erasing the field these
-    composites exist to preserve, on a call that never mentioned it.
+    **Classification is by origin, not by value.** The same empty string is a
+    caller error when the caller passed it and malformed response data when it
+    came off the wire, so each provenance is checked where it is unambiguous:
+    this read step owns the response, and :func:`_replace_kwargs` owns the
+    caller. That is why an empty ``name`` here raises :class:`ApiError` while an
+    empty ``name`` the caller supplied raises :class:`UsageError` — same value,
+    different origin, different fault.
+
+    A ``required`` field (one the schema marks non-nullable, as ``name`` is)
+    must arrive as a non-empty string: absent, ``None`` and ``""`` are all
+    malformed, because BC3 presence-validates ``name`` so no real todolist has
+    one. An optional field (``description``) treats absent and ``None`` as
+    genuinely empty — there is nothing to preserve and ``""`` is what the server
+    already holds.
+
+    A wrong type is malformed either way and must NOT be coerced: a plain
+    ``or ""`` turns every falsey non-string (``False``, ``0``, ``[]``, ``{}``)
+    into ``""``, and this endpoint is full-replace, so that value would be
+    written straight back over the real one — erasing the field these composites
+    exist to preserve, on a call that never mentioned it.
 
     Python has no typed decoder between the GET and this read, unlike the Go,
     Swift and Kotlin composites where a wrong-typed field fails at decode. That
@@ -74,6 +87,14 @@ def _writable_string(body: dict[str, Any], key: str) -> str:
     """
     value = body.get(key)
     if value is None:
+        if required:
+            raise ApiError(
+                f"Todolist field {key!r} is missing from the response",
+                hint=(
+                    f"{key} is required and presence-validated server-side, so a todolist "
+                    "without one is a malformed response, not an empty value to preserve."
+                ),
+            )
         return ""
     if not isinstance(value, str):
         raise ApiError(
@@ -82,6 +103,14 @@ def _writable_string(body: dict[str, Any], key: str) -> str:
                 "The merge-safe update/edit resend this field verbatim, so a coerced or "
                 "empty value would overwrite the current one. Use replace() to write the "
                 "record deliberately."
+            ),
+        )
+    if required and not value:
+        raise ApiError(
+            f"Todolist field {key!r} is empty in the response",
+            hint=(
+                f"{key} is presence-validated server-side, so an empty one is a malformed "
+                "response. The caller did not ask to clear it."
             ),
         )
     return value

@@ -229,6 +229,124 @@ describe("TodolistsService", () => {
       expectResponseError(error, "name", requests);
     });
 
+    // `name` is required and presence-validated, so absent, null and "" from
+    // the wire are all malformed. Classification is by ORIGIN: this name came
+    // off the wire, so it is api_error. Before the fix, absent/null collapsed
+    // to "" and that empty name was PUT over the real one, successfully and
+    // silently — the only instance in this family that corrupted data on the
+    // wire rather than misclassifying or swallowing.
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+      ["empty", ""],
+    ])("update refuses an %s name from the response", async (_label, value) => {
+      const id = 42;
+      const requests: string[] = [];
+      const body = describedTodolist(id) as Record<string, unknown>;
+      if (value === undefined) delete body.name;
+      else body.name = value;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.update(id, { description: "<p>New</p>" })
+      );
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/todolist name is (missing|empty)/);
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The same via the edit closure, which is the path that actually wrote the
+    // empty name: a callback deriving from `t.name` PUT it over the real one.
+    it("edit refuses an absent name from the response", async () => {
+      const id = 42;
+      const requests: string[] = [];
+      const body = describedTodolist(id) as Record<string, unknown>;
+      delete body.name;
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(body);
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(
+        client.todolists.edit(id, (t) => {
+          t.name = `${t.name} (revised)`;
+        })
+      );
+      expect((error as BasecampError).code).toBe("api_error");
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The mirror case: same value, caller origin, so `usage` not `api_error`.
+    it("a caller-supplied empty name is a usage error", async () => {
+      const id = 42;
+      const requests: string[] = [];
+
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("GET");
+          return HttpResponse.json(describedTodolist(id));
+        }),
+        http.put(`${BASE_URL}/todolists/${id}`, () => {
+          requests.push("PUT");
+          return HttpResponse.json(describedTodolist(id));
+        })
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "" }));
+      expect((error as BasecampError).code).toBe("usage");
+      expect(requests).toEqual(["GET"]);
+    });
+
+    // The group envelope models no description, so deriving a todolist from it
+    // would invent an empty one and erase the real description on the PUT.
+    // Swift throws here; TypeScript must not silently do what Swift refuses.
+    it("refuses a group-envelope response rather than inventing a description", async () => {
+      const id = 42;
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () =>
+          HttpResponse.json({ group: { id, name: "Peripherals" } })
+        )
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect((error as BasecampError).code).toBe("api_error");
+      expect((error as BasecampError).message).toMatch(/group projection/);
+    });
+
+    // SPEC section 9 caps error messages at 500 units; the malformed value is
+    // embedded in the message, so a huge body must not blow past it.
+    it("caps the message at the SPEC section 9 limit", async () => {
+      const id = 42;
+      server.use(
+        http.get(`${BASE_URL}/todolists/${id}`, () =>
+          HttpResponse.json(describedTodolist(id, { description: Array(50_000).fill("x") }))
+        )
+      );
+
+      const error = await rejection(client.todolists.update(id, { name: "Renamed" }));
+      expect((error as BasecampError).message.length).toBeLessThanOrEqual(500);
+      expect((error as BasecampError).hint).toBeTruthy();
+      expect((error as BasecampError).retryable).toBe(false);
+    });
+
     it.each([
       ["absent", undefined],
       ["null", null],
@@ -499,8 +617,15 @@ describe("TodolistsService", () => {
         .catch((e: unknown) => e);
 
       expect(error).toBeInstanceOf(BasecampError);
-      expect((error as BasecampError).code).toBe("validation");
-      expect((error as BasecampError).message).toBe("Name is required");
+      // `usage`, not `validation`. The composite now owns the caller-emptied
+      // name so it can classify by origin, which also aligns TypeScript with the
+      // other four SDKs (Python/Ruby UsageError, Kotlin Usage, Swift usage).
+      // Previously TS was the odd one out, inheriting `validation` from the
+      // generated `replace()` — a third code for the same condition. That
+      // generated error still governs direct `replace()` callers, where the name
+      // really is the caller's (asserted separately below).
+      expect((error as BasecampError).code).toBe("usage");
+      expect((error as BasecampError).message).toMatch(/name must not be empty/);
       expect(putCount).toBe(0);
     });
   });

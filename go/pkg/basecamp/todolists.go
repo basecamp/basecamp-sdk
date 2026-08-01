@@ -127,11 +127,22 @@ type TodolistFields struct {
 }
 
 // fieldsFromTodolist derives the full writable state from a fetched todolist.
-func fieldsFromTodolist(tl *Todolist) *TodolistFields {
+//
+// Classification is by origin, not by value. The same empty name is a caller
+// error when the caller set it and a malformed response when it came off the
+// wire, so each provenance is checked where it is unambiguous: here for the
+// response, fullBody for the caller. Name is presence-validated server-side, so
+// a todolist that comes back without one is malformed — not an empty value to
+// preserve, and emphatically not something to write back over the real name on
+// a full-replace endpoint.
+func fieldsFromTodolist(tl *Todolist) (*TodolistFields, error) {
+	if tl.Name == "" {
+		return nil, fmt.Errorf("todolist %d came back with an empty name: the name is presence-validated server-side, so this is a malformed response, not a value to preserve", tl.ID)
+	}
 	return &TodolistFields{
 		Name:        tl.Name,
 		Description: tl.Description,
-	}
+	}, nil
 }
 
 // fullBody serializes the complete writable state for the replace transport:
@@ -358,7 +369,10 @@ func (s *TodolistsService) Update(ctx context.Context, todolistID int64, req *Up
 		return nil, err
 	}
 
-	fields := fieldsFromTodolist(current)
+	fields, err := fieldsFromTodolist(current)
+	if err != nil {
+		return nil, err
+	}
 	if req.Name != "" {
 		fields.Name = req.Name
 	}
@@ -393,7 +407,10 @@ func (s *TodolistsService) Edit(ctx context.Context, todolistID int64, fn func(*
 		return nil, err
 	}
 
-	fields := fieldsFromTodolist(current)
+	fields, err := fieldsFromTodolist(current)
+	if err != nil {
+		return nil, err
+	}
 	if err := fn(fields); err != nil {
 		return nil, err
 	}

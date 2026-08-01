@@ -204,6 +204,53 @@ class TodolistsServiceTest {
         client.close()
     }
 
+    /**
+     * `name` is required and presence-validated, so absent, null and "" from
+     * the wire are all malformed. Classification is by ORIGIN: this name came
+     * off the wire, so it is BasecampException.Api. The caller supplying an
+     * empty name stays BasecampException.Usage, asserted separately.
+     */
+    @Test
+    fun updateRefusesAnAbsentNullOrEmptyNameFromTheResponse() = runTest {
+        for (nameJson in listOf(null, "null", "\"\"")) {
+            val capture = WriteCapture()
+            val body = if (nameJson == null) {
+                todolistJson.replace("\"name\": \"Launch list\",", "")
+            } else {
+                todolistJson.replace("\"name\": \"Launch list\"", "\"name\": $nameJson")
+            }
+            val client = captureClient(capture, getBody = body)
+
+            try {
+                client.forAccount("12345").todolists
+                    .update(42, UpdateTodolistBody(description = "<p>New</p>"))
+                fail("expected a malformed name ($nameJson) to abort the update")
+            } catch (e: BasecampException.Api) {
+                assertTrue(e.message!!.contains("'name'"), e.message!!)
+            }
+
+            assertEquals(listOf("GET"), capture.methods, "a malformed name must never reach the PUT")
+            client.close()
+        }
+    }
+
+    /** The mirror case: same value, caller origin, so Usage not Api. */
+    @Test
+    fun callerSuppliedEmptyNameIsAUsageError() = runTest {
+        val capture = WriteCapture()
+        val client = captureClient(capture)
+
+        try {
+            client.forAccount("12345").todolists.edit(42) { name = "" }
+            fail("expected a caller-emptied name to raise a usage error")
+        } catch (e: BasecampException.Usage) {
+            assertTrue(e.message!!.contains("name"), e.message!!)
+        }
+
+        assertEquals(listOf("GET"), capture.methods)
+        client.close()
+    }
+
     /** An absent or explicitly-null field is genuinely empty, not malformed. */
     @Test
     fun updateTreatsAbsentAndNullDescriptionAsEmpty() = runTest {

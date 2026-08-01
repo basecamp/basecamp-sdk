@@ -230,6 +230,45 @@ class TestMalformedWritableFields:
 
     @pytest.mark.parametrize(
         "body",
+        [
+            {"id": 2},
+            {"id": 2, "name": None},
+            {"id": 2, "name": ""},
+        ],
+    )
+    @respx.mock
+    def test_absent_null_or_empty_name_is_a_malformed_response(self, body):
+        """`name` is required and presence-validated, so all three are malformed.
+
+        Classification is by ORIGIN: this name came off the wire, so it is an
+        ApiError. The caller supplying an empty name is a UsageError, asserted
+        separately. Before this, absent/null collapsed to "" and that empty
+        name was PUT over the real one.
+        """
+        body = {**body, "description": "<p>Ship the hardware</p>"}
+        get_route = respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=body))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(ApiError) as excinfo:
+            _sync_todolists().update(id=2, description="<p>New</p>")
+
+        assert "'name'" in str(excinfo.value)
+        assert get_route.call_count == 1
+        assert put_route.call_count == 0, "a malformed name must never reach the PUT"
+
+    @respx.mock
+    def test_caller_supplied_empty_name_is_a_usage_error(self):
+        """The mirror case: same value, caller origin, so UsageError not ApiError."""
+        respx.get(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+        put_route = respx.put(f"{BASE}/todolists/2").mock(return_value=httpx.Response(200, json=_todolist_full()))
+
+        with pytest.raises(UsageError):
+            _sync_todolists().update(id=2, name="")
+
+        assert put_route.call_count == 0
+
+    @pytest.mark.parametrize(
+        "body",
         [{"id": 2, "name": "Hardware"}, {"id": 2, "name": "Hardware", "description": None}],
     )
     @respx.mock

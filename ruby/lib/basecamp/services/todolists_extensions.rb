@@ -85,37 +85,66 @@ module Basecamp
       def fields_from_todolist(todolist)
         body = todolist["todolist"] || todolist["group"] || todolist
         TodolistFields.new(
-          name: writable_string(body, "name"),
+          name: writable_string(body, "name", required: true),
           description: writable_string(body, "description")
         )
       end
 
       # Reads a writable string field, refusing to coerce a malformed one.
       #
-      # A missing key or an explicit +nil+ is genuinely empty — there is
-      # nothing to preserve, and <tt>""</tt> is what the server already holds.
-      # Anything else that is not a String is a malformed response and must NOT
-      # be coerced: a plain <tt>|| ""</tt> turns +false+ into <tt>""</tt> and
-      # passes arrays, hashes and numbers straight through. This endpoint is
-      # full-replace, so either outcome is written back over the real value —
-      # erasing or corrupting the field these composites exist to preserve, on
-      # a call that never mentioned it.
+      # *Classification is by origin, not by value.* The same empty string is a
+      # caller error when the caller passed it and malformed response data when
+      # it came off the wire, so each provenance is checked where it is
+      # unambiguous: this read step owns the response, and +put_fields+ owns the
+      # caller. That is why an empty +name+ here raises ApiError while an empty
+      # +name+ the caller supplied raises UsageError — same value, different
+      # origin, different fault.
+      #
+      # A +required+ field (one the schema marks non-nullable, as +name+ is)
+      # must arrive as a non-empty String: missing, +nil+ and <tt>""</tt> are all
+      # malformed, because BC3 presence-validates +name+ so no real todolist has
+      # one. An optional field (+description+) treats missing and +nil+ as
+      # genuinely empty — there is nothing to preserve and <tt>""</tt> is what
+      # the server already holds.
+      #
+      # A wrong type is malformed either way and must NOT be coerced: a plain
+      # <tt>|| ""</tt> turns +false+ into <tt>""</tt> and passes arrays, hashes
+      # and numbers straight through. This endpoint is full-replace, so either
+      # outcome is written back over the real value.
       #
       # Ruby has no typed decoder between the GET and this read, unlike the Go,
       # Swift and Kotlin composites where a wrong-typed field fails at decode.
       # The same shape is live in the shipped Todos composite; tracked in #576.
-      def writable_string(body, key)
+      def writable_string(body, key, required: false)
         value = body[key]
 
         if value.nil?
+          raise_missing_field(key) if required
           ""
-        elsif value.is_a?(String)
-          value
+        elsif !value.is_a?(String)
+          raise ApiError.new(
+            "Todolist field #{key.inspect} is not a string: #{value.inspect}",
+            hint: "The merge-safe update/edit resend this field verbatim, so a coerced or " \
+              "empty value would overwrite the current one. Use replace to write the record " \
+              "deliberately."
+          )
+        elsif required && value.empty?
+          raise ApiError.new(
+            "Todolist field #{key.inspect} is empty in the response",
+            hint: "#{key} is presence-validated server-side, so an empty one is a malformed " \
+              "response. The caller did not ask to clear it."
+          )
         else
-          raise ApiError, "Todolist field #{key.inspect} is not a string: #{value.inspect}; " \
-            "the merge-safe update/edit resend this field verbatim, so a coerced or empty " \
-            "value would overwrite the current one. Use replace to write the record deliberately."
+          value
         end
+      end
+
+      def raise_missing_field(key)
+        raise ApiError.new(
+          "Todolist field #{key.inspect} is missing from the response",
+          hint: "#{key} is required and presence-validated server-side, so a todolist without " \
+            "one is a malformed response, not an empty value to preserve."
+        )
       end
 
       # PUTs the full writable state via +replace+. Both fields are always

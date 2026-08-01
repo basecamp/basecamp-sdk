@@ -96,7 +96,7 @@ class TodolistsService(client: AccountClient) :
         val root = todolist.jsonObject
         val obj = root["todolist"] as? JsonObject ?: root["group"] as? JsonObject ?: root
         return TodolistFields(
-            name = obj.writableString("name"),
+            name = obj.writableString("name", required = true),
             description = obj.writableString("description"),
         )
     }
@@ -120,11 +120,16 @@ class TodolistsService(client: AccountClient) :
      * Every other Kotlin composite reads a typed model, where the decoder
      * already rejects a wrong-typed field. Removing that asymmetry is #544.
      */
-    private fun JsonObject.writableString(key: String): String =
+    private fun JsonObject.writableString(key: String, required: Boolean = false): String =
         when (val value = this[key]) {
-            null, JsonNull -> ""
+            null, JsonNull ->
+                if (required) throw missingField(key) else ""
             is JsonPrimitive ->
-                if (value.isString) value.content else throw malformedField(key, value)
+                when {
+                    !value.isString -> throw malformedField(key, value)
+                    required && value.content.isEmpty() -> throw emptyField(key)
+                    else -> value.content
+                }
             else -> throw malformedField(key, value)
         }
 
@@ -135,6 +140,22 @@ class TodolistsService(client: AccountClient) :
             hint = "The merge-safe update/edit resend this field verbatim, so a coerced or " +
                 "empty value would overwrite the current one. Fix the response, or use " +
                 "replace() to write the record deliberately.",
+        )
+
+    private fun missingField(key: String): BasecampException =
+        BasecampException.Api(
+            "Todolist field '$key' is missing from the response",
+            httpStatus = 0,
+            hint = "$key is required and presence-validated server-side, so a todolist without " +
+                "one is a malformed response, not an empty value to preserve.",
+        )
+
+    private fun emptyField(key: String): BasecampException =
+        BasecampException.Api(
+            "Todolist field '$key' is empty in the response",
+            httpStatus = 0,
+            hint = "$key is presence-validated server-side, so an empty one is a malformed " +
+                "response. The caller did not ask to clear it.",
         )
 
     /**

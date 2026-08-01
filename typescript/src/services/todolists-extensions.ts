@@ -1,7 +1,7 @@
 import { TodolistsService as GeneratedTodolistsService } from "../generated/services/todolists.js";
 import type { Todolist } from "../generated/services/todolists.js";
 import type { components } from "../generated/schema.js";
-import { Errors } from "../errors.js";
+import { Errors, truncateErrorMessage } from "../errors.js";
 
 /**
  * The response shape the generated `get` and `replace` are typed with — both
@@ -23,22 +23,53 @@ type TodolistOrGroup = components["schemas"]["TodolistOrGroup"];
  */
 function unwrapTodolist(response: TodolistOrGroup): Todolist {
   if ("todolist" in response) return response.todolist;
-  // A `group` envelope carries the same writable surface this composite reads
-  // (`name`); anything else is the flat recordable the API really sends.
-  const flat: unknown = "group" in response ? response.group : response;
-  return flat as Todolist;
+  if ("group" in response) {
+    // Refused, not converted. The `group` projection models no `description`
+    // at all, so deriving a todolist from it would invent an empty one — and
+    // on a full-replace endpoint that empty value is written back, erasing the
+    // description. That is the same erasure Swift's unwrapper throws on; TS
+    // must not silently do what Swift refuses.
+    throw malformedResponse(
+      "GetTodolistOrGroup returned a todolist group projection, which carries no description",
+      "Writing it back would erase the description. Use replace() to overwrite deliberately."
+    );
+  }
+  // The flat recordable the API really sends.
+  return response as unknown as Todolist;
+}
+
+/** Builds the malformed-response error, with the message capped per SPEC §9. */
+function malformedResponse(message: string, hint: string) {
+  // api_error, not usage: the value arrived in a successful API response, so
+  // nothing the caller passed is at fault. Statusless — there is no HTTP status
+  // to attribute, the transport succeeded — and non-retryable, because
+  // re-requesting cannot repair a malformed body.
+  return Errors.apiError(truncateErrorMessage(message), undefined, {
+    hint,
+    retryable: false,
+  });
 }
 
 /**
  * Reads a writable string field off a fetched todolist, refusing to pass a
  * malformed one through.
  *
- * An absent field or an explicit `null`/`undefined` is genuinely empty — there
- * is nothing to preserve, and `""` is what the server already holds. Anything
- * else that is not a string is a malformed response and must not be forwarded:
- * `?? ""` only coalesces null and undefined, so a number, boolean, array or
- * object would ride through **verbatim** into the full-replace PUT and
- * overwrite the real value with a corrupted one.
+ * **Classification is by origin, not by value.** The same empty string is a
+ * caller error when the caller passed it and malformed response data when it
+ * came off the wire, so each provenance is checked where it is unambiguous:
+ * this read step owns the response, and `putFields` owns the caller. That is
+ * why an empty `name` here is an `api_error` while an empty `name` the caller
+ * supplied is a `UsageError` — same value, different origin, different fault.
+ *
+ * `required` fields (those the schema marks non-nullable, as `name` is) must
+ * arrive as a non-empty string: absent, `null`, and `""` are all malformed,
+ * because BC3 presence-validates `name` so no real todolist has one. Optional
+ * fields (`description`) treat absent and `null` as genuinely empty — there is
+ * nothing to preserve and `""` is what the server already holds.
+ *
+ * Anything of the wrong type is malformed either way: `?? ""` only coalesces
+ * null and undefined, so a number, boolean, array or object would ride through
+ * **verbatim** into the full-replace PUT and overwrite the real value.
  *
  * The type annotation on the GET result is a compile-time claim about runtime
  * data that nothing validates — `schema.d.ts` is erased at build time, so
@@ -47,22 +78,34 @@ function unwrapTodolist(response: TodolistOrGroup): Todolist {
  * this composite in the same position as the Python and Ruby ones: the check
  * has to be explicit here. The shipped Todos and Cards analogues are #576.
  */
-function writableString(todolist: Todolist, key: "name" | "description"): string {
+function writableString(
+  todolist: Todolist,
+  key: "name" | "description",
+  required = false
+): string {
   const value: unknown = todolist[key];
-  if (value === undefined || value === null) return "";
+  if (value === undefined || value === null) {
+    if (required) {
+      throw malformedResponse(
+        `todolist ${key} is missing from the response`,
+        `${key} is required and presence-validated server-side, so a todolist without one is a ` +
+          "malformed response, not an empty value to preserve."
+      );
+    }
+    return "";
+  }
   if (typeof value !== "string") {
-    // api_error, not usage: the malformed value arrived in a successful API
-    // response, so nothing the caller passed is at fault. The empty-name case
-    // is the opposite and stays a caller error — BC3 presence-validates `name`,
-    // so asking to write a blank one is genuine misuse.
-    throw Errors.apiError(
+    throw malformedResponse(
       `todolist ${key} is not a string: ${JSON.stringify(value)}`,
-      undefined,
-      {
-        hint:
-          "The merge-safe update/edit resend this field verbatim, so a malformed value would " +
-          "overwrite the current one. Use replace() to write the record deliberately.",
-      }
+      "The merge-safe update/edit resend this field verbatim, so a malformed value would " +
+        "overwrite the current one. Use replace() to write the record deliberately."
+    );
+  }
+  if (required && value === "") {
+    throw malformedResponse(
+      `todolist ${key} is empty in the response`,
+      `${key} is presence-validated server-side, so an empty one is a malformed response. ` +
+        "The caller did not ask to clear it."
     );
   }
   return value;
@@ -172,7 +215,7 @@ export class TodolistsService extends GeneratedTodolistsService {
   private async currentFields(id: number): Promise<TodolistFields> {
     const current = unwrapTodolist(await this.get(id));
     return {
-      name: writableString(current, "name"),
+      name: writableString(current, "name", true),
       description: writableString(current, "description"),
     };
   }
@@ -185,6 +228,20 @@ export class TodolistsService extends GeneratedTodolistsService {
    * clear-by-default and read as an accident rather than an intent.
    */
   private async putFields(id: number, f: TodolistFields): Promise<Todolist> {
+    // The caller's side of the origin rule. `currentFields` already rejected an
+    // empty name coming off the wire, so by here an empty one can only have been
+    // supplied by the caller — genuine misuse, since BC3 presence-validates the
+    // attribute and a full write has no state that clears it. Guarding in the
+    // composite rather than leaning on the generated `replace()` also aligns
+    // this path with the other five SDKs; `replace()` keeps its own
+    // `Errors.validation` for direct callers, where the name really is theirs.
+    if (f.name === "") {
+      throw Errors.usage(
+        "todolist name must not be empty",
+        "BC3 presence-validates the name, so a full write cannot clear it. Pass a non-empty " +
+          "name, or use replace() if you mean to write the record verbatim."
+      );
+    }
     return unwrapTodolist(
       await this.replace(id, {
         name: f.name,

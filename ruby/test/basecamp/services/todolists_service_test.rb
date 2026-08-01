@@ -174,6 +174,40 @@ class TodolistsServiceTest < Minitest::Test
     assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
   end
 
+  # `name` is required and presence-validated, so absent, nil and "" from the
+  # wire are all malformed. Classification is by ORIGIN: this name came off the
+  # wire, so it is an ApiError; the caller supplying an empty name is a
+  # UsageError, asserted separately below.
+  [ [ "absent", nil ], [ "nil", :nil ], [ "empty", "" ] ].each do |label, value|
+    define_method("test_#{label}_name_from_the_wire_is_a_malformed_response") do
+      body = full_todolist.dup
+      case value
+      when nil then body.delete("name")
+      when :nil then body["name"] = nil
+      else body["name"] = value
+      end
+      stub_todolist_get_and_put(todolist: body)
+
+      error = assert_raises(Basecamp::ApiError) do
+        @account.todolists.update(id: 2, description: "<p>New</p>")
+      end
+
+      assert_includes error.message, '"name"'
+      assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+    end
+  end
+
+  # The mirror case: same value, caller origin, so UsageError not ApiError.
+  def test_caller_supplied_empty_name_is_a_usage_error
+    stub_todolist_get_and_put
+
+    assert_raises(Basecamp::UsageError) do
+      @account.todolists.update(id: 2, name: "")
+    end
+
+    assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
+  end
+
   def test_update_treats_absent_and_nil_description_as_empty
     [ full_todolist.except("description"), full_todolist.merge("description" => nil) ].each do |body|
       captured = stub_todolist_get_and_put(todolist: body)
@@ -321,15 +355,20 @@ class TodolistsServiceTest < Minitest::Test
     assert_empty captured[:bodies]
   end
 
-  def test_update_of_a_nameless_todolist_raises_usage_error_without_put
+  # This test previously asserted UsageError, which enshrined the bug: the
+  # caller never mentioned the name, so blaming them for a nameless response was
+  # backwards. Classification is by ORIGIN — the name came off the wire, so this
+  # is an ApiError. The caller-supplied empty name stays a UsageError, covered by
+  # test_caller_supplied_empty_name_is_a_usage_error.
+  def test_update_of_a_nameless_todolist_reports_a_malformed_response_without_put
     captured = stub_todolist_get_and_put(todolist: full_todolist.merge("name" => nil))
 
-    error = assert_raises(Basecamp::UsageError) do
+    error = assert_raises(Basecamp::ApiError) do
       @account.todolists.update(id: 2, description: "<p>Revised</p>")
     end
 
-    assert_equal "name must be present; a full write has no nil state and BC3 rejects a blank name with 422", \
-                 error.message
+    assert_equal 'Todolist field "name" is missing from the response', error.message
+    assert_includes error.hint, "presence-validated server-side"
     assert_not_requested :put, "#{BASE_URL}/12345/todolists/2"
     assert_empty captured[:bodies]
   end

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -667,14 +668,35 @@ func TestReplaceTodolistRequest_NameAlwaysMarshals(t *testing.T) {
 	}
 }
 
+// A name that comes back empty is a malformed response, not a value to
+// preserve: the server presence-validates it, so no real todolist has one.
+// Classifying by origin is what keeps this distinct from the caller passing an
+// empty name, which fullBody still rejects as usage.
+func TestFieldsFromTodolist_EmptyNameIsAMalformedResponse(t *testing.T) {
+	_, err := fieldsFromTodolist(&Todolist{ID: 2, Name: "", Description: "<p>Ship it</p>"})
+	if err == nil {
+		t.Fatal("expected an empty name from the wire to be rejected, got nil")
+	}
+	if !strings.Contains(err.Error(), "malformed response") {
+		t.Errorf("error must name the response as the fault, got %q", err)
+	}
+	var typed *Error
+	if errors.As(err, &typed) && typed.Code == CodeUsage {
+		t.Error("a malformed response must not be reported as caller misuse")
+	}
+}
+
 // fieldsFromTodolist lifts exactly the writable set — {name, description} —
 // off a fetched todolist.
 func TestFieldsFromTodolist(t *testing.T) {
-	f := fieldsFromTodolist(&Todolist{
+	f, err := fieldsFromTodolist(&Todolist{
 		Name:        "Hardware",
 		Description: "<p>Ship it</p>",
 		Title:       "Hardware",
 	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if f.Name != "Hardware" {
 		t.Errorf("expected Name 'Hardware', got %q", f.Name)
 	}

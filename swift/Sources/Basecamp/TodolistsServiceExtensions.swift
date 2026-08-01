@@ -110,7 +110,26 @@ extension TodolistsService {
     /// GETs the todolist and unwraps the union arm the composites read from.
     private func fetchTodolist(id: Int) async throws -> Todolist {
         let fetched = try await get(id: id)
-        return try Self.todolist(from: fetched, operation: "GetTodolistOrGroup")
+        let todolist = try Self.todolist(from: fetched, operation: "GetTodolistOrGroup")
+
+        // Classification is by origin, not by value. The same empty name is a
+        // caller error when the caller set it and a malformed response when it
+        // came off the wire, so each provenance is checked where it is
+        // unambiguous: here for the response, `putFields` for the caller.
+        // `Todolist.name` is a non-optional `String`, so Codable already rejects
+        // an absent or null one — an empty one is the case that still gets
+        // through, and BC3 presence-validates the attribute, so no real todolist
+        // has it.
+        guard !todolist.name.isEmpty else {
+            throw BasecampError.api(
+                message: "GetTodolistOrGroup returned a todolist whose name is empty",
+                httpStatus: nil,
+                hint: "The name is presence-validated server-side, so an empty one is a "
+                    + "malformed response. The caller did not ask to clear it.",
+                requestId: nil
+            )
+        }
+        return todolist
     }
 
     /// Unwraps the ``TodolistOrGroup`` union the generated `get` and `replace`
