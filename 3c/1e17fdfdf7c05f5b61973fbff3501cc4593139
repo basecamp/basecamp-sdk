@@ -1,0 +1,20 @@
+scripts/check-retry-metadata-parity.py
+  s_555508c40a7b3b::t_4e630efa0e3859 239-243
+  s_555508c40a7b3b::t_9b1197cf59303f 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3c1e17fdfdf7c05f5b61973fbff3501cc4593139",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
