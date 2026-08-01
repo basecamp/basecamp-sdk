@@ -101,8 +101,13 @@ is_emoji_only_name, star_url, gauges_url, color, image_url, url
 ```
 
 `FolderWithProjects` is that shape plus `projects` (the project projection).
-Model them as two structures — or one structure with an optional `projects` —
-but do not let the list output declare `projects`.
+
+**Model these as two distinct structures.** A single structure with an optional
+`projects` member is not an acceptable substitute: `ListFoldersOutput` would
+reference that structure, so every generated list-item type would declare a
+`projects` field the list response never populates — exactly the outcome this
+section exists to prevent. Two shapes make the difference in the static types,
+where a consumer can see it.
 
 ### Modelling traps
 
