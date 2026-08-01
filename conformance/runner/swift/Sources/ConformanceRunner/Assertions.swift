@@ -109,6 +109,28 @@ func evaluateAssertions(
         return .fail("Expected first request method \(fixtureMethod), got \(first.method)")
     }
 
+    // Implicit PATH invariant, for the same reason: the transport answers any
+    // URL, so an operation aimed at the wrong endpoint consumes the queued
+    // responses and passes its retry, status, auth and pagination assertions
+    // against a resource the fixture never named. Checking the verb alone left
+    // that open. When the fixture declares a path and carries no explicit
+    // requestPath assertion, the first request must go there.
+    if !tc.fixturePath.isEmpty,
+       !tc.allAssertions.contains(where: { $0.type == "requestPath" }),
+       let first = captured.first {
+        let params = (tc.pathParams ?? [:]).compactMapValues {
+            $0.stringValue ?? $0.intValue.map(String.init)
+        }
+        switch renderFixturePath(tc.fixturePath, params) {
+        case .unsubstituted(let name):
+            return .fail("fixture path \"\(tc.fixturePath)\" has no pathParams entry for \"\(name)\"")
+        case .rendered(let expected):
+            if !requestPathMatches(first.path, fixturePath: expected, accountID: testAccountID) {
+                return .fail("Expected first request path /\(testAccountID)\(expected), got \(first.path)")
+            }
+        }
+    }
+
     for assertion in tc.allAssertions {
         switch assertion.type {
         case "requestCount":

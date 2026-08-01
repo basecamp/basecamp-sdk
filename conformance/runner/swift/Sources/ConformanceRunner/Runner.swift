@@ -1,8 +1,10 @@
 import Basecamp
 import Foundation
 
-/// Default account ID for conformance tests.
-private let testAccountID = "999"
+/// Default account ID for conformance tests. Not private: the path invariant
+/// in the evaluator needs it to reconstruct the account-scoped URL the SDK
+/// builds from an account-relative fixture path.
+let testAccountID = "999"
 
 /// Operations whose dispatch arm passes `configOverrides.maxItems` into the
 /// SDK. Kept beside the backstop that enforces it so the two cannot drift:
