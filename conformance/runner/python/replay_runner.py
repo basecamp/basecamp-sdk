@@ -68,6 +68,7 @@ DECODERS: dict[str, Callable[[str], None]] = {
     "GetTodoset": _decode,
     "ListTodolists": _decode,
     "ListTodos": _decode,
+    "GetCalendar": _decode,
 }
 
 
@@ -157,6 +158,16 @@ class ReplayRunner:
                 # matching `pages_count` so the gate fails fast with a
                 # deterministic message.
                 pages = snap.get("pages")
+                if snap.get("skipped") is True:
+                    # Skip markers (written by the TS runner when a live test
+                    # skips before wire capture) legitimately carry zero
+                    # pages — but ONLY zero pages.
+                    if pages or snap.get("pages_count") != 0:
+                        msgs.append(
+                            f"Snapshot {f.name} is marked skipped but carries pages; "
+                            "a skip marker must be empty."
+                        )
+                    continue
                 if not isinstance(pages, list) or not pages:
                     msgs.append(
                         f"Snapshot {f.name} has no pages; expected at least one wire response."
@@ -182,7 +193,19 @@ class ReplayRunner:
         failures = 0
         for t in self._fixture:
             snapshot = self._read_snapshot(t["name"])
-            result = self._decode_snapshot(snapshot)
+            if snapshot.get("skipped") is True:
+                # Nothing to decode; record the skip explicitly so downstream
+                # consumers see a marker rather than a missing decode result.
+                result = {
+                    "schema_version": SCHEMA_VERSION,
+                    "operation": snapshot["operation"],
+                    "pages": [],
+                    "skipped": True,
+                    "skip_reason": snapshot.get("skip_reason", ""),
+                }
+                print(f"skip {snapshot['operation']}: {result['skip_reason']}")
+            else:
+                result = self._decode_snapshot(snapshot)
             (out_dir / f"{_safe_name(t['name'])}.json").write_text(
                 json.dumps(result, indent=2)
             )

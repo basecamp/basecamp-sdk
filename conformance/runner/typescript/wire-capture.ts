@@ -39,6 +39,16 @@ export interface WireSnapshot {
 /** Snapshot as persisted to disk: WireSnapshot plus the operation that produced it. */
 export interface PersistedWireSnapshot extends WireSnapshot {
   operation: string;
+  /**
+   * Skip marker: set (true) when the live runner skipped this test before
+   * wire capture (e.g. an env-var-only fixture-ID was not provided). A
+   * skipped snapshot has zero pages; replay runners record the skip and
+   * exempt it from decode instead of failing their snapshot-completeness
+   * gate. Absent on captured snapshots.
+   */
+  skipped?: true;
+  /** Human-readable reason accompanying `skipped`. */
+  skip_reason?: string;
 }
 
 export interface WireCaptureSession {

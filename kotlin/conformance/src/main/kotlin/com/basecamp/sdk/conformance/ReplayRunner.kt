@@ -1,5 +1,6 @@
 package com.basecamp.sdk.conformance
 
+import com.basecamp.sdk.generated.models.Calendar
 import com.basecamp.sdk.generated.models.Person
 import com.basecamp.sdk.generated.models.Project
 import com.basecamp.sdk.generated.models.Todo
@@ -83,6 +84,7 @@ private val decoders: Map<String, (String) -> Unit> = mapOf(
     "GetTodoset" to { bt -> replayJson.decodeFromString(Todoset.serializer(), bt) },
     "ListTodolists" to { bt -> replayJson.decodeFromString(ListSerializer(Todolist.serializer()), bt) },
     "ListTodos" to { bt -> replayJson.decodeFromString(ListSerializer(Todo.serializer()), bt) },
+    "GetCalendar" to { bt -> replayJson.decodeFromString(Calendar.serializer(), bt) },
 )
 
 private val safeNameRegex = Regex("[^a-z0-9_-]+", RegexOption.IGNORE_CASE)
@@ -101,6 +103,11 @@ data class ReplayResult(
     val schema_version: Int,
     val operation: String,
     val pages: List<ReplayPageResult>,
+    // Skip marker passthrough (live test skipped before wire capture).
+    // Defaults are omitted on encode (encodeDefaults=false), so decoded
+    // results stay byte-identical to the pre-skip-marker output schema.
+    val skipped: Boolean = false,
+    val skip_reason: String? = null,
 )
 
 class ReplayRunner(
@@ -184,6 +191,19 @@ class ReplayRunner(
                 // with an opaque NPE. Mirror the Go runner's read-time checks:
                 // require a non-empty `pages` array and a matching `pages_count`
                 // so the gate fails fast with a deterministic message.
+                // Skip markers (written by the TS runner when a live test
+                // skips before wire capture) legitimately carry zero pages —
+                // but ONLY zero pages.
+                val skipped = (snap["skipped"] as? JsonPrimitive)?.contentOrNull == "true"
+                if (skipped) {
+                    val markerPages = snap["pages"] as? JsonArray
+                    val markerCount = (snap["pages_count"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull()
+                    if (!(markerPages == null || markerPages.isEmpty()) || markerCount != 0) {
+                        msgs += "Snapshot ${f.name} is marked skipped but carries pages; " +
+                            "a skip marker must be empty."
+                    }
+                    return@forEach
+                }
                 val pages = snap["pages"] as? JsonArray
                 if (pages == null || pages.isEmpty()) {
                     msgs += "Snapshot ${f.name} has no pages; expected at least one wire response."
@@ -214,7 +234,21 @@ class ReplayRunner(
         for (t in fixture) {
             val name = t["name"]!!.jsonPrimitive.content
             val snap = readSnapshot(name)
-            val result = decodeSnapshot(snap)
+            val result = if ((snap["skipped"] as? JsonPrimitive)?.contentOrNull == "true") {
+                // Nothing to decode; record the skip explicitly so downstream
+                // consumers see a marker rather than a missing decode result.
+                val reason = (snap["skip_reason"] as? JsonPrimitive)?.contentOrNull ?: ""
+                println("skip ${snap["operation"]!!.jsonPrimitive.content}: $reason")
+                ReplayResult(
+                    schema_version = REPLAY_SCHEMA_VERSION,
+                    operation = snap["operation"]!!.jsonPrimitive.content,
+                    pages = emptyList(),
+                    skipped = true,
+                    skip_reason = reason,
+                )
+            } else {
+                decodeSnapshot(snap)
+            }
             File(outDir, "${safeName(name)}.json").writeText(
                 pretty.encodeToString(ReplayResult.serializer(), result)
             )
