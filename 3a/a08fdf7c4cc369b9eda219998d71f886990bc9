@@ -1,0 +1,34 @@
+conformance/runner/swift/Tests/ConformanceSupportTests/FixturePathTests.swift
+  s_555508c40a7b3b::t_fcfd99ec935964 1-69
+conformance/runner/swift/Sources/ConformanceRunner/Assertions.swift
+  s_555508c40a7b3b::t_6ecd9951104b64 112-133
+conformance/runner/swift/Sources/ConformanceSupport/FixturePath.swift
+  s_555508c40a7b3b::t_b6f75653756463 1-2
+  s_555508c40a7b3b::t_db789f27667855 3-52
+conformance/runner/swift/Sources/ConformanceRunner/Runner.swift
+  s_94420791754ed7::t_c5bd768eab7ceb 4-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3aa08fdf7c4cc369b9eda219998d71f886990bc9",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_94420791754ed7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6977264f702b2334",
+        "model": "unknown"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
