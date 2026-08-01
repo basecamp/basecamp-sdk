@@ -140,6 +140,89 @@ class TodolistsServiceTest {
         }
     }
 
+    /**
+     * A malformed writable field must abort before the PUT, never be coerced
+     * into it.
+     *
+     * `GetTodolistOrGroup` is modelled as a `oneOf`, so Kotlin's generator
+     * hands these composites an untyped `JsonElement` with no decoder to
+     * reject a wrong-typed field. Reading it leniently is therefore a wire
+     * hazard unique to this service: a JSON number or boolean renders as text,
+     * and an array or object is not a `JsonPrimitive` at all so it collapses
+     * to `""`. Because this endpoint is full-replace, that value is then
+     * written back over the real one — the composite erases the field it
+     * exists to preserve, on a call that never mentioned it.
+     */
+    @Test
+    fun updateRefusesAMalformedDescriptionBeforeWriting() = runTest {
+        // Arrays, objects, numbers and booleans: everything a lenient reader
+        // would coerce to text or silently flatten to "".
+        val malformedDescriptions = listOf("[]", """{"a":1}""", "42", "true")
+
+        for (malformed in malformedDescriptions) {
+            val capture = WriteCapture()
+            val body = todolistJson.replace(
+                """"description": "<p>Things to do before launch</p>"""",
+                """"description": $malformed""",
+            )
+            val client = captureClient(capture, getBody = body)
+
+            try {
+                client.forAccount("12345").todolists
+                    .update(42, UpdateTodolistBody(name = "Renamed list"))
+                fail("expected a malformed description ($malformed) to abort the update")
+            } catch (e: BasecampException.Api) {
+                assertTrue(
+                    e.message!!.contains("'description' is not a JSON string"),
+                    "error must name the offending field, got: ${e.message}",
+                )
+            }
+
+            assertEquals(
+                listOf("GET"), capture.methods,
+                "the PUT must never be issued for a malformed description ($malformed)",
+            )
+            client.close()
+        }
+    }
+
+    /** The same guard protects the edit closure, which also resends the field. */
+    @Test
+    fun editRefusesAMalformedNameBeforeWriting() = runTest {
+        val capture = WriteCapture()
+        val body = todolistJson.replace(""""name": "Launch list"""", """"name": 42""")
+        val client = captureClient(capture, getBody = body)
+
+        try {
+            client.forAccount("12345").todolists.edit(42) { description = "<p>New</p>" }
+            fail("expected a malformed name to abort the edit")
+        } catch (e: BasecampException.Api) {
+            assertTrue(e.message!!.contains("'name' is not a JSON string"), e.message!!)
+        }
+
+        assertEquals(listOf("GET"), capture.methods, "no PUT may be issued")
+        client.close()
+    }
+
+    /** An absent or explicitly-null field is genuinely empty, not malformed. */
+    @Test
+    fun updateTreatsAbsentAndNullDescriptionAsEmpty() = runTest {
+        for (body in listOf(
+            """{"id": 42, "name": "Launch list"}""",
+            """{"id": 42, "name": "Launch list", "description": null}""",
+        )) {
+            val capture = WriteCapture()
+            val client = captureClient(capture, getBody = body)
+
+            client.forAccount("12345").todolists
+                .update(42, UpdateTodolistBody(name = "Renamed list"))
+
+            assertEquals(listOf("GET", "PUT"), capture.methods)
+            assertEquals("", capture.putBody!!["description"]?.jsonPrimitive?.content)
+            client.close()
+        }
+    }
+
     @Test
     fun updateMergesUnsetDescription() = runTest {
         val capture = WriteCapture()

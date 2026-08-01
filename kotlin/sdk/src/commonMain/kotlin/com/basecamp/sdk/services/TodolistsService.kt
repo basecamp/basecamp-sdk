@@ -5,9 +5,9 @@ import com.basecamp.sdk.BasecampException
 import com.basecamp.sdk.generated.services.UpdateTodolistBody
 import com.basecamp.sdk.generated.services.UpdateTodolistOrGroupBody
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 
 /**
@@ -96,14 +96,46 @@ class TodolistsService(client: AccountClient) :
         val root = todolist.jsonObject
         val obj = root["todolist"] as? JsonObject ?: root["group"] as? JsonObject ?: root
         return TodolistFields(
-            name = obj.string("name"),
-            description = obj.string("description"),
+            name = obj.writableString("name"),
+            description = obj.writableString("description"),
         )
     }
 
-    /** Reads a string field, treating a missing, null, or non-scalar one as empty. */
-    private fun JsonObject.string(key: String): String =
-        (this[key] as? JsonPrimitive)?.contentOrNull ?: ""
+    /**
+     * Reads a writable string field out of the fetched body.
+     *
+     * An absent key or an explicit JSON null is genuinely empty — there is
+     * nothing to preserve, and `""` is what the server already holds.
+     * Anything else that is not a JSON string is a malformed response and must
+     * NOT be coerced. `contentOrNull` would render a number or boolean as
+     * text, and a JSON array or object is not a [JsonPrimitive] at all so it
+     * would fall through to `""`. Either way [putFields] would then write that
+     * coerced-or-empty value back in the full-replace PUT — silently
+     * overwriting or erasing the exact field these composites exist to
+     * preserve. Fail before the PUT instead, so a malformed response surfaces
+     * as an error rather than as data loss.
+     *
+     * This path only exists because `GetTodolistOrGroup` is modelled as a
+     * `oneOf`, so the Kotlin generator returns an untyped [JsonElement] for it.
+     * Every other Kotlin composite reads a typed model, where the decoder
+     * already rejects a wrong-typed field. Removing that asymmetry is #544.
+     */
+    private fun JsonObject.writableString(key: String): String =
+        when (val value = this[key]) {
+            null, JsonNull -> ""
+            is JsonPrimitive ->
+                if (value.isString) value.content else throw malformedField(key, value)
+            else -> throw malformedField(key, value)
+        }
+
+    private fun malformedField(key: String, value: JsonElement): BasecampException =
+        BasecampException.Api(
+            "Todolist field '$key' is not a JSON string: $value",
+            httpStatus = 0,
+            hint = "The merge-safe update/edit resend this field verbatim, so a coerced or " +
+                "empty value would overwrite the current one. Fix the response, or use " +
+                "replace() to write the record deliberately.",
+        )
 
     /**
      * PUTs the full writable state via `replace`: name and description are
