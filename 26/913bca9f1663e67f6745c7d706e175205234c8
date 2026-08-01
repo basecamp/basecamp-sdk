@@ -1,0 +1,57 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/PaginationTest.kt
+  s_555508c40a7b3b::t_05b142ab43ff14 3,6-7,10,17
+  s_555508c40a7b3b::t_67a6023a279a41 602-630
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/ServiceEmitter.kt
+  s_555508c40a7b3b::t_c1ff4db8f74d5b 224-229,232-233
+  s_555508c40a7b3b::t_78b81a5308e026 259-261
+kotlin/generator/src/main/kotlin/com/basecamp/sdk/generator/Config.kt
+  s_555508c40a7b3b::t_e7380b2829580f 375-415
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/boosts.kt
+  s_555508c40a7b3b::t_391fc8738f64bb 82-84,142-144
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/campfires.kt
+  s_555508c40a7b3b::t_0e32879914c147 43-45
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/cards.kt
+  s_555508c40a7b3b::t_68d60730f03d3d 112-114
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/checkins.kt
+  s_555508c40a7b3b::t_f663bac576ecc6 43-45,141-143,247-249,329-331
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/client-replies.kt
+  s_555508c40a7b3b::t_1c259a04617697 44-46
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/comments.kt
+  s_555508c40a7b3b::t_e8f5a1aad55400 87-89
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/documents.kt
+  s_555508c40a7b3b::t_c18e87490095f4 88-90
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/events.kt
+  s_555508c40a7b3b::t_5fa899a58d81f6 44-46
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/forwards.kt
+  s_555508c40a7b3b::t_27a991498a4197 64-66
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/gauges.kt
+  s_555508c40a7b3b::t_98d51d047ad44b 126-128
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/people.kt
+  s_555508c40a7b3b::t_ec1ed4b28ee907 150-152,267-269
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/reports.kt
+  s_555508c40a7b3b::t_6dd9e8f39a6df7 51-53,160-162
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/timeline.kt
+  s_555508c40a7b3b::t_69640a0da43982 44-46
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/todolist-groups.kt
+  s_555508c40a7b3b::t_b16e5518fd6280 65-67
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/uploads.kt
+  s_555508c40a7b3b::t_ed1982bbd62e21 109-111
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/generated/services/vaults.kt
+  s_555508c40a7b3b::t_8ced74c271da86 87-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "26913bca9f1663e67f6745c7d706e175205234c8",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
