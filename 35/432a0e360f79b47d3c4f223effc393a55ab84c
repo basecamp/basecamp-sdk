@@ -1,0 +1,26 @@
+.github/workflows/test.yml
+  s_555508c40a7b3b::t_6795919cc64eac 421
+  s_555508c40a7b3b::t_62990ec5f7aef5 361-367
+Makefile
+  s_555508c40a7b3b::t_406adfe4253f38 411-414
+  s_555508c40a7b3b::t_a26a9cda820f37 984
+  s_555508c40a7b3b::t_1b1872b46acd59 522
+  s_555508c40a7b3b::t_23c1574ef34659 718-726
+  s_555508c40a7b3b::t_5e643cce89eff3 727-728
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "35432a0e360f79b47d3c4f223effc393a55ab84c",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
