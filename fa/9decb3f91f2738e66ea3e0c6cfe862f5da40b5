@@ -1,0 +1,19 @@
+spec/api-gaps/folders-api.md
+  s_b1b74299ef0baf::t_9357056ea4198d 104-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "fa9decb3f91f2738e66ea3e0c6cfe862f5da40b5",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
