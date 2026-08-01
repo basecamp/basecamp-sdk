@@ -504,7 +504,8 @@ abstract class BaseService(
                     // when its value is a string, and a throwing access here
                     // would abandon the field-error extraction below for
                     // bodies like {"error": {}, "errors": {...}}.
-                    stringMember(jsonBody, "error")?.let {
+                    // "error" wins; "message" is the SPEC §6 step-4 fallback.
+                    (stringMember(jsonBody, "error") ?: stringMember(jsonBody, "message"))?.let {
                         val truncated = BasecampException.truncateMessage(it)
                         serverMessage = truncated
                         message = truncated

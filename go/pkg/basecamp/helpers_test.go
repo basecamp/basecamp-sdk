@@ -306,6 +306,36 @@ func TestCheckResponse_FieldKeyed422SurvivesNonStringErrorSibling(t *testing.T) 
 	}
 }
 
+func TestCheckResponse_FieldKeyed422AppendsAfterMessageFallback(t *testing.T) {
+	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
+	body := []byte(`{"message":"Validation failed","errors":{"color":["is not a valid color"]}}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "Validation failed (color: is not a valid color)" {
+		t.Errorf("Message = %q, want the message-key fallback composed with the flattened field errors", e.Message)
+	}
+	want := map[string][]string{"color": {"is not a valid color"}}
+	if !reflect.DeepEqual(e.FieldErrors, want) {
+		t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, want)
+	}
+}
+
+func TestCheckResponse_ErrorKeyWinsOverMessageKey(t *testing.T) {
+	resp := &http.Response{StatusCode: 404, Header: http.Header{}}
+	body := []byte(`{"error":"from error","message":"from message"}`)
+	err := checkResponse(resp, body)
+	e, ok := err.(*Error)
+	if !ok {
+		t.Fatalf("expected *Error, got %T", err)
+	}
+	if e.Message != "from error" {
+		t.Errorf("Message = %q, want the error key to win over the message key", e.Message)
+	}
+}
+
 func TestCheckResponse_Plain422UnchangedByFieldErrorSupport(t *testing.T) {
 	resp := &http.Response{StatusCode: 422, Header: http.Header{}}
 	body := []byte(`{"error":"Name can't be blank"}`)

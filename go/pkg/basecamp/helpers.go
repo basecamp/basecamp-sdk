@@ -85,9 +85,9 @@ func checkResponse(resp *http.Response, body []byte) error {
 // maxErrorMessageLen caps server error messages to prevent unbounded memory growth.
 const maxErrorMessageLen = 500
 
-// parseErrorBody tries to extract "error", "error_description", and the
-// field-keyed "errors" map from a JSON response body. Returns empty values if
-// the body is not JSON or missing those keys.
+// parseErrorBody tries to extract "error" (falling back to "message"),
+// "error_description", and the field-keyed "errors" map from a JSON response
+// body. Returns empty values if the body is not JSON or missing those keys.
 func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][]string) {
 	if len(body) == 0 {
 		return "", "", nil
@@ -98,12 +98,18 @@ func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][
 	var parsed struct {
 		Error       json.RawMessage `json:"error"`
 		Description json.RawMessage `json:"error_description"`
+		Message     json.RawMessage `json:"message"`
 		Errors      json.RawMessage `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		return "", "", nil
 	}
 	message = truncate(stringFromRaw(parsed.Error))
+	if message == "" {
+		// SPEC §6 step 4: "message" is the fallback for APIs that use it
+		// instead of "error".
+		message = truncate(stringFromRaw(parsed.Message))
+	}
 	hint = truncate(stringFromRaw(parsed.Description))
 	return message, hint, parseFieldErrors(parsed.Errors)
 }

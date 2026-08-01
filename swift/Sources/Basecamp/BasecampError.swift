@@ -162,7 +162,9 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         requestId: String?
     ) -> BasecampError {
         let body = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-        let serverMessage = (body?["error"] as? String).map { truncate($0) }
+        // "error" wins; "message" is the SPEC §6 step-4 fallback.
+        let serverMessage = ((body?["error"] as? String) ?? (body?["message"] as? String))
+            .map { truncate($0) }
         let message = serverMessage ?? truncate(HTTPURLResponse.localizedString(forStatusCode: status))
         let hint = truncate(body?["error_description"] as? String)
 

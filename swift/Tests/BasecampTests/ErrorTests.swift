@@ -228,6 +228,25 @@ final class ErrorTests: XCTestCase {
         XCTAssertNil(error.hint)
     }
 
+    func testFromHTTPResponse422AppendsAfterMessageFallback() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: [
+                "message": "Validation failed",
+                "errors": ["color": ["is not a valid color"]],
+            ] as [String: Any]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "Validation failed (color: is not a valid color)")
+    }
+
+    func testFromHTTPResponseErrorKeyWinsOverMessageKey() {
+        let body = try! JSONSerialization.data(
+            withJSONObject: ["error": "from error", "message": "from message"] as [String: Any]
+        )
+        let error = BasecampError.fromHTTPResponse(status: 422, data: body, headers: [:], requestId: nil)
+        XCTAssertEqual(error.message, "from error")
+    }
+
     func testFromHTTPResponse422FieldKeyedTruncatesAfterFlattening() {
         let longMessage = String(repeating: "x", count: 600)
         let body = try! JSONSerialization.data(

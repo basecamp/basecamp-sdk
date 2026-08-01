@@ -323,6 +323,11 @@ export function errorFromParsedBody(
       // Truncate error messages to prevent information leakage and unbounded memory growth
       serverMessage = truncateErrorMessage(body.error);
       message = serverMessage;
+    } else if ("message" in body && typeof body.message === "string") {
+      // SPEC §6 step 4: "message" is the fallback for APIs that use it
+      // instead of "error".
+      serverMessage = truncateErrorMessage(body.message);
+      message = serverMessage;
     }
     if ("error_description" in body && typeof body.error_description === "string") {
       hint = truncateErrorMessage(body.error_description);

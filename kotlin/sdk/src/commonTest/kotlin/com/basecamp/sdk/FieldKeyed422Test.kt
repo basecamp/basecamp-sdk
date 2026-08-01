@@ -119,6 +119,21 @@ class FieldKeyed422Test {
     }
 
     @Test
+    fun appendsAfterMessageKeyFallback() = runTest {
+        val e = raise422(
+            """{"message": "Validation failed", "errors": {"color": ["is not a valid color"]}}"""
+        )
+        assertEquals("Validation failed (color: is not a valid color)", e.message)
+        assertEquals(mapOf("color" to listOf("is not a valid color")), e.fieldErrors)
+    }
+
+    @Test
+    fun errorKeyWinsOverMessageKey() = runTest {
+        val e = raise422("""{"error": "from error", "message": "from message"}""")
+        assertEquals("from error", e.message)
+    }
+
+    @Test
     fun plainErrorBodyUnchanged() = runTest {
         val e = raise422("""{"error": "Name can't be blank"}""")
         assertEquals("Name can't be blank", e.message)

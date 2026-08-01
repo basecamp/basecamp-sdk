@@ -478,6 +478,32 @@ describe("errorFromResponse", () => {
       expect(error.hint).toBeUndefined();
     });
 
+    it("appends field errors after a message-key fallback", async () => {
+      const response = new Response(
+        JSON.stringify({
+          message: "Validation failed",
+          errors: { color: ["is not a valid color"] },
+        }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("Validation failed (color: is not a valid color)");
+      expect(error.fieldErrors).toEqual({ color: ["is not a valid color"] });
+    });
+
+    it("prefers the error key over the message key", async () => {
+      const response = new Response(
+        JSON.stringify({ error: "from error", message: "from message" }),
+        { status: 422 }
+      );
+
+      const error = await errorFromResponse(response);
+
+      expect(error.message).toBe("from error");
+    });
+
     it("leaves plain 422 error bodies unchanged", async () => {
       const response = new Response(
         JSON.stringify({ error: "Name can't be blank" }),

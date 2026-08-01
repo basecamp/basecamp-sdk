@@ -153,6 +153,23 @@
     "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
   },
   {
+    "name": "422 field-keyed errors append after a message-key fallback",
+    "description": "Verifies the top-level message honors the SPEC section 6 message-key fallback ({\"message\": ...} with no \"error\") and the flattened field errors are appended in parentheses after it",
+    "operation": "UpdateCalendar",
+    "method": "PUT",
+    "path": "/calendars/{calendarId}",
+    "pathParams": {"calendarId": 2085958497},
+    "requestBody": {"calendar": {"color": "chartreuse"}},
+    "mockResponses": [
+      {"status": 422, "body": {"message": "Validation failed", "errors": {"color": ["is not a valid color"]}}}
+    ],
+    "assertions": [
+      {"type": "errorCode", "expected": "validation"},
+      {"type": "errorMessage", "expected": "Validation failed (color: is not a valid color)"}
+    ],
+    "tags": ["error-mapping", "validation", "field-errors", "structured-error"]
+  },
+  {
     "name": "429 maps to rate_limit error code",
     "description": "Verifies that 429 Too Many Requests maps to structured error with code 'rate_limit' and retryable=true",
     "operation": "ListProjects",
