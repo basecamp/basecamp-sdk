@@ -383,21 +383,46 @@ func TestReplaceTodolistGroupRequest_NameAlwaysMarshals(t *testing.T) {
 }
 
 // TodolistGroupsService deliberately ships no merge-safe Update or Edit. This
-// pins the reason so the gap cannot be closed by accident: the TodolistGroup
-// projection models no description, so a composite built on
-// TodolistGroupsService.Get would PUT a zero-value description and erase it on
-// every call. Tracked by #544.
+// pins the reason so the gap cannot be closed by accident, and so it reopens on
+// its own the moment the reason expires. Both failure messages are written to be
+// read cold, months from now, by someone who has never seen this decision.
 func TestTodolistGroupsService_ShipsNoMergeSafeComposite(t *testing.T) {
 	if _, ok := reflect.TypeFor[TodolistGroup]().FieldByName("Description"); ok {
-		t.Fatal("TodolistGroup now models Description — the reason for withholding a merge-safe group " +
-			"Update/Edit is gone; see #544 and add the composite over the public Get")
+		t.Fatal(`TodolistGroup now has a Description field, so this guard has done its job and should be removed.
+
+Why it existed: PUT /{accountId}/todolists/{id} is a full replace — BC3 rebuilds the
+recordable from the permitted params, so every writable field omitted from the body is
+cleared. A merge-safe composite therefore has to read the current value of every field it
+sends. TodolistGroup used to model no description at all, so a composite built on
+TodolistGroupsService.Get would have read "" for it and PUT that back, erasing the
+description on every single call — the exact data loss the Todolists triad removed.
+Withholding the composite was the only way to avoid reintroducing it through this service.
+
+What to do now: the field exists, so the composite is safe to build. Add Update and Edit to
+TodolistGroupsService mirroring TodolistsService (GET via the public Get, overlay only the
+explicitly-set fields, PUT the full state through the shared replaceTodolistOrGroup
+transport), give them conformance coverage, and delete this guard along with the
+"no merge-safe composite" paragraph in SPEC section 5 and the note on
+TodolistGroupsService.Replace. Until then, merge-safe group writes go through
+todolists.Update, which addresses the same route via the full Todolist projection.
+
+Context: #544 (flat-shape consolidation), #545 (the triad this guard came from).`)
 	}
 
 	svc := reflect.PointerTo(reflect.TypeFor[TodolistGroupsService]())
 	for _, name := range []string{"Update", "Edit"} {
 		if _, ok := svc.MethodByName(name); ok {
-			t.Errorf("TodolistGroupsService.%s exists: a composite here cannot preserve a description "+
-				"the group projection does not model, so it would erase it on every call", name)
+			t.Errorf(`TodolistGroupsService.%s exists, but TodolistGroup still models no Description.
+
+A merge-safe composite on this service cannot preserve a field the projection does not
+carry: it would read "" for the description and PUT that back, and because this endpoint is
+a full replace, that erases the group's description on every call. That is the data loss the
+Todolists triad exists to remove — this would reintroduce it through the group service.
+
+Either remove %s, or land #544 first so TodolistGroup carries Description and the composite
+can actually read what it is about to rewrite. Callers who need a merge-safe group write
+today should use todolists.Update, which addresses the same route through the full Todolist
+projection and preserves {name, description} for either variant.`, name, name)
 		}
 	}
 	if _, ok := svc.MethodByName("Replace"); !ok {
