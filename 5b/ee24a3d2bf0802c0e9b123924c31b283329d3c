@@ -1,0 +1,28 @@
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DownloadTest.kt
+  s_555508c40a7b3b::t_15b5424913cf4c 15,24-26
+  s_555508c40a7b3b::t_dbbc64b49cd1f4 471-520,523,529-531,534,537-700,702-789
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_555508c40a7b3b::t_ae66486fa25093 21
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  s_555508c40a7b3b::t_745fc327623766 3,7,13-20
+  s_555508c40a7b3b::t_dee3838639aa6f 240-354
+  s_555508c40a7b3b::t_293442534ed9e2 139-146
+  s_555508c40a7b3b::t_1899591aa1bae2 413-417
+  s_555508c40a7b3b::t_fbe3f0723c8926 84-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "5bee24a3d2bf0802c0e9b123924c31b283329d3c",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
