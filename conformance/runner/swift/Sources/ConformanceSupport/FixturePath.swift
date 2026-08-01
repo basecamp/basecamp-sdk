@@ -38,15 +38,66 @@ private func firstPlaceholder(in path: String) -> String? {
     return String(path[afterOpen..<close])
 }
 
+/// Whether a fixture states a path the SDK dials literally, rather than one to
+/// be scoped to the account. Only the download flows do — their path already
+/// carries an account segment.
+///
+/// The test is a leading numeric segment. No account-relative fixture path
+/// begins with one; they all start with a resource name (`/projects.json`,
+/// `/buckets/...`, `/my/...`). If one ever did, this fails closed: the runner
+/// would demand the literal form, receive the scoped form, and say so.
+public func fixtureIsAccountScoped(_ fixturePath: String) -> Bool {
+    guard fixturePath.hasPrefix("/") else { return false }
+    let rest = fixturePath.dropFirst()
+    let digits = rest.prefix(while: \.isNumber)
+    return !digits.isEmpty && rest.dropFirst(digits.count).hasPrefix("/")
+}
+
 /// Whether an observed request path matches a rendered fixture path.
 ///
-/// The SDK prefixes the account id, and fixtures state the account-relative
-/// path — except the download fixtures, whose path is already absolute because
-/// the SDK dials a literal URL there. Both forms are accepted.
+/// The form is decided by the FIXTURE, not by accepting whichever the SDK
+/// happened to send. Accepting either let an unscoped request through: a
+/// regression that dropped the account prefix and asked for `/projects.json`
+/// satisfied a fixture meaning `/999/projects.json`, and the transport serves
+/// any URL, so nothing else noticed.
 ///
-/// EXACT on both, never a suffix test: `/999/my/projects.json` ends with
+/// EXACT, never a suffix test: `/999/my/projects.json` ends with
 /// `/projects.json`, so a suffix match would wave through an operation that
 /// hit a neighbouring endpoint — the very thing this invariant exists to catch.
 public func requestPathMatches(_ actual: String, fixturePath: String, accountID: String) -> Bool {
-    actual == fixturePath || actual == "/\(accountID)\(fixturePath)"
+    fixtureIsAccountScoped(fixturePath)
+        ? actual == fixturePath
+        : actual == "/\(accountID)\(fixturePath)"
+}
+
+/// The expected request path for a fixture path, for failure messages.
+public func expectedRequestPath(_ fixturePath: String, accountID: String) -> String {
+    fixtureIsAccountScoped(fixturePath) ? fixturePath : "/\(accountID)\(fixturePath)"
+}
+
+/// Extracts the `rel="next"` target from a `Link` header value, or nil when the
+/// header names no next page.
+///
+/// Deliberately tolerant of the surrounding syntax (multiple comma-separated
+/// links, arbitrary parameter order and spacing) and strict about the target
+/// itself, which is returned verbatim between the angle brackets.
+public func nextLinkTarget(_ headerValue: String) -> String? {
+    for link in headerValue.split(separator: ",") {
+        let parts = link.split(separator: ";")
+        guard let target = parts.first?.trimmingCharacters(in: .whitespaces),
+              target.hasPrefix("<"), target.hasSuffix(">"),
+              parts.dropFirst().contains(where: { isRelNext($0) })
+        else { continue }
+        return String(target.dropFirst().dropLast())
+    }
+    return nil
+}
+
+private func isRelNext(_ parameter: Substring) -> Bool {
+    let cleaned = parameter
+        .trimmingCharacters(in: .whitespaces)
+        .replacingOccurrences(of: " ", with: "")
+        .replacingOccurrences(of: "\"", with: "")
+        .lowercased()
+    return cleaned == "rel=next"
 }

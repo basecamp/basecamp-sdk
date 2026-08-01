@@ -11,6 +11,15 @@ struct CapturedRequest: @unchecked Sendable {
 
     var method: String { request.httpMethod?.uppercased() ?? "" }
     var path: String { request.url?.path ?? "" }
+    /// Path WITH the query string. `path` alone cannot tell `/projects.json`
+    /// from `/projects.json?page=2`, so pagination that refetched page 1 was
+    /// answered from the queue with page 2's body and passed — three requests,
+    /// three pages, all green, while production would have looped on page 1.
+    var pathAndQuery: String {
+        guard let url = request.url else { return "" }
+        guard let query = url.query, !query.isEmpty else { return url.path }
+        return "\(url.path)?\(query)"
+    }
     var bodyJSON: JSON? { request.httpBody.flatMap { JSON.parse($0) } }
 
     /// Case-insensitive request-header lookup.

@@ -121,6 +121,18 @@ func evaluateAssertions(
         return .fail("Expected first request method \(fixtureMethod), got \(first.method)")
     }
 
+    // Requests that follow a rel="next" link are governed by the LINK
+    // invariant below instead: they go where the previous response SAID to go,
+    // which the fixtures state root-relative, so they legitimately arrive
+    // unscoped. Each hop is pinned by exactly one rule — the most specific one
+    // that applies — rather than by two rules that disagree.
+    let linkFollowers: Set<Int> = Set(
+        tc.responses.enumerated().compactMap { i, mock in
+            mock.allHeaders.contains { $0.key.lowercased() == "link" && nextLinkTarget($0.value) != nil }
+                ? i + 1 : nil
+        }
+    )
+
     // Implicit PATH invariant, for the same reason: the transport answers any
     // URL, so an operation aimed at the wrong endpoint consumes the queued
     // responses and passes its retry, status, auth and pagination assertions
@@ -143,11 +155,40 @@ func evaluateAssertions(
             return .fail("fixture path \"\(tc.fixturePath)\" has no pathParams entry for \"\(name)\"")
         case .rendered(let expected):
             for (i, request) in captured.enumerated() {
+                if linkFollowers.contains(i) { continue }
                 if explicitAssertionCovers("requestPath", request: i) { continue }
                 if !requestPathMatches(request.path, fixturePath: expected, accountID: testAccountID) {
-                    return .fail("Expected request \(i) at path /\(testAccountID)\(expected), got \(request.path)")
+                    let want = expectedRequestPath(expected, accountID: testAccountID)
+                    return .fail("Expected request \(i) at path \(want), got \(request.path)")
                 }
             }
+        }
+    }
+
+    // Implicit LINK invariant: a response that advertises rel="next" says
+    // exactly which URL to fetch, so the following request must be that URL —
+    // query string included. The path check above cannot see the query, and
+    // the transport answers any URL from the same queue, so pagination that
+    // refetched page 1 was handed page 2's body and reported three requests,
+    // three pages, all green.
+    //
+    // Only constrains a hop that actually happened: a walk stopped by a cap,
+    // or a link the SDK is meant to refuse (cross-origin, protocol downgrade),
+    // simply has no following request to check.
+    for (i, mock) in tc.responses.enumerated() where i + 1 < captured.count {
+        guard let link = mock.allHeaders.first(where: { $0.key.lowercased() == "link" })?.value,
+              let target = nextLinkTarget(link)
+        else { continue }
+        let follower = captured[i + 1]
+        // Resolve against the request that carried the link, so a relative
+        // target is compared the way the SDK had to resolve it.
+        let resolved = URL(string: target, relativeTo: follower.request.url)
+        let wanted = resolved.map { url -> String in
+            guard let query = url.query, !query.isEmpty else { return url.path }
+            return "\(url.path)?\(query)"
+        } ?? target
+        if follower.pathAndQuery != wanted {
+            return .fail("Response \(i) advertised rel=\"next\" \(target), so request \(i + 1) must fetch \(wanted), got \(follower.pathAndQuery)")
         }
     }
 
