@@ -293,12 +293,9 @@ RUBY_SKIPS = Set.new([
   "UpdateCalendar PUT retries when marked idempotent",
   "PrioritizeAssignment POST retries when marked idempotent",
   "DeprioritizeAssignment DELETE retries when marked idempotent",
-  "DownloadURL retries on 503 at the auth'd first hop",
-  "DownloadURL honors Retry-After on 429 at the auth'd first hop",
   "Network error on an idempotent POST is retried then succeeds",
 ].freeze)
 
-DOWNLOAD_RETRY_SKIP = "Ruby SDK download path uses http.get_no_retry; retry on 5xx / Retry-After is not implemented".freeze
 RUBY_SKIP_REASONS = {
   "PUT operation is naturally idempotent" => "Ruby SDK only retries GET",
   "DELETE operation is naturally idempotent" => "Ruby SDK only retries GET",
@@ -310,8 +307,6 @@ RUBY_SKIP_REASONS = {
   "UpdateCalendar PUT retries when marked idempotent" => "Ruby SDK only retries GET",
   "PrioritizeAssignment POST retries when marked idempotent" => "Ruby SDK only retries GET",
   "DeprioritizeAssignment DELETE retries when marked idempotent" => "Ruby SDK only retries GET",
-  "DownloadURL retries on 503 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
-  "DownloadURL honors Retry-After on 429 at the auth'd first hop" => DOWNLOAD_RETRY_SKIP,
   "Network error on an idempotent POST is retried then succeeds" => "Ruby SDK only retries GET network errors; mutations go through single_request with no retry",
 }.freeze
 
@@ -531,10 +526,13 @@ class TestRunner
         end
 
       when "delayBetweenRequests"
+        # First gap only, matching the Go/TypeScript/Kotlin runners. Later
+        # gaps are not all retry gaps: the download flow's final gap is the
+        # redirect hop to the signed URL, which is deliberately un-delayed.
         delays = @tracker.delays_between_requests
         min_delay = assertion["min"]
-        if min_delay && delays.any? { |d| d < min_delay }
-          failures << "Expected minimum delay of #{min_delay}ms, got #{delays.min}ms"
+        if min_delay && delays.any? && delays.first < min_delay
+          failures << "Expected minimum delay of #{min_delay}ms, got #{delays.first}ms"
         end
 
       when "noError"

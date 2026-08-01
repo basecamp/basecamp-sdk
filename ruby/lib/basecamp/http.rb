@@ -161,12 +161,22 @@ module Basecamp
       single_request_raw(:put, url, body: body, content_type: content_type, attempt: 1)
     end
 
-    # Performs a GET request without retry logic.
-    # Used for the download flow where retry is not appropriate.
+    # SPEC §14's declared hop-1 retry set for downloads: a carve-out from the
+    # ungoverned GET taxonomy (which retries all retryable 5xx, including 500).
+    # Authoritative in BOTH directions, like an operation's declared retryOn.
+    DOWNLOAD_RETRY_ON = [ 429, 502, 503, 504 ].freeze
+
+    # Performs the authenticated hop-1 GET for the download flow (SPEC §14).
+    #
+    # Retries network errors plus the declared {DOWNLOAD_RETRY_ON} statuses —
+    # never 500 — under the public max_retries total-attempt cap, floored at
+    # one for downloads (+max_retries: 0+ still sends one attempt). DownloadURL
+    # has no behavior-model entry, so the policy is passed directly rather than
+    # looked up by operation.
     # @param url [String] absolute URL
     # @return [Response]
-    def get_no_retry(url)
-      single_request(:get, url, params: {}, body: nil, attempt: 1)
+    def get_download(url)
+      request_with_retry(:get, url, retry_on: DOWNLOAD_RETRY_ON)
     end
 
     # Fetches all pages of a paginated resource.
@@ -354,10 +364,20 @@ module Basecamp
       end
     end
 
-    def request_with_retry(method, url, params: {}, allow_cross_origin: false, operation: nil)
+    def request_with_retry(method, url, params: {}, allow_cross_origin: false, operation: nil, retry_on: nil)
       op_retry = operation && Http.operation_retry(operation)
       caller_cap = [ @config.max_retries, 1 ].max
-      max_attempts = op_retry ? [ caller_cap, op_retry.fetch("maxAttempts") ].min : @config.max_retries
+      # An explicit declared set (the download flow) shares the governed budget
+      # shape — the public cap floored at one. The ungoverned general path
+      # keeps its unfloored cap; its zero-attempt behavior is tracked
+      # separately (#532).
+      max_attempts = if op_retry
+        [ caller_cap, op_retry.fetch("maxAttempts") ].min
+      elsif retry_on
+        caller_cap
+      else
+        @config.max_retries
+      end
       attempt = 0
       last_error = nil
 
@@ -368,7 +388,7 @@ module Basecamp
         begin
           return single_request(method, url, params: params, body: nil, attempt: attempt, allow_cross_origin: allow_cross_origin)
         rescue Basecamp::RateLimitError, Basecamp::NetworkError, Basecamp::ApiError => e
-          raise e unless retry_eligible?(e, op_retry)
+          raise e unless retry_eligible?(e, op_retry, retry_on)
 
           last_error = e
 
@@ -387,14 +407,16 @@ module Basecamp
       raise last_error || Basecamp::ApiError.new("Request failed after #{max_attempts} #{noun}")
     end
 
-    # For a governed request (operation given), a status-bearing error retries
-    # exactly when the operation's declared retryOn set says so — the error
+    # For a governed request — an operation's declared retry block, or an
+    # explicit declared set such as the download flow's — a status-bearing
+    # error retries exactly when the declared retryOn set says so: the error
     # taxonomy's retryable flag neither widens the set (500 is retryable in
     # errors.rb but not declared) nor vetoes it. Status-less errors (network
     # failures) and all ungoverned traffic keep the taxonomy's judgment.
-    def retry_eligible?(error, op_retry)
-      if op_retry && error.http_status
-        op_retry.fetch("retryOn").include?(error.http_status)
+    def retry_eligible?(error, op_retry, retry_on)
+      declared = retry_on || op_retry&.fetch("retryOn")
+      if declared && error.http_status
+        declared.include?(error.http_status)
       else
         error.retryable?
       end

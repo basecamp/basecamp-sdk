@@ -275,8 +275,9 @@ module Basecamp
         rewritten.port = base.port
         rewritten_url = rewritten.to_s
 
-        # Hop 1: Authenticated API request (no retry, captures redirect)
-        response = http.get_no_retry(rewritten_url)
+        # Hop 1: Authenticated API request under the SPEC §14 hop-1 retry
+        # policy (captures redirect; every attempt is authenticated)
+        response = http.get_download(rewritten_url)
 
         result = case response.status
         when 301, 302, 303, 307, 308

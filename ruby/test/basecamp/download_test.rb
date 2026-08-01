@@ -299,7 +299,9 @@ class DownloadTest < Minitest::Test
       define_method(:on_request_end) { |info, result| requests_ended << [ info, result ] }
     end.new
 
-    account = create_account_client(hooks: hooks_impl)
+    # max_retries: 1 pins the per-attempt hook contract without backoff; the
+    # retry-enabled hook shape is pinned by the balanced-hooks test below.
+    account = create_account_client(config: fast_download_config(max_retries: 1), hooks: hooks_impl)
 
     stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
       .to_timeout
@@ -333,20 +335,150 @@ class DownloadTest < Minitest::Test
     assert_equal "network", error.code
   end
 
-  # -- No retry on 429 --
+  # -- Hop-1 retry policy (SPEC §14) --
 
-  def test_download_url_no_retry_on_429
-    stub_request(:get, "#{base_url}/12345/attachments/abc/download/file.txt")
-      .with(headers: { "Authorization" => "Bearer #{access_token}" })
-      .to_return(status: 429, body: '{"error":"Rate limited"}', headers: { "Content-Type" => "application/json", "Retry-After" => "30" })
+  HOP1_URL = "https://3.basecampapi.com/12345/attachments/abc/download/file.txt"
+  HOP1_PATH = "/12345/attachments/abc/download/file.txt"
+  SIGNED_URL = "https://s3.amazonaws.com/bucket/signed-file"
 
-    error = assert_raises(Basecamp::RateLimitError) do
-      @account.download_url("https://3.basecampapi.com/12345/attachments/abc/download/file.txt")
+  # Millisecond backoff so the retry tables run without real one-second sleeps.
+  def fast_download_config(**overrides)
+    Basecamp::Config.new(
+      **{ base_url: base_url, timeout: 5, max_retries: 3, base_delay: 0.001, max_jitter: 0.0 }.merge(overrides)
+    )
+  end
+
+  # The COMPLETE declared retry set, pinned status by status (the shared
+  # conformance fixtures cover 429/503). Hop 1 retries {429, 502, 503, 504}
+  # under the public max_retries total-attempt cap, floored at one.
+  [ 429, 502, 503, 504 ].each do |status|
+    define_method("test_download_url_retries_#{status}_then_follows_redirect") do
+      stub_request(:get, "#{base_url}#{HOP1_PATH}")
+        .with(headers: { "Authorization" => "Bearer #{access_token}" })
+        .to_return(status: status, body: "{}", headers: { "Content-Type" => "application/json" })
+        .then.to_return(status: 302, headers: { "Location" => SIGNED_URL })
+
+      stub_request(:get, SIGNED_URL)
+        .to_return(status: 200, body: "data", headers: { "Content-Type" => "application/octet-stream" })
+
+      account = create_account_client(config: fast_download_config)
+      result = account.download_url(HOP1_URL)
+
+      assert_equal "data", result.body
+      assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 2)
     end
+  end
 
-    assert_equal "rate_limit", error.code
+  def test_download_url_never_retries_500
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 500, body: '{"error":"Server error"}', headers: { "Content-Type" => "application/json" })
 
-    # Should have been called exactly once (no retry)
-    assert_requested(:get, "#{base_url}/12345/attachments/abc/download/file.txt", times: 1)
+    account = create_account_client(config: fast_download_config)
+    assert_raises(Basecamp::ApiError) { account.download_url(HOP1_URL) }
+
+    # 500 is deliberately outside the declared set {429, 502, 503, 504}
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 1)
+  end
+
+  def test_download_url_retries_network_error_then_succeeds
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_timeout
+      .then.to_return(status: 200, body: "content", headers: { "Content-Type" => "text/plain" })
+
+    account = create_account_client(config: fast_download_config)
+    result = account.download_url(HOP1_URL)
+
+    assert_equal "content", result.body
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 2)
+  end
+
+  def test_download_url_exhausts_cap_then_surfaces_error
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+
+    account = create_account_client(config: fast_download_config(max_retries: 3))
+    assert_raises(Basecamp::ApiError) { account.download_url(HOP1_URL) }
+
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 3)
+  end
+
+  def test_download_url_zero_max_retries_still_sends_one_attempt
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+
+    # The download attempt budget is floored at one: max_retries: 0 still
+    # sends exactly one request. (The general ungoverned GET path's
+    # zero-attempt behavior is tracked separately as #532.)
+    account = create_account_client(config: fast_download_config(max_retries: 0))
+    assert_raises(Basecamp::ApiError) { account.download_url(HOP1_URL) }
+
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 1)
+  end
+
+  def test_download_url_auth_on_every_hop1_attempt_never_on_hop2
+    # The .with(headers:) matcher applies to every attempt: an unauthenticated
+    # retry would not match this stub and would raise as unstubbed.
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+      .then.to_return(status: 302, headers: { "Location" => SIGNED_URL })
+
+    s3_stub = stub_request(:get, SIGNED_URL)
+      .with { |req| req.headers["Authorization"].nil? }
+      .to_return(status: 200, body: "data", headers: { "Content-Type" => "application/octet-stream" })
+
+    account = create_account_client(config: fast_download_config)
+    account.download_url(HOP1_URL)
+
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 2)
+    assert_requested(s3_stub)
+  end
+
+  def test_download_url_balanced_hooks_across_retries
+    starts = []
+    ends = []
+    retries = []
+
+    hooks_impl = Class.new do
+      include Basecamp::Hooks
+      define_method(:on_request_start) { |info| starts << info.attempt }
+      define_method(:on_request_end) { |info, _result| ends << info.attempt }
+      define_method(:on_retry) { |_info, attempt, _error, _delay| retries << attempt }
+    end.new
+
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+      .then.to_return(status: 503, body: "{}", headers: { "Content-Type" => "application/json" })
+      .then.to_return(status: 200, body: "content", headers: { "Content-Type" => "text/plain" })
+
+    account = create_account_client(config: fast_download_config, hooks: hooks_impl)
+    account.download_url(HOP1_URL)
+
+    assert_equal [ 1, 2, 3 ], starts
+    assert_equal [ 1, 2, 3 ], ends
+    # on_retry receives the UPCOMING attempt (SPEC §7 attempt semantics).
+    assert_equal [ 2, 3 ], retries
+  end
+
+  def test_download_url_honors_retry_after_on_429
+    delays = []
+
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .with(headers: { "Authorization" => "Bearer #{access_token}" })
+      .to_return(status: 429, body: "{}", headers: { "Content-Type" => "application/json", "Retry-After" => "7" })
+      .then.to_return(status: 200, body: "content", headers: { "Content-Type" => "text/plain" })
+
+    http = Basecamp::Http.new(config: fast_download_config, token_provider: token_provider)
+    http.define_singleton_method(:sleep) { |delay| delays << delay }
+
+    response = http.get_download("#{base_url}#{HOP1_PATH}")
+
+    assert_equal 200, response.status
+    assert_equal [ 7 ], delays
   end
 end
