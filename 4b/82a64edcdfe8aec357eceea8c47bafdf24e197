@@ -1,0 +1,37 @@
+go/pkg/basecamp/errors.go
+  s_555508c40a7b3b::t_c18a3d517f7fe3 54
+conformance/tests/error-mapping.json
+  s_555508c40a7b3b::t_c01205b2eef447 173-188
+  s_555508c40a7b3b::t_eede7869f52b48 172
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/DownloadTest.kt
+  s_555508c40a7b3b::t_3fcf56a35385b9 218-254
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/BaseService.kt
+  s_555508c40a7b3b::t_8111ca4942a9b7 486-487,489-495,497-504
+  s_555508c40a7b3b::t_02e448ae197330 13
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/ErrorParsing.kt
+  s_555508c40a7b3b::t_1a381766536c42 1-90
+typescript/src/errors.ts
+  s_555508c40a7b3b::t_6d7d5fcda0c109 387-390
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/Download.kt
+  s_555508c40a7b3b::t_2ae7843ece89f7 213-217,221,223-230
+swift/Tests/BasecampTests/ErrorTests.swift
+  s_555508c40a7b3b::t_f3e8f816e2589a 250-259
+typescript/tests/errors.test.ts
+  s_555508c40a7b3b::t_94a20af9109dfc 507-523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "4b82a64edcdfe8aec357eceea8c47bafdf24e197",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
