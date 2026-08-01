@@ -33,8 +33,14 @@ class FieldKeyed422Test {
         }
     }
 
-    private suspend fun raise422(body: String): BasecampException.Validation {
-        val client = mockClient(HttpStatusCode.UnprocessableEntity, body)
+    private suspend fun raise422(body: String): BasecampException.Validation =
+        raiseValidation(HttpStatusCode.UnprocessableEntity, body)
+
+    private suspend fun raiseValidation(
+        status: HttpStatusCode,
+        body: String,
+    ): BasecampException.Validation {
+        val client = mockClient(status, body)
         try {
             return assertFailsWith<BasecampException.Validation> {
                 client.forAccount("12345").projects.create(CreateProjectBody(name = ""))
@@ -151,6 +157,122 @@ class FieldKeyed422Test {
                 client.forAccount("12345").projects.create(CreateProjectBody(name = ""))
             }
             assertFalse((e.message ?: "").contains("is not a valid color"))
+        } finally {
+            client.close()
+        }
+    }
+
+    // SPEC §6 step 2: webhooks_controller and chats/integrations_controller
+    // render `json: @webhook.errors` at 400, lineup markers at 422 — the field
+    // map arrives as the whole body, with no "errors" wrapper.
+
+    @Test
+    fun flattensBareFieldMapAt400() = runTest {
+        val e = raiseValidation(HttpStatusCode.BadRequest, """{"payload_url": ["is not a valid URL"]}""")
+        assertEquals("payload_url: is not a valid URL", e.message)
+        assertEquals(mapOf("payload_url" to listOf("is not a valid URL")), e.fieldErrors)
+    }
+
+    @Test
+    fun sortsAndJoinsBareFieldMap() = runTest {
+        val e = raiseValidation(
+            HttpStatusCode.BadRequest,
+            """{"types": ["is invalid"], "payload_url": ["is not a valid URL", "is too long"]}""",
+        )
+        assertEquals("payload_url: is not a valid URL; is too long, types: is invalid", e.message)
+        assertEquals(
+            mapOf(
+                "payload_url" to listOf("is not a valid URL", "is too long"),
+                "types" to listOf("is invalid"),
+            ),
+            e.fieldErrors,
+        )
+    }
+
+    @Test
+    fun flattensBareFieldMapAt422() = runTest {
+        val e = raiseValidation(HttpStatusCode.UnprocessableEntity, """{"name": ["can't be blank"]}""")
+        assertEquals("name: can't be blank", e.message)
+        assertEquals(mapOf("name" to listOf("can't be blank")), e.fieldErrors)
+    }
+
+    // All-or-nothing by design: with no "errors" key to declare intent, shape is
+    // the only signal that a body is a field map.
+    @Test
+    fun bareFieldMapGateRejectsNonConformingBodies() = runTest {
+        val bodies = listOf(
+            """{"id": 1}""",
+            """{"color": ["is invalid"], "count": 3}""",
+            """{"color": []}""",
+            """{"color": ["", "is invalid"]}""",
+            """{"color": ["is invalid", 42]}""",
+            """{"color": [null]}""",
+            "{}",
+            "[1, 2]",
+            "\"nope\"",
+        )
+        for (body in bodies) {
+            val e = raiseValidation(HttpStatusCode.BadRequest, body)
+            assertNull(e.fieldErrors, "expected null fieldErrors for $body")
+            assertFalse((e.message ?: "").contains("is invalid"), "expected fallback message for $body")
+        }
+    }
+
+    // Only "errors" is excluded by name; a flat body's "error"/"message" is a
+    // string, and the shape gate rejects a string-valued member — so these
+    // bodies stay flat on shape, not on the key's name. The test above covers
+    // the other half: array-valued keys ARE recognized as fields.
+    @Test
+    fun bareFieldMapStaysFlatForFlatBodies() = runTest {
+        val e = raiseValidation(
+            HttpStatusCode.BadRequest,
+            """{"error": "Webhook is invalid", "payload_url": ["is bad"]}""",
+        )
+        assertEquals("Webhook is invalid", e.message)
+        assertNull(e.fieldErrors)
+
+        val withMessage = raiseValidation(
+            HttpStatusCode.BadRequest,
+            """{"message": "Webhook is invalid", "payload_url": ["is bad"]}""",
+        )
+        assertEquals("Webhook is invalid", withMessage.message)
+        assertNull(withMessage.fieldErrors)
+
+        val withEmptyErrors = raiseValidation(
+            HttpStatusCode.BadRequest,
+            """{"errors": {}, "payload_url": ["is bad"]}""",
+        )
+        assertNull(withEmptyErrors.fieldErrors)
+    }
+
+    // Only "errors" is reserved by name. A record whose validated attribute is
+    // called "message" or "error" still gets its field map recognized: the flat
+    // shape carries those keys as strings, which the gate rejects on shape alone.
+    @Test
+    fun bareFieldMapAllowsReservedFieldNames() = runTest {
+        val named = raiseValidation(HttpStatusCode.BadRequest, """{"message": ["can't be blank"]}""")
+        assertEquals("message: can't be blank", named.message)
+        assertEquals(mapOf("message" to listOf("can't be blank")), named.fieldErrors)
+
+        val alongside = raiseValidation(
+            HttpStatusCode.BadRequest,
+            """{"error": ["is invalid"], "name": ["can't be blank"]}""",
+        )
+        assertEquals("error: is invalid, name: can't be blank", alongside.message)
+        assertEquals(
+            mapOf("error" to listOf("is invalid"), "name" to listOf("can't be blank")),
+            alongside.fieldErrors,
+        )
+    }
+
+    @Test
+    fun bareFieldMapNotExtractedOutsideValidationStatuses() = runTest {
+        val client = mockClient(HttpStatusCode.Forbidden, """{"payload_url": ["is not a valid URL"]}""")
+        try {
+            val e = assertFailsWith<BasecampException.Forbidden> {
+                client.forAccount("12345").projects.create(CreateProjectBody(name = ""))
+            }
+            assertFalse((e.message ?: "").contains("is not a valid URL"))
         } finally {
             client.close()
         }

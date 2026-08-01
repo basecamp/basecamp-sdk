@@ -821,6 +821,14 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 	case http.StatusNotFound: // 404
 		return nil, ErrNotFound("Resource", url).withRequestID(requestID)
 
+	case http.StatusBadRequest, http.StatusUnprocessableEntity: // 400, 422
+		// The generated service layer maps these through checkResponse; the raw
+		// escape hatch used to fall through to the default arm and report
+		// api_error with the field-keyed detail dropped.
+		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
+		serverMsg, serverHint, fieldErrors := parseErrorBody(respBody)
+		return nil, validationError(serverMsg, serverHint, fieldErrors, resp.StatusCode, requestID)
+
 	case http.StatusInternalServerError: // 500
 		return nil, ErrAPI(500, "Server error (500)").withRequestID(requestID)
 
@@ -833,22 +841,19 @@ func (c *Client) singleRequest(ctx context.Context, method, url string, body any
 		}).withRequestID(requestID)
 
 	default:
+		// One SPEC §6 parser, shared with checkResponse: members decode
+		// independently and messages are truncated, where the struct decode
+		// this arm used before failed whole on any unexpected member type.
 		respBody, _ := limitedReadAll(resp.Body, MaxErrorBodyBytes)
-		var apiErr struct {
-			Error   string `json:"error"`
-			Message string `json:"message"`
-		}
-		if json.Unmarshal(respBody, &apiErr) == nil {
-			msg := apiErr.Error
-			if msg == "" {
-				msg = apiErr.Message
-			}
-			if msg != "" {
-				// Truncate error messages to prevent information leakage and unbounded memory growth
-				return nil, ErrAPI(resp.StatusCode, truncateString(msg, MaxErrorMessageBytes)).withRequestID(requestID)
-			}
-		}
-		return nil, ErrAPI(resp.StatusCode, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)).withRequestID(requestID)
+		serverMsg, serverHint, _ := parseErrorBody(respBody)
+		// Retryability is left exactly as ErrAPI set it — untouched here so the
+		// retry contract stays the one §7 pins.
+		return nil, (&Error{
+			Code:       CodeAPI,
+			Message:    msgOrDefault(serverMsg, fmt.Sprintf("Request failed (HTTP %d)", resp.StatusCode)),
+			Hint:       serverHint,
+			HTTPStatus: resp.StatusCode,
+		}).withRequestID(requestID)
 	}
 }
 

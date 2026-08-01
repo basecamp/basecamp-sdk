@@ -9,6 +9,11 @@ conformance/runner/go/conformance-runner
 conformance/runner/go/go
 conformance/runner/ruby/Gemfile.lock
 conformance/runner/typescript/node_modules
+# Vitest writes its results cache under whichever node_modules is closest to the
+# cwd, which is not always a package directory — ignore the tree everywhere so a
+# test run cannot dirty the working tree and trip the release clean-tree guard.
+node_modules/
+.vite/
 
 # Claude Code session files (except skills, which are committed)
 .claude/*

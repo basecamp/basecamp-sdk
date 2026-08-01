@@ -52,7 +52,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Update the current user's preferences
+     * Update the current user's preferences.
      * @param body Request body
      */
     suspend fun updateMyPreferences(body: UpdateMyPreferencesBody): JsonElement {

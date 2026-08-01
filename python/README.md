@@ -569,6 +569,28 @@ Every `BasecampError` provides:
 - `request_id` - Server request ID (if available)
 - `exit_code` - CLI-friendly exit code (`ExitCode` enum)
 
+### Validation Errors
+
+Basecamp rejects invalid writes with a body keyed by field. The SDK folds those
+messages into the message and `ValidationError` keeps the raw map in
+`field_errors`, so you can drive a form without re-parsing the message:
+
+```python
+from basecamp import ValidationError
+
+try:
+    account.calendars.update_calendar(calendar_id=calendar_id, calendar={"color": "chartreuse"})
+except ValidationError as e:
+    print(e)  # "color: is not a valid color"
+
+    for field, messages in (e.field_errors or {}).items():
+        for message in messages:
+            print(f"  {field} {message}")
+```
+
+`field_errors` is `None` for every other error shape, and its messages are the
+raw ones — the message is capped at 500 bytes, the map is not.
+
 ## Retry Behavior
 
 The SDK automatically retries failed requests with exponential backoff:

@@ -54,13 +54,18 @@ class MyNotesServiceTest < Minitest::Test
     assert_equal "<div>Updated</div>", note["content"]
   end
 
-  def test_update_my_note_raises_validation_error_on_422
+  # my/notes_controller.rb:19 renders the field-keyed shape, which is what the
+  # operation now declares (FieldValidationError, not ValidationError).
+  def test_update_my_note_raises_validation_error_on_field_keyed_422
     stub_request(:put, "https://3.basecampapi.com/12345/my/notes.json")
-      .to_return(status: 422, body: { "error" => "Unprocessable" }.to_json,
+      .to_return(status: 422, body: { "errors" => { "content" => [ "can't be blank" ] } }.to_json,
                  headers: { "Content-Type" => "application/json" })
 
-    assert_raises(Basecamp::ValidationError) do
+    error = assert_raises(Basecamp::ValidationError) do
       @account.my_notes.update_my_note(note: { "content" => "x" })
     end
+
+    assert_equal "content: can't be blank", error.message
+    assert_equal({ "content" => [ "can't be blank" ] }, error.field_errors)
   end
 end

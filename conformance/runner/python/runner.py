@@ -429,10 +429,22 @@ class TestRunner:
                         failures.append(f"Expected {expected} requests, got {actual}")
 
                 case "delayBetweenRequests":
+                    # Every inter-request gap must clear the minimum, unless the
+                    # fixture names one: not all gaps are retry gaps — the
+                    # download flow's final gap is the redirect hop to the
+                    # signed URL, which is deliberately un-delayed — so those
+                    # fixtures assert per-gap with an index.
                     delays = self._tracker.delays_between_requests
                     min_delay = assertion.get("min")
-                    if min_delay and delays and any(d < min_delay for d in delays):
-                        failures.append(f"Expected minimum delay of {min_delay}ms, got {min(delays)}ms")
+                    index = assertion.get("index")
+                    if min_delay and delays:
+                        if index is not None:
+                            if index < len(delays) and delays[index] < min_delay:
+                                failures.append(
+                                    f"Expected minimum delay of {min_delay}ms at gap {index}, got {delays[index]}ms"
+                                )
+                        elif any(d < min_delay for d in delays):
+                            failures.append(f"Expected minimum delay of {min_delay}ms, got {min(delays)}ms")
 
                 case "noError":
                     if error:
@@ -673,15 +685,8 @@ def _get_error_field(error: Exception, field_path: str) -> Any:
 
 
 class ConformanceRunner:
-    _DOWNLOAD_RETRY_SKIP = "Python SDK download path uses get_no_retry; retry on 5xx / Retry-After is not implemented"
-    SKIPS: set[str] = {
-        "DownloadURL retries on 503 at the auth'd first hop",
-        "DownloadURL honors Retry-After on 429 at the auth'd first hop",
-    }
-    SKIP_REASONS: dict[str, str] = {
-        "DownloadURL retries on 503 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
-        "DownloadURL honors Retry-After on 429 at the auth'd first hop": _DOWNLOAD_RETRY_SKIP,
-    }
+    SKIPS: set[str] = set()
+    SKIP_REASONS: dict[str, str] = {}
 
     def __init__(self, tests_dir: str):
         self._tests_dir = Path(tests_dir)

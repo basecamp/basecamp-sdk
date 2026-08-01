@@ -567,6 +567,32 @@ try {
 | `validation` | 400, 422 | 9 | Invalid request data |
 | `usage` | - | 1 | Configuration or argument error |
 
+### Validation Errors
+
+Basecamp rejects invalid writes with a body keyed by field. The SDK folds those
+messages into `message` and keeps the raw map in `fieldErrors`, so you can drive
+a form without re-parsing the message:
+
+```typescript
+try {
+  await client.calendars.updateCalendar(calendarId, { calendar: { color: "chartreuse" } });
+} catch (error) {
+  if (isErrorCode(error, "validation")) {
+    // "color: is not a valid color"
+    console.error(error.message);
+
+    for (const [field, messages] of Object.entries(error.fieldErrors ?? {})) {
+      console.error(`  ${field}: ${messages.join(", ")}`);
+    }
+  }
+}
+```
+
+`fieldErrors` is `undefined` for every other error shape, and its messages are
+the raw ones — `message` is capped at 500 characters, the map is not. It is a
+null-prototype object, so a field literally named `__proto__` is an ordinary
+key.
+
 ## Retry Behavior
 
 The SDK automatically retries requests on transient failures:

@@ -52,10 +52,11 @@ type Error struct {
 	Message string
 	Hint    string
 	// FieldErrors carries the field-keyed messages from a validation (400/422)
-	// body of the form {"errors": {"field": ["msg", ...]}} — the Rails
-	// RecordInvalid rendering. Nil for every other error shape. The flattened
-	// form is also folded into Message; this slot preserves the raw,
-	// untruncated per-field messages.
+	// body — either {"errors": {"field": ["msg", ...]}}, the Rails
+	// RecordInvalid rendering, or the same map with no wrapper at all
+	// ({"field": ["msg", ...]}), which some controllers emit. Nil for every
+	// other error shape. The flattened form is also folded into Message; this
+	// slot preserves the raw, untruncated per-field messages.
 	FieldErrors map[string][]string
 	HTTPStatus  int
 	Retryable   bool

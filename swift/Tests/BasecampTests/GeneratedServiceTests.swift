@@ -307,7 +307,7 @@ final class GeneratedServiceTests: XCTestCase {
             _ = try await account.todos.create(todolistId: 2, req: req)
             XCTFail("Expected 422 error")
         } catch let error as BasecampError {
-            if case .validation(let message, let status, _, _) = error {
+            if case .validation(let message, let status, _, _, _) = error {
                 XCTAssertEqual(status, 422)
                 XCTAssertEqual(message, "Title can't be blank")
             } else {
@@ -616,7 +616,7 @@ final class GeneratedServiceTests: XCTestCase {
             try await account.campfires.updateLine(campfireId: 42, lineId: 300, req: req)
             XCTFail("Expected 422 error")
         } catch let error as BasecampError {
-            if case .validation(let message, let status, _, _) = error {
+            if case .validation(let message, let status, _, _, _) = error {
                 XCTAssertEqual(status, 422)
                 XCTAssertEqual(message, "Unprocessable")
             } else {

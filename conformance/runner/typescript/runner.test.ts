@@ -79,10 +79,6 @@ const TEST_ACCOUNT_ID = "999";
 const TS_SDK_SKIPS: Record<string, string> = {
   "Large integer IDs preserved without precision loss":
     "JavaScript loses precision on integers > Number.MAX_SAFE_INTEGER (2^53)",
-  "DownloadURL retries on 503 at the auth'd first hop":
-    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
-  "DownloadURL honors Retry-After on 429 at the auth'd first hop":
-    "TS SDK downloadURL uses raw fetch bypassing the retry middleware; 5xx / Retry-After retry is not implemented",
 };
 
 /**
@@ -638,7 +634,12 @@ function installMockHandlers(tc: TestCase): {
     if (bodyToSerialize !== undefined && bodyToSerialize !== null) {
       // If body is an object with a single array property (e.g. {"projects": [...]}),
       // unwrap it for the TS SDK which expects raw arrays from list endpoints.
+      //
+      // Success bodies only: an error body with one array-valued key is the
+      // unwrapped field map ({"payload_url": ["is invalid"]}), and unwrapping
+      // it would rewrite the fixture on the wire.
       if (
+        mock.status < 400 &&
         typeof bodyToSerialize === "object" &&
         !Array.isArray(bodyToSerialize)
       ) {
@@ -804,7 +805,15 @@ function checkAssertions(
       case "delayBetweenRequests": {
         const times = tracker.requestTimes();
         if (times.length >= 2) {
-          const delay = times[1]! - times[0]!;
+          // index selects a single inter-request GAP (gap i is between request
+          // i and i+1), defaulting to the first. A named gap that does not
+          // exist fails rather than passing silently.
+          const gap = assertion.index ?? 0;
+          expect(
+            times.length,
+            `[${tc.name}] expected a delay at gap ${gap}, but only ${times.length} request(s) were made`,
+          ).toBeGreaterThan(gap + 1);
+          const delay = times[gap + 1]! - times[gap]!;
           const minDelay = assertion.min ?? 0;
           // Node's timers may fire marginally BEFORE the requested delay —
           // libuv rounds the deadline down internally, so a 2000ms sleep can
@@ -818,7 +827,7 @@ function checkAssertions(
           // interval (no delay at all).
           expect(
             delay,
-            `[${tc.name}] expected delay >= ${minDelay}ms (allowing ${TIMER_SLACK_MS}ms timer slack), got ${delay}ms`,
+            `[${tc.name}] expected delay >= ${minDelay}ms at gap ${gap} (allowing ${TIMER_SLACK_MS}ms timer slack), got ${delay}ms`,
           ).toBeGreaterThanOrEqual(minDelay - TIMER_SLACK_MS);
         }
         break;
@@ -1205,11 +1214,16 @@ function shouldEnableRetry(tc: TestCase, filename: string): boolean {
   if (
     filename === "retry.json" ||
     filename === "idempotency.json" ||
-    filename === "network-retry.json"
+    filename === "network-retry.json" ||
+    filename === "downloads.json"
   ) {
     // network-retry.json's CreateTodo safety case must run retry-ENABLED so it
     // actually proves the SDK doesn't re-send a non-idempotent POST on a network
     // error (with retry off, the requestCount:1 assertion would be vacuous).
+    // downloads.json exercises the hop-1 retry policy (SPEC §14), and its
+    // no-retry cases (500, redirect-no-Location) stay single-attempt because
+    // those failures are outside the declared retry set, not because retry is
+    // disabled.
     return true;
   }
 

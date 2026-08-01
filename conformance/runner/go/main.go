@@ -352,8 +352,12 @@ func runTest(tc TestCase) TestResult {
 			// If body is an object with a single array property (e.g.,
 			// {"projects": [...]}), unwrap to just the array. The Go SDK's
 			// generated client expects raw arrays for list endpoints.
+			//
+			// Success bodies only: an error body with one array-valued key is
+			// the unwrapped field map ({"payload_url": ["is invalid"]}), and
+			// unwrapping it would rewrite the fixture on the wire.
 			bodyToWrite := resp.Body
-			if obj, ok := bodyToWrite.(map[string]interface{}); ok && len(obj) == 1 {
+			if obj, ok := bodyToWrite.(map[string]interface{}); ok && len(obj) == 1 && resp.Status < 400 {
 				for _, v := range obj {
 					if _, isArr := v.([]interface{}); isArr {
 						bodyToWrite = v
@@ -943,11 +947,19 @@ func checkAssertion(
 		}
 
 	case "delayBetweenRequests":
+		// index selects a single inter-request GAP (gap i is between request i
+		// and i+1); it defaults to the first. A named gap that does not exist
+		// is a failure, not a silent pass — otherwise a dropped retry makes the
+		// assertion vanish instead of firing.
 		if len(requestTimes) >= 2 {
-			delay := requestTimes[1].Sub(requestTimes[0])
+			gap := assertionIndex(assertion)
+			if gap+1 >= len(requestTimes) {
+				return fail(tc, fmt.Sprintf("Expected a delay at gap %d, but only %d request(s) were made", gap, len(requestTimes)))
+			}
+			delay := requestTimes[gap+1].Sub(requestTimes[gap])
 			minDelay := time.Duration(assertion.Min) * time.Millisecond
 			if delay < minDelay {
-				return fail(tc, fmt.Sprintf("Expected delay >= %v, got %v", minDelay, delay))
+				return fail(tc, fmt.Sprintf("Expected delay >= %v at gap %d, got %v", minDelay, gap, delay))
 			}
 		}
 

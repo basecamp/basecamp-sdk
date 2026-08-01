@@ -605,6 +605,33 @@ try {
 | `DiscoverySelection` | - | 7 or 9 | OAuth discovery selection failed (code derived from `reason`) |
 | `DeviceFlow` | - | 1, 3, 6, or 9 | Device authorization grant failed (code derived from `reason`) |
 
+### Validation Errors
+
+Basecamp rejects invalid writes with a body keyed by field. The SDK folds those
+messages into `message` and keeps the raw map in `fieldErrors`, so you can drive
+a form without re-parsing the message:
+
+```kotlin
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+try {
+    account.calendars.updateCalendar(
+        calendarId,
+        UpdateCalendarBody(calendar = buildJsonObject { put("color", "chartreuse") }),
+    )
+} catch (e: BasecampException.Validation) {
+    println(e.message) // "color: is not a valid color"
+
+    e.fieldErrors?.forEach { (field, messages) ->
+        messages.forEach { println("  $field $it") }
+    }
+}
+```
+
+`fieldErrors` is `null` for every other error shape, and its messages are the
+raw ones — `message` is capped at 500 characters, the map is not.
+
 ## Observability
 
 ### Console Logging

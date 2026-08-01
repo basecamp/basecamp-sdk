@@ -145,7 +145,7 @@ export class PeopleService extends BaseService {
   }
 
   /**
-   * Update the current user's preferences
+   * Update the current user's preferences.
    * @param req - My_preference update parameters
    * @returns The my_preference
    * @throws {BasecampError} If the resource is not found or fields are invalid

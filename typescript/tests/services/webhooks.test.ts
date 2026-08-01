@@ -207,6 +207,33 @@ describe("WebhooksService", () => {
       expect(webhook.payload_url).toBe("https://example.com/new-webhook");
     });
 
+    // webhooks_controller.rb:31 renders `json: @webhook.errors` at 400 — the
+    // field map with no "errors" wrapper (SPEC §6 step 2).
+    it("surfaces a bare field-map 400 with per-field detail", async () => {
+      server.use(
+        http.post(`${BASE_URL}/buckets/1/webhooks.json`, () =>
+          HttpResponse.json(
+            { payload_url: ["is not a valid URL"], types: ["is invalid"] },
+            { status: 400 }
+          )
+        )
+      );
+
+      const error = await client.webhooks
+        .create(1, { payloadUrl: "https://example.com/hook", types: ["Todo"] })
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(BasecampError);
+      expect((error as BasecampError).code).toBe("validation");
+      expect((error as BasecampError).message).toBe(
+        "payload_url: is not a valid URL, types: is invalid"
+      );
+      expect({ ...(error as BasecampError).fieldErrors }).toEqual({
+        payload_url: ["is not a valid URL"],
+        types: ["is invalid"],
+      });
+    });
+
     // Client-side validation short-circuits before any HTTP call. No MSW handler
     // is registered here, so a leaked request fails via onUnhandledRequest: "error".
     it("rejects a missing payloadUrl or types", async () => {

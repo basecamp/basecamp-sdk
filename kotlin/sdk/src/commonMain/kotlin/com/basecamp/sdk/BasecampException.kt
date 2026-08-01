@@ -100,9 +100,11 @@ sealed class BasecampException(
         httpStatus: Int = 422,
         requestId: String? = null,
         /**
-         * Field-keyed validation messages from a 422 body of the form
-         * `{"errors": {"field": ["msg", ...]}}` — the Rails RecordInvalid
-         * rendering. Null for every other error shape. The flattened form is
+         * Field-keyed validation messages from a 400/422 body — either
+         * `{"errors": {"field": ["msg", ...]}}`, the Rails RecordInvalid
+         * rendering, or the same map with no wrapper at all
+         * (`{"field": ["msg", ...]}`), which some controllers emit. Null for
+         * every other error shape. The flattened form is
          * also folded into the message; this slot preserves the raw,
          * untruncated per-field messages.
          */

@@ -649,3 +649,132 @@ describe("isErrorCode", () => {
     expect(isErrorCode(error, "auth_required")).toBe(false);
   });
 });
+
+describe("bare field-map error bodies (SPEC §6 step 2)", () => {
+  // webhooks_controller and chats/integrations_controller render
+  // `json: @webhook.errors` at 400; lineup markers do the same at 422. The
+  // field map is the whole body, with no "errors" wrapper.
+  it.each([
+    {
+      name: "single field at 400",
+      status: 400,
+      body: { payload_url: ["is not a valid URL"] },
+      message: "payload_url: is not a valid URL",
+      fieldErrors: { payload_url: ["is not a valid URL"] },
+    },
+    {
+      name: "multiple fields sort and join",
+      status: 400,
+      body: { types: ["is invalid"], payload_url: ["is not a valid URL", "is too long"] },
+      message: "payload_url: is not a valid URL; is too long, types: is invalid",
+      fieldErrors: {
+        payload_url: ["is not a valid URL", "is too long"],
+        types: ["is invalid"],
+      },
+    },
+    {
+      name: "lineup markers emit the bare map at 422",
+      status: 422,
+      body: { name: ["can't be blank"] },
+      message: "name: can't be blank",
+      fieldErrors: { name: ["can't be blank"] },
+    },
+  ])("$name", ({ status, body, message, fieldErrors }) => {
+    const response = new Response(null, { status, statusText: "Bad Request" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.code).toBe("validation");
+    expect(error.message).toBe(message);
+    expect({ ...error.fieldErrors }).toEqual(fieldErrors);
+  });
+
+  // The gate is all-or-nothing: with no "errors" key to declare intent, shape
+  // is the only signal, so one non-conforming member means this is some other
+  // JSON object.
+  it.each([
+    { name: "member is not an array", body: { id: 1 } },
+    { name: "one member of several is not an array", body: { color: ["is invalid"], count: 3 } },
+    { name: "member array is empty", body: { color: [] } },
+    { name: "member array holds an empty string", body: { color: ["", "is invalid"] } },
+    { name: "member array holds a non-string", body: { color: ["is invalid", 42] } },
+    { name: "member array holds null", body: { color: [null] } },
+    { name: "empty object", body: {} },
+    { name: "JSON array body", body: [1, 2] },
+  ])("does not treat $name as a field map", ({ body }) => {
+    const response = new Response(null, { status: 400, statusText: "Bad Request" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.fieldErrors).toBeUndefined();
+    expect(error.message).toBe("Bad Request");
+  });
+
+  // Only "errors" is excluded by name; a flat body's "error"/"message" is a
+  // string, and the shape gate rejects a string-valued member — so these bodies
+  // stay flat on shape, not on the key's name. The next test covers the other
+  // half: array-valued "error"/"message" members ARE recognized as fields.
+  it.each([
+    { name: "error key", body: { error: "Webhook is invalid", payload_url: ["is bad"] }, message: "Webhook is invalid" },
+    {
+      name: "message key",
+      body: { message: "Webhook is invalid", payload_url: ["is bad"] },
+      message: "Webhook is invalid",
+    },
+    { name: "empty errors key", body: { errors: {}, payload_url: ["is bad"] }, message: "Bad Request" },
+  ])("stays flat for a string $name", ({ body, message }) => {
+    const response = new Response(null, { status: 400, statusText: "Bad Request" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.message).toBe(message);
+    expect(error.fieldErrors).toBeUndefined();
+  });
+
+  // Only "errors" is reserved by name. A record whose validated attribute is
+  // called "message" or "error" still gets its field map recognized: the flat
+  // shape carries those keys as strings, which the gate rejects on shape alone.
+  it.each([
+    {
+      name: "field named message",
+      body: { message: ["can't be blank"] },
+      message: "message: can't be blank",
+      fieldErrors: { message: ["can't be blank"] },
+    },
+    {
+      name: "field named error alongside another",
+      body: { error: ["is invalid"], name: ["can't be blank"] },
+      message: "error: is invalid, name: can't be blank",
+      fieldErrors: { error: ["is invalid"], name: ["can't be blank"] },
+    },
+  ])("recognizes a $name", ({ body, message, fieldErrors }) => {
+    const response = new Response(null, { status: 400, statusText: "Bad Request" });
+
+    const error = errorFromParsedBody(response, body);
+
+    expect(error.message).toBe(message);
+    expect({ ...error.fieldErrors }).toEqual(fieldErrors);
+  });
+
+  it("is not extracted outside 400/422", () => {
+    for (const status of [403, 404, 500]) {
+      const response = new Response(null, { status, statusText: "Nope" });
+      const error = errorFromParsedBody(response, { payload_url: ["is not a valid URL"] });
+      expect(error.fieldErrors).toBeUndefined();
+    }
+  });
+
+  it("treats __proto__ as an ordinary field name in a bare map", () => {
+    const response = new Response(null, { status: 400, statusText: "Bad Request" });
+
+    const error = errorFromParsedBody(response, JSON.parse('{"__proto__": ["is invalid"]}'));
+
+    expect(error.message).toBe("__proto__: is invalid");
+    expect(Object.getPrototypeOf(error.fieldErrors)).toBeNull();
+    expect(Object.prototype.hasOwnProperty.call(error.fieldErrors, "__proto__")).toBe(true);
+    expect(error.fieldErrors!["__proto__"]).toEqual(["is invalid"]);
+    // The legacy prototype setter must not have fired: the map's prototype is
+    // not the attacker-controlled array.
+    expect(Array.isArray(Object.getPrototypeOf(error.fieldErrors))).toBe(false);
+  });
+});

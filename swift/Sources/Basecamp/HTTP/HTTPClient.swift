@@ -23,6 +23,28 @@ package final class HTTPClient: Sendable {
     /// on the hot path does not allocate a `Set` per request.
     private static let retryableMethods: Set<String> = ["GET", "HEAD", "PUT", "DELETE"]
 
+    /// The download hop-1 retry policy (SPEC §14): a fixed three attempts when
+    /// retry is enabled, retrying network errors plus these statuses — never
+    /// 500, which stays aligned with the main GET loop's declared-set
+    /// discipline rather than the error taxonomy's broader "all 5xx retryable"
+    /// flag. Backoff is exponential from ``defaultBaseDelayMs``, honoring
+    /// `Retry-After` on 429. The signed second hop is exempt: no retry, no auth.
+    private static let downloadMaxAttempts = 3
+    private static let downloadRetryOn: Set<Int> = [429, 502, 503, 504]
+
+    /// Converts a backoff interval to nanoseconds without trapping.
+    ///
+    /// `UInt64(_:)` on an out-of-range `Double` is a runtime trap, not an
+    /// error, and a hostile or simply buggy `Retry-After` can name a delay
+    /// whose nanosecond product overflows `UInt64` — `Retry-After: 99999999999`
+    /// is 9.9e19 ns against a 1.8e19 ceiling. Clamp to a day instead: no SDK
+    /// retry is worth sleeping longer, and a crash is never the right answer
+    /// to a response header.
+    private static func sleepNanoseconds(_ seconds: TimeInterval) -> UInt64 {
+        guard seconds.isFinite, seconds > 0 else { return 0 }
+        return UInt64(min(seconds, 86_400) * 1_000_000_000)
+    }
+
     package init(
         transport: any Transport,
         authStrategy: any AuthStrategy,
@@ -176,7 +198,14 @@ package final class HTTPClient: Sendable {
                     $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
                 }
 
-                if attempt < maxAttempts {
+                if error is CancellationError {
+                    // Cooperative cancellation is terminal, not a transport
+                    // blip: retrying would announce and start an attempt the
+                    // caller has already abandoned. It propagates raw rather
+                    // than wrapped, and the attempt is finalized above so
+                    // start/end stay paired.
+                    directive = .fail(error)
+                } else if attempt < maxAttempts {
                     let delaySeconds = calculateDelay(
                         attempt: attempt,
                         baseDelayMs: effectiveConfig.baseDelayMs,
@@ -203,7 +232,7 @@ package final class HTTPClient: Sendable {
             case .retry(let error, let delaySeconds):
                 safeInvokeHooks { $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds) }
 
-                try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                try await Task.sleep(nanoseconds: Self.sleepNanoseconds(delaySeconds))
 
                 // Re-authenticate for retry (e.g. refresh expired token)
                 try await authStrategy.authenticate(&request)
@@ -238,8 +267,14 @@ package final class HTTPClient: Sendable {
         return (data, httpResponse)
     }
 
-    /// Authenticated GET without redirect following. Fires request hooks.
-    /// Used by downloadURL for the first hop.
+    /// Authenticated GET without redirect following, under the SPEC §14 hop-1
+    /// retry policy. Fires request hooks. Used by downloadURL for the first hop.
+    ///
+    /// The policy is fixed and passed here directly rather than looked up by
+    /// operation: `DownloadURL` is deliberately absent from
+    /// `behavior-model.json`, so there is no per-operation `RetryConfig` to
+    /// resolve and no public numeric knob for the attempt count. Disabling
+    /// retry collapses the hop to exactly one attempt.
     package func performDownloadRequest(url: String) async throws -> (Data, HTTPURLResponse) {
         guard let requestURL = URL(string: url) else {
             throw BasecampError.usage(message: "Invalid URL: \(url)", hint: nil)
@@ -249,37 +284,108 @@ package final class HTTPClient: Sendable {
         request.httpMethod = "GET"
         request.timeoutInterval = config.timeoutInterval
 
+        // Attempt 1's auth runs here, outside the loop, matching performRequest:
+        // a failing strategy surfaces raw, before any request hook fires.
         try await authStrategy.authenticate(&request)
         request.setValue(config.userAgent, forHTTPHeaderField: "User-Agent")
 
-        let info = RequestInfo(method: "GET", url: url, attempt: 1)
-        safeInvokeHooks { $0.onRequestStart(info) }
+        let maxAttempts = config.enableRetry ? Self.downloadMaxAttempts : 1
 
-        let startTime = CFAbsoluteTimeGetCurrent()
-
-        do {
-            let (data, response) = try await transport.dataNoRedirect(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw BasecampError.network(message: "Invalid response type", cause: nil)
-            }
-
-            let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
-            safeInvokeHooks {
-                $0.onRequestEnd(info, result: RequestResult(
-                    statusCode: httpResponse.statusCode, durationMs: durationMs))
-            }
-
-            return (data, httpResponse)
-        } catch let error as BasecampError {
-            throw error
-        } catch {
-            let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
-            safeInvokeHooks {
-                $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
-            }
-            throw BasecampError.network(message: "Network error", cause: error)
+        /// Outcome of a single attempt, computed inside the do/catch and acted
+        /// on at the loop tail — the same directive shape performRequest uses,
+        /// so retry side effects never run inside a catch clause.
+        enum AttemptDirective {
+            case done(Data, HTTPURLResponse)
+            case retry(error: any Error, delaySeconds: TimeInterval)
+            case fail(any Error)
         }
+
+        for attempt in 1...maxAttempts {
+            let info = RequestInfo(method: "GET", url: url, attempt: attempt)
+            safeInvokeHooks { $0.onRequestStart(info) }
+
+            let startTime = CFAbsoluteTimeGetCurrent()
+            let directive: AttemptDirective
+
+            do {
+                let (data, response) = try await transport.dataNoRedirect(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw BasecampError.network(message: "Invalid response type", cause: nil)
+                }
+
+                let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
+                safeInvokeHooks {
+                    $0.onRequestEnd(info, result: RequestResult(
+                        statusCode: httpResponse.statusCode, durationMs: durationMs))
+                }
+
+                let statusCode = httpResponse.statusCode
+                if Self.downloadRetryOn.contains(statusCode), attempt < maxAttempts {
+                    let delaySeconds = calculateDelay(
+                        attempt: attempt,
+                        baseDelayMs: Self.defaultBaseDelayMs,
+                        backoff: .exponential,
+                        retryAfterHeader: httpResponse.value(forHTTPHeaderField: "Retry-After"),
+                        statusCode: statusCode
+                    )
+                    let error = BasecampError.fromHTTPResponse(
+                        status: statusCode, data: data,
+                        headers: httpResponse.allHeaderFields as? [String: String] ?? [:],
+                        requestId: httpResponse.value(forHTTPHeaderField: "X-Request-Id")
+                    )
+                    directive = .retry(error: error, delaySeconds: delaySeconds)
+                } else {
+                    directive = .done(data, httpResponse)
+                }
+            } catch let error as BasecampError {
+                directive = .fail(error)
+            } catch {
+                let durationMs = Int((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
+                safeInvokeHooks {
+                    $0.onRequestEnd(info, result: RequestResult(statusCode: 0, durationMs: durationMs))
+                }
+
+                if error is CancellationError {
+                    // Cooperative cancellation is terminal, not a transport
+                    // blip: retrying would announce and start an attempt the
+                    // caller has already abandoned. It propagates raw rather
+                    // than wrapped, and the attempt is finalized above so
+                    // start/end stay paired.
+                    directive = .fail(error)
+                } else if attempt < maxAttempts {
+                    let delaySeconds = calculateDelay(
+                        attempt: attempt,
+                        baseDelayMs: Self.defaultBaseDelayMs,
+                        backoff: .exponential,
+                        retryAfterHeader: nil,
+                        statusCode: nil
+                    )
+                    directive = .retry(error: error, delaySeconds: delaySeconds)
+                } else {
+                    directive = .fail(BasecampError.network(message: "Network error", cause: error))
+                }
+            }
+
+            // Loop tail, outside any catch: a CancellationError from the backoff
+            // sleep or an error from re-authentication propagates raw — no
+            // phantom request events for an attempt that already ended.
+            switch directive {
+            case .done(let data, let response):
+                return (data, response)
+            case .fail(let error):
+                throw error
+            case .retry(let error, let delaySeconds):
+                safeInvokeHooks { $0.onRetry(info, attempt: attempt + 1, error: error, delaySeconds: delaySeconds) }
+
+                try await Task.sleep(nanoseconds: Self.sleepNanoseconds(delaySeconds))
+
+                // Re-authenticate every attempt so a rotated token is picked up.
+                try await authStrategy.authenticate(&request)
+            }
+        }
+
+        throw BasecampError.network(message: "Download failed after \(maxAttempts) attempts", cause: nil)
     }
 
     /// Unauthenticated GET via bare transport. No hooks.

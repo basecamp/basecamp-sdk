@@ -2,6 +2,24 @@ import type { AuthStrategy } from "./auth-strategy.js";
 import type { BasecampHooks, OperationInfo, RequestInfo } from "./hooks.js";
 import { BasecampError, Errors, errorFromResponse } from "./errors.js";
 import { safeInvoke } from "./hooks.js";
+import {
+  TerminalRetryError,
+  executeWithRetry,
+  type RetryConfig,
+  type RetryEmit,
+} from "./retry.js";
+
+/**
+ * The fixed hop-1 retry policy (SPEC §14): three total attempts when retry is
+ * enabled, retrying network errors plus {429, 502, 503, 504} — never 500 —
+ * with exponential backoff, honoring Retry-After on 429. DownloadURL is
+ * deliberately absent from behavior-model.json, so the policy is passed to
+ * the retry primitive directly rather than looked up by operation. There is
+ * no public knob for the attempt count.
+ */
+const DOWNLOAD_MAX_ATTEMPTS = 3;
+const DOWNLOAD_RETRY_ON = [429, 502, 503, 504];
+const DOWNLOAD_RETRY_BASE_DELAY_MS = 1000;
 
 /**
  * Result of downloading file content from a URL.
@@ -53,6 +71,13 @@ interface DownloadDeps {
   baseUrl: string;
   hooks?: BasecampHooks;
   requestTimeoutMs: number;
+  /** false collapses hop 1 to exactly one attempt (SPEC §14). */
+  enableRetry: boolean;
+  /**
+   * Test seam for the fixed policy's backoff base. Not wired to any client
+   * option — production callers omit it and get the 1-second base.
+   */
+  retryBaseDelayMs?: number;
 }
 
 /**
@@ -65,7 +90,7 @@ interface DownloadDeps {
  * other signed-download URL that routes through the API.
  */
 export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promise<DownloadResult> {
-  const { authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs } = deps;
+  const { authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs, enableRetry, retryBaseDelayMs } = deps;
 
   return async (rawURL: string): Promise<DownloadResult> => {
     // Validation
@@ -99,26 +124,72 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
       const base = new URL(baseUrl);
       const rewrittenURL = `${base.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
 
-      // Hop 1: Authenticated API request (capture redirect)
+      // Hop 1: Authenticated API request (capture redirect), under the fixed
+      // hop-1 retry policy. Attempt 1's auth runs here, outside the loop, so
+      // a failing strategy surfaces raw without request hooks — matching the
+      // client path, where the middleware authenticates before the loop.
       const headers = new Headers({
         "User-Agent": userAgent,
       });
       await authStrategy.authenticate(headers);
 
-      const requestInfo: RequestInfo = {
+      const downloadRetryConfig: RetryConfig = {
+        maxAttempts: enableRetry ? DOWNLOAD_MAX_ATTEMPTS : 1,
+        baseDelayMs: retryBaseDelayMs ?? DOWNLOAD_RETRY_BASE_DELAY_MS,
+        backoff: "exponential",
+        retryOn: DOWNLOAD_RETRY_ON,
+      };
+
+      const requestInfoFor = (attempt: number): RequestInfo => ({
         method: "GET",
         url: rewrittenURL,
-        attempt: 1,
-      };
-      safeInvoke(hooks, "onRequestStart", requestInfo);
+        attempt,
+      });
 
-      const reqStart = performance.now();
-      let response: Response;
-      try {
+      // The download path has no lifecycle middleware, so the emit seams fire
+      // the hooks directly. executeWithRetry finalizes only the attempts it
+      // abandons; the terminal outcome is finalized after the loop below.
+      let currentAttempt = 1;
+      let attemptStart = performance.now();
+      const emit: RetryEmit = {
+        begin: (attempt) => {
+          currentAttempt = attempt;
+          attemptStart = performance.now();
+          safeInvoke(hooks, "onRequestStart", requestInfoFor(attempt));
+        },
+        finalize: (outcome) => {
+          const durationMs = Math.round(performance.now() - attemptStart);
+          safeInvoke(hooks, "onRequestEnd", requestInfoFor(currentAttempt), {
+            statusCode: outcome.statusCode,
+            durationMs,
+            fromCache: false,
+            ...(outcome.error ? { error: outcome.error } : {}),
+          });
+        },
+        retrying: (failedAttempt, error, delayMs) => {
+          safeInvoke(hooks, "onRetry", requestInfoFor(failedAttempt), failedAttempt + 1, error, delayMs);
+        },
+      };
+
+      const makeAttempt = async (attempt: number): Promise<Response> => {
+        if (attempt > 1) {
+          // Refresh auth (the token may have rotated since the last attempt),
+          // so EVERY hop-1 attempt goes out authenticated. A throwing refresh
+          // is terminal: the marker carries it raw past retry classification.
+          try {
+            await authStrategy.authenticate(headers);
+          } catch (error) {
+            throw new TerminalRetryError(error);
+          }
+        }
+        // Per-attempt timeout: the controller aborts only its own fetch, and
+        // an abort-shaped rejection is terminal in the loop — a request that
+        // consumed its whole time budget is a slowness shape a retry tends to
+        // repeat, not a transient blip.
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
         try {
-          response = await fetch(rewrittenURL, {
+          return await fetch(rewrittenURL, {
             method: "GET",
             headers,
             redirect: "manual",
@@ -127,24 +198,28 @@ export function createDownloadURL(deps: DownloadDeps): (rawURL: string) => Promi
         } finally {
           clearTimeout(timeoutId);
         }
+      };
+
+      let response: Response;
+      try {
+        response = await executeWithRetry(makeAttempt, downloadRetryConfig, emit);
       } catch (err) {
-        const durationMs = Math.round(performance.now() - reqStart);
+        if (err instanceof TerminalRetryError) {
+          // A retry's auth refresh failed: finalize the live attempt, then
+          // surface the strategy's own error raw — auth faults are neither
+          // transport failures nor API errors.
+          const reason = err.reason;
+          const error = reason instanceof Error ? reason : new Error(String(reason));
+          emit.finalize({ statusCode: 0, error });
+          throw reason;
+        }
         const error = err instanceof Error ? err : new Error(String(err));
-        safeInvoke(hooks, "onRequestEnd", requestInfo, {
-          statusCode: 0,
-          durationMs,
-          fromCache: false,
-          error,
-        });
+        emit.finalize({ statusCode: 0, error });
         throw Errors.network(error.message, error);
       }
 
-      const durationMs = Math.round(performance.now() - reqStart);
-      safeInvoke(hooks, "onRequestEnd", requestInfo, {
-        statusCode: response.status,
-        durationMs,
-        fromCache: false,
-      });
+      // Terminal attempt's end — the loop deliberately leaves it to us.
+      emit.finalize({ statusCode: response.status });
 
       // Dispatch on response status
       const isRedirect = [301, 302, 303, 307, 308].includes(response.status);

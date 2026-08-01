@@ -73,9 +73,12 @@ private fun stringMember(body: JsonObject, key: String): String? =
  * the Rails RecordInvalid rendering `{"errors": {"field": ["msg", ...]}}`.
  * Entries whose value is not an array are skipped, non-string elements are
  * dropped, and a map with no usable entries is treated as absent (null).
+ *
+ * A body with no `errors` object falls through to [parseBareFieldErrors] for
+ * the unwrapped rendering, so this is the entry point for both shapes.
  */
 private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
-    val errors = body["errors"] as? JsonObject ?: return null
+    val errors = body["errors"] as? JsonObject ?: return parseBareFieldErrors(body)
     val fieldErrors = mutableMapOf<String, List<String>>()
     for ((field, value) in errors) {
         val values = value as? JsonArray ?: continue
@@ -87,4 +90,33 @@ private fun parseFieldErrors(body: JsonObject): Map<String, List<String>>? {
         }
     }
     return fieldErrors.ifEmpty { null }
+}
+
+/**
+ * Extracts an unwrapped field map — the `render json: @webhook.errors`
+ * rendering, where the whole body is `{"field": ["msg", ...]}`. The gate is
+ * all-or-nothing by design (SPEC §6 step 2): with no `errors` key to declare
+ * intent, only shape distinguishes a field map from any other JSON object, so
+ * a single non-conforming member means this is not one. Returns null unless
+ * every member is a non-empty array of non-empty strings.
+ */
+private fun parseBareFieldErrors(body: JsonObject): Map<String, List<String>>? {
+    if (body.isEmpty()) return null
+    // Only "errors" is structurally reserved (it belongs to the wrapped path).
+    // "error" and "message" are not excluded by name: a flat body carries them
+    // as strings, which the shape gate below already rejects.
+    if (body.containsKey("errors")) return null
+
+    val fieldErrors = mutableMapOf<String, List<String>>()
+    for ((field, value) in body) {
+        val values = value as? JsonArray ?: return null
+        if (values.isEmpty()) return null
+        val messages = values.map { element ->
+            val message = (element as? JsonPrimitive)?.takeIf { it.isString }?.content
+            if (message.isNullOrEmpty()) return null
+            message
+        }
+        fieldErrors[field] = messages
+    }
+    return fieldErrors
 }

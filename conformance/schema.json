@@ -159,7 +159,7 @@
           },
           "index": {
             "type": "integer",
-            "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0."
+            "description": "Request index for per-request assertions: headerPresent / headerAbsent / headerInjected / requestPath / requestMethod / requestBody / requestBodyAbsent (0-based; negative values index from the end, e.g. -1 = last request). Default 0. For delayBetweenRequests it selects a single inter-request GAP (gap i is between request i and i+1); omit it to require the minimum on every gap."
           }
         }
       }

@@ -4,8 +4,10 @@ module Basecamp
   # Raised for validation errors (400, 422).
   class ValidationError < Error
     # @return [Hash{String => Array<String>}, nil] field-keyed validation
-    #   messages from a 422 body of the form {"errors" => {"field" => ["msg"]}}
-    #   — the Rails RecordInvalid rendering. Nil for every other error shape.
+    #   messages from a 400/422 body — either {"errors" => {"field" => ["msg"]}},
+    #   the Rails RecordInvalid rendering, or the same map with no wrapper at all
+    #   ({"field" => ["msg"]}), which some controllers emit. Nil for every other
+    #   error shape.
     #   The flattened form is also folded into the message; this slot preserves
     #   the raw, untruncated per-field messages.
     attr_reader :field_errors

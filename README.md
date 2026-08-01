@@ -149,7 +149,7 @@ All SDKs provide:
 - **Automatic retry** - Exponential backoff with jitter, respects `Retry-After` headers
 - **Pagination** - Link header–based pagination support (high-level handling may vary by SDK; see language docs)
 - **ETag caching** - Built-in HTTP caching for efficient API usage (Go, TypeScript, Ruby†, Swift, Kotlin)
-- **Structured errors** - Typed errors with helpful hints and CLI-friendly exit codes
+- **Structured errors** - Typed errors with helpful hints, CLI-friendly exit codes, and per-field validation detail you can bind straight to a form
 - **Observability hooks** - Integration points for logging, metrics, and tracing
 
 ## API Coverage

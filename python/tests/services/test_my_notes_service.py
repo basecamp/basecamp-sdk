@@ -74,9 +74,16 @@ class TestUpdateMyNote:
         assert json.loads(route.calls[-1].request.content) == {"note": {"content": "<div>Updated</div>"}}
         assert note["content"] == "<div>Updated</div>"
 
+    # my/notes_controller.rb:19 renders the field-keyed shape, which is what the
+    # operation now declares (FieldValidationError, not ValidationError).
     @respx.mock
-    def test_422_surfaces_as_validation_error(self):
-        respx.put(f"{BASE}/my/notes.json").mock(return_value=httpx.Response(422, json={"error": "Unprocessable"}))
+    def test_field_keyed_422_surfaces_as_validation_error(self):
+        respx.put(f"{BASE}/my/notes.json").mock(
+            return_value=httpx.Response(422, json={"errors": {"content": ["can't be blank"]}})
+        )
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as excinfo:
             _my_notes().update_my_note(note={"content": "x"})
+
+        assert str(excinfo.value) == "content: can't be blank"
+        assert excinfo.value.field_errors == {"content": ["can't be blank"]}

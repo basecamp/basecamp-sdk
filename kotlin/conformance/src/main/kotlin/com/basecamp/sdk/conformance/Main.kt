@@ -18,10 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val TEST_ACCOUNT_ID = "999"
 
 /** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
-private val KOTLIN_SKIPS: Map<String, String> = mapOf(
-    "DownloadURL retries on 503 at the auth'd first hop" to "Kotlin download hop 1 does not retry yet (B4)",
-    "DownloadURL honors Retry-After on 429 at the auth'd first hop" to "Kotlin download hop 1 does not retry yet (B4)",
-)
+private val KOTLIN_SKIPS: Map<String, String> = emptyMap()
 
 fun main() {
     val testsDir = File("../conformance/tests")
@@ -239,7 +236,7 @@ private fun runTest(tc: TestCase): TestResult {
             }
 
             val bodyContent = if (mockResp.body != null) {
-                Json.encodeToString(JsonElement.serializer(), normalizeBody(mockResp.body))
+                Json.encodeToString(JsonElement.serializer(), normalizeBody(mockResp.body, mockResp.status))
             } else {
                 ""
             }
@@ -414,10 +411,18 @@ private fun runTest(tc: TestCase): TestResult {
 
             "delayBetweenRequests" -> {
                 if (requestTimes.size >= 2) {
-                    val delay = requestTimes[1] - requestTimes[0]
+                    // index selects a single inter-request GAP (gap i is
+                    // between request i and i+1), defaulting to the first. A
+                    // named gap that does not exist fails rather than passing
+                    // silently.
+                    val gap = assertion.index
+                    if (gap + 1 >= requestTimes.size) {
+                        return TestResult(false, "Expected a delay at gap $gap, but only ${requestTimes.size} request(s) were made")
+                    }
+                    val delay = requestTimes[gap + 1] - requestTimes[gap]
                     val minDelay = assertion.min.toLong()
                     if (delay < minDelay) {
-                        return TestResult(false, "Expected delay >= ${minDelay}ms, got ${delay}ms")
+                        return TestResult(false, "Expected delay >= ${minDelay}ms at gap $gap, got ${delay}ms")
                     }
                 }
             }
@@ -1061,9 +1066,13 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
  * Conformance test fixtures may wrap arrays in objects (e.g., `{"projects": [...]}`),
  * but the Kotlin SDK's list operations expect a raw JSON array. When the body is
  * a JSON object with a single key whose value is an array, unwrap it.
+ *
+ * Success bodies only: an error body with one array-valued key is the unwrapped
+ * field map (`{"payload_url": ["is invalid"]}`), and unwrapping it would rewrite
+ * the fixture on the wire.
  */
-private fun normalizeBody(body: JsonElement): JsonElement {
-    if (body is JsonObject && body.size == 1) {
+private fun normalizeBody(body: JsonElement, status: Int?): JsonElement {
+    if ((status ?: 200) < 400 && body is JsonObject && body.size == 1) {
         val value = body.values.first()
         if (value is JsonArray) return value
     }

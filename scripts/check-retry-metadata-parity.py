@@ -236,8 +236,11 @@ RUNTIME_CONSUMPTION = [
      ["retryOn.includes", "maxAttempts", "baseDelayMs ??"], [],
      "base.ts: retryOn.includes(status), attempt vs maxAttempts, baseDelayMs backoff"),
     ("TypeScript", "full tuple", "typescript/src/client.ts",
-     ["retryOn.includes", "attempt >= maxAttempts", "calculateBackoffDelay", "config.baseDelayMs"], [],
-     "client.ts createRetryingFetch: retryOn.includes(status), attempt >= maxAttempts, backoff from baseDelayMs"),
+     ["getRetryConfigForRequest", "retryConfig.maxAttempts", "executeWithRetry"], [],
+     "client.ts createRetryingFetch resolves the per-operation tuple and hands it to executeWithRetry"),
+    ("TypeScript", "full tuple", "typescript/src/retry.ts",
+     ["config.retryOn.includes", "attempt >= config.maxAttempts", "calculateBackoffDelay", "config.baseDelayMs"], [],
+     "retry.ts executeWithRetry: retryOn.includes(status), attempt >= maxAttempts, backoff from baseDelayMs"),
     ("Swift", "full tuple", "swift/Sources/Basecamp/HTTP/HTTPClient.swift",
      ["retryOn.contains", "< maxAttempts", "baseDelayMs"], [],
      "HTTPClient.swift: retryOn.contains(status), attempt < maxAttempts, baseDelayMs"),
@@ -253,7 +256,7 @@ RUNTIME_CONSUMPTION = [
      ['.get("retry", {}).get("max")', 'retry.get("retry_on")', "_is_retryable_error"], [],
      "_request_with_retry applies min(client cap, retry.max) and gates status retry on the declared retry_on; other fields emitted-but-inert"),
     ("Ruby", "max + retry_on", "ruby/lib/basecamp/http.rb",
-     ['fetch("maxAttempts")', 'fetch("retryOn").include?', "operation_retry"], [],
+     ['fetch("maxAttempts")', 'fetch("retryOn")', "declared.include?", "operation_retry"], [],
      "http.rb retries governed GETs with min(caller cap, maxAttempts) and gates status retry on the declared retryOn; base_delay/backoff emitted-but-inert"),
 ]
 
