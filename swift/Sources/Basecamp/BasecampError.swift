@@ -42,12 +42,13 @@ public enum BasecampError: Error, Sendable, LocalizedError {
 
     /// Validation error (HTTP 400, 422).
     ///
-    /// Field-keyed 422 bodies (`{"errors": {"field": ["msg", ...]}}` — the
-    /// Rails RecordInvalid rendering) are flattened into `message` as
-    /// "field: msg1; msg2, other: msg". A structured fieldErrors slot is
-    /// deliberately absent: extending the associated values is source-breaking
-    /// for every `case .validation` match, so it awaits a deliberate break.
-    case validation(message: String, httpStatus: Int, hint: String?, requestId: String?)
+    /// Field-keyed bodies — `{"errors": {"field": ["msg", ...]}}`, the Rails
+    /// RecordInvalid rendering, and the unwrapped `{"field": ["msg", ...]}`
+    /// some controllers emit — are flattened into `message` as
+    /// "field: msg1; msg2, other: msg" and carried raw in `fieldErrors`.
+    case validation(
+        message: String, httpStatus: Int, hint: String?, requestId: String?,
+        fieldErrors: [String: [String]]?)
 
     /// Multiple matches found for a name or identifier.
     case ambiguous(resource: String, matches: [String], hint: String?)
@@ -75,7 +76,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .forbidden: 403
         case .notFound: 404
         case .rateLimit: 429
-        case .validation(_, let status, _, _): status
+        case .validation(_, let status, _, _, _): status
         case .api(_, let status, _, _): status
         case .ambiguous: nil
         case .network: nil
@@ -108,7 +109,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .network: "Check your network connection"
         case .api(_, _, let hint, _): hint
         case .ambiguous(_, _, let hint): hint
-        case .validation(_, _, let hint, _): hint
+        case .validation(_, _, let hint, _, _): hint
         case .usage(_, let hint): hint
         }
     }
@@ -123,7 +124,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .network(let msg, _): msg
         case .api(let msg, _, _, _): msg
         case .ambiguous(let resource, _, _): "Ambiguous \(resource)"
-        case .validation(let msg, _, _, _): msg
+        case .validation(let msg, _, _, _, _): msg
         case .usage(let msg, _): msg
         }
     }
@@ -137,9 +138,19 @@ public enum BasecampError: Error, Sendable, LocalizedError {
         case .rateLimit(_, _, _, let id): id
         case .api(_, _, _, let id): id
         case .ambiguous: nil
-        case .validation(_, _, _, let id): id
+        case .validation(_, _, _, let id, _): id
         case .network: nil
         case .usage: nil
+        }
+    }
+
+    /// Field-keyed validation messages from a 400/422 body, raw and
+    /// untruncated. Nil for every other error shape. The flattened form is also
+    /// folded into `message`.
+    public var fieldErrors: [String: [String]]? {
+        switch self {
+        case .validation(_, _, _, _, let fieldErrors): fieldErrors
+        default: nil
         }
     }
 
@@ -184,7 +195,8 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             )
         case 400, 422:
             var validationMessage = message
-            if let fieldErrors = parseFieldErrors(body) {
+            let fieldErrors = parseFieldErrors(body)
+            if let fieldErrors {
                 let flat = flattenFieldErrors(fieldErrors)
                 // Appended in parentheses after a top-level message, standing
                 // alone otherwise; truncated after flattening so the appended
@@ -193,7 +205,7 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             }
             return .validation(
                 message: validationMessage, httpStatus: status,
-                hint: hint, requestId: requestId
+                hint: hint, requestId: requestId, fieldErrors: fieldErrors
             )
         default:
             return .api(
@@ -227,7 +239,9 @@ public enum BasecampError: Error, Sendable, LocalizedError {
     /// array are skipped, non-string elements are dropped, and a map with no
     /// usable entries is treated as absent (nil).
     private static func parseFieldErrors(_ body: [String: Any]?) -> [String: [String]]? {
-        guard let errors = body?["errors"] as? [String: Any] else { return nil }
+        guard let errors = body?["errors"] as? [String: Any] else {
+            return parseBareFieldErrors(body)
+        }
         var fieldErrors: [String: [String]] = [:]
         for (field, value) in errors {
             guard let values = value as? [Any] else { continue }
@@ -237,6 +251,32 @@ public enum BasecampError: Error, Sendable, LocalizedError {
             }
         }
         return fieldErrors.isEmpty ? nil : fieldErrors
+    }
+
+    /// Extracts an unwrapped field map — the `render json: @webhook.errors`
+    /// rendering, where the whole body is `{"field": ["msg", ...]}`. The gate is
+    /// all-or-nothing by design (SPEC §6 step 2): with no `errors` key to
+    /// declare intent, only shape distinguishes a field map from any other JSON
+    /// object, so a single non-conforming member means this is not one. Returns
+    /// nil unless every member is a non-empty array of non-empty strings.
+    private static func parseBareFieldErrors(_ body: [String: Any]?) -> [String: [String]]? {
+        guard let body, !body.isEmpty else { return nil }
+        guard body["error"] == nil, body["errors"] == nil, body["message"] == nil else { return nil }
+
+        var fieldErrors: [String: [String]] = [:]
+        for (field, value) in body {
+            // Per-element, never an atomic `as? [String: [String]]` cast: JSON
+            // null bridges to NSNull, which no atomic cast would tolerate.
+            guard let values = value as? [Any], !values.isEmpty else { return nil }
+            var messages: [String] = []
+            messages.reserveCapacity(values.count)
+            for element in values {
+                guard let message = element as? String, !message.isEmpty else { return nil }
+                messages.append(message)
+            }
+            fieldErrors[field] = messages
+        }
+        return fieldErrors
     }
 
     /// Flattens a field-keyed errors map as "field: msg1; msg2, other: msg" —

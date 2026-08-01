@@ -300,8 +300,11 @@ do {
         print("Network error: \(message)")
     case .api(let message, let status, _, _):
         print("API error (\(status ?? 0)): \(message)")
-    case .validation(let message, _, _, _):
+    case .validation(let message, _, _, _, let fieldErrors):
         print("Validation: \(message)")
+        fieldErrors?.forEach { field, messages in
+            messages.forEach { print("  \(field) \($0)") }
+        }
     case .ambiguous(let resource, _, _):
         print("Ambiguous \(resource)")
     case .usage(let message, _):
@@ -330,6 +333,28 @@ do {
 | `.ambiguous` | - | 8 | Multiple matches found |
 | `.validation` | 400, 422 | 9 | Invalid request data |
 | `.usage` | - | 1 | Configuration or argument error |
+
+### Validation Errors
+
+Basecamp rejects invalid writes with a body keyed by field. The SDK folds those
+messages into `message` and keeps the raw map in the `.validation` case's
+`fieldErrors` associated value, also reachable as a property on any
+`BasecampError`:
+
+```swift
+do {
+    try await account.calendars.update(id: calendarID, color: "chartreuse")
+} catch let error as BasecampError {
+    print(error.message) // "color: is not a valid color"
+
+    for (field, messages) in error.fieldErrors ?? [:] {
+        print("  \(field): \(messages.joined(separator: ", "))")
+    }
+}
+```
+
+`fieldErrors` is `nil` for every other error shape, and its messages are the raw
+ones — `message` is capped at 500 characters, the map is not.
 
 ## Observability
 

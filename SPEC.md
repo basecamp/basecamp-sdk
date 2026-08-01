@@ -425,6 +425,8 @@ For `status == 400` or `status == 422` only:
 
 Field names are data, never structure: `"base"` — Rails' record-level error key — renders as an ordinary field (`base: Can't be undocked`), and no field name receives special treatment.
 
+Swift carries the slot as a fifth associated value on `.validation` plus a `fieldErrors` property on `BasecampError`; the earlier flatten-only deviation is closed.
+
 ### Retry-After Parsing Algorithm
 
 Given header value `value`:
