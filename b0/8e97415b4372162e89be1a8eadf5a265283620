@@ -1,0 +1,25 @@
+SPEC.md
+  s_555508c40a7b3b::t_f56677f7b592dd 1705-1706
+  s_555508c40a7b3b::t_7ea07f9281dc9e 1914-1915
+  s_555508c40a7b3b::t_d2409dd811a064 987-988,990-991,995,998,1001,1007-1022
+  s_555508c40a7b3b::t_6672df42e07a31 1687
+  s_555508c40a7b3b::t_d0daaf93c2c870 1023
+conformance/tests/downloads.json
+  s_555508c40a7b3b::t_d2b8948f733025 38,53-54,59-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "b08e97415b4372162e89be1a8eadf5a265283620",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
