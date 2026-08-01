@@ -12,8 +12,34 @@ from basecamp.async_auth import AsyncBearerAuth, AsyncStaticTokenProvider
 from basecamp.auth import BearerAuth, StaticTokenProvider
 from basecamp.config import Config
 from basecamp.download import _rewrite_url, download_async, download_sync, filename_from_url
-from basecamp.errors import ApiError, BasecampError, UsageError
+from basecamp.errors import ApiError, AuthError, UsageError
 from basecamp.hooks import BasecampHooks
+
+
+class _RefreshableProvider(StaticTokenProvider):
+    """Counts refreshes so a test can tell "declined to refresh" from "refreshed"."""
+
+    refreshable = True
+
+    def __init__(self):
+        super().__init__("test-token")
+        self.refreshes = 0
+
+    def refresh(self):
+        self.refreshes += 1
+        return True
+
+
+class _AsyncRefreshableProvider(AsyncStaticTokenProvider):
+    refreshable = True
+
+    def __init__(self):
+        super().__init__("test-token")
+        self.refreshes = 0
+
+    async def refresh(self):
+        self.refreshes += 1
+        return True
 
 
 def make_config():
@@ -236,38 +262,65 @@ class TestHop1Retry:
         assert "Authorization" not in hop2.calls[0].request.headers
 
     @respx.mock
-    def test_refreshable_401_replays_once_independent_of_the_retry_cap(self):
-        """SPEC §4: refresh is attempted at most once PER REQUEST.
+    def test_refresh_replay_is_not_attempted_without_budget(self):
+        """SPEC §4/§14: with retry disabled, ONE request goes out — refresh included.
 
-        §4 tracks it with a boolean, not a counter, and does not subordinate
-        it to the transient-retry budget — so a refreshable 401 replays once
-        even with retries disabled. That is deliberately orthogonal to §14's
-        hop-1 attempt cap, which governs transient-failure retries. Whether
-        the two should be reconciled is tracked in #565; this pins what the
-        spec says today so a future change has to be a decision, not a drift.
+        The replay is a request on the wire, so it spends an attempt from the
+        same total-attempt budget as a transient retry. A cap of one means one
+        request no matter what would have caused the second (#565, #461).
+
+        The refresh itself must not fire either: §4 checks the budget BEFORE
+        calling refresh(), because rotating a token the SDK has no attempt left
+        to use burns it for nothing and still surfaces the stale 401.
         """
-
-        class RefreshableProvider(StaticTokenProvider):
-            refreshable = True
-
-            def __init__(self):
-                super().__init__("test-token")
-                self.refreshes = 0
-
-            def refresh(self):
-                self.refreshes += 1
-                return True
-
         hop1 = respx.get(self.HOP1).mock(return_value=httpx.Response(401))
 
-        provider = RefreshableProvider()
+        provider = _RefreshableProvider()
         config = make_fast_config(max_retries=0)
         http = HttpClient(config, BearerAuth(provider))
-        with pytest.raises(BasecampError):
+        with pytest.raises(AuthError):
             download_sync(self.RAW, http_client=http, config=config)
 
-        # One transient attempt, plus §4's single refresh replay.
+        assert hop1.call_count == 1
+        assert provider.refreshes == 0
+
+    @respx.mock
+    def test_refresh_replay_spends_an_attempt_from_the_budget(self):
+        """A budget of two allows the refresh replay, and it consumes attempt 2."""
+        hop1 = respx.get(self.HOP1).mock(return_value=httpx.Response(401))
+
+        provider = _RefreshableProvider()
+        config = make_fast_config(max_retries=2)
+        http = HttpClient(config, BearerAuth(provider))
+        with pytest.raises(AuthError):
+            download_sync(self.RAW, http_client=http, config=config)
+
+        # Two requests, not three: the replay drew from the same budget, and
+        # §4 allows only one refresh per request regardless.
         assert hop1.call_count == 2
+        assert provider.refreshes == 1
+
+    @respx.mock
+    def test_refresh_replay_succeeds_when_the_new_token_works(self):
+        """The refreshed request is actually SENT, not refreshed-then-discarded."""
+        hop1 = respx.get(self.HOP1).mock(
+            side_effect=[
+                httpx.Response(401),
+                httpx.Response(302, headers={"Location": self.SIGNED}),
+            ]
+        )
+        hop2 = respx.get(self.SIGNED).mock(
+            return_value=httpx.Response(200, content=b"data", headers={"content-type": "application/pdf"})
+        )
+
+        provider = _RefreshableProvider()
+        config = make_fast_config(max_retries=2)
+        http = HttpClient(config, BearerAuth(provider))
+        result = download_sync(self.RAW, http_client=http, config=config)
+
+        assert result.body == b"data"
+        assert hop1.call_count == 2
+        assert hop2.call_count == 1
         assert provider.refreshes == 1
 
     @respx.mock
@@ -478,3 +531,60 @@ class TestHop1RetryAsync:
             assert call.request.headers.get("Accept") != "application/json"
             assert "Content-Type" not in call.request.headers
             assert call.request.headers.get("User-Agent") is not None
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_refresh_replay_is_not_attempted_without_budget(self):
+        """SPEC §4/§14 budget gate, async transport (see the sync twin)."""
+        hop1 = respx.get(self.HOP1).mock(return_value=httpx.Response(401))
+
+        provider = _AsyncRefreshableProvider()
+        config = make_fast_config(max_retries=0)
+        http = AsyncHttpClient(config, AsyncBearerAuth(provider))
+        with pytest.raises(AuthError):
+            await download_async(self.RAW, http_client=http, config=config)
+
+        assert hop1.call_count == 1
+        assert provider.refreshes == 0
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_refresh_replay_spends_an_attempt_from_the_budget(self):
+        hop1 = respx.get(self.HOP1).mock(return_value=httpx.Response(401))
+
+        provider = _AsyncRefreshableProvider()
+        config = make_fast_config(max_retries=2)
+        http = AsyncHttpClient(config, AsyncBearerAuth(provider))
+        with pytest.raises(AuthError):
+            await download_async(self.RAW, http_client=http, config=config)
+
+        assert hop1.call_count == 2
+        assert provider.refreshes == 1
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_refresh_replay_succeeds_when_the_new_token_works(self):
+        """The refreshed request is actually SENT, not awaited-then-discarded.
+
+        Pins the await too: a refresh coroutine truthy-tested without awaiting
+        would pass the gate and then never rotate the token (#563's de8c9255d).
+        """
+        hop1 = respx.get(self.HOP1).mock(
+            side_effect=[
+                httpx.Response(401),
+                httpx.Response(302, headers={"Location": self.SIGNED}),
+            ]
+        )
+        hop2 = respx.get(self.SIGNED).mock(
+            return_value=httpx.Response(200, content=b"data", headers={"content-type": "application/pdf"})
+        )
+
+        provider = _AsyncRefreshableProvider()
+        config = make_fast_config(max_retries=2)
+        http = AsyncHttpClient(config, AsyncBearerAuth(provider))
+        result = await download_async(self.RAW, http_client=http, config=config)
+
+        assert result.body == b"data"
+        assert hop1.call_count == 2
+        assert hop2.call_count == 1
+        assert provider.refreshes == 1

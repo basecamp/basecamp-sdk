@@ -154,6 +154,127 @@ class HTTPTest < Minitest::Test
     assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
   end
 
+  # SPEC §4: the refresh replay is a request on the wire, so it spends an
+  # attempt from the same total-attempt budget as a transient retry (#565,
+  # #461). These pin the PLAIN GET path — the "every GET in Python and Ruby"
+  # case that an earlier, ungated attempt at this change regressed.
+  def test_401_refresh_replay_is_not_attempted_without_budget
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 1)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+
+    assert_raises(Basecamp::AuthError) { http.get("/test.json") }
+
+    # One request, and no rotation burned on an attempt the loop cannot make.
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 1)
+    assert_equal 0, provider.refresh_count
+  end
+
+  def test_401_refresh_replay_shares_the_budget_with_transient_retries
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 2,
+      base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 503, body: '{"error": "Unavailable"}')
+
+    assert_raises(Basecamp::ApiError) { http.get("/test.json") }
+
+    # 401 (attempt 1, refresh) then 503 (attempt 2) exhausts the cap. Three
+    # requests would mean the replay rode outside it.
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+    assert_equal 1, provider.refresh_count
+  end
+
+  def test_401_refresh_replay_is_actually_sent_not_discarded
+    # The regression an ungated version caused: refresh, then rethrow the stale
+    # 401 without ever sending the refreshed request. A 200 body proves it went.
+    provider = RefreshableTokenProvider.new("old-token", refresh_result: true)
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 2)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 200, body: '{"ok": true}')
+
+    response = http.get("/test.json")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+    assert_equal 1, provider.refresh_count
+  end
+
+  # A token endpoint that fails is a transient failure of THIS attempt.
+  # Performing the refresh inside the `rescue Basecamp::AuthError` clause would
+  # let this NetworkError bypass the sibling transient rescue entirely — an
+  # exception raised inside a rescue is not offered to that begin's other
+  # rescues — ending the request with budget still unspent.
+  def test_401_refresh_network_failure_still_retries_under_the_budget
+    provider = Class.new do
+      attr_reader :refresh_count
+
+      def initialize = @refresh_count = 0
+      def access_token = "old-token"
+      def refreshable? = true
+
+      def refresh
+        @refresh_count += 1
+        raise Basecamp::NetworkError.new("token endpoint timed out")
+      end
+    end.new
+
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 3,
+      base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+      .then.to_return(status: 200, body: '{"ok": true}')
+
+    response = http.get("/test.json")
+
+    assert_equal 200, response.status
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+    assert_equal 1, provider.refresh_count
+  end
+
+  # SPEC §4 counts refresh ATTEMPTS, not successes. The 401 recurs because the
+  # token never changed, so a flag set only on success would let the same
+  # request call refresh a second time — and if the first call reached the
+  # server and rotated the token before its response was lost, the second
+  # spends a refresh token that is already dead.
+  def test_401_throwing_refresh_still_spends_the_one_allowed_refresh
+    provider = Class.new do
+      attr_reader :refresh_count
+
+      def initialize = @refresh_count = 0
+      def access_token = "old-token"
+      def refreshable? = true
+
+      def refresh
+        @refresh_count += 1
+        raise Basecamp::NetworkError.new("token endpoint timed out")
+      end
+    end.new
+
+    config = Basecamp::Config.new(base_url: "https://3.basecampapi.com", timeout: 5, max_retries: 3,
+      base_delay: 0.001, max_jitter: 0.0)
+    http = Basecamp::Http.new(config: config, token_provider: provider)
+
+    stub_request(:get, "https://3.basecampapi.com/test.json")
+      .to_return(status: 401, body: '{"error": "Unauthorized"}')
+
+    assert_raises(Basecamp::AuthError) { http.get("/test.json") }
+
+    assert_equal 1, provider.refresh_count
+    assert_requested(:get, "https://3.basecampapi.com/test.json", times: 2)
+  end
+
   def test_401_no_retry_when_refresh_fails
     provider = RefreshableTokenProvider.new("old-token", refresh_result: false)
     http = Basecamp::Http.new(config: @config, token_provider: provider)

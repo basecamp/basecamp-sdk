@@ -163,6 +163,7 @@ class AsyncHttpClient:
         max_attempts = self._config.max_retries if self._config.max_retries > 0 else 1
         max_attempts = self._apply_operation_retry_max(operation, max_attempts)
         attempt = 0
+        refreshed_once = False
         last_error: BasecampError | None = None
 
         while True:
@@ -170,6 +171,13 @@ class AsyncHttpClient:
             if attempt > max_attempts:
                 break
 
+            # Each except suite only CLASSIFIES the attempt; the retry side
+            # effects run below, outside every handler. An exception raised
+            # inside an except suite bypasses that try's sibling handlers, so
+            # refreshing there would let a NetworkError from the token endpoint
+            # escape the loop with budget still on the table.
+            error: BasecampError | None = None
+            stale_auth: AuthError | None = None
             try:
                 return await self._single_request(
                     method,
@@ -182,19 +190,63 @@ class AsyncHttpClient:
                     attempt=attempt,
                     allow_cross_origin=allow_cross_origin,
                     accept=accept,
+                    refresh_replay=False,
                 )
-            except (RateLimitError, NetworkError, ApiError) as e:
-                if not self._is_retryable_error(e, operation, retry_on=retry_on):
+            except AuthError as e:
+                # SPEC §4: the refresh replay is a request on the wire, so it
+                # spends an attempt from THIS budget rather than an uncounted
+                # one inside the single-request primitive. max_retries is a
+                # total attempt count (#461), and a cap of one means one
+                # request whatever would have caused the second.
+                #
+                # The budget is checked BEFORE refresh() so a rotation is never
+                # burned on an attempt the loop has no room to make. Await the
+                # refresh rather than truthy-testing the coroutine, which would
+                # pass the gate without ever rotating the token.
+                if refreshed_once or e.http_status != 401 or attempt >= max_attempts:
                     raise
-                last_error = e
+                stale_auth = e
+            except (RateLimitError, NetworkError, ApiError) as e:
+                error = e
+
+            if stale_auth is not None:
+                # SPEC §4 tracks refresh with an "attempted" boolean, not a
+                # "succeeded" one, so mark it BEFORE invoking the provider: a
+                # refresh that throws still counts as the one attempt this
+                # request gets. Otherwise a transient token-endpoint failure
+                # lets the NEXT 401 in the same request call refresh() again —
+                # and if the first call reached the server and rotated the
+                # token before its response was lost, the second spends a
+                # refresh token that is already dead.
+                refreshed_once = True
+                try:
+                    tp = getattr(self._auth, "token_provider", None)
+                    refreshed = bool(tp and getattr(tp, "refreshable", False) and await tp.refresh())
+                except (RateLimitError, NetworkError, ApiError) as e:
+                    # A token endpoint that times out is a transient failure of
+                    # this attempt, not a terminal auth fault: it retries under
+                    # the same budget, exactly as it did when the replay lived
+                    # inside _single_request.
+                    error = e
+                else:
+                    if not refreshed:
+                        raise stale_auth
+                    # No backoff: the token is fresh, and the server never asked
+                    # us to wait. The replay still costs the attempt counted above.
+                    continue
+
+            if error is not None:
+                if not self._is_retryable_error(error, operation, retry_on=retry_on):
+                    raise error
+                last_error = error
                 if attempt >= max_attempts:
                     break
-                delay = self._calculate_delay(attempt, e.retry_after)
+                delay = self._calculate_delay(attempt, error.retry_after)
                 safe_hook(
                     self._hooks.on_retry,
                     RequestInfo(method=method, url=url, attempt=attempt),
                     attempt + 1,
-                    e,
+                    error,
                     delay,
                 )
                 await asyncio.sleep(delay)
@@ -218,6 +270,7 @@ class AsyncHttpClient:
         _retry_count: int = 0,
         allow_cross_origin: bool = False,
         accept: str | None = "application/json",
+        refresh_replay: bool = True,
     ) -> httpx.Response:
         if not allow_cross_origin and not (
             _security.is_localhost(url) or _security.same_origin(url, self._config.base_url)
@@ -247,8 +300,11 @@ class AsyncHttpClient:
 
             if response.status_code >= 400:
                 error = self._handle_error(response)
-                # 401 retry with async token refresh
-                if isinstance(error, AuthError) and error.http_status == 401 and _retry_count < 1:
+                # 401 replay for callers that come here directly (mutations),
+                # which have no retry loop to own it. _request_with_retry
+                # passes refresh_replay=False and replays from the loop so the
+                # extra request draws from the attempt budget (SPEC §4).
+                if refresh_replay and isinstance(error, AuthError) and error.http_status == 401 and _retry_count < 1:
                     tp = getattr(self._auth, "token_provider", None)
                     if tp and getattr(tp, "refreshable", False) and await tp.refresh():
                         return await self._single_request(
@@ -263,6 +319,7 @@ class AsyncHttpClient:
                             _retry_count=_retry_count + 1,
                             allow_cross_origin=allow_cross_origin,
                             accept=accept,
+                            refresh_replay=refresh_replay,
                         )
                 raise error
 

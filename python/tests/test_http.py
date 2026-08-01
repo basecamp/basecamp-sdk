@@ -697,3 +697,154 @@ class TestDeclaredSetIsAuthoritative:
         with pytest.raises(ApiError):
             await client.put("/thing", json_body={"x": 1}, operation="OptOutOp")
         assert route.call_count == 1
+
+
+class TestRefreshReplayAttemptBudget:
+    """SPEC §4: the 401 refresh replay draws from the total-attempt budget.
+
+    These pin the PLAIN GET path, not just the download hop — the "every GET
+    in Python and Ruby" case that the earlier, ungated attempt at this change
+    regressed (#563's aca2c481b, now superseded by §4's budget gate). #565.
+    """
+
+    URL = "https://3.basecampapi.com/thing"
+
+    def make_client(self, max_retries):
+        config = Config(
+            base_url="https://3.basecampapi.com",
+            max_retries=max_retries,
+            base_delay=0.001,
+            max_jitter=0.0,
+        )
+        provider = _RefreshableProvider()
+        return HttpClient(config, BearerAuth(provider), BasecampHooks()), provider
+
+    @respx.mock
+    def test_no_budget_means_one_request_and_no_refresh(self):
+        route = respx.get(self.URL).mock(return_value=httpx.Response(401))
+        client, provider = self.make_client(max_retries=0)
+
+        with pytest.raises(AuthError):
+            client.get("/thing")
+
+        assert route.call_count == 1
+        assert provider.refreshes == 0
+
+    @respx.mock
+    def test_replay_spends_an_attempt_and_is_actually_sent(self):
+        # The regression the ungated version caused: refresh, then rethrow the
+        # stale 401 WITHOUT ever sending the refreshed request. Two requests
+        # and a 200 body prove the replay reached the wire.
+        route = respx.get(self.URL).mock(side_effect=[httpx.Response(401), httpx.Response(200, json={"ok": True})])
+        client, provider = self.make_client(max_retries=2)
+
+        response = client.get("/thing")
+
+        assert response.status_code == 200
+        assert route.call_count == 2
+        assert provider.refreshes == 1
+
+    @respx.mock
+    def test_replay_and_transient_retries_share_one_budget(self):
+        # 401 (attempt 1, refresh) → 503 (attempt 2) → budget spent. Three
+        # requests would mean the replay rode outside the cap.
+        route = respx.get(self.URL).mock(side_effect=[httpx.Response(401), httpx.Response(503)])
+        client, provider = self.make_client(max_retries=2)
+
+        with pytest.raises(ApiError):
+            client.get("/thing")
+
+        assert route.call_count == 2
+        assert provider.refreshes == 1
+
+    @respx.mock
+    def test_refresh_network_failure_still_retries_under_the_budget(self):
+        """A token endpoint that fails is a transient failure of this attempt.
+
+        Performing the refresh inside the `except AuthError` suite would let
+        this NetworkError bypass the sibling transient handler entirely — an
+        exception raised inside an except suite is not offered to that try's
+        other handlers — ending the request with budget still unspent.
+        """
+        route = respx.get(self.URL).mock(side_effect=[httpx.Response(401), httpx.Response(200, json={"ok": True})])
+        config = Config(base_url="https://3.basecampapi.com", max_retries=3, base_delay=0.001, max_jitter=0.0)
+
+        class ExplodingProvider(StaticTokenProvider):
+            refreshable = True
+
+            def __init__(self):
+                super().__init__("test-token")
+                self.refreshes = 0
+
+            def refresh(self):
+                self.refreshes += 1
+                raise NetworkError("token endpoint timed out")
+
+        provider = ExplodingProvider()
+        client = HttpClient(config, BearerAuth(provider), BasecampHooks())
+
+        response = client.get("/thing")
+
+        assert response.status_code == 200
+        assert route.call_count == 2
+        assert provider.refreshes == 1
+
+    @respx.mock
+    def test_a_throwing_refresh_still_spends_the_one_allowed_refresh(self):
+        """SPEC §4 counts refresh ATTEMPTS, not successes.
+
+        The 401 recurs because the token never changed, so a flag set only on
+        success would let the same request call refresh() a second time — and
+        if the first call reached the server and rotated the token before its
+        response was lost, the second spends a refresh token already dead.
+        """
+        route = respx.get(self.URL).mock(return_value=httpx.Response(401))
+        config = Config(base_url="https://3.basecampapi.com", max_retries=3, base_delay=0.001, max_jitter=0.0)
+
+        class ExplodingProvider(StaticTokenProvider):
+            refreshable = True
+
+            def __init__(self):
+                super().__init__("test-token")
+                self.refreshes = 0
+
+            def refresh(self):
+                self.refreshes += 1
+                raise NetworkError("token endpoint timed out")
+
+        provider = ExplodingProvider()
+        client = HttpClient(config, BearerAuth(provider), BasecampHooks())
+
+        with pytest.raises(AuthError):
+            client.get("/thing")
+
+        # Attempt 1 401s and burns the one refresh; attempt 2 401s with the same
+        # token and must NOT refresh again, so the stale 401 surfaces.
+        assert provider.refreshes == 1
+        assert route.call_count == 2
+
+    @respx.mock
+    def test_mutations_keep_the_in_primitive_replay(self):
+        # Mutations bypass the retry loop entirely (no transient budget), so
+        # they keep the single-request primitive's own replay. SPEC §4's gate
+        # applies where a total-attempt budget governs the path.
+        route = respx.post(self.URL).mock(side_effect=[httpx.Response(401), httpx.Response(201, json={"ok": True})])
+        client, provider = self.make_client(max_retries=0)
+
+        response = client.post("/thing", json_body={"x": 1})
+
+        assert response.status_code == 201
+        assert route.call_count == 2
+        assert provider.refreshes == 1
+
+
+class _RefreshableProvider(StaticTokenProvider):
+    refreshable = True
+
+    def __init__(self):
+        super().__init__("test-token")
+        self.refreshes = 0
+
+    def refresh(self):
+        self.refreshes += 1
+        return True

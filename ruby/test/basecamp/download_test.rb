@@ -438,13 +438,8 @@ class DownloadTest < Minitest::Test
     assert_requested(s3_stub)
   end
 
-  # SPEC §4: refresh is attempted at most once PER REQUEST — tracked with a
-  # boolean, not a counter, and not subordinate to the transient-retry budget.
-  # So a refreshable 401 replays once even with retries disabled, deliberately
-  # orthogonal to §14's hop-1 attempt cap. Whether the two should be
-  # reconciled is tracked in #565; this pins what the spec says today.
-  def test_download_url_refreshable_401_replays_once_independent_of_the_retry_cap
-    provider = Class.new do
+  def refreshable_provider
+    Class.new do
       attr_reader :refreshes
 
       def initialize = @refreshes = 0
@@ -456,14 +451,56 @@ class DownloadTest < Minitest::Test
         true
       end
     end.new
+  end
 
+  # SPEC §4/§14: with retry disabled ONE request goes out — refresh included.
+  # The replay is a request on the wire, so it spends an attempt from the same
+  # total-attempt budget as a transient retry (#565, #461).
+  #
+  # The refresh itself must not fire either: §4 checks the budget BEFORE
+  # refreshing, because rotating a token the SDK has no attempt left to use
+  # burns it for nothing and still surfaces the stale 401.
+  def test_download_url_refresh_replay_is_not_attempted_without_budget
+    provider = refreshable_provider
     stub_request(:get, "#{base_url}#{HOP1_PATH}").to_return(status: 401)
 
     account = create_account_client(config: fast_download_config(max_retries: 0), token_provider: provider)
-    assert_raises(Basecamp::Error) { account.download_url(HOP1_URL) }
+    assert_raises(Basecamp::AuthError) { account.download_url(HOP1_URL) }
 
-    # One transient attempt, plus §4's single refresh replay.
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 1)
+    assert_equal 0, provider.refreshes
+  end
+
+  # A budget of two allows the replay, and it consumes attempt 2.
+  def test_download_url_refresh_replay_spends_an_attempt_from_the_budget
+    provider = refreshable_provider
+    stub_request(:get, "#{base_url}#{HOP1_PATH}").to_return(status: 401)
+
+    account = create_account_client(config: fast_download_config(max_retries: 2), token_provider: provider)
+    assert_raises(Basecamp::AuthError) { account.download_url(HOP1_URL) }
+
+    # Two requests, not three: the replay drew from the same budget, and §4
+    # allows only one refresh per request regardless.
     assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 2)
+    assert_equal 1, provider.refreshes
+  end
+
+  # The refreshed request is actually SENT, not refreshed-then-discarded.
+  def test_download_url_refresh_replay_succeeds_when_the_new_token_works
+    provider = refreshable_provider
+    stub_request(:get, "#{base_url}#{HOP1_PATH}")
+      .to_return(status: 401)
+      .then.to_return(status: 302, headers: { "Location" => SIGNED_URL })
+    s3_stub = stub_request(:get, SIGNED_URL)
+      .to_return(status: 200, body: "data", headers: { "Content-Type" => "application/octet-stream" })
+
+    account = create_account_client(config: fast_download_config(max_retries: 2), token_provider: provider)
+    result = account.download_url(HOP1_URL)
+
+    assert_equal "data", result.body
+    assert_requested(:get, "#{base_url}#{HOP1_PATH}", times: 2)
+    assert_requested(s3_stub)
+    assert_equal 1, provider.refreshes
   end
 
   # SPEC §14: hop 1 carries Authorization and User-Agent only. A binary
