@@ -30708,7 +30708,7 @@
               "string",
               "null"
             ],
-            "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"] + x-go-type \"*string\").",
+            "description": "Wormhole color; always emitted on the wire (`json.color recording.color`),\n`null` when unset. Like destination_url, `@required` models the presence and\nthe nullability is layered on in the OpenAPI (smithy-build.json jsonAdd ->\ntype: [\"string\",\"null\"]); Go types it *string via the optional-pointer policy.",
             "x-go-type": "string"
           },
           "linked": {
@@ -30720,7 +30720,7 @@
               "string",
               "null"
             ],
-            "description": "URL of the destination column; always present on the wire, `null` for an\nunlinked wormhole. `@required` models the presence; the nullability of the\nvalue is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:\n[\"string\",\"null\"] + x-go-type \"*string\") since Smithy has no native\nrequired-and-nullable — exactly the SearchType.key treatment. SDKs model it\nas required-but-nullable (`string | null`, not `string | null | undefined`).",
+            "description": "URL of the destination column; always present on the wire, `null` for an\nunlinked wormhole. `@required` models the presence; the nullability of the\nvalue is layered on in the OpenAPI (smithy-build.json jsonAdd -> type:\n[\"string\",\"null\"]) since Smithy has no native\nrequired-and-nullable — exactly the SearchType.key treatment. SDKs model it\nas required-but-nullable (`string | null`, not `string | null | undefined`).",
             "x-go-type": "string"
           }
         },
