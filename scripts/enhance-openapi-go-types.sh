@@ -391,6 +391,32 @@ if [[ -n "$leaked" ]]; then
     exit 1
 fi
 
+# ...and the other direction. Checking only the first half would let the pass
+# silently stop marking anything: every optional array would become *[]T, which
+# is not wrong but is exactly the churn the policy avoids — and a self-check
+# that still passes when the pass does nothing is not a self-check.
+unmarked=$(jq -r --argjson request_reachable "$REQUEST_REACHABLE" '
+  ( $request_reachable ) as $reachable
+  | [ .components.schemas | to_entries[]
+      | .key as $schema
+      | select($reachable | index($schema) | not) | select(.value | type == "object")
+      | ((.value.required // []) | select(type == "array")) as $req
+      | ((.value.properties // {}) | select(type == "object")) | to_entries[]
+      | select(.value | type == "object")
+      | .key as $prop
+      | select(.value.type == "array" and (.value.nullable != true)
+               and (.value["x-go-type-skip-optional-pointer"] != true))
+      | select($req | index($prop) | not)
+      | "\($schema).\($prop)" ] | .[]
+' "${OUTPUT_FILE}.tmp")
+
+if [[ -n "$unmarked" ]]; then
+    echo "Error: response-only optional array(s) NOT kept native []T — the skip-optional-pointer pass did not reach them:" >&2
+    echo "$unmarked" | sed 's/^/  /' >&2
+    rm -f "${OUTPUT_FILE}.tmp"
+    exit 1
+fi
+
 # Only now is the output known-good. Publishing before validating would leave a
 # spec that violates the policy in place for the next generator to consume.
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
