@@ -678,7 +678,7 @@ The variant is determined at code-generation time from the OpenAPI response sche
 
 ### The `page` Query Parameter
 
-49 operations accept a `page` query parameter. **Its meaning currently differs between Go and the five auto-paginating SDKs, and callers must know which they are using.**
+Every list-class operation whose Basecamp endpoint paginates server-side accepts a `page` query parameter. **Its meaning currently differs between Go and the five auto-paginating SDKs, and callers must know which they are using.**
 
 | SDK | Behavior with `page = 3` | Requests issued |
 |-----|--------------------------|-----------------|
