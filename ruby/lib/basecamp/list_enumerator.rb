@@ -13,9 +13,9 @@ module Basecamp
   #
   # Re-enumerating restarts pagination: the eagerly fetched first page is
   # served from memory on the first pass only, and later passes refetch
-  # every page for a consistent snapshot. Metadata reflects the first page
-  # fetched at call time plus whatever truncation enumeration has
-  # discovered so far.
+  # every page for a consistent snapshot, refreshing meta from their own
+  # first-page response — metadata always describes the most recent
+  # traversal.
   class ListEnumerator < Enumerator
     # @return [ListMeta] pagination metadata
     attr_reader :meta

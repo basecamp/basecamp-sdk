@@ -32,5 +32,13 @@ module Basecamp
     def mark_truncated!
       @truncated = true
     end
+
+    # Re-initializes the metadata when a traversal restarts, so it describes
+    # the restarted pass's own snapshot rather than a previous traversal's.
+    # @api private
+    def restart!(total_count:)
+      @total_count = total_count
+      @truncated = false
+    end
   end
 end

@@ -309,6 +309,35 @@ class HttpPaginationMetaTest < Minitest::Test
     assert_requested :get, "#{base_url}/items.json", times: 2
   end
 
+  def test_reenumeration_refreshes_meta
+    # A restarted traversal must describe its own snapshot: total_count from
+    # the refetched first page, truncated re-derived for that pass — never
+    # the previous traversal's stale values.
+    stub_request(:get, "#{base_url}/items.json")
+      .to_return(
+        {
+          status: 200,
+          body: [ { "id" => 1 }, { "id" => 2 } ].to_json,
+          headers: { "Content-Type" => "application/json", "X-Total-Count" => "42" }
+        },
+        {
+          status: 200,
+          body: [ { "id" => 9 } ].to_json,
+          headers: { "Content-Type" => "application/json", "X-Total-Count" => "7" }
+        }
+      )
+
+    enum = @http.paginate("/items.json", max_items: 1)
+
+    assert_equal [ 1 ], enum.to_a.map { |i| i["id"] }
+    assert_equal 42, enum.meta.total_count
+    assert enum.meta.truncated, "pass 1 drops an item, so it is truncated"
+
+    assert_equal [ 9 ], enum.to_a.map { |i| i["id"] }
+    assert_equal 7, enum.meta.total_count
+    assert_not enum.meta.truncated, "pass 2 lands exactly on its final item"
+  end
+
   def test_wrapped_reenumeration_refetches_page_one
     stub_get("/progress.json", response_body: { "person" => { "id" => 7 }, "events" => [ { "id" => 1 } ] })
 

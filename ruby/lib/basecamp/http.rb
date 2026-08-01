@@ -257,6 +257,7 @@ module Basecamp
           @hooks.on_paginate(base_url, 1)
           response = get(base_url, params: params, operation: operation)
           items = extract_page_items(parse_page(response, page: 1), key: key, page: 1)
+          meta.restart!(total_count: parse_total_count(response.headers))
         end
 
         yielded = 0
