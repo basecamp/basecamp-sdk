@@ -196,8 +196,8 @@ val AccountClient.tools: ToolsService
     get() = service("Tools") { ToolsService(this) }
 
 /** Uploads operations. */
-val AccountClient.uploads: UploadsService
-    get() = service("Uploads") { UploadsService(this) }
+val AccountClient.uploads: com.basecamp.sdk.services.UploadsService
+    get() = service("Uploads") { com.basecamp.sdk.services.UploadsService(this) }
 
 /** Vaults operations. */
 val AccountClient.vaults: VaultsService

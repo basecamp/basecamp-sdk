@@ -10,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * @generated from OpenAPI spec — do not edit directly
  */
-class UploadsService(client: AccountClient) : BaseService(client) {
+open class UploadsService(client: AccountClient) : BaseService(client) {
 
     /**
      * Get a single upload by id

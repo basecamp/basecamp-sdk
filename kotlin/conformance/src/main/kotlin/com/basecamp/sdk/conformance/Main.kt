@@ -19,13 +19,8 @@ private const val TEST_ACCOUNT_ID = "999"
 
 /** Tests where the Kotlin runner's operation dispatcher has no implementation yet. */
 private val KOTLIN_SKIPS: Map<String, String> = mapOf(
-    "DownloadURL auth'd first hop 302s to signed URL" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
-    "DownloadURL direct 2xx body" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
-    "DownloadURL retries on 503 at the auth'd first hop" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
-    "DownloadURL honors Retry-After on 429 at the auth'd first hop" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
-    "DownloadURL surfaces redirect with no Location" to "Kotlin runner does not yet dispatch DownloadURL (tracked as follow-up)",
-    "UploadsDownload delegates through DownloadURL primitive" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
-    "UploadsDownload errors when upload has no download_url" to "Kotlin SDK does not yet expose uploads.download(id) (parity tracked as follow-up)",
+    "DownloadURL retries on 503 at the auth'd first hop" to "Kotlin download hop 1 does not retry yet (B4)",
+    "DownloadURL honors Retry-After on 429 at the auth'd first hop" to "Kotlin download hop 1 does not retry yet (B4)",
 )
 
 fun main() {
@@ -533,12 +528,23 @@ private fun runTest(tc: TestCase): TestResult {
 
             "headerPresent" -> {
                 val headerName = assertion.path
-                if (requestHeadersList.isEmpty()) {
-                    return TestResult(false, "Expected header $headerName to be present, but no requests were recorded")
-                }
-                val actual = requestHeadersList[0][headerName]
+                val idx = resolveRequestIndex(assertion.index, requestHeadersList.size)
+                    ?: return TestResult(false, "headerPresent $headerName[${assertion.index}]: no request recorded at that index (${requestHeadersList.size} requests)")
+                val actual = requestHeadersList[idx][headerName]
                 if (actual.isNullOrEmpty()) {
-                    return TestResult(false, "Expected header $headerName to be present, but it was empty or missing")
+                    return TestResult(false, "Expected header $headerName present on request index $idx, but it was empty or missing")
+                }
+            }
+
+            "headerAbsent" -> {
+                val headerName = assertion.path
+                val idx = resolveRequestIndex(assertion.index, requestHeadersList.size)
+                    ?: return TestResult(false, "headerAbsent $headerName[${assertion.index}]: no request recorded at that index (${requestHeadersList.size} requests)")
+                // Use getAll (not indexed get): a present-but-empty header must
+                // fail an absence assertion, same as the Go runner's Values check.
+                val values = requestHeadersList[idx].getAll(headerName)
+                if (!values.isNullOrEmpty()) {
+                    return TestResult(false, "Expected header $headerName absent on request index $idx, got $values")
                 }
             }
 
@@ -1018,6 +1024,21 @@ private suspend fun dispatchOperation(tc: TestCase, account: AccountClient): Dis
 
         "GetEverythingNotNowCards" -> {
             account.everything.everythingNotNowCards()
+            DispatchResult()
+        }
+
+        "DownloadURL" -> {
+            // Construct an absolute URL the SDK will accept. downloadURL
+            // rewrites the scheme+host to the configured baseUrl, so the
+            // synthetic host here is never actually hit — only tc.path
+            // matters for mock routing. Same shape as the Go runner.
+            account.downloadURL("https://storage.3.basecamp.com" + tc.path)
+            DispatchResult()
+        }
+
+        "UploadsDownload" -> {
+            val uploadId = tc.pathParams.longParam("uploadId")
+            account.uploads.download(uploadId)
             DispatchResult()
         }
 

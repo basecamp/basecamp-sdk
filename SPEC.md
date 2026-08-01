@@ -1560,6 +1560,7 @@ All wire operations are generated (rubric 1A.6). One narrow exception is sanctio
 Current composites:
 - **Todos** `update` (merge-safe) and `edit` (read-modify-write) — see §5 "Merge-Safe Write Surface (Todos)".
 - **Cards** `update` (merge-safe) — see §5 "Merge-Safe Write Surface (Cards)". The raw path is `updateVerbatim`.
+- **Uploads** `download` — composes the generated `get` (GetUpload) with the client-level `downloadURL` primitive (§14), erroring when the upload carries no `download_url`; the result's filename prefers the upload metadata's `filename`.
 
 **Body compaction is not relaxed for composites.** A composite never sends `{"field": null}` to express "clear" (§18 rule). Where the server treats an omitted key as a clear — as BC3 does for `due_on` — omission *is* the clear encoding, and it is the only one all six SDKs can express identically: five strip nulls structurally before the wire (Python `_compact`, Ruby `compact_params`, Kotlin `?.let`, TypeScript's `JSON.stringify` dropping `undefined`, Swift `encodeIfPresent`).
 
@@ -1680,13 +1681,8 @@ logic is covered by `TestIsSameOrigin` unit tests:
 **Kotlin** (`kotlin/conformance/.../Main.kt` — `KOTLIN_SKIPS` plus one tag-based
 branch ahead of it):
 - "List operation returns first page with Link header" — skipped via the `link-header` tag branch, not `KOTLIN_SKIPS`: Kotlin auto-paginates by design, so a first-page-only requestCount assertion is inapplicable (architectural).
-- "DownloadURL auth'd first hop 302s to signed URL" — runner does not yet dispatch DownloadURL (unwaivered).
-- "DownloadURL direct 2xx body" — same as above (unwaivered).
-- "DownloadURL retries on 503 at the auth'd first hop" — same as above (unwaivered).
+- "DownloadURL retries on 503 at the auth'd first hop" — Kotlin download hop 1 does not retry yet (B4) (unwaivered).
 - "DownloadURL honors Retry-After on 429 at the auth'd first hop" — same as above (unwaivered).
-- "DownloadURL surfaces redirect with no Location" — same as above (unwaivered).
-- "UploadsDownload delegates through DownloadURL primitive" — SDK does not yet expose `uploads.download(id)` (unwaivered).
-- "UploadsDownload errors when upload has no download_url" — same as above (unwaivered).
 
 The TypeScript live canary additionally reports one placeholder skip when
 `BASECAMP_LIVE` is unset (`live-runner.test.ts`) — that is the opt-in gate for
