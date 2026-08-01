@@ -428,3 +428,161 @@ func TestDerefInt64(t *testing.T) {
 		t.Errorf("derefInt64(nil) = %d, want 0", got)
 	}
 }
+
+// TestCheckResponse_BareFieldMap covers the unwrapped ActiveModel::Errors
+// rendering (SPEC §6 step 2): webhooks, chat integrations, and message-type
+// categories emit the field map as the whole body at 400; lineup markers do the
+// same at 422.
+func TestCheckResponse_BareFieldMap(t *testing.T) {
+	tests := []struct {
+		name        string
+		status      int
+		body        string
+		wantMessage string
+		wantFields  map[string][]string
+	}{
+		{
+			name:        "single field at 400",
+			status:      400,
+			body:        `{"payload_url":["is not a valid URL"]}`,
+			wantMessage: "payload_url: is not a valid URL",
+			wantFields:  map[string][]string{"payload_url": {"is not a valid URL"}},
+		},
+		{
+			name:        "multiple fields sort and join",
+			status:      400,
+			body:        `{"types":["is invalid"],"payload_url":["is not a valid URL","is too long"]}`,
+			wantMessage: "payload_url: is not a valid URL; is too long, types: is invalid",
+			wantFields: map[string][]string{
+				"payload_url": {"is not a valid URL", "is too long"},
+				"types":       {"is invalid"},
+			},
+		},
+		{
+			name:        "lineup markers emit the bare map at 422",
+			status:      422,
+			body:        `{"name":["can't be blank"]}`,
+			wantMessage: "name: can't be blank",
+			wantFields:  map[string][]string{"name": {"can't be blank"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &http.Response{StatusCode: tt.status, Header: http.Header{}}
+			err := checkResponse(resp, []byte(tt.body))
+			e, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if e.Code != CodeValidation {
+				t.Errorf("Code = %q, want %q", e.Code, CodeValidation)
+			}
+			if e.Message != tt.wantMessage {
+				t.Errorf("Message = %q, want %q", e.Message, tt.wantMessage)
+			}
+			if !reflect.DeepEqual(e.FieldErrors, tt.wantFields) {
+				t.Errorf("FieldErrors = %v, want %v", e.FieldErrors, tt.wantFields)
+			}
+		})
+	}
+}
+
+// TestCheckResponse_BareFieldMapStrictGate pins SPEC §6 step 2's deliberate
+// asymmetry: an unwrapped body is recognizable by shape alone, so one
+// non-conforming member means the object is not a field map at all — unlike the
+// wrapped shape, which filters per entry because the "errors" key already
+// declares intent.
+func TestCheckResponse_BareFieldMapStrictGate(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "member is not an array", body: `{"id":1}`},
+		{name: "one member of several is not an array", body: `{"color":["is invalid"],"count":3}`},
+		{name: "member array is empty", body: `{"color":[]}`},
+		{name: "member array holds an empty string", body: `{"color":["","is invalid"]}`},
+		{name: "member array holds a non-string", body: `{"color":["is invalid",42]}`},
+		{name: "member array holds null", body: `{"color":[null]}`},
+		{name: "empty object", body: `{}`},
+		{name: "JSON array body", body: `[1,2]`},
+		{name: "JSON string body", body: `"nope"`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &http.Response{StatusCode: 400, Header: http.Header{}}
+			err := checkResponse(resp, []byte(tt.body))
+			e, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if e.FieldErrors != nil {
+				t.Errorf("FieldErrors = %v, want nil for a non-field-map body", e.FieldErrors)
+			}
+			if e.Message != "validation error" {
+				t.Errorf("Message = %q, want the generic fallback", e.Message)
+			}
+		})
+	}
+}
+
+// TestCheckResponse_BareFieldMapYieldsToReservedKeys keeps flat bodies flat: a
+// body carrying "error", "errors", or "message" is never reinterpreted as a
+// bare field map, whatever its other members look like.
+func TestCheckResponse_BareFieldMapYieldsToReservedKeys(t *testing.T) {
+	tests := []struct {
+		name        string
+		body        string
+		wantMessage string
+	}{
+		{
+			name:        "error key",
+			body:        `{"error":"Webhook is invalid","payload_url":["is not a valid URL"]}`,
+			wantMessage: "Webhook is invalid",
+		},
+		{
+			name:        "message key",
+			body:        `{"message":"Webhook is invalid","payload_url":["is not a valid URL"]}`,
+			wantMessage: "Webhook is invalid",
+		},
+		{
+			name:        "empty errors key",
+			body:        `{"errors":{},"payload_url":["is not a valid URL"]}`,
+			wantMessage: "validation error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := &http.Response{StatusCode: 400, Header: http.Header{}}
+			err := checkResponse(resp, []byte(tt.body))
+			e, ok := err.(*Error)
+			if !ok {
+				t.Fatalf("expected *Error, got %T", err)
+			}
+			if e.Message != tt.wantMessage {
+				t.Errorf("Message = %q, want %q", e.Message, tt.wantMessage)
+			}
+			if e.FieldErrors != nil {
+				t.Errorf("FieldErrors = %v, want nil", e.FieldErrors)
+			}
+		})
+	}
+}
+
+// TestCheckResponse_BareFieldMapNotExtractedOutsideValidation mirrors the
+// wrapped-shape rule: the slot is populated for 400/422 only.
+func TestCheckResponse_BareFieldMapNotExtractedOutsideValidation(t *testing.T) {
+	for _, status := range []int{403, 404, 500} {
+		resp := &http.Response{StatusCode: status, Header: http.Header{}}
+		err := checkResponse(resp, []byte(`{"payload_url":["is not a valid URL"]}`))
+		e, ok := err.(*Error)
+		if !ok {
+			t.Fatalf("expected *Error, got %T", err)
+		}
+		if e.FieldErrors != nil {
+			t.Errorf("status %d: FieldErrors = %v, want nil outside 400/422", status, e.FieldErrors)
+		}
+	}
+}

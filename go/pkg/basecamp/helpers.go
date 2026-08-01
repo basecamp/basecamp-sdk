@@ -86,8 +86,10 @@ func checkResponse(resp *http.Response, body []byte) error {
 const maxErrorMessageLen = 500
 
 // parseErrorBody tries to extract "error" (falling back to "message"),
-// "error_description", and the field-keyed "errors" map from a JSON response
-// body. Returns empty values if the body is not JSON or missing those keys.
+// "error_description", and the field-keyed errors map from a JSON response
+// body — either wrapped in an "errors" key or, for the controllers that render
+// ActiveModel::Errors with no wrapper, as the body itself. Returns empty values
+// if the body is not JSON or missing those keys.
 func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][]string) {
 	if len(body) == 0 {
 		return "", "", nil
@@ -111,7 +113,14 @@ func parseErrorBody(body []byte) (message, hint string, fieldErrors map[string][
 		message = truncate(stringFromRaw(parsed.Message))
 	}
 	hint = truncate(stringFromRaw(parsed.Description))
-	return message, hint, parseFieldErrors(parsed.Errors)
+
+	fieldErrors = parseFieldErrors(parsed.Errors)
+	if fieldErrors == nil && len(parsed.Error) == 0 && len(parsed.Errors) == 0 && len(parsed.Message) == 0 {
+		// SPEC §6 step 2: no wrapper and no reserved keys — the body may be the
+		// field map itself.
+		fieldErrors = parseBareFieldErrors(body)
+	}
+	return message, hint, fieldErrors
 }
 
 // stringFromRaw decodes a JSON value as a string, returning "" for absent or
@@ -157,6 +166,39 @@ func parseFieldErrors(raw json.RawMessage) map[string][]string {
 	}
 	if len(fieldErrors) == 0 {
 		return nil
+	}
+	return fieldErrors
+}
+
+// parseBareFieldErrors decodes an unwrapped field map — the
+// `render json: @webhook.errors` rendering, where the whole body is
+// {"field": ["msg", ...]}. The gate is all-or-nothing by design (SPEC §6 step
+// 2): with no "errors" key to declare intent, only shape distinguishes a field
+// map from any other JSON object, so a single non-conforming member means this
+// is not one. Returns nil unless every member is a non-empty array of non-empty
+// strings.
+func parseBareFieldErrors(body []byte) map[string][]string {
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(body, &members); err != nil || len(members) == 0 {
+		return nil
+	}
+	fieldErrors := make(map[string][]string, len(members))
+	for field, raw := range members {
+		var elems []any
+		// A JSON null decodes into a slice without error, leaving it nil — the
+		// length check below is what rejects it.
+		if err := json.Unmarshal(raw, &elems); err != nil || len(elems) == 0 {
+			return nil
+		}
+		messages := make([]string, 0, len(elems))
+		for _, elem := range elems {
+			s, ok := elem.(string)
+			if !ok || s == "" {
+				return nil
+			}
+			messages = append(messages, s)
+		}
+		fieldErrors[field] = messages
 	}
 	return fieldErrors
 }
