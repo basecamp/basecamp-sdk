@@ -12,7 +12,7 @@ import (
 type HillChart struct {
 	Enabled        bool           `json:"enabled"`
 	Stale          bool           `json:"stale"`
-	UpdatedAt      *time.Time     `json:"updated_at,omitempty"`
+	UpdatedAt      time.Time      `json:"updated_at,omitempty"`
 	AppUpdateURL   string         `json:"app_update_url,omitempty"`
 	AppVersionsURL string         `json:"app_versions_url,omitempty"`
 	Dots           []HillChartDot `json:"dots,omitempty"`
@@ -118,7 +118,7 @@ func hillChartFromGenerated(ghc generated.HillChart) HillChart {
 	hc := HillChart{
 		Enabled:        ghc.Enabled,
 		Stale:          ghc.Stale,
-		UpdatedAt:      ghc.UpdatedAt,
+		UpdatedAt:      deref(ghc.UpdatedAt),
 		AppUpdateURL:   deref(ghc.AppUpdateUrl),
 		AppVersionsURL: deref(ghc.AppVersionsUrl),
 	}
