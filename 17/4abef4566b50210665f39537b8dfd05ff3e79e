@@ -1,0 +1,19 @@
+typescript/src/generated/openapi-stripped.json
+  s_b1b74299ef0baf::t_eb41dc8c86b7ce 27526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "174abef4566b50210665f39537b8dfd05ff3e79e",
+  "prompts": {},
+  "sessions": {
+    "s_b1b74299ef0baf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cbd1d3f-efe4-415b-8bce-36eaa0e382cf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
