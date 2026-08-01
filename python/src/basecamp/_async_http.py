@@ -196,7 +196,7 @@ class AsyncHttpClient:
                     and not refreshed_once
                     and tp is not None
                     and getattr(tp, "refreshable", False)
-                    and await bool(tp.refresh())
+                    and bool(await tp.refresh())
                 )
                 if not refreshed or attempt >= max_attempts:
                     raise
