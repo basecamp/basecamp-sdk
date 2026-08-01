@@ -20,6 +20,8 @@ export type Event = components["schemas"]["Event"];
  * Options for list.
  */
 export interface ListEventOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 
@@ -41,6 +43,9 @@ export class EventsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.events.list(123);
+   *
+   * // With options
+   * const filtered = await client.events.list(123, { page: 1 });
    * ```
    */
   async list(recordingId: number, options?: ListEventOptions): Promise<ListResult<Event>> {
@@ -56,6 +61,7 @@ export class EventsService extends BaseService {
         this.client.GET("/recordings/{recordingId}/events.json", {
           params: {
             path: { recordingId },
+            query: { page: options?.page },
           },
         })
       , options

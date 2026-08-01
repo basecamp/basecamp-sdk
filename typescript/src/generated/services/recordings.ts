@@ -28,6 +28,8 @@ export interface ListRecordingOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 
@@ -65,7 +67,7 @@ export class RecordingsService extends BaseService {
       () =>
         this.client.GET("/projects/recordings.json", {
           params: {
-            query: { type: type, bucket: options?.bucket?.join(","), status: options?.status, sort: options?.sort, direction: options?.direction },
+            query: { type: type, bucket: options?.bucket?.join(","), status: options?.status, sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })
       , options

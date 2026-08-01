@@ -49,11 +49,13 @@ module Basecamp
 
       # List gauge needles for a project, ordered newest first.
       # @param project_id [Integer] project id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list_gauge_needles(project_id:, max_items: nil)
+      def list_gauge_needles(project_id:, page: nil, max_items: nil)
         wrap_paginated(service: "gauges", operation: "list_gauge_needles", is_mutation: false, project_id: project_id) do
-          paginate("/projects/#{project_id}/gauge/needles.json", operation: "ListGaugeNeedles", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/projects/#{project_id}/gauge/needles.json", params: params, operation: "ListGaugeNeedles", max_items: max_items)
         end
       end
 
@@ -72,11 +74,12 @@ module Basecamp
       # List gauges across all projects the authenticated user has access to.
       # @param bucket_ids [String, nil] Comma-separated list of project IDs. When provided, results are returned
       #   in the order specified instead of by risk level.
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list_gauges(bucket_ids: nil, max_items: nil)
+      def list_gauges(bucket_ids: nil, page: nil, max_items: nil)
         wrap_paginated(service: "gauges", operation: "list_gauges", is_mutation: false) do
-          params = compact_query_params(bucket_ids: bucket_ids)
+          params = compact_query_params(bucket_ids: bucket_ids, page: page)
           paginate("/reports/gauges.json", params: params, operation: "ListGauges", max_items: max_items)
         end
       end

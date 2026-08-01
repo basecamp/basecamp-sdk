@@ -36,10 +36,11 @@ class UploadsService(BaseService):
             operation="ListUploadVersions",
         )
 
-    def list(self, *, vault_id: int, max_items: int | None = None) -> ListResult:
+    def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListUploads",
         )
@@ -97,10 +98,11 @@ class AsyncUploadsService(AsyncBaseService):
             operation="ListUploadVersions",
         )
 
-    async def list(self, *, vault_id: int, max_items: int | None = None) -> ListResult:
+    async def list(self, *, vault_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="uploads", operation="list", is_mutation=False, resource_id=vault_id),
             f"/vaults/{vault_id}/uploads.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListUploads",
         )

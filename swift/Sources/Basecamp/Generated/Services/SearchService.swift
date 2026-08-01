@@ -15,6 +15,7 @@ public struct SearchSearchOptions: Sendable {
     public var bucketId: Int?
     /// Deprecated: prefer creator_ids[].
     public var creatorId: Int?
+    public var page: Int?
     public var maxItems: Int?
 
     public init(
@@ -28,6 +29,7 @@ public struct SearchSearchOptions: Sendable {
         type: String? = nil,
         bucketId: Int? = nil,
         creatorId: Int? = nil,
+        page: Int? = nil,
         maxItems: Int? = nil
     ) {
         self.typeNames = typeNames
@@ -40,6 +42,7 @@ public struct SearchSearchOptions: Sendable {
         self.type = type
         self.bucketId = bucketId
         self.creatorId = creatorId
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -93,6 +96,9 @@ public final class SearchService: BaseService, @unchecked Sendable {
         }
         if let creatorId = options?.creatorId {
             queryItems.append(URLQueryItem(name: "creator_id", value: String(creatorId)))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Search", operation: "Search", resourceType: "resource", isMutation: false),

@@ -2,9 +2,11 @@
 import Foundation
 
 public struct ListVaultOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -31,9 +33,14 @@ public final class VaultsService: BaseService, @unchecked Sendable {
     }
 
     public func list(vaultId: Int, options: ListVaultOptions? = nil) async throws -> ListResult<Vault> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Vaults", operation: "ListVaults", resourceType: "vault", isMutation: false, resourceId: vaultId),
             path: "/vaults/\(vaultId)/vaults.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListVaults")
         )

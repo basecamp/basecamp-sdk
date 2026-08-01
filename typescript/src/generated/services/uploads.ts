@@ -37,6 +37,8 @@ export interface ListVersionsUploadOptions extends PaginationOptions {
  * Options for list.
  */
 export interface ListUploadOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -169,6 +171,9 @@ export class UploadsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.uploads.list(123);
+   *
+   * // With options
+   * const filtered = await client.uploads.list(123, { page: 1 });
    * ```
    */
   async list(vaultId: number, options?: ListUploadOptions): Promise<ListResult<Upload>> {
@@ -184,6 +189,7 @@ export class UploadsService extends BaseService {
         this.client.GET("/vaults/{vaultId}/uploads.json", {
           params: {
             path: { vaultId },
+            query: { page: options?.page },
           },
         })
       , options

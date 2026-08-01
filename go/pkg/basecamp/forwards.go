@@ -15,9 +15,8 @@ type ForwardListOptions struct {
 	// If 0 (default), returns all forwards. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 
 	// Sort field: "created_at" or "updated_at".
@@ -33,9 +32,8 @@ type ForwardReplyListOptions struct {
 	// If 0 (default), returns all replies. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -190,7 +188,7 @@ func (s *ForwardsService) GetInbox(ctx context.Context, inboxID int64) (result *
 //
 // Pagination options:
 //   - Limit: maximum number of forwards to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned ForwardListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -211,10 +209,13 @@ func (s *ForwardsService) List(ctx context.Context, inboxID int64, opts *Forward
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
 	var params *generated.ListForwardsParams
-	if opts != nil && (opts.Sort != "" || opts.Direction != "") {
+	if opts != nil && (opts.Sort != "" || opts.Direction != "" || opts.Page > 0) {
 		params = &generated.ListForwardsParams{
 			Sort:      omitzero(opts.Sort),
 			Direction: omitzero(opts.Direction),
+		}
+		if opts.Page > 0 {
+			params.Page = int32(opts.Page)
 		}
 	}
 	resp, err := s.client.parent.gen.ListForwardsWithResponse(ctx, s.client.accountID, inboxID, params)
@@ -308,7 +309,7 @@ func (s *ForwardsService) Get(ctx context.Context, forwardID int64) (result *For
 //
 // Pagination options:
 //   - Limit: maximum number of replies to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned ForwardReplyListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -328,7 +329,12 @@ func (s *ForwardsService) ListReplies(ctx context.Context, forwardID int64, opts
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, forwardID)
+	var params *generated.ListForwardRepliesParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListForwardRepliesParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListForwardRepliesWithResponse(ctx, s.client.accountID, forwardID, params)
 	if err != nil {
 		return nil, err
 	}

@@ -23,6 +23,8 @@ export type Project = components["schemas"]["Project"];
 export interface ListProjectOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -83,7 +85,7 @@ export class ProjectsService extends BaseService {
       () =>
         this.client.GET("/projects.json", {
           params: {
-            query: { status: options?.status },
+            query: { status: options?.status, page: options?.page },
           },
         })
       , options

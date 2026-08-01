@@ -8,11 +8,13 @@ module Basecamp
     class CheckinsService < BaseService
 
       # Get pending check-in reminders for the current user
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def reminders(max_items: nil)
+      def reminders(page: nil, max_items: nil)
         wrap_paginated(service: "checkins", operation: "reminders", is_mutation: false) do
-          paginate("/my/question_reminders.json", operation: "GetQuestionReminders", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/my/question_reminders.json", params: params, operation: "GetQuestionReminders", max_items: max_items)
         end
       end
 
@@ -48,11 +50,13 @@ module Basecamp
 
       # List all questions in a questionnaire
       # @param questionnaire_id [Integer] questionnaire id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list_questions(questionnaire_id:, max_items: nil)
+      def list_questions(questionnaire_id:, page: nil, max_items: nil)
         wrap_paginated(service: "checkins", operation: "list_questions", is_mutation: false, resource_id: questionnaire_id) do
-          paginate("/questionnaires/#{questionnaire_id}/questions.json", operation: "ListQuestions", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/questionnaires/#{questionnaire_id}/questions.json", params: params, operation: "ListQuestions", max_items: max_items)
         end
       end
 
@@ -91,11 +95,13 @@ module Basecamp
 
       # List all answers for a question
       # @param question_id [Integer] question id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list_answers(question_id:, max_items: nil)
+      def list_answers(question_id:, page: nil, max_items: nil)
         wrap_paginated(service: "checkins", operation: "list_answers", is_mutation: false, resource_id: question_id) do
-          paginate("/questions/#{question_id}/answers.json", operation: "ListAnswers", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/questions/#{question_id}/answers.json", params: params, operation: "ListAnswers", max_items: max_items)
         end
       end
 
@@ -123,11 +129,13 @@ module Basecamp
       # Get all answers from a specific person for a question
       # @param question_id [Integer] question id ID
       # @param person_id [Integer] person id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def by_person(question_id:, person_id:, max_items: nil)
+      def by_person(question_id:, person_id:, page: nil, max_items: nil)
         wrap_paginated(service: "checkins", operation: "by_person", is_mutation: false, resource_id: person_id) do
-          paginate("/questions/#{question_id}/answers/by/#{person_id}", operation: "GetAnswersByPerson", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/questions/#{question_id}/answers/by/#{person_id}", params: params, operation: "GetAnswersByPerson", max_items: max_items)
         end
       end
 

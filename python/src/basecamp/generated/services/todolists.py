@@ -37,11 +37,13 @@ class TodolistsService(BaseService):
             operation="RepositionTodolist",
         )
 
-    def list(self, *, todoset_id: int, status: str | None = None, max_items: int | None = None) -> ListResult:
+    def list(
+        self, *, todoset_id: int, status: str | None = None, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
             f"/todosets/{todoset_id}/todolists.json",
-            params=self._compact(status=status),
+            params=self._compact(status=status, page=page),
             max_items=max_items,
             operation="ListTodolists",
         )
@@ -85,11 +87,13 @@ class AsyncTodolistsService(AsyncBaseService):
             operation="RepositionTodolist",
         )
 
-    async def list(self, *, todoset_id: int, status: str | None = None, max_items: int | None = None) -> ListResult:
+    async def list(
+        self, *, todoset_id: int, status: str | None = None, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todolists", operation="list", is_mutation=False, resource_id=todoset_id),
             f"/todosets/{todoset_id}/todolists.json",
-            params=self._compact(status=status),
+            params=self._compact(status=status, page=page),
             max_items=max_items,
             operation="ListTodolists",
         )

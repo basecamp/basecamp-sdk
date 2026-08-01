@@ -25,6 +25,8 @@ export interface ListMessageOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -96,7 +98,7 @@ export class MessagesService extends BaseService {
         this.client.GET("/message_boards/{boardId}/messages.json", {
           params: {
             path: { boardId },
-            query: { sort: options?.sort, direction: options?.direction },
+            query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })
       , options

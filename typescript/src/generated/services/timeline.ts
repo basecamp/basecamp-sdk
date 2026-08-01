@@ -20,6 +20,8 @@ export type TimelineEvent = components["schemas"]["TimelineEvent"];
  * Options for projectTimeline.
  */
 export interface ProjectTimelineTimelineOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 
@@ -56,6 +58,7 @@ export class TimelineService extends BaseService {
         this.client.GET("/projects/{projectId}/timeline.json", {
           params: {
             path: { projectId },
+            query: { page: options?.page },
           },
         })
       , options

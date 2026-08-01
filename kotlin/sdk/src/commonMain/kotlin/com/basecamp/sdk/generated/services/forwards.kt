@@ -37,7 +37,7 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
      * @param forwardId The forward ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listReplies(forwardId: Long, options: PaginationOptions? = null): ListResult<ForwardReply> {
+    suspend fun listReplies(forwardId: Long, options: ListForwardRepliesOptions? = null): ListResult<ForwardReply> {
         val info = OperationInfo(
             service = "Forwards",
             operation = "ListForwardReplies",
@@ -46,8 +46,11 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = forwardId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/inbox_forwards/${forwardId}/replies.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/inbox_forwards/${forwardId}/replies.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<ForwardReply>>(body)
         }
@@ -134,6 +137,7 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "sort" to options?.sort,
             "direction" to options?.direction,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/inboxes/${inboxId}/forwards.json" + qs, operationName = info.operation)

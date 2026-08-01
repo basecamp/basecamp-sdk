@@ -2,9 +2,11 @@
 import Foundation
 
 public struct ListRepliesForwardOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -12,11 +14,18 @@ public struct ListRepliesForwardOptions: Sendable {
 public struct ListForwardOptions: Sendable {
     public var sort: String?
     public var direction: String?
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(sort: String? = nil, direction: String? = nil, maxItems: Int? = nil) {
+    public init(
+        sort: String? = nil,
+        direction: String? = nil,
+        page: Int? = nil,
+        maxItems: Int? = nil
+    ) {
         self.sort = sort
         self.direction = direction
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -61,9 +70,14 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
     }
 
     public func listReplies(forwardId: Int, options: ListRepliesForwardOptions? = nil) async throws -> ListResult<ForwardReply> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Forwards", operation: "ListForwardReplies", resourceType: "forward_reply", isMutation: false, resourceId: forwardId),
             path: "/inbox_forwards/\(forwardId)/replies.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListForwardReplies")
         )
@@ -76,6 +90,9 @@ public final class ForwardsService: BaseService, @unchecked Sendable {
         }
         if let direction = options?.direction {
             queryItems.append(URLQueryItem(name: "direction", value: direction))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Forwards", operation: "ListForwards", resourceType: "forward", isMutation: false, resourceId: inboxId),

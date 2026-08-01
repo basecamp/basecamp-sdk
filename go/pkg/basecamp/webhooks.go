@@ -15,7 +15,9 @@ type WebhookListOptions struct {
 	// If 0, returns all. Use -1 for unlimited (same as 0).
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page: the page number is ignored -- this endpoint is not paginated
+	// server-side -- but any positive value still disables auto-pagination,
+	// returning the single response as-is without applying Limit.
 	Page int
 }
 
@@ -96,7 +98,9 @@ func NewWebhooksService(client *AccountClient) *WebhooksService {
 //
 // Pagination options:
 //   - Limit: maximum number of webhooks to return (0 = all, -1 = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: the page number is ignored (this endpoint is not paginated
+//     server-side), but any positive value still disables auto-pagination,
+//     returning the single response as-is without applying Limit
 //
 // The returned WebhookListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

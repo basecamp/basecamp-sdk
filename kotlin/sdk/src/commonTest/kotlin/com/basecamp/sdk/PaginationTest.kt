@@ -2,6 +2,7 @@ package com.basecamp.sdk
 
 import com.basecamp.sdk.generated.projects
 import com.basecamp.sdk.generated.reports
+import com.basecamp.sdk.generated.services.GetPersonProgressOptions
 import com.basecamp.sdk.generated.services.ListProjectsOptions
 import com.basecamp.sdk.generated.services.PersonProgressResult
 import io.ktor.client.engine.mock.*
@@ -589,7 +590,7 @@ class PaginationTest {
                 )
             }
         }
-        val result = client.forAccount("12345").reports.personProgress(456, PaginationOptions(maxItems = 3))
+        val result = client.forAccount("12345").reports.personProgress(456, GetPersonProgressOptions(maxItems = 3))
         assertEquals(3, result.events.size)
         assertFalse(result.events.meta.truncated)
         client.close()

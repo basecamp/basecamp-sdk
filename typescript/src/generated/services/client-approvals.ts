@@ -24,6 +24,8 @@ export interface ListClientApprovalOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 
@@ -60,7 +62,7 @@ export class ClientApprovalsService extends BaseService {
       () =>
         this.client.GET("/client/approvals.json", {
           params: {
-            query: { sort: options?.sort, direction: options?.direction },
+            query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })
       , options

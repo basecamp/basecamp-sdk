@@ -23,10 +23,26 @@ data class ListMyBookmarksOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Options for ListRecordingBoosts. */
+data class ListRecordingBoostsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateRecordingBoost. */
 data class CreateRecordingBoostBody(
     val content: String
 )
+
+/** Options for ListEventBoosts. */
+data class ListEventBoostsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for CreateEventBoost. */
 data class CreateEventBoostBody(
@@ -37,6 +53,14 @@ data class CreateEventBoostBody(
 data class UpdateCalendarBody(
     val calendar: JsonObject
 )
+
+/** Options for ListCampfires. */
+data class ListCampfiresOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for CreateChatbot. */
 data class CreateChatbotBody(
@@ -54,6 +78,7 @@ data class UpdateChatbotBody(
 data class ListCampfireLinesOptions(
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -74,6 +99,7 @@ data class UpdateCampfireLineBody(
 data class ListCampfireUploadsOptions(
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -142,6 +168,14 @@ data class MoveCardBody(
     val position: Int? = null
 )
 
+/** Options for ListCards. */
+data class ListCardsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateCard. */
 data class CreateCardBody(
     val title: String,
@@ -150,11 +184,27 @@ data class CreateCardBody(
     val notify: Boolean? = null
 )
 
+/** Options for GetQuestionReminders. */
+data class GetQuestionRemindersOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for UpdateAnswer. */
 data class UpdateAnswerBody(
     val content: String,
     val groupOn: String? = null
 )
+
+/** Options for ListQuestions. */
+data class ListQuestionsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for CreateQuestion. */
 data class CreateQuestionBody(
@@ -170,11 +220,27 @@ data class UpdateQuestionBody(
     val paused: Boolean? = null
 )
 
+/** Options for ListAnswers. */
+data class ListAnswersOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateAnswer. */
 data class CreateAnswerBody(
     val content: String,
     val groupOn: String? = null
 )
+
+/** Options for GetAnswersByPerson. */
+data class GetAnswersByPersonOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for UpdateQuestionNotificationSettings. */
 data class UpdateQuestionNotificationSettingsBody(
@@ -186,6 +252,7 @@ data class UpdateQuestionNotificationSettingsBody(
 data class ListClientApprovalsOptions(
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -195,6 +262,15 @@ data class ListClientApprovalsOptions(
 data class ListClientCorrespondencesOptions(
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for ListClientReplies. */
+data class ListClientRepliesOptions(
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -210,6 +286,14 @@ data class UpdateCommentBody(
     val content: String
 )
 
+/** Options for ListComments. */
+data class ListCommentsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateComment. */
 data class CreateCommentBody(
     val content: String
@@ -220,6 +304,14 @@ data class UpdateDocumentBody(
     val title: String? = null,
     val content: String? = null
 )
+
+/** Options for ListDocuments. */
+data class ListDocumentsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for CreateDocument. */
 data class CreateDocumentBody(
@@ -232,6 +324,14 @@ data class CreateDocumentBody(
 
 /** Options for ListMyDrafts. */
 data class ListMyDraftsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for ListEvents. */
+data class ListEventsOptions(
     val page: Long? = null,
     val maxItems: Int? = null
 ) {
@@ -384,6 +484,14 @@ data class GetEverythingUnassignedTodosOptions(
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
+/** Options for ListForwardReplies. */
+data class ListForwardRepliesOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateForwardReply. */
 data class CreateForwardReplyBody(
     val content: String
@@ -393,6 +501,7 @@ data class CreateForwardReplyBody(
 data class ListForwardsOptions(
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -408,6 +517,14 @@ data class ToggleGaugeBody(
     val gauge: JsonObject
 )
 
+/** Options for ListGaugeNeedles. */
+data class ListGaugeNeedlesOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateGaugeNeedle. */
 data class CreateGaugeNeedleBody(
     val gaugeNeedle: JsonObject,
@@ -418,6 +535,7 @@ data class CreateGaugeNeedleBody(
 /** Options for ListGauges. */
 data class ListGaugesOptions(
     val bucketIds: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -457,6 +575,7 @@ data class UpdateMessageTypeBody(
 data class ListMessagesOptions(
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -539,10 +658,26 @@ data class UpdateMyProfileBody(
     val timeFormat: String? = null
 )
 
+/** Options for ListPeople. */
+data class ListPeopleOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for EnableOutOfOffice. */
 data class EnableOutOfOfficeBody(
     val outOfOffice: JsonObject
 )
+
+/** Options for ListProjectPeople. */
+data class ListProjectPeopleOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for UpdateProjectAccess. */
 data class UpdateProjectAccessBody(
@@ -554,6 +689,7 @@ data class UpdateProjectAccessBody(
 /** Options for ListProjects. */
 data class ListProjectsOptions(
     val status: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -579,6 +715,15 @@ data class ListRecordingsOptions(
     val status: String? = null,
     val sort: String? = null,
     val direction: String? = null,
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
+/** Options for GetProgressReport. */
+data class GetProgressReportOptions(
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -595,6 +740,14 @@ data class GetUpcomingScheduleOptions(
 data class GetAssignedTodosOptions(
     val groupBy: String? = null
 ) {
+}
+
+/** Options for GetPersonProgress. */
+data class GetPersonProgressOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
 
 /** Request body for UpdateScheduleEntry. */
@@ -616,6 +769,7 @@ data class UpdateScheduleSettingsBody(
 /** Options for ListScheduleEntries. */
 data class ListScheduleEntriesOptions(
     val status: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -649,6 +803,7 @@ data class SearchOptions(
     val bucketId: Long? = null,
     @Deprecated("prefer creator_ids[].")
     val creatorId: Long? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -663,6 +818,7 @@ data class UpdateSubscriptionBody(
 /** Options for ListTemplates. */
 data class ListTemplatesOptions(
     val status: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -685,11 +841,20 @@ data class CreateProjectFromTemplateBody(
     val project: JsonObject
 )
 
+/** Options for GetProjectTimeline. */
+data class GetProjectTimelineOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Options for GetProjectTimesheet. */
 data class GetProjectTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -700,6 +865,7 @@ data class GetRecordingTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -734,6 +900,14 @@ data class RepositionTodolistGroupBody(
     val position: Int
 )
 
+/** Options for ListTodolistGroups. */
+data class ListTodolistGroupsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateTodolistGroup. */
 data class CreateTodolistGroupBody(
     val name: String
@@ -753,6 +927,7 @@ data class RepositionTodolistBody(
 /** Options for ListTodolists. */
 data class ListTodolistsOptions(
     val status: String? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -780,6 +955,7 @@ data class CreateTodosetTodoBody(
 data class ListTodosOptions(
     val status: String? = null,
     val completed: Boolean? = null,
+    val page: Long? = null,
     val maxItems: Int? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
@@ -836,6 +1012,14 @@ data class UpdateUploadBody(
     val baseName: String? = null
 )
 
+/** Options for ListUploads. */
+data class ListUploadsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
+
 /** Request body for CreateUpload. */
 data class CreateUploadBody(
     val attachableSgid: String,
@@ -849,6 +1033,14 @@ data class CreateUploadBody(
 data class UpdateVaultBody(
     val title: String? = null
 )
+
+/** Options for ListVaults. */
+data class ListVaultsOptions(
+    val page: Long? = null,
+    val maxItems: Int? = null
+) {
+    fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
+}
 
 /** Request body for CreateVault. */
 data class CreateVaultBody(

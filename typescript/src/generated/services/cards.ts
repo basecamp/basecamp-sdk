@@ -45,6 +45,8 @@ export interface MoveCardRequest {
  * Options for list.
  */
 export interface ListCardOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -184,6 +186,9 @@ export class CardsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.cards.list(123);
+   *
+   * // With options
+   * const filtered = await client.cards.list(123, { page: 1 });
    * ```
    */
   async list(columnId: number, options?: ListCardOptions): Promise<ListResult<Card>> {
@@ -199,6 +204,7 @@ export class CardsService extends BaseService {
         this.client.GET("/card_tables/lists/{columnId}/cards.json", {
           params: {
             path: { columnId },
+            query: { page: options?.page },
           },
         })
       , options

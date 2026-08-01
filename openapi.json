@@ -3333,6 +3333,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -5054,6 +5064,16 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -5786,6 +5806,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -6332,6 +6362,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -6744,6 +6784,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -6942,6 +6992,16 @@
               "type": "string",
               "description": "asc|desc"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -7131,6 +7191,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -8749,6 +8819,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -9166,6 +9246,16 @@
             "schema": {
               "type": "string",
               "description": "asc|desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
             }
           }
         ],
@@ -9743,6 +9833,16 @@
             "schema": {
               "type": "string",
               "description": "asc|desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
             }
           }
         ],
@@ -11517,6 +11617,16 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -11880,6 +11990,16 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -12357,6 +12477,16 @@
               "type": "string",
               "description": "active|archived|trashed"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -12623,6 +12753,16 @@
             "schema": {
               "type": "string",
               "description": "asc|desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
             }
           }
         ],
@@ -13127,6 +13267,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -13344,6 +13494,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -13649,6 +13809,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -13774,6 +13944,16 @@
             "schema": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
             }
           }
         ],
@@ -14162,6 +14342,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -14573,6 +14763,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -14892,6 +15092,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -15872,6 +16082,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -16194,6 +16414,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -16401,6 +16631,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -16507,6 +16747,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -17503,6 +17753,16 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -17999,6 +18259,16 @@
               "type": "string",
               "description": "Comma-separated list of project IDs. When provided, results are returned\nin the order specified instead of by risk level."
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -18087,6 +18357,16 @@
               "description": "Basecamp account ID (numeric string)"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -18648,6 +18928,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -19271,6 +19561,16 @@
               "type": "string",
               "description": "active|archived|trashed"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -19595,6 +19895,16 @@
             },
             "deprecated": true,
             "x-deprecated-reason": "prefer creator_ids[]."
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -19774,6 +20084,16 @@
             "schema": {
               "type": "string",
               "description": "active|archived|trashed"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
             }
           }
         ],
@@ -21099,6 +21419,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -21321,6 +21651,16 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
             }
           }
         ],
@@ -23123,6 +23463,16 @@
               "type": "string",
               "description": "active|archived|trashed"
             }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -23835,6 +24185,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -24042,6 +24402,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -24249,6 +24619,16 @@
               "format": "int64"
             },
             "required": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number for paginating through results. Defaults to 1.",
+            "schema": {
+              "type": "integer",
+              "description": "Page number for paginating through results. Defaults to 1.",
+              "format": "int32"
+            }
           }
         ],
         "responses": {

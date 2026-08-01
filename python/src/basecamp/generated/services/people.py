@@ -73,10 +73,11 @@ class PeopleService(BaseService):
             operation="UpdateMyProfile",
         )
 
-    def list(self, *, max_items: int | None = None) -> ListResult:
+    def list(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="people", operation="list", is_mutation=False),
             "/people.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListPeople",
         )
@@ -114,10 +115,11 @@ class PeopleService(BaseService):
             operation="DisableOutOfOffice",
         )
 
-    def list_for_project(self, *, project_id: int, max_items: int | None = None) -> ListResult:
+    def list_for_project(self, *, project_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListProjectPeople",
         )
@@ -209,10 +211,11 @@ class AsyncPeopleService(AsyncBaseService):
             operation="UpdateMyProfile",
         )
 
-    async def list(self, *, max_items: int | None = None) -> ListResult:
+    async def list(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="people", operation="list", is_mutation=False),
             "/people.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListPeople",
         )
@@ -250,10 +253,13 @@ class AsyncPeopleService(AsyncBaseService):
             operation="DisableOutOfOffice",
         )
 
-    async def list_for_project(self, *, project_id: int, max_items: int | None = None) -> ListResult:
+    async def list_for_project(
+        self, *, project_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="people", operation="list_for_project", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/people.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListProjectPeople",
         )

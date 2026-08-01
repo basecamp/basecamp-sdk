@@ -20,11 +20,13 @@ module Basecamp
 
       # List groups in a todolist
       # @param todolist_id [Integer] todolist id ID
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list(todolist_id:, max_items: nil)
+      def list(todolist_id:, page: nil, max_items: nil)
         wrap_paginated(service: "todolistgroups", operation: "list", is_mutation: false, resource_id: todolist_id) do
-          paginate("/todolists/#{todolist_id}/groups.json", operation: "ListTodolistGroups", max_items: max_items)
+          params = compact_query_params(page: page)
+          paginate("/todolists/#{todolist_id}/groups.json", params: params, operation: "ListTodolistGroups", max_items: max_items)
         end
       end
 

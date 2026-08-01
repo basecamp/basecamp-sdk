@@ -52,12 +52,13 @@ class TodosService(BaseService):
         todolist_id: int,
         status: str | None = None,
         completed: bool | None = None,
+        page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
-            params=self._compact(status=status, completed=completed),
+            params=self._compact(status=status, completed=completed, page=page),
             max_items=max_items,
             operation="ListTodos",
         )
@@ -202,12 +203,13 @@ class AsyncTodosService(AsyncBaseService):
         todolist_id: int,
         status: str | None = None,
         completed: bool | None = None,
+        page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="todos", operation="list", is_mutation=False, resource_id=todolist_id),
             f"/todolists/{todolist_id}/todos.json",
-            params=self._compact(status=status, completed=completed),
+            params=self._compact(status=status, completed=completed, page=page),
             max_items=max_items,
             operation="ListTodos",
         )

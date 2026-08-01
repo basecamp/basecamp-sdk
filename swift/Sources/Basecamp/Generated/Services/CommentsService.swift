@@ -2,9 +2,11 @@
 import Foundation
 
 public struct ListCommentOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -31,9 +33,14 @@ public final class CommentsService: BaseService, @unchecked Sendable {
     }
 
     public func list(recordingId: Int, options: ListCommentOptions? = nil) async throws -> ListResult<Comment> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Comments", operation: "ListComments", resourceType: "comment", isMutation: false, resourceId: recordingId),
             path: "/recordings/\(recordingId)/comments.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListComments")
         )

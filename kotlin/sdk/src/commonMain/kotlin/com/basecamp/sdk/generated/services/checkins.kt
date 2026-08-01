@@ -16,7 +16,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * Get pending check-in reminders for the current user
      * @param options Optional query parameters and pagination control
      */
-    suspend fun reminders(options: PaginationOptions? = null): ListResult<JsonElement> {
+    suspend fun reminders(options: GetQuestionRemindersOptions? = null): ListResult<JsonElement> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "GetQuestionReminders",
@@ -25,8 +25,11 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/my/question_reminders.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/my/question_reminders.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<JsonElement>>(body)
         }
@@ -99,7 +102,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * @param questionnaireId The questionnaire ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listQuestions(questionnaireId: Long, options: PaginationOptions? = null): ListResult<Question> {
+    suspend fun listQuestions(questionnaireId: Long, options: ListQuestionsOptions? = null): ListResult<Question> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "ListQuestions",
@@ -108,8 +111,11 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = questionnaireId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/questionnaires/${questionnaireId}/questions.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/questionnaires/${questionnaireId}/questions.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Question>>(body)
         }
@@ -190,7 +196,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * @param questionId The question ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listAnswers(questionId: Long, options: PaginationOptions? = null): ListResult<Answer> {
+    suspend fun listAnswers(questionId: Long, options: ListAnswersOptions? = null): ListResult<Answer> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "ListAnswers",
@@ -199,8 +205,11 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = questionId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/questions/${questionId}/answers.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/questions/${questionId}/answers.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Answer>>(body)
         }
@@ -257,7 +266,7 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      * @param personId The person ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun byPerson(questionId: Long, personId: Long, options: PaginationOptions? = null): ListResult<Answer> {
+    suspend fun byPerson(questionId: Long, personId: Long, options: GetAnswersByPersonOptions? = null): ListResult<Answer> {
         val info = OperationInfo(
             service = "Checkins",
             operation = "GetAnswersByPerson",
@@ -266,8 +275,11 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = personId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/questions/${questionId}/answers/by/${personId}", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/questions/${questionId}/answers/by/${personId}" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Answer>>(body)
         }

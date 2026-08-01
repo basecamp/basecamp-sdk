@@ -21,11 +21,12 @@ module Basecamp
       # @param type [String, nil] Deprecated: prefer type_names[].
       # @param bucket_id [Integer, nil] Deprecated: prefer bucket_ids[].
       # @param creator_id [Integer, nil] Deprecated: prefer creator_ids[].
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def search(q:, type_names: nil, bucket_ids: nil, creator_ids: nil, file_type: nil, exclude_chat: nil, since: nil, sort: nil, type: nil, bucket_id: nil, creator_id: nil, max_items: nil)
+      def search(q:, type_names: nil, bucket_ids: nil, creator_ids: nil, file_type: nil, exclude_chat: nil, since: nil, sort: nil, type: nil, bucket_id: nil, creator_id: nil, page: nil, max_items: nil)
         wrap_paginated(service: "search", operation: "search", is_mutation: false) do
-          params = compact_query_params(q: q, type_names: type_names, bucket_ids: bucket_ids, creator_ids: creator_ids, file_type: file_type, exclude_chat: exclude_chat, since: since, sort: sort, type: type, bucket_id: bucket_id, creator_id: creator_id)
+          params = compact_query_params(q: q, type_names: type_names, bucket_ids: bucket_ids, creator_ids: creator_ids, file_type: file_type, exclude_chat: exclude_chat, since: since, sort: sort, type: type, bucket_id: bucket_id, creator_id: creator_id, page: page)
           paginate("/search.json", params: params, operation: "Search", max_items: max_items)
         end
       end

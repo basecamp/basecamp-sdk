@@ -25,6 +25,7 @@ class SearchService(BaseService):
         type: str | None = None,
         bucket_id: int | None = None,
         creator_id: int | None = None,
+        page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         """Deprecated parameters (prefer the replacement):
@@ -50,6 +51,7 @@ class SearchService(BaseService):
                     "type": type,
                     "bucket_id": bucket_id,
                     "creator_id": creator_id,
+                    "page": page,
                 }.items()
                 if v is not None
             },
@@ -81,6 +83,7 @@ class AsyncSearchService(AsyncBaseService):
         type: str | None = None,
         bucket_id: int | None = None,
         creator_id: int | None = None,
+        page: int | None = None,
         max_items: int | None = None,
     ) -> ListResult:
         """Deprecated parameters (prefer the replacement):
@@ -106,6 +109,7 @@ class AsyncSearchService(AsyncBaseService):
                     "type": type,
                     "bucket_id": bucket_id,
                     "creator_id": creator_id,
+                    "page": page,
                 }.items()
                 if v is not None
             },

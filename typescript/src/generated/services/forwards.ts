@@ -25,6 +25,8 @@ export type Inbox = components["schemas"]["Inbox"];
  * Options for listReplies.
  */
 export interface ListRepliesForwardOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -43,6 +45,8 @@ export interface ListForwardOptions extends PaginationOptions {
   sort?: "created_at" | "updated_at";
   /** Filter by direction */
   direction?: "asc" | "desc";
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 
@@ -94,6 +98,9 @@ export class ForwardsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.forwards.listReplies(123);
+   *
+   * // With options
+   * const filtered = await client.forwards.listReplies(123, { page: 1 });
    * ```
    */
   async listReplies(forwardId: number, options?: ListRepliesForwardOptions): Promise<ListResult<ForwardReply>> {
@@ -109,6 +116,7 @@ export class ForwardsService extends BaseService {
         this.client.GET("/inbox_forwards/{forwardId}/replies.json", {
           params: {
             path: { forwardId },
+            query: { page: options?.page },
           },
         })
       , options
@@ -240,7 +248,7 @@ export class ForwardsService extends BaseService {
         this.client.GET("/inboxes/{inboxId}/forwards.json", {
           params: {
             path: { inboxId },
-            query: { sort: options?.sort, direction: options?.direction },
+            query: { sort: options?.sort, direction: options?.direction, page: options?.page },
           },
         })
       , options

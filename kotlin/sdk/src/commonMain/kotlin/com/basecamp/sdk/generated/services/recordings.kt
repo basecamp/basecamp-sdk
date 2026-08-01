@@ -32,6 +32,7 @@ class RecordingsService(client: AccountClient) : BaseService(client) {
             "status" to options?.status,
             "sort" to options?.sort,
             "direction" to options?.direction,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/projects/recordings.json" + qs, operationName = info.operation)

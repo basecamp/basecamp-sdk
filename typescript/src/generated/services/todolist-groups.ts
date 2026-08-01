@@ -29,6 +29,8 @@ export interface RepositionTodolistGroupRequest {
  * Options for list.
  */
 export interface ListTodolistGroupOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -91,6 +93,9 @@ export class TodolistGroupsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.todolistGroups.list(123);
+   *
+   * // With options
+   * const filtered = await client.todolistGroups.list(123, { page: 1 });
    * ```
    */
   async list(todolistId: number, options?: ListTodolistGroupOptions): Promise<ListResult<TodolistGroup>> {
@@ -106,6 +111,7 @@ export class TodolistGroupsService extends BaseService {
         this.client.GET("/todolists/{todolistId}/groups.json", {
           params: {
             path: { todolistId },
+            query: { page: options?.page },
           },
         })
       , options

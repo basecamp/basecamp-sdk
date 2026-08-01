@@ -24,7 +24,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * Get account-wide activity feed (progress report)
      * @param options Optional query parameters and pagination control
      */
-    suspend fun progress(options: PaginationOptions? = null): ListResult<TimelineEvent> {
+    suspend fun progress(options: GetProgressReportOptions? = null): ListResult<TimelineEvent> {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetProgressReport",
@@ -33,8 +33,11 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/reports/progress.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/reports/progress.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<TimelineEvent>>(body)
         }
@@ -112,7 +115,7 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      * @param personId The person ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun personProgress(personId: Long, options: PaginationOptions? = null): PersonProgressResult {
+    suspend fun personProgress(personId: Long, options: GetPersonProgressOptions? = null): PersonProgressResult {
         val info = OperationInfo(
             service = "Reports",
             operation = "GetPersonProgress",
@@ -121,8 +124,11 @@ class ReportsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = personId,
         )
-        val (firstPageBody, items) = requestPaginatedWrapped<TimelineEvent>(info, options, {
-            httpGet("/reports/users/progress/${personId}.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        val (firstPageBody, items) = requestPaginatedWrapped<TimelineEvent>(info, options?.toPaginationOptions(), {
+            httpGet("/reports/users/progress/${personId}.json" + qs, operationName = info.operation)
         }) { body ->
             json.parseToJsonElement(body).jsonObject["events"]!!
                 .jsonArray.map { json.decodeFromJsonElement<TimelineEvent>(it) }

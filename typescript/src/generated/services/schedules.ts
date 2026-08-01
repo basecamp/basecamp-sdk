@@ -61,6 +61,8 @@ export interface UpdateSettingsScheduleRequest {
 export interface ListEntriesScheduleOptions extends PaginationOptions {
   /** Filter by status */
   status?: "active" | "archived" | "trashed";
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -289,7 +291,7 @@ export class SchedulesService extends BaseService {
         this.client.GET("/schedules/{scheduleId}/entries.json", {
           params: {
             path: { scheduleId },
-            query: { status: options?.status },
+            query: { status: options?.status, page: options?.page },
           },
         })
       , options

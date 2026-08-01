@@ -193,9 +193,8 @@ type TodoListOptions struct {
 	// If 0, uses DefaultTodoLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -365,7 +364,7 @@ func NewTodosService(client *AccountClient) *TodosService {
 //
 // Pagination options:
 //   - Limit: maximum number of todos to return (0 = 100, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned TodoListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -392,8 +391,11 @@ func (s *TodosService) List(ctx context.Context, todolistID int64, opts *TodoLis
 	// upstream: Status filters by recording lifecycle (archived/trashed),
 	// Completed=true narrows to completed todos, and they may be combined.
 	var params *generated.ListTodosParams
-	if opts != nil && (opts.Status != "" || opts.Completed) {
+	if opts != nil && (opts.Status != "" || opts.Completed || opts.Page > 0) {
 		params = &generated.ListTodosParams{Status: omitzero(opts.Status), Completed: omitzero(opts.Completed)}
+		if opts.Page > 0 {
+			params.Page = int32(opts.Page)
+		}
 	}
 
 	// Call generated client for first page (spec-conformant - no manual path construction)

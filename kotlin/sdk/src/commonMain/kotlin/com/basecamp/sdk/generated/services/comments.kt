@@ -60,7 +60,7 @@ class CommentsService(client: AccountClient) : BaseService(client) {
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(recordingId: Long, options: PaginationOptions? = null): ListResult<Comment> {
+    suspend fun list(recordingId: Long, options: ListCommentsOptions? = null): ListResult<Comment> {
         val info = OperationInfo(
             service = "Comments",
             operation = "ListComments",
@@ -69,8 +69,11 @@ class CommentsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = recordingId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/recordings/${recordingId}/comments.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/recordings/${recordingId}/comments.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Comment>>(body)
         }

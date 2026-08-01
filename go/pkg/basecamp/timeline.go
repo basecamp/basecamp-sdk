@@ -122,9 +122,8 @@ type TimelineListOptions struct {
 	// If 0, uses DefaultTimelineLimit (100). Any negative value means unlimited.
 	Limit int
 
-	// Page, if positive, disables auto-pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -158,7 +157,7 @@ func NewTimelineService(client *AccountClient) *TimelineService {
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -177,7 +176,12 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.GetProgressReportWithResponse(ctx, s.client.accountID)
+	var params *generated.GetProgressReportParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.GetProgressReportParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.GetProgressReportWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +235,7 @@ func (s *TimelineService) Progress(ctx context.Context, opts *TimelineListOption
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned TimelineListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -251,7 +255,12 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID)
+	var params *generated.GetProjectTimelineParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.GetProjectTimelineParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.GetProjectTimelineWithResponse(ctx, s.client.accountID, projectID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +318,7 @@ func (s *TimelineService) ProjectTimeline(ctx context.Context, projectID int64, 
 //
 // Pagination options:
 //   - Limit: maximum number of events to return (0 = DefaultTimelineLimit, negative = unlimited)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned PersonProgressResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -328,7 +337,12 @@ func (s *TimelineService) PersonProgress(ctx context.Context, personID int64, op
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetPersonProgressWithResponse(ctx, s.client.accountID, personID)
+	var params *generated.GetPersonProgressParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.GetPersonProgressParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.GetPersonProgressWithResponse(ctx, s.client.accountID, personID, params)
 	if err != nil {
 		return nil, err
 	}

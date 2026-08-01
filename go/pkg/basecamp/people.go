@@ -81,9 +81,9 @@ type PeopleListOptions struct {
 	// If 0 (default), returns all people.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
+	// Ignored by endpoints that are not paginated server-side (Pingable).
 	Page int
 }
 
@@ -109,7 +109,7 @@ func NewPeopleService(client *AccountClient) *PeopleService {
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -128,7 +128,12 @@ func (s *PeopleService) List(ctx context.Context, opts *PeopleListOptions) (resu
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID)
+	var params *generated.ListPeopleParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListPeopleParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListPeopleWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +310,7 @@ func (s *PeopleService) UpdateMyProfile(ctx context.Context, req *UpdateMyProfil
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -325,7 +330,12 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, projectID)
+	var params *generated.ListProjectPeopleParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListProjectPeopleParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListProjectPeopleWithResponse(ctx, s.client.accountID, projectID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +392,9 @@ func (s *PeopleService) ListProjectPeople(ctx context.Context, projectID int64, 
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: the page number is ignored (the pingable-people endpoint is not
+//     paginated server-side), but any positive value still disables
+//     auto-pagination, returning the single response as-is without applying Limit
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

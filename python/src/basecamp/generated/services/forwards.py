@@ -19,10 +19,11 @@ class ForwardsService(BaseService):
             operation="GetForward",
         )
 
-    def list_replies(self, *, forward_id: int, max_items: int | None = None) -> ListResult:
+    def list_replies(self, *, forward_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="forwards", operation="list_replies", is_mutation=False, resource_id=forward_id),
             f"/inbox_forwards/{forward_id}/replies.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListForwardReplies",
         )
@@ -53,12 +54,18 @@ class ForwardsService(BaseService):
         )
 
     def list(
-        self, *, inbox_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+        self,
+        *,
+        inbox_id: int,
+        sort: str | None = None,
+        direction: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="forwards", operation="list", is_mutation=False, resource_id=inbox_id),
             f"/inboxes/{inbox_id}/forwards.json",
-            params=self._compact(sort=sort, direction=direction),
+            params=self._compact(sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListForwards",
         )
@@ -73,10 +80,13 @@ class AsyncForwardsService(AsyncBaseService):
             operation="GetForward",
         )
 
-    async def list_replies(self, *, forward_id: int, max_items: int | None = None) -> ListResult:
+    async def list_replies(
+        self, *, forward_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="forwards", operation="list_replies", is_mutation=False, resource_id=forward_id),
             f"/inbox_forwards/{forward_id}/replies.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListForwardReplies",
         )
@@ -107,12 +117,18 @@ class AsyncForwardsService(AsyncBaseService):
         )
 
     async def list(
-        self, *, inbox_id: int, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+        self,
+        *,
+        inbox_id: int,
+        sort: str | None = None,
+        direction: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="forwards", operation="list", is_mutation=False, resource_id=inbox_id),
             f"/inboxes/{inbox_id}/forwards.json",
-            params=self._compact(sort=sort, direction=direction),
+            params=self._compact(sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListForwards",
         )

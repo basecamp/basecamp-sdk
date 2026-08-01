@@ -69,7 +69,7 @@ type TimesheetReportOptions struct {
 	// If 0 (default), returns all entries.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 }
 
@@ -144,7 +144,7 @@ func (s *TimesheetService) Report(ctx context.Context, opts *TimesheetReportOpti
 //
 // Pagination options:
 //   - Limit: maximum number of entries to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned TimesheetListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -169,6 +169,9 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 			From:     omitzero(opts.From),
 			To:       omitzero(opts.To),
 			PersonId: omitzero(opts.PersonID),
+		}
+		if opts.Page > 0 {
+			params.Page = int32(opts.Page)
 		}
 	}
 
@@ -230,7 +233,7 @@ func (s *TimesheetService) ProjectReport(ctx context.Context, projectID int64, o
 //
 // Pagination options:
 //   - Limit: maximum number of entries to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned TimesheetListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -255,6 +258,9 @@ func (s *TimesheetService) RecordingReport(ctx context.Context, recordingID int6
 			From:     omitzero(opts.From),
 			To:       omitzero(opts.To),
 			PersonId: omitzero(opts.PersonID),
+		}
+		if opts.Page > 0 {
+			params.Page = int32(opts.Page)
 		}
 	}
 

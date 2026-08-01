@@ -2,19 +2,23 @@
 import Foundation
 
 public struct ListGaugeNeedlesGaugeOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct ListGaugesGaugeOptions: Sendable {
     public var bucketIds: String?
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(bucketIds: String? = nil, maxItems: Int? = nil) {
+    public init(bucketIds: String? = nil, page: Int? = nil, maxItems: Int? = nil) {
         self.bucketIds = bucketIds
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -50,9 +54,14 @@ public final class GaugesService: BaseService, @unchecked Sendable {
     }
 
     public func listGaugeNeedles(projectId: Int, options: ListGaugeNeedlesGaugeOptions? = nil) async throws -> ListResult<GaugeNeedle> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Gauges", operation: "ListGaugeNeedles", resourceType: "gauge_needle", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/gauge/needles.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListGaugeNeedles")
         )
@@ -62,6 +71,9 @@ public final class GaugesService: BaseService, @unchecked Sendable {
         var queryItems: [URLQueryItem] = []
         if let bucketIds = options?.bucketIds {
             queryItems.append(URLQueryItem(name: "bucket_ids", value: bucketIds))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Gauges", operation: "ListGauges", resourceType: "gauge", isMutation: false),

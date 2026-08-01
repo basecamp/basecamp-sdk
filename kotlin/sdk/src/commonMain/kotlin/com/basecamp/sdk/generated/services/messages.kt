@@ -29,6 +29,7 @@ class MessagesService(client: AccountClient) : BaseService(client) {
         val qs = buildQueryString(
             "sort" to options?.sort,
             "direction" to options?.direction,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/message_boards/${boardId}/messages.json" + qs, operationName = info.operation)

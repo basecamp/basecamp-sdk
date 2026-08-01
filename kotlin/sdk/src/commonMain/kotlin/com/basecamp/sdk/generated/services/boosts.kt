@@ -55,7 +55,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listForRecording(recordingId: Long, options: PaginationOptions? = null): ListResult<Boost> {
+    suspend fun listForRecording(recordingId: Long, options: ListRecordingBoostsOptions? = null): ListResult<Boost> {
         val info = OperationInfo(
             service = "Boosts",
             operation = "ListRecordingBoosts",
@@ -64,8 +64,11 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = recordingId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/recordings/${recordingId}/boosts.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/recordings/${recordingId}/boosts.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Boost>>(body)
         }
@@ -100,7 +103,7 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      * @param eventId The event ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listForEvent(recordingId: Long, eventId: Long, options: PaginationOptions? = null): ListResult<Boost> {
+    suspend fun listForEvent(recordingId: Long, eventId: Long, options: ListEventBoostsOptions? = null): ListResult<Boost> {
         val info = OperationInfo(
             service = "Boosts",
             operation = "ListEventBoosts",
@@ -109,8 +112,11 @@ class BoostsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = eventId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/recordings/${recordingId}/events/${eventId}/boosts.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/recordings/${recordingId}/events/${eventId}/boosts.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Boost>>(body)
         }

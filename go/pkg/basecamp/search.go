@@ -146,7 +146,7 @@ type SearchOptions struct {
 	// If 0 (default), returns all results.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page, if positive, fetches only that page and disables auto-pagination.
 	Page int
 }
 
@@ -165,7 +165,7 @@ func NewSearchService(client *AccountClient) *SearchService {
 //
 // Pagination options:
 //   - Limit: maximum number of results to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned SearchListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -192,6 +192,9 @@ func (s *SearchService) Search(ctx context.Context, query string, opts *SearchOp
 		Q: query,
 	}
 	if opts != nil {
+		if opts.Page > 0 {
+			params.Page = int32(opts.Page)
+		}
 		if opts.Sort != "" {
 			params.Sort = &opts.Sort
 		}

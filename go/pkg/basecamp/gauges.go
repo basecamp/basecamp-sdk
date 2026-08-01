@@ -181,7 +181,7 @@ func (s *GaugesService) ListNeedles(ctx context.Context, projectID int64) (resul
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.ListGaugeNeedlesWithResponse(ctx, s.client.accountID, projectID)
+	resp, err := s.client.parent.gen.ListGaugeNeedlesWithResponse(ctx, s.client.accountID, projectID, nil)
 	if err != nil {
 		return nil, err
 	}

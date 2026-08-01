@@ -16,9 +16,8 @@ type VaultListOptions struct {
 	// If 0 (default), returns all vaults. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -36,9 +35,8 @@ type DocumentListOptions struct {
 	// If 0 (default), returns all documents. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -56,9 +54,8 @@ type UploadListOptions struct {
 	// If 0 (default), returns all uploads. Use a positive value to cap results.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -294,7 +291,7 @@ func (s *VaultsService) Get(ctx context.Context, vaultID int64) (result *Vault, 
 //
 // Pagination options:
 //   - Limit: maximum number of vaults to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned VaultListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -314,7 +311,12 @@ func (s *VaultsService) List(ctx context.Context, vaultID int64, opts *VaultList
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, vaultID)
+	var params *generated.ListVaultsParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListVaultsParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListVaultsWithResponse(ctx, s.client.accountID, vaultID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -500,7 +502,7 @@ func (s *DocumentsService) Get(ctx context.Context, documentID int64) (result *D
 //
 // Pagination options:
 //   - Limit: maximum number of documents to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned DocumentListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -520,7 +522,12 @@ func (s *DocumentsService) List(ctx context.Context, vaultID int64, opts *Docume
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, vaultID)
+	var params *generated.ListDocumentsParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListDocumentsParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListDocumentsWithResponse(ctx, s.client.accountID, vaultID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -737,7 +744,7 @@ func (s *UploadsService) Get(ctx context.Context, uploadID int64) (result *Uploa
 //
 // Pagination options:
 //   - Limit: maximum number of uploads to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned UploadListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -757,7 +764,12 @@ func (s *UploadsService) List(ctx context.Context, vaultID int64, opts *UploadLi
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, vaultID)
+	var params *generated.ListUploadsParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListUploadsParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListUploadsWithResponse(ctx, s.client.accountID, vaultID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -933,7 +945,9 @@ type UploadVersionListOptions struct {
 	// If 0 (default), returns all versions.
 	Limit int
 
-	// Page, if positive, disables pagination and returns only the first page.
+	// Page: the page number is ignored -- the upload-versions endpoint is not
+	// paginated server-side -- but any positive value still disables
+	// auto-pagination, returning the single response as-is without applying Limit.
 	Page int
 }
 
@@ -949,7 +963,9 @@ type UploadVersionListResult struct {
 //
 // Pagination options:
 //   - Limit: maximum number of versions to return (0 = all)
-//   - Page: if positive, disables pagination and returns first page only
+//   - Page: the page number is ignored (the upload-versions endpoint is not
+//     paginated server-side), but any positive value still disables
+//     auto-pagination, returning the single response as-is without applying Limit
 //
 // The returned UploadVersionListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.

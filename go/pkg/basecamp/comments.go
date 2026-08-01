@@ -59,9 +59,8 @@ type CommentListOptions struct {
 	// If 0, uses DefaultCommentLimit (100). Use -1 for unlimited.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -89,7 +88,7 @@ func NewCommentsService(client *AccountClient) *CommentsService {
 //
 // Pagination options:
 //   - Limit: maximum number of comments to return (0 = 100, -1 = unlimited)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned CommentListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -108,8 +107,13 @@ func (s *CommentsService) List(ctx context.Context, recordingID int64, opts *Com
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
+	var params *generated.ListCommentsParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListCommentsParams{Page: int32(opts.Page)}
+	}
+
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, recordingID)
+	resp, err := s.client.parent.gen.ListCommentsWithResponse(ctx, s.client.accountID, recordingID, params)
 	if err != nil {
 		return nil, err
 	}

@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class CheckinsService(BaseService):
-    def reminders(self, *, max_items: int | None = None) -> ListResult:
+    def reminders(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
             "/my/question_reminders.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetQuestionReminders",
         )
@@ -46,12 +47,15 @@ class CheckinsService(BaseService):
             operation="GetQuestionnaire",
         )
 
-    def list_questions(self, *, questionnaire_id: int, max_items: int | None = None) -> ListResult:
+    def list_questions(
+        self, *, questionnaire_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
             ),
             f"/questionnaires/{questionnaire_id}/questions.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListQuestions",
         )
@@ -88,10 +92,11 @@ class CheckinsService(BaseService):
             operation="UpdateQuestion",
         )
 
-    def list_answers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
+    def list_answers(self, *, question_id: int, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListAnswers",
         )
@@ -113,10 +118,13 @@ class CheckinsService(BaseService):
             operation="ListQuestionAnswerers",
         )
 
-    def by_person(self, *, question_id: int, person_id: int, max_items: int | None = None) -> ListResult:
+    def by_person(
+        self, *, question_id: int, person_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetAnswersByPerson",
         )
@@ -154,10 +162,11 @@ class CheckinsService(BaseService):
 
 
 class AsyncCheckinsService(AsyncBaseService):
-    async def reminders(self, *, max_items: int | None = None) -> ListResult:
+    async def reminders(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="reminders", is_mutation=False),
             "/my/question_reminders.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetQuestionReminders",
         )
@@ -189,12 +198,15 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="GetQuestionnaire",
         )
 
-    async def list_questions(self, *, questionnaire_id: int, max_items: int | None = None) -> ListResult:
+    async def list_questions(
+        self, *, questionnaire_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(
                 service="checkins", operation="list_questions", is_mutation=False, resource_id=questionnaire_id
             ),
             f"/questionnaires/{questionnaire_id}/questions.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListQuestions",
         )
@@ -231,10 +243,13 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="UpdateQuestion",
         )
 
-    async def list_answers(self, *, question_id: int, max_items: int | None = None) -> ListResult:
+    async def list_answers(
+        self, *, question_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="list_answers", is_mutation=False, resource_id=question_id),
             f"/questions/{question_id}/answers.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListAnswers",
         )
@@ -256,10 +271,13 @@ class AsyncCheckinsService(AsyncBaseService):
             operation="ListQuestionAnswerers",
         )
 
-    async def by_person(self, *, question_id: int, person_id: int, max_items: int | None = None) -> ListResult:
+    async def by_person(
+        self, *, question_id: int, person_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="checkins", operation="by_person", is_mutation=False, resource_id=person_id),
             f"/questions/{question_id}/answers/by/{person_id}",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetAnswersByPerson",
         )

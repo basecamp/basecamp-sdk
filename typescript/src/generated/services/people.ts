@@ -57,6 +57,8 @@ export interface UpdateMyProfilePeopleRequest {
  * Options for list.
  */
 export interface ListPeopleOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -71,6 +73,8 @@ export interface EnableOutOfOfficePeopleRequest {
  * Options for listForProject.
  */
 export interface ListForProjectPeopleOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -243,6 +247,9 @@ export class PeopleService extends BaseService {
    * @example
    * ```ts
    * const result = await client.people.list();
+   *
+   * // With options
+   * const filtered = await client.people.list({ page: 1 });
    * ```
    */
   async list(options?: ListPeopleOptions): Promise<ListResult<Person>> {
@@ -255,6 +262,9 @@ export class PeopleService extends BaseService {
       },
       () =>
         this.client.GET("/people.json", {
+          params: {
+            query: { page: options?.page },
+          },
         })
       , options
     );
@@ -394,6 +404,9 @@ export class PeopleService extends BaseService {
    * @example
    * ```ts
    * const result = await client.people.listForProject(123);
+   *
+   * // With options
+   * const filtered = await client.people.listForProject(123, { page: 1 });
    * ```
    */
   async listForProject(projectId: number, options?: ListForProjectPeopleOptions): Promise<ListResult<Person>> {
@@ -409,6 +422,7 @@ export class PeopleService extends BaseService {
         this.client.GET("/projects/{projectId}/people.json", {
           params: {
             path: { projectId },
+            query: { page: options?.page },
           },
         })
       , options

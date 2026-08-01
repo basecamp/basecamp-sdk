@@ -38,7 +38,7 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
      * @param todolistId The todolist ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(todolistId: Long, options: PaginationOptions? = null): ListResult<TodolistGroup> {
+    suspend fun list(todolistId: Long, options: ListTodolistGroupsOptions? = null): ListResult<TodolistGroup> {
         val info = OperationInfo(
             service = "TodolistGroups",
             operation = "ListTodolistGroups",
@@ -47,8 +47,11 @@ class TodolistGroupsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = todolistId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/todolists/${todolistId}/groups.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/todolists/${todolistId}/groups.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<TodolistGroup>>(body)
         }

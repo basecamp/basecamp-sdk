@@ -16,9 +16,8 @@ type QuestionListOptions struct {
 	// If 0 (default), returns all questions. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -28,9 +27,8 @@ type AnswerListOptions struct {
 	// If 0 (default), returns all answers. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -40,9 +38,8 @@ type QuestionReminderListOptions struct {
 	// If 0 (default), returns all reminders. Use a positive value to cap results.
 	Limit int
 
-	// Page, if non-zero, disables pagination and returns only the first page.
-	// NOTE: The page number itself is not yet honored due to OpenAPI client
-	// limitations. Use 0 to paginate through all results up to Limit.
+	// Page, if positive, fetches only that page and disables auto-pagination.
+	// Use 0 to paginate through all results up to Limit.
 	Page int
 }
 
@@ -280,7 +277,7 @@ func (s *CheckinsService) GetQuestionnaire(ctx context.Context, questionnaireID 
 //
 // Pagination options:
 //   - Limit: maximum number of questions to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only
+//   - Page: if positive, fetches only that page and disables auto-pagination
 //
 // The returned QuestionListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -300,7 +297,12 @@ func (s *CheckinsService) ListQuestions(ctx context.Context, questionnaireID int
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, questionnaireID)
+	var params *generated.ListQuestionsParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListQuestionsParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListQuestionsWithResponse(ctx, s.client.accountID, questionnaireID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -593,9 +595,8 @@ func (s *CheckinsService) UpdateQuestionNotificationSettings(ctx context.Context
 //
 // Pagination options:
 //   - Limit: maximum number of answers to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only.
-//     NOTE: The page number itself is not yet honored due to OpenAPI client
-//     limitations. Use 0 to paginate through all results up to Limit.
+//   - Page: if positive, fetches only that page and disables auto-pagination.
+//     Use 0 to paginate through all results up to Limit.
 //
 // The returned AnswerListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -615,7 +616,12 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
 	// Call generated client for first page (spec-conformant - no manual path construction)
-	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, questionID)
+	var params *generated.ListAnswersParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.ListAnswersParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.ListAnswersWithResponse(ctx, s.client.accountID, questionID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -674,9 +680,8 @@ func (s *CheckinsService) ListAnswers(ctx context.Context, questionID int64, opt
 //
 // Pagination options:
 //   - Limit: maximum number of answers to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only.
-//     NOTE: The page number itself is not yet honored due to OpenAPI client
-//     limitations. Use 0 to paginate through all results up to Limit.
+//   - Page: if positive, fetches only that page and disables auto-pagination.
+//     Use 0 to paginate through all results up to Limit.
 func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, personID int64, opts *AnswerListOptions) (result *AnswerListResult, err error) {
 	op := OperationInfo{
 		Service: "Checkins", Operation: "ListAnswersByPerson",
@@ -692,7 +697,12 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetAnswersByPersonWithResponse(ctx, s.client.accountID, questionID, personID)
+	var params *generated.GetAnswersByPersonParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.GetAnswersByPersonParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.GetAnswersByPersonWithResponse(ctx, s.client.accountID, questionID, personID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -744,9 +754,9 @@ func (s *CheckinsService) ListAnswersByPerson(ctx context.Context, questionID, p
 //
 // Pagination options:
 //   - Limit: maximum number of people to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only.
-//     NOTE: The page number itself is not yet honored due to OpenAPI client
-//     limitations. Use 0 to paginate through all results up to Limit.
+//   - Page: the page number is ignored (the answerers endpoint is not
+//     paginated server-side), but any positive value still disables
+//     auto-pagination, returning the single response as-is without applying Limit
 //
 // The returned PeopleListResult includes pagination metadata (TotalCount from
 // X-Total-Count header) when available.
@@ -958,9 +968,8 @@ func (s *CheckinsService) UpdateAnswer(ctx context.Context, answerID int64, req 
 //
 // Pagination options:
 //   - Limit: maximum number of reminders to return (0 = all)
-//   - Page: if non-zero, disables pagination and returns first page only.
-//     NOTE: The page number itself is not yet honored due to OpenAPI client
-//     limitations. Use 0 to paginate through all results up to Limit.
+//   - Page: if positive, fetches only that page and disables auto-pagination.
+//     Use 0 to paginate through all results up to Limit.
 //
 // The returned QuestionReminderListResult includes pagination metadata
 // (TotalCount from X-Total-Count header) when available.
@@ -978,7 +987,12 @@ func (s *CheckinsService) ListQuestionReminders(ctx context.Context, opts *Quest
 	ctx = s.client.parent.hooks.OnOperationStart(ctx, op)
 	defer func() { s.client.parent.hooks.OnOperationEnd(ctx, op, err, time.Since(start)) }()
 
-	resp, err := s.client.parent.gen.GetQuestionRemindersWithResponse(ctx, s.client.accountID)
+	var params *generated.GetQuestionRemindersParams
+	if opts != nil && opts.Page > 0 {
+		params = &generated.GetQuestionRemindersParams{Page: int32(opts.Page)}
+	}
+
+	resp, err := s.client.parent.gen.GetQuestionRemindersWithResponse(ctx, s.client.accountID, params)
 	if err != nil {
 		return nil, err
 	}

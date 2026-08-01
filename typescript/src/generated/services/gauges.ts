@@ -35,6 +35,8 @@ export interface ToggleGaugeGaugeRequest {
  * Options for listGaugeNeedles.
  */
 export interface ListGaugeNeedlesGaugeOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -56,6 +58,8 @@ export interface ListGaugesGaugeOptions extends PaginationOptions {
   /** Comma-separated list of project IDs. When provided, results are returned
 in the order specified instead of by risk level. */
   bucketIds?: string;
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 
@@ -205,6 +209,9 @@ export class GaugesService extends BaseService {
    * @example
    * ```ts
    * const result = await client.gauges.listGaugeNeedles(123);
+   *
+   * // With options
+   * const filtered = await client.gauges.listGaugeNeedles(123, { page: 1 });
    * ```
    */
   async listGaugeNeedles(projectId: number, options?: ListGaugeNeedlesGaugeOptions): Promise<components["schemas"]["ListGaugeNeedlesResponseContent"]> {
@@ -220,6 +227,7 @@ export class GaugesService extends BaseService {
         this.client.GET("/projects/{projectId}/gauge/needles.json", {
           params: {
             path: { projectId },
+            query: { page: options?.page },
           },
         })
       , options
@@ -289,7 +297,7 @@ export class GaugesService extends BaseService {
       () =>
         this.client.GET("/reports/gauges.json", {
           params: {
-            query: { "bucket_ids": options?.bucketIds },
+            query: { "bucket_ids": options?.bucketIds, page: options?.page },
           },
         })
       , options

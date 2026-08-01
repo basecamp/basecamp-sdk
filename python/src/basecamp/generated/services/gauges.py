@@ -45,10 +45,13 @@ class GaugesService(BaseService):
             operation="ToggleGauge",
         )
 
-    def list_gauge_needles(self, *, project_id: int, max_items: int | None = None) -> ListResult:
+    def list_gauge_needles(
+        self, *, project_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListGaugeNeedles",
         )
@@ -64,11 +67,13 @@ class GaugesService(BaseService):
             operation="CreateGaugeNeedle",
         )
 
-    def list_gauges(self, *, bucket_ids: str | None = None, max_items: int | None = None) -> ListResult:
+    def list_gauges(
+        self, *, bucket_ids: str | None = None, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauges", is_mutation=False),
             "/reports/gauges.json",
-            params=self._compact(bucket_ids=bucket_ids),
+            params=self._compact(bucket_ids=bucket_ids, page=page),
             max_items=max_items,
             operation="ListGauges",
         )
@@ -109,10 +114,13 @@ class AsyncGaugesService(AsyncBaseService):
             operation="ToggleGauge",
         )
 
-    async def list_gauge_needles(self, *, project_id: int, max_items: int | None = None) -> ListResult:
+    async def list_gauge_needles(
+        self, *, project_id: int, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauge_needles", is_mutation=False, project_id=project_id),
             f"/projects/{project_id}/gauge/needles.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="ListGaugeNeedles",
         )
@@ -128,11 +136,13 @@ class AsyncGaugesService(AsyncBaseService):
             operation="CreateGaugeNeedle",
         )
 
-    async def list_gauges(self, *, bucket_ids: str | None = None, max_items: int | None = None) -> ListResult:
+    async def list_gauges(
+        self, *, bucket_ids: str | None = None, page: int | None = None, max_items: int | None = None
+    ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="gauges", operation="list_gauges", is_mutation=False),
             "/reports/gauges.json",
-            params=self._compact(bucket_ids=bucket_ids),
+            params=self._compact(bucket_ids=bucket_ids, page=page),
             max_items=max_items,
             operation="ListGauges",
         )

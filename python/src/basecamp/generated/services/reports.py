@@ -11,10 +11,11 @@ from basecamp.hooks import OperationInfo
 
 
 class ReportsService(BaseService):
-    def progress(self, *, max_items: int | None = None) -> ListResult:
+    def progress(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="reports", operation="progress", is_mutation=False),
             "/reports/progress.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetProgressReport",
         )
@@ -45,21 +46,25 @@ class ReportsService(BaseService):
             operation="GetOverdueTodos",
         )
 
-    def person_progress(self, *, person_id: int, max_items: int | None = None) -> dict[str, Any]:
+    def person_progress(
+        self, *, person_id: int, page: int | None = None, max_items: int | None = None
+    ) -> dict[str, Any]:
         return self._request_paginated_wrapped(
             OperationInfo(service="reports", operation="person_progress", is_mutation=False, resource_id=person_id),
             f"/reports/users/progress/{person_id}.json",
             "events",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetPersonProgress",
         )
 
 
 class AsyncReportsService(AsyncBaseService):
-    async def progress(self, *, max_items: int | None = None) -> ListResult:
+    async def progress(self, *, page: int | None = None, max_items: int | None = None) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="reports", operation="progress", is_mutation=False),
             "/reports/progress.json",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetProgressReport",
         )
@@ -92,11 +97,14 @@ class AsyncReportsService(AsyncBaseService):
             operation="GetOverdueTodos",
         )
 
-    async def person_progress(self, *, person_id: int, max_items: int | None = None) -> dict[str, Any]:
+    async def person_progress(
+        self, *, person_id: int, page: int | None = None, max_items: int | None = None
+    ) -> dict[str, Any]:
         return await self._request_paginated_wrapped(
             OperationInfo(service="reports", operation="person_progress", is_mutation=False, resource_id=person_id),
             f"/reports/users/progress/{person_id}.json",
             "events",
+            params=self._compact(page=page),
             max_items=max_items,
             operation="GetPersonProgress",
         )

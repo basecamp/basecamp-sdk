@@ -5,17 +5,20 @@ public struct ForProjectTimesheetOptions: Sendable {
     public var from: String?
     public var to: String?
     public var personId: Int?
+    public var page: Int?
     public var maxItems: Int?
 
     public init(
         from: String? = nil,
         to: String? = nil,
         personId: Int? = nil,
+        page: Int? = nil,
         maxItems: Int? = nil
     ) {
         self.from = from
         self.to = to
         self.personId = personId
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -24,17 +27,20 @@ public struct ForRecordingTimesheetOptions: Sendable {
     public var from: String?
     public var to: String?
     public var personId: Int?
+    public var page: Int?
     public var maxItems: Int?
 
     public init(
         from: String? = nil,
         to: String? = nil,
         personId: Int? = nil,
+        page: Int? = nil,
         maxItems: Int? = nil
     ) {
         self.from = from
         self.to = to
         self.personId = personId
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -74,6 +80,9 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         if let personId = options?.personId {
             queryItems.append(URLQueryItem(name: "person_id", value: String(personId)))
         }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Timesheets", operation: "GetProjectTimesheet", resourceType: "project_timesheet", isMutation: false, projectId: projectId),
             path: "/projects/\(projectId)/timesheet.json",
@@ -93,6 +102,9 @@ public final class TimesheetsService: BaseService, @unchecked Sendable {
         }
         if let personId = options?.personId {
             queryItems.append(URLQueryItem(name: "person_id", value: String(personId)))
+        }
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
         }
         return try await requestPaginated(
             OperationInfo(service: "Timesheets", operation: "GetRecordingTimesheet", resourceType: "recording_timesheet", isMutation: false, resourceId: recordingId),

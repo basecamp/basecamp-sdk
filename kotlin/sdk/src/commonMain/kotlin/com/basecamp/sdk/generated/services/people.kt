@@ -123,7 +123,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      * List all people visible to the current user
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(options: PaginationOptions? = null): ListResult<Person> {
+    suspend fun list(options: ListPeopleOptions? = null): ListResult<Person> {
         val info = OperationInfo(
             service = "People",
             operation = "ListPeople",
@@ -132,8 +132,11 @@ class PeopleService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/people.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/people.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Person>>(body)
         }
@@ -225,7 +228,7 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      * @param projectId The project ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun listForProject(projectId: Long, options: PaginationOptions? = null): ListResult<Person> {
+    suspend fun listForProject(projectId: Long, options: ListProjectPeopleOptions? = null): ListResult<Person> {
         val info = OperationInfo(
             service = "People",
             operation = "ListProjectPeople",
@@ -234,8 +237,11 @@ class PeopleService(client: AccountClient) : BaseService(client) {
             projectId = projectId,
             resourceId = null,
         )
-        return requestPaginated(info, options, {
-            httpGet("/projects/${projectId}/people.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/projects/${projectId}/people.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Person>>(body)
         }

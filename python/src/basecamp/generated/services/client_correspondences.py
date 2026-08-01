@@ -12,12 +12,17 @@ from basecamp.hooks import OperationInfo
 
 class ClientCorrespondencesService(BaseService):
     def list(
-        self, *, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+        self,
+        *,
+        sort: str | None = None,
+        direction: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return self._request_paginated(
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False),
             "/client/correspondences.json",
-            params=self._compact(sort=sort, direction=direction),
+            params=self._compact(sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListClientCorrespondences",
         )
@@ -35,12 +40,17 @@ class ClientCorrespondencesService(BaseService):
 
 class AsyncClientCorrespondencesService(AsyncBaseService):
     async def list(
-        self, *, sort: str | None = None, direction: str | None = None, max_items: int | None = None
+        self,
+        *,
+        sort: str | None = None,
+        direction: str | None = None,
+        page: int | None = None,
+        max_items: int | None = None,
     ) -> ListResult:
         return await self._request_paginated(
             OperationInfo(service="clientcorrespondences", operation="list", is_mutation=False),
             "/client/correspondences.json",
-            params=self._compact(sort=sort, direction=direction),
+            params=self._compact(sort=sort, direction=direction, page=page),
             max_items=max_items,
             operation="ListClientCorrespondences",
         )

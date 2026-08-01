@@ -85,7 +85,7 @@ open class CardsService(client: AccountClient) : BaseService(client) {
      * @param columnId The column ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(columnId: Long, options: PaginationOptions? = null): ListResult<Card> {
+    suspend fun list(columnId: Long, options: ListCardsOptions? = null): ListResult<Card> {
         val info = OperationInfo(
             service = "Cards",
             operation = "ListCards",
@@ -94,8 +94,11 @@ open class CardsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = columnId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/card_tables/lists/${columnId}/cards.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/card_tables/lists/${columnId}/cards.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Card>>(body)
         }

@@ -2,25 +2,31 @@
 import Foundation
 
 public struct ByPersonCheckinOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct RemindersCheckinOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct ListAnswersCheckinOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -34,9 +40,11 @@ public struct AnswerersCheckinOptions: Sendable {
 }
 
 public struct ListQuestionsCheckinOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -73,9 +81,14 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
     }
 
     public func byPerson(questionId: Int, personId: Int, options: ByPersonCheckinOptions? = nil) async throws -> ListResult<Answer> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Checkins", operation: "GetAnswersByPerson", resourceType: "answers_by_person", isMutation: false, resourceId: personId),
             path: "/questions/\(questionId)/answers/by/\(personId)",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetAnswersByPerson")
         )
@@ -91,9 +104,14 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
     }
 
     public func reminders(options: RemindersCheckinOptions? = nil) async throws -> ListResult<QuestionReminder> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Checkins", operation: "GetQuestionReminders", resourceType: "question_reminder", isMutation: false),
             path: "/my/question_reminders.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "GetQuestionReminders")
         )
@@ -109,9 +127,14 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
     }
 
     public func listAnswers(questionId: Int, options: ListAnswersCheckinOptions? = nil) async throws -> ListResult<Answer> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Checkins", operation: "ListAnswers", resourceType: "answer", isMutation: false, resourceId: questionId),
             path: "/questions/\(questionId)/answers.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListAnswers")
         )
@@ -127,9 +150,14 @@ public final class CheckinsService: BaseService, @unchecked Sendable {
     }
 
     public func listQuestions(questionnaireId: Int, options: ListQuestionsCheckinOptions? = nil) async throws -> ListResult<Question> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Checkins", operation: "ListQuestions", resourceType: "question", isMutation: false, resourceId: questionnaireId),
             path: "/questionnaires/\(questionnaireId)/questions.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListQuestions")
         )

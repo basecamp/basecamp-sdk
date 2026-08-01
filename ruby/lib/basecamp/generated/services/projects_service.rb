@@ -9,11 +9,12 @@ module Basecamp
 
       # List projects (active by default; optionally archived/trashed)
       # @param status [String, nil] active|archived|trashed
+      # @param page [Integer, nil] Page number for paginating through results. Defaults to 1.
       # @param max_items [Integer, nil] cap on items yielded across pages; nil or non-positive means no cap
       # @return [ListEnumerator<Hash>] lazily paginated results (#meta carries pagination metadata)
-      def list(status: nil, max_items: nil)
+      def list(status: nil, page: nil, max_items: nil)
         wrap_paginated(service: "projects", operation: "list", is_mutation: false) do
-          params = compact_query_params(status: status)
+          params = compact_query_params(status: status, page: page)
           paginate("/projects.json", params: params, operation: "ListProjects", max_items: max_items)
         end
       end

@@ -29,6 +29,8 @@ export interface UpdateVaultRequest {
  * Options for list.
  */
 export interface ListVaultOptions extends PaginationOptions {
+  /** Page number for paginating through results. Defaults to 1. */
+  page?: number;
 }
 
 /**
@@ -122,6 +124,9 @@ export class VaultsService extends BaseService {
    * @example
    * ```ts
    * const result = await client.vaults.list(123);
+   *
+   * // With options
+   * const filtered = await client.vaults.list(123, { page: 1 });
    * ```
    */
   async list(vaultId: number, options?: ListVaultOptions): Promise<ListResult<Vault>> {
@@ -137,6 +142,7 @@ export class VaultsService extends BaseService {
         this.client.GET("/vaults/{vaultId}/vaults.json", {
           params: {
             path: { vaultId },
+            query: { page: options?.page },
           },
         })
       , options

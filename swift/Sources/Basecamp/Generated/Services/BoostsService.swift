@@ -2,17 +2,21 @@
 import Foundation
 
 public struct ListForEventBoostOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
 
 public struct ListForRecordingBoostOptions: Sendable {
+    public var page: Int?
     public var maxItems: Int?
 
-    public init(maxItems: Int? = nil) {
+    public init(page: Int? = nil, maxItems: Int? = nil) {
+        self.page = page
         self.maxItems = maxItems
     }
 }
@@ -58,18 +62,28 @@ public final class BoostsService: BaseService, @unchecked Sendable {
     }
 
     public func listForEvent(recordingId: Int, eventId: Int, options: ListForEventBoostOptions? = nil) async throws -> ListResult<Boost> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Boosts", operation: "ListEventBoosts", resourceType: "event_boost", isMutation: false, resourceId: eventId),
             path: "/recordings/\(recordingId)/events/\(eventId)/boosts.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListEventBoosts")
         )
     }
 
     public func listForRecording(recordingId: Int, options: ListForRecordingBoostOptions? = nil) async throws -> ListResult<Boost> {
+        var queryItems: [URLQueryItem] = []
+        if let page = options?.page {
+            queryItems.append(URLQueryItem(name: "page", value: String(page)))
+        }
         return try await requestPaginated(
             OperationInfo(service: "Boosts", operation: "ListRecordingBoosts", resourceType: "recording_boost", isMutation: false, resourceId: recordingId),
             path: "/recordings/\(recordingId)/boosts.json",
+            queryItems: queryItems.isEmpty ? nil : queryItems,
             paginationOpts: options.flatMap { PaginationOptions(maxItems: $0.maxItems) },
             retryConfig: Metadata.retryConfig(for: "ListRecordingBoosts")
         )

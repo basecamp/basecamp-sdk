@@ -82,7 +82,7 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
      * @param vaultId The vault ID
      * @param options Optional query parameters and pagination control
      */
-    suspend fun list(vaultId: Long, options: PaginationOptions? = null): ListResult<Upload> {
+    suspend fun list(vaultId: Long, options: ListUploadsOptions? = null): ListResult<Upload> {
         val info = OperationInfo(
             service = "Uploads",
             operation = "ListUploads",
@@ -91,8 +91,11 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
             projectId = null,
             resourceId = vaultId,
         )
-        return requestPaginated(info, options, {
-            httpGet("/vaults/${vaultId}/uploads.json", operationName = info.operation)
+        val qs = buildQueryString(
+            "page" to options?.page,
+        )
+        return requestPaginated(info, options?.toPaginationOptions(), {
+            httpGet("/vaults/${vaultId}/uploads.json" + qs, operationName = info.operation)
         }) { body ->
             json.decodeFromString<List<Upload>>(body)
         }

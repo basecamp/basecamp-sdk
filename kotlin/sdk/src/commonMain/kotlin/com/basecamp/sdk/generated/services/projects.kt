@@ -27,6 +27,7 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
         )
         val qs = buildQueryString(
             "status" to options?.status,
+            "page" to options?.page,
         )
         return requestPaginated(info, options?.toPaginationOptions(), {
             httpGet("/projects.json" + qs, operationName = info.operation)
