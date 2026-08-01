@@ -1,0 +1,19 @@
+go/pkg/basecamp/generated_errorparse_test.go
+  s_34dec3eb0265b2::t_72ceeecb0647a5 30,46,61,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "12a016162393ec126cf606517dec7c7a2a3ef5f0",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
