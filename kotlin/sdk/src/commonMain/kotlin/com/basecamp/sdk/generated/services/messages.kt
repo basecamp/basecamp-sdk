@@ -39,15 +39,6 @@ class MessagesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListMessagesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun list(boardId: Long, options: PaginationOptions): ListResult<Message> =
-        list(boardId, ListMessagesOptions(maxItems = options.maxItems))
-
-    /**
      * Create a new message on a message board
      * @param boardId The board ID
      * @param body Request body

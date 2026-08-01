@@ -61,6 +61,9 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListForwardRepliesOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listReplies] needs an expected type to disambiguate.
      */
     suspend fun listReplies(forwardId: Long, options: PaginationOptions): ListResult<ForwardReply> =
         listReplies(forwardId, ListForwardRepliesOptions(maxItems = options.maxItems))
@@ -154,13 +157,4 @@ class ForwardsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Forward>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListForwardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun list(inboxId: Long, options: PaginationOptions): ListResult<Forward> =
-        list(inboxId, ListForwardsOptions(maxItems = options.maxItems))
 }

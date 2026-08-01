@@ -37,15 +37,6 @@ class ProjectsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListProjectsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun list(options: PaginationOptions): ListResult<Project> =
-        list(ListProjectsOptions(maxItems = options.maxItems))
-
-    /**
      * Create a new project
      * @param body Request body
      */

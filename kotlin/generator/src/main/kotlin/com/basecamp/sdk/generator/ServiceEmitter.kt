@@ -221,8 +221,16 @@ class ServiceEmitter(private val api: OpenApiParser) {
      * which the pre-1.0 policy in kotlin/README.md forbids: public APIs evolve
      * append-only. The overload takes PaginationOptions without a default so a
      * bare `list(id)` call still resolves unambiguously to the primary method.
+     *
+     * Emitted ONLY for the operations that actually made that move, listed in
+     * [PAGINATION_OPTIONS_COMPAT_OVERLOADS]. An operation that already had its
+     * own options class needs no bridge, and emitting one anyway would leave two
+     * applicable one-argument candidates — enough to make an untyped callable
+     * reference like `client.bookmarks::listMyBookmarks` ambiguous.
      */
     private fun generatePaginationOptionsOverload(op: ParsedOperation, returnType: String): String {
+        if (op.operationId !in PAGINATION_OPTIONS_COMPAT_OVERLOADS) return ""
+
         val hasOptionalQuery = op.queryParams.any { !it.required }
         val hasPagination = op.hasPagination && op.returnsArray
         val isWrappedPaginated = op.hasPagination && op.paginationKey != null && !op.returnsArray
@@ -248,6 +256,9 @@ class ServiceEmitter(private val api: OpenApiParser) {
         sb.appendLine("     *")
         sb.appendLine("     * Prefer [$optionsClassName], which also carries this operation's query")
         sb.appendLine("     * parameters. This overload forwards maxItems and leaves them unset.")
+        sb.appendLine("     *")
+        sb.appendLine("     * Because two one-argument candidates now apply, an *untyped* callable")
+        sb.appendLine("     * reference to [${op.methodName}] needs an expected type to disambiguate.")
         sb.appendLine("     */")
         sb.appendLine("    suspend fun ${op.methodName}(${paramDecls.joinToString(", ")}): $returnType =")
         sb.appendLine("        ${op.methodName}($forwarded)")

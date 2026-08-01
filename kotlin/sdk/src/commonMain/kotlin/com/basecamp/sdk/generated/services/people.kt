@@ -147,6 +147,9 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListPeopleOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [list] needs an expected type to disambiguate.
      */
     suspend fun list(options: PaginationOptions): ListResult<Person> =
         list(ListPeopleOptions(maxItems = options.maxItems))
@@ -261,6 +264,9 @@ class PeopleService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListProjectPeopleOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listForProject] needs an expected type to disambiguate.
      */
     suspend fun listForProject(projectId: Long, options: PaginationOptions): ListResult<Person> =
         listForProject(projectId, ListProjectPeopleOptions(maxItems = options.maxItems))

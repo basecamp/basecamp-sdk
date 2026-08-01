@@ -60,15 +60,6 @@ class MyNotificationsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetBubbleUpsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun bubbleUps(options: PaginationOptions): ListResult<Notification> =
-        bubbleUps(GetBubbleUpsOptions(maxItems = options.maxItems))
-
-    /**
      * Mark specified items as read
      * @param body Request body
      */

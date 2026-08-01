@@ -40,6 +40,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [GetQuestionRemindersOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [reminders] needs an expected type to disambiguate.
      */
     suspend fun reminders(options: PaginationOptions): ListResult<JsonElement> =
         reminders(GetQuestionRemindersOptions(maxItems = options.maxItems))
@@ -135,6 +138,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListQuestionsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listQuestions] needs an expected type to disambiguate.
      */
     suspend fun listQuestions(questionnaireId: Long, options: PaginationOptions): ListResult<Question> =
         listQuestions(questionnaireId, ListQuestionsOptions(maxItems = options.maxItems))
@@ -238,6 +244,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListAnswersOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listAnswers] needs an expected type to disambiguate.
      */
     suspend fun listAnswers(questionId: Long, options: PaginationOptions): ListResult<Answer> =
         listAnswers(questionId, ListAnswersOptions(maxItems = options.maxItems))
@@ -317,6 +326,9 @@ class CheckinsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [GetAnswersByPersonOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [byPerson] needs an expected type to disambiguate.
      */
     suspend fun byPerson(questionId: Long, personId: Long, options: PaginationOptions): ListResult<Answer> =
         byPerson(questionId, personId, GetAnswersByPersonOptions(maxItems = options.maxItems))

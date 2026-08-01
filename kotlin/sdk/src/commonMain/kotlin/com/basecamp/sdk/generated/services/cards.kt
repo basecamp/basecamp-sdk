@@ -109,6 +109,9 @@ open class CardsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListCardsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [list] needs an expected type to disambiguate.
      */
     suspend fun list(columnId: Long, options: PaginationOptions): ListResult<Card> =
         list(columnId, ListCardsOptions(maxItems = options.maxItems))

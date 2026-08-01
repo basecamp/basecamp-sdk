@@ -123,6 +123,9 @@ class GaugesService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListGaugeNeedlesOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listGaugeNeedles] needs an expected type to disambiguate.
      */
     suspend fun listGaugeNeedles(projectId: Long, options: PaginationOptions): ListResult<JsonElement> =
         listGaugeNeedles(projectId, ListGaugeNeedlesOptions(maxItems = options.maxItems))
@@ -175,13 +178,4 @@ class GaugesService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<JsonElement>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListGaugesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun listGauges(options: PaginationOptions): ListResult<JsonElement> =
-        listGauges(ListGaugesOptions(maxItems = options.maxItems))
 }

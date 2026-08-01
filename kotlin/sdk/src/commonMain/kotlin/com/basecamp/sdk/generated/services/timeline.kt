@@ -41,6 +41,9 @@ class TimelineService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [GetProjectTimelineOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [projectTimeline] needs an expected type to disambiguate.
      */
     suspend fun projectTimeline(projectId: Long, options: PaginationOptions): ListResult<TimelineEvent> =
         projectTimeline(projectId, GetProjectTimelineOptions(maxItems = options.maxItems))

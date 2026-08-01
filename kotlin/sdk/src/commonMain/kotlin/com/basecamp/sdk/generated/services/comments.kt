@@ -84,6 +84,9 @@ class CommentsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListCommentsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [list] needs an expected type to disambiguate.
      */
     suspend fun list(recordingId: Long, options: PaginationOptions): ListResult<Comment> =
         list(recordingId, ListCommentsOptions(maxItems = options.maxItems))

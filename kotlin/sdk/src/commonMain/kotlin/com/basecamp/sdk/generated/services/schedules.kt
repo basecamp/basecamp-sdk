@@ -151,15 +151,6 @@ class SchedulesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListScheduleEntriesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun listEntries(scheduleId: Long, options: PaginationOptions): ListResult<ScheduleEntry> =
-        listEntries(scheduleId, ListScheduleEntriesOptions(maxItems = options.maxItems))
-
-    /**
      * Create a new schedule entry
      * @param scheduleId The schedule ID
      * @param body Request body

@@ -38,15 +38,6 @@ class ClientCorrespondencesService(client: AccountClient) : BaseService(client) 
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListClientCorrespondencesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun list(options: PaginationOptions): ListResult<ClientCorrespondence> =
-        list(ListClientCorrespondencesOptions(maxItems = options.maxItems))
-
-    /**
      * Get a single client correspondence by id
      * @param correspondenceId The correspondence ID
      */

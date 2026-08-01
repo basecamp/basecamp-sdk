@@ -106,6 +106,9 @@ open class UploadsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListUploadsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [list] needs an expected type to disambiguate.
      */
     suspend fun list(vaultId: Long, options: PaginationOptions): ListResult<Upload> =
         list(vaultId, ListUploadsOptions(maxItems = options.maxItems))

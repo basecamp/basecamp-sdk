@@ -42,15 +42,6 @@ class RecordingsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListRecordingsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun list(type: String, options: PaginationOptions): ListResult<Recording> =
-        list(type, ListRecordingsOptions(maxItems = options.maxItems))
-
-    /**
      * Get a single recording by id
      * @param recordingId The recording ID
      */

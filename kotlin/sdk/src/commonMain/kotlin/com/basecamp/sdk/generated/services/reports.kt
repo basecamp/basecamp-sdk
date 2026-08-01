@@ -48,6 +48,9 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [GetProgressReportOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [progress] needs an expected type to disambiguate.
      */
     suspend fun progress(options: PaginationOptions): ListResult<TimelineEvent> =
         progress(GetProgressReportOptions(maxItems = options.maxItems))
@@ -154,6 +157,9 @@ class ReportsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [GetPersonProgressOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [personProgress] needs an expected type to disambiguate.
      */
     suspend fun personProgress(personId: Long, options: PaginationOptions): PersonProgressResult =
         personProgress(personId, GetPersonProgressOptions(maxItems = options.maxItems))

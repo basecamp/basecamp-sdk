@@ -40,15 +40,6 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetProjectTimesheetOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun forProject(projectId: Long, options: PaginationOptions): ListResult<TimesheetEntry> =
-        forProject(projectId, GetProjectTimesheetOptions(maxItems = options.maxItems))
-
-    /**
      * Get timesheet for a specific recording
      * @param recordingId The recording ID
      * @param options Optional query parameters and pagination control
@@ -74,15 +65,6 @@ class TimesheetsService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<TimesheetEntry>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetRecordingTimesheetOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun forRecording(recordingId: Long, options: PaginationOptions): ListResult<TimesheetEntry> =
-        forRecording(recordingId, GetRecordingTimesheetOptions(maxItems = options.maxItems))
 
     /**
      * Create a timesheet entry on a recording

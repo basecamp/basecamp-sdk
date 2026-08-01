@@ -38,15 +38,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingCompletedCardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingCompletedCards(options: PaginationOptions): ListResult<BucketCardsGroup> =
-        everythingCompletedCards(GetEverythingCompletedCardsOptions(maxItems = options.maxItems))
-
-    /**
      * Open cards with no due date across all accessible projects, grouped by project (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -70,15 +61,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<BucketCardsGroup>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingNoDueDateCardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingNoDueDateCards(options: PaginationOptions): ListResult<BucketCardsGroup> =
-        everythingNoDueDateCards(GetEverythingNoDueDateCardsOptions(maxItems = options.maxItems))
 
     /**
      * Cards parked in a project's "Not now" column across all accessible projects, grouped by project (paginated).
@@ -106,15 +88,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingNotNowCardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingNotNowCards(options: PaginationOptions): ListResult<BucketCardsGroup> =
-        everythingNotNowCards(GetEverythingNotNowCardsOptions(maxItems = options.maxItems))
-
-    /**
      * Incomplete cards in active columns across all accessible projects, grouped by project (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -138,15 +111,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<BucketCardsGroup>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingOpenCardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingOpenCards(options: PaginationOptions): ListResult<BucketCardsGroup> =
-        everythingOpenCards(GetEverythingOpenCardsOptions(maxItems = options.maxItems))
 
     /**
      * Get every overdue card across all accessible projects, oldest-due-date-first.
@@ -198,15 +162,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingUnassignedCardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingUnassignedCards(options: PaginationOptions): ListResult<BucketCardsGroup> =
-        everythingUnassignedCards(GetEverythingUnassignedCardsOptions(maxItems = options.maxItems))
-
-    /**
      * Get every automatic check-in answer across all accessible projects, newest-first.
      * @param options Optional query parameters and pagination control
      */
@@ -230,15 +185,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingCheckinsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingCheckins(options: PaginationOptions): ListResult<Recording> =
-        everythingCheckins(GetEverythingCheckinsOptions(maxItems = options.maxItems))
-
-    /**
      * Get every comment across all accessible projects, newest-first (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -260,15 +206,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Recording>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingCommentsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingComments(options: PaginationOptions): ListResult<Recording> =
-        everythingComments(GetEverythingCommentsOptions(maxItems = options.maxItems))
 
     /**
      * Get every file recording across all accessible projects, newest-first (paginated).
@@ -296,15 +233,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingFilesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingFiles(options: PaginationOptions): ListResult<EverythingFile> =
-        everythingFiles(GetEverythingFilesOptions(maxItems = options.maxItems))
-
-    /**
      * Get every inbox forward across all accessible projects, newest-first (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -328,15 +256,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingForwardsOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingForwards(options: PaginationOptions): ListResult<Recording> =
-        everythingForwards(GetEverythingForwardsOptions(maxItems = options.maxItems))
-
-    /**
      * Get every message across all accessible projects, newest-first (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -358,15 +277,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<Recording>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingMessagesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingMessages(options: PaginationOptions): ListResult<Recording> =
-        everythingMessages(GetEverythingMessagesOptions(maxItems = options.maxItems))
 
     /**
      * Completed to-dos across all accessible projects, grouped by project (paginated).
@@ -394,15 +304,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingCompletedTodosOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingCompletedTodos(options: PaginationOptions): ListResult<BucketTodosGroup> =
-        everythingCompletedTodos(GetEverythingCompletedTodosOptions(maxItems = options.maxItems))
-
-    /**
      * Open to-dos with no due date across all accessible projects, grouped by project (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -428,15 +329,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingNoDueDateTodosOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingNoDueDateTodos(options: PaginationOptions): ListResult<BucketTodosGroup> =
-        everythingNoDueDateTodos(GetEverythingNoDueDateTodosOptions(maxItems = options.maxItems))
-
-    /**
      * Active, incomplete to-dos across all accessible projects, grouped by project (paginated).
      * @param options Optional query parameters and pagination control
      */
@@ -460,15 +352,6 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<BucketTodosGroup>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingOpenTodosOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingOpenTodos(options: PaginationOptions): ListResult<BucketTodosGroup> =
-        everythingOpenTodos(GetEverythingOpenTodosOptions(maxItems = options.maxItems))
 
     /**
      * Get every overdue to-do across all accessible projects, oldest-due-date-first.
@@ -518,13 +401,4 @@ class EverythingService(client: AccountClient) : BaseService(client) {
             json.decodeFromString<List<BucketTodosGroup>>(body)
         }
     }
-
-    /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [GetEverythingUnassignedTodosOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun everythingUnassignedTodos(options: PaginationOptions): ListResult<BucketTodosGroup> =
-        everythingUnassignedTodos(GetEverythingUnassignedTodosOptions(maxItems = options.maxItems))
 }

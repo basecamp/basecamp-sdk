@@ -37,15 +37,6 @@ class TemplatesService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [ListTemplatesOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun list(options: PaginationOptions): ListResult<Template> =
-        list(ListTemplatesOptions(maxItems = options.maxItems))
-
-    /**
      * Create a new template
      * @param body Request body
      */

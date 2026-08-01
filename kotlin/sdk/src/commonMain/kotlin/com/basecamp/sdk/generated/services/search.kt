@@ -49,15 +49,6 @@ class SearchService(client: AccountClient) : BaseService(client) {
     }
 
     /**
-     * Source-compatibility overload: accepts bare [PaginationOptions].
-     *
-     * Prefer [SearchOptions], which also carries this operation's query
-     * parameters. This overload forwards maxItems and leaves them unset.
-     */
-    suspend fun search(q: String, options: PaginationOptions): ListResult<JsonElement> =
-        search(q, SearchOptions(maxItems = options.maxItems))
-
-    /**
      * Get search metadata (available filter options)
      */
     suspend fun metadata(): JsonElement {

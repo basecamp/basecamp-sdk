@@ -372,3 +372,44 @@ val SIMPLE_RESOURCES = setOf(
     "hillchart", "hillcharts",
     "wormhole", "wormholes",
 )
+
+/**
+ * Operations whose options parameter changed type from bare `PaginationOptions`
+ * to an operation-specific `<Operation>Options` when they gained their first
+ * optional query parameter — the `page` wiring in #561.
+ *
+ * Each one gets a source-compatibility overload taking `PaginationOptions`, so
+ * a call site written against the old signature still compiles (the pre-1.0
+ * policy in kotlin/README.md promises source compatibility).
+ *
+ * The set is frozen. An entry cannot be removed without breaking the call sites
+ * the overload exists for, and nothing new belongs in it: an operation that has
+ * always had its own options class never had a `PaginationOptions` signature to
+ * stay compatible with, and giving it the overload anyway makes an untyped
+ * callable reference — `client.bookmarks::listMyBookmarks` — ambiguous between
+ * two applicable one-argument candidates, so it stops compiling.
+ */
+val PAGINATION_OPTIONS_COMPAT_OVERLOADS = setOf(
+    "GetAnswersByPerson",
+    "GetPersonProgress",
+    "GetProgressReport",
+    "GetProjectTimeline",
+    "GetQuestionReminders",
+    "ListAnswers",
+    "ListCampfires",
+    "ListCards",
+    "ListClientReplies",
+    "ListComments",
+    "ListDocuments",
+    "ListEventBoosts",
+    "ListEvents",
+    "ListForwardReplies",
+    "ListGaugeNeedles",
+    "ListPeople",
+    "ListProjectPeople",
+    "ListQuestions",
+    "ListRecordingBoosts",
+    "ListTodolistGroups",
+    "ListUploads",
+    "ListVaults",
+)

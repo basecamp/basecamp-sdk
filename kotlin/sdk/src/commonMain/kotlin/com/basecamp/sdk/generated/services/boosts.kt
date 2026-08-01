@@ -79,6 +79,9 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListRecordingBoostsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listForRecording] needs an expected type to disambiguate.
      */
     suspend fun listForRecording(recordingId: Long, options: PaginationOptions): ListResult<Boost> =
         listForRecording(recordingId, ListRecordingBoostsOptions(maxItems = options.maxItems))
@@ -136,6 +139,9 @@ class BoostsService(client: AccountClient) : BaseService(client) {
      *
      * Prefer [ListEventBoostsOptions], which also carries this operation's query
      * parameters. This overload forwards maxItems and leaves them unset.
+     *
+     * Because two one-argument candidates now apply, an *untyped* callable
+     * reference to [listForEvent] needs an expected type to disambiguate.
      */
     suspend fun listForEvent(recordingId: Long, eventId: Long, options: PaginationOptions): ListResult<Boost> =
         listForEvent(recordingId, eventId, ListEventBoostsOptions(maxItems = options.maxItems))
