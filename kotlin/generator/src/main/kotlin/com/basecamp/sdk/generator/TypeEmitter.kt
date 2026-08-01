@@ -1,10 +1,44 @@
 package com.basecamp.sdk.generator
 
 /**
+ * Orders an options class's constructor parameters append-only.
+ *
+ * Options classes are data classes with defaults, so callers may construct them
+ * positionally. Constructor position is therefore part of the public API, and
+ * the pre-1.0 policy in kotlin/README.md says public APIs evolve append-only:
+ * new parameters go *after* existing ones.
+ *
+ * The natural order — optional query params in spec order, then the synthetic
+ * `maxItems` — violates that on its own, because `maxItems` is last and every
+ * new query param displaces it. So the shipped order is pinned per class in
+ * `options-param-order.json` and honored here: pinned parameters keep their
+ * position, parameters absent from the pin are appended in natural order, and
+ * pinned parameters the spec has since dropped fall out.
+ *
+ * A class with no pin (one being emitted for the first time) is emitted in
+ * natural order and pinned from then on.
+ */
+internal fun orderOptionsParams(pinned: List<String>, natural: List<String>): List<String> {
+    val present = natural.toSet()
+    return pinned.filter { it in present } + natural.filter { it !in pinned }
+}
+
+/**
  * Generates body request classes and options classes for each operation
  * that needs them.
+ *
+ * @param paramOrder shipped constructor order per options class, from
+ *   `options-param-order.json`. See [orderOptionsParams].
  */
-class TypeEmitter {
+class TypeEmitter(private val paramOrder: Map<String, List<String>> = emptyMap()) {
+
+    private val emittedParamOrder = linkedMapOf<String, List<String>>()
+
+    /**
+     * The constructor order actually emitted, per options class. Main writes it
+     * back out as the next run's pin.
+     */
+    fun emittedParamOrder(): Map<String, List<String>> = emittedParamOrder.toSortedMap()
 
     /**
      * Generate all body and options classes for a set of services.
@@ -93,7 +127,7 @@ class TypeEmitter {
         sb.appendLine("/** Options for ${op.operationId}. */")
         sb.appendLine("data class $className(")
 
-        val lines = mutableListOf<String>()
+        val declarations = linkedMapOf<String, String>()
         for (q in optionalParams) {
             val camelName = q.name.snakeToCamelCase()
             // Compiler-level deprecation (see #406): @Deprecated on the property
@@ -113,13 +147,17 @@ class TypeEmitter {
                 ?.replace(Regex("\\s+"), " ")
                 ?.replace("*/", "* /")
                 ?.let { "    /** $it */\n" } ?: ""
-            lines += "$doc$annotation    val $camelName: ${q.type}? = null"
+            declarations[camelName] = "$doc$annotation    val $camelName: ${q.type}? = null"
         }
         if (hasPagination) {
-            lines += "    val maxItems: Int? = null"
+            declarations["maxItems"] = "    val maxItems: Int? = null"
         }
 
-        sb.appendLine(lines.joinToString(",\n"))
+        // Constructor position is public API here (see orderOptionsParams).
+        val order = orderOptionsParams(paramOrder[className].orEmpty(), declarations.keys.toList())
+        emittedParamOrder[className] = order
+
+        sb.appendLine(order.map { declarations.getValue(it) }.joinToString(",\n"))
         sb.appendLine(") {")
 
         // Convert to PaginationOptions if needed

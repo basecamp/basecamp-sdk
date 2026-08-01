@@ -12,6 +12,11 @@ tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
 }
 
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation(libs.kotlinx.serialization.json)
+    testImplementation(kotlin("test"))
 }

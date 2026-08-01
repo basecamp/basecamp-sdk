@@ -388,6 +388,12 @@ jobs:
       - name: Test
         run: ./gradlew :basecamp-sdk:check
 
+      - name: Test generator
+        # Covers the emitters themselves, not their output: the append-only
+        # constructor-order rule for options classes and the frozen roster of
+        # PaginationOptions compatibility overloads.
+        run: ./gradlew :generator:test
+
       - name: Check generated code drift
         # Regenerate-and-diff freshness gate via the root Make target, which
         # runs the shared non-mutating scripts/check-kotlin-generated-drift.sh

@@ -84,9 +84,9 @@ data class ListCampfireLinesOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -108,9 +108,9 @@ data class ListCampfireUploadsOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -269,9 +269,9 @@ data class ListClientApprovalsOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -282,9 +282,9 @@ data class ListClientCorrespondencesOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -568,9 +568,9 @@ data class ListForwardsOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -605,9 +605,9 @@ data class CreateGaugeNeedleBody(
 data class ListGaugesOptions(
     /** Comma-separated list of project IDs. When provided, results are returned in the order specified instead of by risk level. */
     val bucketIds: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -648,9 +648,9 @@ data class ListMessagesOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -770,9 +770,9 @@ data class UpdateProjectAccessBody(
 data class ListProjectsOptions(
     /** active|archived|trashed */
     val status: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -800,9 +800,9 @@ data class ListRecordingsOptions(
     val sort: String? = null,
     /** asc|desc */
     val direction: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -859,9 +859,9 @@ data class UpdateScheduleSettingsBody(
 data class ListScheduleEntriesOptions(
     /** active|archived|trashed */
     val status: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -901,9 +901,9 @@ data class SearchOptions(
     val bucketId: Long? = null,
     @Deprecated("prefer creator_ids[].")
     val creatorId: Long? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -918,9 +918,9 @@ data class UpdateSubscriptionBody(
 data class ListTemplatesOptions(
     /** active|archived|trashed */
     val status: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -956,9 +956,9 @@ data class GetProjectTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -968,9 +968,9 @@ data class GetRecordingTimesheetOptions(
     val from: String? = null,
     val to: String? = null,
     val personId: Long? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -1033,9 +1033,9 @@ data class RepositionTodolistBody(
 data class ListTodolistsOptions(
     /** active|archived|trashed */
     val status: String? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
@@ -1063,9 +1063,9 @@ data class ListTodosOptions(
     /** active|archived|trashed */
     val status: String? = null,
     val completed: Boolean? = null,
+    val maxItems: Int? = null,
     /** Page number for paginating through results. Defaults to 1. Semantics vary by SDK; see SPEC section 8. */
-    val page: Long? = null,
-    val maxItems: Int? = null
+    val page: Long? = null
 ) {
     fun toPaginationOptions(): PaginationOptions = PaginationOptions(maxItems = maxItems)
 }
