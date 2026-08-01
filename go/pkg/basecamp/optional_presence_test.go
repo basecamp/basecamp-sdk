@@ -285,3 +285,24 @@ func TestCreateAnswer_RejectsUnparseableGroupOn(t *testing.T) {
 		t.Errorf("expected a usage error, got: %v", err)
 	}
 }
+
+// The two halves of the webhook timestamp story, pinned so neither is
+// "simplified" into the other: WebhookEvent.CreatedAt is pointer-backed and a
+// present zero survives, while Recording's are @required VALUE time.Time where
+// presence cannot be recovered and IsZero remains a legacy omission heuristic.
+func TestWebhookEvent_PointerZeroSurvives_RecordingZeroOmitted(t *testing.T) {
+	var zero time.Time
+
+	ev := webhookEventFromGenerated(generated.WebhookEvent{
+		CreatedAt: &zero,
+		Recording: &generated.Recording{CreatedAt: zero, UpdatedAt: zero},
+	})
+
+	if ev.CreatedAt == "" {
+		t.Error("WebhookEvent.CreatedAt is pointer-backed: a present zero must survive")
+	}
+	if ev.Recording.CreatedAt != "" {
+		t.Errorf("Recording.CreatedAt is a value type with no recoverable presence; "+
+			"a zero must stay omitted rather than emitting a year-1 timestamp, got %q", ev.Recording.CreatedAt)
+	}
+}

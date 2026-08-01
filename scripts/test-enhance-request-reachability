@@ -1,0 +1,138 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Durable test for the request-body reachability closure in
+# scripts/enhance-openapi-go-types.sh.
+#
+# Why this exists as its own test rather than relying on the enhancer's built-in
+# self-check: that check computes the SAME closure it validates, so it cannot
+# detect a bug in the closure itself. A one-hop resolver silently misclassified
+# every schema behind a requestBodies alias chain and the self-check passed
+# throughout. This drives the enhancer from outside with synthetic specs whose
+# correct answer is known independently.
+#
+# Cases covered, each with an optional non-nullable array whose treatment is the
+# observable: request-reachable => pointer (*[]T, no skip marker) so an explicit
+# empty array is sendable; response-only => native []T (skip marker set).
+#
+#   1. direct        operation.requestBody -> schema
+#   2. one hop       operation.requestBody -> requestBodies/A -> schema
+#   3. two hops      operation.requestBody -> requestBodies/A -> B -> schema
+#   4. unused        a requestBodies component nothing references (must not
+#                    abort, and must not drag its schema into the request set)
+#   5. response-only a schema reachable only from a response
+#
+# Usage: scripts/test-enhance-request-reachability
+
+require "json"
+require "tmpdir"
+
+ENHANCER = File.expand_path("enhance-openapi-go-types.sh", __dir__)
+
+def base_spec
+  {
+    "openapi" => "3.1.0",
+    "info" => { "title" => "t", "version" => "1" },
+    "paths" => {},
+    "components" => { "schemas" => {} }
+  }
+end
+
+# A schema with one optional, non-nullable array member.
+def schema_with_array
+  { "type" => "object", "required" => [ "id" ],
+    "properties" => { "id" => { "type" => "integer" },
+                      "tags" => { "type" => "array", "items" => { "type" => "string" } } } }
+end
+
+def json_body(ref)
+  { "content" => { "application/json" => { "schema" => { "$ref" => ref } } } }
+end
+
+def run_enhancer(spec)
+  Dir.mktmpdir do |dir|
+    input = File.join(dir, "in.json")
+    output = File.join(dir, "out.json")
+    File.write(input, JSON.pretty_generate(spec))
+    ok = system(ENHANCER, input, output, out: File::NULL, err: File::NULL)
+    return [ ok, nil ] unless ok
+
+    [ ok, JSON.parse(File.read(output)) ]
+  end
+end
+
+# true when the member is left POINTER-shaped (request-reachable).
+def pointer_shaped?(spec, schema, member)
+  !spec["components"]["schemas"][schema]["properties"][member]
+    .key?("x-go-type-skip-optional-pointer")
+end
+
+FAILURES = []
+
+def check(name, condition, detail = nil)
+  if condition
+    puts "  ok  #{name}"
+  else
+    FAILURES << [ name, detail ]
+    puts "  FAIL #{name}#{detail ? " — #{detail}" : ""}"
+  end
+end
+
+puts "==> Request-body reachability closure"
+
+# 1. Direct reference.
+spec = base_spec
+spec["components"]["schemas"]["DirectBody"] = schema_with_array
+spec["paths"]["/direct"] = { "post" => { "requestBody" => json_body("#/components/schemas/DirectBody"),
+                                         "responses" => {} } }
+ok, out = run_enhancer(spec)
+check("direct: enhancer succeeds", ok)
+check("direct: array stays pointer-shaped", ok && pointer_shaped?(out, "DirectBody", "tags"))
+
+# 2. One hop through a reusable component.
+spec = base_spec
+spec["components"]["schemas"]["HopBody"] = schema_with_array
+spec["components"]["requestBodies"] = { "A" => json_body("#/components/schemas/HopBody") }
+spec["paths"]["/hop"] = { "post" => { "requestBody" => { "$ref" => "#/components/requestBodies/A" },
+                                      "responses" => {} } }
+ok, out = run_enhancer(spec)
+check("one hop: enhancer succeeds", ok)
+check("one hop: array stays pointer-shaped", ok && pointer_shaped?(out, "HopBody", "tags"))
+
+# 3. Two hops — the case a one-hop resolver silently got wrong.
+spec = base_spec
+spec["components"]["schemas"]["ChainBody"] = schema_with_array
+spec["components"]["requestBodies"] = {
+  "A" => { "$ref" => "#/components/requestBodies/B" },
+  "B" => json_body("#/components/schemas/ChainBody")
+}
+spec["paths"]["/chain"] = { "post" => { "requestBody" => { "$ref" => "#/components/requestBodies/A" },
+                                        "responses" => {} } }
+ok, out = run_enhancer(spec)
+check("two hops: enhancer succeeds", ok)
+check("two hops: array stays pointer-shaped", ok && pointer_shaped?(out, "ChainBody", "tags"),
+      "a one-hop resolver marks this native and makes an explicit empty array unsendable")
+
+# 4. An unused requestBodies component must not abort generation, and must not
+#    pull its schema into the request-reachable set.
+spec = base_spec
+spec["components"]["schemas"]["UnusedBody"] = schema_with_array
+spec["components"]["schemas"]["ResponseOnly"] = schema_with_array
+spec["components"]["requestBodies"] = { "Orphan" => json_body("#/components/schemas/UnusedBody") }
+spec["paths"]["/unused"] = { "get" => { "responses" => { "200" => json_body("#/components/schemas/ResponseOnly") } } }
+ok, out = run_enhancer(spec)
+check("unused component: enhancer succeeds (does not abort)", ok)
+check("unused component: its schema is NOT treated as request-reachable",
+      ok && !pointer_shaped?(out, "UnusedBody", "tags"))
+
+# 5. Response-only schemas keep the native slice.
+check("response-only: array is native []T", ok && !pointer_shaped?(out, "ResponseOnly", "tags"))
+
+if FAILURES.empty?
+  puts "==> Request-body reachability: all cases pass"
+  exit 0
+end
+
+warn "\nRequest-body reachability FAILED (#{FAILURES.size}):"
+FAILURES.each { |name, detail| warn "  #{name}#{detail ? " — #{detail}" : ""}" }
+exit 1

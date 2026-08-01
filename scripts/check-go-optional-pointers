@@ -27,8 +27,11 @@ abort "check-go-optional-pointers: #{path} not found" unless File.exist?(path)
 # Named interface types declared in the file are nil-capable too: `type Foo
 # interface{ ... }` used as an optional field satisfies the invariant exactly
 # as a literal interface{} does, and rejecting it would be a false positive.
+# Both declaration forms: `type X interface{...}` and the alias
+# `type X = interface{...}`. Missing the alias form would reject a field whose
+# zero value is nil, which is a false positive the guard must not produce.
 interface_names = File.read(path, encoding: "UTF-8")
-  .scan(/^type (\w+) interface\b/).flatten.to_set
+  .scan(/^type (\w+)\s*=?\s*interface\b/).flatten.to_set
 
 violations = []
 stats = Hash.new(0)

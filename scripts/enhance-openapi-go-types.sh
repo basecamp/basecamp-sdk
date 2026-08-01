@@ -97,8 +97,13 @@ REQUEST_REACHABLE=$(jq -c '
       | .seen ) | keys
 ' "$INPUT_FILE")
 
-if [[ -z "$REQUEST_REACHABLE" || "$REQUEST_REACHABLE" == "[]" ]]; then
-    echo "Error: computed an empty request-body reachability closure — the spec shape changed." >&2
+# An empty closure is only suspicious when the spec HAS request bodies. A spec
+# with none — or with only unreferenced requestBodies components — legitimately
+# reaches nothing, and aborting there would fail generation on a valid input.
+OPS_WITH_BODIES=$(jq -r '[ .paths[]?[]? | objects | select(has("requestBody")) ] | length' "$INPUT_FILE")
+
+if [[ "$OPS_WITH_BODIES" -gt 0 && ( -z "$REQUEST_REACHABLE" || "$REQUEST_REACHABLE" == "[]" ) ]]; then
+    echo "Error: $OPS_WITH_BODIES operation(s) declare a requestBody but the reachability closure is empty — the walker is broken." >&2
     exit 1
 fi
 

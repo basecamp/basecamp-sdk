@@ -419,8 +419,12 @@ func webhookEventFromGenerated(ge generated.WebhookEvent) WebhookEvent {
 			event.Recording.ID = rec.Id
 		}
 		// Recording created_at/updated_at are @required and generate as VALUE
-		// time.Time, so there is no pointer to consult — IsZero is the only
-		// presence signal available here, unlike the pointer-backed fields above.
+		// time.Time. There is no pointer to consult, so presence CANNOT be
+		// recovered here at all — IsZero is a legacy zero-value heuristic, not a
+		// presence signal, and a genuinely present year-1 timestamp is
+		// indistinguishable from an absent one. Kept deliberately: unlike the
+		// pointer-backed fields above, dropping it would emit
+		// "0001-01-01T00:00:00Z" for every recording that omits the field.
 		if !rec.CreatedAt.IsZero() {
 			event.Recording.CreatedAt = rec.CreatedAt.Format(time.RFC3339Nano)
 		}
