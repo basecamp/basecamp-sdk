@@ -1,0 +1,31 @@
+conformance/runner/go/main.go
+  s_555508c40a7b3b::t_309836a2d18335 947-953,956,959-964
+conformance/runner/python/runner.py
+  s_555508c40a7b3b::t_e651b6d8a281a0 440,442-450,454
+conformance/runner/ruby/runner.rb
+  s_555508c40a7b3b::t_494b0c2d9c810a 536,538-544
+conformance/runner/typescript/runner.test.ts
+  s_555508c40a7b3b::t_ba5ad163fe558c 802-811,814-817
+kotlin/conformance/src/main/kotlin/com/basecamp/sdk/conformance/Main.kt
+  s_555508c40a7b3b::t_a24ba8f256d08a 143,373,383,392,404,413,415-430,547,557
+swift/Sources/Basecamp/HTTP/HTTPClient.swift
+  s_555508c40a7b3b::t_dbd02fd264f800 43-53,212,360
+swift/Tests/BasecampTests/DownloadTests.swift
+  s_555508c40a7b3b::t_741efde5ac9af8 837-861
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "08add4f02b8455648ea5102feda5ceddd4e9e2ee",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
