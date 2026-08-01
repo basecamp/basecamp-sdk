@@ -436,6 +436,14 @@ Given an HTTP response with status code `status` and body `body`:
 
 In all cases, extract `request_id` from `X-Request-Id` response header if present. `[conformance]`
 
+### Statusless `api_error` for a malformed 2xx body `[manual]`
+
+The mapping above is keyed on an HTTP status, because it maps *failed* responses. A composite (§18) can also fail on a **successful** one: the transport returned 2xx, and the body is malformed in a way that makes the composite's next step unsafe — a writable field of the wrong type, or a required field absent, on a read the composite is about to echo back into a full-replace write.
+
+That error is `api_error` with **no `http_status`** and **`retryable: false`**. Statusless because no status describes it (the request succeeded), and non-retryable because re-requesting cannot repair a malformed body. It is deliberately *not* `usage`/`validation`: the value came off the wire, so nothing the caller passed is at fault. The mirror case — the *caller* supplying the offending value — stays a usage error. **Classification is by origin, not by value:** the same empty string is a caller error when the caller passed it and a malformed response when the server did, so each provenance is checked where it is unambiguous (the read step owns the response, the write step owns the caller).
+
+Message is truncated to `MAX_ERROR_MESSAGE_LENGTH` like any other (§9) — the malformed value is embedded in it, so the cap is load-bearing rather than cosmetic.
+
 ### Error Body Parsing Algorithm
 
 1. Attempt to parse `body` as JSON.
