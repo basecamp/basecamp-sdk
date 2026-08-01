@@ -347,6 +347,46 @@ walk(
 
 mv "${OUTPUT_FILE}.tmp" "$OUTPUT_FILE"
 
+# Self-verify the array policy. The Go guard (check-go-optional-pointers)
+# enforces nil-CAPABILITY, which a native []T satisfies — so it cannot catch a
+# request-reachable array regressing to native and becoming unsendable-empty.
+# That invariant is only checkable here, against the spec, so assert it where
+# the data is: no schema reachable from an operation requestBody may carry
+# x-go-type-skip-optional-pointer on an optional array.
+leaked=$(jq -r '
+  ( .components.schemas ) as $all
+  | ( [ .paths[]?[]? | objects | .requestBody? | objects
+        | [.. | objects | select(has("$ref")) | .["$ref"]]
+        | .[] | select(type == "string" and startswith("#/components/schemas/"))
+        | sub("^#/components/schemas/"; "") ] | unique ) as $seeds
+  | ( { seen: ($seeds | map({key: ., value: true}) | from_entries), frontier: $seeds }
+      | until(.frontier | length == 0;
+          . as $s
+          | ( [ $s.frontier[] | ($all[.] // {}) | [.. | objects | select(has("$ref")) | .["$ref"]] ]
+              | flatten
+              | map(select(type == "string" and startswith("#/components/schemas/"))
+                    | sub("^#/components/schemas/"; ""))
+              | unique ) as $next
+          | ( $next | map(select($s.seen[.] | not)) ) as $new
+          | { seen: ($s.seen + ($new | map({key: ., value: true}) | from_entries)), frontier: $new }
+        )
+      | .seen ) as $reachable
+  | [ $all | to_entries[] | select($reachable[.key]) | select(.value | type == "object")
+      | .key as $schema | ((.value.required // []) | select(type == "array")) as $req
+      | ((.value.properties // {}) | select(type == "object")) | to_entries[]
+      | select(.value | type == "object")
+      | .key as $prop
+      | select(.value.type == "array" and .value["x-go-type-skip-optional-pointer"] == true)
+      | select($req | index($prop) | not)
+      | "\($schema).\($prop)" ] | .[]
+' "$OUTPUT_FILE")
+
+if [[ -n "$leaked" ]]; then
+    echo "Error: request-reachable optional array(s) kept native []T — an explicit empty array would be unsendable:" >&2
+    echo "$leaked" | sed 's/^/  /' >&2
+    exit 1
+fi
+
 # Count enhancements
 timestamp_count=$(jq '[.. | objects | select(.["x-go-type"] == "time.Time")] | length' "$OUTPUT_FILE")
 date_count=$(jq '[.. | objects | select(.["x-go-type"] == "types.Date")] | length' "$OUTPUT_FILE")

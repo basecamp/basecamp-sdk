@@ -248,10 +248,15 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
-// intPtrFrom converts an optional generated integer pointer to the SDK's *int,
+// intPtrFrom converts an optional generated int32 pointer to the SDK's *int,
 // preserving nil. Widening through deref would manufacture a pointer to zero
 // and destroy the absence the pointer exists to carry.
-func intPtrFrom[T ~int32 | ~int64](p *T) *int {
+//
+// Constrained to ~int32 deliberately: int is 32-bit on some Go targets, so
+// admitting ~int64 here would silently truncate. Every generated field this
+// converts is an int32; a future int64 one needs its own range-checked
+// conversion rather than a wider constraint.
+func intPtrFrom[T ~int32](p *T) *int {
 	if p == nil {
 		return nil
 	}
