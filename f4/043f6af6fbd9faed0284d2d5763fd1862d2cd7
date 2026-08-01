@@ -1,0 +1,29 @@
+go/pkg/basecamp/helpers_test.go
+  s_34dec3eb0265b2::t_808c8a2db2a339 530-536
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/FieldKeyed422Test.kt
+  s_34dec3eb0265b2::t_808c8a2db2a339 221-224,226
+python/tests/test_errors.py
+  s_34dec3eb0265b2::t_808c8a2db2a339 308-312
+ruby/test/basecamp/errors_test.rb
+  s_34dec3eb0265b2::t_808c8a2db2a339 210-214
+typescript/tests/errors.test.ts
+  s_34dec3eb0265b2::t_808c8a2db2a339 713-716,725
+swift/Tests/BasecampTests/ErrorTests.swift
+  s_34dec3eb0265b2::t_808c8a2db2a339 409-413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "f4043f6af6fbd9faed0284d2d5763fd1862d2cd7",
+  "prompts": {},
+  "sessions": {
+    "s_34dec3eb0265b2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c408c3d4-6055-46f2-b85d-96c24097b5f9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
