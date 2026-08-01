@@ -1,0 +1,22 @@
+kotlin/sdk/src/commonMain/kotlin/com/basecamp/sdk/services/TodolistsService.kt
+  s_555508c40a7b3b::t_89f29d3d0cbb41 8
+  s_555508c40a7b3b::t_e8047850eb1db8 99-100,104-138
+kotlin/sdk/src/commonTest/kotlin/com/basecamp/sdk/TodolistsServiceTest.kt
+  s_555508c40a7b3b::t_bfef412f8ca034 143-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "53b00a01a03a20a63297506d5fae67b5aeb5b209",
+  "prompts": {},
+  "sessions": {
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
