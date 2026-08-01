@@ -1,0 +1,45 @@
+conformance/runner/python/runner.py
+  s_555508c40a7b3b::t_ffed552aa524db 432-435,438-439
+  s_555508c40a7b3b::t_3007c2f438cbe5 680-681
+python/src/basecamp/_http.py
+  s_555508c40a7b3b::t_df924748f097cd 157,185
+  s_555508c40a7b3b::t_f8984b12c54b44 326-333,339-342
+  s_555508c40a7b3b::t_dfad8bdf3fca61 122-129,131
+python/src/basecamp/download.py
+  s_555508c40a7b3b::t_b9d61442ccc3ee 83
+  s_555508c40a7b3b::t_583c3942b2d2f6 48
+  s_555508c40a7b3b::t_77f0c64f5463c4 79
+  s_555508c40a7b3b::t_19d38cab69eb2e 52
+python/tests/test_download.py
+  s_555508c40a7b3b::t_c6cec49c9d6da6 155,168,174,178-179,182,184,193,199,201,204,209,211,213-214,217,219,231,238,248,257,269,284-285,298,304-305,309-311,313,315-316,325,330-346,357-361
+  s_555508c40a7b3b::t_664d8e1b44e59a 347-351,353,356,362
+  s_555508c40a7b3b::t_8eacebb80d22d5 3-4,9,11,14-16
+  s_555508c40a7b3b::t_4ba2bc85b5465b 352,354-355
+  s_2218d00d1182de::t_84ba8d5426351e 115-154,156-167,169-173,175-177,180-181,183,185-192,194-198,200,202-203,205-208,210,212,215-216,218,220-230,232-237,239-247,249-256,258-268,270-283,286-297,299-303,306-308,312,314,317-324,326-329
+python/src/basecamp/_async_http.py
+  s_555508c40a7b3b::t_f08bb43aa90df7 122-129,131,157,185,326-333,339-342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "3b429d94e66024344316f57e66b66819a94055ac",
+  "prompts": {},
+  "sessions": {
+    "s_2218d00d1182de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd710f98-c872-4170-b8e9-3e1b533f4f70",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    },
+    "s_555508c40a7b3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e708032-ac78-4cef-b1cf-d589a0d95671",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jeremy Daer <jeremy@hey.com>"
+    }
+  }
+}
