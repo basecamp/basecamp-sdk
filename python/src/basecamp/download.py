@@ -45,11 +45,11 @@ def _parse_content_length(value: str | None) -> int:
 
 
 def download_sync(raw_url: str, *, http_client, config) -> DownloadResult:
-    """Perform sync download: URL rewrite → authenticated hop 1 → redirect → unauthenticated hop 2."""
+    """Perform sync download: URL rewrite → authenticated hop 1 (SPEC §14 retry) → redirect → unauthenticated hop 2."""
     _validate_url(raw_url)
     rewritten_url = _rewrite_url(raw_url, config.base_url)
 
-    response = http_client.get_no_retry(rewritten_url)
+    response = http_client.get_download(rewritten_url)
 
     if response.status_code in {301, 302, 303, 307, 308}:
         location = response.headers.get("Location") or response.headers.get("location")
@@ -76,11 +76,11 @@ def download_sync(raw_url: str, *, http_client, config) -> DownloadResult:
 
 
 async def download_async(raw_url: str, *, http_client, config) -> DownloadResult:
-    """Perform async download: URL rewrite → authenticated hop 1 → redirect → unauthenticated hop 2."""
+    """Perform async download: URL rewrite → authenticated hop 1 (SPEC §14 retry) → redirect → unauthenticated hop 2."""
     _validate_url(raw_url)
     rewritten_url = _rewrite_url(raw_url, config.base_url)
 
-    response = await http_client.get_no_retry(rewritten_url)
+    response = await http_client.get_download(rewritten_url)
 
     if response.status_code in {301, 302, 303, 307, 308}:
         location = response.headers.get("Location") or response.headers.get("location")

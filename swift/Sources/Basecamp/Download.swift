@@ -45,6 +45,13 @@ extension AccountClient {
     /// authenticated first hop (which typically 302s to a signed download URL),
     /// and unauthenticated second hop to fetch the actual file content.
     ///
+    /// The first hop retries under the SPEC §14 policy — network errors plus
+    /// {429, 502, 503, 504}, never 500 — with exponential backoff, honoring
+    /// `Retry-After` on 429, over a fixed three attempts when
+    /// ``BasecampConfig/enableRetry`` is true and exactly one when it is false.
+    /// Every attempt is authenticated. The second hop is exempt: no retry, and
+    /// no credentials on the signed URL.
+    ///
     /// - Parameter rawURL: Absolute download URL (e.g., from bc-attachment elements).
     /// - Returns: A ``DownloadResult`` with body, content type, content length, and filename.
     /// - Throws: ``BasecampError/usage(message:hint:)`` if rawURL is empty or not absolute.

@@ -16,6 +16,14 @@ import { isLocalhost, requireSameOrigin } from "./security.js";
 import { parseNextLink, resolveURL, isSameOrigin } from "./pagination-utils.js";
 import { type AuthStrategy, bearerAuth } from "./auth-strategy.js";
 import { createDownloadURL, type DownloadResult } from "./download.js";
+import {
+  DEFAULT_RETRY_CONFIG,
+  NO_RETRY_CONFIG,
+  TerminalRetryError,
+  executeWithRetry,
+  type RetryConfig,
+  type RetryEmit,
+} from "./retry.js";
 
 // ============================================================================
 // Services - Generated from OpenAPI spec (spec-driven, not hand-written)
@@ -415,7 +423,7 @@ export function createBasecampClient(options: BasecampClientOptions): BasecampCl
   // Wire downloadURL — raw fetch, not openapi-fetch (like fetchPage).
   // Defined before service factories so UploadsService can inject it.
   const downloadURLFn = createDownloadURL({
-    authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs,
+    authStrategy, userAgent, baseUrl, hooks, requestTimeoutMs, enableRetry,
   });
   Object.defineProperty(enhancedClient, "downloadURL", {
     value: downloadURLFn,
@@ -811,33 +819,9 @@ function getCacheKey(url: string, tokenHash: string): string {
 // Retrying Fetch (the retry loop, beneath the middleware chain)
 // =============================================================================
 
-/**
- * Retry configuration matching x-basecamp-retry extension schema.
- */
-interface RetryConfig {
-  maxAttempts: number;
-  baseDelayMs: number;
-  backoff: "exponential" | "linear" | "constant";
-  retryOn: number[];
-}
-
-/** Default retry config used when no operation-specific config is available */
-const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxAttempts: 3,
-  baseDelayMs: 1000,
-  backoff: "exponential",
-  retryOn: [429, 503],
-};
-
-/** No-retry config for non-idempotent POST operations */
-const NO_RETRY_CONFIG: RetryConfig = {
-  maxAttempts: 1,
-  baseDelayMs: 0,
-  backoff: "constant",
-  retryOn: [],
-};
-
-const MAX_JITTER_MS = 100;
+// The retry loop itself lives in retry.ts (executeWithRetry) so the raw-fetch
+// download hop 1 shares it; this section owns what is client-specific — the
+// operation-metadata config resolution and the openapi-fetch integration.
 
 // PATH_TO_OPERATION is imported from generated/path-mapping.js
 
@@ -1021,7 +1005,10 @@ function createRetryingFetch(
   return async (request) => {
     const { method, url } = request;
     const retryConfig = getRetryConfigForRequest(method, url);
-    const maxAttempts = enableRetry ? retryConfig.maxAttempts : 1;
+    const effectiveConfig: RetryConfig = {
+      ...retryConfig,
+      maxAttempts: enableRetry ? retryConfig.maxAttempts : 1,
+    };
 
     // Serialize the body once, before the first send, because Request.body is
     // a stream that can only be consumed once and a retry needs to replay it.
@@ -1031,18 +1018,15 @@ function createRetryingFetch(
     const upperMethod = method.toUpperCase();
     let bodyBuffer: ArrayBuffer | null = null;
     if (
-      maxAttempts > 1 &&
+      effectiveConfig.maxAttempts > 1 &&
       (upperMethod === "POST" || upperMethod === "PUT" || upperMethod === "PATCH") &&
       request.body
     ) {
       bodyBuffer = await request.clone().arrayBuffer();
     }
 
-    let attempt = 1;
     let attemptRequest = request;
-    lifecycle.begin(request, method, url, attempt);
-
-    for (;;) {
+    const makeAttempt = async (attempt: number): Promise<Response> => {
       if (attempt > 1) {
         // Rebuild from the original request: the headers carry everything the
         // onRequest middleware attached (auth, User-Agent, If-None-Match), and
@@ -1057,145 +1041,35 @@ function createRetryingFetch(
 
         // Refresh auth (the token may have rotated since the last attempt).
         // The attempt is already begun, so a throwing refresh lands on a live
-        // attempt and propagates to the lifecycle middleware's onError.
-        await authStrategy.authenticate(attemptRequest.headers);
-      }
-
-      let response: Response;
-      try {
-        // globalThis.fetch resolved per attempt rather than captured at client
-        // creation, so test interceptors that patch it (MSW) are honored.
-        response = await globalThis.fetch(attemptRequest);
-      } catch (error) {
-        // An abort is terminal no matter what the budget says: a caller
-        // cancellation must not re-send, and the per-request timeout is one
-        // budget shared by every attempt and backoff — once it fires, a retry
-        // would instantly re-reject. Terminal errors are rethrown as-is so
-        // their identity survives to the lifecycle middleware's onError (and
-        // to the caller).
-        //
-        // The signal is the authoritative abort test: a caller can abort with
-        // a CUSTOM reason — AbortController.abort(reason) — and fetch then
-        // rejects with that reason, not a DOMException named AbortError. The
-        // DOMException check remains for abort-shaped rejections that arrive
-        // without an aborted request signal.
-        const isAbort =
-          request.signal?.aborted === true ||
-          (error instanceof DOMException &&
-            (error.name === "AbortError" || error.name === "TimeoutError"));
-        if (isAbort || attempt >= maxAttempts) {
-          throw error;
+        // attempt; the terminal marker carries it raw past the loop's retry
+        // classification to the lifecycle middleware's onError.
+        try {
+          await authStrategy.authenticate(attemptRequest.headers);
+        } catch (error) {
+          throw new TerminalRetryError(error);
         }
-
-        // Network-error retry rides the same per-operation gate as status
-        // retry: a non-idempotent POST resolves NO_RETRY_CONFIG (maxAttempts
-        // 1), so it is rethrown above after its single attempt.
-        const cause = error instanceof Error ? error : new Error(String(error));
-        const delay = calculateBackoffDelay(retryConfig, attempt - 1);
-
-        lifecycle.finalize(request, method, url, { statusCode: 0, error: cause });
-        lifecycle.retrying(method, url, attempt, cause, delay);
-
-        await sleep(delay, request.signal);
-
-        // Same placement rationale as the status path below.
-        attempt += 1;
-        lifecycle.begin(request, method, url, attempt);
-        continue;
       }
 
-      // Terminal: a status outside the operation's declared retryOn set, or a
-      // spent budget — maxAttempts is a total attempt count, so attempt N is
-      // terminal when it equals the cap.
-      if (!retryConfig.retryOn.includes(response.status) || attempt >= maxAttempts) {
-        return response;
-      }
+      // globalThis.fetch resolved per attempt rather than captured at client
+      // creation, so test interceptors that patch it (MSW) are honored.
+      return globalThis.fetch(attemptRequest);
+    };
 
-      // For 429, respect Retry-After; otherwise back off.
-      let delay: number;
-      const retryAfter =
-        response.status === 429 ? response.headers.get("Retry-After") : null;
-      const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : NaN;
-      if (!isNaN(retryAfterSeconds)) {
-        delay = retryAfterSeconds * 1000;
-      } else {
-        delay = calculateBackoffDelay(retryConfig, attempt - 1);
-      }
+    const emit: RetryEmit = {
+      begin: (attempt) => lifecycle.begin(request, method, url, attempt),
+      finalize: (outcome) => lifecycle.finalize(request, method, url, outcome),
+      retrying: (failedAttempt, error, delayMs) =>
+        lifecycle.retrying(method, url, failedAttempt, error, delayMs),
+    };
 
-      const statusError = new Error(
-        `HTTP ${response.status}: ${response.statusText || "Request failed"}`,
-      );
-
-      // End the failed attempt before sleeping, so a slow backoff cannot leave
-      // an attempt open, then announce the upcoming one.
-      lifecycle.finalize(request, method, url, { statusCode: response.status });
-      lifecycle.retrying(method, url, attempt, statusError, delay);
-
-      // This response is being discarded, so release its stream before we sleep
-      // rather than leaving it open across the backoff — otherwise a throttled
-      // client holds a connection per in-flight retry and cannot reuse any of
-      // them. The multipart transport in services/base.ts already does this.
-      // Errors are ignored: the body may already be consumed or closed.
-      void response.body?.cancel().catch(() => {});
-
-      await sleep(delay, request.signal);
-
-      // Begun after the backoff but before any work that can throw. After, so
-      // the attempt's duration measures the request rather than the sleep;
-      // before, so that if the auth refresh or the fetch throws, the lifecycle
-      // middleware's onError still finds a live attempt to finalize. Starting
-      // it later would let onRetry announce an attempt and then never account
-      // for it.
-      attempt += 1;
-      lifecycle.begin(request, method, url, attempt);
+    try {
+      return await executeWithRetry(makeAttempt, effectiveConfig, emit, request.signal);
+    } catch (error) {
+      // Unwrap the terminal marker so the original error's identity survives
+      // to the lifecycle middleware's onError (and to the caller).
+      throw error instanceof TerminalRetryError ? error.reason : error;
     }
   };
-}
-
-function calculateBackoffDelay(config: RetryConfig, attempt: number): number {
-  const base = config.baseDelayMs;
-  let delay: number;
-
-  switch (config.backoff) {
-    case "exponential":
-      delay = base * Math.pow(2, attempt);
-      break;
-    case "linear":
-      delay = base * (attempt + 1);
-      break;
-    case "constant":
-    default:
-      delay = base;
-  }
-
-  // Add jitter (0-100ms)
-  const jitter = Math.random() * MAX_JITTER_MS;
-  return delay + jitter;
-}
-
-/**
- * Signal-aware sleep for backoff waits: resolves after `ms`, or rejects with
- * the signal's abort reason the moment it fires. Without this, a caller abort
- * or the request-timeout budget expiring during a backoff would leave the
- * request pending for the full delay and then start another attempt — begin,
- * auth refresh, fetch — against an already-aborted signal.
- */
-function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason as Error);
-      return;
-    }
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(signal!.reason as Error);
-    };
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, ms);
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
 }
 
 // =============================================================================
